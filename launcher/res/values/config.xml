@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CleanYourTV Home</string>
+    <string name="key_service_label">CleanYourTV Kumanda &amp; Sinema HUD Servisi</string>
+    <string name="key_service_desc">TV+, Netflix (Stremio) ve Amazon Prime (Sinema Görüntü/Ses HUD) kumanda tuşlarını ve Akıllı RAM temizliğini yönetir.</string>
+    <string name="dream_label">CleanYourTV Sinema Saati</string>
+    <string name="live_tv_package">com.turkcell.ott</string>
+    <integer name="grid_columns">4</integer>
+    <integer name="rows_below_dock">2</integer>
+    <bool name="show_home_settings_shortcut">false</bool>
+    <bool name="cinematic_home">true</bool>
+    <string-array name="dock_packages">
+        <item>com.turkcell.ott</item>
+        <item>com.instantbits.cast.receiver</item>
+        <item>io.gh.reisxd.tizentube.cobalt</item>
+        <item>com.stremio.one</item>
+    </string-array>
+    <string-array name="hidden_packages">
+        <item>com.gathin.tvhome</item>
+        <item>com.google.android.youtube.tv</item>
+        <item>com.google.android.tungsten.setupwraith</item>
+        <item>com.google.android.tvlauncher</item>
+        <item>com.google.android.apps.tv.launcherx</item>
+    </string-array>
+</resources>

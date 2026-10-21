@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Build artifacts & caches
+build/
+bin/
+gen/
+out/
+*.class
+*.log
+*.tmp
+
+# IDE files
+.idea/
+*.iml
+.gradle/
+local.properties
