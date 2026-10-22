@@ -55,11 +55,14 @@ Focus movement smoothly shifts depth scaling, 3D elevation, and poster-aware foc
 ### 2. 🍿 Nuvio TV + Cinema Suite & Strict Seeder Sorting
 - Integrates **Nuvio TV** (`com.nuvio.tv`) with the verified **Anthology** repository (41 scrapers + 138 Live TV channels for TR) or Cinemeta/CyberFlix (for international users).
 - Official Nuvio wordmark tile (`ic_nuvio_wordmark`) rendered on Apple visionOS liquid glass without redundant duplicate text.
+- **Dynamic 8-Genre Vitrin Rotation**: On every TV boot or launcher return, the vitrin dynamically cycles across 8 curated cinema categories (Vizyondakiler & Popüler, Aksiyon & Macera, Bilim-Kurgu, Animasyon & Aile, Gerilim, Suç & Gizem, Fantastik Dünyalar, IMDb En İyiler).
 - **Strict Torrent Sorting & Filtering Hierarchy**:
   1. Quality Tier: `4K HDR10 / Dolby Vision` > `1080p HDR10` > `1080p` > `720p`.
   2. Language Priority: User-defined spoken languages prioritized for dubbing and subtitles (e.g. `turkish,english`, `german,english`, `spanish,latino`).
   3. **Torrent Seeder Hierarchy**: Within each quality tier, torrent videos are strictly sorted **first by seeder count, then by file size** (`sort=quality`).
   4. Exclusions: Formats below 720p (480p, 360p, CAM, SCR, etc.) are strictly excluded.
+- **Nova Video Player Integration (`scripts/setup_nova_player.sh`)**: If Nuvio TV ever encounters a playback, sync, or codec error on heavy 4K REMUX or obscure audio codecs, users can seamlessly switch to Nova Video Player (`org.courville.nova`) as an external player directly from Nuvio settings.
+- **Hardware Cinema Calibration & Auto Frame Rate (AFR) (`scripts/setup_nuvio_presets.sh`)**: Calibrates the TV display and audio pipeline to cinema standards, enabling hardware Auto Frame Rate matching (`match_content_frame_rate=1`), bit-perfect digital audio passthrough (`sound_digital_output=5`), Dolby Atmos, and HDR10+ dynamic tone mapping.
 - Completely replaces and retires legacy players (CloudStream, Stremio) cleanly.
 
 ### 3. 🌤️ Real-Time Live Weather & Location Awareness
@@ -179,6 +182,8 @@ tv-master-launcher/
     ├── debloat_arcelik_beko.sh      # Arçelik / Beko specific debloat script
     ├── optimize_ram.sh              # zRAM, swappiness, LMK & memory tuning
     ├── setup_dns_and_streaming.sh   # AdGuard DoT & Nuvio 4K HDR10 setup
+    ├── setup_nuvio_presets.sh       # Nuvio addon presets & cinema hardware AFR calibration
+    ├── setup_nova_player.sh         # Nova Video Player fallback integration
     ├── setup_youtube.sh             # Ad-free YouTube disguise installer
     └── setup_airplay.sh             # AirPlay receiver configuration
 ```

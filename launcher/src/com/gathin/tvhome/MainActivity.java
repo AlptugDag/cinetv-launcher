@@ -22,12 +22,15 @@ import android.graphics.RadialGradient;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.media.AudioManager;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -43,6 +46,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.EditText;
+import android.graphics.Rect;
+import android.graphics.RectF;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -165,10 +170,9 @@ public class MainActivity extends Activity {
     private TextView reorderUninstallBtn;
 
     private FrameLayout screensaverOverlay;
-    private LinearLayout screensaverCluster;
-    private TextView screensaverClockText;
-    private TextView screensaverDateText;
+    private VibrantScreensaverView screensaverView;
     private boolean isScreensaverActive = false;
+    private TextView vitrinCategoryLabel;
 
     private final List<AppTileItem> dockItems = new ArrayList<>();
     private final List<AppTileItem> gridItems = new ArrayList<>();
@@ -178,6 +182,7 @@ public class MainActivity extends Activity {
     private final List<Integer> posterNeonColors = new ArrayList<>();
     private final List<String> posterImdbIds = new ArrayList<>();
     private final List<String> posterTitles = new ArrayList<>();
+    private final List<String> posterUrls = new ArrayList<>();
     private long lastVitrinCheckTime = 0;
 
     private static final int VITRIN_POSTER_W = 260;
@@ -200,6 +205,54 @@ public class MainActivity extends Activity {
         }
     };
 
+    private final Runnable autoShutdownRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isScreensaverActive) return;
+            if (isMediaPlaying()) {
+                // Media is actively streaming or playing audio, defer shutdown
+                handler.postDelayed(this, 2 * 60 * 1000L);
+                return;
+            }
+            executeFullPowerDown();
+        }
+    };
+
+    private boolean isMediaPlaying() {
+        try {
+            AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            return am != null && am.isMusicActive();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private void executeFullPowerDown() {
+        try {
+            Runtime.getRuntime().exec(new String[]{"reboot", "-p"});
+        } catch (Throwable ignored) {
+        }
+        try {
+            Runtime.getRuntime().exec(new String[]{"input", "keyevent", "26"}); // KEYCODE_POWER
+        } catch (Throwable ignored) {
+        }
+        try {
+            Intent shut = new Intent("android.intent.action.ACTION_REQUEST_SHUTDOWN");
+            shut.putExtra("android.intent.extra.KEY_CONFIRM", false);
+            shut.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(shut);
+        } catch (Throwable ignored) {
+        }
+        try {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (pm != null) {
+                java.lang.reflect.Method goToSleep = pm.getClass().getMethod("goToSleep", long.class);
+                goToSleep.invoke(pm, SystemClock.uptimeMillis());
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     private final Runnable vitrinAutoSlide = new Runnable() {
         @Override
         public void run() {
@@ -216,23 +269,6 @@ public class MainActivity extends Activity {
                 }
             }
             handler.postDelayed(this, 10000L);
-        }
-    };
-
-    private final Runnable screensaverDriftRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (isScreensaverActive && screensaverCluster != null) {
-                float dx = (random.nextFloat() - 0.5f) * 320f;
-                float dy = (random.nextFloat() - 0.5f) * 180f;
-                screensaverCluster.animate()
-                        .translationX(dx)
-                        .translationY(dy)
-                        .setDuration(1800L)
-                        .start();
-                updateClock();
-                handler.postDelayed(this, 40000L);
-            }
         }
     };
 
@@ -256,7 +292,10 @@ public class MainActivity extends Activity {
         private final Paint breathingPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint interactiveGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final ArgbEvaluator argbEvaluator = new ArgbEvaluator();
-        private final Drawable watermarkLogo;
+        private final Bitmap watermarkBitmap;
+        private final Bitmap tileBitmap;
+        private final Paint watermarkPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final Paint watermarkGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
         // Curated deep cinema ambient palette (avoids repetitive blue!)
         private final int[] AMBIENT_CYCLE_COLORS = new int[] {
@@ -277,7 +316,20 @@ public class MainActivity extends Activity {
 
         SeamlessLivingBackdropView(Context ctx) {
             super(ctx);
-            watermarkLogo = null;
+            Bitmap bm = null;
+            Bitmap scaled = null;
+            try {
+                InputStream is = ctx.getAssets().open("signature_logo.png");
+                bm = BitmapFactory.decodeStream(is);
+                is.close();
+                if (bm != null) {
+                    int tSize = 114; // Clearly perceivable, recognizable motif tile size
+                    scaled = Bitmap.createScaledBitmap(bm, tSize, tSize, true);
+                }
+            } catch (Throwable ignored) {
+            }
+            watermarkBitmap = bm;
+            tileBitmap = scaled;
         }
 
         public void setLightMode(boolean light) {
@@ -386,23 +438,45 @@ public class MainActivity extends Activity {
             ));
             canvas.drawRect(0, 0, w, h, breathingPaint);
 
-            // 2. Barely-perceptible, architectural watermark of Alptuğ's personal signature logo
-            if (watermarkLogo != null) {
-                int logoSize = 920;
-                int left = (w - logoSize) / 2;
-                int top = (h - logoSize) / 2 - 20;
-                int r = Color.red(glowColor);
-                int g = Color.green(glowColor);
-                int b = Color.blue(glowColor);
-                // Tinted subtly by the active neon color blended with soft silver at ~4.8% opacity (alpha = 12)
-                watermarkLogo.setTint(Color.rgb(
-                        (r + 255 * 2) / 3,
-                        (g + 255 * 2) / 3,
-                        (b + 255 * 2) / 3
-                ));
-                watermarkLogo.setAlpha(13);
-                watermarkLogo.setBounds(left, top, left + logoSize, top + logoSize);
-                watermarkLogo.draw(canvas);
+            // 2. 3D Parallax Non-Overlapping Geometric Motif Pattern ("Desen")
+            if (tileBitmap != null) {
+                canvas.save();
+                float parallaxX = (glowX - (w / 2f)) * -0.035f;
+                float parallaxY = (glowY - (h / 2f)) * -0.025f;
+
+                int tileSize = tileBitmap.getWidth();
+                int stepX = 168;
+                int stepY = 146;
+                float halfTile = tileSize * 0.5f;
+
+                // Translucent luxury watermark sheen (clearly recognizable yet elegant)
+                watermarkPaint.setAlpha(isLightMode ? 18 : 28);
+
+                int cols = (w / stepX) + 3;
+                int rows = (h / stepY) + 3;
+                Rect src = new Rect(0, 0, tileBitmap.getWidth(), tileBitmap.getHeight());
+                RectF dst = new RectF(-halfTile, -halfTile, halfTile, halfTile);
+
+                for (int row = -1; row < rows; row++) {
+                    float y = row * stepY + parallaxY;
+                    // Stagger alternate rows by half-step for a diamond monogram motif
+                    float xOffset = ((row % 2) != 0) ? (stepX * 0.5f) : 0f;
+                    for (int col = -1; col < cols; col++) {
+                        float x = col * stepX + xOffset + parallaxX;
+
+                        // Deterministic rotation per tile so angles are varied but completely stable
+                        int seed = (row * 374761393) ^ (col * 668265263);
+                        seed = (seed ^ (seed >> 13)) * 1274126177;
+                        float rot = ((seed % 360) + 360) % 360;
+
+                        canvas.save();
+                        canvas.translate(x, y);
+                        canvas.rotate(rot);
+                        canvas.drawBitmap(tileBitmap, src, dst, watermarkPaint);
+                        canvas.restore();
+                    }
+                }
+                canvas.restore();
             }
 
             // 3. Interactive wide-dispersion atmospheric light field following the focused card/poster
@@ -540,7 +614,7 @@ public class MainActivity extends Activity {
         handler.removeCallbacks(clockTick);
         handler.removeCallbacks(weatherRefreshRunnable);
         handler.removeCallbacks(idleScreensaverTrigger);
-        handler.removeCallbacks(screensaverDriftRunnable);
+        handler.removeCallbacks(autoShutdownRunnable);
         handler.removeCallbacks(vitrinAutoSlide);
         hideIdleScreensaver();
         super.onPause();
@@ -584,26 +658,30 @@ public class MainActivity extends Activity {
 
     private void resetIdleScreensaverTimer() {
         handler.removeCallbacks(idleScreensaverTrigger);
+        handler.removeCallbacks(autoShutdownRunnable);
         handler.postDelayed(idleScreensaverTrigger, SCREENSAVER_IDLE_MS);
     }
 
     private void showIdleScreensaver() {
         if (screensaverOverlay == null || isScreensaverActive) return;
         isScreensaverActive = true;
-        updateClock();
-        screensaverCluster.setTranslationX(0f);
-        screensaverCluster.setTranslationY(0f);
+        if (screensaverView != null) {
+            screensaverView.startAnimating();
+        }
         screensaverOverlay.setAlpha(0f);
         screensaverOverlay.setVisibility(View.VISIBLE);
         screensaverOverlay.animate().alpha(1f).setDuration(600L).start();
-        handler.removeCallbacks(screensaverDriftRunnable);
-        handler.postDelayed(screensaverDriftRunnable, 40000L);
+        handler.removeCallbacks(autoShutdownRunnable);
+        handler.postDelayed(autoShutdownRunnable, 5 * 60 * 1000L); // 5 min screensaver = 10 min total idle
     }
 
     private void hideIdleScreensaver() {
         if (!isScreensaverActive || screensaverOverlay == null) return;
         isScreensaverActive = false;
-        handler.removeCallbacks(screensaverDriftRunnable);
+        handler.removeCallbacks(autoShutdownRunnable);
+        if (screensaverView != null) {
+            screensaverView.stopAnimating();
+        }
         screensaverOverlay.setVisibility(View.GONE);
     }
 
@@ -756,15 +834,31 @@ public class MainActivity extends Activity {
         ImageView brandTvLogo = new ImageView(this);
         brandTvLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
         try {
-            Drawable logoDrawable = getDrawable(R.drawable.ic_tv_clean);
-            if (logoDrawable != null) {
-                logoDrawable = logoDrawable.mutate();
-                logoDrawable.setTint(Color.parseColor("#F8FAFC"));
-                brandTvLogo.setImageDrawable(logoDrawable);
+            InputStream is = getAssets().open("signature_logo.png");
+            Bitmap logoBm = BitmapFactory.decodeStream(is);
+            is.close();
+            if (logoBm != null) {
+                brandTvLogo.setImageBitmap(logoBm);
+            } else {
+                Drawable logoDrawable = getDrawable(R.drawable.ic_tv_clean);
+                if (logoDrawable != null) {
+                    logoDrawable = logoDrawable.mutate();
+                    logoDrawable.setTint(Color.parseColor("#F8FAFC"));
+                    brandTvLogo.setImageDrawable(logoDrawable);
+                }
             }
         } catch (Throwable ignored) {
+            try {
+                Drawable logoDrawable = getDrawable(R.drawable.ic_tv_clean);
+                if (logoDrawable != null) {
+                    logoDrawable = logoDrawable.mutate();
+                    logoDrawable.setTint(Color.parseColor("#F8FAFC"));
+                    brandTvLogo.setImageDrawable(logoDrawable);
+                }
+            } catch (Throwable ignored2) {
+            }
         }
-        LinearLayout.LayoutParams logoLp = new LinearLayout.LayoutParams(44, 44);
+        LinearLayout.LayoutParams logoLp = new LinearLayout.LayoutParams(42, 42);
         logoLp.setMargins(0, 0, 18, 0);
         leftBrandAndClock.addView(brandTvLogo, logoLp);
 
@@ -824,6 +918,19 @@ public class MainActivity extends Activity {
         mainContainer.addView(topBar);
 
         // 2. MOVIE POSTER VITRİN (Hover-Only Wide Optical Bloom + Chromatic Hue Separation)
+        vitrinCategoryLabel = new TextView(this);
+        vitrinCategoryLabel.setTypeface(FontManager.getMedium(this));
+        vitrinCategoryLabel.setTextSize(13f);
+        vitrinCategoryLabel.setTextColor(Color.parseColor("#94A3B8"));
+        vitrinCategoryLabel.setLetterSpacing(0.12f);
+        vitrinCategoryLabel.setText("ÖNE ÇIKANLAR • VİZYONDAKİLER & POPÜLER");
+        LinearLayout.LayoutParams vclLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        vclLp.setMargins(32, 10, 0, 0);
+        mainContainer.addView(vitrinCategoryLabel, vclLp);
+
         heroScroll = new HorizontalScrollView(this);
         heroScroll.setHorizontalScrollBarEnabled(false);
         heroScroll.setClipToPadding(false);
@@ -940,61 +1047,11 @@ public class MainActivity extends Activity {
         screensaverOverlay.setBackgroundColor(Color.parseColor("#050609"));
         screensaverOverlay.setVisibility(View.GONE);
 
-        screensaverCluster = new LinearLayout(this);
-        screensaverCluster.setOrientation(LinearLayout.VERTICAL);
-        screensaverCluster.setGravity(Gravity.CENTER);
-
-        ImageView dreamLogo = new ImageView(this);
-        dreamLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        try {
-            InputStream is = getAssets().open("signature_logo.png");
-            Bitmap sigBmp = BitmapFactory.decodeStream(is);
-            is.close();
-            if (sigBmp != null) {
-                dreamLogo.setImageBitmap(sigBmp);
-            } else {
-                Drawable d = getDrawable(R.drawable.ic_tv_clean);
-                if (d != null) {
-                    d = d.mutate();
-                    d.setTint(Color.WHITE);
-                    dreamLogo.setImageDrawable(d);
-                }
-            }
-        } catch (Throwable ignored) {
-            try {
-                Drawable d = getDrawable(R.drawable.ic_tv_clean);
-                if (d != null) {
-                    d = d.mutate();
-                    d.setTint(Color.WHITE);
-                    dreamLogo.setImageDrawable(d);
-                }
-            } catch (Throwable ignored2) {
-            }
-        }
-        LinearLayout.LayoutParams dreamLogoLp = new LinearLayout.LayoutParams(260, 160);
-        dreamLogoLp.setMargins(0, 0, 0, 24);
-        screensaverCluster.addView(dreamLogo, dreamLogoLp);
-
-        screensaverClockText = new TextView(this);
-        screensaverClockText.setTypeface(FontManager.getBlack(this));
-        screensaverClockText.setTextSize(68f);
-        screensaverClockText.setTextColor(Color.parseColor("#F8FAFC"));
-        screensaverClockText.setGravity(Gravity.CENTER);
-        screensaverCluster.addView(screensaverClockText);
-
-        screensaverDateText = new TextView(this);
-        screensaverDateText.setTypeface(FontManager.getMedium(this));
-        screensaverDateText.setTextSize(18f);
-        screensaverDateText.setTextColor(Color.parseColor("#94A3B8"));
-        screensaverDateText.setGravity(Gravity.CENTER);
-        screensaverCluster.addView(screensaverDateText);
-
-        FrameLayout.LayoutParams clusterLp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.CENTER
-        );
-        screensaverOverlay.addView(screensaverCluster, clusterLp);
+        screensaverView = new VibrantScreensaverView(this);
+        screensaverOverlay.addView(screensaverView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
 
         masterFrame.addView(screensaverOverlay, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1076,6 +1133,7 @@ public class MainActivity extends Activity {
         posterNeonColors.clear();
         posterImdbIds.clear();
         posterTitles.clear();
+        posterUrls.clear();
 
         int prevPosterColor = 0;
         SharedPreferences vitrinPrefs = getSharedPreferences("vitrin_cache", MODE_PRIVATE);
@@ -1086,6 +1144,10 @@ public class MainActivity extends Activity {
             String imdbId = BUNDLED_MOVIES[i][1];
             String initialTitle = BUNDLED_MOVIES[i][2];
 
+            String savedCmImdb = vitrinPrefs.getString("cm_imdb_" + i, null);
+            if (savedCmImdb != null && !savedCmImdb.isEmpty()) {
+                imdbId = savedCmImdb;
+            }
             String savedSlug = vitrinPrefs.getString("slug_" + i, null);
             String savedTitle = vitrinPrefs.getString("title_" + i, null);
             if (savedTitle != null && !savedTitle.isEmpty()) {
@@ -1100,6 +1162,7 @@ public class MainActivity extends Activity {
 
             posterImdbIds.add(imdbId);
             posterTitles.add(initialTitle);
+            posterUrls.add("");
 
             final FrameLayout cardFrame = new FrameLayout(this);
             cardFrame.setFocusable(true);
@@ -1108,9 +1171,11 @@ public class MainActivity extends Activity {
             cardFrame.setClipToPadding(false);
             cardFrame.setElevation(8f);
 
-            File cachedFile = null;
-            if (savedSlug != null && !savedSlug.isEmpty()) {
-                cachedFile = new File(getCacheDir(), "wt_p_" + Math.abs(savedSlug.hashCode()) + ".jpg");
+            File cachedFile = new File(getCacheDir(), "cm_p_" + imdbId + ".jpg");
+            if (!cachedFile.exists() || cachedFile.length() < 1024) {
+                if (savedSlug != null && !savedSlug.isEmpty()) {
+                    cachedFile = new File(getCacheDir(), "wt_p_" + Math.abs(savedSlug.hashCode()) + ".jpg");
+                }
             }
             if (cachedFile == null || !cachedFile.exists() || cachedFile.length() < 1024) {
                 cachedFile = new File(getCacheDir(), "vitrin_wt_" + i + ".jpg");
@@ -1215,9 +1280,10 @@ public class MainActivity extends Activity {
             cardFrame.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    String id = slot < posterImdbIds.size() ? posterImdbIds.get(slot) : "tt15239678";
+                    String id = slot < posterImdbIds.size() ? posterImdbIds.get(slot) : (slot < BUNDLED_MOVIES.length ? BUNDLED_MOVIES[slot][1] : "tt15239678");
                     String title = slot < posterTitles.size() ? posterTitles.get(slot) : (slot < BUNDLED_MOVIES.length ? BUNDLED_MOVIES[slot][2] : "Film");
-                    openMovieItem(title, id);
+                    String pUrl = slot < posterUrls.size() ? posterUrls.get(slot) : "";
+                    openMovieItem(title, id, pUrl);
                 }
             });
 
@@ -1351,185 +1417,77 @@ public class MainActivity extends Activity {
         });
     }
 
+    private static class VitrinCategory {
+        final String name;
+        final String catalogUrl;
+        VitrinCategory(String name, String catalogUrl) {
+            this.name = name;
+            this.catalogUrl = catalogUrl;
+        }
+    }
+
+    private static final VitrinCategory[] VITRIN_CATEGORIES = new VitrinCategory[] {
+        new VitrinCategory("Vizyondakiler & Popüler", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json"),
+        new VitrinCategory("Aksiyon & Macera", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Action.json"),
+        new VitrinCategory("Bilim-Kurgu", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Sci-Fi.json"),
+        new VitrinCategory("Animasyon & Aile", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Animation.json"),
+        new VitrinCategory("Gerilim & Gizem", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Thriller.json"),
+        new VitrinCategory("Suç & Polisiye", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Crime.json"),
+        new VitrinCategory("Fantastik Dünyalar", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Fantasy.json"),
+        new VitrinCategory("Sinema Başyapıtları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/imdbRating.json")
+    };
+
+    private static HttpURLConnection openWithRedirects(String urlStr) throws Exception {
+        URL url = new URL(urlStr);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+        conn.setConnectTimeout(6000);
+        conn.setReadTimeout(6000);
+        conn.setInstanceFollowRedirects(true);
+        int status = conn.getResponseCode();
+        if (status == HttpURLConnection.HTTP_MOVED_TEMP || status == HttpURLConnection.HTTP_MOVED_PERM || status == 307 || status == 308) {
+            String newUrl = conn.getHeaderField("Location");
+            if (newUrl != null && !newUrl.isEmpty()) {
+                conn.disconnect();
+                return openWithRedirects(newUrl);
+            }
+        }
+        return conn;
+    }
+
     private void fetchLiveTheatricalPosters() {
-        try {
-            String vitrinPref = Settings.Global.getString(getContentResolver(), "tvhome_vitrin_source");
-            boolean useWebteizle = false;
-            if ("webteizle".equalsIgnoreCase(vitrinPref)) {
-                useWebteizle = true;
-            } else if ("cinemeta".equalsIgnoreCase(vitrinPref)) {
-                useWebteizle = false;
-            } else {
-                useWebteizle = Locale.getDefault().getLanguage().equalsIgnoreCase("tr");
-            }
-
-            if (useWebteizle) {
-                fetchFromWebteizleSource();
-            } else {
-                fetchFromCinemetaFallback();
-            }
-        } catch (Throwable t) {
-            try {
-                fetchFromCinemetaFallback();
-            } catch (Throwable ignored) {
-            }
-        }
-    }
-
-    private void fetchFromWebteizleSource() {
-        List<String[]> list = new ArrayList<>();
-        try {
-            URL url = new URL("https://webteizle.info/");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
-            conn.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-            conn.setRequestProperty("Accept-Language", "tr-TR,tr;q=0.9,en;q=0.8");
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
-            if (conn.getResponseCode() != 200) {
-                fetchFromCinemetaFallback();
-                return;
-            }
-
-            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "windows-1254"));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) sb.append(line).append("\n");
-            br.close();
-
-            Pattern p = Pattern.compile("<div class=\"card golgever\">\\s*<a[^>]+href=\"(/hakkinda/[^\"]+)\"[^>]*>.*?<img[^>]+data-src=\"([^\"]+)\".*?<div class=\"filmname\">([^<]+)</div>", Pattern.DOTALL);
-            Matcher m = p.matcher(sb.toString());
-            while (m.find() && list.size() < 24) {
-                String hakkindaSlug = m.group(1).trim();
-                String rawPoster = m.group(2).trim();
-                String title = m.group(3).replace("&amp;", "&").replace("&#39;", "'").trim();
-                String posterUrl = rawPoster.startsWith("http") ? rawPoster : ("https://webteizle.info" + rawPoster);
-                list.add(new String[]{title, posterUrl, hakkindaSlug});
-            }
-        } catch (Throwable t) {
-            fetchFromCinemetaFallback();
-            return;
-        }
-
-        if (list.isEmpty()) {
-            fetchFromCinemetaFallback();
-            return;
-        }
-
-        SharedPreferences prefs = getSharedPreferences("vitrin_cache", MODE_PRIVATE);
-        int count = Math.min(BUNDLED_MOVIES.length, list.size());
-        int prevColor = 0;
-        for (int i = 0; i < count; i++) {
-            final int idx = i;
-            final String title = list.get(i)[0];
-            final String posterUrl = list.get(i)[1];
-            final String slug = list.get(i)[2];
-
-            String currentTitle = (idx < posterTitles.size()) ? posterTitles.get(idx) : "";
-            String savedSlug = prefs.getString("slug_" + idx, "");
-            boolean needsUpdate = !slug.equals(savedSlug) || !title.equals(currentTitle);
-
-            // Resolve IMDb ID from cache or Webteizle /hakkinda/<slug>
-            String resolvedImdbId = prefs.getString("imdb_" + slug, null);
-            if (resolvedImdbId == null || resolvedImdbId.isEmpty()) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
                 try {
-                    URL hUrl = new URL("https://webteizle.info" + slug);
-                    HttpURLConnection hConn = (HttpURLConnection) hUrl.openConnection();
-                    hConn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
-                    hConn.setConnectTimeout(4000);
-                    hConn.setReadTimeout(4000);
-                    if (hConn.getResponseCode() == 200) {
-                        BufferedReader hbr = new BufferedReader(new InputStreamReader(hConn.getInputStream(), "windows-1254"));
-                        StringBuilder hsb = new StringBuilder();
-                        String hLine;
-                        while ((hLine = hbr.readLine()) != null) hsb.append(hLine).append("\n");
-                        hbr.close();
+                    SharedPreferences prefs = getSharedPreferences("vitrin_cache", MODE_PRIVATE);
+                    int catIdx = prefs.getInt("active_category_idx", 0);
+                    final VitrinCategory category = VITRIN_CATEGORIES[Math.abs(catIdx) % VITRIN_CATEGORIES.length];
+                    prefs.edit().putInt("active_category_idx", catIdx + 1).apply();
 
-                        Matcher imMatcher = Pattern.compile("imdb\\.com/title/(tt\\d+)").matcher(hsb.toString());
-                        if (imMatcher.find()) {
-                            resolvedImdbId = imMatcher.group(1);
-                            prefs.edit().putString("imdb_" + slug, resolvedImdbId).apply();
-                        }
-                    }
-                } catch (Throwable t) {
-                    android.util.Log.e("TVHomeWeather", "Weather fetch error", t);
-                }
-            }
-
-            if (resolvedImdbId == null || resolvedImdbId.isEmpty()) {
-                if (idx < BUNDLED_MOVIES.length) {
-                    resolvedImdbId = BUNDLED_MOVIES[idx][1];
-                } else {
-                    resolvedImdbId = "tt15239678";
-                }
-            }
-
-            final String finalImdbId = resolvedImdbId;
-            String fileKey = "wt_p_" + Math.abs(slug.hashCode()) + ".jpg";
-            File cacheFile = new File(getCacheDir(), fileKey);
-            try {
-                if (!cacheFile.exists() || cacheFile.length() < 1024) {
-                    URL pUrl = new URL(posterUrl);
-                    HttpURLConnection pConn = (HttpURLConnection) pUrl.openConnection();
-                    pConn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                    pConn.setConnectTimeout(5000);
-                    pConn.setReadTimeout(5000);
-                    if (pConn.getResponseCode() == 200) {
-                        InputStream is = pConn.getInputStream();
-                        FileOutputStream fos = new FileOutputStream(cacheFile);
-                        byte[] buf = new byte[8192];
-                        int r;
-                        while ((r = is.read(buf)) != -1) fos.write(buf, 0, r);
-                        fos.close();
-                        is.close();
-                    }
-                }
-            } catch (Throwable ignored) {
-            }
-
-            if (cacheFile.exists() && cacheFile.length() > 1024) {
-                if (needsUpdate || (idx < posterImageViews.size() && posterImageViews.get(idx).getDrawable() == null)) {
-                    Bitmap rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath());
-                    if (rawBmp != null) {
-                        final int distinctColor = YouTubeDisguiseHelper.sampleDistinctPosterColor(rawBmp, prevColor, idx);
-                        prevColor = distinctColor;
-                        final Bitmap glassPoster = YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp);
-                        final Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
-
-                        prefs.edit().putString("slug_" + idx, slug).putString("title_" + idx, title).apply();
-
-                        handler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (idx < posterImageViews.size()) {
-                                    posterImageViews.get(idx).setImageBitmap(glassPoster);
-                                }
-                                if (idx < posterBloomViews.size()) {
-                                    posterBloomViews.get(idx).setImageBitmap(hoverBloom);
-                                }
-                                if (idx < posterNeonColors.size()) {
-                                    posterNeonColors.set(idx, distinctColor);
-                                }
-                                if (idx < posterImdbIds.size()) {
-                                    posterImdbIds.set(idx, finalImdbId);
-                                }
-                                if (idx < posterTitles.size()) {
-                                    posterTitles.set(idx, title);
-                                }
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (vitrinCategoryLabel != null) {
+                                vitrinCategoryLabel.setText("ÖNE ÇIKANLAR • " + category.name.toUpperCase(Locale.getDefault()));
                             }
-                        });
+                        }
+                    });
+
+                    fetchCategoryMovies(category);
+                } catch (Throwable t) {
+                    try {
+                        fetchCategoryMovies(VITRIN_CATEGORIES[0]);
+                    } catch (Throwable ignored) {
                     }
                 }
             }
-        }
+        }).start();
     }
 
-    private void fetchFromCinemetaFallback() {
+    private void fetchCategoryMovies(VitrinCategory category) {
         try {
-            URL url = new URL("https://v3-cinemeta.strem.io/catalog/movie/top.json");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(4000);
-            conn.setReadTimeout(4000);
+            HttpURLConnection conn = openWithRedirects(category.catalogUrl);
             if (conn.getResponseCode() != 200) return;
 
             BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -1553,29 +1511,30 @@ public class MainActivity extends Activity {
                 if (posterUrl.isEmpty() && !imdbId.isEmpty()) {
                     posterUrl = "https://images.metahub.space/poster/medium/" + imdbId + "/img";
                 }
-                if (posterUrl.isEmpty()) continue;
+                if (posterUrl.isEmpty() || imdbId.isEmpty()) continue;
 
-                String fileKey = !imdbId.isEmpty() ? ("cm_p_" + imdbId + ".jpg") : ("vitrin_poster_" + i + ".jpg");
+                String fileKey = "cm_p_" + imdbId + ".jpg";
                 File cacheFile = new File(getCacheDir(), fileKey);
                 String currentTitle = (i < posterTitles.size()) ? posterTitles.get(i) : "";
                 String savedImdb = prefs.getString("cm_imdb_" + i, "");
                 boolean needsUpdate = !imdbId.equals(savedImdb) || !title.equals(currentTitle);
 
                 if (!cacheFile.exists() || cacheFile.length() < 1024) {
-                    URL pUrl = new URL(posterUrl);
-                    HttpURLConnection pConn = (HttpURLConnection) pUrl.openConnection();
-                    pConn.setConnectTimeout(4000);
-                    pConn.setReadTimeout(4000);
-                    if (pConn.getResponseCode() == 200) {
-                        InputStream is = pConn.getInputStream();
-                        FileOutputStream fos = new FileOutputStream(cacheFile);
-                        byte[] buf = new byte[8192];
-                        int r;
-                        while ((r = is.read(buf)) != -1) fos.write(buf, 0, r);
-                        fos.close();
-                        is.close();
+                    try {
+                        HttpURLConnection pConn = openWithRedirects(posterUrl);
+                        if (pConn.getResponseCode() == 200) {
+                            InputStream is = pConn.getInputStream();
+                            FileOutputStream fos = new FileOutputStream(cacheFile);
+                            byte[] buf = new byte[8192];
+                            int r;
+                            while ((r = is.read(buf)) != -1) fos.write(buf, 0, r);
+                            fos.close();
+                            is.close();
+                        }
+                    } catch (Throwable ignored) {
                     }
                 }
+
                 if (cacheFile.exists() && cacheFile.length() > 1024) {
                     if (needsUpdate || (i < posterImageViews.size() && posterImageViews.get(i).getDrawable() == null)) {
                         Bitmap rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath());
@@ -1585,6 +1544,7 @@ public class MainActivity extends Activity {
                             final Bitmap glassPoster = YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp);
                             final Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
                             final int idx = i;
+                            final String finalPosterUrl = posterUrl;
 
                             prefs.edit().putString("cm_imdb_" + i, imdbId).putString("title_" + i, title).apply();
 
@@ -1600,11 +1560,14 @@ public class MainActivity extends Activity {
                                     if (idx < posterNeonColors.size()) {
                                         posterNeonColors.set(idx, distinctColor);
                                     }
-                                    if (idx < posterImdbIds.size() && !imdbId.isEmpty()) {
+                                    if (idx < posterImdbIds.size()) {
                                         posterImdbIds.set(idx, imdbId);
                                     }
                                     if (idx < posterTitles.size()) {
                                         posterTitles.set(idx, title);
+                                    }
+                                    if (idx < posterUrls.size()) {
+                                        posterUrls.set(idx, finalPosterUrl);
                                     }
                                 }
                             });
@@ -1616,7 +1579,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void openMovieItem(String title, String imdbId) {
+    private void openMovieItem(String title, String imdbId, String posterUrl) {
         if (imdbId != null && !imdbId.isEmpty()) {
             try {
                 Intent nuvio = new Intent();
@@ -1625,9 +1588,12 @@ public class MainActivity extends Activity {
                 nuvio.putExtra("contentId", imdbId);
                 nuvio.putExtra("contentType", "movie");
                 nuvio.putExtra("videoId", imdbId);
-                nuvio.putExtra("name", title);
+                nuvio.putExtra("name", title != null ? title : "");
+                if (posterUrl != null && !posterUrl.isEmpty()) {
+                    nuvio.putExtra("poster", posterUrl);
+                }
                 nuvio.putExtra("playOnLoad", true);
-                nuvio.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                nuvio.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(nuvio);
                 return;
             } catch (Throwable ignored) {
@@ -1644,6 +1610,10 @@ public class MainActivity extends Activity {
             }
         } catch (Throwable ignored) {
         }
+    }
+
+    private void openMovieItem(String title, String imdbId) {
+        openMovieItem(title, imdbId, null);
     }
 
     private void openMovieInStremio(String imdbId) {
@@ -2355,7 +2325,268 @@ public class MainActivity extends Activity {
         String d = dateFmt.format(now);
         if (clockText != null) clockText.setText(t);
         if (dateText != null) dateText.setText(d);
-        if (screensaverClockText != null) screensaverClockText.setText(t);
-        if (screensaverDateText != null) screensaverDateText.setText(d);
+    }
+
+    private class VibrantScreensaverView extends View {
+        private final Paint clockPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint datePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint auraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint edgePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        private final SimpleDateFormat dateFmt = new SimpleDateFormat("d MMMM EEEE", new Locale("tr", "TR"));
+
+        private final Bitmap signatureBitmap;
+        private final Drawable fallbackLogo;
+        private boolean isRunning = false;
+
+        VibrantScreensaverView(Context ctx) {
+            super(ctx);
+            clockPaint.setTypeface(FontManager.getBlack(ctx));
+            clockPaint.setTextSize(92f);
+            clockPaint.setColor(Color.WHITE);
+
+            datePaint.setTypeface(FontManager.getMedium(ctx));
+            datePaint.setTextSize(22f);
+            datePaint.setColor(Color.parseColor("#CBD5E1"));
+            datePaint.setLetterSpacing(0.08f);
+
+            Bitmap sig = null;
+            try {
+                InputStream is = ctx.getAssets().open("signature_logo.png");
+                sig = BitmapFactory.decodeStream(is);
+                is.close();
+            } catch (Throwable ignored) {
+            }
+            signatureBitmap = sig;
+
+            Drawable fallback = null;
+            if (sig == null) {
+                try {
+                    fallback = ctx.getDrawable(R.drawable.ic_tv_clean);
+                    if (fallback != null) {
+                        fallback = fallback.mutate();
+                        fallback.setTint(Color.WHITE);
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+            fallbackLogo = fallback;
+        }
+
+        void startAnimating() {
+            isRunning = true;
+            postInvalidateOnAnimation();
+        }
+
+        void stopAnimating() {
+            isRunning = false;
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            canvas.drawColor(Color.parseColor("#020306"));
+
+            int w = getWidth() > 0 ? getWidth() : 1920;
+            int h = getHeight() > 0 ? getHeight() : 1080;
+
+            long nowMs = SystemClock.uptimeMillis();
+
+            // Slow subtle Lissajous drift across canvas (±70px) for 100% OLED burn-in protection
+            double driftT = (nowMs % 120000L) / 1000.0;
+            float driftX = (float) (Math.sin(driftT * 0.18) * 70.0 + Math.sin(driftT * 0.37) * 30.0);
+            float driftY = (float) (Math.cos(driftT * 0.14) * 40.0 + Math.sin(driftT * 0.28) * 20.0);
+
+            float cx = (w / 2f) + driftX;
+            float cy = (h / 2f) - 50f + driftY;
+
+            // Cardiac cycle: 1250ms (~48 bpm deep cinematic resting heartbeat)
+            double beatPhase = ((nowMs % 1250L) / 1250.0);
+            float beatImpulse = 0f;
+            if (beatPhase < 0.16) {
+                // Primary systolic thump ("lub")
+                beatImpulse = (float) Math.sin(beatPhase / 0.16 * Math.PI) * 0.22f;
+            } else if (beatPhase >= 0.20 && beatPhase < 0.34) {
+                // Secondary diastolic thump ("dub")
+                beatImpulse = (float) Math.sin((beatPhase - 0.20) / 0.14 * Math.PI) * 0.11f;
+            }
+
+            // 6.5s deep organic respiration wave
+            float respiration = (float) Math.sin((nowMs % 6500L) / 6500.0 * Math.PI * 2.0);
+            float respirationScale = 1.0f + 0.07f * respiration;
+            float heartScale = respirationScale + beatImpulse; // Total beating heart scale
+
+            // Edge breathing wave: surges with respiration + surges on heartbeat
+            float breathNorm = (respiration + 1.0f) * 0.5f;
+            float edgeSurge = breathNorm * 0.65f + (beatImpulse * 1.4f);
+
+            // Inward reach of colorful edge glows from screen borders
+            float topReach = 190f + edgeSurge * 230f;
+            float bottomReach = 190f + edgeSurge * 230f;
+            float sideReach = 250f + edgeSurge * 280f;
+
+            // 4 distinct shifting chromatic neon colors for the 4 edges
+            float baseHue = (float) ((nowMs % 28000L) / 28000.0 * 360.0);
+            float topHue = baseHue;
+            float rightHue = (baseHue + 90f) % 360f;
+            float bottomHue = (baseHue + 180f) % 360f;
+            float leftHue = (baseHue + 270f) % 360f;
+
+            int cTop = Color.HSVToColor(new float[]{topHue, 0.95f, 1.0f});
+            int cRight = Color.HSVToColor(new float[]{rightHue, 0.92f, 1.0f});
+            int cBottom = Color.HSVToColor(new float[]{bottomHue, 0.95f, 1.0f});
+            int cLeft = Color.HSVToColor(new float[]{leftHue, 0.92f, 1.0f});
+
+            // Edge density / opacity surges on breathing and heartbeat
+            int edgeAlpha = (int) (52 + edgeSurge * 140);
+
+            // 1. Top edge glow surging inward
+            edgePaint.setShader(new LinearGradient(
+                    0, 0, 0, topReach,
+                    new int[]{Color.argb(edgeAlpha, Color.red(cTop), Color.green(cTop), Color.blue(cTop)), Color.TRANSPARENT},
+                    new float[]{0f, 1f}, Shader.TileMode.CLAMP
+            ));
+            canvas.drawRect(0, 0, w, topReach, edgePaint);
+
+            // 2. Bottom edge glow surging inward
+            edgePaint.setShader(new LinearGradient(
+                    0, h, 0, h - bottomReach,
+                    new int[]{Color.argb(edgeAlpha, Color.red(cBottom), Color.green(cBottom), Color.blue(cBottom)), Color.TRANSPARENT},
+                    new float[]{0f, 1f}, Shader.TileMode.CLAMP
+            ));
+            canvas.drawRect(0, h - bottomReach, w, h, edgePaint);
+
+            // 3. Left edge glow surging inward
+            edgePaint.setShader(new LinearGradient(
+                    0, 0, sideReach, 0,
+                    new int[]{Color.argb((int)(edgeAlpha * 0.88f), Color.red(cLeft), Color.green(cLeft), Color.blue(cLeft)), Color.TRANSPARENT},
+                    new float[]{0f, 1f}, Shader.TileMode.CLAMP
+            ));
+            canvas.drawRect(0, 0, sideReach, h, edgePaint);
+
+            // 4. Right edge glow surging inward
+            edgePaint.setShader(new LinearGradient(
+                    w, 0, w - sideReach, 0,
+                    new int[]{Color.argb((int)(edgeAlpha * 0.88f), Color.red(cRight), Color.green(cRight), Color.blue(cRight)), Color.TRANSPARENT},
+                    new float[]{0f, 1f}, Shader.TileMode.CLAMP
+            ));
+            canvas.drawRect(w - sideReach, 0, w, h, edgePaint);
+
+            // Corner atmospheric blooms for continuous surround lighting
+            float cornerR = sideReach * 1.25f;
+            edgePaint.setShader(new RadialGradient(
+                    0, 0, cornerR,
+                    Color.argb((int)(edgeAlpha * 0.60f), Color.red(cTop), Color.green(cTop), Color.blue(cTop)),
+                    Color.TRANSPARENT, Shader.TileMode.CLAMP
+            ));
+            canvas.drawCircle(0, 0, cornerR, edgePaint);
+
+            edgePaint.setShader(new RadialGradient(
+                    w, 0, cornerR,
+                    Color.argb((int)(edgeAlpha * 0.60f), Color.red(cRight), Color.green(cRight), Color.blue(cRight)),
+                    Color.TRANSPARENT, Shader.TileMode.CLAMP
+            ));
+            canvas.drawCircle(w, 0, cornerR, edgePaint);
+
+            edgePaint.setShader(new RadialGradient(
+                    0, h, cornerR,
+                    Color.argb((int)(edgeAlpha * 0.60f), Color.red(cLeft), Color.green(cLeft), Color.blue(cLeft)),
+                    Color.TRANSPARENT, Shader.TileMode.CLAMP
+            ));
+            canvas.drawCircle(0, h, cornerR, edgePaint);
+
+            edgePaint.setShader(new RadialGradient(
+                    w, h, cornerR,
+                    Color.argb((int)(edgeAlpha * 0.60f), Color.red(cBottom), Color.green(cBottom), Color.blue(cBottom)),
+                    Color.TRANSPARENT, Shader.TileMode.CLAMP
+            ));
+            canvas.drawCircle(w, h, cornerR, edgePaint);
+
+            // Heart logo chromatic palette
+            float primaryHue = (baseHue + 45f) % 360f;
+            float secondaryHue = (primaryHue + 60f) % 360f;
+            float tertiaryHue = (primaryHue + 140f) % 360f;
+            int cHeartPrimary = Color.HSVToColor(new float[]{primaryHue, 0.95f, 1.0f});
+            int cHeartSec = Color.HSVToColor(new float[]{secondaryHue, 0.90f, 0.95f});
+            int cHeartTert = Color.HSVToColor(new float[]{tertiaryHue, 0.85f, 0.90f});
+
+            // Outer cardiac mist surging with heartbeat
+            float outerR = 560f * heartScale;
+            auraPaint.setShader(new RadialGradient(
+                    cx, cy, outerR,
+                    new int[]{
+                            Color.argb((int)(0x35 + beatImpulse * 0x45), Color.red(cHeartTert), Color.green(cHeartTert), Color.blue(cHeartTert)),
+                            Color.argb(0x15, Color.red(cHeartSec), Color.green(cHeartSec), Color.blue(cHeartSec)),
+                            Color.TRANSPARENT
+                    },
+                    new float[]{0f, 0.65f, 1f},
+                    Shader.TileMode.CLAMP
+            ));
+            canvas.drawCircle(cx, cy, outerR, auraPaint);
+
+            // Mid vibrant electric aura surging with heartbeat
+            float midR = 350f * heartScale;
+            auraPaint.setShader(new RadialGradient(
+                    cx, cy, midR,
+                    new int[]{
+                            Color.argb((int)(0x75 + beatImpulse * 0x65), Color.red(cHeartSec), Color.green(cHeartSec), Color.blue(cHeartSec)),
+                            Color.argb(0x28, Color.red(cHeartPrimary), Color.green(cHeartPrimary), Color.blue(cHeartPrimary)),
+                            Color.TRANSPARENT
+                    },
+                    new float[]{0f, 0.55f, 1f},
+                    Shader.TileMode.CLAMP
+            ));
+            canvas.drawCircle(cx, cy, midR, auraPaint);
+
+            // Inner intense cardiac core
+            float innerR = 210f * heartScale;
+            auraPaint.setShader(new RadialGradient(
+                    cx, cy, innerR,
+                    new int[]{
+                            Color.argb((int)(0xBB + beatImpulse * 0x44), Color.red(cHeartPrimary), Color.green(cHeartPrimary), Color.blue(cHeartPrimary)),
+                            Color.argb(0x35, Color.red(cHeartPrimary), Color.green(cHeartPrimary), Color.blue(cHeartPrimary)),
+                            Color.TRANSPARENT
+                    },
+                    new float[]{0f, 0.50f, 1f},
+                    Shader.TileMode.CLAMP
+            ));
+            canvas.drawCircle(cx, cy, innerR, auraPaint);
+
+            // Draw Huge Beating Heart Logo (Base size 380px, surging to ~480px on heartbeat!)
+            float logoSize = 380f * heartScale;
+            float logoLeft = cx - logoSize / 2f;
+            float logoTop = cy - logoSize / 2f;
+
+            if (signatureBitmap != null) {
+                Rect src = new Rect(0, 0, signatureBitmap.getWidth(), signatureBitmap.getHeight());
+                RectF dst = new RectF(logoLeft, logoTop, logoLeft + logoSize, logoTop + logoSize);
+                canvas.drawBitmap(signatureBitmap, src, dst, bitmapPaint);
+            } else if (fallbackLogo != null) {
+                int leftI = Math.round(logoLeft);
+                int topI = Math.round(logoTop);
+                int sizeI = Math.round(logoSize);
+                fallbackLogo.setBounds(leftI, topI, leftI + sizeI, topI + sizeI);
+                fallbackLogo.draw(canvas);
+            }
+
+            // Poppins Clock & Date positioned below the beating heart
+            Date now = new Date();
+            String timeStr = timeFmt.format(now);
+            String dateStr = dateFmt.format(now).toUpperCase(new Locale("tr", "TR"));
+
+            float clockY = cy + (logoSize / 2f) + 64f;
+            clockPaint.setShadowLayer(26f, 0f, 6f, Color.argb(0x99, Color.red(cHeartPrimary), Color.green(cHeartPrimary), Color.blue(cHeartPrimary)));
+            float tw = clockPaint.measureText(timeStr);
+            canvas.drawText(timeStr, cx - tw / 2f, clockY, clockPaint);
+
+            datePaint.setShadowLayer(14f, 0f, 3f, Color.parseColor("#80000000"));
+            float dw = datePaint.measureText(dateStr);
+            canvas.drawText(dateStr, cx - dw / 2f, clockY + 36f, datePaint);
+
+            if (isRunning) {
+                postInvalidateOnAnimation();
+            }
+        }
     }
 }

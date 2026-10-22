@@ -17,7 +17,6 @@ PACKAGES_TO_REMOVE=(
     "arcelik.factorymenu.hatone"
     "com.mediatek.tv.factory"
     "com.mediatek.wwtv.webview"
-    "com.mediatek.tv.service"
     "com.mediatek.wwtv.mediaplayer"
     "com.mediatek.wwtv.tvcenter"
     "com.mediatek.wwtv.tvcenter.rro"
@@ -25,7 +24,6 @@ PACKAGES_TO_REMOVE=(
     # Deprecated / legacy movie players
     "com.lagradost.cloudstream3"
     "com.stremio.one"
-    "org.courville.nova"
 
     # Stock launcher clutter and telemetry
     "com.google.android.tvlauncher"
