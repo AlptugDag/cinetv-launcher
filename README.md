@@ -101,6 +101,16 @@ Safely removes factory menus, telemetry, and pre-installed storefront bloatware 
 - **Targeted Brand Debloaters**: Arçelik/Beko, TCL, Sony Bravia, Philips, Xiaomi, Hisense, and Chromecast with Google TV.
 - **Custom Interactive Removal**: Inspects all user and vendor packages on the TV and allows the user to choose exact packages to remove or keep.
 - **Hardened Safety Guard**: Protected hardware packages (HDMI, DVB, Audio, Bluetooth, Settings, SystemUI) can never be accidentally removed.
+- **TV-Core Lockout (`scripts/lib/tv_safety.sh`)**: Every removal path (brand lists, interactive input) goes through one shared guard that refuses OEM TV-core packages such as `com.mediatek.wwtv.tvcenter` (+ `.rro`), `com.mediatek.tv.*`, `com.tcl.tvmanager`, etc. Removing these breaks HDMI inputs, picture/HDR settings and display configuration.
+- **Self-Healing (`scripts/restore_tv_core.sh`)**: Re-enables / re-installs (for user 0) any TV-core package an older version of this project or another tool disabled. It runs automatically at the end of both debloaters and the wizard, and can be run manually (`adb reboot` afterwards).
+
+### 9b. 🔬 Display & HDR Verification (`scripts/verify_display.sh`)
+```bash
+./scripts/verify_display.sh                  # quick health report
+./scripts/verify_display.sh --playback-test  # plays a real 4K HEVC HDR10 clip and measures it
+```
+> **"My TV shows 1080p60 / no HDR in Nuvio or Developer options — is it broken?"**
+> Usually **no**. On MediaTek TVs (Arçelik, Beko, Grundig, Vestel, ...) Android deliberately renders the *UI* at 1920×1080@60 and exposes only that one display mode (see `/vendor/etc/uhd_keeping_packages.xml`). Video is decoded at native resolution and shown on a separate hardware video plane that is scaled to the 4K panel, with HDR10/HLG signalled through the video path. The `--playback-test` is the authoritative check: it looks for a `3840x2160` video layer and the `BT2020_ITU_PQ` (HDR10) dataspace. If the quick report shows a disabled TV-core package, run `./scripts/restore_tv_core.sh` and reboot.
 
 ### 10. 🌙 OLED Burn-In Safe Drifting Screensaver
 - Modern minimalist screensaver with Poppins typography and luminous radial chromatic glow.
@@ -180,6 +190,9 @@ tv-master-launcher/
     ├── install.sh                   # Master interactive setup wizard
     ├── debloat_universal.sh         # Auto-detects brand & removes bloat
     ├── debloat_arcelik_beko.sh      # Arçelik / Beko specific debloat script
+    ├── restore_tv_core.sh           # Re-enable OEM TV-core packages (self-heal)
+    ├── verify_display.sh            # Display / HDR / TV-core health + 4K HDR10 playback test
+    ├── lib/tv_safety.sh             # Shared protected-package guard & safe helpers
     ├── optimize_ram.sh              # zRAM, swappiness, LMK & memory tuning
     ├── setup_dns_and_streaming.sh   # AdGuard DoT & Nuvio 4K HDR10 setup
     ├── setup_nuvio_presets.sh       # Nuvio addon presets & cinema hardware AFR calibration

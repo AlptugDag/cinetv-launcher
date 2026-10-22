@@ -5,6 +5,10 @@
 # and verified Turkish 4K HDR10 streaming repositories (Anthology, Torrentio, Subtitles).
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/tv_safety.sh
+source "${SCRIPT_DIR}/lib/tv_safety.sh"
+
 echo "==> [Nuvio TV Cinema Presets & Hardware Calibration]"
 DEVICE=$(adb devices | grep -E "device$" | head -n 1 | awk '{print $1}')
 if [ -z "$DEVICE" ]; then
@@ -16,30 +20,30 @@ echo "--------------------------------------------------------------------------
 echo "1. DONANIM GÖRÜNTÜ, PANEL VE KARE HIZI (AFR) EŞLEME KALİBRASYONU"
 echo "--------------------------------------------------------------------------------"
 echo "[+] Match Content Frame Rate (AFR) Açılıyor (Otomatik 24.000 / 23.976 / 60 Hz)..."
-adb shell "settings put secure match_content_frame_rate 1"
+adb shell "settings put secure match_content_frame_rate 1"  # AOSP key: always present
 
 echo "[+] HDR10+ Dinamik Ton Eşleme (Dynamic Tone Mapping) Aktif Ediliyor..."
-adb shell "settings put global tv_picture_hdr10_plus 1 2>/dev/null || true"
+put_setting_if_exists global tv_picture_hdr10_plus 1
 
 echo "[+] Donanımsal Süper Çözünürlük (Hardware Super Resolution Upscaling) Açılıyor..."
-adb shell "settings put global tv_picture_video_super_resolution 1 2>/dev/null || true"
+put_setting_if_exists global tv_picture_video_super_resolution 1
 
 echo "[+] HDMI 2.0 / EDID 2.0 (4K 60Hz HDR10) Modu Doğrulanıyor..."
-adb shell "settings put global tv_input_hdmi_edid_version 2 2>/dev/null || true"
-adb shell "settings put global picture_list_hdr 1 2>/dev/null || true"
+put_setting_if_exists global tv_input_hdmi_edid_version 2
+put_setting_if_exists global picture_list_hdr 1
 
 echo ""
 echo "--------------------------------------------------------------------------------"
 echo "2. BİT-PERFECT SES & SİNEMA STANDARDI (DOLBY ATMOS / PASSTHROUGH)"
 echo "--------------------------------------------------------------------------------"
 echo "[+] Dolby Atmos & Çevresel Ses (Surround Sound) Aktif Ediliyor..."
-adb shell "settings put global sound_advanced_dolby_atmos 1 2>/dev/null || true"
-adb shell "settings put global sound_advanced_dolby_ap 1 2>/dev/null || true"
-adb shell "settings put global tv_sound_dolby_atmos 1 2>/dev/null || true"
-adb shell "settings put global surround_sound_enabled 1 2>/dev/null || true"
+put_setting_if_exists global sound_advanced_dolby_atmos 1
+put_setting_if_exists global sound_advanced_dolby_ap 1
+put_setting_if_exists global tv_sound_dolby_atmos 1
+put_setting_if_exists global surround_sound_enabled 1
 
 echo "[+] Dijital Ses Çıkışı: Passthrough / Bitstream (Bit-Perfect) Moduna Alınıyor..."
-adb shell "settings put global sound_digital_output 5 2>/dev/null || true"
+put_setting_if_exists global sound_digital_output 5
 
 echo ""
 echo "--------------------------------------------------------------------------------"
@@ -68,9 +72,9 @@ echo "4. GÜÇ VE BEKLEME (STANDBY) OPTİMİZASYONU"
 echo "--------------------------------------------------------------------------------"
 echo "[+] İstenmeyen Harici HDMI-CEC Uyanma Sinyalleri Engelleniyor..."
 adb shell "settings put global hdmi_control_auto_wakeup_enabled 0"
-adb shell "settings put secure wake_gesture_enabled 0 2>/dev/null || true"
-adb shell "settings put secure double_tap_to_wake 0 2>/dev/null || true"
-adb shell "settings put secure screensaver_activate_on_sleep 0 2>/dev/null || true"
+put_setting_if_exists secure wake_gesture_enabled 0
+put_setting_if_exists secure double_tap_to_wake 0
+put_setting_if_exists secure screensaver_activate_on_sleep 0
 echo "[+] AirPlay Arka Plan Uyku Kilidi İhmal Ediliyor (Derin Uyku İzni)..."
 adb shell "appops set io.github.jqssun.airplay WAKE_LOCK ignore 2>/dev/null || true"
 

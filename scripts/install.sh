@@ -18,6 +18,10 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# Shared safety helpers (protected TV-core package list, exact-match package checks)
+# shellcheck source=lib/tv_safety.sh
+source "${SCRIPT_DIR}/lib/tv_safety.sh"
+
 # Temporary directory with automatic cleanup on exit
 TMP_DIR=$(mktemp -d -t tv_installer_XXXXXX)
 trap 'rm -rf "${TMP_DIR}"' EXIT
@@ -295,12 +299,15 @@ elif [[ "$DEBLOAT_SEL" == "2" ]]; then
     for raw_p in "${PKG_ARRAY[@]}"; do
         p=$(echo "$raw_p" | tr -d ' \r\n"')
         if [[ -n "$p" ]]; then
-            # Protect critical TV hardware services
-            if [[ "$p" =~ (systemui|settings|bluetooth|audio|input|hdmi|nuvio|t home) ]]; then
+            # Only accept valid Android package names (blocks shell injection into "adb shell")
+            if [[ ! "$p" =~ ^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$ ]]; then
+                echo -e "${RED}[!] Not a valid package name, skipping: $p${NC}"
+            # Protect critical TV hardware / MediaTek TV-core services (tvcenter, tvapi, HDMI, display, ...)
+            elif is_protected_pkg "$p"; then
                 echo -e "${RED}[!] Skipping protected core service: $p${NC}"
             else
                 echo "[-] Removing $p..."
-                adb shell "pm uninstall -k --user 0 $p 2>/dev/null || pm disable-user --user 0 $p 2>/dev/null || true" || true
+                safe_remove_pkg "$p" || true
             fi
         fi
     done
@@ -409,6 +416,9 @@ if [[ "$AIRPLAY_CONFIRM" =~ ^[eEyY]$ ]]; then
     bash "${SCRIPT_DIR}/setup_airplay.sh" || true
 fi
 
+# Self-heal: make sure the OEM TV core (HDMI / picture / HDR plumbing) is enabled
+bash "${SCRIPT_DIR}/restore_tv_core.sh" --quiet || true
+
 # RAM & zRAM Optimization
 echo "==> Applying zRAM & memory optimization..."
 bash "${SCRIPT_DIR}/optimize_ram.sh" || true
@@ -432,6 +442,9 @@ adb shell "cmd package set-home-activity com.gathin.tvhome/.MainActivity 2>/dev/
 
 # Launch MainActivity
 adb shell "am force-stop com.gathin.tvhome && am start -n com.gathin.tvhome/.MainActivity" >/dev/null 2>&1 || true
+
+# Post-install display / HDR sanity report (informational, never fails the install)
+bash "${SCRIPT_DIR}/verify_display.sh" || true
 
 echo -e "\n${GREEN}${BOLD}================================================================================"
 if [[ "$LANG" == "tr" ]]; then

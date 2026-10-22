@@ -4,6 +4,10 @@
 # and heavy default launchers without breaking HDMI inputs, DVB tuners, or picture settings.
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/tv_safety.sh
+source "${SCRIPT_DIR}/lib/tv_safety.sh"
+
 echo "================================================================"
 echo "    TV Master Launcher — Universal Android TV Debloater"
 echo "================================================================"
@@ -43,13 +47,6 @@ COMMON_BLOAT=(
 
 # Brand Specific Bloatware Arrays
 ARCELIK_BEKO_BLOAT=(
-    "mediatek.factorymenu.ui"
-    "arcelik.factorymenu.hatone"
-    "com.mediatek.tv.factory"
-    "com.mediatek.wwtv.webview"
-    "com.mediatek.wwtv.mediaplayer"
-    "com.mediatek.wwtv.tvcenter"
-    "com.mediatek.wwtv.tvcenter.rro"
     "tr.com.bein.connect.tv"
     "io.freemytv"
     "com.arcelik.ChannelEditor"
@@ -58,13 +55,9 @@ ARCELIK_BEKO_BLOAT=(
 
 TCL_BLOAT=(
     "com.tcl.useragreement"
-    "com.tcl.tvmanager"
-    "com.tcl.partnercustomizer"
     "com.tcl.waterfall"
     "com.tcl.messagebox"
-    "com.tcl.sourcemanager"
     "com.tcl.bi"
-    "com.tcl.cyberui"
     "com.tcl.appmarket"
     "com.tcl.videoplayer"
     "com.tcl.browser"
@@ -76,7 +69,6 @@ SONY_BLOAT=(
     "com.sony.dtv.demomode"
     "com.sony.dtv.smarthelp"
     "com.sony.dtv.telemetry"
-    "com.sony.dtv.networkservice"
     "com.sony.dtv.soundoptimizer"
     "com.sony.dtv.recommendations"
     "com.sony.dtv.interactivetvutil.generic"
@@ -86,8 +78,6 @@ PHILIPS_BLOAT=(
     "org.droidtv.demomode"
     "org.droidtv.recommendations"
     "org.droidtv.nettvregistration"
-    "org.droidtv.philipstvprovider"
-    "org.droidtv.channels"
     "org.droidtv.epg"
 )
 
@@ -139,15 +129,21 @@ echo "==> Starting safe debloat for user 0 (${#TARGET_BLOAT[@]} candidates)..."
 
 REMOVED=0
 SKIPPED=0
+PROTECTED=0
+
+refresh_pkg_cache
 
 for pkg in "${TARGET_BLOAT[@]}"; do
-    if adb shell "pm list packages" | grep -q "$pkg"; then
+    if is_protected_pkg "$pkg"; then
+        echo "[!] Skipping protected TV-core package: $pkg"
+        PROTECTED=$((PROTECTED + 1))
+    elif pkg_installed "$pkg"; then
         printf "[-] Uninstalling %-42s ... " "$pkg"
-        adb shell "pm uninstall -k --user 0 $pkg 2>/dev/null || pm disable-user --user 0 $pkg 2>/dev/null || true" >/dev/null
+        safe_remove_pkg "$pkg" || true
         echo "Removed"
-        ((REMOVED++))
+        REMOVED=$((REMOVED + 1))
     else
-        ((SKIPPED++))
+        SKIPPED=$((SKIPPED + 1))
     fi
 done
 
@@ -155,4 +151,8 @@ echo "----------------------------------------------------------------"
 echo "==> Debloat Finished!"
 echo "    Packages Removed/Disabled: $REMOVED"
 echo "    Packages Not Installed:    $SKIPPED"
+echo "    Protected (kept):          $PROTECTED"
 echo "    All HDMI inputs, audio pass-through and core settings preserved."
+
+# Self-heal: restore the OEM TV core if something disabled it earlier.
+bash "${SCRIPT_DIR}/restore_tv_core.sh" --quiet || true
