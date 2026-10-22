@@ -129,7 +129,7 @@ public class ClockDream extends DreamService {
         private final Paint clockPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint datePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint auraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint edgePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint starfieldPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
         private final SimpleDateFormat dateFmt = new SimpleDateFormat("d MMMM EEEE", new Locale("tr", "TR"));
@@ -138,16 +138,24 @@ public class ClockDream extends DreamService {
         private final Drawable fallbackLogo;
         private boolean isRunning = false;
 
+        private static final int STAR_COUNT = 45;
+        private final float[] starX = new float[STAR_COUNT];
+        private final float[] starY = new float[STAR_COUNT];
+        private final float[] starSpeed = new float[STAR_COUNT];
+        private final float[] starRadius = new float[STAR_COUNT];
+        private final float[] starAlpha = new float[STAR_COUNT];
+
         VibrantDriftView(Context ctx) {
             super(ctx);
             clockPaint.setTypeface(FontManager.getBlack(ctx));
-            clockPaint.setTextSize(92f);
+            clockPaint.setTextSize(104f);
             clockPaint.setColor(Color.WHITE);
+            clockPaint.setLetterSpacing(0.04f);
 
             datePaint.setTypeface(FontManager.getMedium(ctx));
-            datePaint.setTextSize(22f);
-            datePaint.setColor(Color.parseColor("#CBD5E1"));
-            datePaint.setLetterSpacing(0.08f);
+            datePaint.setTextSize(21f);
+            datePaint.setColor(Color.parseColor("#94A3B8"));
+            datePaint.setLetterSpacing(0.12f);
 
             Bitmap sig = null;
             try {
@@ -170,6 +178,15 @@ public class ClockDream extends DreamService {
                 }
             }
             fallbackLogo = fallback;
+
+            java.util.Random rnd = new java.util.Random(42);
+            for (int i = 0; i < STAR_COUNT; i++) {
+                starX[i] = rnd.nextFloat() * 1920f;
+                starY[i] = rnd.nextFloat() * 1080f;
+                starSpeed[i] = 0.15f + rnd.nextFloat() * 0.35f;
+                starRadius[i] = 1.0f + rnd.nextFloat() * 2.2f;
+                starAlpha[i] = 0.15f + rnd.nextFloat() * 0.45f;
+            }
         }
 
         void startAnimating() {
@@ -184,179 +201,59 @@ public class ClockDream extends DreamService {
         @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
-            canvas.drawColor(Color.parseColor("#020306"));
+            canvas.drawColor(Color.parseColor("#040508"));
 
             int w = getWidth() > 0 ? getWidth() : 1920;
             int h = getHeight() > 0 ? getHeight() : 1080;
 
             long nowMs = SystemClock.uptimeMillis();
 
-            // Slow subtle Lissajous drift across canvas (±70px) for 100% OLED burn-in protection
-            double driftT = (nowMs % 120000L) / 1000.0;
-            float driftX = (float) (Math.sin(driftT * 0.18) * 70.0 + Math.sin(driftT * 0.37) * 30.0);
-            float driftY = (float) (Math.cos(driftT * 0.14) * 40.0 + Math.sin(driftT * 0.28) * 20.0);
-
-            float cx = (w / 2f) + driftX;
-            float cy = (h / 2f) - 50f + driftY;
-
-            // Cardiac cycle: 1250ms (~48 bpm deep cinematic resting heartbeat)
-            double beatPhase = ((nowMs % 1250L) / 1250.0);
-            float beatImpulse = 0f;
-            if (beatPhase < 0.16) {
-                // Primary systolic thump ("lub")
-                beatImpulse = (float) Math.sin(beatPhase / 0.16 * Math.PI) * 0.22f;
-            } else if (beatPhase >= 0.20 && beatPhase < 0.34) {
-                // Secondary diastolic thump ("dub")
-                beatImpulse = (float) Math.sin((beatPhase - 0.20) / 0.14 * Math.PI) * 0.11f;
+            // Starfield
+            for (int i = 0; i < STAR_COUNT; i++) {
+                starY[i] -= starSpeed[i];
+                if (starY[i] < 0) {
+                    starY[i] = h;
+                    starX[i] = (float) (Math.random() * w);
+                }
+                float twinkle = (float) (Math.sin((nowMs * 0.002) + i) * 0.25 + 0.75);
+                int a = (int) (starAlpha[i] * twinkle * 255);
+                starfieldPaint.setColor(Color.argb(Math.min(255, Math.max(0, a)), 200, 220, 255));
+                canvas.drawCircle(starX[i], starY[i], starRadius[i], starfieldPaint);
             }
 
-            // 6.5s deep organic respiration wave
-            float respiration = (float) Math.sin((nowMs % 6500L) / 6500.0 * Math.PI * 2.0);
-            float respirationScale = 1.0f + 0.07f * respiration;
-            float heartScale = respirationScale + beatImpulse; // Total beating heart scale
+            // Orbital drift
+            double driftT = (nowMs % 160000L) / 1000.0;
+            float driftX = (float) (Math.sin(driftT * 0.12) * 85.0 + Math.sin(driftT * 0.25) * 35.0);
+            float driftY = (float) (Math.cos(driftT * 0.10) * 50.0 + Math.sin(driftT * 0.19) * 25.0);
 
-            // Edge breathing wave: surges with respiration + surges on heartbeat
-            float breathNorm = (respiration + 1.0f) * 0.5f;
-            float edgeSurge = breathNorm * 0.65f + (beatImpulse * 1.4f);
+            float cx = (w / 2f) + driftX;
+            float cy = (h / 2f) - 40f + driftY;
 
-            // Inward reach of colorful edge glows from screen borders
-            float topReach = 190f + edgeSurge * 230f;
-            float bottomReach = 190f + edgeSurge * 230f;
-            float sideReach = 250f + edgeSurge * 280f;
+            float baseHue = (float) ((nowMs % 40000L) / 40000.0 * 360.0);
+            float auroraHue = (baseHue + 40f) % 360f;
+            int cCore = Color.HSVToColor(new float[]{baseHue, 0.75f, 0.95f});
+            int cOuter = Color.HSVToColor(new float[]{auroraHue, 0.85f, 0.85f});
 
-            // 4 distinct shifting chromatic neon colors for the 4 edges
-            float baseHue = (float) ((nowMs % 28000L) / 28000.0 * 360.0);
-            float topHue = baseHue;
-            float rightHue = (baseHue + 90f) % 360f;
-            float bottomHue = (baseHue + 180f) % 360f;
-            float leftHue = (baseHue + 270f) % 360f;
-
-            int cTop = Color.HSVToColor(new float[]{topHue, 0.95f, 1.0f});
-            int cRight = Color.HSVToColor(new float[]{rightHue, 0.92f, 1.0f});
-            int cBottom = Color.HSVToColor(new float[]{bottomHue, 0.95f, 1.0f});
-            int cLeft = Color.HSVToColor(new float[]{leftHue, 0.92f, 1.0f});
-
-            // Edge density / opacity surges on breathing and heartbeat
-            int edgeAlpha = (int) (52 + edgeSurge * 140);
-
-            // 1. Top edge glow surging inward
-            edgePaint.setShader(new LinearGradient(
-                    0, 0, 0, topReach,
-                    new int[]{Color.argb(edgeAlpha, Color.red(cTop), Color.green(cTop), Color.blue(cTop)), Color.TRANSPARENT},
-                    new float[]{0f, 1f}, Shader.TileMode.CLAMP
-            ));
-            canvas.drawRect(0, 0, w, topReach, edgePaint);
-
-            // 2. Bottom edge glow surging inward
-            edgePaint.setShader(new LinearGradient(
-                    0, h, 0, h - bottomReach,
-                    new int[]{Color.argb(edgeAlpha, Color.red(cBottom), Color.green(cBottom), Color.blue(cBottom)), Color.TRANSPARENT},
-                    new float[]{0f, 1f}, Shader.TileMode.CLAMP
-            ));
-            canvas.drawRect(0, h - bottomReach, w, h, edgePaint);
-
-            // 3. Left edge glow surging inward
-            edgePaint.setShader(new LinearGradient(
-                    0, 0, sideReach, 0,
-                    new int[]{Color.argb((int)(edgeAlpha * 0.88f), Color.red(cLeft), Color.green(cLeft), Color.blue(cLeft)), Color.TRANSPARENT},
-                    new float[]{0f, 1f}, Shader.TileMode.CLAMP
-            ));
-            canvas.drawRect(0, 0, sideReach, h, edgePaint);
-
-            // 4. Right edge glow surging inward
-            edgePaint.setShader(new LinearGradient(
-                    w, 0, w - sideReach, 0,
-                    new int[]{Color.argb((int)(edgeAlpha * 0.88f), Color.red(cRight), Color.green(cRight), Color.blue(cRight)), Color.TRANSPARENT},
-                    new float[]{0f, 1f}, Shader.TileMode.CLAMP
-            ));
-            canvas.drawRect(w - sideReach, 0, w, h, edgePaint);
-
-            // Corner atmospheric blooms for continuous surround lighting
-            float cornerR = sideReach * 1.25f;
-            edgePaint.setShader(new RadialGradient(
-                    0, 0, cornerR,
-                    Color.argb((int)(edgeAlpha * 0.60f), Color.red(cTop), Color.green(cTop), Color.blue(cTop)),
-                    Color.TRANSPARENT, Shader.TileMode.CLAMP
-            ));
-            canvas.drawCircle(0, 0, cornerR, edgePaint);
-
-            edgePaint.setShader(new RadialGradient(
-                    w, 0, cornerR,
-                    Color.argb((int)(edgeAlpha * 0.60f), Color.red(cRight), Color.green(cRight), Color.blue(cRight)),
-                    Color.TRANSPARENT, Shader.TileMode.CLAMP
-            ));
-            canvas.drawCircle(w, 0, cornerR, edgePaint);
-
-            edgePaint.setShader(new RadialGradient(
-                    0, h, cornerR,
-                    Color.argb((int)(edgeAlpha * 0.60f), Color.red(cLeft), Color.green(cLeft), Color.blue(cLeft)),
-                    Color.TRANSPARENT, Shader.TileMode.CLAMP
-            ));
-            canvas.drawCircle(0, h, cornerR, edgePaint);
-
-            edgePaint.setShader(new RadialGradient(
-                    w, h, cornerR,
-                    Color.argb((int)(edgeAlpha * 0.60f), Color.red(cBottom), Color.green(cBottom), Color.blue(cBottom)),
-                    Color.TRANSPARENT, Shader.TileMode.CLAMP
-            ));
-            canvas.drawCircle(w, h, cornerR, edgePaint);
-
-            // Heart logo chromatic palette
-            float primaryHue = (baseHue + 45f) % 360f;
-            float secondaryHue = (primaryHue + 60f) % 360f;
-            float tertiaryHue = (primaryHue + 140f) % 360f;
-            int cHeartPrimary = Color.HSVToColor(new float[]{primaryHue, 0.95f, 1.0f});
-            int cHeartSec = Color.HSVToColor(new float[]{secondaryHue, 0.90f, 0.95f});
-            int cHeartTert = Color.HSVToColor(new float[]{tertiaryHue, 0.85f, 0.90f});
-
-            // Outer cardiac mist surging with heartbeat
-            float outerR = 560f * heartScale;
+            float pulse = (float) (Math.sin(nowMs * 0.001) * 0.05 + 1.0);
+            float nebulaR = 520f * pulse;
             auraPaint.setShader(new RadialGradient(
-                    cx, cy, outerR,
+                    cx, cy - 20f, nebulaR,
                     new int[]{
-                            Color.argb((int)(0x35 + beatImpulse * 0x45), Color.red(cHeartTert), Color.green(cHeartTert), Color.blue(cHeartTert)),
-                            Color.argb(0x15, Color.red(cHeartSec), Color.green(cHeartSec), Color.blue(cHeartSec)),
-                            Color.TRANSPARENT
-                    },
-                    new float[]{0f, 0.65f, 1f},
-                    Shader.TileMode.CLAMP
-            ));
-            canvas.drawCircle(cx, cy, outerR, auraPaint);
-
-            // Mid vibrant electric aura surging with heartbeat
-            float midR = 350f * heartScale;
-            auraPaint.setShader(new RadialGradient(
-                    cx, cy, midR,
-                    new int[]{
-                            Color.argb((int)(0x75 + beatImpulse * 0x65), Color.red(cHeartSec), Color.green(cHeartSec), Color.blue(cHeartSec)),
-                            Color.argb(0x28, Color.red(cHeartPrimary), Color.green(cHeartPrimary), Color.blue(cHeartPrimary)),
+                            Color.argb(0x38, Color.red(cCore), Color.green(cCore), Color.blue(cCore)),
+                            Color.argb(0x18, Color.red(cOuter), Color.green(cOuter), Color.blue(cOuter)),
                             Color.TRANSPARENT
                     },
                     new float[]{0f, 0.55f, 1f},
                     Shader.TileMode.CLAMP
             ));
-            canvas.drawCircle(cx, cy, midR, auraPaint);
+            canvas.drawCircle(cx, cy - 20f, nebulaR, auraPaint);
 
-            // Inner intense cardiac core
-            float innerR = 210f * heartScale;
-            auraPaint.setShader(new RadialGradient(
-                    cx, cy, innerR,
-                    new int[]{
-                            Color.argb((int)(0xBB + beatImpulse * 0x44), Color.red(cHeartPrimary), Color.green(cHeartPrimary), Color.blue(cHeartPrimary)),
-                            Color.argb(0x35, Color.red(cHeartPrimary), Color.green(cHeartPrimary), Color.blue(cHeartPrimary)),
-                            Color.TRANSPARENT
-                    },
-                    new float[]{0f, 0.50f, 1f},
-                    Shader.TileMode.CLAMP
-            ));
-            canvas.drawCircle(cx, cy, innerR, auraPaint);
-
-            // Draw Huge Beating Heart Logo (Base size 380px, surging to ~480px on heartbeat!)
-            float logoSize = 380f * heartScale;
+            float logoSize = 160f * pulse;
             float logoLeft = cx - logoSize / 2f;
-            float logoTop = cy - logoSize / 2f;
+            float logoTop = cy - 130f;
 
             if (signatureBitmap != null) {
+                bitmapPaint.setAlpha(220);
                 Rect src = new Rect(0, 0, signatureBitmap.getWidth(), signatureBitmap.getHeight());
                 RectF dst = new RectF(logoLeft, logoTop, logoLeft + logoSize, logoTop + logoSize);
                 canvas.drawBitmap(signatureBitmap, src, dst, bitmapPaint);
@@ -368,19 +265,18 @@ public class ClockDream extends DreamService {
                 fallbackLogo.draw(canvas);
             }
 
-            // Poppins Clock & Date positioned below the beating heart
             Date now = new Date();
             String timeStr = timeFmt.format(now);
             String dateStr = dateFmt.format(now).toUpperCase(new Locale("tr", "TR"));
 
-            float clockY = cy + (logoSize / 2f) + 64f;
-            clockPaint.setShadowLayer(26f, 0f, 6f, Color.argb(0x99, Color.red(cHeartPrimary), Color.green(cHeartPrimary), Color.blue(cHeartPrimary)));
+            float clockY = cy + 90f;
+            clockPaint.setShadowLayer(38f, 0f, 4f, Color.argb(0x88, Color.red(cCore), Color.green(cCore), Color.blue(cCore)));
             float tw = clockPaint.measureText(timeStr);
             canvas.drawText(timeStr, cx - tw / 2f, clockY, clockPaint);
 
-            datePaint.setShadowLayer(14f, 0f, 3f, Color.parseColor("#80000000"));
+            datePaint.setShadowLayer(16f, 0f, 2f, Color.parseColor("#99000000"));
             float dw = datePaint.measureText(dateStr);
-            canvas.drawText(dateStr, cx - dw / 2f, clockY + 36f, datePaint);
+            canvas.drawText(dateStr, cx - dw / 2f, clockY + 44f, datePaint);
 
             if (isRunning) {
                 postInvalidateOnAnimation();

@@ -290,27 +290,16 @@ public class TvKeyInterceptorService extends AccessibilityService {
             }
         }
 
-        // 1. TV+ Button -> Opens Turkcell TV+
-        if (isTvPlusKey(keyCode, scanCode, prefs)) {
-            if (action == KeyEvent.ACTION_DOWN) {
-                launchPackageWithFallback(new String[]{"com.turkcell.ott", "com.turkcell.tvplus"}, "TV+");
-            }
-            return true;
-        }
-
-        // 2. Netflix Button -> Opens Nuvio
+        // 1. Netflix Button -> Opens Nuvio
         if (isNetflixKey(keyCode, scanCode, prefs)) {
             if (action == KeyEvent.ACTION_DOWN) {
-                launchPackageWithFallback(new String[]{
-                        "com.nuvio.tv",
-                        "com.instantbits.cast.receiver"
-                }, "Nuvio");
+                launchPackageWithFallback(new String[]{"com.nuvio.tv"}, "Nuvio");
             }
             return true;
         }
 
-        // 3. Bein Connect OR YouTube Button -> Opens Reklamsız YouTube (TizenTube / Cobalt)
-        if (isBeinConnectKey(keyCode, scanCode, prefs) || isYouTubeKey(keyCode, scanCode, prefs)) {
+        // 2. YouTube Button -> Opens Reklamsız YouTube (TizenTube / Cobalt)
+        if (isYouTubeKey(keyCode, scanCode, prefs)) {
             if (action == KeyEvent.ACTION_DOWN) {
                 launchPackageWithFallback(new String[]{
                         "io.gh.reisxd.tizentube.cobalt",
@@ -323,10 +312,21 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return true;
         }
 
-        // 4. Amazon Prime Button -> Opens Non-Intrusive In-Video Picture & Sound HUD Overlay
-        if (isAmazonPrimeKey(keyCode, scanCode, prefs)) {
+        // 3. Amazon Prime / Bein Button -> Opens Web Video Caster
+        if (isAmazonPrimeKey(keyCode, scanCode, prefs) || isBeinConnectKey(keyCode, scanCode, prefs)) {
             if (action == KeyEvent.ACTION_DOWN) {
-                showCinemaHudOverlay();
+                launchPackageWithFallback(new String[]{
+                        "com.instantbits.cast.receiver",
+                        "com.instantbits.cast.webvideo"
+                }, "Web Video Caster");
+            }
+            return true;
+        }
+
+        // 4. TV+ Button -> Opens Turkcell TV+
+        if (isTvPlusKey(keyCode, scanCode, prefs)) {
+            if (action == KeyEvent.ACTION_DOWN) {
+                launchPackageWithFallback(new String[]{"com.turkcell.ott", "com.turkcell.tvplus"}, "TV+");
             }
             return true;
         }

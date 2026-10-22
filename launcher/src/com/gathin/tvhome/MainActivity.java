@@ -88,6 +88,7 @@ public class MainActivity extends Activity {
 
     private static final String PREFS_NAME = TvKeyInterceptorService.PREFS_NAME;
     private static final String KEY_APP_ORDER = "custom_app_order_csv";
+    private static final String KEY_DOCK_ORDER = "custom_dock_order_csv";
     private static final long SCREENSAVER_IDLE_MS = 5 * 60 * 1000L; // 5 minutes
 
     private static final Set<String> HIDDEN_SYSTEM_PACKAGES = new HashSet<>(Arrays.asList(
@@ -631,6 +632,7 @@ public class MainActivity extends Activity {
             resetIdleScreensaverTimer();
 
             if (isMovingTile) {
+                resetTileMoveTimeout();
                 int code = event.getKeyCode();
                 if (code == KeyEvent.KEYCODE_DPAD_LEFT) {
                     moveCarriedTileHorizontal(-1);
@@ -1287,6 +1289,23 @@ public class MainActivity extends Activity {
                 }
             });
 
+            cardFrame.setOnKeyListener(new View.OnKeyListener() {
+                @Override
+                public boolean onKey(View v, int keyCode, KeyEvent event) {
+                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                        int totalCards = posterCardFrames.size();
+                        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && slot == 0 && totalCards > 1) {
+                            posterCardFrames.get(totalCards - 1).requestFocus();
+                            return true;
+                        } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && slot == totalCards - 1 && totalCards > 1) {
+                            posterCardFrames.get(0).requestFocus();
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            });
+
             // Intertwining: Each card after the first has negative margin, overlapping like a physical deck
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(VITRIN_POSTER_W, VITRIN_POSTER_H);
             int leftMargin = (i == 0) ? 60 : VITRIN_OVERLAP_MARGIN;
@@ -1427,14 +1446,14 @@ public class MainActivity extends Activity {
     }
 
     private static final VitrinCategory[] VITRIN_CATEGORIES = new VitrinCategory[] {
-        new VitrinCategory("Vizyondakiler & Popüler", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json"),
-        new VitrinCategory("Aksiyon & Macera", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Action.json"),
-        new VitrinCategory("Bilim-Kurgu", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Sci-Fi.json"),
-        new VitrinCategory("Animasyon & Aile", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Animation.json"),
-        new VitrinCategory("Gerilim & Gizem", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Thriller.json"),
-        new VitrinCategory("Suç & Polisiye", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Crime.json"),
-        new VitrinCategory("Fantastik Dünyalar", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Fantasy.json"),
-        new VitrinCategory("Sinema Başyapıtları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/imdbRating.json")
+        new VitrinCategory("Anthology • Vizyondakiler", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json"),
+        new VitrinCategory("TurkSinema • Popüler Filmler", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Action.json"),
+        new VitrinCategory("AIOMetadata • En İyiler", "https://cinemeta-catalogs.strem.io/top/catalog/movie/imdbRating.json"),
+        new VitrinCategory("Nuvio • Bilim-Kurgu", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Sci-Fi.json"),
+        new VitrinCategory("Nuvio • Gerilim & Suç", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Thriller.json"),
+        new VitrinCategory("Nuvio • Animasyon & Aile", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Animation.json"),
+        new VitrinCategory("Anthology • Fantastik Dünyalar", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Fantasy.json"),
+        new VitrinCategory("Nuvio • Komedi & Macera", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Adventure.json")
     };
 
     private static HttpURLConnection openWithRedirects(String urlStr) throws Exception {
@@ -1689,16 +1708,23 @@ public class MainActivity extends Activity {
         dockItems.clear();
         gridItems.clear();
 
-        String[] targetDockOrder = new String[] {
-            "com.turkcell.ott",
-            seenPackages.contains("com.instantbits.cast.receiver") ? "com.instantbits.cast.receiver" : "com.instantbits.cast.webvideo",
-            findInstalledTizenTubePackage(seenPackages),
-            "com.nuvio.tv",
-            "io.github.jqssun.airplay"
-        };
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String savedDockCsv = prefs.getString(KEY_DOCK_ORDER, "");
+        List<String> dockOrderList;
+        if (savedDockCsv != null && !savedDockCsv.isEmpty()) {
+            dockOrderList = Arrays.asList(savedDockCsv.split(","));
+        } else {
+            // Default user order: Nuvio -> YouTube -> Web Video Caster -> TV+
+            dockOrderList = Arrays.asList(
+                "com.nuvio.tv",
+                findInstalledTizenTubePackage(seenPackages),
+                seenPackages.contains("com.instantbits.cast.receiver") ? "com.instantbits.cast.receiver" : "com.instantbits.cast.webvideo",
+                "com.turkcell.ott"
+            );
+        }
 
         Set<String> dockSet = new HashSet<>();
-        for (String dockPkg : targetDockOrder) {
+        for (String dockPkg : dockOrderList) {
             for (AppTileItem item : discovered) {
                 if (item.packageName.equals(dockPkg) && !dockSet.contains(item.packageName)) {
                     dockItems.add(item);
@@ -1762,14 +1788,20 @@ public class MainActivity extends Activity {
     }
 
     private void saveCurrentAppOrder() {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sbGrid = new StringBuilder();
         for (int i = 0; i < gridItems.size(); i++) {
-            if (i > 0) sb.append(",");
-            sb.append(gridItems.get(i).packageName);
+            if (i > 0) sbGrid.append(",");
+            sbGrid.append(gridItems.get(i).packageName);
+        }
+        StringBuilder sbDock = new StringBuilder();
+        for (int i = 0; i < dockItems.size(); i++) {
+            if (i > 0) sbDock.append(",");
+            sbDock.append(dockItems.get(i).packageName);
         }
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                 .edit()
-                .putString(KEY_APP_ORDER, sb.toString())
+                .putString(KEY_APP_ORDER, sbGrid.toString())
+                .putString(KEY_DOCK_ORDER, sbDock.toString())
                 .apply();
     }
 
@@ -1812,6 +1844,22 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, 214, 1f);
                 lp.setMargins(12, 6, 12, 6);
                 currentRow.addView(spacer, lp);
+            }
+        }
+    }
+
+    private void focusGridChild(int flatIndex) {
+        if (appsGridContainer == null) return;
+        int columns = 4;
+        int rowIndex = flatIndex / columns;
+        int colIndex = flatIndex % columns;
+        if (rowIndex < appsGridContainer.getChildCount()) {
+            View row = appsGridContainer.getChildAt(rowIndex);
+            if (row instanceof ViewGroup) {
+                ViewGroup vg = (ViewGroup) row;
+                if (colIndex < vg.getChildCount()) {
+                    vg.getChildAt(colIndex).requestFocus();
+                }
             }
         }
     }
@@ -1913,7 +1961,7 @@ public class MainActivity extends Activity {
                         if (event.getRepeatCount() == 0) {
                             longPressConsumed[0] = false;
                             tileKeyHandler.removeCallbacks(tileLongPressAction);
-                            tileKeyHandler.postDelayed(tileLongPressAction, 480L);
+                            tileKeyHandler.postDelayed(tileLongPressAction, 1200L);
                         }
                         return false;
                     } else if (event.getAction() == KeyEvent.ACTION_UP) {
@@ -1923,6 +1971,45 @@ public class MainActivity extends Activity {
                             return true;
                         }
                         return false;
+                    }
+                } else if (!isMovingTile && event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (inDock) {
+                        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && index == 0) {
+                            int count = dockRow.getChildCount();
+                            if (count > 1) {
+                                dockRow.getChildAt(count - 1).requestFocus();
+                                return true;
+                            }
+                        } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && index == dockRow.getChildCount() - 1) {
+                            if (dockRow.getChildCount() > 1) {
+                                dockRow.getChildAt(0).requestFocus();
+                                return true;
+                            }
+                        }
+                    } else {
+                        // Grid item
+                        int columns = 4;
+                        int col = index % columns;
+                        int total = gridItems.size();
+                        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && col == 0) {
+                            int endCol = Math.min(index + columns - 1, total - 1);
+                            focusGridChild(endCol);
+                            return true;
+                        } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && (col == columns - 1 || index == total - 1)) {
+                            int startCol = index - col;
+                            focusGridChild(startCol);
+                            return true;
+                        } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                            int nextRowIndex = index + columns;
+                            if (nextRowIndex >= total) {
+                                // Loop vertically back to corresponding dock item
+                                int dockTarget = Math.min(col, dockRow.getChildCount() - 1);
+                                if (dockTarget >= 0 && dockTarget < dockRow.getChildCount()) {
+                                    dockRow.getChildAt(dockTarget).requestFocus();
+                                    return true;
+                                }
+                            }
+                        }
                     }
                 }
                 return false;
@@ -1993,11 +2080,28 @@ public class MainActivity extends Activity {
         loadAppsAndPopulate();
     }
 
+    private final Runnable autoStopTileMoveRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isMovingTile) {
+                stopTileMove();
+            }
+        }
+    };
+
+    private void resetTileMoveTimeout() {
+        handler.removeCallbacks(autoStopTileMoveRunnable);
+        if (isMovingTile) {
+            handler.postDelayed(autoStopTileMoveRunnable, 45000L); // 45 seconds of inactivity auto-commits
+        }
+    }
+
     private void startTileMove(AppTileItem item, boolean inDock, int index) {
         isMovingTile = true;
         movingTileItem = item;
         movingTileInDock = inDock;
         movingTileIndex = index;
+        resetTileMoveTimeout();
         if (reorderHudBar != null) {
             reorderHudBar.setVisibility(View.VISIBLE);
         }
@@ -2010,6 +2114,7 @@ public class MainActivity extends Activity {
 
     private void stopTileMove() {
         if (!isMovingTile) return;
+        handler.removeCallbacks(autoStopTileMoveRunnable);
         isMovingTile = false;
         movingTileItem = null;
         movingTileInDock = false;
@@ -2331,7 +2436,8 @@ public class MainActivity extends Activity {
         private final Paint clockPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint datePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint auraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint edgePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint particlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint starfieldPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
         private final SimpleDateFormat dateFmt = new SimpleDateFormat("d MMMM EEEE", new Locale("tr", "TR"));
@@ -2340,16 +2446,25 @@ public class MainActivity extends Activity {
         private final Drawable fallbackLogo;
         private boolean isRunning = false;
 
+        // Cinematic floating dust particles & stars
+        private static final int STAR_COUNT = 45;
+        private final float[] starX = new float[STAR_COUNT];
+        private final float[] starY = new float[STAR_COUNT];
+        private final float[] starSpeed = new float[STAR_COUNT];
+        private final float[] starRadius = new float[STAR_COUNT];
+        private final float[] starAlpha = new float[STAR_COUNT];
+
         VibrantScreensaverView(Context ctx) {
             super(ctx);
             clockPaint.setTypeface(FontManager.getBlack(ctx));
-            clockPaint.setTextSize(92f);
+            clockPaint.setTextSize(104f);
             clockPaint.setColor(Color.WHITE);
+            clockPaint.setLetterSpacing(0.04f);
 
             datePaint.setTypeface(FontManager.getMedium(ctx));
-            datePaint.setTextSize(22f);
-            datePaint.setColor(Color.parseColor("#CBD5E1"));
-            datePaint.setLetterSpacing(0.08f);
+            datePaint.setTextSize(21f);
+            datePaint.setColor(Color.parseColor("#94A3B8"));
+            datePaint.setLetterSpacing(0.12f);
 
             Bitmap sig = null;
             try {
@@ -2372,6 +2487,15 @@ public class MainActivity extends Activity {
                 }
             }
             fallbackLogo = fallback;
+
+            Random rnd = new Random(42);
+            for (int i = 0; i < STAR_COUNT; i++) {
+                starX[i] = rnd.nextFloat() * 1920f;
+                starY[i] = rnd.nextFloat() * 1080f;
+                starSpeed[i] = 0.15f + rnd.nextFloat() * 0.35f;
+                starRadius[i] = 1.0f + rnd.nextFloat() * 2.2f;
+                starAlpha[i] = 0.15f + rnd.nextFloat() * 0.45f;
+            }
         }
 
         void startAnimating() {
@@ -2386,179 +2510,63 @@ public class MainActivity extends Activity {
         @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
-            canvas.drawColor(Color.parseColor("#020306"));
+            // Deep OLED void black
+            canvas.drawColor(Color.parseColor("#040508"));
 
             int w = getWidth() > 0 ? getWidth() : 1920;
             int h = getHeight() > 0 ? getHeight() : 1080;
 
             long nowMs = SystemClock.uptimeMillis();
 
-            // Slow subtle Lissajous drift across canvas (±70px) for 100% OLED burn-in protection
-            double driftT = (nowMs % 120000L) / 1000.0;
-            float driftX = (float) (Math.sin(driftT * 0.18) * 70.0 + Math.sin(driftT * 0.37) * 30.0);
-            float driftY = (float) (Math.cos(driftT * 0.14) * 40.0 + Math.sin(driftT * 0.28) * 20.0);
-
-            float cx = (w / 2f) + driftX;
-            float cy = (h / 2f) - 50f + driftY;
-
-            // Cardiac cycle: 1250ms (~48 bpm deep cinematic resting heartbeat)
-            double beatPhase = ((nowMs % 1250L) / 1250.0);
-            float beatImpulse = 0f;
-            if (beatPhase < 0.16) {
-                // Primary systolic thump ("lub")
-                beatImpulse = (float) Math.sin(beatPhase / 0.16 * Math.PI) * 0.22f;
-            } else if (beatPhase >= 0.20 && beatPhase < 0.34) {
-                // Secondary diastolic thump ("dub")
-                beatImpulse = (float) Math.sin((beatPhase - 0.20) / 0.14 * Math.PI) * 0.11f;
+            // 1. Organic Starfield & Micro-Dust Particles
+            for (int i = 0; i < STAR_COUNT; i++) {
+                starY[i] -= starSpeed[i];
+                if (starY[i] < 0) {
+                    starY[i] = h;
+                    starX[i] = (float) (Math.random() * w);
+                }
+                float twinkle = (float) (Math.sin((nowMs * 0.002) + i) * 0.25 + 0.75);
+                int a = (int) (starAlpha[i] * twinkle * 255);
+                starfieldPaint.setColor(Color.argb(Math.min(255, Math.max(0, a)), 200, 220, 255));
+                canvas.drawCircle(starX[i], starY[i], starRadius[i], starfieldPaint);
             }
 
-            // 6.5s deep organic respiration wave
-            float respiration = (float) Math.sin((nowMs % 6500L) / 6500.0 * Math.PI * 2.0);
-            float respirationScale = 1.0f + 0.07f * respiration;
-            float heartScale = respirationScale + beatImpulse; // Total beating heart scale
+            // 2. Slow subtle orbital drift (Lissajous ±85px) for 100% OLED burn-in immunity
+            double driftT = (nowMs % 160000L) / 1000.0;
+            float driftX = (float) (Math.sin(driftT * 0.12) * 85.0 + Math.sin(driftT * 0.25) * 35.0);
+            float driftY = (float) (Math.cos(driftT * 0.10) * 50.0 + Math.sin(driftT * 0.19) * 25.0);
 
-            // Edge breathing wave: surges with respiration + surges on heartbeat
-            float breathNorm = (respiration + 1.0f) * 0.5f;
-            float edgeSurge = breathNorm * 0.65f + (beatImpulse * 1.4f);
+            float cx = (w / 2f) + driftX;
+            float cy = (h / 2f) - 40f + driftY;
 
-            // Inward reach of colorful edge glows from screen borders
-            float topReach = 190f + edgeSurge * 230f;
-            float bottomReach = 190f + edgeSurge * 230f;
-            float sideReach = 250f + edgeSurge * 280f;
+            // 3. Luxurious Cinematic Breathing Palette (Cyan-Indigo-Violet-Ruby)
+            float baseHue = (float) ((nowMs % 40000L) / 40000.0 * 360.0);
+            float auroraHue = (baseHue + 40f) % 360f;
+            int cCore = Color.HSVToColor(new float[]{baseHue, 0.75f, 0.95f});
+            int cOuter = Color.HSVToColor(new float[]{auroraHue, 0.85f, 0.85f});
 
-            // 4 distinct shifting chromatic neon colors for the 4 edges
-            float baseHue = (float) ((nowMs % 28000L) / 28000.0 * 360.0);
-            float topHue = baseHue;
-            float rightHue = (baseHue + 90f) % 360f;
-            float bottomHue = (baseHue + 180f) % 360f;
-            float leftHue = (baseHue + 270f) % 360f;
-
-            int cTop = Color.HSVToColor(new float[]{topHue, 0.95f, 1.0f});
-            int cRight = Color.HSVToColor(new float[]{rightHue, 0.92f, 1.0f});
-            int cBottom = Color.HSVToColor(new float[]{bottomHue, 0.95f, 1.0f});
-            int cLeft = Color.HSVToColor(new float[]{leftHue, 0.92f, 1.0f});
-
-            // Edge density / opacity surges on breathing and heartbeat
-            int edgeAlpha = (int) (52 + edgeSurge * 140);
-
-            // 1. Top edge glow surging inward
-            edgePaint.setShader(new LinearGradient(
-                    0, 0, 0, topReach,
-                    new int[]{Color.argb(edgeAlpha, Color.red(cTop), Color.green(cTop), Color.blue(cTop)), Color.TRANSPARENT},
-                    new float[]{0f, 1f}, Shader.TileMode.CLAMP
-            ));
-            canvas.drawRect(0, 0, w, topReach, edgePaint);
-
-            // 2. Bottom edge glow surging inward
-            edgePaint.setShader(new LinearGradient(
-                    0, h, 0, h - bottomReach,
-                    new int[]{Color.argb(edgeAlpha, Color.red(cBottom), Color.green(cBottom), Color.blue(cBottom)), Color.TRANSPARENT},
-                    new float[]{0f, 1f}, Shader.TileMode.CLAMP
-            ));
-            canvas.drawRect(0, h - bottomReach, w, h, edgePaint);
-
-            // 3. Left edge glow surging inward
-            edgePaint.setShader(new LinearGradient(
-                    0, 0, sideReach, 0,
-                    new int[]{Color.argb((int)(edgeAlpha * 0.88f), Color.red(cLeft), Color.green(cLeft), Color.blue(cLeft)), Color.TRANSPARENT},
-                    new float[]{0f, 1f}, Shader.TileMode.CLAMP
-            ));
-            canvas.drawRect(0, 0, sideReach, h, edgePaint);
-
-            // 4. Right edge glow surging inward
-            edgePaint.setShader(new LinearGradient(
-                    w, 0, w - sideReach, 0,
-                    new int[]{Color.argb((int)(edgeAlpha * 0.88f), Color.red(cRight), Color.green(cRight), Color.blue(cRight)), Color.TRANSPARENT},
-                    new float[]{0f, 1f}, Shader.TileMode.CLAMP
-            ));
-            canvas.drawRect(w - sideReach, 0, w, h, edgePaint);
-
-            // Corner atmospheric blooms for continuous surround lighting
-            float cornerR = sideReach * 1.25f;
-            edgePaint.setShader(new RadialGradient(
-                    0, 0, cornerR,
-                    Color.argb((int)(edgeAlpha * 0.60f), Color.red(cTop), Color.green(cTop), Color.blue(cTop)),
-                    Color.TRANSPARENT, Shader.TileMode.CLAMP
-            ));
-            canvas.drawCircle(0, 0, cornerR, edgePaint);
-
-            edgePaint.setShader(new RadialGradient(
-                    w, 0, cornerR,
-                    Color.argb((int)(edgeAlpha * 0.60f), Color.red(cRight), Color.green(cRight), Color.blue(cRight)),
-                    Color.TRANSPARENT, Shader.TileMode.CLAMP
-            ));
-            canvas.drawCircle(w, 0, cornerR, edgePaint);
-
-            edgePaint.setShader(new RadialGradient(
-                    0, h, cornerR,
-                    Color.argb((int)(edgeAlpha * 0.60f), Color.red(cLeft), Color.green(cLeft), Color.blue(cLeft)),
-                    Color.TRANSPARENT, Shader.TileMode.CLAMP
-            ));
-            canvas.drawCircle(0, h, cornerR, edgePaint);
-
-            edgePaint.setShader(new RadialGradient(
-                    w, h, cornerR,
-                    Color.argb((int)(edgeAlpha * 0.60f), Color.red(cBottom), Color.green(cBottom), Color.blue(cBottom)),
-                    Color.TRANSPARENT, Shader.TileMode.CLAMP
-            ));
-            canvas.drawCircle(w, h, cornerR, edgePaint);
-
-            // Heart logo chromatic palette
-            float primaryHue = (baseHue + 45f) % 360f;
-            float secondaryHue = (primaryHue + 60f) % 360f;
-            float tertiaryHue = (primaryHue + 140f) % 360f;
-            int cHeartPrimary = Color.HSVToColor(new float[]{primaryHue, 0.95f, 1.0f});
-            int cHeartSec = Color.HSVToColor(new float[]{secondaryHue, 0.90f, 0.95f});
-            int cHeartTert = Color.HSVToColor(new float[]{tertiaryHue, 0.85f, 0.90f});
-
-            // Outer cardiac mist surging with heartbeat
-            float outerR = 560f * heartScale;
+            // 4. Subtle, ethereal volumetric ambient fog (soft filmic diffusion, no harsh edges)
+            float pulse = (float) (Math.sin(nowMs * 0.001) * 0.05 + 1.0);
+            float nebulaR = 520f * pulse;
             auraPaint.setShader(new RadialGradient(
-                    cx, cy, outerR,
+                    cx, cy - 20f, nebulaR,
                     new int[]{
-                            Color.argb((int)(0x35 + beatImpulse * 0x45), Color.red(cHeartTert), Color.green(cHeartTert), Color.blue(cHeartTert)),
-                            Color.argb(0x15, Color.red(cHeartSec), Color.green(cHeartSec), Color.blue(cHeartSec)),
-                            Color.TRANSPARENT
-                    },
-                    new float[]{0f, 0.65f, 1f},
-                    Shader.TileMode.CLAMP
-            ));
-            canvas.drawCircle(cx, cy, outerR, auraPaint);
-
-            // Mid vibrant electric aura surging with heartbeat
-            float midR = 350f * heartScale;
-            auraPaint.setShader(new RadialGradient(
-                    cx, cy, midR,
-                    new int[]{
-                            Color.argb((int)(0x75 + beatImpulse * 0x65), Color.red(cHeartSec), Color.green(cHeartSec), Color.blue(cHeartSec)),
-                            Color.argb(0x28, Color.red(cHeartPrimary), Color.green(cHeartPrimary), Color.blue(cHeartPrimary)),
+                            Color.argb(0x38, Color.red(cCore), Color.green(cCore), Color.blue(cCore)),
+                            Color.argb(0x18, Color.red(cOuter), Color.green(cOuter), Color.blue(cOuter)),
                             Color.TRANSPARENT
                     },
                     new float[]{0f, 0.55f, 1f},
                     Shader.TileMode.CLAMP
             ));
-            canvas.drawCircle(cx, cy, midR, auraPaint);
+            canvas.drawCircle(cx, cy - 20f, nebulaR, auraPaint);
 
-            // Inner intense cardiac core
-            float innerR = 210f * heartScale;
-            auraPaint.setShader(new RadialGradient(
-                    cx, cy, innerR,
-                    new int[]{
-                            Color.argb((int)(0xBB + beatImpulse * 0x44), Color.red(cHeartPrimary), Color.green(cHeartPrimary), Color.blue(cHeartPrimary)),
-                            Color.argb(0x35, Color.red(cHeartPrimary), Color.green(cHeartPrimary), Color.blue(cHeartPrimary)),
-                            Color.TRANSPARENT
-                    },
-                    new float[]{0f, 0.50f, 1f},
-                    Shader.TileMode.CLAMP
-            ));
-            canvas.drawCircle(cx, cy, innerR, auraPaint);
-
-            // Draw Huge Beating Heart Logo (Base size 380px, surging to ~480px on heartbeat!)
-            float logoSize = 380f * heartScale;
+            // 5. Signature Heart Logo with subtle luminescence
+            float logoSize = 160f * pulse;
             float logoLeft = cx - logoSize / 2f;
-            float logoTop = cy - logoSize / 2f;
+            float logoTop = cy - 130f;
 
             if (signatureBitmap != null) {
+                bitmapPaint.setAlpha(220);
                 Rect src = new Rect(0, 0, signatureBitmap.getWidth(), signatureBitmap.getHeight());
                 RectF dst = new RectF(logoLeft, logoTop, logoLeft + logoSize, logoTop + logoSize);
                 canvas.drawBitmap(signatureBitmap, src, dst, bitmapPaint);
@@ -2570,19 +2578,20 @@ public class MainActivity extends Activity {
                 fallbackLogo.draw(canvas);
             }
 
-            // Poppins Clock & Date positioned below the beating heart
+            // 6. Typographic Hero Clock (Poppins Black, Crisp White with subtle neon halo)
             Date now = new Date();
             String timeStr = timeFmt.format(now);
             String dateStr = dateFmt.format(now).toUpperCase(new Locale("tr", "TR"));
 
-            float clockY = cy + (logoSize / 2f) + 64f;
-            clockPaint.setShadowLayer(26f, 0f, 6f, Color.argb(0x99, Color.red(cHeartPrimary), Color.green(cHeartPrimary), Color.blue(cHeartPrimary)));
+            float clockY = cy + 90f;
+            clockPaint.setShadowLayer(38f, 0f, 4f, Color.argb(0x88, Color.red(cCore), Color.green(cCore), Color.blue(cCore)));
             float tw = clockPaint.measureText(timeStr);
             canvas.drawText(timeStr, cx - tw / 2f, clockY, clockPaint);
 
-            datePaint.setShadowLayer(14f, 0f, 3f, Color.parseColor("#80000000"));
+            // 7. Date string below
+            datePaint.setShadowLayer(16f, 0f, 2f, Color.parseColor("#99000000"));
             float dw = datePaint.measureText(dateStr);
-            canvas.drawText(dateStr, cx - dw / 2f, clockY + 36f, datePaint);
+            canvas.drawText(dateStr, cx - dw / 2f, clockY + 44f, datePaint);
 
             if (isRunning) {
                 postInvalidateOnAnimation();
