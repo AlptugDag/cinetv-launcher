@@ -17,15 +17,16 @@ Follow this systematic interactive procedure:
 ### PHASE 0: USER INTERVIEW & REQUIREMENTS ALIGNMENT
 Before running any disruptive commands, interview the user by asking these concise questions (or diagnose automatically if ADB is already connected):
 
-1. **Connection & IP**: "What is your TV's local IP address (e.g., 192.168.1.xxx) so we can connect via `adb connect <IP>:5555`?"
-2. **TV Brand & Remote**: "What brand and model is your TV, and which branded buttons exist on your remote (e.g. Netflix, Prime Video, TV+, Bein Connect, YouTube, Disney+)?"
-3. **Remote Key Intent Re-mapping**:
+1. **Language & Regional Preferences**:
+   - "Do you prefer Turkish cinema sources (Webteizle, Turkish dub/subtitles, Anthology TV) or International cinema sources (Cinemeta global box office, English/multi-language subtitles)?"
+2. **Connection & IP**: "What is your TV's local IP address (e.g., 192.168.1.xxx) so we can connect via `adb connect <IP>:5555`?"
+3. **TV Brand & Remote**: "What brand and model is your TV, and which branded buttons exist on your remote (e.g. Netflix, Prime Video, TV+, Bein Connect, YouTube, Disney+)?"
+4. **Remote Key Intent Re-mapping**:
    - Do you want Prime Video to toggle the non-intrusive Cinema Picture & Audio Settings HUD without stopping your video?
    - Do you want Netflix to open Nuvio TV (or Web Video Caster)?
    - Do you want TV+ to launch Turkcell TV+?
    - Do you want Bein Connect / YouTube button to launch ad-free YouTube (TizenTube/SmartTube)?
-4. **DNS & Ad Blocking**: "Shall we enforce system-wide AdGuard Private DNS over TLS (DoT: `dns.adguard-dns.com`) for zero ads and ISP unblocking?"
-5. **Cinema & Streaming Engine**: "Shall we configure Nuvio TV with the Anthology repository (41 Turkish scrapers + 138 live TV channels) and 4K HDR10 / Dolby Vision torrent streaming with Turkish audio/subtitles prioritized?"
+5. **DNS & Ad Blocking**: "Shall we enforce system-wide AdGuard Private DNS over TLS (DoT: `dns.adguard-dns.com`) for zero ads and ISP unblocking?"
 6. **AirPlay & Casting**: "Do you use Apple devices (iPhone/iPad/Mac) and want background AirPlay mirroring enabled?"
 
 ---
@@ -79,8 +80,8 @@ adb shell "settings get global private_dns_specifier"
 
 ---
 
-### PHASE 4: NUVIO TV + ANTHOLOGY + 4K HDR10 CINEMA SUITE
-Install and configure Nuvio TV with 4K HDR10 torrent streaming, Turkish subtitle engine, and Anthology scrapers:
+### PHASE 4: NUVIO TV + CINEMA SUITE SETUP
+Install and configure Nuvio TV with 4K HDR10 torrent streaming, subtitle engine, and appropriate regional catalogs:
 
 1. **Install Nuvio TV (Match CPU ABI)**:
    - 32-bit ARM: `https://github.com/NuvioMedia/NuvioTV/releases/download/1.0.0/app-full-armeabi-v7a-release.apk`
@@ -89,21 +90,27 @@ Install and configure Nuvio TV with 4K HDR10 torrent streaming, Turkish subtitle
    adb install -r -d -g /path/to/nuvio.apk
    ```
 
-2. **Add Anthology Repository & Plugins**:
-   - In Nuvio: Settings -> Plugins -> Add Repository -> `https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json`
-   - Add Anthology Canlı TV Catalog: `stremio://falsisdev.github.io/anthology/stremio/manifest.json`
+2. **Configure Regional Catalogs & Streaming Engine**:
+   - **For Turkish Users**:
+     - Set Launcher Vitrin Feed: `adb shell settings put global tvhome_vitrin_source webteizle`
+     - Add Anthology Canlı TV Catalog: `adb shell am start -a android.intent.action.VIEW -d "stremio://falsisdev.github.io/anthology/stremio/manifest.json"`
+     - Configure 4K HDR10 Turkish Prioritized Stream Engine (Quality tier -> Seeders first -> Size, >= 720p filter):
+       ```bash
+       adb shell am start -a android.intent.action.VIEW -d "stremio://torrentio.strem.fun/sort=quality%7Cqualityfilter=480p,other,scr,cam%7Cpriority_language=turkish/manifest.json"
+       ```
+   - **For International Users**:
+     - Set Launcher Vitrin Feed: `adb shell settings put global tvhome_vitrin_source cinemeta`
+     - Configure 4K HDR10 International Stream Engine (Quality tier -> Seeders first -> Size, >= 720p filter, all languages):
+       ```bash
+       adb shell am start -a android.intent.action.VIEW -d "stremio://torrentio.strem.fun/sort=quality%7Cqualityfilter=480p,other,scr,cam/manifest.json"
+       ```
 
-3. **Configure 4K HDR10 Turkish Prioritized Stream Engine (Strict >= 720p filter)**:
-   ```bash
-   adb shell am start -a android.intent.action.VIEW -d "stremio://torrentio.strem.fun/sort=qualitysize%7Cqualityfilter=480p,other,scr,cam%7Cpriority_language=turkish/manifest.json"
-   ```
-
-4. **Add OpenSubtitles v3 Engine**:
+3. **Add OpenSubtitles v3 Engine**:
    ```bash
    adb shell am start -a android.intent.action.VIEW -d "stremio://opensubtitles-v3.strem.io/manifest.json"
    ```
 
-5. **Clean Legacy Players**:
+4. **Clean Legacy Players**:
    ```bash
    adb shell "pm uninstall -k --user 0 com.lagradost.cloudstream3 2>/dev/null || true"
    adb shell "pm uninstall -k --user 0 com.stremio.one 2>/dev/null || true"
@@ -111,12 +118,12 @@ Install and configure Nuvio TV with 4K HDR10 torrent streaming, Turkish subtitle
 
 ---
 
-### PHASE 5: COMPILE & INSTALL TV MASTER LAUNCHER
+### PHASE 5: COMPILE & INSTALL TV MASTER LAUNCHER v1.0.0
 Compile and install the ultra-lightweight hardware-accelerated TV Master Launcher:
 
 ```bash
 cd launcher && ./build.sh
-adb install -r -d -g ../release/tv-master-launcher-v2.0.apk
+adb install -r -d -g ../release/tv-master-launcher-v1.0.0.apk
 ```
 
 Set TV Master Launcher as default launcher:

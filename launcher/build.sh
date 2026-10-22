@@ -65,6 +65,6 @@ echo "[6/7] Aligning APK with zipalign..."
 "$BUILD_TOOLS/zipalign" -f -p 4 build/packaged.apk build/aligned.apk
 
 echo "[7/7] Signing APK with apksigner..."
-"$BUILD_TOOLS/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out ../release/tv-master-launcher-v2.0.apk build/aligned.apk
+"$BUILD_TOOLS/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out ../release/tv-master-launcher-v1.0.0.apk build/aligned.apk
 
-echo "SUCCESS! Built release/tv-master-launcher-v2.0.apk"
+echo "SUCCESS! Built release/tv-master-launcher-v1.0.0.apk"

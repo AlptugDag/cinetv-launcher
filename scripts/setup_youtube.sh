@@ -39,19 +39,17 @@ done
 if [ -z "$INSTALLED_YT" ]; then
     echo "==> No ad-free client found. Downloading SmartTube Stable (TV edition)..."
     ST_URL="https://github.com/yuliskov/SmartTube/releases/latest/download/smarttube_stable.apk"
-    TMP_APK="/tmp/smarttube_stable.apk"
+    TMP_APK=$(mktemp -t smarttube_XXXXXX.apk)
+    trap 'rm -f "$TMP_APK"' EXIT
     curl -L -s -o "$TMP_APK" "$ST_URL" || wget -q -O "$TMP_APK" "$ST_URL"
     echo "==> Installing SmartTube..."
     adb install -r -d -g "$TMP_APK"
     INSTALLED_YT="com.teamsmart.videomanager.tv"
     rm -f "$TMP_APK"
+    trap - EXIT
 fi
 
-# 4. Configure YouTube disguised intent mapping
-echo "==> Setting default YouTube intent handler to: $INSTALLED_YT"
-adb shell "cmd package set-home-activity \"$INSTALLED_YT\" 2>/dev/null || true"
-
-# 5. Enable SponsorBlock & High-Bitrate VP9/AV1 codec settings if supported
+# 4. Enable SponsorBlock & High-Bitrate VP9/AV1 codec settings if supported
 echo "==> Optimizing playback buffers..."
 adb shell "setprop persist.sys.media.use_awesome 0 2>/dev/null || true"
 adb shell "setprop media.stagefright.enable-player true 2>/dev/null || true"

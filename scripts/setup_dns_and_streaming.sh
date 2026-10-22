@@ -41,7 +41,8 @@ echo "==> [3/4] Checking Nuvio TV (com.nuvio.tv)..."
 if ! adb shell "pm list packages" | grep -q "com.nuvio.tv"; then
     ABI=$(adb shell getprop ro.product.cpu.abi | tr -d '\r')
     echo "    Target ABI: $ABI"
-    TMP_NUVIO="/tmp/nuvio_tv_install.apk"
+    TMP_NUVIO=$(mktemp -t nuvio_tv_XXXXXX.apk)
+    trap 'rm -f "$TMP_NUVIO"' EXIT
     if [[ "$ABI" =~ arm64 ]]; then
         NUVIO_URL="https://github.com/NuvioMedia/NuvioTV/releases/download/1.0.0/app-full-arm64-v8a-release.apk"
     else
@@ -52,6 +53,7 @@ if ! adb shell "pm list packages" | grep -q "com.nuvio.tv"; then
     echo "    Installing NuvioTV..."
     adb install -r -d -g "$TMP_NUVIO"
     rm -f "$TMP_NUVIO"
+    trap - EXIT
 else
     echo "    [+] Nuvio TV is already installed."
 fi
@@ -67,9 +69,9 @@ echo "    [+] Installing Anthology Canlı TV & Sports Catalog..."
 adb shell "am start -a android.intent.action.VIEW -d \"stremio://falsisdev.github.io/anthology/stremio/manifest.json\" 2>/dev/null || true"
 sleep 2
 
-# B. Add Torrentio 4K HDR10 Turkish Prioritized Engine (Strict >= 720p filter)
-echo "    [+] Installing Torrentio 4K HDR10 / Remux Turkish Prioritized Engine..."
-adb shell "am start -a android.intent.action.VIEW -d \"stremio://torrentio.strem.fun/sort=qualitysize%7Cqualityfilter=480p,other,scr,cam%7Cpriority_language=turkish/manifest.json\" 2>/dev/null || true"
+# B. Add Torrentio 4K HDR10 Turkish Prioritized Engine (Quality tier -> Seeders first -> Size, Strict >= 720p filter)
+echo "    [+] Installing Torrentio 4K HDR10 / Remux Turkish Prioritized Engine (Quality then Seeders)..."
+adb shell "am start -a android.intent.action.VIEW -d \"stremio://torrentio.strem.fun/sort=quality%7Cqualityfilter=480p,other,scr,cam%7Cpriority_language=turkish/manifest.json\" 2>/dev/null || true"
 sleep 2
 
 # C. Add OpenSubtitles v3 Subtitle Addon

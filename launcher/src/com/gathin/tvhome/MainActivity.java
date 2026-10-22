@@ -167,6 +167,7 @@ public class MainActivity extends Activity {
     private final List<Integer> posterNeonColors = new ArrayList<>();
     private final List<String> posterImdbIds = new ArrayList<>();
     private final List<String> posterTitles = new ArrayList<>();
+    private long lastVitrinCheckTime = 0;
 
     private static final int VITRIN_POSTER_W = 260;
     private static final int VITRIN_POSTER_H = 390;
@@ -487,14 +488,18 @@ public class MainActivity extends Activity {
         handler.postDelayed(vitrinAutoSlide, 10000L);
         resetIdleScreensaverTimer();
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                TvKeyInterceptorService.cleanAllBackgroundApps(MainActivity.this, "com.gathin.tvhome");
-                TvKeyInterceptorService.ensureAirPlayReceiverRunning(MainActivity.this);
-                fetchLiveTheatricalPosters();
-            }
-        }).start();
+        long now = System.currentTimeMillis();
+        if (now - lastVitrinCheckTime > 15000L) {
+            lastVitrinCheckTime = now;
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    TvKeyInterceptorService.cleanAllBackgroundApps(MainActivity.this, "com.gathin.tvhome");
+                    TvKeyInterceptorService.ensureAirPlayReceiverRunning(MainActivity.this);
+                    fetchLiveTheatricalPosters();
+                }
+            }).start();
+        }
     }
 
     @Override
@@ -942,12 +947,26 @@ public class MainActivity extends Activity {
         posterTitles.clear();
 
         int prevPosterColor = 0;
+        SharedPreferences vitrinPrefs = getSharedPreferences("vitrin_cache", MODE_PRIVATE);
 
         for (int i = 0; i < BUNDLED_MOVIES.length; i++) {
             final int slot = i;
             String assetPath = BUNDLED_MOVIES[i][0];
             String imdbId = BUNDLED_MOVIES[i][1];
             String initialTitle = BUNDLED_MOVIES[i][2];
+
+            String savedSlug = vitrinPrefs.getString("slug_" + i, null);
+            String savedTitle = vitrinPrefs.getString("title_" + i, null);
+            if (savedTitle != null && !savedTitle.isEmpty()) {
+                initialTitle = savedTitle;
+            }
+            if (savedSlug != null && !savedSlug.isEmpty()) {
+                String savedImdb = vitrinPrefs.getString("imdb_" + savedSlug, null);
+                if (savedImdb != null && !savedImdb.isEmpty()) {
+                    imdbId = savedImdb;
+                }
+            }
+
             posterImdbIds.add(imdbId);
             posterTitles.add(initialTitle);
 
@@ -958,7 +977,13 @@ public class MainActivity extends Activity {
             cardFrame.setClipToPadding(false);
             cardFrame.setElevation(8f);
 
-            File cachedFile = new File(getCacheDir(), "vitrin_wt_" + i + ".jpg");
+            File cachedFile = null;
+            if (savedSlug != null && !savedSlug.isEmpty()) {
+                cachedFile = new File(getCacheDir(), "wt_p_" + Math.abs(savedSlug.hashCode()) + ".jpg");
+            }
+            if (cachedFile == null || !cachedFile.exists() || cachedFile.length() < 1024) {
+                cachedFile = new File(getCacheDir(), "vitrin_wt_" + i + ".jpg");
+            }
             if (!cachedFile.exists() || cachedFile.length() < 1024) {
                 cachedFile = new File(getCacheDir(), "vitrin_ts_" + i + ".jpg");
             }
@@ -1196,7 +1221,21 @@ public class MainActivity extends Activity {
 
     private void fetchLiveTheatricalPosters() {
         try {
-            fetchFromWebteizleSource();
+            String vitrinPref = Settings.Global.getString(getContentResolver(), "tvhome_vitrin_source");
+            boolean useWebteizle = false;
+            if ("webteizle".equalsIgnoreCase(vitrinPref)) {
+                useWebteizle = true;
+            } else if ("cinemeta".equalsIgnoreCase(vitrinPref)) {
+                useWebteizle = false;
+            } else {
+                useWebteizle = Locale.getDefault().getLanguage().equalsIgnoreCase("tr");
+            }
+
+            if (useWebteizle) {
+                fetchFromWebteizleSource();
+            } else {
+                fetchFromCinemetaFallback();
+            }
         } catch (Throwable t) {
             try {
                 fetchFromCinemetaFallback();
@@ -1245,6 +1284,7 @@ public class MainActivity extends Activity {
             return;
         }
 
+        SharedPreferences prefs = getSharedPreferences("vitrin_cache", MODE_PRIVATE);
         int count = Math.min(BUNDLED_MOVIES.length, list.size());
         int prevColor = 0;
         for (int i = 0; i < count; i++) {
@@ -1253,27 +1293,34 @@ public class MainActivity extends Activity {
             final String posterUrl = list.get(i)[1];
             final String slug = list.get(i)[2];
 
-            // Resolve IMDb ID from Webteizle /hakkinda/<slug>
-            String resolvedImdbId = null;
-            try {
-                URL hUrl = new URL("https://webteizle.info" + slug);
-                HttpURLConnection hConn = (HttpURLConnection) hUrl.openConnection();
-                hConn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
-                hConn.setConnectTimeout(4000);
-                hConn.setReadTimeout(4000);
-                if (hConn.getResponseCode() == 200) {
-                    BufferedReader hbr = new BufferedReader(new InputStreamReader(hConn.getInputStream(), "windows-1254"));
-                    StringBuilder hsb = new StringBuilder();
-                    String hLine;
-                    while ((hLine = hbr.readLine()) != null) hsb.append(hLine).append("\n");
-                    hbr.close();
+            String currentTitle = (idx < posterTitles.size()) ? posterTitles.get(idx) : "";
+            String savedSlug = prefs.getString("slug_" + idx, "");
+            boolean needsUpdate = !slug.equals(savedSlug) || !title.equals(currentTitle);
 
-                    Matcher imMatcher = Pattern.compile("imdb\\.com/title/(tt\\d+)").matcher(hsb.toString());
-                    if (imMatcher.find()) {
-                        resolvedImdbId = imMatcher.group(1);
+            // Resolve IMDb ID from cache or Webteizle /hakkinda/<slug>
+            String resolvedImdbId = prefs.getString("imdb_" + slug, null);
+            if (resolvedImdbId == null || resolvedImdbId.isEmpty()) {
+                try {
+                    URL hUrl = new URL("https://webteizle.info" + slug);
+                    HttpURLConnection hConn = (HttpURLConnection) hUrl.openConnection();
+                    hConn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+                    hConn.setConnectTimeout(4000);
+                    hConn.setReadTimeout(4000);
+                    if (hConn.getResponseCode() == 200) {
+                        BufferedReader hbr = new BufferedReader(new InputStreamReader(hConn.getInputStream(), "windows-1254"));
+                        StringBuilder hsb = new StringBuilder();
+                        String hLine;
+                        while ((hLine = hbr.readLine()) != null) hsb.append(hLine).append("\n");
+                        hbr.close();
+
+                        Matcher imMatcher = Pattern.compile("imdb\\.com/title/(tt\\d+)").matcher(hsb.toString());
+                        if (imMatcher.find()) {
+                            resolvedImdbId = imMatcher.group(1);
+                            prefs.edit().putString("imdb_" + slug, resolvedImdbId).apply();
+                        }
                     }
+                } catch (Throwable ignored) {
                 }
-            } catch (Throwable ignored) {
             }
 
             if (resolvedImdbId == null || resolvedImdbId.isEmpty()) {
@@ -1285,7 +1332,8 @@ public class MainActivity extends Activity {
             }
 
             final String finalImdbId = resolvedImdbId;
-            File cacheFile = new File(getCacheDir(), "vitrin_wt_" + idx + ".jpg");
+            String fileKey = "wt_p_" + Math.abs(slug.hashCode()) + ".jpg";
+            File cacheFile = new File(getCacheDir(), fileKey);
             try {
                 if (!cacheFile.exists() || cacheFile.length() < 1024) {
                     URL pUrl = new URL(posterUrl);
@@ -1307,33 +1355,37 @@ public class MainActivity extends Activity {
             }
 
             if (cacheFile.exists() && cacheFile.length() > 1024) {
-                Bitmap rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath());
-                if (rawBmp != null) {
-                    final int distinctColor = YouTubeDisguiseHelper.sampleDistinctPosterColor(rawBmp, prevColor, idx);
-                    prevColor = distinctColor;
-                    final Bitmap glassPoster = YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp);
-                    final Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
+                if (needsUpdate || (idx < posterImageViews.size() && posterImageViews.get(idx).getDrawable() == null)) {
+                    Bitmap rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath());
+                    if (rawBmp != null) {
+                        final int distinctColor = YouTubeDisguiseHelper.sampleDistinctPosterColor(rawBmp, prevColor, idx);
+                        prevColor = distinctColor;
+                        final Bitmap glassPoster = YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp);
+                        final Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
 
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (idx < posterImageViews.size()) {
-                                posterImageViews.get(idx).setImageBitmap(glassPoster);
+                        prefs.edit().putString("slug_" + idx, slug).putString("title_" + idx, title).apply();
+
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (idx < posterImageViews.size()) {
+                                    posterImageViews.get(idx).setImageBitmap(glassPoster);
+                                }
+                                if (idx < posterBloomViews.size()) {
+                                    posterBloomViews.get(idx).setImageBitmap(hoverBloom);
+                                }
+                                if (idx < posterNeonColors.size()) {
+                                    posterNeonColors.set(idx, distinctColor);
+                                }
+                                if (idx < posterImdbIds.size()) {
+                                    posterImdbIds.set(idx, finalImdbId);
+                                }
+                                if (idx < posterTitles.size()) {
+                                    posterTitles.set(idx, title);
+                                }
                             }
-                            if (idx < posterBloomViews.size()) {
-                                posterBloomViews.get(idx).setImageBitmap(hoverBloom);
-                            }
-                            if (idx < posterNeonColors.size()) {
-                                posterNeonColors.set(idx, distinctColor);
-                            }
-                            if (idx < posterImdbIds.size()) {
-                                posterImdbIds.set(idx, finalImdbId);
-                            }
-                            if (idx < posterTitles.size()) {
-                                posterTitles.set(idx, title);
-                            }
-                        }
-                    });
+                        });
+                    }
                 }
             }
         }
@@ -1357,6 +1409,7 @@ public class MainActivity extends Activity {
             JSONArray metas = root.optJSONArray("metas");
             if (metas == null) return;
 
+            SharedPreferences prefs = getSharedPreferences("vitrin_cache", MODE_PRIVATE);
             int count = Math.min(BUNDLED_MOVIES.length, metas.length());
             int prevColor = 0;
             for (int i = 0; i < count; i++) {
@@ -1369,7 +1422,12 @@ public class MainActivity extends Activity {
                 }
                 if (posterUrl.isEmpty()) continue;
 
-                File cacheFile = new File(getCacheDir(), "vitrin_poster_" + i + ".jpg");
+                String fileKey = !imdbId.isEmpty() ? ("cm_p_" + imdbId + ".jpg") : ("vitrin_poster_" + i + ".jpg");
+                File cacheFile = new File(getCacheDir(), fileKey);
+                String currentTitle = (i < posterTitles.size()) ? posterTitles.get(i) : "";
+                String savedImdb = prefs.getString("cm_imdb_" + i, "");
+                boolean needsUpdate = !imdbId.equals(savedImdb) || !title.equals(currentTitle);
+
                 if (!cacheFile.exists() || cacheFile.length() < 1024) {
                     URL pUrl = new URL(posterUrl);
                     HttpURLConnection pConn = (HttpURLConnection) pUrl.openConnection();
@@ -1386,33 +1444,38 @@ public class MainActivity extends Activity {
                     }
                 }
                 if (cacheFile.exists() && cacheFile.length() > 1024) {
-                    Bitmap rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath());
-                    if (rawBmp != null) {
-                        final int distinctColor = YouTubeDisguiseHelper.sampleDistinctPosterColor(rawBmp, prevColor, i);
-                        prevColor = distinctColor;
-                        final Bitmap glassPoster = YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp);
-                        final Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
-                        final int idx = i;
-                        handler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (idx < posterImageViews.size()) {
-                                    posterImageViews.get(idx).setImageBitmap(glassPoster);
+                    if (needsUpdate || (i < posterImageViews.size() && posterImageViews.get(i).getDrawable() == null)) {
+                        Bitmap rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath());
+                        if (rawBmp != null) {
+                            final int distinctColor = YouTubeDisguiseHelper.sampleDistinctPosterColor(rawBmp, prevColor, i);
+                            prevColor = distinctColor;
+                            final Bitmap glassPoster = YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp);
+                            final Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
+                            final int idx = i;
+
+                            prefs.edit().putString("cm_imdb_" + i, imdbId).putString("title_" + i, title).apply();
+
+                            handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (idx < posterImageViews.size()) {
+                                        posterImageViews.get(idx).setImageBitmap(glassPoster);
+                                    }
+                                    if (idx < posterBloomViews.size()) {
+                                        posterBloomViews.get(idx).setImageBitmap(hoverBloom);
+                                    }
+                                    if (idx < posterNeonColors.size()) {
+                                        posterNeonColors.set(idx, distinctColor);
+                                    }
+                                    if (idx < posterImdbIds.size() && !imdbId.isEmpty()) {
+                                        posterImdbIds.set(idx, imdbId);
+                                    }
+                                    if (idx < posterTitles.size()) {
+                                        posterTitles.set(idx, title);
+                                    }
                                 }
-                                if (idx < posterBloomViews.size()) {
-                                    posterBloomViews.get(idx).setImageBitmap(hoverBloom);
-                                }
-                                if (idx < posterNeonColors.size()) {
-                                    posterNeonColors.set(idx, distinctColor);
-                                }
-                                if (idx < posterImdbIds.size() && !imdbId.isEmpty()) {
-                                    posterImdbIds.set(idx, imdbId);
-                                }
-                                if (idx < posterTitles.size()) {
-                                    posterTitles.set(idx, title);
-                                }
-                            }
-                        });
+                            });
+                        }
                     }
                 }
             }
@@ -2076,8 +2139,8 @@ public class MainActivity extends Activity {
 
     private void updateClock() {
         Date now = new Date();
-        SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", new Locale("tr", "TR"));
-        SimpleDateFormat dateFmt = new SimpleDateFormat("d MMMM EEEE", new Locale("tr", "TR"));
+        SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        SimpleDateFormat dateFmt = new SimpleDateFormat("d MMMM EEEE", Locale.getDefault());
         String t = timeFmt.format(now);
         String d = dateFmt.format(now);
         if (clockText != null) clockText.setText(t);

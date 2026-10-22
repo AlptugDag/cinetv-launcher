@@ -1,33 +1,44 @@
 # 📺 TV Master Launcher
 
-[![Release](https://img.shields.io/badge/Release-v2.0--Ultra-blue.svg)](release/tv-master-launcher-v2.0.apk)
+[![Release](https://img.shields.io/badge/Release-v1.0.0-blue.svg)](release/tv-master-launcher-v1.0.0.apk)
 [![Platform](https://img.shields.io/badge/Platform-Android%20TV%209%2B%20%7C%20Google%20TV-green.svg)](#supported-devices)
 [![Architecture](https://img.shields.io/badge/Arch-armeabi--v7a%20%7C%20arm64--v8a-orange.svg)](#architecture)
 [![Based on](https://img.shields.io/badge/Origin-CleanYourTV-blueviolet.svg)](https://github.com/Gathin23/cleanyourtv)
 [![License](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](LICENSE)
 
 > **Next-generation, bloatware-free, hardware-accelerated Android TV operating suite.**  
-> Features a stunning **Liquid Glass 3D Parallax CoverFlow** vitrin with dynamic focal neon poster glow, daily catalog auto-rotation, **Nuvio TV + Anthology** 4K HDR10/Dolby Vision cinema suite, **AdGuard Private DNS over TLS (DoT)**, **Native AirPlay receiver**, **Remote Key Interception** (Prime Video Cinema HUD overlay, TV+, Netflix $\rightarrow$ Web Video Caster, Bein Connect $\rightarrow$ Ad-free YouTube), universal multi-brand debloating, and OLED burn-in safe drifting screensaver.
+> Features a stunning **Liquid Glass 3D Parallax CoverFlow** vitrin with dynamic focal neon poster glow, launch-time live catalog auto-refresh, **Nuvio TV + Anthology** 4K HDR10/Dolby Vision cinema suite (quality & seeders first), **AdGuard Private DNS over TLS (DoT)**, **Native AirPlay receiver**, **Remote Key Interception** (Prime Video Cinema HUD overlay, TV+, Netflix $\rightarrow$ Nuvio, Bein Connect $\rightarrow$ Ad-free YouTube), universal multi-brand debloating, and OLED burn-in safe drifting screensaver.
 
 ---
 
 > [!NOTE]
-> **Attribution & Origin**: This project is built upon the wonderful foundation of [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23. We have re-engineered and expanded it into **TV Master Launcher**, introducing hardware Z-order 3D CoverFlow rendering, dynamic 12-bin focal neon glow extraction, Nuvio & Anthology direct 4K playback integration, AdGuard DoT security, remote key re-mapping with in-video cinema HUD, multi-vendor memory optimization, and an autonomous AI prompt suite.
+> **Attribution & Origin**: This project is built upon the wonderful foundation of [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23. We have re-engineered and expanded it into **TV Master Launcher v1.0.0**, introducing hardware Z-order 3D CoverFlow rendering, dynamic 12-bin focal neon glow extraction, Nuvio & Anthology direct 4K playback integration, AdGuard DoT security, remote key re-mapping with in-video cinema HUD, multi-vendor memory optimization, an interactive bilingual setup wizard, and zero security vulnerabilities.
 
 ---
 
 ## 🌟 Visual Showcase
 
-### 3D Parallax CoverFlow Vitrin with Dynamic Focal Neon Glow
-![Hero 3D CoverFlow](docs/screenshots/hero_coverflow_3d.png)
+### Dynamic Liquid Glass Ambient Glow in Motion
+Focus movement smoothly shifts depth scaling, 3D elevation, and poster-aware focal neon chromatic blooms in real time:
 
-### Focal Neon Accent Extraction (Poster-Aware Chromatic Glow)
-| Crimson Neon ("10") | Electric Cyan Neon ("The Best You Can") | Celestial Ice Blue ("Flight of the Living Dead") |
+![Liquid Glass Glow Animation](docs/screenshots/liquid_glass_glow.gif)
+
+---
+
+### Diversified System Views
+
+| 🎴 3D Parallax CoverFlow Vitrin | ⚙️ In-Video Cinema HUD Overlay |
+| :---: | :---: |
+| ![Hero CoverFlow](docs/screenshots/hero_coverflow_3d.png) | ![Cinema HUD Overlay](docs/screenshots/cinema_hud_overlay.png) |
+| **🚀 Liquid Glass Dock (Nuvio Wordmark)** | **🌙 Modern OLED Drifting Clock Screensaver** |
+| ![Dock Showcase](docs/screenshots/dock_nuvio_showcase.png) | ![Modern Screensaver](docs/screenshots/modern_screensaver.png) |
+
+---
+
+### Focal Neon Accent Extraction (Poster-Aware Chromatic Bloom)
+| Crimson Neon | Warm Amber Neon | Electric Cyan Neon |
 | :---: | :---: | :---: |
-| ![Crimson Neon](docs/screenshots/focal_neon_crimson.png) | ![Electric Cyan Neon](docs/screenshots/focal_neon_cyan.png) | ![Celestial Ice Blue](docs/screenshots/focal_neon_iceblue.png) |
-
-### Clean High-Performance Home Interface
-![Vitrin Overview](docs/screenshots/vitrin_rest_overview.png)
+| ![Crimson Neon](docs/screenshots/focal_neon_crimson.png) | ![Warm Amber Neon](docs/screenshots/focal_neon_amber.png) | ![Electric Cyan Neon](docs/screenshots/focal_neon_cyan.png) |
 
 ---
 
@@ -38,28 +49,29 @@
 - **Dynamic Depth Scaling**: Focused poster scales to **1.30x** with a `-22f` vertical lift; neighboring posters smoothly recede to **0.94x**, **0.80x**, and **0.68x** with physical drop shadows and distance alpha dimming.
 - **12-Bin Focal Neon Histogram**: Replaces generic dominant color math with a 12-bin chromatic histogram. Dampens skin tones by 65% to isolate pure graphic neon accents (Crimson, Cyan, Emerald, Gold, Cobalt, Violet).
 - **Hue Separation Rule**: Enforces a minimum `48°` hue delta between adjacent posters, ensuring adjacent cards never share the same ambient glow.
-- **Anthology Webteizle Source & Dynamic IMDb Resolution**: Fetches an expanded 20-card movie showcase directly from Anthology's Webteizle catalog (`webteizle.info`) with fallback to Cinemeta, automatically resolving IMDb IDs (`tt...`) so posters are authentic and always launch the correct film.
-- **Direct 4K Stream Playback Integration**: Clicking any poster directly initiates playback in **Nuvio TV** (`launchMode="stream"` with exact `contentId` and `name`), prioritizing 4K HDR10 Turkish streams immediately.
+- **Dynamic Launch-Time Feed Auto-Refresh**: Every time the TV wakes or the launcher returns to the foreground (`onResume`), the vitrin feed is checked in the background. If new movies are released on Webteizle (or Cinemeta for international setups), posters, titles, and IMDb IDs update dynamically with zero UI stutter.
+- **Direct 4K Stream Playback Integration**: Clicking any poster directly initiates playback in **Nuvio TV** (`launchMode="stream"` with exact `contentId` and `name`), prioritizing 4K HDR10 streams immediately.
 
-### 2. 🍿 Nuvio TV + Anthology + 4K HDR10 Cinema Suite
-- Integrates **Nuvio TV** (`com.nuvio.tv`) with the verified **Anthology** repository (41 scrapers + 138 Live TV channels).
+### 2. 🍿 Nuvio TV + Cinema Suite & Strict Seeder Sorting
+- Integrates **Nuvio TV** (`com.nuvio.tv`) with the verified **Anthology** repository (41 scrapers + 138 Live TV channels for TR) or Cinemeta/CyberFlix (for international users).
 - Official Nuvio wordmark tile (`ic_nuvio_wordmark`) rendered on Apple visionOS liquid glass without redundant duplicate text.
-- Strict stream priority and resolution filter:
-  `4K HDR10 Turkish Dubbed` > `4K HDR10 Turkish Subtitles` > `1080p HDR10 Turkish Dubbed` > `1080p HDR10 Turkish Subtitles` > `1080p Turkish Dubbed` > `1080p Turkish Subtitles` > `720p Turkish Dubbed` > `720p Turkish Subtitles`.
-  Formats below 720p (480p, 360p, CAM, SCR, etc.) are strictly excluded. Domestic Turkish films are included as long as resolution is $\ge 720\text{p}$.
-- Configured with high-speed **Torrentio 4K HDR10 / Dolby Vision** streaming + **OpenSubtitles v3**.
+- **Strict Torrent Sorting & Filtering Hierarchy**:
+  1. Quality Tier: `4K HDR10 / Dolby Vision` > `1080p HDR10` > `1080p` > `720p`.
+  2. Language Priority: Turkish audio & subtitles prioritized (TR profile) or multi-language (International profile).
+  3. **Torrent Seeder Hierarchy**: Within each quality tier, torrent videos are strictly sorted **first by seeder count, then by file size** (`sort=quality`).
+  4. Exclusions: Formats below 720p (480p, 360p, CAM, SCR, etc.) are strictly excluded.
 - Completely replaces and retires legacy players (CloudStream, Stremio) cleanly.
 
 ### 3. 🎮 Global Remote Key Interception & Cinema HUD
 Integrated background accessibility service (`TvKeyInterceptorService`) dynamically binds dedicated remote buttons:
 - **TV+ Button** $\rightarrow$ Launches Turkcell TV+ (`com.turkcell.ott`).
 - **Amazon Prime Video Button** $\rightarrow$ Opens a non-intrusive **Cinema Picture & Audio Settings HUD overlay** on the side of the screen without interrupting or pausing ongoing video playback!
-- **Netflix Button** $\rightarrow$ Launches **Nuvio** (`com.nuvio.tv`).
+- **Netflix Button** $\rightarrow$ Launches **Nuvio TV** (`com.nuvio.tv`).
 - **Bein Connect / YouTube Button** $\rightarrow$ Launches Ad-Free YouTube (TizenTube / Cobalt / SmartTube).
 
 ### 4. 🔒 AdGuard Private DNS over TLS (DoT)
 - Configures `dns.adguard-dns.com` system-wide over TLS.
-- Blocks ads, telemetry, and tracking at the network level, while bypassing Turkish ISP DNS tampering/poisoning (e.g. `195.175.254.2`).
+- Blocks ads, telemetry, and tracking at the network level, while bypassing ISP DNS tampering/poisoning.
 
 ### 5. 📲 Native AirPlay & Wireless Casting
 - Built-in support for **AirPlay** audio and video mirroring directly from iOS, iPadOS, and macOS devices.
@@ -87,66 +99,38 @@ Safely removes factory menus, telemetry, and pre-installed storefront bloatware 
 
 ---
 
-## 🤖 Universal AI Auto-Installation (Recommended)
+## 🚀 One-Command Universal Setup Wizard
 
-You can install and optimize your TV completely automatically using any modern AI (ChatGPT, Claude, Gemini, DeepSeek):
+TV Master Launcher v1.0.0 includes an interactive, bilingual setup wizard that automatically fingerprints your hardware, asks your regional preferences, and applies the complete transformation:
+
+```bash
+git clone https://github.com/AlptugDag/tv-master-launcher.git
+cd tv-master-launcher
+./install.sh
+```
+
+### Wizard Features:
+- **Language Selection**: English (International) or Türkçe.
+- **Regional Branching**:
+  - Turkish: Configures Webteizle vitrin, Anthology live channels & scrapers, Turkish audio/sub priority.
+  - International: Configures Cinemeta global box office feed, international multi-language Torrentio, and global subtitles.
+- **Brand Debloating**: Automatically detects device brand (Arçelik, Beko, TCL, Sony, Philips, Xiaomi, etc.) and prompts for targeted safe debloating.
+- **DNS Choice**: AdGuard DoT, Cloudflare DoT, or keep existing.
+- **Key Mappings**: One-click binding of dedicated remote buttons.
+
+---
+
+## 🤖 Universal AI Auto-Installation
+
+You can also transform your TV using any modern conversational AI (ChatGPT, Claude, Gemini, DeepSeek):
 
 1. Connect your computer to your TV over Wi-Fi ADB:
    ```bash
    adb connect <YOUR_TV_IP>:5555
    ```
 2. Open [`AI_AUTO_INSTALL_PROMPT.md`](AI_AUTO_INSTALL_PROMPT.md).
-3. Copy the master prompt and paste it into your AI assistant.
-4. The AI will interview you, inspect your TV hardware, select the correct debloat profile, boost RAM, install the launcher, and configure cinema streaming sources automatically!
-
----
-
-## 🛠️ Manual Installation Guide
-
-### Prerequisites
-- Android TV 9.0, 10.0, 11.0, or 12.0+ (ARMv7 32-bit or ARM64 64-bit).
-- ADB installed on your computer (`brew install android-platform-tools` on macOS).
-- Developer Options & USB / Wireless Debugging enabled on your TV.
-
-### Step 1: Connect to TV
-```bash
-adb connect 192.168.1.XXX:5555
-```
-
-### Step 2: Run Debloater
-```bash
-chmod +x scripts/*.sh
-./scripts/debloat_universal.sh
-```
-
-### Step 3: Apply Smart RAM & Storage Optimization
-```bash
-./scripts/optimize_ram.sh
-```
-
-### Step 4: Configure AdGuard DNS & Nuvio 4K Cinema Suite
-```bash
-./scripts/setup_dns_and_streaming.sh
-```
-
-### Step 5: Install TV Master Launcher
-```bash
-cd launcher && ./build.sh
-adb install -r -d -g ../release/tv-master-launcher-v2.0.apk
-adb shell "cmd package set-home-activity com.gathin.tvhome/.MainActivity"
-adb shell settings put secure enabled_accessibility_services com.gathin.tvhome/.TvKeyInterceptorService
-adb shell settings put secure accessibility_enabled 1
-```
-
-### Step 6: Setup Ad-Free YouTube Disguise
-```bash
-./scripts/setup_youtube.sh
-```
-
-### Step 7: Setup AirPlay Support
-```bash
-./scripts/setup_airplay.sh
-```
+3. Copy the prompt and paste it into your AI assistant.
+4. The AI will interview you, inspect hardware, select the correct debloat profile, boost RAM, install the launcher, and configure cinema streaming sources automatically.
 
 ---
 
@@ -154,31 +138,36 @@ adb shell settings put secure accessibility_enabled 1
 
 ```
 tv-master-launcher/
-├── AI_AUTO_INSTALL_PROMPT.md      # Master interactive prompt for ChatGPT / Claude / Gemini
-├── LICENSE                        # Apache 2.0 License
-├── README.md                      # Project documentation
+├── AI_AUTO_INSTALL_PROMPT.md        # Master interactive prompt for AI models
+├── LICENSE                          # Apache 2.0 License
+├── README.md                        # Documentation & visual showcase
+├── install.sh                       # One-command interactive setup wizard (symlink)
 ├── release/
-│   └── tv-master-launcher-v2.0.apk # Pre-built, signed, production APK
+│   └── tv-master-launcher-v1.0.0.apk # Pre-built, signed, production APK (v1.0.0)
 ├── docs/
-│   └── screenshots/               # 1080p launcher & vitrin captures
-│       ├── hero_coverflow_3d.png
-│       ├── focal_neon_crimson.png
-│       ├── focal_neon_cyan.png
-│       ├── focal_neon_iceblue.png
-│       └── vitrin_rest_overview.png
-├── launcher/                      # Complete Android Studio / Gradle source code
-│   ├── AndroidManifest.xml
-│   ├── build.sh                   # Standalone APK compiler script
-│   ├── src/                       # Java sources (CoverFlow, KeyInterceptor, Shaders)
-│   ├── res/                       # Vector drawables, layouts, themes
-│   └── assets/                    # High-res poster artwork & fallback database
-└── scripts/                       # Shell automation scripts
-    ├── debloat_universal.sh       # Auto-detects brand & removes bloat
-    ├── debloat_arcelik_beko.sh    # Arçelik / Beko specific debloat script
-    ├── optimize_ram.sh            # zRAM, swappiness, LMK & memory tuning
-    ├── setup_dns_and_streaming.sh # AdGuard DoT & Nuvio 4K HDR10 setup
-    ├── setup_youtube.sh           # Ad-free YouTube disguise installer
-    └── setup_airplay.sh           # AirPlay receiver configuration
+│   └── screenshots/                 # Diversified captures & animated glow GIF
+│       ├── liquid_glass_glow.gif    # Animated focal neon bloom transitions
+│       ├── hero_coverflow_3d.png    # 3D Parallax vitrin with 1.30x focal card
+│       ├── cinema_hud_overlay.png   # In-video picture/sound settings HUD
+│       ├── dock_nuvio_showcase.png  # Apple visionOS dock with Nuvio wordmark
+│       ├── modern_screensaver.png   # Minimalist OLED drifting screensaver
+│       ├── focal_neon_amber.png     # Amber neon bloom extraction
+│       ├── focal_neon_crimson.png   # Crimson neon bloom extraction
+│       └── focal_neon_cyan.png      # Cyan neon bloom extraction
+├── launcher/                        # Complete Android Studio / Gradle source code
+│   ├── AndroidManifest.xml          # v1.0.0 (versionCode 100)
+│   ├── build.sh                     # Fast APK compiler script
+│   ├── src/                         # Java sources (CoverFlow, KeyInterceptor, Shaders)
+│   ├── res/                         # Vector drawables, layouts, themes
+│   └── assets/                      # High-res poster artwork & fallback database
+└── scripts/                         # Shell automation scripts
+    ├── install.sh                   # Master interactive setup wizard
+    ├── debloat_universal.sh         # Auto-detects brand & removes bloat
+    ├── debloat_arcelik_beko.sh      # Arçelik / Beko specific debloat script
+    ├── optimize_ram.sh              # zRAM, swappiness, LMK & memory tuning
+    ├── setup_dns_and_streaming.sh   # AdGuard DoT & Nuvio 4K HDR10 setup
+    ├── setup_youtube.sh             # Ad-free YouTube disguise installer
+    └── setup_airplay.sh             # AirPlay receiver configuration
 ```
 
 ---
@@ -197,11 +186,13 @@ tv-master-launcher/
 
 ---
 
-## 🔒 Privacy & Cleanliness Guarantee
-This repository contains **NO personal user credentials, tokens, IP addresses, proprietary signatures, or private watermarks**. All drawables use clean open-source SVGs, and all scripts operate strictly on public system APIs.
+## 🔒 Security & Privacy Guarantee
+- **Zero Security Vulnerabilities**: All shell scripts employ strict variable quotation, input sanitization (regex validation for IPs), safe temporary file handling with automatic exit traps, and zero arbitrary shell execution within Android components.
+- **No Private Data**: Contains **NO personal credentials, accounts, tokens, proprietary logos, or private watermarks**.
+- All components operate strictly through standard, public Android SDK and Leanback APIs.
 
 ---
 
 ## 📜 License & Acknowledgments
 - Distributed under the **Apache 2.0 License**. See [LICENSE](LICENSE) for details.
-- Special thanks to [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23 for the original project concept.
+- Special thanks to [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23 for the original project foundation.

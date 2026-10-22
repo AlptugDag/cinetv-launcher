@@ -13,6 +13,7 @@ public class YouTubeBridgeActivity extends Activity {
     private static final String[] TIZENTUBE_PACKAGES = new String[] {
         "io.gh.reisxd.tizentube.cobalt",
         "com.reisxd.tizentube",
+        "com.teamsmart.videomanager.tv",
         "com.liskovsoft.smarttubetv.beta",
         "com.liskovsoft.smarttubetv"
     };

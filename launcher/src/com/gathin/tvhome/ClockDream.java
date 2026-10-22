@@ -70,8 +70,8 @@ public class ClockDream extends DreamService {
         private final Paint datePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-        private final SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", new Locale("tr", "TR"));
-        private final SimpleDateFormat dateFmt = new SimpleDateFormat("d MMMM EEEE", new Locale("tr", "TR"));
+        private final SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        private final SimpleDateFormat dateFmt = new SimpleDateFormat("d MMMM EEEE", Locale.getDefault());
 
         private final Bitmap signatureBitmap;
         private final Drawable fallbackLogo;

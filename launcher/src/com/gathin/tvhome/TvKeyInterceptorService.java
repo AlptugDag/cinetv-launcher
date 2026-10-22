@@ -315,7 +315,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 launchPackageWithFallback(new String[]{
                         "io.gh.reisxd.tizentube.cobalt",
                         "com.reisxd.tizentube",
-                        "com.liskovsoft.smarttubetv.beta"
+                        "com.teamsmart.videomanager.tv",
+                        "com.liskovsoft.smarttubetv.beta",
+                        "com.liskovsoft.smarttubetv"
                 }, "Reklamsız YouTube");
             }
             return true;
