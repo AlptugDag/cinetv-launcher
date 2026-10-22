@@ -6,8 +6,26 @@
 [![Based on](https://img.shields.io/badge/Origin-CleanYourTV-blueviolet.svg)](https://github.com/Gathin23/cleanyourtv)
 [![License](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](LICENSE)
 
+<p align="center">
+  <a href="#-topics--tags"><code>#android-tv</code></a> •
+  <a href="#-topics--tags"><code>#google-tv</code></a> •
+  <a href="#-topics--tags"><code>#tv-launcher</code></a> •
+  <a href="#-topics--tags"><code>#nuvio</code></a> •
+  <a href="#-topics--tags"><code>#android-tv-launcher</code></a> •
+  <a href="#-topics--tags"><code>#leanback</code></a> •
+  <a href="#-topics--tags"><code>#4k-hdr</code></a> •
+  <a href="#-topics--tags"><code>#debloat</code></a>
+</p>
+
 > **Next-generation, bloatware-free, hardware-accelerated Android TV operating suite.**  
 > Features a stunning **Liquid Glass 3D Parallax CoverFlow** vitrin with dynamic focal neon poster glow, launch-time live catalog auto-refresh, **Nuvio TV + Anthology** 4K HDR10/Dolby Vision cinema suite (quality & seeders first), **Real-Time Live Weather**, **AdGuard Private DNS over TLS (DoT)**, **Native AirPlay receiver**, universal multi-brand debloating, and OLED burn-in safe drifting screensaver.
+
+---
+
+### 🏷️ Topics & Tags
+`android-tv` `google-tv` `tv-launcher` `nuvio` `nuvio-tv` `androidtv-launcher` `custom-launcher` `leanback` `4k-hdr10` `dolby-vision` `debloat-android-tv` `smart-tv` `cinema-suite` `coverflow` `arcelik-beko-tv`
+
+---
 
 ---
 
