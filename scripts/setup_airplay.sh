@@ -15,11 +15,12 @@ echo "==> Connected to: $DEVICE"
 
 # 1. Check for existing receiver apps
 # Supported receivers:
+# - io.github.jqssun.airplay (Open-Source Native AirPlay Receiver Daemon)
 # - com.instantbits.cast.receiver (Web Video Caster Receiver — ultra-fast & lightweight)
-# - com.ionitech.airscreen (AirScreen — full AirPlay + Cast + Miracast + DLNA)
+# - com.ionitech.airscreen (AirScreen — AirPlay + Cast + Miracast + DLNA)
 # - com.waxrain.airplaydmr2 (AirReceiver)
 RECEIVER_PKG=""
-for pkg in "com.instantbits.cast.receiver" "com.ionitech.airscreen" "com.waxrain.airplaydmr2"; do
+for pkg in "io.github.jqssun.airplay" "com.instantbits.cast.receiver" "com.ionitech.airscreen" "com.waxrain.airplaydmr2"; do
     if adb shell "pm list packages" | grep -q "$pkg"; then
         RECEIVER_PKG="$pkg"
         echo "==> Found existing receiver app: $pkg"
@@ -28,24 +29,24 @@ for pkg in "com.instantbits.cast.receiver" "com.ionitech.airscreen" "com.waxrain
 done
 
 if [ -z "$RECEIVER_PKG" ]; then
-    echo "==> No receiver found. Installing Web Video Caster Receiver (lightweight, zero bloat)..."
-    WVC_URL="https://wvc.page.link/tv-apk"
-    # Alternatively prompt user or use apk mirror
-    echo "    Recommended: Install 'Web Video Caster Receiver' or 'AirScreen' from Play Store or Aptoide TV."
+    echo "==> Recommended: Install Web Video Caster Receiver or AirPlay daemon from release/ or Play Store."
 fi
 
 # 2. Grant battery optimization exemptions (keeps AirPlay daemon alive in standby)
-if [ -n "$RECEIVER_PKG" ]; then
-    echo "==> Disabling battery optimization for $RECEIVER_PKG..."
-    adb shell "dumpsys deviceidle whitelist +$RECEIVER_PKG 2>/dev/null || true"
+for p in "io.github.jqssun.airplay" "com.instantbits.cast.receiver" "com.ionitech.airscreen"; do
+    if adb shell "pm list packages" | grep -q "$p"; then
+        echo "==> Disabling battery optimization for $p..."
+        adb shell "dumpsys deviceidle whitelist +$p 2>/dev/null || true"
+    fi
+done
+
+# 3. Ensure AirPlay service is running
+if adb shell "pm list packages" | grep -q "io.github.jqssun.airplay"; then
+    echo "==> Starting native AirPlay service..."
+    adb shell "am start-foreground-service -n io.github.jqssun.airplay/.AirPlayService 2>/dev/null || am start -n io.github.jqssun.airplay/.MainActivity 2>/dev/null || true"
 fi
 
-# 3. Open mDNS / Bonjour network ports for AirPlay discovery
-# AirPlay uses ports 5000 (RTSP), 7000 (AirPlay mirroring), 7100, 5353 (mDNS)
-echo "==> Verifying multicast DNS state..."
-adb shell "getprop net.dns1 2>/dev/null || true"
-
-# 4. Wake up display on incoming cast
+# 4. Wake up display on incoming cast & keep network alive
 adb shell "settings put global stay_on_while_plugged_in 3 2>/dev/null || true"
 
 echo "==> AirPlay setup complete! Ensure TV and iPhone/Mac are connected to the same Wi-Fi network."

@@ -5,6 +5,7 @@ import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.UiModeManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -798,16 +799,32 @@ public class MainActivity extends Activity {
         ImageView dreamLogo = new ImageView(this);
         dreamLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
         try {
-            Drawable d = getDrawable(R.drawable.ic_tv_clean);
-            if (d != null) {
-                d = d.mutate();
-                d.setTint(Color.WHITE);
-                dreamLogo.setImageDrawable(d);
+            InputStream is = getAssets().open("signature_logo.png");
+            Bitmap sigBmp = BitmapFactory.decodeStream(is);
+            is.close();
+            if (sigBmp != null) {
+                dreamLogo.setImageBitmap(sigBmp);
+            } else {
+                Drawable d = getDrawable(R.drawable.ic_tv_clean);
+                if (d != null) {
+                    d = d.mutate();
+                    d.setTint(Color.WHITE);
+                    dreamLogo.setImageDrawable(d);
+                }
             }
         } catch (Throwable ignored) {
+            try {
+                Drawable d = getDrawable(R.drawable.ic_tv_clean);
+                if (d != null) {
+                    d = d.mutate();
+                    d.setTint(Color.WHITE);
+                    dreamLogo.setImageDrawable(d);
+                }
+            } catch (Throwable ignored2) {
+            }
         }
-        LinearLayout.LayoutParams dreamLogoLp = new LinearLayout.LayoutParams(176, 176);
-        dreamLogoLp.setMargins(0, 0, 0, 20);
+        LinearLayout.LayoutParams dreamLogoLp = new LinearLayout.LayoutParams(260, 160);
+        dreamLogoLp.setMargins(0, 0, 0, 24);
         screensaverCluster.addView(dreamLogo, dreamLogoLp);
 
         screensaverClockText = new TextView(this);
@@ -1164,15 +1181,14 @@ public class MainActivity extends Activity {
 
     private void fetchLiveTheatricalPosters() {
         try {
-            List<String[]> turkishMovies = fetchFromTurkSinemaSource();
-            if (turkishMovies != null && !turkishMovies.isEmpty()) {
-                applyLiveMoviesToVitrin(turkishMovies);
-                return;
-            }
+            fetchFromCinemetaFallback();
         } catch (Throwable ignored) {
         }
         try {
-            fetchFromCinemetaFallback();
+            List<String[]> turkishMovies = fetchFromTurkSinemaSource();
+            if (turkishMovies != null && !turkishMovies.isEmpty()) {
+                applyLiveMoviesToVitrin(turkishMovies);
+            }
         } catch (Throwable ignored) {
         }
     }
@@ -1351,36 +1367,38 @@ public class MainActivity extends Activity {
     }
 
     private void openMovieItem(String title, String imdbId) {
-        try {
-            Intent cs = new Intent(Intent.ACTION_VIEW, Uri.parse("cloudstreamsearch://" + Uri.encode(title)));
-            cs.setPackage("com.lagradost.cloudstream3");
-            cs.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(cs);
-            return;
-        } catch (Throwable ignored) {
-        }
         if (imdbId != null && !imdbId.isEmpty()) {
-            openMovieInStremio(imdbId);
+            try {
+                Intent nuvio = new Intent(Intent.ACTION_VIEW);
+                nuvio.setComponent(new ComponentName("com.nuvio.tv", "com.nuvio.tv.MainActivity"));
+                nuvio.setData(Uri.parse("nuvio://stream/" + imdbId + "/movie/" + Uri.encode(title)));
+                nuvio.putExtra("launchMode", "stream");
+                nuvio.putExtra("contentId", imdbId);
+                nuvio.putExtra("contentType", "movie");
+                nuvio.putExtra("videoId", imdbId);
+                nuvio.putExtra("name", title);
+                nuvio.putExtra("playOnLoad", true);
+                nuvio.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(nuvio);
+                return;
+            } catch (Throwable ignored) {
+            }
+        }
+        try {
+            PackageManager pm = getPackageManager();
+            Intent launch = pm.getLeanbackLaunchIntentForPackage("com.nuvio.tv");
+            if (launch == null) launch = pm.getLaunchIntentForPackage("com.nuvio.tv");
+            if (launch != null) {
+                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(launch);
+                return;
+            }
+        } catch (Throwable ignored) {
         }
     }
 
     private void openMovieInStremio(String imdbId) {
-        try {
-            Intent deep = new Intent(Intent.ACTION_VIEW,
-                    Uri.parse("stremio:///detail/movie/" + imdbId + "/" + imdbId));
-            deep.setPackage("com.stremio.one");
-            deep.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(deep);
-            return;
-        } catch (Throwable ignored) {
-        }
-        PackageManager pm = getPackageManager();
-        Intent launch = pm.getLeanbackLaunchIntentForPackage("com.stremio.one");
-        if (launch == null) launch = pm.getLaunchIntentForPackage("com.stremio.one");
-        if (launch != null) {
-            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(launch);
-        }
+        openMovieItem("Film", imdbId);
     }
 
     private void loadAppsAndPopulate() {
@@ -1441,8 +1459,7 @@ public class MainActivity extends Activity {
         if (!hasAnyTizenTube(seenPackages)) {
             ensureEssentialAppTile(discovered, seenPackages, "io.gh.reisxd.tizentube.cobalt", "YouTube");
         }
-        ensureEssentialAppTile(discovered, seenPackages, "com.lagradost.cloudstream3", "Filmler");
-        ensureEssentialAppTile(discovered, seenPackages, "com.stremio.one", "Stremio");
+        ensureEssentialAppTile(discovered, seenPackages, "com.nuvio.tv", "Nuvio");
 
         // Ensure Chrome is discoverable in apps grid
         String chromePkg = seenPackages.contains("org.cromite.cromite") ? "org.cromite.cromite" : "com.android.chrome";
@@ -1457,8 +1474,8 @@ public class MainActivity extends Activity {
             "com.turkcell.ott",
             seenPackages.contains("com.instantbits.cast.receiver") ? "com.instantbits.cast.receiver" : "com.instantbits.cast.webvideo",
             findInstalledTizenTubePackage(seenPackages),
-            "com.lagradost.cloudstream3",
-            "com.stremio.one"
+            "com.nuvio.tv",
+            "io.github.jqssun.airplay"
         };
 
         Set<String> dockSet = new HashSet<>();

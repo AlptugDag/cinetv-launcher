@@ -51,6 +51,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
     public static final String KEY_CUSTOM_TVPLUS = "custom_keycode_tvplus";
     public static final String KEY_CUSTOM_NETFLIX = "custom_keycode_netflix";
     public static final String KEY_CUSTOM_AMAZON = "custom_keycode_amazon";
+    public static final String KEY_CUSTOM_BEIN = "custom_keycode_bein";
+    public static final String KEY_CUSTOM_YOUTUBE = "custom_keycode_youtube";
 
     private static final Set<String> PROTECTED_PACKAGES = new HashSet<>(Arrays.asList(
             "com.gathin.tvhome",
@@ -66,9 +68,12 @@ public class TvKeyInterceptorService extends AccessibilityService {
             "com.android.bluetooth",
             "com.waxrain.airplaydmr",
             "com.waxrain.airplaydmr2",
+            "io.github.jqssun.airplay",
             "com.github.jqssun.airplay",
             "com.ionitech.airscreen",
-            "com.apowersoft.mirror.tv"
+            "com.apowersoft.mirror.tv",
+            "com.nuvio.tv",
+            "com.instantbits.cast.receiver"
     ));
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -270,10 +275,16 @@ public class TvKeyInterceptorService extends AccessibilityService {
                     Toast.makeText(this, "TV+ tuşu kaydedildi (Kod: " + token + ")", Toast.LENGTH_SHORT).show();
                 } else if ("netflix".equals(learnTarget)) {
                     prefs.edit().putInt(KEY_CUSTOM_NETFLIX, token).remove(KEY_LEARN_MODE).apply();
-                    Toast.makeText(this, "Netflix -> Stremio tuşu kaydedildi (Kod: " + token + ")", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Netflix -> Web Video Caster tuşu kaydedildi (Kod: " + token + ")", Toast.LENGTH_SHORT).show();
                 } else if ("amazon".equals(learnTarget)) {
                     prefs.edit().putInt(KEY_CUSTOM_AMAZON, token).remove(KEY_LEARN_MODE).apply();
                     Toast.makeText(this, "Amazon Prime -> Sinema HUD tuşu kaydedildi (Kod: " + token + ")", Toast.LENGTH_SHORT).show();
+                } else if ("bein".equals(learnTarget)) {
+                    prefs.edit().putInt(KEY_CUSTOM_BEIN, token).remove(KEY_LEARN_MODE).apply();
+                    Toast.makeText(this, "Bein Connect -> Reklamsız YouTube tuşu kaydedildi (Kod: " + token + ")", Toast.LENGTH_SHORT).show();
+                } else if ("youtube".equals(learnTarget)) {
+                    prefs.edit().putInt(KEY_CUSTOM_YOUTUBE, token).remove(KEY_LEARN_MODE).apply();
+                    Toast.makeText(this, "YouTube -> Reklamsız YouTube tuşu kaydedildi (Kod: " + token + ")", Toast.LENGTH_SHORT).show();
                 }
                 return true;
             }
@@ -287,22 +298,25 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return true;
         }
 
-        // 2. Netflix Button -> Opens Stremio
+        // 2. Netflix Button -> Opens Web Video Caster
         if (isNetflixKey(keyCode, scanCode, prefs)) {
             if (action == KeyEvent.ACTION_DOWN) {
-                launchPackageWithFallback(new String[]{"com.stremio.one", "com.stremio"}, "Stremio");
+                launchPackageWithFallback(new String[]{
+                        "com.instantbits.cast.receiver",
+                        "com.instantbits.cast.webvideo"
+                }, "Web Video Caster");
             }
             return true;
         }
 
-        // 3. YouTube Button -> Opens TizenTube (disguised as YouTube)
-        if (isYouTubeKey(keyCode, scanCode)) {
+        // 3. Bein Connect OR YouTube Button -> Opens Reklamsız YouTube (TizenTube / Cobalt)
+        if (isBeinConnectKey(keyCode, scanCode, prefs) || isYouTubeKey(keyCode, scanCode, prefs)) {
             if (action == KeyEvent.ACTION_DOWN) {
                 launchPackageWithFallback(new String[]{
                         "io.gh.reisxd.tizentube.cobalt",
                         "com.reisxd.tizentube",
                         "com.liskovsoft.smarttubetv.beta"
-                }, "YouTube");
+                }, "Reklamsız YouTube");
             }
             return true;
         }
@@ -357,11 +371,22 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
         return keyCode == KeyEvent.KEYCODE_BUTTON_1
                 || keyCode == KeyEvent.KEYCODE_PROG_RED
-                || keyCode == 191
+                || keyCode == 191 || keyCode == 265
                 || scanCode == 191 || scanCode == 412 || scanCode == 249;
     }
 
-    private boolean isYouTubeKey(int keyCode, int scanCode) {
+    private boolean isBeinConnectKey(int keyCode, int scanCode, SharedPreferences prefs) {
+        int custom = prefs.getInt(KEY_CUSTOM_BEIN, -1);
+        if (matchesCustomToken(keyCode, scanCode, custom)) return true;
+        return keyCode == KeyEvent.KEYCODE_PROG_GREEN
+                || keyCode == KeyEvent.KEYCODE_TV_DATA_SERVICE
+                || keyCode == 248 || keyCode == 252
+                || scanCode == 248 || scanCode == 252 || scanCode == 414;
+    }
+
+    private boolean isYouTubeKey(int keyCode, int scanCode, SharedPreferences prefs) {
+        int custom = prefs.getInt(KEY_CUSTOM_YOUTUBE, -1);
+        if (matchesCustomToken(keyCode, scanCode, custom)) return true;
         return keyCode == KeyEvent.KEYCODE_BUTTON_2
                 || keyCode == 190
                 || scanCode == 190 || scanCode == 250;

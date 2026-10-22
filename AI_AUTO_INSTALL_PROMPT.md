@@ -1,21 +1,37 @@
 # 🤖 UNIVERSAL AI AUTO-INSTALLER PROMPT FOR ANDROID TV
 
 > **How to use this prompt:**
-> Copy the entire block below and paste it directly into **ChatGPT**, **Claude**, **Gemini**, or **DeepSeek**.
+> Copy the entire markdown block below and paste it directly into **ChatGPT**, **Claude**, **Gemini**, or **DeepSeek**.
 > Connect your computer to your TV via Wi-Fi ADB (`adb connect <YOUR_TV_IP>:5555`) or USB, and let the AI guide and execute the complete transformation of your TV into an ultra-fast, ad-free Smart TV with the 3D Parallax CoverFlow Launcher.
 
 ---
 
 ```markdown
-You are an expert Senior Android TV Systems & Firmware Engineer. 
-I want you to automatically optimize my Smart TV, eliminate all manufacturer bloatware, expand RAM using zRAM/storage swap, configure Private DNS (DoT) to block ISP throttling and ads, install the 3D Liquid Glass Parallax Launcher (TV Master Launcher), configure Ad-Free YouTube disguised as the official YouTube app, and establish 5 fast movie sources with daily vitrin auto-updates.
+You are an expert Senior Android TV Systems, Embedded Firmware, and Optimization Engineer. 
+Your goal is to transform any Android TV (Arçelik, Beko, Grundig, TCL, Sony Bravia, Philips, Xiaomi, Hisense, Chromecast with Google TV, etc.) into an ultra-fast, cinema-grade, ad-free powerhouse using the TV Master Launcher system.
 
-Follow this systematic, step-by-step procedure. Prompt me after each phase or execute the commands if running inside an automated terminal agent:
+Follow this systematic interactive procedure:
 
 ---
 
-### STEP 1: TV DISCOVERY & HARDWARE PROFILE PROBE
-Execute these diagnostic commands via ADB to fingerprint my TV hardware:
+### PHASE 0: USER INTERVIEW & REQUIREMENTS ALIGNMENT
+Before running any disruptive commands, interview the user by asking these concise questions (or diagnose automatically if ADB is already connected):
+
+1. **Connection & IP**: "What is your TV's local IP address (e.g., 192.168.1.xxx) so we can connect via `adb connect <IP>:5555`?"
+2. **TV Brand & Remote**: "What brand and model is your TV, and which branded buttons exist on your remote (e.g. Netflix, Prime Video, TV+, Bein Connect, YouTube, Disney+)?"
+3. **Remote Key Intent Re-mapping**:
+   - Do you want Prime Video to toggle the non-intrusive Cinema Picture & Audio Settings HUD without stopping your video?
+   - Do you want Netflix to open Web Video Caster?
+   - Do you want TV+ to launch Turkcell TV+?
+   - Do you want Bein Connect / YouTube button to launch ad-free YouTube (TizenTube/SmartTube)?
+4. **DNS & Ad Blocking**: "Shall we enforce system-wide AdGuard Private DNS over TLS (DoT: `dns.adguard-dns.com`) for zero ads and ISP unblocking?"
+5. **Cinema & Streaming Engine**: "Shall we configure Nuvio TV with the Anthology repository (41 Turkish scrapers + 138 live TV channels) and 4K HDR10 / Dolby Vision torrent streaming with Turkish audio/subtitles prioritized?"
+6. **AirPlay & Casting**: "Do you use Apple devices (iPhone/iPad/Mac) and want background AirPlay mirroring enabled?"
+
+---
+
+### PHASE 1: HARDWARE DIAGNOSTICS & FINGERPRINTING
+Run ADB diagnostic probes to inspect architecture, memory budget, and platform:
 
 ```bash
 echo "=== TV HARDWARE IDENTIFICATION ==="
@@ -31,196 +47,116 @@ adb shell wm density
 adb shell free -m
 ```
 
-Based on the output:
-- Identify if the TV is 32-bit (`armeabi-v7a`) or 64-bit (`arm64-v8a`).
-- Detect the manufacturer: Arçelik, Beko, Grundig, TCL, Sony, Philips, Xiaomi, Hisense, or Chromecast with Google TV.
-- Proceed to Step 2 with the matching brand profile.
+Based on the response:
+- Determine SoC architecture: 32-bit (`armeabi-v7a`) vs 64-bit (`arm64-v8a`).
+- Detect manufacturer profile for targeted safe debloating.
 
 ---
 
-### STEP 2: MULTI-BRAND SAFE DEBLOAT
-Safely remove OEM telemetry, storefront ads, background bloat, and heavy stock launchers without breaking HDMI inputs, DVB-S2 satellite tuners, or picture settings.
+### PHASE 2: SAFE MULTI-BRAND TELEMETRY & BLOATWARE REMOVAL
+Safely disable vendor storefronts, manufacturer telemetry, factory apps, and heavy OEM launchers without breaking HDMI inputs, DVB-S2/T2 tuners, or picture settings.
 
-Run the appropriate brand profile for user 0:
+Run the corresponding brand script:
+- **Arçelik / Beko / Grundig (MediaTek SoC)**: `./scripts/debloat_arcelik_beko.sh`
+- **Universal Multi-Brand (TCL, Sony, Philips, Xiaomi, Hisense)**: `./scripts/debloat_universal.sh`
 
-#### Profile A: Arçelik / Beko / Grundig (MediaTek SoC)
-```bash
-for pkg in \
-  "mediatek.factorymenu.ui" "arcelik.factorymenu.hatone" "com.mediatek.tv.factory" \
-  "com.mediatek.wwtv.webview" "com.mediatek.wwtv.mediaplayer" "com.mediatek.wwtv.tvcenter" \
-  "com.mediatek.wwtv.tvcenter.rro" "tr.com.bein.connect.tv" "io.freemytv" \
-  "com.arcelik.ChannelEditor" "com.arcelik.tv.rctest" \
-  "com.google.android.tvlauncher" "com.google.android.apps.tv.launcherx" \
-  "com.google.android.tungsten.setupwraith" "com.google.android.feedback" \
-  "com.google.android.play.games"; do
-    adb shell "pm uninstall -k --user 0 $pkg 2>/dev/null || pm disable-user --user 0 $pkg 2>/dev/null || true"
-done
-```
-
-#### Profile B: TCL / Thomson / FFALCON
-```bash
-for pkg in \
-  "com.tcl.useragreement" "com.tcl.tvmanager" "com.tcl.partnercustomizer" \
-  "com.tcl.waterfall" "com.tcl.messagebox" "com.tcl.sourcemanager" \
-  "com.tcl.bi" "com.tcl.cyberui" "com.tcl.appmarket" "com.tcl.videoplayer" \
-  "com.google.android.tvlauncher" "com.google.android.apps.tv.launcherx"; do
-    adb shell "pm uninstall -k --user 0 $pkg 2>/dev/null || pm disable-user --user 0 $pkg 2>/dev/null || true"
-done
-```
-
-#### Profile C: Sony Bravia
-```bash
-for pkg in \
-  "com.sony.dtv.bravialifehack" "com.sony.dtv.demomode" "com.sony.dtv.smarthelp" \
-  "com.sony.dtv.telemetry" "com.sony.dtv.networkservice" "com.sony.dtv.recommendations" \
-  "com.google.android.tvlauncher" "com.google.android.apps.tv.launcherx"; do
-    adb shell "pm uninstall -k --user 0 $pkg 2>/dev/null || pm disable-user --user 0 $pkg 2>/dev/null || true"
-done
-```
-
-#### Profile D: Philips Android TV
-```bash
-for pkg in \
-  "org.droidtv.demomode" "org.droidtv.recommendations" "org.droidtv.nettvregistration" \
-  "org.droidtv.philipstvprovider" "com.google.android.tvlauncher" "com.google.android.apps.tv.launcherx"; do
-    adb shell "pm uninstall -k --user 0 $pkg 2>/dev/null || pm disable-user --user 0 $pkg 2>/dev/null || true"
-done
-```
-
-#### Profile E: Xiaomi Mi TV / PatchWall / Redmi
-```bash
-for pkg in \
-  "com.mitv.gallery" "com.xiaomi.mitv.upgrade" "com.mitv.videoplayer" \
-  "com.xiaomi.mitv.advertise" "com.mitv.tvhome" "com.xiaomi.mitv.shop" \
-  "com.xiaomi.devicestatistics" "com.google.android.tvlauncher"; do
-    adb shell "pm uninstall -k --user 0 $pkg 2>/dev/null || pm disable-user --user 0 $pkg 2>/dev/null || true"
-done
-```
-
-#### Profile F: Generic Android TV / Chromecast with Google TV
-```bash
-for pkg in \
-  "com.google.android.tvlauncher" "com.google.android.apps.tv.launcherx" \
-  "com.google.android.tungsten.setupwraith" "com.google.android.feedback" \
-  "com.google.android.play.games" "com.google.android.videos"; do
-    adb shell "pm uninstall -k --user 0 $pkg 2>/dev/null || pm disable-user --user 0 $pkg 2>/dev/null || true"
-done
-```
+Essential services strictly protected on all models:
+`com.turkcell.ott`, `com.instantbits.cast.receiver`, `io.gh.reisxd.tizentube.cobalt`, `com.nuvio.tv`, `io.github.jqssun.airplay`, `com.android.chrome`.
 
 ---
 
-### STEP 3: SMART RAM & STORAGE-TO-RAM EXPANSION
-Eliminate TV UI stutter and out-of-memory app crashes:
-
-```bash
-# 1. Enable Purgeable Assets & Aggressive Memory Reclaim
-adb shell "setprop persist.sys.purgeable_assets 1"
-
-# 2. Configure 1GB LZ4 zRAM Swap Compressed Disk
-adb shell "echo 1 > /sys/block/zram0/reset 2>/dev/null || true"
-adb shell "echo lz4 > /sys/block/zram0/comp_algorithm 2>/dev/null || true"
-adb shell "echo 1073741824 > /sys/block/zram0/disksize 2>/dev/null || true"
-adb shell "mkswap /dev/block/zram0 2>/dev/null || true"
-adb shell "swapon /dev/block/zram0 2>/dev/null || true"
-
-# 3. Tune Swappiness & Cache Pressure
-adb shell "sysctl -w vm.swappiness=80 2>/dev/null || true"
-adb shell "sysctl -w vm.vfs_cache_pressure=100 2>/dev/null || true"
-
-# 4. Storage-to-RAM Expansion (Android 11+)
-adb shell "settings put global ram_expand_size_list 2048 2>/dev/null || true"
-adb shell "setprop persist.sys.ram_expand.size 2048 2>/dev/null || true"
-
-# 5. Low Memory Killer (LMK) & Trim Tuning
-adb shell "setprop sys.sysctl.extra_free_kbytes 24300"
-adb shell "setprop persist.sys.fw.trim_empty_apps true"
-adb shell "setprop persist.sys.fw.empty_app_percent 50"
-
-# 6. Flush inactive cache
-adb shell "sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true"
-```
-
----
-
-### STEP 4: NETWORK & PRIVATE DNS OVER TLS (DoT)
-Bypass ISP DNS tampering/poisoning (such as Turkish ISP DNS redirects) and block tracking:
+### PHASE 3: ADGUARD PRIVATE DNS OVER TLS (DoT)
+Enforce encrypted Private DNS across the entire operating system:
 
 ```bash
 adb shell "settings put global private_dns_mode hostname"
-adb shell "settings put global private_dns_specifier dns.google"
-# Verify:
+adb shell "settings put global private_dns_specifier dns.adguard-dns.com"
+```
+Verify:
+```bash
 adb shell "settings get global private_dns_specifier"
 ```
 
 ---
 
-### STEP 5: INSTALL TV MASTER LAUNCHER (V2.0)
-Install the ultra-lightweight, hardware-accelerated 3D Parallax CoverFlow Launcher:
+### PHASE 4: NUVIO TV + ANTHOLOGY + 4K HDR10 CINEMA SUITE
+Install and configure Nuvio TV with 4K HDR10 torrent streaming, Turkish subtitle engine, and Anthology scrapers:
+
+1. **Install Nuvio TV (Match CPU ABI)**:
+   - 32-bit ARM: `https://github.com/NuvioMedia/NuvioTV/releases/download/1.0.0/app-full-armeabi-v7a-release.apk`
+   - 64-bit ARM: `https://github.com/NuvioMedia/NuvioTV/releases/download/1.0.0/app-full-arm64-v8a-release.apk`
+   ```bash
+   adb install -r -d -g /path/to/nuvio.apk
+   ```
+
+2. **Add Anthology Repository & Plugins**:
+   - In Nuvio: Settings -> Plugins -> Add Repository -> `https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json`
+   - Add Anthology Canlı TV Catalog: `stremio://falsisdev.github.io/anthology/stremio/manifest.json`
+
+3. **Configure 4K HDR10 Turkish Prioritized Stream Engine**:
+   ```bash
+   adb shell am start -a android.intent.action.VIEW -d "stremio://torrentio.strem.fun/sort=qualitysize%7Cqualityfilter=scr,cam%7Cpriority_language=turkish/manifest.json"
+   ```
+
+4. **Add OpenSubtitles v3 Engine**:
+   ```bash
+   adb shell am start -a android.intent.action.VIEW -d "stremio://opensubtitles-v3.strem.io/manifest.json"
+   ```
+
+5. **Clean Legacy Players**:
+   ```bash
+   adb shell "pm uninstall -k --user 0 com.lagradost.cloudstream3 2>/dev/null || true"
+   adb shell "pm uninstall -k --user 0 com.stremio.one 2>/dev/null || true"
+   ```
+
+---
+
+### PHASE 5: COMPILE & INSTALL TV MASTER LAUNCHER
+Compile and install the ultra-lightweight hardware-accelerated TV Master Launcher:
 
 ```bash
-# Clone the repository or download the prebuilt APK from release/
-# adb install -r -d -g release/tv-master-launcher-v2.0.apk
-adb install -r -d -g release/tv-master-launcher-v2.0.apk
+cd launcher && ./build.sh
+adb install -r -d -g ../release/tv-master-launcher-v2.0.apk
+```
 
-# Set as default Home Launcher:
-adb shell "cmd package set-home-activity com.cleanyourtv.launcher/.MainActivity"
+Set TV Master Launcher as default launcher:
+```bash
+adb shell "cmd package set-home-activity com.gathin.tvhome/.MainActivity"
+```
+
+Enable remote key interceptor accessibility service:
+```bash
+adb shell settings put secure enabled_accessibility_services com.gathin.tvhome/.TvKeyInterceptorService
+adb shell settings put secure accessibility_enabled 1
 ```
 
 ---
 
-### STEP 6: AD-FREE YOUTUBE WITH OFFICIAL LOGO DISGUISE
-Install ad-free playback (SmartTube / TizenTube / Cobalt) and disguise it as official YouTube:
-
+### PHASE 6: AD-FREE YOUTUBE WITH OFFICIAL DISGUISE
+Replace official ad-heavy YouTube with TizenTube / SmartTube:
 ```bash
-# 1. Disable official bloated YouTube:
-adb shell "pm uninstall -k --user 0 com.google.android.youtube.tv 2>/dev/null || pm disable-user --user 0 com.google.android.youtube.tv 2>/dev/null || true"
+./scripts/setup_youtube.sh
+```
+The launcher will render the official YouTube red icon, launching the ad-free engine seamlessly.
 
-# 2. TV Master Launcher includes built-in intent redirection:
-# The launcher tile displays the authentic YouTube logo and name 'YouTube',
-# routing directly to io.gh.reisxd.tizentube.cobalt or com.teamsmart.videomanager.tv with 0 ads.
+---
+
+### PHASE 7: AIRPLAY & WIRELESS CASTING
+Enable AirPlay daemon and whitelist power saving:
+```bash
+./scripts/setup_airplay.sh
 ```
 
 ---
 
-### STEP 7: MOVIE SOURCES SETUP (TURKSINEMA 5 PROVIDERS)
-Setup CloudStream 3 with the 5 curated Turkish movie providers:
-
-```bash
-# 1. Add repository:
-adb shell "am start -a android.intent.action.VIEW -d \"cloudstreamrepo://raw.githubusercontent.com/Wiojelt/TurkSinema/main/repo.json\""
-
-# 2. In CloudStream settings, keep ONLY:
-# - Webteizle
-# - Filmmodu
-# - FilmMakinesi
-# - HDFilmCehennemi
-# - FullHDFilmizlesene
-# (All other providers uninstalled for optimal load speeds)
-
-# 3. TV Master Launcher automatically queries these providers, extracts focal neon glow colors,
-# and rotates the vitrin catalog daily at 00:00 midnight!
-```
-
----
-
-### STEP 8: AIRPLAY RECEIVER SETUP
-Enable AirPlay mirroring from iPhones, iPads, and MacBooks:
-```bash
-# Whitelist background battery usage for cast receiver:
-adb shell "dumpsys deviceidle whitelist +com.instantbits.cast.receiver 2>/dev/null || true"
-adb shell "dumpsys deviceidle whitelist +com.ionitech.airscreen 2>/dev/null || true"
-adb shell "settings put global stay_on_while_plugged_in 3 2>/dev/null || true"
-```
-
----
-
-### STEP 9: VERIFICATION & BENCHMARK
-Verify the entire system:
-```bash
-echo "=== SYSTEM VERIFICATION ==="
-adb shell "dumpsys activity activities | grep ResumedActivity"
-adb shell "dumpsys meminfo com.cleanyourtv.launcher | grep 'TOTAL PSS:'"
-adb shell "dumpsys gfxinfo com.cleanyourtv.launcher framestats | tail -n 15"
-```
-Ensure 0 dropped frames, total RAM usage under 35 MB, and instant D-Pad responsiveness.
+### PHASE 8: VERIFICATION & BENCHMARK
+Verify all components:
+1. **Home Screen**: Launch `com.gathin.tvhome/.MainActivity`.
+2. **Poster Vitrin Direct Playback**: Click any movie poster on the Vitrin row. Verify Nuvio opens the stream list with 4K HDR10 streams and plays directly.
+3. **Remote Keys**: Test TV+, Netflix, Prime Video (Cinema HUD overlay), and Bein Connect.
+4. **RAM Usage & Performance**:
+   ```bash
+   adb shell "dumpsys meminfo com.gathin.tvhome | grep 'TOTAL PSS:'"
+   ```
+   Confirm RAM usage is under 35 MB with smooth 60 FPS transitions.
 ```

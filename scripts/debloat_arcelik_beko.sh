@@ -17,14 +17,14 @@ PACKAGES_TO_REMOVE=(
     "arcelik.factorymenu.hatone"
     "com.mediatek.tv.factory"
     "com.mediatek.wwtv.webview"
-    "com.google.android.webview"
     "com.mediatek.tv.service"
     "com.mediatek.wwtv.mediaplayer"
     "com.mediatek.wwtv.tvcenter"
     "com.mediatek.wwtv.tvcenter.rro"
 
-    # Unwanted / intrusive 3rd-party cast & media apps
-    "io.github.jqssun.airplay"
+    # Deprecated / legacy movie players
+    "com.lagradost.cloudstream3"
+    "com.stremio.one"
     "org.courville.nova"
 
     # Stock launcher clutter and telemetry
@@ -53,8 +53,8 @@ echo "==> Preserving essential services:"
 echo "    [+] TV+ (com.turkcell.ott)"
 echo "    [+] Web Video Caster (com.instantbits.cast.receiver)"
 echo "    [+] YouTube TizenTube / Cobalt (io.gh.reisxd.tizentube.cobalt)"
-echo "    [+] Filmler / CloudStream 3 (com.lagradost.cloudstream3)"
-echo "    [+] Stremio (com.stremio.one)"
+echo "    [+] Cinema Hub / Nuvio TV (com.nuvio.tv)"
+echo "    [+] Native AirPlay Receiver (io.github.jqssun.airplay)"
 echo "    [+] Google Chrome / Cromite"
 
 echo "==> Arçelik / Beko Debloat Completed Successfully!"
