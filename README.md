@@ -57,43 +57,51 @@ Focus movement smoothly shifts depth scaling, 3D elevation, and poster-aware foc
 - Official Nuvio wordmark tile (`ic_nuvio_wordmark`) rendered on Apple visionOS liquid glass without redundant duplicate text.
 - **Strict Torrent Sorting & Filtering Hierarchy**:
   1. Quality Tier: `4K HDR10 / Dolby Vision` > `1080p HDR10` > `1080p` > `720p`.
-  2. Language Priority: Turkish audio & subtitles prioritized (TR profile) or multi-language (International profile).
+  2. Language Priority: User-defined spoken languages prioritized for dubbing and subtitles (e.g. `turkish,english`, `german,english`, `spanish,latino`).
   3. **Torrent Seeder Hierarchy**: Within each quality tier, torrent videos are strictly sorted **first by seeder count, then by file size** (`sort=quality`).
   4. Exclusions: Formats below 720p (480p, 360p, CAM, SCR, etc.) are strictly excluded.
 - Completely replaces and retires legacy players (CloudStream, Stremio) cleanly.
 
-### 3. 🎮 Global Remote Key Interception & Cinema HUD
+### 3. 🌤️ Real-Time Live Weather & Location Awareness
+- **Keyless Zero-Latency Weather**: Fetches real-time local weather and conditions using keyless `wttr.in` integration.
+- **Top Bar Integration**: Displays current temperature, weather emoji, and city (e.g. `Ankara • +7°C ✨` or `London • +12°C 🌧️`) directly next to the date/clock.
+- Auto-refreshes every 30 minutes in the background with zero battery or RAM overhead.
+- City can be configured via installer, auto-detected from IP, or changed on the TV screen via the Settings dialog.
+
+### 4. 🌓 Theme Customization: Dark, Auto Day/Night & Light Glass
+- **Saf OLED Siyah (Deep Obsidian Dark Noir)**: Absolute pitch-black cinema canvas optimized for OLED/QLED panels with zero light bleed.
+- **Otomatik Gece / Gündüz (Auto Day/Night)**: Frosted silver glass theme during daytime hours, automatically transitioning to pure OLED obsidian at dusk.
+- **Aydınlık Buzlu Cam (Modern Frosted Light Glass)**: High-contrast modern platinum silver palette with deep obsidian typography.
+- Changeable on the fly from the TV remote or installation wizard.
+
+### 5. 🎮 Global Remote Key Interception & Cinema HUD
 Integrated background accessibility service (`TvKeyInterceptorService`) dynamically binds dedicated remote buttons:
 - **TV+ Button** $\rightarrow$ Launches Turkcell TV+ (`com.turkcell.ott`).
 - **Amazon Prime Video Button** $\rightarrow$ Opens a non-intrusive **Cinema Picture & Audio Settings HUD overlay** on the side of the screen without interrupting or pausing ongoing video playback!
 - **Netflix Button** $\rightarrow$ Launches **Nuvio TV** (`com.nuvio.tv`).
 - **Bein Connect / YouTube Button** $\rightarrow$ Launches Ad-Free YouTube (TizenTube / Cobalt / SmartTube).
 
-### 4. 🔒 AdGuard Private DNS over TLS (DoT)
+### 6. 🔒 AdGuard Private DNS over TLS (DoT)
 - Configures `dns.adguard-dns.com` system-wide over TLS.
 - Blocks ads, telemetry, and tracking at the network level, while bypassing ISP DNS tampering/poisoning.
 
-### 5. 📲 Native AirPlay & Wireless Casting
+### 7. 📲 Native AirPlay & Wireless Casting
 - Built-in support for **AirPlay** audio and video mirroring directly from iOS, iPadOS, and macOS devices.
 - Battery-idle exemptions and persistent daemon management keep AirPlay discovery active 24/7.
 
-### 6. 🚀 Smart RAM & Storage-to-RAM Expansion
+### 8. 🚀 Smart RAM & Storage-to-RAM Expansion
 - **1024 MB LZ4 zRAM Swap**: Creates an in-kernel compressed memory disk on `/dev/block/zram0`.
 - **Swappiness & Cache Tuning**: Sets `vm.swappiness=80` and `vfs_cache_pressure=100`, keeping UI threads instantly responsive while moving inactive background services to zRAM.
 - **Low Memory Killer (LMK) Optimization**: Sets `sys.sysctl.extra_free_kbytes=24300` and enables `trim_empty_apps`, cutting launcher RAM usage to under **35 MB**.
 - **Storage-to-RAM Virtual Allocation**: Enables Android 11+ virtual memory expansion (`ram_expand_size_list: 2048`).
 
-### 7. 🛡️ Universal Multi-Brand Debloater
+### 9. 🛡️ Universal Multi-Brand Debloater & Custom App Removal
 Safely removes factory menus, telemetry, and pre-installed storefront bloatware for user 0 without breaking HDMI ports, DVB-S2 satellite tuners, or picture settings:
-- **Arçelik / Beko / Grundig**: Eliminates MediaTek factory UI, Hatone menu, intrusive cast daemons, and carrier bloatware.
-- **TCL / Thomson / FFALCON**: Removes TCL Waterfall, PartnerCustomizer, CyberUI, and AppMarket.
-- **Sony Bravia**: Disables Bravia Lifehack, DemoMode, SmartHelp, and background telemetry.
-- **Philips Android TV**: Cleans NetTV registration, DemoMode, and Philips TV provider bloat.
-- **Xiaomi Mi TV / PatchWall**: Removes PatchWall ads, Mi TV Shop, and device statistics.
-- **Hisense / Toshiba**: Strips HiCloud telemetry, retail demo, and recommendation pushers.
-- **Chromecast with Google TV**: Disables heavy Google TV LauncherX and Tungsten telemetry.
+- **Targeted Brand Debloaters**: Arçelik/Beko, TCL, Sony Bravia, Philips, Xiaomi, Hisense, and Chromecast with Google TV.
+- **Custom Interactive Removal**: Inspects all user and vendor packages on the TV and allows the user to choose exact packages to remove or keep.
+- **Hardened Safety Guard**: Protected hardware packages (HDMI, DVB, Audio, Bluetooth, Settings, SystemUI) can never be accidentally removed.
 
-### 8. 🌙 OLED Burn-In Safe Drifting Screensaver
+### 10. 🌙 OLED Burn-In Safe Drifting Screensaver
 - Modern minimalist screensaver with Poppins typography and luminous radial chromatic glow.
 - Continuous interpolated drift animation prevents static burn-in on OLED and QLED panels.
 
@@ -110,13 +118,20 @@ cd tv-master-launcher
 ```
 
 ### Wizard Features:
-- **Language Selection**: English (International) or Türkçe.
-- **Regional Branching**:
-  - Turkish: Configures Webteizle vitrin, Anthology live channels & scrapers, Turkish audio/sub priority.
-  - International: Configures Cinemeta global box office feed, international multi-language Torrentio, and global subtitles.
-- **Brand Debloating**: Automatically detects device brand (Arçelik, Beko, TCL, Sony, Philips, Xiaomi, etc.) and prompts for targeted safe debloating.
-- **DNS Choice**: AdGuard DoT, Cloudflare DoT, or keep existing.
-- **Key Mappings**: One-click binding of dedicated remote buttons.
+- **Language & Regional Persona**:
+  - Country selection (TR, US, DE, GB, FR, ES, IT, or custom ISO): automatically tailors cinema feeds, live TV catalogs, and vitrin.
+- **Live Weather Integration**:
+  - Prompts for your city (e.g. Istanbul, Ankara, Berlin, London, New York) or auto-detects from IP; displays real-time weather on the launcher top bar.
+- **Personalized Audio & Subtitle Languages**:
+  - Allows specifying multiple languages you speak (e.g. `turkish,english`, `german,english`, `spanish,latino`). Constructs Torrentio stream engine with seeder-first sorting for those exact languages.
+- **Interface Theme Selection**:
+  - Pure OLED Dark Noir, Auto Day/Night (solar sync), or Modern Frosted Light Glass.
+- **Interactive Debloat & App Removal**:
+  - Choose between recommended safe brand debloat, custom interactive package removal (with safety guards for core services), or skip.
+- **DNS & Ad Blocking**:
+  - AdGuard DoT, Cloudflare DoT, or keep existing.
+- **Dedicated Remote Button Mappings**:
+  - Fast binding for Prime Video (In-Video Cinema HUD), Netflix (Nuvio), TV+, and Bein/YouTube.
 
 ---
 

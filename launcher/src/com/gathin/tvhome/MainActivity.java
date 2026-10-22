@@ -42,6 +42,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.EditText;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -53,6 +54,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -136,6 +138,15 @@ public class MainActivity extends Activity {
     private SeamlessLivingBackdropView ambientBackdropView;
     private TextView clockText;
     private TextView dateText;
+    private TextView weatherText;
+    private String currentThemeMode = "dark";
+    private final Runnable weatherRefreshRunnable = new Runnable() {
+        @Override
+        public void run() {
+            fetchLiveWeather();
+            handler.postDelayed(this, 30 * 60 * 1000L);
+        }
+    };
     private HorizontalScrollView heroScroll;
     private LinearLayout heroShelfRow;
     private LinearLayout dockRow;
@@ -260,12 +271,18 @@ public class MainActivity extends Activity {
         private float glowY = 540f;
         private int glowColor = Color.parseColor("#FFD60A");
         private float cyclePhase = 0f;
+        private boolean isLightMode = false;
         private ValueAnimator focusAnimator;
         private ValueAnimator breathingAnimator;
 
         SeamlessLivingBackdropView(Context ctx) {
             super(ctx);
             watermarkLogo = null;
+        }
+
+        public void setLightMode(boolean light) {
+            this.isLightMode = light;
+            invalidate();
         }
 
         void startSeamlessBreathing() {
@@ -332,13 +349,22 @@ public class MainActivity extends Activity {
             float frac = cyclePhase - (float) Math.floor(cyclePhase);
             int breathingTone = (Integer) argbEvaluator.evaluate(frac, AMBIENT_CYCLE_COLORS[idxA], AMBIENT_CYCLE_COLORS[idxB]);
 
-            // 1. Seamless, slowly morphing deep obsidian-cinema background gradient
-            bgPaint.setShader(new LinearGradient(
-                    0f, 0f, w, h,
-                    new int[]{Color.parseColor("#060608"), breathingTone, Color.parseColor("#050507")},
-                    new float[]{0f, 0.52f, 1f},
-                    Shader.TileMode.CLAMP
-            ));
+            // 1. Seamless, slowly morphing background gradient
+            if (isLightMode) {
+                bgPaint.setShader(new LinearGradient(
+                        0f, 0f, w, h,
+                        new int[]{Color.parseColor("#F8FAFC"), Color.parseColor("#E2E8F0"), Color.parseColor("#CBD5E1")},
+                        new float[]{0f, 0.52f, 1f},
+                        Shader.TileMode.CLAMP
+                ));
+            } else {
+                bgPaint.setShader(new LinearGradient(
+                        0f, 0f, w, h,
+                        new int[]{Color.parseColor("#060608"), breathingTone, Color.parseColor("#050507")},
+                        new float[]{0f, 0.52f, 1f},
+                        Shader.TileMode.CLAMP
+                ));
+            }
             canvas.drawRect(0, 0, w, h, bgPaint);
 
             // Slow orbital ambient drift across the upper-center canvas
@@ -451,7 +477,8 @@ public class MainActivity extends Activity {
                         }
                     }
                     fetchLiveTheatricalPosters();
-                } catch (Throwable ignored) {
+                } catch (Throwable t) {
+                    android.util.Log.e("TVHomeWeather", "Weather fetch error", t);
                 }
             }
         }).start();
@@ -460,7 +487,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        enforcePermanentDarkMode();
+        applyThemeMode();
         SharedPreferences p = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String hCsv = p.getString("user_hidden_apps_csv", "");
         if (hCsv != null && !hCsv.isEmpty()) {
@@ -476,14 +503,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        enforcePermanentDarkMode();
+        applyThemeMode();
         if (ambientBackdropView != null) {
             ambientBackdropView.startSeamlessBreathing();
         }
         loadAppsAndPopulate();
         updateClock();
+        fetchLiveWeather();
         handler.removeCallbacks(clockTick);
         handler.post(clockTick);
+        handler.removeCallbacks(weatherRefreshRunnable);
+        handler.postDelayed(weatherRefreshRunnable, 30 * 60 * 1000L);
         handler.removeCallbacks(vitrinAutoSlide);
         handler.postDelayed(vitrinAutoSlide, 10000L);
         resetIdleScreensaverTimer();
@@ -508,6 +538,7 @@ public class MainActivity extends Activity {
             ambientBackdropView.stopSeamlessBreathing();
         }
         handler.removeCallbacks(clockTick);
+        handler.removeCallbacks(weatherRefreshRunnable);
         handler.removeCallbacks(idleScreensaverTrigger);
         handler.removeCallbacks(screensaverDriftRunnable);
         handler.removeCallbacks(vitrinAutoSlide);
@@ -584,14 +615,105 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void enforcePermanentDarkMode() {
+    private void applyThemeMode() {
         try {
+            SharedPreferences prefs = getSharedPreferences("tvhome_prefs", MODE_PRIVATE);
+            String mode = Settings.Global.getString(getContentResolver(), "tvhome_theme_mode");
+            if (mode == null || mode.trim().isEmpty()) {
+                mode = prefs.getString("theme_mode", "dark");
+            }
+            currentThemeMode = mode.toLowerCase();
+
+            boolean isDaytime = true;
+            if ("auto".equals(currentThemeMode)) {
+                int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+                isDaytime = (hour >= 7 && hour < 19);
+            } else if ("light".equals(currentThemeMode)) {
+                isDaytime = true;
+            } else {
+                isDaytime = false;
+            }
+
+            boolean isLight = ("light".equals(currentThemeMode)) || ("auto".equals(currentThemeMode) && isDaytime);
+
             UiModeManager uiManager = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
             if (uiManager != null) {
-                uiManager.setNightMode(UiModeManager.MODE_NIGHT_YES);
+                uiManager.setNightMode(isLight ? UiModeManager.MODE_NIGHT_NO : UiModeManager.MODE_NIGHT_YES);
+            }
+
+            if (ambientBackdropView != null) {
+                ambientBackdropView.setLightMode(isLight);
+            }
+
+            if (clockText != null) {
+                clockText.setTextColor(isLight ? Color.parseColor("#0F172A") : Color.parseColor("#F8FAFC"));
+            }
+            if (dateText != null) {
+                dateText.setTextColor(isLight ? Color.parseColor("#475569") : Color.parseColor("#94A3B8"));
+            }
+            if (weatherText != null) {
+                weatherText.setTextColor(isLight ? Color.parseColor("#0284C7") : Color.parseColor("#38BDF8"));
             }
         } catch (Throwable ignored) {
         }
+    }
+
+    private void fetchLiveWeather() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    SharedPreferences prefs = getSharedPreferences("tvhome_prefs", MODE_PRIVATE);
+                    String city = Settings.Global.getString(getContentResolver(), "tvhome_city");
+                    if (city == null || city.trim().isEmpty()) {
+                        city = prefs.getString("city", null);
+                    }
+
+                    String queryUrl = (city != null && !city.trim().isEmpty())
+                            ? ("https://wttr.in/" + URLEncoder.encode(city.trim(), "UTF-8") + "?format=%t+%c")
+                            : "https://wttr.in/?format=%l:+%t+%c";
+
+                    android.util.Log.d("TVHomeWeather", "Fetching weather from: " + queryUrl);
+                    URL url = new URL(queryUrl);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestProperty("User-Agent", "curl/8.4.0");
+                    conn.setRequestProperty("Accept-Language", Locale.getDefault().getLanguage());
+                    conn.setConnectTimeout(6000);
+                    conn.setReadTimeout(6000);
+
+                    int code = conn.getResponseCode();
+                    android.util.Log.d("TVHomeWeather", "HTTP response code: " + code);
+                    if (code == 200) {
+                        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+                        String line = br.readLine();
+                        br.close();
+                        android.util.Log.d("TVHomeWeather", "Raw response line: " + line);
+
+                        if (line != null && !line.trim().isEmpty()) {
+                            final String displayStr;
+                            if (city != null && !city.trim().isEmpty()) {
+                                displayStr = city.trim() + " • " + line.trim();
+                            } else {
+                                displayStr = line.trim();
+                            }
+                            android.util.Log.d("TVHomeWeather", "Final weather text: " + displayStr);
+
+                            handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (weatherText != null) {
+                                        weatherText.setText(displayStr);
+                                        weatherText.setVisibility(View.VISIBLE);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                } catch (Throwable t) {
+                    android.util.Log.e("TVHomeWeather", "Weather fetch error", t);
+                }
+            }
+        }).start();
     }
 
     private void buildUi() {
@@ -669,6 +791,14 @@ public class MainActivity extends Activity {
         dateText.setTextColor(Color.parseColor("#94A3B8"));
         clockLine.addView(dateText);
 
+        weatherText = new TextView(this);
+        weatherText.setTypeface(FontManager.getMedium(this));
+        weatherText.setTextSize(15f);
+        weatherText.setPadding(18, 0, 0, 7);
+        weatherText.setTextColor(Color.parseColor("#38BDF8"));
+        weatherText.setVisibility(View.GONE);
+        clockLine.addView(weatherText);
+
         leftBrandAndClock.addView(clockLine);
 
         LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
@@ -679,7 +809,8 @@ public class MainActivity extends Activity {
             public void onClick(View v) {
                 try {
                     startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                } catch (Throwable ignored) {
+                } catch (Throwable t) {
+                    android.util.Log.e("TVHomeWeather", "Weather fetch error", t);
                 }
             }
         }, new View.OnLongClickListener() {
@@ -999,7 +1130,8 @@ public class MainActivity extends Activity {
                     InputStream is = getAssets().open(assetPath);
                     rawBmp = BitmapFactory.decodeStream(is);
                     is.close();
-                } catch (Throwable ignored) {
+                } catch (Throwable t) {
+                    android.util.Log.e("TVHomeWeather", "Weather fetch error", t);
                 }
             }
 
@@ -1319,7 +1451,8 @@ public class MainActivity extends Activity {
                             prefs.edit().putString("imdb_" + slug, resolvedImdbId).apply();
                         }
                     }
-                } catch (Throwable ignored) {
+                } catch (Throwable t) {
+                    android.util.Log.e("TVHomeWeather", "Weather fetch error", t);
                 }
             }
 
@@ -2101,37 +2234,126 @@ public class MainActivity extends Activity {
     private void showLauncherSettingsDialog() {
         final SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String[] options = new String[] {
-            "Cihaz Ayarları",
-            "Giriş Kaynakları (HDMI / TV+)",
-            "AirPods & Bluetooth",
-            "Ekran Koruyucuyu Şimdi Başlat",
-            "Kumanda Tuşu Öğret: TV+",
-            "Kumanda Tuşu Öğret: Netflix -> Stremio",
-            "Kumanda Tuşu Öğret: Amazon Prime -> Görüntü/Ses HUD"
+            "🌤️  Hava Durumu Şehri Ayarla (Weather City)",
+            "🌓  Tema Modu (Saf OLED / Gece-Gündüz / Aydınlık)",
+            "🎬  Sinema Vitrin Akış Kaynağı (Webteizle / Cinemeta)",
+            "🔌  Giriş Kaynakları (HDMI / TV+)",
+            "🎧  AirPods & Bluetooth Cihazları",
+            "🌙  Ekran Koruyucuyu Şimdi Başlat",
+            "👁️  Gizlenen Uygulamaları Geri Getir",
+            "🎮  Kumanda Tuşu Öğret: TV+",
+            "🎮  Kumanda Tuşu Öğret: Netflix -> Nuvio",
+            "🎮  Kumanda Tuşu Öğret: Amazon Prime -> Ayarlar HUD",
+            "⚙️  Android Cihaz Ayarları"
         };
 
         new AlertDialog.Builder(this)
+                .setTitle("TV Master Başlatıcı Ayarları")
                 .setItems(options, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         if (which == 0) {
-                            startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                            showSetCityDialog();
                         } else if (which == 1) {
-                            showCollapsibleInputsDialog();
+                            showThemeSelectionDialog();
                         } else if (which == 2) {
-                            startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                            showVitrinSourceDialog();
                         } else if (which == 3) {
-                            showIdleScreensaver();
+                            showCollapsibleInputsDialog();
                         } else if (which == 4) {
+                            startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                        } else if (which == 5) {
+                            showIdleScreensaver();
+                        } else if (which == 6) {
+                            userHiddenApps.clear();
+                            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString("user_hidden_apps_csv", "").apply();
+                            loadAppsAndPopulate();
+                            Toast.makeText(MainActivity.this, "Tüm gizlenen uygulamalar geri yüklendi.", Toast.LENGTH_SHORT).show();
+                        } else if (which == 7) {
                             prefs.edit().putString(TvKeyInterceptorService.KEY_LEARN_MODE, "tvplus").apply();
                             Toast.makeText(MainActivity.this, "Kumandadaki TV+ tuşuna basın...", Toast.LENGTH_LONG).show();
-                        } else if (which == 5) {
+                        } else if (which == 8) {
                             prefs.edit().putString(TvKeyInterceptorService.KEY_LEARN_MODE, "netflix").apply();
                             Toast.makeText(MainActivity.this, "Kumandadaki NETFLIX tuşuna basın...", Toast.LENGTH_LONG).show();
-                        } else if (which == 6) {
+                        } else if (which == 9) {
                             prefs.edit().putString(TvKeyInterceptorService.KEY_LEARN_MODE, "amazon").apply();
                             Toast.makeText(MainActivity.this, "Kumandadaki AMAZON PRIME tuşuna basın...", Toast.LENGTH_LONG).show();
+                        } else if (which == 10) {
+                            startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                         }
+                    }
+                })
+                .show();
+    }
+
+    private void showSetCityDialog() {
+        SharedPreferences p = getSharedPreferences("tvhome_prefs", MODE_PRIVATE);
+        String current = Settings.Global.getString(getContentResolver(), "tvhome_city");
+        if (current == null) current = p.getString("city", "");
+
+        final EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setText(current);
+        input.setHint("Örn: Istanbul, Ankara, Berlin, New York");
+        input.setPadding(30, 20, 30, 20);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Hava Durumu Şehri")
+                .setMessage("Ana ekranda anlık hava durumunu görmek istediğiniz şehri girin:")
+                .setView(input)
+                .setPositiveButton("Kaydet", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        String val = input.getText().toString().trim();
+                        Settings.Global.putString(getContentResolver(), "tvhome_city", val);
+                        getSharedPreferences("tvhome_prefs", MODE_PRIVATE).edit().putString("city", val).apply();
+                        fetchLiveWeather();
+                        Toast.makeText(MainActivity.this, "Şehir kaydedildi: " + val, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("İptal", null)
+                .show();
+    }
+
+    private void showThemeSelectionDialog() {
+        String[] modes = new String[] {
+            "Saf OLED Siyah (Deep Obsidian Dark Noir)",
+            "Otomatik Gece / Gündüz (Auto Day/Night)",
+            "Sürekli Aydınlık Buzlu Cam (Modern Frosted Light Glass)"
+        };
+        final String[] keys = new String[]{"dark", "auto", "light"};
+
+        new AlertDialog.Builder(this)
+                .setTitle("Tema Tercihi")
+                .setItems(modes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        String selected = keys[which];
+                        Settings.Global.putString(getContentResolver(), "tvhome_theme_mode", selected);
+                        getSharedPreferences("tvhome_prefs", MODE_PRIVATE).edit().putString("theme_mode", selected).apply();
+                        applyThemeMode();
+                        Toast.makeText(MainActivity.this, "Tema uygulandı: " + modes[which], Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .show();
+    }
+
+    private void showVitrinSourceDialog() {
+        String[] sources = new String[] {
+            "Webteizle (Türkçe Dublaj & Altyazı • 4K/1080p)",
+            "Cinemeta Global Box Office (Uluslararası / İngilizce)"
+        };
+        final String[] keys = new String[]{"webteizle", "cinemeta"};
+
+        new AlertDialog.Builder(this)
+                .setTitle("Sinema Vitrin Akış Kaynağı")
+                .setItems(sources, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        String selected = keys[which];
+                        Settings.Global.putString(getContentResolver(), "tvhome_vitrin_source", selected);
+                        fetchLiveTheatricalPosters();
+                        Toast.makeText(MainActivity.this, "Vitrin kaynağı güncellendi: " + sources[which], Toast.LENGTH_SHORT).show();
                     }
                 })
                 .show();

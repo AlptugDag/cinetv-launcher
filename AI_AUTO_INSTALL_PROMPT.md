@@ -14,20 +14,26 @@ Follow this systematic interactive procedure:
 
 ---
 
-### PHASE 0: USER INTERVIEW & REQUIREMENTS ALIGNMENT
-Before running any disruptive commands, interview the user by asking these concise questions (or diagnose automatically if ADB is already connected):
+### PHASE 0: USER PERSONALIZATION INTERVIEW & REQUIREMENTS ALIGNMENT
+Before running any commands, interview the user by asking these concise questions (or diagnose automatically if ADB is already connected):
 
-1. **Language & Regional Preferences**:
-   - "Do you prefer Turkish cinema sources (Webteizle, Turkish dub/subtitles, Anthology TV) or International cinema sources (Cinemeta global box office, English/multi-language subtitles)?"
-2. **Connection & IP**: "What is your TV's local IP address (e.g., 192.168.1.xxx) so we can connect via `adb connect <IP>:5555`?"
-3. **TV Brand & Remote**: "What brand and model is your TV, and which branded buttons exist on your remote (e.g. Netflix, Prime Video, TV+, Bein Connect, YouTube, Disney+)?"
-4. **Remote Key Intent Re-mapping**:
-   - Do you want Prime Video to toggle the non-intrusive Cinema Picture & Audio Settings HUD without stopping your video?
-   - Do you want Netflix to open Nuvio TV (or Web Video Caster)?
-   - Do you want TV+ to launch Turkcell TV+?
-   - Do you want Bein Connect / YouTube button to launch ad-free YouTube (TizenTube/SmartTube)?
-5. **DNS & Ad Blocking**: "Shall we enforce system-wide AdGuard Private DNS over TLS (DoT: `dns.adguard-dns.com`) for zero ads and ISP unblocking?"
-6. **AirPlay & Casting**: "Do you use Apple devices (iPhone/iPad/Mac) and want background AirPlay mirroring enabled?"
+1. **Country & Location**:
+   - "Which country are you located in (e.g. Turkey, USA, Germany, UK, France, Spain, etc.) so we can configure your regional cinema feeds and live TV?"
+2. **City (Live Weather Display)**:
+   - "Which city do you live in? (e.g. Istanbul, Ankara, Berlin, London, New York) Your local real-time temperature and weather icons will display right on the launcher home bar."
+3. **Spoken & Preferred Languages (Dubbing & Subtitles)**:
+   - "Which languages do you speak or want prioritized for audio dubbing and subtitles? (e.g. `turkish,english`, `german,english`, `spanish,latino`, etc.)"
+4. **Theme Preference (Dark / Light)**:
+   - "Which theme do you prefer?
+     - [1] Pure OLED Dark Noir (Deep obsidian black, zero light bleed) [Recommended]
+     - [2] Automatic Day / Night (Frosted glass during daytime, pure OLED black at night)
+     - [3] Modern Frosted Light Glass"
+5. **App Removal / Debloating Checklist**:
+   - "Which pre-installed manufacturer or carrier apps would you like removed or kept? (We can run the recommended safe debloat, or you can specify exact apps to eliminate)."
+6. **Remote Buttons & Brand**:
+   - "What brand is your TV, and which buttons exist on your remote (e.g. Netflix, Prime Video, TV+, Bein, YouTube)? We will map them (e.g. Prime Video -> In-Video Cinema HUD, Netflix -> Nuvio TV, etc.)."
+7. **Connection & IP**:
+   - "What is your TV's local IP address (e.g. `192.168.1.xxx`) so we can connect via `adb connect <IP>:5555`?"
 
 ---
 
@@ -80,37 +86,42 @@ adb shell "settings get global private_dns_specifier"
 
 ---
 
-### PHASE 4: NUVIO TV + CINEMA SUITE SETUP
-Install and configure Nuvio TV with 4K HDR10 torrent streaming, subtitle engine, and appropriate regional catalogs:
+### PHASE 4: PERSONALIZATION & STREAMING ENGINE SETUP
+Apply user preferences (country, weather city, dub/sub languages, theme) and configure Nuvio TV:
 
-1. **Install Nuvio TV (Match CPU ABI)**:
+1. **Write Personalized Preferences to TV**:
+   ```bash
+   adb shell "settings put global tvhome_country '<USER_COUNTRY_CODE>'" # e.g. TR, US, DE, FR, ES, IT
+   adb shell "settings put global tvhome_city '<USER_CITY>'"          # e.g. Istanbul, Ankara, Berlin, London
+   adb shell "settings put global tvhome_languages '<USER_LANGUAGES>'"# e.g. turkish,english or german,english
+   adb shell "settings put global tvhome_theme_mode '<THEME>'"        # dark, auto, or light
+   ```
+
+2. **Install Nuvio TV (Match CPU ABI)**:
    - 32-bit ARM: `https://github.com/NuvioMedia/NuvioTV/releases/download/1.0.0/app-full-armeabi-v7a-release.apk`
    - 64-bit ARM: `https://github.com/NuvioMedia/NuvioTV/releases/download/1.0.0/app-full-arm64-v8a-release.apk`
    ```bash
    adb install -r -d -g /path/to/nuvio.apk
    ```
 
-2. **Configure Regional Catalogs & Streaming Engine**:
-   - **For Turkish Users**:
+3. **Configure Regional Catalogs & Streaming Engine**:
+   - **For Turkish Users (TR)**:
      - Set Launcher Vitrin Feed: `adb shell settings put global tvhome_vitrin_source webteizle`
      - Add Anthology Canlı TV Catalog: `adb shell am start -a android.intent.action.VIEW -d "stremio://falsisdev.github.io/anthology/stremio/manifest.json"`
-     - Configure 4K HDR10 Turkish Prioritized Stream Engine (Quality tier -> Seeders first -> Size, >= 720p filter):
-       ```bash
-       adb shell am start -a android.intent.action.VIEW -d "stremio://torrentio.strem.fun/sort=quality%7Cqualityfilter=480p,other,scr,cam%7Cpriority_language=turkish/manifest.json"
-       ```
    - **For International Users**:
      - Set Launcher Vitrin Feed: `adb shell settings put global tvhome_vitrin_source cinemeta`
-     - Configure 4K HDR10 International Stream Engine (Quality tier -> Seeders first -> Size, >= 720p filter, all languages):
-       ```bash
-       adb shell am start -a android.intent.action.VIEW -d "stremio://torrentio.strem.fun/sort=quality%7Cqualityfilter=480p,other,scr,cam/manifest.json"
-       ```
 
-3. **Add OpenSubtitles v3 Engine**:
+4. **Configure 4K HDR10 Torrent Engine with User Languages (Quality tier -> Seeders first -> Size)**:
+   ```bash
+   adb shell am start -a android.intent.action.VIEW -d "stremio://torrentio.strem.fun/sort=quality%7Cqualityfilter=480p,other,scr,cam%7Cpriority_language=<USER_LANGUAGES>/manifest.json"
+   ```
+
+5. **Add OpenSubtitles v3 Engine**:
    ```bash
    adb shell am start -a android.intent.action.VIEW -d "stremio://opensubtitles-v3.strem.io/manifest.json"
    ```
 
-4. **Clean Legacy Players**:
+6. **Clean Legacy Players**:
    ```bash
    adb shell "pm uninstall -k --user 0 com.lagradost.cloudstream3 2>/dev/null || true"
    adb shell "pm uninstall -k --user 0 com.stremio.one 2>/dev/null || true"
