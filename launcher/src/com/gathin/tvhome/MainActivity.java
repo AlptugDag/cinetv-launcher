@@ -2241,9 +2241,6 @@ public class MainActivity extends Activity {
             "🎧  AirPods & Bluetooth Cihazları",
             "🌙  Ekran Koruyucuyu Şimdi Başlat",
             "👁️  Gizlenen Uygulamaları Geri Getir",
-            "🎮  Kumanda Tuşu Öğret: TV+",
-            "🎮  Kumanda Tuşu Öğret: Netflix -> Nuvio",
-            "🎮  Kumanda Tuşu Öğret: Amazon Prime -> Ayarlar HUD",
             "⚙️  Android Cihaz Ayarları"
         };
 
@@ -2270,15 +2267,6 @@ public class MainActivity extends Activity {
                             loadAppsAndPopulate();
                             Toast.makeText(MainActivity.this, "Tüm gizlenen uygulamalar geri yüklendi.", Toast.LENGTH_SHORT).show();
                         } else if (which == 7) {
-                            prefs.edit().putString(TvKeyInterceptorService.KEY_LEARN_MODE, "tvplus").apply();
-                            Toast.makeText(MainActivity.this, "Kumandadaki TV+ tuşuna basın...", Toast.LENGTH_LONG).show();
-                        } else if (which == 8) {
-                            prefs.edit().putString(TvKeyInterceptorService.KEY_LEARN_MODE, "netflix").apply();
-                            Toast.makeText(MainActivity.this, "Kumandadaki NETFLIX tuşuna basın...", Toast.LENGTH_LONG).show();
-                        } else if (which == 9) {
-                            prefs.edit().putString(TvKeyInterceptorService.KEY_LEARN_MODE, "amazon").apply();
-                            Toast.makeText(MainActivity.this, "Kumandadaki AMAZON PRIME tuşuna basın...", Toast.LENGTH_LONG).show();
-                        } else if (which == 10) {
                             startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                         }
                     }

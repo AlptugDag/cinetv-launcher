@@ -30,9 +30,7 @@ Before running any commands, interview the user by asking these concise question
      - [3] Modern Frosted Light Glass"
 5. **App Removal / Debloating Checklist**:
    - "Which pre-installed manufacturer or carrier apps would you like removed or kept? (We can run the recommended safe debloat, or you can specify exact apps to eliminate)."
-6. **Remote Buttons & Brand**:
-   - "What brand is your TV, and which buttons exist on your remote (e.g. Netflix, Prime Video, TV+, Bein, YouTube)? We will map them (e.g. Prime Video -> In-Video Cinema HUD, Netflix -> Nuvio TV, etc.)."
-7. **Connection & IP**:
+6. **Connection & IP**:
    - "What is your TV's local IP address (e.g. `192.168.1.xxx`) so we can connect via `adb connect <IP>:5555`?"
 
 ---
@@ -142,12 +140,6 @@ Set TV Master Launcher as default launcher:
 adb shell "cmd package set-home-activity com.gathin.tvhome/.MainActivity"
 ```
 
-Enable remote key interceptor accessibility service:
-```bash
-adb shell settings put secure enabled_accessibility_services com.gathin.tvhome/.TvKeyInterceptorService
-adb shell settings put secure accessibility_enabled 1
-```
-
 ---
 
 ### PHASE 6: AD-FREE YOUTUBE WITH OFFICIAL DISGUISE
@@ -171,8 +163,7 @@ Enable AirPlay daemon and whitelist power saving:
 Verify all components:
 1. **Home Screen**: Launch `com.gathin.tvhome/.MainActivity`.
 2. **Poster Vitrin Direct Playback**: Click any movie poster on the Vitrin row. Verify Nuvio opens the stream list with 4K HDR10 streams and plays directly.
-3. **Remote Keys**: Test TV+, Netflix, Prime Video (Cinema HUD overlay), and Bein Connect.
-4. **RAM Usage & Performance**:
+3. **RAM Usage & Performance**:
    ```bash
    adb shell "dumpsys meminfo com.gathin.tvhome | grep 'TOTAL PSS:'"
    ```

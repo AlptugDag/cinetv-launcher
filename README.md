@@ -7,12 +7,12 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](LICENSE)
 
 > **Next-generation, bloatware-free, hardware-accelerated Android TV operating suite.**  
-> Features a stunning **Liquid Glass 3D Parallax CoverFlow** vitrin with dynamic focal neon poster glow, launch-time live catalog auto-refresh, **Nuvio TV + Anthology** 4K HDR10/Dolby Vision cinema suite (quality & seeders first), **AdGuard Private DNS over TLS (DoT)**, **Native AirPlay receiver**, **Remote Key Interception** (Prime Video Cinema HUD overlay, TV+, Netflix $\rightarrow$ Nuvio, Bein Connect $\rightarrow$ Ad-free YouTube), universal multi-brand debloating, and OLED burn-in safe drifting screensaver.
+> Features a stunning **Liquid Glass 3D Parallax CoverFlow** vitrin with dynamic focal neon poster glow, launch-time live catalog auto-refresh, **Nuvio TV + Anthology** 4K HDR10/Dolby Vision cinema suite (quality & seeders first), **Real-Time Live Weather**, **AdGuard Private DNS over TLS (DoT)**, **Native AirPlay receiver**, universal multi-brand debloating, and OLED burn-in safe drifting screensaver.
 
 ---
 
 > [!NOTE]
-> **Attribution & Origin**: This project is built upon the wonderful foundation of [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23. We have re-engineered and expanded it into **TV Master Launcher v1.0.0**, introducing hardware Z-order 3D CoverFlow rendering, dynamic 12-bin focal neon glow extraction, Nuvio & Anthology direct 4K playback integration, AdGuard DoT security, remote key re-mapping with in-video cinema HUD, multi-vendor memory optimization, an interactive bilingual setup wizard, and zero security vulnerabilities.
+> **Attribution & Origin**: This project is built upon the wonderful foundation of [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23. We have re-engineered and expanded it into **TV Master Launcher v1.0.0**, introducing hardware Z-order 3D CoverFlow rendering, dynamic 12-bin focal neon glow extraction, Nuvio & Anthology direct 4K playback integration, AdGuard DoT security, multi-vendor memory optimization, an interactive personalized setup wizard, and zero security vulnerabilities.
 
 ---
 
@@ -74,12 +74,10 @@ Focus movement smoothly shifts depth scaling, 3D elevation, and poster-aware foc
 - **Aydınlık Buzlu Cam (Modern Frosted Light Glass)**: High-contrast modern platinum silver palette with deep obsidian typography.
 - Changeable on the fly from the TV remote or installation wizard.
 
-### 5. 🎮 Global Remote Key Interception & Cinema HUD
-Integrated background accessibility service (`TvKeyInterceptorService`) dynamically binds dedicated remote buttons:
-- **TV+ Button** $\rightarrow$ Launches Turkcell TV+ (`com.turkcell.ott`).
-- **Amazon Prime Video Button** $\rightarrow$ Opens a non-intrusive **Cinema Picture & Audio Settings HUD overlay** on the side of the screen without interrupting or pausing ongoing video playback!
-- **Netflix Button** $\rightarrow$ Launches **Nuvio TV** (`com.nuvio.tv`).
-- **Bein Connect / YouTube Button** $\rightarrow$ Launches Ad-Free YouTube (TizenTube / Cobalt / SmartTube).
+### 5. 🎮 Native Remote Control Layout Preservation
+- **Zero Remote Key Tampering**: TV Master Launcher strictly preserves your TV's original hardware remote control keycodes, branded buttons, and behaviors.
+- Does not hijack, intercept, or overwrite any dedicated hardware remote buttons (Netflix, Prime Video, YouTube, TV+, etc.).
+- Picture, sound, and quick settings remain seamlessly accessible on-screen via the top-bar Quick Settings gear icon without requiring background accessibility services.
 
 ### 6. 🔒 AdGuard Private DNS over TLS (DoT)
 - Configures `dns.adguard-dns.com` system-wide over TLS.
@@ -130,8 +128,8 @@ cd tv-master-launcher
   - Choose between recommended safe brand debloat, custom interactive package removal (with safety guards for core services), or skip.
 - **DNS & Ad Blocking**:
   - AdGuard DoT, Cloudflare DoT, or keep existing.
-- **Dedicated Remote Button Mappings**:
-  - Fast binding for Prime Video (In-Video Cinema HUD), Netflix (Nuvio), TV+, and Bein/YouTube.
+- **Untouched Remote Controls**:
+  - Zero interference with hardware remote control buttons.
 
 ---
 

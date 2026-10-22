@@ -430,11 +430,6 @@ adb install -r -d -g "${APK_RELEASE}"
 echo "==> Setting default home launcher..."
 adb shell "cmd package set-home-activity com.gathin.tvhome/.MainActivity 2>/dev/null || true"
 
-# Accessibility Remote Key Interception
-echo "==> Activating Remote Key Interceptor Service..."
-adb shell "settings put secure enabled_accessibility_services com.gathin.tvhome/.TvKeyInterceptorService"
-adb shell "settings put secure accessibility_enabled 1"
-
 # Launch MainActivity
 adb shell "am force-stop com.gathin.tvhome && am start -n com.gathin.tvhome/.MainActivity" >/dev/null 2>&1 || true
 
