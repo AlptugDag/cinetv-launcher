@@ -275,7 +275,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
                     Toast.makeText(this, "TV+ tuşu kaydedildi (Kod: " + token + ")", Toast.LENGTH_SHORT).show();
                 } else if ("netflix".equals(learnTarget)) {
                     prefs.edit().putInt(KEY_CUSTOM_NETFLIX, token).remove(KEY_LEARN_MODE).apply();
-                    Toast.makeText(this, "Netflix -> Web Video Caster tuşu kaydedildi (Kod: " + token + ")", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Netflix -> Nuvio tuşu kaydedildi (Kod: " + token + ")", Toast.LENGTH_SHORT).show();
                 } else if ("amazon".equals(learnTarget)) {
                     prefs.edit().putInt(KEY_CUSTOM_AMAZON, token).remove(KEY_LEARN_MODE).apply();
                     Toast.makeText(this, "Amazon Prime -> Sinema HUD tuşu kaydedildi (Kod: " + token + ")", Toast.LENGTH_SHORT).show();
@@ -298,13 +298,13 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return true;
         }
 
-        // 2. Netflix Button -> Opens Web Video Caster
+        // 2. Netflix Button -> Opens Nuvio
         if (isNetflixKey(keyCode, scanCode, prefs)) {
             if (action == KeyEvent.ACTION_DOWN) {
                 launchPackageWithFallback(new String[]{
-                        "com.instantbits.cast.receiver",
-                        "com.instantbits.cast.webvideo"
-                }, "Web Video Caster");
+                        "com.nuvio.tv",
+                        "com.instantbits.cast.receiver"
+                }, "Nuvio");
             }
             return true;
         }

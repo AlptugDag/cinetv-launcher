@@ -3,6 +3,11 @@
 # Compiles, dexes, packages, and signs without Gradle overhead.
 set -e
 
+if [ -d "/opt/homebrew/opt/openjdk@17/bin" ]; then
+    export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
+    export JAVA_HOME="/opt/homebrew/opt/openjdk@17"
+fi
+
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
 

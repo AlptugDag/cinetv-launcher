@@ -48,6 +48,7 @@ public final class YouTubeDisguiseHelper {
         if (isTizenTube(pkg)) return "YouTube";
         if (lower.contains("turkcell.ott") || lower.contains("tvplus")) return "TV+";
         if (lower.contains("instantbits.cast")) return "Web Video Caster";
+        if (lower.contains("nuvio")) return "Nuvio";
         if (lower.contains("stremio")) return "Stremio";
         if (lower.contains("dizipal") || lower.contains("lipter")) return "DİZİPAL";
         if (lower.contains("courville.nova")) return "NOVA";
@@ -71,6 +72,9 @@ public final class YouTubeDisguiseHelper {
         }
         if (lower.contains("instantbits.cast")) {
             return Color.parseColor("#FF6B00"); // Vibrant Tangerine Amber (Hue 25°)
+        }
+        if (lower.contains("nuvio")) {
+            return Color.parseColor("#8B5CF6"); // Electric Nuvio Violet (Hue 258°)
         }
         if (isTizenTube(pkg)) {
             return Color.parseColor("#FF0033"); // Official YouTube Ruby Crimson (Hue 348°)
@@ -453,6 +457,9 @@ public final class YouTubeDisguiseHelper {
         if (lower.contains("instantbits.cast")) {
             return new BitmapDrawable(ctx.getResources(), createWebVideoCasterCard(ctx));
         }
+        if (lower.contains("nuvio")) {
+            return new BitmapDrawable(ctx.getResources(), createNuvioCard(ctx));
+        }
         if (lower.contains("stremio")) {
             return new BitmapDrawable(ctx.getResources(), createStremioCard(ctx));
         }
@@ -590,6 +597,39 @@ public final class YouTubeDisguiseHelper {
         t2.setColor(Color.parseColor("#FF9E00"));
         t2.setShadowLayer(22f, 0f, 0f, Color.argb(210, 255, 107, 0));
         canvas.drawText("CASTER", left + box + 28f, CARD_H / 2f + 36f, t2);
+        return bmp;
+    }
+
+    /** Nuvio Liquid Glass Card (Electric Violet #8B5CF6 with official wordmark asset) */
+    public static Bitmap createNuvioCard(Context ctx) {
+        Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
+        int neon = Color.parseColor("#8B5CF6");
+        drawLiquidGlassCardBase(canvas, neon, CARD_W / 2f, CARD_H / 2f);
+
+        Drawable wordmark = null;
+        try {
+            wordmark = ctx.getResources().getDrawable(R.drawable.ic_nuvio_wordmark, ctx.getTheme());
+        } catch (Throwable ignored) {
+        }
+
+        if (wordmark != null) {
+            // Wordmark asset dimensions: 434 x 138 (aspect ~3.14)
+            // Centered on 640x360 glass card without duplicate text labels
+            int targetW = 390;
+            int targetH = 124;
+            int left = (CARD_W - targetW) / 2;
+            int top = (CARD_H - targetH) / 2;
+            wordmark.setBounds(left, top, left + targetW, top + targetH);
+            wordmark.draw(canvas);
+        } else {
+            Paint text = createInternalNeonTextPaint(ctx, 68f, Color.WHITE, neon);
+            text.setLetterSpacing(0.04f);
+            float tw = text.measureText("nuvio");
+            Paint.FontMetrics fm = text.getFontMetrics();
+            float ty = (CARD_H / 2f) - ((fm.ascent + fm.descent) / 2f);
+            canvas.drawText("nuvio", (CARD_W - tw) / 2f, ty, text);
+        }
         return bmp;
     }
 

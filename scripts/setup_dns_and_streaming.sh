@@ -67,9 +67,9 @@ echo "    [+] Installing Anthology Canlı TV & Sports Catalog..."
 adb shell "am start -a android.intent.action.VIEW -d \"stremio://falsisdev.github.io/anthology/stremio/manifest.json\" 2>/dev/null || true"
 sleep 2
 
-# B. Add Torrentio 4K HDR10 Turkish Prioritized Engine
+# B. Add Torrentio 4K HDR10 Turkish Prioritized Engine (Strict >= 720p filter)
 echo "    [+] Installing Torrentio 4K HDR10 / Remux Turkish Prioritized Engine..."
-adb shell "am start -a android.intent.action.VIEW -d \"stremio://torrentio.strem.fun/sort=qualitysize%7Cqualityfilter=scr,cam%7Cpriority_language=turkish/manifest.json\" 2>/dev/null || true"
+adb shell "am start -a android.intent.action.VIEW -d \"stremio://torrentio.strem.fun/sort=qualitysize%7Cqualityfilter=480p,other,scr,cam%7Cpriority_language=turkish/manifest.json\" 2>/dev/null || true"
 sleep 2
 
 # C. Add OpenSubtitles v3 Subtitle Addon

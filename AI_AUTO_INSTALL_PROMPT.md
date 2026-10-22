@@ -21,7 +21,7 @@ Before running any disruptive commands, interview the user by asking these conci
 2. **TV Brand & Remote**: "What brand and model is your TV, and which branded buttons exist on your remote (e.g. Netflix, Prime Video, TV+, Bein Connect, YouTube, Disney+)?"
 3. **Remote Key Intent Re-mapping**:
    - Do you want Prime Video to toggle the non-intrusive Cinema Picture & Audio Settings HUD without stopping your video?
-   - Do you want Netflix to open Web Video Caster?
+   - Do you want Netflix to open Nuvio TV (or Web Video Caster)?
    - Do you want TV+ to launch Turkcell TV+?
    - Do you want Bein Connect / YouTube button to launch ad-free YouTube (TizenTube/SmartTube)?
 4. **DNS & Ad Blocking**: "Shall we enforce system-wide AdGuard Private DNS over TLS (DoT: `dns.adguard-dns.com`) for zero ads and ISP unblocking?"
@@ -93,9 +93,9 @@ Install and configure Nuvio TV with 4K HDR10 torrent streaming, Turkish subtitle
    - In Nuvio: Settings -> Plugins -> Add Repository -> `https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json`
    - Add Anthology Canlı TV Catalog: `stremio://falsisdev.github.io/anthology/stremio/manifest.json`
 
-3. **Configure 4K HDR10 Turkish Prioritized Stream Engine**:
+3. **Configure 4K HDR10 Turkish Prioritized Stream Engine (Strict >= 720p filter)**:
    ```bash
-   adb shell am start -a android.intent.action.VIEW -d "stremio://torrentio.strem.fun/sort=qualitysize%7Cqualityfilter=scr,cam%7Cpriority_language=turkish/manifest.json"
+   adb shell am start -a android.intent.action.VIEW -d "stremio://torrentio.strem.fun/sort=qualitysize%7Cqualityfilter=480p,other,scr,cam%7Cpriority_language=turkish/manifest.json"
    ```
 
 4. **Add OpenSubtitles v3 Engine**:

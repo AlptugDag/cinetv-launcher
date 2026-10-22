@@ -38,19 +38,23 @@
 - **Dynamic Depth Scaling**: Focused poster scales to **1.30x** with a `-22f` vertical lift; neighboring posters smoothly recede to **0.94x**, **0.80x**, and **0.68x** with physical drop shadows and distance alpha dimming.
 - **12-Bin Focal Neon Histogram**: Replaces generic dominant color math with a 12-bin chromatic histogram. Dampens skin tones by 65% to isolate pure graphic neon accents (Crimson, Cyan, Emerald, Gold, Cobalt, Violet).
 - **Hue Separation Rule**: Enforces a minimum `48°` hue delta between adjacent posters, ensuring adjacent cards never share the same ambient glow.
-- **Direct 4K Playback Integration**: Clicking any poster directly initiates stream playback in **Nuvio TV** (`nuvio://stream/{imdbId}/movie/{title}`) with the exact matching IMDb ID.
+- **Anthology Webteizle Source & Dynamic IMDb Resolution**: Fetches an expanded 20-card movie showcase directly from Anthology's Webteizle catalog (`webteizle.info`) with fallback to Cinemeta, automatically resolving IMDb IDs (`tt...`) so posters are authentic and always launch the correct film.
+- **Direct 4K Stream Playback Integration**: Clicking any poster directly initiates playback in **Nuvio TV** (`launchMode="stream"` with exact `contentId` and `name`), prioritizing 4K HDR10 Turkish streams immediately.
 
 ### 2. 🍿 Nuvio TV + Anthology + 4K HDR10 Cinema Suite
 - Integrates **Nuvio TV** (`com.nuvio.tv`) with the verified **Anthology** repository (41 scrapers + 138 Live TV channels).
-- Configured with high-speed **Torrentio 4K HDR10 / Dolby Vision** streaming, prioritizing 4K Remux / UHD streams with Turkish audio & subtitles.
-- Integrated with **OpenSubtitles v3** for instant Turkish subtitle fetching.
+- Official Nuvio wordmark tile (`ic_nuvio_wordmark`) rendered on Apple visionOS liquid glass without redundant duplicate text.
+- Strict stream priority and resolution filter:
+  `4K HDR10 Turkish Dubbed` > `4K HDR10 Turkish Subtitles` > `1080p HDR10 Turkish Dubbed` > `1080p HDR10 Turkish Subtitles` > `1080p Turkish Dubbed` > `1080p Turkish Subtitles` > `720p Turkish Dubbed` > `720p Turkish Subtitles`.
+  Formats below 720p (480p, 360p, CAM, SCR, etc.) are strictly excluded. Domestic Turkish films are included as long as resolution is $\ge 720\text{p}$.
+- Configured with high-speed **Torrentio 4K HDR10 / Dolby Vision** streaming + **OpenSubtitles v3**.
 - Completely replaces and retires legacy players (CloudStream, Stremio) cleanly.
 
 ### 3. 🎮 Global Remote Key Interception & Cinema HUD
 Integrated background accessibility service (`TvKeyInterceptorService`) dynamically binds dedicated remote buttons:
 - **TV+ Button** $\rightarrow$ Launches Turkcell TV+ (`com.turkcell.ott`).
 - **Amazon Prime Video Button** $\rightarrow$ Opens a non-intrusive **Cinema Picture & Audio Settings HUD overlay** on the side of the screen without interrupting or pausing ongoing video playback!
-- **Netflix Button** $\rightarrow$ Launches Web Video Caster (`com.instantbits.cast.receiver`).
+- **Netflix Button** $\rightarrow$ Launches **Nuvio** (`com.nuvio.tv`).
 - **Bein Connect / YouTube Button** $\rightarrow$ Launches Ad-Free YouTube (TizenTube / Cobalt / SmartTube).
 
 ### 4. 🔒 AdGuard Private DNS over TLS (DoT)
