@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 echo "================================================================================"
-echo "    📺 CİNETV LAUNCHER — MASTER TELEVİZYON GÜNCELLEME VE DERLEME MOTORU"
+echo "    CİNETV LAUNCHER — MASTER TELEVİZYON GÜNCELLEME VE DERLEME MOTORU"
 echo "================================================================================"
 
 DEFAULT_IP="192.168.1.128:5555"
@@ -55,9 +55,9 @@ adb shell "cmd package compile -m speed com.nuvio.tv" >/dev/null 2>&1 || true
 echo "[+] 6. Yapay Zekâ (Gemini AI) bağlantı durumu doğrulanıyor..."
 HAS_GEMINI=$(adb shell "settings get secure tv_gemini_api_key" 2>/dev/null | tr -d '\r\n' || true)
 if [ -n "$HAS_GEMINI" ] && [ "$HAS_GEMINI" != "null" ]; then
-    echo "    ✅ Gemini AI Donanımsal Olarak Aktif (Kişisel API Anahtarı TV'de Tanımlı)"
+    echo "    [+] Gemini AI Donanımsal Olarak Aktif (Kişisel API Anahtarı TV'de Tanımlı)"
 else
-    echo "    ℹ️ Gemini AI anahtarı tanımlanmamış. Başlatıcı Ayarlarından eklenebilir."
+    echo "    [-] Gemini AI anahtarı tanımlanmamış. Başlatıcı Ayarlarından eklenebilir."
 fi
 
 echo "[+] 7. Başlatıcı 60 FPS hızla yeniden başlatılıyor..."
@@ -65,16 +65,16 @@ adb shell "am force-stop com.gathin.tvhome && am start -n com.gathin.tvhome/.Mai
 
 echo ""
 echo "================================================================================"
-echo "  🎉 TEBRİKLER! TÜM DEĞİŞİKLİKLER TELEVİZYONUNUZDA EKSİKSİZ VE AKTİF:"
+echo "  [✓] TEBRİKLER! TÜM DEĞİŞİKLİKLER TELEVİZYONUNUZDA EKSİKSİZ VE AKTİF:"
 echo "--------------------------------------------------------------------------------"
-echo "  🤖 Gemini AI Sinema Küratörü (Ruh Haline & Geceye Göre Özel Film Üretimi)"
-echo "  💎 68x68 Obsidian Cam Madalyon (Yeni Büyütülmüş & İnteraktif Marka Logosu)"
-echo "  🏷️  4K HDR10 Sinema Kalite Rozetleri (Her Afişin Üstünde Füme Cam Hap Rozet)"
-echo "  ⚡ %63 Bellek Tasarrufu (84 MB PSS, RGB_565 Downsampling, Sıfır Swap Kasıntısı)"
-echo "  🚀 Anında Ana Ekrana Dönüş (#666 Sıfır Gecikme, 0 ms Yeniden Çizim)"
-echo "  🔄 360° Sonsuz D-Pad Navigasyonu (Vitrin, Dock ve Uygulamalar Arası Tam Döngü)"
-echo "  ⏱️  1.2 Saniyelik İnsani Basılı Tutma & 45sn Hareketsizlik Güvenliği"
-echo "  🛡️  MediaTek Cold-Boot Kanal Tarama Engelleme (Açılışta Doğrudan Ana Menü)"
-echo "  🎮 4 Çekirdek Kumanda Tuşu: Netflix->Nuvio, YT->TizenTube, Prime->WVC, TV+->TV+"
-echo "  🍿 6'lı Dev Sinema Ekosistemi: TurkSinema, Anthology, Torrentio, AIOMetadata, Kaptain, TR-Altyazı"
+echo "  * Gemini AI Sinema Küratörü (Ruh Haline & Geceye Göre Özel Film Üretimi)"
+echo "  * 68x68 Obsidian Cam Madalyon (Büyütülmüş & İnteraktif Marka Logosu)"
+echo "  * Liquid Glass 3D CoverFlow Vitrini & Saf Afiş Estetiği"
+echo "  * %63 Bellek Tasarrufu (RGB_565 Downsampling, Sıfır Swap Kasıntısı)"
+echo "  * Anında Ana Ekrana Dönüş (Sıfır Gecikme, 0 ms Yeniden Çizim)"
+echo "  * 360° Sonsuz D-Pad Navigasyonu (Vitrin, Dock ve Uygulamalar Arası Tam Döngü)"
+echo "  * 1.2 Saniyelik D-pad Basılı Tutma Aksiyon Barı"
+echo "  * MediaTek Cold-Boot Kanal Tarama Engelleme (Açılışta Doğrudan Ana Menü)"
+echo "  * 4 Çekirdek Kumanda Tuşu: Netflix->Nuvio, YT->TizenTube, Prime->WVC, TV+->TV+"
+echo "  * 6'lı Sinema Ekosistemi: TurkSinema, Anthology, Torrentio, AIOMetadata, Kaptain, TR-Altyazı"
 echo "================================================================================"

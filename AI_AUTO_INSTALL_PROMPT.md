@@ -1,4 +1,4 @@
-# 🤖 UNIVERSAL AI AUTO-INSTALLER PROMPT FOR ANDROID TV
+# UNIVERSAL AI AUTO-INSTALLER PROMPT FOR ANDROID TV
 
 > **How to use this prompt:**
 > Copy the entire markdown block below and paste it directly into **ChatGPT**, **Claude**, **Gemini**, or **DeepSeek**.

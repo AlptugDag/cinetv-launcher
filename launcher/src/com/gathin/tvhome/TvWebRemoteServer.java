@@ -36,6 +36,9 @@ public class TvWebRemoteServer {
     public interface RemoteActionCallback {
         void onMovieSearchRequested(String query);
         void onAppLaunchRequested(String pkg);
+        void onScreensaverRequested();
+        void onAllAppsRequested();
+        void onDpadActionsRequested();
     }
 
     private static RemoteActionCallback actionCallback;
@@ -123,6 +126,36 @@ public class TvWebRemoteServer {
             } else if (uri.startsWith("/api/search")) {
                 handleSearchApi(uri);
                 sendJsonResponse(socket, "{\"status\":\"searching\"}");
+            } else if (uri.startsWith("/api/screensaver")) {
+                if (actionCallback != null) {
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            actionCallback.onScreensaverRequested();
+                        }
+                    });
+                }
+                sendJsonResponse(socket, "{\"status\":\"screensaver\"}");
+            } else if (uri.startsWith("/api/all_apps")) {
+                if (actionCallback != null) {
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            actionCallback.onAllAppsRequested();
+                        }
+                    });
+                }
+                sendJsonResponse(socket, "{\"status\":\"all_apps\"}");
+            } else if (uri.startsWith("/api/dpad_actions")) {
+                if (actionCallback != null) {
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            actionCallback.onDpadActionsRequested();
+                        }
+                    });
+                }
+                sendJsonResponse(socket, "{\"status\":\"dpad_actions\"}");
             } else if (uri.startsWith("/api/launch")) {
                 handleLaunchApi(context, uri);
                 sendJsonResponse(socket, "{\"status\":\"launched\"}");
@@ -155,6 +188,7 @@ public class TvWebRemoteServer {
     private static void handleSearchApi(String uri) {
         try {
             final String q = getQueryParam(uri, "q");
+            android.util.Log.i("TvWebRemote", "handleSearchApi: uri=" + uri + " q=" + q + " callback=" + actionCallback);
             if (q != null && actionCallback != null) {
                 mainHandler.post(new Runnable() {
                     @Override
@@ -311,19 +345,19 @@ public class TvWebRemoteServer {
                 + "  <button class=\"dpad-btn dpad-down\" onclick=\"sendKey(20)\">▼</button>\n"
                 + "</div>\n"
                 + "<div class=\"actions-row\">\n"
-                + "  <button class=\"act-btn\" onclick=\"sendKey(4)\">◂ Geri</button>\n"
-                + "  <button class=\"act-btn\" onclick=\"sendKey(3)\">🏠 Ana Ekran</button>\n"
+                + "  <button class=\"act-btn\" onclick=\"sendKey(4)\">Geri</button>\n"
+                + "  <button class=\"act-btn\" onclick=\"sendKey(3)\">Ana Ekran</button>\n"
                 + "</div>\n"
                 + "<div class=\"hotkeys-grid\">\n"
-                + "  <div class=\"hot-btn hot-nuvio\" onclick=\"launchApp('com.nuvio.tv')\">🎬 Nuvio (4K)</div>\n"
-                + "  <div class=\"hot-btn hot-yt\" onclick=\"launchApp('io.gh.reisxd.tizentube.cobalt')\">▶ YouTube</div>\n"
-                + "  <div class=\"hot-btn hot-wvc\" onclick=\"launchApp('com.instantbits.cast.receiver')\">📡 Web Caster</div>\n"
-                + "  <div class=\"hot-btn hot-tvp\" onclick=\"launchApp('com.turkcell.ott')\">📺 TV+ Canlı</div>\n"
+                + "  <div class=\"hot-btn hot-nuvio\" onclick=\"launchApp('com.nuvio.tv')\">Nuvio 4K</div>\n"
+                + "  <div class=\"hot-btn hot-yt\" onclick=\"launchApp('io.gh.reisxd.tizentube.cobalt')\">YouTube</div>\n"
+                + "  <div class=\"hot-btn hot-wvc\" onclick=\"launchApp('com.instantbits.cast.receiver')\">Web Caster</div>\n"
+                + "  <div class=\"hot-btn hot-tvp\" onclick=\"launchApp('com.turkcell.ott')\">TV+ Canlı</div>\n"
                 + "</div>\n"
                 + "<div class=\"vol-row\">\n"
-                + "  <button class=\"vol-btn\" onclick=\"sendKey(25)\">🔉 Ses -</button>\n"
-                + "  <button class=\"vol-btn\" onclick=\"sendKey(164)\">🔇 Sessiz</button>\n"
-                + "  <button class=\"vol-btn\" onclick=\"sendKey(24)\">🔊 Ses +</button>\n"
+                + "  <button class=\"vol-btn\" onclick=\"sendKey(25)\">Ses -</button>\n"
+                + "  <button class=\"vol-btn\" onclick=\"sendKey(164)\">Sessiz</button>\n"
+                + "  <button class=\"vol-btn\" onclick=\"sendKey(24)\">Ses +</button>\n"
                 + "</div>\n"
                 + "<script>\n"
                 + "  function sendKey(code) {\n"

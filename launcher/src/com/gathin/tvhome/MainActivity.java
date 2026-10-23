@@ -84,6 +84,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -209,6 +213,7 @@ public class MainActivity extends Activity {
     private final List<String> posterImdbIds = new ArrayList<>();
     private final List<String> posterTitles = new ArrayList<>();
     private final List<String> posterUrls = new ArrayList<>();
+    private final ExecutorService posterDownloadExecutor = Executors.newFixedThreadPool(4);
     private long lastVitrinCheckTime = 0;
 
     private static final int VITRIN_POSTER_W = 260;
@@ -604,6 +609,8 @@ public class MainActivity extends Activity {
             Settings.Secure.putInt(getContentResolver(), "screensaver_timeout", 300000);
             Settings.Secure.putInt(getContentResolver(), "screensaver_enabled", 1);
             Settings.Secure.putString(getContentResolver(), "screensaver_components", "com.gathin.tvhome/com.gathin.tvhome.ClockDream");
+            Settings.Secure.putString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, "com.gathin.tvhome/com.gathin.tvhome.TvKeyInterceptorService");
+            Settings.Secure.putInt(getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, 1);
         } catch (Throwable ignored) {}
 
         try {
@@ -630,6 +637,38 @@ public class MainActivity extends Activity {
                     @Override
                     public void run() {
                         launchAppByPackage(pkg);
+                    }
+                });
+            }
+
+            @Override
+            public void onScreensaverRequested() {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        showIdleScreensaver();
+                    }
+                });
+            }
+
+            @Override
+            public void onAllAppsRequested() {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        showAllAppsDrawer();
+                    }
+                });
+            }
+
+            @Override
+            public void onDpadActionsRequested() {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!dockItems.isEmpty()) {
+                            showAppLeanbackContextMenu(dockItems.get(0), true, 0);
+                        }
                     }
                 });
             }
@@ -674,24 +713,27 @@ public class MainActivity extends Activity {
 
     private void handleIncomingIntent(Intent intent) {
         if (intent == null) return;
-        final String action = intent.getStringExtra("action");
+        String action = intent.getStringExtra("action");
+        if (action == null || action.trim().isEmpty()) {
+            action = intent.getAction();
+        }
         if (action == null || action.trim().isEmpty()) return;
 
-        if ("show_screensaver".equals(action)) {
+        if ("show_screensaver".equals(action) || "com.gathin.tvhome.ACTION_SHOW_SCREENSAVER".equals(action)) {
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     showIdleScreensaver();
                 }
             }, 350L);
-        } else if ("show_all_apps".equals(action)) {
+        } else if ("show_all_apps".equals(action) || "com.gathin.tvhome.ACTION_SHOW_ALL_APPS".equals(action)) {
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     showAllAppsDrawer();
                 }
             }, 350L);
-        } else if ("show_dpad_actions".equals(action)) {
+        } else if ("show_dpad_actions".equals(action) || "com.gathin.tvhome.ACTION_SHOW_DPAD_ACTIONS".equals(action)) {
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -700,7 +742,7 @@ public class MainActivity extends Activity {
                     }
                 }
             }, 350L);
-        } else if ("search".equals(action)) {
+        } else if ("search".equals(action) || "com.gathin.tvhome.ACTION_SEARCH".equals(action)) {
             final String q = intent.getStringExtra("query");
             if (q != null && !q.trim().isEmpty()) {
                 handler.postDelayed(new Runnable() {
@@ -822,6 +864,10 @@ public class MainActivity extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (event != null && event.getAction() == KeyEvent.ACTION_DOWN) {
+            int kc = event.getKeyCode();
+            int sc = event.getScanCode();
+            android.util.Log.i("TvKeyEvent", "dispatchKeyEvent: kc=" + kc + " sc=" + sc);
+
             if (isScreensaverActive) {
                 hideIdleScreensaver();
                 resetIdleScreensaverTimer();
@@ -829,21 +875,28 @@ public class MainActivity extends Activity {
             }
             resetIdleScreensaverTimer();
 
-            int kc = event.getKeyCode();
-            // Dedicated Remote Hardware Buttons
-            if (kc == 207 || kc == 188 || kc == 183 || kc == 265 || kc == 229) {
+            // Dedicated Remote Hardware Buttons (Netflix, YouTube, Prime, TV+)
+            if (kc == 207 || kc == 188 || kc == 183 || kc == 265 || kc == 229 || kc == 289 || kc == KeyEvent.KEYCODE_BUTTON_1
+                    || sc == 191 || sc == 412 || sc == 249) {
+                android.util.Log.i("TvKeyEvent", "Hardware key matched: Nuvio");
                 openNuvioApp();
                 return true;
             }
-            if (kc == 218 || kc == 189 || kc == 190 || kc == 284) {
+            if (kc == 218 || kc == 189 || kc == 190 || kc == 284 || kc == 290 || kc == KeyEvent.KEYCODE_BUTTON_2
+                    || sc == 218 || sc == 413) {
+                android.util.Log.i("TvKeyEvent", "Hardware key matched: YouTube");
                 openYouTubeApp();
                 return true;
             }
-            if (kc == 185 || kc == 209 || kc == 228 || kc == 192) {
+            if (kc == 185 || kc == 209 || kc == 228 || kc == 192 || kc == 291 || kc == KeyEvent.KEYCODE_BUTTON_3
+                    || sc == 185 || sc == 415) {
+                android.util.Log.i("TvKeyEvent", "Hardware key matched: Web Video Caster");
                 openWebVideoCasterApp();
                 return true;
             }
-            if (kc == 277 || kc == 170 || kc == 172 || kc == 186) {
+            if (kc == 277 || kc == 170 || kc == 172 || kc == 186 || kc == 292 || kc == KeyEvent.KEYCODE_TV || kc == KeyEvent.KEYCODE_GUIDE
+                    || sc == 377 || sc == 362) {
+                android.util.Log.i("TvKeyEvent", "Hardware key matched: TV+");
                 openTvPlusApp();
                 return true;
             }
@@ -1402,7 +1455,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams spLp = new LinearLayout.LayoutParams(36, 1);
         reorderHudBar.addView(hudSpacer, spLp);
 
-        reorderHideBtn = createReorderButton("✕ Ana Ekrandan Sil", Color.parseColor("#E06C75"), new View.OnClickListener() {
+        reorderHideBtn = createReorderButton("Ana Ekrandan Kaldır", Color.parseColor("#E06C75"), new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (movingTileItem != null) {
@@ -1417,7 +1470,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams bSpLp = new LinearLayout.LayoutParams(16, 1);
         reorderHudBar.addView(btnSpacer, bSpLp);
 
-        reorderUninstallBtn = createReorderButton("🗑 Kaldır", Color.parseColor("#E5C07B"), new View.OnClickListener() {
+        reorderUninstallBtn = createReorderButton("Kaldır", Color.parseColor("#E5C07B"), new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (movingTileItem != null) {
@@ -2089,24 +2142,33 @@ public class MainActivity extends Activity {
 
     private static class VitrinCategory {
         final String name;
-        final String catalogUrl;
-        VitrinCategory(String name, String catalogUrl) {
+        final String tmdbEndpoint;
+        final String fallbackUrl;
+
+        VitrinCategory(String name, String tmdbEndpoint, String fallbackUrl) {
             this.name = name;
-            this.catalogUrl = catalogUrl;
+            this.tmdbEndpoint = tmdbEndpoint;
+            this.fallbackUrl = fallbackUrl;
         }
     }
 
-    private static final VitrinCategory[] VITRIN_CATEGORIES = new VitrinCategory[] {
-        new VitrinCategory("Günün Akıllı Sinema Seçkisi", "gemini_ai"),
-        new VitrinCategory("Cannes & Venedik Altın Palmiye Başyapıtları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Drama.json"),
-        new VitrinCategory("Christopher Nolan & Denis Villeneuve Vizyonu", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Sci-Fi.json"),
-        new VitrinCategory("Siberpunk & Retro-Fütüristik Distopyalar", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Fantasy.json"),
-        new VitrinCategory("İskandinav & Fransız Suç Gerilimleri", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Crime.json"),
-        new VitrinCategory("Kore Sineması: Zeka ve Gerilim Başyapıtları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Thriller.json"),
-        new VitrinCategory("Studio Ghibli & Büyülü Sinema Evrenleri", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Animation.json"),
-        new VitrinCategory("90'lar Atmosferik Neo-Noir & Gizem", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Mystery.json"),
-        new VitrinCategory("Kült Bilim Kurgu & Kozmik Yolculuklar", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json"),
-        new VitrinCategory("Psikolojik Çıkmazlar ve Zihin Oyunları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/imdbRating.json")
+    private static final VitrinCategory[] DYNAMIC_VITRIN_CATEGORIES = new VitrinCategory[] {
+        new VitrinCategory("Günün En Popüler Sinema Yapımları", "trending/movie/day?", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json"),
+        new VitrinCategory("Tüm Zamanların En Yüksek Puanlı Başyapıtları", "movie/top_rated?", "https://cinemeta-catalogs.strem.io/top/catalog/movie/imdbRating.json"),
+        new VitrinCategory("Vizyondaki Güncel Sinema Filmleri", "movie/now_playing?", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json"),
+        new VitrinCategory("Kült Bilim Kurgu ve Kozmik Yolculuklar", "discover/movie?with_genres=878&sort_by=vote_count.desc&vote_average.gte=7.4&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Sci-Fi.json"),
+        new VitrinCategory("Psikolojik Gerilim ve Zihin Oyunları", "discover/movie?with_genres=53,18&sort_by=vote_count.desc&vote_average.gte=7.4&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Thriller.json"),
+        new VitrinCategory("Karanlık Polisiye ve Kara Film Başyapıtları", "discover/movie?with_genres=80,18&sort_by=vote_count.desc&vote_average.gte=7.5&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Crime.json"),
+        new VitrinCategory("Güney Kore Sineması Seçkisi", "discover/movie?with_origin_country=KR&sort_by=vote_count.desc&vote_average.gte=7.5&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Drama.json"),
+        new VitrinCategory("Fransız Sineması ve Yeni Dalga", "discover/movie?with_origin_country=FR&sort_by=vote_count.desc&vote_average.gte=7.2&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Drama.json"),
+        new VitrinCategory("Japon Sineması ve Anime Başyapıtları", "discover/movie?with_origin_country=JP&with_genres=16,18&sort_by=vote_count.desc&vote_average.gte=7.6&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Animation.json"),
+        new VitrinCategory("Türk Sineması ve Festival Başyapıtları", "discover/movie?with_origin_country=TR&sort_by=vote_count.desc&vote_average.gte=6.8&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Drama.json"),
+        new VitrinCategory("İtalyan Sineması Klasikleri", "discover/movie?with_origin_country=IT&sort_by=vote_count.desc&vote_average.gte=7.4&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Drama.json"),
+        new VitrinCategory("90'lar Atmosferik Neo-Noir Sineması", "discover/movie?primary_release_date.gte=1990-01-01&primary_release_date.lte=1999-12-31&with_genres=18,80&sort_by=vote_count.desc&vote_average.gte=7.6&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Mystery.json"),
+        new VitrinCategory("Ufuk Açıcı Doğa ve İnsan Belgeselleri", "discover/movie?with_genres=99&sort_by=vote_count.desc&vote_average.gte=7.5&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Documentary.json"),
+        new VitrinCategory("Epik Tarih ve Savaş Dramaları", "discover/movie?with_genres=36,18&sort_by=vote_count.desc&vote_average.gte=7.5&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=History.json"),
+        new VitrinCategory("Studio Ghibli ve Büyülü Animasyon Dünyaları", "discover/movie?with_companies=10342&sort_by=vote_count.desc&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Animation.json"),
+        new VitrinCategory("Sinema Tarihinin Unutulmaz Klasikleri", "discover/movie?primary_release_date.lte=1979-12-31&sort_by=vote_count.desc&vote_average.gte=7.8&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json")
     };
 
     private static HttpURLConnection openWithRedirects(String urlStr) throws Exception {
@@ -2134,16 +2196,52 @@ public class MainActivity extends Activity {
                 try {
                     SharedPreferences prefs = getSharedPreferences("vitrin_cache", MODE_PRIVATE);
                     int catIdx = prefs.getInt("active_category_idx", 0);
-                    final VitrinCategory category = VITRIN_CATEGORIES[Math.abs(catIdx) % VITRIN_CATEGORIES.length];
+                    final VitrinCategory category = DYNAMIC_VITRIN_CATEGORIES[Math.abs(catIdx) % DYNAMIC_VITRIN_CATEGORIES.length];
                     prefs.edit().putInt("active_category_idx", catIdx + 1).apply();
 
-                    if ("gemini_ai".equals(category.catalogUrl)) {
-                        if (getGeminiApiKey() != null) {
-                            fetchGeminiCuratedMovies(null);
-                            return;
+                    String tmdbKey = getTmdbApiKey();
+                    if (tmdbKey != null && !tmdbKey.trim().isEmpty()) {
+                        try {
+                            String apiUrl = "https://api.themoviedb.org/3/" + category.tmdbEndpoint + "api_key=" + tmdbKey.trim() + "&language=tr-TR";
+                            HttpURLConnection conn = openWithRedirects(apiUrl);
+                            if (conn.getResponseCode() == 200) {
+                                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                                StringBuilder sb = new StringBuilder();
+                                String line;
+                                while ((line = br.readLine()) != null) sb.append(line);
+                                br.close();
+
+                                JSONObject root = new JSONObject(sb.toString());
+                                JSONArray results = root.optJSONArray("results");
+                                if (results != null && results.length() > 0) {
+                                    JSONArray moviesArr = new JSONArray();
+                                    for (int i = 0; i < Math.min(10, results.length()); i++) {
+                                        JSONObject r = results.getJSONObject(i);
+                                        String pPath = r.optString("poster_path", "");
+                                        if (pPath.isEmpty()) continue;
+                                        JSONObject item = new JSONObject();
+                                        item.put("title", r.optString("title", "Film"));
+                                        item.put("poster_path", pPath);
+                                        String rel = r.optString("release_date", "2000");
+                                        int yr = 2000;
+                                        if (rel.length() >= 4) {
+                                            try { yr = Integer.parseInt(rel.substring(0, 4)); } catch (Throwable ignored) {}
+                                        }
+                                        item.put("year", yr);
+                                        moviesArr.put(item);
+                                    }
+                                    if (moviesArr.length() > 0) {
+                                        applyGeminiMoviesToVitrin(category.name, moviesArr);
+                                        return;
+                                    }
+                                }
+                            }
+                        } catch (Throwable t) {
+                            android.util.Log.e("VitrinTMDB", "TMDB dynamic fetch error", t);
                         }
                     }
 
+                    // Fallback to Cinemeta catalog if TMDB unavailable
                     handler.post(new Runnable() {
                         @Override
                         public void run() {
@@ -2152,21 +2250,17 @@ public class MainActivity extends Activity {
                             }
                         }
                     });
-
-                    fetchCategoryMovies(category);
+                    fetchCategoryMovies(category.fallbackUrl);
                 } catch (Throwable t) {
-                    try {
-                        fetchCategoryMovies(VITRIN_CATEGORIES[0]);
-                    } catch (Throwable ignored) {
-                    }
+                    android.util.Log.e("VitrinFetch", "Overall error", t);
                 }
             }
         }).start();
     }
 
-    private void fetchCategoryMovies(VitrinCategory category) {
+    private void fetchCategoryMovies(String catalogUrl) {
         try {
-            HttpURLConnection conn = openWithRedirects(category.catalogUrl);
+            HttpURLConnection conn = openWithRedirects(catalogUrl);
             if (conn.getResponseCode() != 200) return;
 
             BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -2301,10 +2395,8 @@ public class MainActivity extends Activity {
         }
         try {
             PackageManager pm = getPackageManager();
-            Intent launch = pm.getLeanbackLaunchIntentForPackage("com.nuvio.tv");
-            if (launch == null) launch = pm.getLaunchIntentForPackage("com.nuvio.tv");
+            Intent launch = getSafeLaunchIntent(pm, "com.nuvio.tv");
             if (launch != null) {
-                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(launch);
                 return;
             }
@@ -2788,15 +2880,11 @@ public class MainActivity extends Activity {
             proactiveMemoryGovernor(item.packageName);
         }
         PackageManager pm = getPackageManager();
-        Intent intent = pm.getLeanbackLaunchIntentForPackage(item.packageName);
-        if (intent == null) {
-            intent = pm.getLaunchIntentForPackage(item.packageName);
-        }
+        Intent intent = getSafeLaunchIntent(pm, item != null ? item.packageName : null);
         if (intent != null) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
         } else {
-            Toast.makeText(this, item.label + " bulunamadı.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, (item != null ? item.label : "Uygulama") + " bulunamadı.", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -2815,7 +2903,7 @@ public class MainActivity extends Activity {
         title.setPadding(10, 0, 14, 0);
         appActionPillBar.addView(title);
 
-        View pillMove = createActionPill("↔️ Taşı", new View.OnClickListener() {
+        View pillMove = createActionPill("Taşı", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 hideAppActionPillBar();
@@ -2824,7 +2912,7 @@ public class MainActivity extends Activity {
         });
         appActionPillBar.addView(pillMove);
 
-        View pillHide = createActionPill("👁️ Gizle", new View.OnClickListener() {
+        View pillHide = createActionPill("Gizle", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 hideAppActionPillBar();
@@ -2833,7 +2921,7 @@ public class MainActivity extends Activity {
         });
         appActionPillBar.addView(pillHide);
 
-        View pillUninstall = createActionPill("🗑️ Kaldır", new View.OnClickListener() {
+        View pillUninstall = createActionPill("Kaldır", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 hideAppActionPillBar();
@@ -2842,7 +2930,7 @@ public class MainActivity extends Activity {
         });
         appActionPillBar.addView(pillUninstall);
 
-        View pillInfo = createActionPill("ℹ️ Bilgi", new View.OnClickListener() {
+        View pillInfo = createActionPill("Bilgi", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 hideAppActionPillBar();
@@ -3113,7 +3201,7 @@ public class MainActivity extends Activity {
         tabHomeBg.setStroke(1, Color.argb(40, 255, 255, 255));
 
         TextView tabHome = new TextView(this);
-        tabHome.setText("🏠 Ana Sayfa");
+        tabHome.setText("Ana Sayfa");
         tabHome.setTypeface(FontManager.getMedium(this));
         tabHome.setTextSize(13f);
         tabHome.setTextColor(Color.parseColor("#94A3B8"));
@@ -3130,7 +3218,7 @@ public class MainActivity extends Activity {
         segmentTabs.addView(tabHome);
 
         TextView sep = new TextView(this);
-        sep.setText("  ➔  ");
+        sep.setText("  /  ");
         sep.setTextColor(Color.parseColor("#64748B"));
         sep.setTextSize(13f);
         segmentTabs.addView(sep);
@@ -3141,7 +3229,7 @@ public class MainActivity extends Activity {
         tabLibraryBg.setStroke(1, Color.parseColor("#38BDF8"));
 
         TextView tabLibrary = new TextView(this);
-        tabLibrary.setText("📱 Uygulama Kütüphanesi (" + sorted.size() + ")");
+        tabLibrary.setText("Uygulama Kütüphanesi (" + sorted.size() + ")");
         tabLibrary.setTypeface(FontManager.getBold(this));
         tabLibrary.setTextSize(13f);
         tabLibrary.setTextColor(Color.parseColor("#F8FAFC"));
@@ -3153,7 +3241,7 @@ public class MainActivity extends Activity {
 
         // İpucu Rozetleri
         TextView guideHint = new TextView(this);
-        guideHint.setText("● Sayfa 2 / 2  •  [Geri / Sol]: Ana Sayfaya Dön  •  [Basılı Tut]: Hızlı Aksiyon");
+        guideHint.setText("Sayfa 2 / 2  •  [Geri / Sol]: Ana Sayfaya Dön  •  [Basılı Tut]: Hızlı Menü");
         guideHint.setTypeface(FontManager.getMedium(this));
         guideHint.setTextSize(13f);
         guideHint.setTextColor(Color.parseColor("#64748B"));
@@ -3205,9 +3293,8 @@ public class MainActivity extends Activity {
                 public void onClick(View v) {
                     hideAllAppsDrawer();
                     try {
-                        Intent launchIntent = pm.getLaunchIntentForPackage(pkg);
+                        Intent launchIntent = getSafeLaunchIntent(pm, pkg);
                         if (launchIntent != null) {
-                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                             startActivity(launchIntent);
                         }
                     } catch (Throwable t) {
@@ -3728,13 +3815,56 @@ public class MainActivity extends Activity {
         }
     }
 
+    public static Intent getSafeLaunchIntent(PackageManager pm, String pkg) {
+        if (pm == null || pkg == null || pkg.isEmpty()) return null;
+        Intent intent = null;
+        try {
+            intent = pm.getLeanbackLaunchIntentForPackage(pkg);
+        } catch (Throwable ignored) {}
+        if (intent == null) {
+            try {
+                intent = pm.getLaunchIntentForPackage(pkg);
+            } catch (Throwable ignored) {}
+        }
+        if (intent == null) {
+            try {
+                Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+                mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                mainIntent.setPackage(pkg);
+                List<ResolveInfo> list = pm.queryIntentActivities(mainIntent, 0);
+                if (list != null && !list.isEmpty()) {
+                    intent = new Intent(Intent.ACTION_MAIN);
+                    intent.setComponent(new ComponentName(pkg, list.get(0).activityInfo.name));
+                }
+            } catch (Throwable ignored) {}
+        }
+        if (intent == null) {
+            try {
+                Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+                mainIntent.setPackage(pkg);
+                List<ResolveInfo> list = pm.queryIntentActivities(mainIntent, 0);
+                if (list != null && !list.isEmpty()) {
+                    intent = new Intent(Intent.ACTION_MAIN);
+                    intent.setComponent(new ComponentName(pkg, list.get(0).activityInfo.name));
+                }
+            } catch (Throwable ignored) {}
+        }
+        if (intent == null && "com.nuvio.tv".equals(pkg)) {
+            intent = new Intent(Intent.ACTION_MAIN);
+            intent.setComponent(new ComponentName("com.nuvio.tv", "com.nuvio.tv.MainActivity"));
+        }
+        if (intent != null) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+        }
+        android.util.Log.i("TvLaunch", "getSafeLaunchIntent for " + pkg + " -> " + intent);
+        return intent;
+    }
+
     private void launchAppByPackage(String pkg) {
         try {
             PackageManager pm = getPackageManager();
-            Intent intent = pm.getLeanbackLaunchIntentForPackage(pkg);
-            if (intent == null) intent = pm.getLaunchIntentForPackage(pkg);
+            Intent intent = getSafeLaunchIntent(pm, pkg);
             if (intent != null) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
             }
         } catch (Throwable ignored) {
@@ -3767,10 +3897,8 @@ public class MainActivity extends Activity {
         PackageManager pm = getPackageManager();
         for (String p : packages) {
             try {
-                Intent launch = pm.getLeanbackLaunchIntentForPackage(p);
-                if (launch == null) launch = pm.getLaunchIntentForPackage(p);
+                Intent launch = getSafeLaunchIntent(pm, p);
                 if (launch != null) {
-                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(launch);
                     return;
                 }
@@ -3781,6 +3909,9 @@ public class MainActivity extends Activity {
     }
 
     private void searchAndLaunchMovie(final String rawQuery) {
+        if (searchInputView != null) {
+            searchInputView.setText(rawQuery);
+        }
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -3793,8 +3924,13 @@ public class MainActivity extends Activity {
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(MainActivity.this, "Nuvio ile başlatılıyor: " + resolved.title, Toast.LENGTH_LONG).show();
-                                openMovieItem(resolved.title, resolved.imdbId, resolved.posterUrl);
+                                showAiResponseFloatingCard(rawQuery, resolved.title + " bulundu.\nNuvio ile başlatılıyor...");
+                                handler.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        openMovieItem(resolved.title, resolved.imdbId, resolved.posterUrl);
+                                    }
+                                }, 1200L);
                             }
                         });
                     } else if (getAiApiKey() != null) {
@@ -3803,7 +3939,7 @@ public class MainActivity extends Activity {
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(MainActivity.this, "'" + rawQuery + "' bulunamadı.", Toast.LENGTH_SHORT).show();
+                                showAiResponseFloatingCard(rawQuery, "'" + rawQuery + "' veritabanında bulunamadı.");
                             }
                         });
                     }
@@ -3946,7 +4082,7 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 if (vitrinCategoryLabel != null) {
-                    vitrinCategoryLabel.setText("🤖 " + providerName.toUpperCase(Locale.getDefault()) + " AI • SİNEMA SEÇKİSİ HAZIRLANIYOR...");
+                    vitrinCategoryLabel.setText(providerName.toUpperCase(Locale.getDefault()) + " AI • SİNEMA SEÇKİSİ HAZIRLANIYOR...");
                 }
             }
         });
@@ -4085,17 +4221,17 @@ public class MainActivity extends Activity {
 
     private void showGeminiMoodDialog() {
         final String[] moods = new String[]{
-            "🌌  4K HDR Görsel Şölen & Bilim-Kurgu",
-            "🧠  Zihin Bükücü & Akıl Oyunları (Mind-Benders)",
-            "🌙  Gece Yarısı Sakinliği & Derin Sinema",
-            "⚡  Yüksek Adrenalin & Soluksuz Gerilim",
-            "🎭  Nostaljik 90'lar & Kült Klasikler",
-            "🍿  Kafa Yormayan Eğlenceli Akşam Filmi",
-            "✍️  Özel İstek Yaz..."
+            "4K HDR Bilim Kurgu Seçkisi",
+            "Zihin Bükücü Psikolojik Yapımlar",
+            "Gece Yarısı Sakinliği ve Sanat Sineması",
+            "Yüksek Adrenalin ve Gerilim",
+            "90'lar ve Sinema Klasikleri",
+            "Popüler ve Eğlenceli Sinema",
+            "Özel İstek Yaz..."
         };
 
         new AlertDialog.Builder(this)
-                .setTitle("🤖 Gemini AI Sinema Küratörü")
+                .setTitle("Gemini AI Sinema Küratörü")
                 .setItems(moods, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -4161,7 +4297,7 @@ public class MainActivity extends Activity {
                         Settings.Secure.putString(getContentResolver(), "tv_gemini_api_key", val);
                         Settings.Secure.putString(getContentResolver(), "tv_ai_provider", provider);
 
-                        Toast.makeText(MainActivity.this, "🤖 " + providerLabel + " API anahtarı başarıyla kaydedildi.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(MainActivity.this, providerLabel + " API anahtarı başarıyla kaydedildi.", Toast.LENGTH_LONG).show();
                     }
                 })
                 .setNegativeButton("İptal", null)
@@ -4171,6 +4307,10 @@ public class MainActivity extends Activity {
     private void handleSearchOrAiQuery(final String q) {
         if (q == null || q.trim().isEmpty()) return;
         final String query = q.trim();
+        android.util.Log.i("TvWebRemote", "handleSearchOrAiQuery: query=" + query);
+        if (searchInputView != null) {
+            searchInputView.setText(query);
+        }
         String lower = query.toLowerCase(Locale.getDefault());
 
         boolean isFilmographyOrCategory = lower.contains("filmleri") || lower.contains("filmografi")
@@ -4208,48 +4348,48 @@ public class MainActivity extends Activity {
         try {
             if (lower.contains("kitano")) {
                 JSONArray arr = new JSONArray();
-                arr.put(new JSONObject().put("title", "Zatoichi").put("year", 2003).put("poster_path", "/iCIycswWbX1EDS6PYYBcR9ohrC.jpg"));
-                arr.put(new JSONObject().put("title", "Fireworks").put("year", 1997).put("poster_path", "/bWIo1nDJnSyGJvVt8bRw8PHBqo4.jpg"));
-                arr.put(new JSONObject().put("title", "Sonatine").put("year", 1993).put("poster_path", "/mX9E4fEuG17L2e7bZmhBc0XdRbw.jpg"));
-                arr.put(new JSONObject().put("title", "Kikujiro").put("year", 1999).put("poster_path", "/zTelT1xAO4Owxk1jHJM4puoei5N.jpg"));
-                arr.put(new JSONObject().put("title", "Brother").put("year", 2000).put("poster_path", "/rSRJozSafFFuiFT9XnwsE1ricHT.jpg"));
-                arr.put(new JSONObject().put("title", "Outrage").put("year", 2010).put("poster_path", "/s6VVl5WKuGIDlSAm8hgvTsrzODK.jpg"));
-                arr.put(new JSONObject().put("title", "Violent Cop").put("year", 1989).put("poster_path", "/5tLNkaPeDgtcet3uzHvJEpWrOcb.jpg"));
-                arr.put(new JSONObject().put("title", "Dolls").put("year", 2002).put("poster_path", "/vQ9XBpH88jvO3hpHt9Zm5IHe5NP.jpg"));
-                arr.put(new JSONObject().put("title", "Kids Return").put("year", 1996).put("poster_path", "/pyyf9Q9eV9ug8ADxkQOZvvyWkgX.jpg"));
-                arr.put(new JSONObject().put("title", "Beyond Outrage").put("year", 2012).put("poster_path", "/z9nPRD7PIx7dE5BqbYZKVlQawHs.jpg"));
+                arr.put(new JSONObject().put("title", "Zatoichi").put("year", 2003).put("imdb_id", "tt0266697").put("poster_path", "/iCIycswWbX1EDS6PYYBcR9ohrC.jpg"));
+                arr.put(new JSONObject().put("title", "Fireworks").put("year", 1997).put("imdb_id", "tt0119250").put("poster_path", "/bWIo1nDJnSyGJvVt8bRw8PHBqo4.jpg"));
+                arr.put(new JSONObject().put("title", "Sonatine").put("year", 1993).put("imdb_id", "tt0108188").put("poster_path", "/mX9E4fEuG17L2e7bZmhBc0XdRbw.jpg"));
+                arr.put(new JSONObject().put("title", "Kikujiro").put("year", 1999).put("imdb_id", "tt0199683").put("poster_path", "/zTelT1xAO4Owxk1jHJM4puoei5N.jpg"));
+                arr.put(new JSONObject().put("title", "Brother").put("year", 2000).put("imdb_id", "tt0222851").put("poster_path", "/rSRJozSafFFuiFT9XnwsE1ricHT.jpg"));
+                arr.put(new JSONObject().put("title", "Outrage").put("year", 2010).put("imdb_id", "tt1462667").put("poster_path", "/s6VVl5WKuGIDlSAm8hgvTsrzODK.jpg"));
+                arr.put(new JSONObject().put("title", "Violent Cop").put("year", 1989).put("imdb_id", "tt0098360").put("poster_path", "/5tLNkaPeDgtcet3uzHvJEpWrOcb.jpg"));
+                arr.put(new JSONObject().put("title", "Dolls").put("year", 2002).put("imdb_id", "tt0330229").put("poster_path", "/vQ9XBpH88jvO3hpHt9Zm5IHe5NP.jpg"));
+                arr.put(new JSONObject().put("title", "Kids Return").put("year", 1996).put("imdb_id", "tt0116767").put("poster_path", "/pyyf9Q9eV9ug8ADxkQOZvvyWkgX.jpg"));
+                arr.put(new JSONObject().put("title", "Beyond Outrage").put("year", 2012).put("imdb_id", "tt2124787").put("poster_path", "/z9nPRD7PIx7dE5BqbYZKVlQawHs.jpg"));
                 return arr;
             }
             if (lower.contains("demirkubuz")) {
                 JSONArray arr = new JSONArray();
-                arr.put(new JSONObject().put("title", "Masumiyet").put("year", 1997).put("poster_path", "/blJ0RGs0dnFppzUxyCFeE8PlozW.jpg"));
-                arr.put(new JSONObject().put("title", "Kader").put("year", 2006).put("poster_path", "/bPlu0FpmWNEQIiUrpHpzDThBaXL.jpg"));
-                arr.put(new JSONObject().put("title", "Yeraltı").put("year", 2012).put("poster_path", "/qYEeHiZUZlgEksRfs3M0JPdlHaf.jpg"));
-                arr.put(new JSONObject().put("title", "Yazgı").put("year", 2001).put("poster_path", "/qGG8UlkKCS5l4qbYcx7hzfJ8yde.jpg"));
-                arr.put(new JSONObject().put("title", "İtiraf").put("year", 2001).put("poster_path", "/2D7za33UtEJzYpHhmmY4kgGd8WV.jpg"));
-                arr.put(new JSONObject().put("title", "Üçüncü Sayfa").put("year", 1999).put("poster_path", "/2oQbtc0FXEDpyyLc4Yv7TEpQNTE.jpg"));
-                arr.put(new JSONObject().put("title", "C Blok").put("year", 1994).put("poster_path", "/skDhD6o56cb3fwshypaghxTs1Do.jpg"));
-                arr.put(new JSONObject().put("title", "Kor").put("year", 2016).put("poster_path", "/varN1iNhY2IDjBOzX1czzNcDbGF.jpg"));
-                arr.put(new JSONObject().put("title", "Kıskanmak").put("year", 2009).put("poster_path", "/ajOsceipC0Cw2Wwo3253wsNfSHz.jpg"));
-                arr.put(new JSONObject().put("title", "Bekleme Odası").put("year", 2004).put("poster_path", "/o4OFHY4RfvGabSoVqB44HDRL9ly.jpg"));
+                arr.put(new JSONObject().put("title", "Masumiyet").put("year", 1997).put("imdb_id", "tt0129227").put("poster_path", "/blJ0RGs0dnFppzUxyCFeE8PlozW.jpg"));
+                arr.put(new JSONObject().put("title", "Kader").put("year", 2006).put("imdb_id", "tt0851458").put("poster_path", "/bPlu0FpmWNEQIiUrpHpzDThBaXL.jpg"));
+                arr.put(new JSONObject().put("title", "Yeraltı").put("year", 2012).put("imdb_id", "tt2175960").put("poster_path", "/qYEeHiZUZlgEksRfs3M0JPdlHaf.jpg"));
+                arr.put(new JSONObject().put("title", "Yazgı").put("year", 2001).put("imdb_id", "tt0300649").put("poster_path", "/qGG8UlkKCS5l4qbYcx7hzfJ8yde.jpg"));
+                arr.put(new JSONObject().put("title", "İtiraf").put("year", 2001).put("imdb_id", "tt0300029").put("poster_path", "/2D7za33UtEJzYpHhmmY4kgGd8WV.jpg"));
+                arr.put(new JSONObject().put("title", "Üçüncü Sayfa").put("year", 1999).put("imdb_id", "tt0217109").put("poster_path", "/2oQbtc0FXEDpyyLc4Yv7TEpQNTE.jpg"));
+                arr.put(new JSONObject().put("title", "C Blok").put("year", 1994).put("imdb_id", "tt0109355").put("poster_path", "/skDhD6o56cb3fwshypaghxTs1Do.jpg"));
+                arr.put(new JSONObject().put("title", "Kor").put("year", 2016).put("imdb_id", "tt4214214").put("poster_path", "/varN1iNhY2IDjBOzX1czzNcDbGF.jpg"));
+                arr.put(new JSONObject().put("title", "Kıskanmak").put("year", 2009).put("imdb_id", "tt1509176").put("poster_path", "/ajOsceipC0Cw2Wwo3253wsNfSHz.jpg"));
+                arr.put(new JSONObject().put("title", "Bekleme Odası").put("year", 2004).put("imdb_id", "tt0391807").put("poster_path", "/o4OFHY4RfvGabSoVqB44HDRL9ly.jpg"));
                 return arr;
             }
             if (lower.contains("ceylan")) {
                 JSONArray arr = new JSONArray();
-                arr.put(new JSONObject().put("title", "Kış Uykusu").put("year", 2014).put("poster_path", "/18R9eZt4jQdG6q2bN7.jpg"));
-                arr.put(new JSONObject().put("title", "Bir Zamanlar Anadolu'da").put("year", 2011).put("poster_path", "/7b8v4vB8yQ1H.jpg"));
-                arr.put(new JSONObject().put("title", "Ahlat Ağacı").put("year", 2018).put("poster_path", "/zE2Z1Z0yK9.jpg"));
-                arr.put(new JSONObject().put("title", "Kuru Otlar Üstüne").put("year", 2023).put("poster_path", "/4G6h3V2b7N8L9q0F1m.jpg"));
-                arr.put(new JSONObject().put("title", "Uzak").put("year", 2002).put("poster_path", "/3fR0G4FfN1R2z9C3T4B6N7L2s.jpg"));
+                arr.put(new JSONObject().put("title", "Kış Uykusu").put("year", 2014).put("imdb_id", "tt2758880").put("poster_path", "/18R9eZt4jQdG6q2bN7.jpg"));
+                arr.put(new JSONObject().put("title", "Bir Zamanlar Anadolu'da").put("year", 2011).put("imdb_id", "tt1827487").put("poster_path", "/7b8v4vB8yQ1H.jpg"));
+                arr.put(new JSONObject().put("title", "Ahlat Ağacı").put("year", 2018).put("imdb_id", "tt6628102").put("poster_path", "/zE2Z1Z0yK9.jpg"));
+                arr.put(new JSONObject().put("title", "Kuru Otlar Üstüne").put("year", 2023).put("imdb_id", "tt14424618").put("poster_path", "/4G6h3V2b7N8L9q0F1m.jpg"));
+                arr.put(new JSONObject().put("title", "Uzak").put("year", 2002).put("imdb_id", "tt0346094").put("poster_path", "/3fR0G4FfN1R2z9C3T4B6N7L2s.jpg"));
                 return arr;
             }
             if (lower.contains("nolan")) {
                 JSONArray arr = new JSONArray();
-                arr.put(new JSONObject().put("title", "Oppenheimer").put("year", 2023).put("poster_path", "/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg"));
-                arr.put(new JSONObject().put("title", "Interstellar").put("year", 2014).put("poster_path", "/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg"));
-                arr.put(new JSONObject().put("title", "Inception").put("year", 2010).put("poster_path", "/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg"));
-                arr.put(new JSONObject().put("title", "The Dark Knight").put("year", 2008).put("poster_path", "/qJ2tW6WMUDux911r6m7haRef0WH.jpg"));
-                arr.put(new JSONObject().put("title", "Memento").put("year", 2000).put("poster_path", "/yuNs09hvpHvRuzyohCxsGAVP76A.jpg"));
+                arr.put(new JSONObject().put("title", "Oppenheimer").put("year", 2023).put("imdb_id", "tt15398776").put("poster_path", "/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg"));
+                arr.put(new JSONObject().put("title", "Interstellar").put("year", 2014).put("imdb_id", "tt0816692").put("poster_path", "/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg"));
+                arr.put(new JSONObject().put("title", "Inception").put("year", 2010).put("imdb_id", "tt1375666").put("poster_path", "/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg"));
+                arr.put(new JSONObject().put("title", "The Dark Knight").put("year", 2008).put("imdb_id", "tt0468569").put("poster_path", "/qJ2tW6WMUDux911r6m7haRef0WH.jpg"));
+                arr.put(new JSONObject().put("title", "Memento").put("year", 2000).put("imdb_id", "tt0209144").put("poster_path", "/yuNs09hvpHvRuzyohCxsGAVP76A.jpg"));
                 return arr;
             }
         } catch (Throwable ignored) {}
@@ -4260,12 +4400,16 @@ public class MainActivity extends Activity {
         final String cleanName = query.replaceAll("(?i)(başyapıtları|başyapıtlar|başyapıtı|filmleri|filmografisi|filmler|sineması|yönettiği|oynadığı|seçkisi|koleksiyonu|en iyi|tüm|bütün|hakkında|önerileri|yapımları|eserleri|aç|getir|göster|listele)", "").trim();
         final String displayName = cleanName.isEmpty() ? query.trim() : cleanName;
 
-        if (vitrinCategoryLabel != null) {
-            vitrinCategoryLabel.setText("🎬 " + displayName.toUpperCase(Locale.getDefault()) + " DERLENİYOR...");
+        if (searchInputView != null) {
+            searchInputView.setText(query);
         }
 
-        // Önce ekranda visionOS Liquid Glass HUD yanıt kartını göster!
-        showAiResponseFloatingCard(query, "🎬 " + displayName.toUpperCase(Locale.getDefault()) + " başyapıtları ve kült filmografisi taranıyor, NuviO vitrini hazırlanıyor...");
+        if (vitrinCategoryLabel != null) {
+            vitrinCategoryLabel.setText(displayName.toUpperCase(Locale.getDefault()) + " DERLENİYOR...");
+        }
+
+        // 1. Önce ekranda visionOS Liquid Glass HUD yanıt kartını göster
+        showAiResponseFloatingCard(query, displayName + " başyapıtları ve filmografisi taranıyor, vitrin hazırlanıyor...");
 
         new Thread(new Runnable() {
             @Override
@@ -4439,22 +4583,18 @@ public class MainActivity extends Activity {
                     if (moviesArr != null && moviesArr.length() > 0) {
                         final String finalCatTitle = categoryTitle;
                         final JSONArray finalMovies = moviesArr;
-                        applyGeminiMoviesToVitrin(finalCatTitle, finalMovies);
-                        handler.post(new Runnable() {
+                        applyGeminiMoviesToVitrin(finalCatTitle, finalMovies, new Runnable() {
                             @Override
                             public void run() {
-                                showAiResponseFloatingCard(query, "✨ " + finalCatTitle + " hazırlandı.\n"
-                                        + finalMovies.length() + " kült başyapıt NuviO sinema vitrinine aktarıldı.");
-                                if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
-                                    posterCardFrames.get(0).requestFocus();
-                                }
+                                showAiResponseFloatingCard(query, finalCatTitle + " hazırlandı.\n"
+                                        + finalMovies.length() + " kült başyapıt vitrine aktarıldı.");
                             }
                         });
                     } else {
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
-                                showAiResponseFloatingCard(query, "⚠️ '" + displayName + "' için filmografi derlenemedi. Lütfen internet bağlantınızı kontrol edin.");
+                                showAiResponseFloatingCard(query, "'" + displayName + "' için filmografi derlenemedi. Lütfen internet bağlantınızı kontrol edin.");
                                 Toast.makeText(MainActivity.this, "'" + query + "' için filmografi bulunamadı.", Toast.LENGTH_SHORT).show();
                             }
                         });
@@ -4471,18 +4611,19 @@ public class MainActivity extends Activity {
         aiResponseFloatingCard.removeAllViews();
         aiResponseFloatingCard.setVisibility(View.VISIBLE);
         aiResponseFloatingCard.setAlpha(0f);
-        aiResponseFloatingCard.setTranslationY(-60f);
-        aiResponseFloatingCard.animate().alpha(1f).translationY(0f).setDuration(260L).start();
+        aiResponseFloatingCard.setTranslationY(-40f);
+        aiResponseFloatingCard.animate().alpha(1f).translationY(0f).setDuration(240L).start();
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(36, 26, 36, 26);
+        card.setPadding(32, 22, 32, 22);
 
+        // Tam olarak uygulama ikon çerçeveleriyle aynı saydam buzlu cam doku
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.RECTANGLE);
-        bg.setCornerRadius(24f);
-        bg.setColor(Color.argb(240, 15, 23, 42)); // Deep glass
-        bg.setStroke(2, Color.parseColor("#38BDF8"));
+        bg.setCornerRadius(20f);
+        bg.setColor(Color.argb(135, 15, 23, 42)); // Translucent acrylic frosted glass
+        bg.setStroke(1, Color.argb(55, 255, 255, 255)); // 1px specular edge
         card.setBackground(bg);
 
         LinearLayout top = new LinearLayout(this);
@@ -4490,16 +4631,16 @@ public class MainActivity extends Activity {
         top.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView title = new TextView(this);
-        title.setText("🤖 Gemini Asistanı");
+        title.setText("Gemini Asistanı");
         title.setTypeface(FontManager.getBold(this));
-        title.setTextSize(17f);
+        title.setTextSize(15f);
         title.setTextColor(Color.parseColor("#38BDF8"));
         top.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         TextView hint = new TextView(this);
         hint.setText("[Geri]: Kapat");
         hint.setTypeface(FontManager.getMedium(this));
-        hint.setTextSize(12f);
+        hint.setTextSize(11f);
         hint.setTextColor(Color.parseColor("#64748B"));
         top.addView(hint);
 
@@ -4508,25 +4649,26 @@ public class MainActivity extends Activity {
         TextView qView = new TextView(this);
         qView.setText("\"" + query + "\"");
         qView.setTypeface(FontManager.getMedium(this));
-        qView.setTextSize(13f);
+        qView.setTextSize(12f);
         qView.setTextColor(Color.parseColor("#94A3B8"));
-        qView.setPadding(0, 8, 0, 12);
+        qView.setPadding(0, 6, 0, 10);
         card.addView(qView);
 
         TextView ansView = new TextView(this);
         ansView.setText(answer);
         ansView.setTypeface(FontManager.getMedium(this));
-        ansView.setTextSize(15f);
+        ansView.setTextSize(14f);
         ansView.setTextColor(Color.parseColor("#F8FAFC"));
-        ansView.setLineSpacing(6f, 1.15f);
+        ansView.setLineSpacing(5f, 1.15f);
         card.addView(ansView);
 
-        FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(760, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        flp.setMargins(0, 110, 0, 0);
+        FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(720, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        flp.setMargins(0, 105, 0, 0);
         aiResponseFloatingCard.addView(card, flp);
 
+        // 4.5 saniye sonra kendiliğinden pürüzsüzce kaybolur
         handler.removeCallbacks(autoDismissAiCardRunnable);
-        handler.postDelayed(autoDismissAiCardRunnable, 12000L);
+        handler.postDelayed(autoDismissAiCardRunnable, 4500L);
     }
 
     private final Runnable autoDismissAiCardRunnable = new Runnable() {
@@ -4553,11 +4695,15 @@ public class MainActivity extends Activity {
     }
 
     private void applyGeminiMoviesToVitrin(final String categoryTitle, final JSONArray movies) {
+        applyGeminiMoviesToVitrin(categoryTitle, movies, null);
+    }
+
+    private void applyGeminiMoviesToVitrin(final String categoryTitle, final JSONArray movies, final Runnable onComplete) {
         if (heroShelfRow != null) {
             handler.post(new Runnable() {
                 @Override
                 public void run() {
-                    heroShelfRow.animate().alpha(0.20f).setDuration(220L).start();
+                    heroShelfRow.animate().alpha(0.35f).setDuration(180L).start();
                 }
             });
         }
@@ -4565,110 +4711,142 @@ public class MainActivity extends Activity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                int count = Math.min(BUNDLED_MOVIES.length, movies.length());
-                final List<Bitmap> readyPosters = new ArrayList<>();
-                final List<Bitmap> readyBlooms = new ArrayList<>();
-                final List<Integer> readyColors = new ArrayList<>();
-                final List<String> readyImdbs = new ArrayList<>();
-                final List<String> readyTitles = new ArrayList<>();
-                final List<String> readyUrls = new ArrayList<>();
-
-                int prevColor = 0;
-                for (int i = 0; i < count; i++) {
-                    JSONObject m = movies.optJSONObject(i);
-                    if (m == null) continue;
-                    String mTitle = m.optString("title", "");
-                    int mYear = m.optInt("year", 0);
-                    String directPosterPath = m.optString("poster_path", "");
-                    if (mTitle.isEmpty()) continue;
-
-                    MovieResolvedInfo resolved = null;
-                    if (!directPosterPath.isEmpty()) {
-                        resolved = new MovieResolvedInfo();
-                        resolved.title = mTitle;
-                        resolved.imdbId = "tmdb_" + Math.abs(mTitle.hashCode());
-                        resolved.posterUrl = "https://image.tmdb.org/t/p/w500" + directPosterPath;
-                        resolved.backdropUrl = "https://image.tmdb.org/t/p/w1280" + directPosterPath;
-                    } else {
-                        resolved = resolveMovieViaTmdb(mTitle, mYear);
-                    }
-
-                    if (resolved == null) {
-                        resolved = new MovieResolvedInfo();
-                        resolved.title = mTitle;
-                        resolved.imdbId = "tt" + Math.abs(mTitle.hashCode());
-                        resolved.posterUrl = "";
-                        resolved.backdropUrl = "";
-                    }
-
-                    String imdbId = (resolved.imdbId != null && !resolved.imdbId.isEmpty()) ? resolved.imdbId : ("tt_res_" + Math.abs(mTitle.hashCode()));
-                    String title = (resolved.title != null && !resolved.title.isEmpty()) ? resolved.title : mTitle;
-                    String posterUrl = resolved.posterUrl;
-                    if (posterUrl == null || posterUrl.isEmpty()) {
-                        posterUrl = "https://images.metahub.space/poster/medium/" + imdbId + "/img";
-                    }
-
-                    String fileKey = "cm_p_" + Math.abs(mTitle.hashCode()) + ".jpg";
-                    File cacheFile = new File(getCacheDir(), fileKey);
-
-                    if (!cacheFile.exists() || cacheFile.length() < 1024) {
-                        try {
-                            HttpURLConnection pConn = openWithRedirects(posterUrl);
-                            if (pConn.getResponseCode() == 200) {
-                                InputStream is = pConn.getInputStream();
-                                FileOutputStream fos = new FileOutputStream(cacheFile);
-                                byte[] buf = new byte[8192];
-                                int r;
-                                while ((r = is.read(buf)) != -1) fos.write(buf, 0, r);
-                                fos.close();
-                                is.close();
-                            }
-                        } catch (Throwable ignored) {}
-                    }
-
-                    Bitmap rawBmp = null;
-                    if (cacheFile.exists() && cacheFile.length() > 1024) {
-                        BitmapFactory.Options opts = new BitmapFactory.Options();
-                        opts.inPreferredConfig = Bitmap.Config.RGB_565;
-                        rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), opts);
-                    }
-
-                    int distinctColor = YouTubeDisguiseHelper.sampleDistinctPosterColor(rawBmp, prevColor, i);
-                    prevColor = distinctColor;
-                    Bitmap glassPoster = YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp);
-                    if (rawBmp != null && !rawBmp.isRecycled()) {
-                        rawBmp.recycle();
-                    }
-                    Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
-
-                    readyPosters.add(glassPoster);
-                    readyBlooms.add(hoverBloom);
-                    readyColors.add(distinctColor);
-                    readyImdbs.add(imdbId);
-                    readyTitles.add(title);
-                    readyUrls.add(posterUrl);
+                final int count = Math.min(BUNDLED_MOVIES.length, movies.length());
+                final class CardPayload {
+                    int slot;
+                    Bitmap glassPoster;
+                    Bitmap hoverBloom;
+                    int color;
+                    String imdbId;
+                    String title;
+                    String posterUrl;
                 }
 
-                // ATOMIC UI UPDATE
+                final CardPayload[] results = new CardPayload[count];
+                final CountDownLatch latch = new CountDownLatch(count);
+
+                for (int i = 0; i < count; i++) {
+                    final int slot = i;
+                    final JSONObject m = movies.optJSONObject(slot);
+                    posterDownloadExecutor.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                if (m != null) {
+                                    String mTitle = m.optString("title", "");
+                                    int mYear = m.optInt("year", 0);
+                                    String directPosterPath = m.optString("poster_path", "");
+                                    String directImdb = m.optString("imdb_id", "");
+
+                                    MovieResolvedInfo resolved = null;
+                                    if (!directPosterPath.isEmpty()) {
+                                        resolved = new MovieResolvedInfo();
+                                        resolved.title = mTitle;
+                                        resolved.imdbId = !directImdb.isEmpty() ? directImdb : ("tt_" + Math.abs(mTitle.hashCode()));
+                                        resolved.posterUrl = "https://image.tmdb.org/t/p/w500" + directPosterPath;
+                                        resolved.backdropUrl = "https://image.tmdb.org/t/p/w1280" + directPosterPath;
+                                    } else {
+                                        resolved = resolveMovieViaTmdb(mTitle, mYear);
+                                    }
+
+                                    if (resolved == null) {
+                                        resolved = new MovieResolvedInfo();
+                                        resolved.title = mTitle;
+                                        resolved.imdbId = "tt_" + Math.abs(mTitle.hashCode());
+                                        resolved.posterUrl = "";
+                                    }
+
+                                    String imdbId = (resolved.imdbId != null && !resolved.imdbId.isEmpty()) ? resolved.imdbId : ("tt_" + Math.abs(mTitle.hashCode()));
+                                    String title = (resolved.title != null && !resolved.title.isEmpty()) ? resolved.title : mTitle;
+                                    String posterUrl = resolved.posterUrl;
+                                    if (posterUrl == null || posterUrl.isEmpty()) {
+                                        posterUrl = "https://images.metahub.space/poster/medium/" + imdbId + "/img";
+                                    }
+
+                                    String fileKey = "cm_p_" + Math.abs(mTitle.hashCode()) + ".jpg";
+                                    File cacheFile = new File(getCacheDir(), fileKey);
+                                    if (!cacheFile.exists() || cacheFile.length() < 1024) {
+                                        try {
+                                            HttpURLConnection pConn = openWithRedirects(posterUrl);
+                                            if (pConn.getResponseCode() == 200) {
+                                                InputStream is = pConn.getInputStream();
+                                                FileOutputStream fos = new FileOutputStream(cacheFile);
+                                                byte[] buf = new byte[8192];
+                                                int r;
+                                                while ((r = is.read(buf)) != -1) fos.write(buf, 0, r);
+                                                fos.close();
+                                                is.close();
+                                            }
+                                        } catch (Throwable ignored) {}
+                                    }
+
+                                    Bitmap rawBmp = null;
+                                    if (cacheFile.exists() && cacheFile.length() > 1024) {
+                                        BitmapFactory.Options opts = new BitmapFactory.Options();
+                                        opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                                        rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), opts);
+                                    }
+
+                                    int distinctColor = YouTubeDisguiseHelper.sampleDistinctPosterColor(rawBmp, 0, slot);
+                                    Bitmap glassPoster = YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp);
+                                    if (rawBmp != null && !rawBmp.isRecycled()) {
+                                        rawBmp.recycle();
+                                    }
+                                    Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
+
+                                    CardPayload cp = new CardPayload();
+                                    cp.slot = slot;
+                                    cp.glassPoster = glassPoster;
+                                    cp.hoverBloom = hoverBloom;
+                                    cp.color = distinctColor;
+                                    cp.imdbId = imdbId;
+                                    cp.title = title;
+                                    cp.posterUrl = posterUrl;
+                                    results[slot] = cp;
+                                }
+                            } catch (Throwable t) {
+                                android.util.Log.e("PosterLoad", "Error on slot " + slot, t);
+                            } finally {
+                                latch.countDown();
+                            }
+                        }
+                    });
+                }
+
+                try {
+                    latch.await(8000L, TimeUnit.MILLISECONDS);
+                } catch (Throwable ignored) {}
+
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
                         if (vitrinCategoryLabel != null) {
                             vitrinCategoryLabel.setText(categoryTitle.toUpperCase(Locale.getDefault()));
                         }
-                        for (int k = 0; k < readyPosters.size() && k < posterImageViews.size(); k++) {
-                            posterImageViews.get(k).setImageBitmap(readyPosters.get(k));
-                            if (k < posterBloomViews.size()) posterBloomViews.get(k).setImageBitmap(readyBlooms.get(k));
-                            if (k < posterNeonColors.size()) posterNeonColors.set(k, readyColors.get(k));
-                            if (k < posterImdbIds.size()) posterImdbIds.set(k, readyImdbs.get(k));
-                            if (k < posterTitles.size()) posterTitles.set(k, readyTitles.get(k));
-                            if (k < posterUrls.size()) posterUrls.set(k, readyUrls.get(k));
+                        for (int k = 0; k < count; k++) {
+                            CardPayload cp = results[k];
+                            if (cp != null) {
+                                if (k < posterImageViews.size()) posterImageViews.get(k).setImageBitmap(cp.glassPoster);
+                                if (k < posterBloomViews.size()) posterBloomViews.get(k).setImageBitmap(cp.hoverBloom);
+                                if (k < posterNeonColors.size()) posterNeonColors.set(k, cp.color);
+                                if (k < posterImdbIds.size()) posterImdbIds.set(k, cp.imdbId);
+                                if (k < posterTitles.size()) posterTitles.set(k, cp.title);
+                                if (k < posterUrls.size()) posterUrls.set(k, cp.posterUrl);
+                            }
                         }
                         if (heroShelfRow != null) {
-                            heroShelfRow.animate().alpha(1.0f).setDuration(350L).start();
+                            heroShelfRow.animate().alpha(1.0f).setDuration(300L).start();
                         }
                         if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
                             smoothScrollToVitrinCard(posterCardFrames.get(0));
+                            posterCardFrames.get(0).requestFocus();
+                            updateVitrinParallax(0);
+                            if (ambientBackdropView != null && !posterNeonColors.isEmpty()) {
+                                ambientBackdropView.animateToTarget(posterCardFrames.get(0), posterNeonColors.get(0));
+                            }
+                        }
+                        if (onComplete != null) {
+                            onComplete.run();
                         }
                     }
                 });
@@ -4729,7 +4907,7 @@ public class MainActivity extends Activity {
         card.addView(sub);
 
         // 1) Tema Ayarlama
-        View btnTheme = createModalMenuButton("🌓  Tema Modu", "Saf OLED, Otomatik Gece/Gündüz veya Aydınlık Cam", new View.OnClickListener() {
+        View btnTheme = createModalMenuButton("Tema Modu", "Saf OLED, Otomatik Gece/Gündüz veya Aydınlık Cam", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 cycleThemeMode();
@@ -4739,7 +4917,7 @@ public class MainActivity extends Activity {
 
         // 2) Şehir Ayarlama
         String cityLabel = (currentCity != null && !currentCity.trim().isEmpty()) ? currentCity.trim() : "Ayarlanmadı";
-        View btnCity = createModalMenuButton("🌤️  Hava Durumu Şehri", "Mevcut: " + cityLabel, new View.OnClickListener() {
+        View btnCity = createModalMenuButton("Hava Durumu Şehri", "Mevcut: " + cityLabel, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 showInlineCityInputModal();
@@ -4748,7 +4926,7 @@ public class MainActivity extends Activity {
         card.addView(btnCity);
 
         // 3) Televizyonu Yeniden Başlatma
-        View btnReboot = createModalMenuButton("🔄  Televizyonu Yeniden Başlat", "Cihazı güvenle kapatıp yeniden başlatır", new View.OnClickListener() {
+        View btnReboot = createModalMenuButton("Televizyonu Yeniden Başlat", "Cihazı güvenle kapatıp yeniden başlatır", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 confirmRebootTv();
@@ -4758,7 +4936,7 @@ public class MainActivity extends Activity {
 
         // 4) Yapay Zekâ & TMDB API Anahtarı
         String keyLabel = (apiKey != null) ? "Aktif (" + getAiProvider(apiKey).toUpperCase() + ")" : "Tanımlanmadı";
-        View btnAiKey = createModalMenuButton("🔑  Yapay Zekâ & TMDB API Anahtarı", "Gemini / Claude / TMDB • Durum: " + keyLabel, new View.OnClickListener() {
+        View btnAiKey = createModalMenuButton("Yapay Zekâ ve TMDB API Anahtarı", "Gemini / Claude / TMDB • Durum: " + keyLabel, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 showInlineApiKeyModal();
@@ -4901,7 +5079,7 @@ public class MainActivity extends Activity {
         card.setBackground(bg);
 
         TextView title = new TextView(this);
-        title.setText("🌤️ HAVA DURUMU ŞEHRİ");
+        title.setText("HAVA DURUMU ŞEHRİ");
         title.setTypeface(FontManager.getBold(this));
         title.setTextSize(18f);
         title.setTextColor(Color.WHITE);
@@ -4927,7 +5105,7 @@ public class MainActivity extends Activity {
         cityInput.setBackground(inBg);
         card.addView(cityInput);
 
-        View btnSave = createModalMenuButton("💾  Kaydet ve Güncelle", "Hava durumunu anında yeni şehre göre çeker", new View.OnClickListener() {
+        View btnSave = createModalMenuButton("Kaydet ve Güncelle", "Hava durumunu anında yeni şehre göre çeker", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String val = cityInput.getText().toString().trim();
@@ -4971,7 +5149,7 @@ public class MainActivity extends Activity {
         card.setBackground(bg);
 
         TextView title = new TextView(this);
-        title.setText("🔑 YAPAY ZEKÂ & TMDB API ANAHTARI");
+        title.setText("YAPAY ZEKÂ VE TMDB API ANAHTARI");
         title.setTypeface(FontManager.getBold(this));
         title.setTextSize(18f);
         title.setTextColor(Color.WHITE);
@@ -4999,7 +5177,7 @@ public class MainActivity extends Activity {
         keyInput.setBackground(inBg);
         card.addView(keyInput);
 
-        View btnSave = createModalMenuButton("💾  Anahtarı Güvenle Kaydet", "Vitrin küratörünü ve arama asistanını etkinleştirir", new View.OnClickListener() {
+        View btnSave = createModalMenuButton("Anahtarı Güvenle Kaydet", "Vitrin küratörünü ve arama asistanını etkinleştirir", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String val = keyInput.getText().toString().trim();

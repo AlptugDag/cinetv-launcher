@@ -1,15 +1,18 @@
 package com.gathin.tvhome;
 
 import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.ActivityManager;
 import android.app.UiModeManager;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
@@ -101,6 +104,20 @@ public class TvKeyInterceptorService extends AccessibilityService {
     protected void onServiceConnected() {
         super.onServiceConnected();
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        try {
+            AccessibilityServiceInfo info = getServiceInfo();
+            if (info == null) {
+                info = new AccessibilityServiceInfo();
+            }
+            info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
+            info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC;
+            info.flags |= AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+                    | AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+                    | AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
+            info.notificationTimeout = 50;
+            setServiceInfo(info);
+        } catch (Throwable ignored) {
+        }
         try {
             IntentFilter filter = new IntentFilter();
             filter.addAction(Intent.ACTION_TIME_TICK);
@@ -464,16 +481,56 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 || scanCode == 192 || scanCode == 251 || scanCode == 413;
     }
 
+    public static Intent getSafeLaunchIntent(PackageManager pm, String pkg) {
+        if (pm == null || pkg == null || pkg.isEmpty()) return null;
+        Intent intent = null;
+        try {
+            intent = pm.getLeanbackLaunchIntentForPackage(pkg);
+        } catch (Throwable ignored) {}
+        if (intent == null) {
+            try {
+                intent = pm.getLaunchIntentForPackage(pkg);
+            } catch (Throwable ignored) {}
+        }
+        if (intent == null) {
+            try {
+                Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+                mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                mainIntent.setPackage(pkg);
+                List<ResolveInfo> list = pm.queryIntentActivities(mainIntent, 0);
+                if (list != null && !list.isEmpty()) {
+                    intent = new Intent(Intent.ACTION_MAIN);
+                    intent.setComponent(new ComponentName(pkg, list.get(0).activityInfo.name));
+                }
+            } catch (Throwable ignored) {}
+        }
+        if (intent == null) {
+            try {
+                Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+                mainIntent.setPackage(pkg);
+                List<ResolveInfo> list = pm.queryIntentActivities(mainIntent, 0);
+                if (list != null && !list.isEmpty()) {
+                    intent = new Intent(Intent.ACTION_MAIN);
+                    intent.setComponent(new ComponentName(pkg, list.get(0).activityInfo.name));
+                }
+            } catch (Throwable ignored) {}
+        }
+        if (intent == null && "com.nuvio.tv".equals(pkg)) {
+            intent = new Intent(Intent.ACTION_MAIN);
+            intent.setComponent(new ComponentName("com.nuvio.tv", "com.nuvio.tv.MainActivity"));
+        }
+        if (intent != null) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+        }
+        return intent;
+    }
+
     private void launchPackageWithFallback(String[] packages, String displayName) {
         PackageManager pm = getPackageManager();
         for (String pkg : packages) {
             try {
-                Intent intent = pm.getLeanbackLaunchIntentForPackage(pkg);
-                if (intent == null) {
-                    intent = pm.getLaunchIntentForPackage(pkg);
-                }
+                Intent intent = getSafeLaunchIntent(pm, pkg);
                 if (intent != null) {
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
                     startActivity(intent);
                     return;
                 }

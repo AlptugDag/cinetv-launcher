@@ -434,7 +434,7 @@ bash "${SCRIPT_DIR}/optimize_ram.sh" || true
 # STEP 11: AI CINEMA CURATOR CONFIGURATION (GOOGLE GEMINI / ANTHROPIC CLAUDE)
 # ------------------------------------------------------------------------------
 if [[ "$LANG" == "tr" ]]; then
-    echo -e "\n${BOLD}[Adım 8/9] 🤖 Yapay Zekâ Sinema Küratörü (Ruh Haline Göre 4K Sinema Vitrini):${NC}"
+    echo -e "\n${BOLD}[Adım 8/9] Yapay Zekâ Sinema Küratörü (Ruh Haline Göre 4K Sinema Vitrini):${NC}"
     echo "  1) Google Gemini API (Önerilen - Ücretsiz tier mevcuttur)"
     echo "  2) Anthropic Claude API"
     echo "  3) Şimdi Atla (Daha sonra TV kumandasıyla sol üst madalyondan tanımlanabilir)"
@@ -463,7 +463,7 @@ if [[ "$LANG" == "tr" ]]; then
         echo -e "${YELLOW}[!] Yapay zekâ anahtarı atlandı. Dilediğiniz zaman kumandayla madalyona tıklayarak ekleyebilirsiniz.${NC}"
     fi
 
-    echo -e "\n${BOLD}🎬 The Movie Database (TMDB) API Entegrasyonu:${NC}"
+    echo -e "\n${BOLD}The Movie Database (TMDB) API Entegrasyonu:${NC}"
     echo "  (Ekran koruyucu sinematik sahne arka planları ve dinamik 4K afişler için)"
     read -r -p "TMDB API Anahtarınız (İsteğe bağlı - Atlamak için Enter): " USER_TMDB_KEY
     if [[ -n "${USER_TMDB_KEY:-}" ]]; then
@@ -471,7 +471,7 @@ if [[ "$LANG" == "tr" ]]; then
         echo -e "${GREEN}[+] TMDB API anahtarı TV'nin güvenli donanım deposuna kaydedildi.${NC}"
     fi
 else
-    echo -e "\n${BOLD}[Step 8/9] 🤖 AI Cinema Curator Configuration (Mood-Based 4K Vitrin):${NC}"
+    echo -e "\n${BOLD}[Step 8/9] AI Cinema Curator Configuration (Mood-Based 4K Vitrin):${NC}"
     echo "  1) Google Gemini API (Recommended - Free tier available)"
     echo "  2) Anthropic Claude API"
     echo "  3) Skip for now (Can be configured anytime from Launcher Settings on TV)"
@@ -500,7 +500,7 @@ else
         echo -e "${YELLOW}[!] AI key skipped. You can configure it anytime via TV remote settings.${NC}"
     fi
 
-    echo -e "\n${BOLD}🎬 The Movie Database (TMDB) API Configuration:${NC}"
+    echo -e "\n${BOLD}The Movie Database (TMDB) API Configuration:${NC}"
     echo "  (For dynamic cinematic screensaver backgrounds and rich posters)"
     read -r -p "TMDB API Key (Optional - Press Enter to skip): " USER_TMDB_KEY
     if [[ -n "${USER_TMDB_KEY:-}" ]]; then
@@ -542,11 +542,11 @@ bash "${SCRIPT_DIR}/verify_display.sh" || true
 
 echo -e "\n${GREEN}${BOLD}================================================================================"
 if [[ "$LANG" == "tr" ]]; then
-    echo "  🎉 TEBRİKLER! KİŞİSELLEŞTİRİLMİŞ KURULUM TAMAMLANDI."
+    echo "  [✓] TEBRİKLER! KİŞİSELLEŞTİRİLMİŞ KURULUM TAMAMLANDI."
     echo "  Ülke: ${USER_COUNTRY} | Şehir: ${USER_CITY:-Otomatik} | Tema: ${THEME_MODE}"
     echo "  Diller: ${USER_LANGS} | 4K HDR10 Seeder Öncelikli Yayın Motoru Hazır!"
 else
-    echo "  🎉 CONGRATULATIONS! PERSONALIZED SETUP COMPLETED."
+    echo "  [✓] CONGRATULATIONS! PERSONALIZED SETUP COMPLETED."
     echo "  Country: ${USER_COUNTRY} | City: ${USER_CITY:-Auto} | Theme: ${THEME_MODE}"
     echo "  Languages: ${USER_LANGS} | 4K HDR10 Seeder-First Cinema Engine Ready!"
 fi
