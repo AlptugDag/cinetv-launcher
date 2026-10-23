@@ -510,10 +510,11 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# STEP 12: COMPILE & INSTALL TV MASTER LAUNCHER v1.0.0
+# STEP 12: COMPILE & INSTALL CİNETV LAUNCHER v1.0.0
 # ------------------------------------------------------------------------------
-echo -e "\n${BOLD}[Adım 9/9] TV Master Launcher v1.0.0 Kuruluyor:${NC}"
-APK_RELEASE="${ROOT_DIR}/release/tv-master-launcher-v1.0.0.apk"
+echo -e "\n${BOLD}[Adım 9/9] CİNETV Launcher v1.0.0 Kuruluyor:${NC}"
+APK_RELEASE="${ROOT_DIR}/release/cinetv-launcher-v1.0.0.apk"
+[[ ! -f "$APK_RELEASE" ]] && APK_RELEASE="${ROOT_DIR}/release/tv-master-launcher-v1.0.0.apk"
 
 if [[ ! -f "$APK_RELEASE" ]]; then
     echo "==> Compiling APK from source..."

@@ -1,6 +1,6 @@
 # CİNETV Launcher — Ultimate Cinema Operating Suite
 
-[![Release](https://img.shields.io/badge/Release-v1.0.0-blue.svg)](release/tv-master-launcher-v1.0.0.apk)
+[![Release](https://img.shields.io/badge/Release-v1.0.0-blue.svg)](release/cinetv-launcher-v1.0.0.apk)
 [![Platform](https://img.shields.io/badge/Platform-Android%20TV%209%2B%20%7C%20Google%20TV%20%7C%20Projectors-green.svg)](#supported-devices)
 [![Architecture](https://img.shields.io/badge/Arch-armeabi--v7a%20%7C%20arm64--v8a-orange.svg)](#architecture)
 [![Based on](https://img.shields.io/badge/Origin-CleanYourTV-blueviolet.svg)](https://github.com/Gathin23/cleanyourtv)
@@ -11,6 +11,7 @@
   <a href="#topics--tags"><code>#google-tv</code></a> •
   <a href="#topics--tags"><code>#projectors</code></a> •
   <a href="#topics--tags"><code>#tv-launcher</code></a> •
+  <a href="#topics--tags"><code>#cinetv</code></a> •
   <a href="#topics--tags"><code>#nuvio</code></a> •
   <a href="#topics--tags"><code>#cinema-station</code></a> •
   <a href="#topics--tags"><code>#gemini-ai</code></a> •
@@ -28,12 +29,12 @@
 ---
 
 ### Topics & Tags
-`android-tv` `google-tv` `projectors` `smart-projector` `tv-launcher` `cinema-suite` `nuvio` `nuvio-tv` `anthology` `turksinema` `androidtv-launcher` `custom-launcher` `leanback` `gemini-ai` `tmdb-api` `web-remote` `4k-hdr10` `dolby-vision` `debloat-android-tv` `smart-tv` `coverflow`
+`android-tv` `google-tv` `projectors` `smart-projector` `tv-launcher` `cinetv` `cinetv-launcher` `cinema-suite` `nuvio` `nuvio-tv` `anthology` `turksinema` `androidtv-launcher` `custom-launcher` `leanback` `gemini-ai` `tmdb-api` `web-remote` `4k-hdr10` `dolby-vision` `debloat-android-tv` `smart-tv` `coverflow`
 
 ---
 
 > [!NOTE]
-> **Attribution & Origin**: This project is built upon the wonderful foundation of [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23. We have re-engineered and expanded it into **CİNETV / TV Master Launcher v1.0.0**, introducing hardware Z-order 3D CoverFlow rendering, dynamic 12-bin focal neon glow extraction, Nuvio & Anthology direct 4K playback integration (click any poster to stream instantly), autonomous Gemini/Claude mood & context curation, TMDB media backdrop integration, full remote control hardware remapping, phone web remote server, AdGuard DoT security, universal projector & TV support, an interactive setup wizard, and strict user privacy.
+> **Attribution & Origin**: This project is built upon the wonderful foundation of [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23. We have re-engineered and expanded it into **CİNETV Launcher v1.0.0**, introducing hardware Z-order 3D CoverFlow rendering, dynamic 12-bin focal neon glow extraction, Nuvio & Anthology direct 4K playback integration (click any poster to stream instantly), autonomous Gemini/Claude mood & context curation, TMDB media backdrop integration, full remote control hardware remapping, phone web remote server, AdGuard DoT security, universal projector & TV support, an interactive setup wizard, and strict user privacy.
 
 ---
 
@@ -42,7 +43,7 @@
 ### Canlı Kullanım ve Akıcı Arayüz Deneyimi (1080p Screen Record)
 Televizyon üzerinden doğrudan kaydedilen akıcı 60 FPS D-pad gezinmesi, dinamik odak derinliği ve 3D CoverFlow vitrin geçişleri:
 
-https://github.com/AlptugDag/tv-master-launcher/raw/main/docs/screenshots/cinetv_showcase.mp4
+https://github.com/AlptugDag/cinetv-launcher/raw/main/docs/screenshots/cinetv_showcase.mp4
 
 > *Tarayıcınızda doğrudan video oynatıcı açılmazsa veya mobil önizlemedeyseniz:*  
 > Akıcı animasyon önizlemesi için `docs/screenshots/liquid_glass_glow.gif` dosyasına göz atabilirsiniz.
@@ -245,11 +246,11 @@ Fabrika menülerini, telemetriyi ve gereksiz mağaza bloatware'lerini HDMI giri�
 
 ## Tek Komutla Evrensel Kurulum Sihirbazı (Setup Wizard)
 
-TV Master Launcher v1.0.0; donanımınızı tanıyan, tercihlerinizi soran ve tüm optimizasyonu tek adımda uygulayan interaktif bir sihirbaz içerir:
+CİNETV Launcher v1.0.0; donanımınızı tanıyan, tercihlerinizi soran ve tüm optimizasyonu tek adımda uygulayan interaktif bir sihirbaz içerir:
 
 ```bash
-git clone https://github.com/AlptugDag/tv-master-launcher.git
-cd tv-master-launcher
+git clone https://github.com/AlptugDag/cinetv-launcher.git
+cd cinetv-launcher
 ./install.sh
 ```
 
@@ -286,13 +287,14 @@ Televizyonunuzu ChatGPT, Claude, Gemini veya DeepSeek aracılığıyla da kurabi
 ## Depo Yapısı (Repository Structure)
 
 ```
-tv-master-launcher/
+cinetv-launcher/
 ├── AI_AUTO_INSTALL_PROMPT.md        # AI modelleri için ana kurulum promptu
 ├── LICENSE                          # Apache 2.0 Lisansı
 ├── README.md                        # Dokümantasyon & görsel vitrin
 ├── install.sh                       # Tek komutla çalışan interaktif kurulum sihirbazı
 ├── release/
-│   └── tv-master-launcher-v1.0.0.apk # Derlenmiş, imzalanmış üretime hazır APK (v1.0.0)
+│   ├── cinetv-launcher-v1.0.0.apk   # Derlenmiş, imzalanmış üretime hazır APK (v1.0.0)
+│   └── tv-master-launcher-v1.0.0.apk # Geriye dönük uyumluluk APK bağlantısı
 ├── docs/
 │   └── screenshots/                 # 1080p canlı video, animasyonlu gif ve ekran görüntüleri
 │       ├── cinetv_showcase.mp4      # 1080p canlı kullanım & akıcı vitrin ekran kaydı

@@ -6,7 +6,7 @@
 # ==============================================================================
 set -euo pipefail
 
-REPO="AlptugDag/tv-master-launcher"
+REPO="AlptugDag/cinetv-launcher"
 UPSTREAM_REPO="Gathin23/cleanyourtv"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -41,7 +41,7 @@ UPSTREAM_INFO=$(curl -s --max-time 4 "https://api.github.com/repos/${UPSTREAM_RE
 UPSTREAM_COMMIT=$(echo "$UPSTREAM_INFO" | grep '"sha"' | head -n 1 | cut -d '"' -f 4 | cut -c1-7 || echo "offline")
 echo "    Upstream Son Commit: ${UPSTREAM_COMMIT}"
 
-LOCAL_APK="${ROOT_DIR}/release/tv-master-launcher-v1.0.0.apk"
+LOCAL_APK="${ROOT_DIR}/release/cinetv-launcher-v1.0.0.apk"
 echo "[+] 3. Kaynak kod derleniyor (AAPT2 / D8 / zipalign)..."
 (cd "${ROOT_DIR}/launcher" && bash ./build.sh)
 

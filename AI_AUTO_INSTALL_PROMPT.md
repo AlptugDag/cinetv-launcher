@@ -127,15 +127,15 @@ Apply user preferences (country, weather city, dub/sub languages, theme) and con
 
 ---
 
-### PHASE 5: COMPILE & INSTALL TV MASTER LAUNCHER v1.0.0
-Compile and install the ultra-lightweight hardware-accelerated TV Master Launcher:
+### PHASE 5: COMPILE & INSTALL CİNETV LAUNCHER v1.0.0
+Compile and install the ultra-lightweight hardware-accelerated CİNETV Launcher:
 
 ```bash
 cd launcher && ./build.sh
-adb install -r -d -g ../release/tv-master-launcher-v1.0.0.apk
+adb install -r -d -g ../release/cinetv-launcher-v1.0.0.apk
 ```
 
-Set TV Master Launcher as default launcher:
+Set CİNETV Launcher as default launcher:
 ```bash
 adb shell "cmd package set-home-activity com.gathin.tvhome/.MainActivity"
 ```
