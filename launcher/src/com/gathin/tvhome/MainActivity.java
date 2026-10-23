@@ -174,6 +174,8 @@ public class MainActivity extends Activity {
     private VibrantScreensaverView screensaverView;
     private boolean isScreensaverActive = false;
     private TextView vitrinCategoryLabel;
+    private FrameLayout brandMedallion;
+    private View gearIconBtn;
 
     private final List<AppTileItem> dockItems = new ArrayList<>();
     private final List<AppTileItem> gridItems = new ArrayList<>();
@@ -833,7 +835,18 @@ public class MainActivity extends Activity {
         leftBrandAndClock.setOrientation(LinearLayout.HORIZONTAL);
         leftBrandAndClock.setGravity(Gravity.CENTER_VERTICAL);
 
-        ImageView brandTvLogo = new ImageView(this);
+        brandMedallion = new FrameLayout(this);
+        brandMedallion.setFocusable(true);
+        brandMedallion.setClickable(true);
+
+        final GradientDrawable medallionBg = new GradientDrawable();
+        medallionBg.setShape(GradientDrawable.RECTANGLE);
+        medallionBg.setCornerRadius(22f);
+        medallionBg.setColor(Color.argb(175, 12, 17, 29)); // Smoked frosted glass
+        medallionBg.setStroke(2, Color.argb(120, 255, 255, 255));
+        brandMedallion.setBackground(medallionBg);
+
+        final ImageView brandTvLogo = new ImageView(this);
         brandTvLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
         try {
             InputStream is = getAssets().open("signature_logo.png");
@@ -860,14 +873,64 @@ public class MainActivity extends Activity {
             } catch (Throwable ignored2) {
             }
         }
-        LinearLayout.LayoutParams logoLp = new LinearLayout.LayoutParams(42, 42);
-        logoLp.setMargins(0, 0, 18, 0);
-        leftBrandAndClock.addView(brandTvLogo, logoLp);
+
+        FrameLayout.LayoutParams innerLogoLp = new FrameLayout.LayoutParams(54, 54, Gravity.CENTER);
+        brandMedallion.addView(brandTvLogo, innerLogoLp);
+
+        brandMedallion.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                v.animate()
+                        .scaleX(hasFocus ? 1.15f : 1.0f)
+                        .scaleY(hasFocus ? 1.15f : 1.0f)
+                        .setDuration(200L)
+                        .start();
+                if (hasFocus) {
+                    medallionBg.setStroke(2, Color.parseColor("#38BDF8"));
+                    if (ambientBackdropView != null) {
+                        ambientBackdropView.animateToTarget(v, Color.parseColor("#38BDF8"));
+                    }
+                } else {
+                    medallionBg.setStroke(2, Color.argb(120, 255, 255, 255));
+                }
+            }
+        });
+
+        brandMedallion.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showLauncherSettingsDialog();
+            }
+        });
+
+        brandMedallion.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
+                            posterCardFrames.get(0).requestFocus();
+                            return true;
+                        }
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        if (gearIconBtn != null) {
+                            gearIconBtn.requestFocus();
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+        });
+
+        LinearLayout.LayoutParams logoLp = new LinearLayout.LayoutParams(68, 68);
+        logoLp.setMargins(0, 0, 20, 0);
+        leftBrandAndClock.addView(brandMedallion, logoLp);
 
         View divider = new View(this);
-        divider.setBackgroundColor(Color.parseColor("#28FFFFFF"));
-        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(2, 34);
-        divLp.setMargins(0, 0, 18, 0);
+        divider.setBackgroundColor(Color.parseColor("#33FFFFFF"));
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(2, 42);
+        divLp.setMargins(0, 0, 20, 0);
         leftBrandAndClock.addView(divider, divLp);
 
         LinearLayout clockLine = new LinearLayout(this);
@@ -900,7 +963,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         topBar.addView(leftBrandAndClock, leftLp);
 
-        View gearIconBtn = createVectorGearButton(new View.OnClickListener() {
+        gearIconBtn = createVectorGearButton(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 try {
@@ -914,6 +977,26 @@ public class MainActivity extends Activity {
             public boolean onLongClick(View v) {
                 showLauncherSettingsDialog();
                 return true;
+            }
+        });
+
+        gearIconBtn.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                        if (brandMedallion != null) {
+                            brandMedallion.requestFocus();
+                            return true;
+                        }
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
+                            posterCardFrames.get(0).requestFocus();
+                            return true;
+                        }
+                    }
+                }
+                return false;
             }
         });
         topBar.addView(gearIconBtn);
@@ -1346,6 +1429,11 @@ public class MainActivity extends Activity {
                         } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                             if (dockRow != null && dockRow.getChildCount() > 0) {
                                 dockRow.getChildAt(0).requestFocus();
+                                return true;
+                            }
+                        } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                            if (brandMedallion != null) {
+                                brandMedallion.requestFocus();
                                 return true;
                             }
                         }

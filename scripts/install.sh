@@ -393,6 +393,13 @@ echo "==> Adding OpenSubtitles v3 Engine..."
 adb shell "am start -a android.intent.action.VIEW -d \"stremio://opensubtitles-v3.strem.io/manifest.json\" 2>/dev/null || true" >/dev/null
 sleep 1
 
+# TR Altyazı (Ortak Türkçe Altyazı Havuzu: AltyaziTR, YIFY, OpenSubtitles)
+if [[ "$USER_COUNTRY" == "TR" ]]; then
+    echo "==> Adding TR Altyazı (AltyaziTR + YIFY + OpenSubtitles)..."
+    adb shell "am start -a android.intent.action.VIEW -d \"stremio://tr-altyazi.altyazi.workers.dev/manifest.json\" 2>/dev/null || true" >/dev/null
+    sleep 1
+fi
+
 # ------------------------------------------------------------------------------
 # STEP 10: OPTIONAL ADD-ONS (AD-FREE YOUTUBE & AIRPLAY)
 # ------------------------------------------------------------------------------

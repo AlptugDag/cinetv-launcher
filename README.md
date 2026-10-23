@@ -70,17 +70,30 @@ Focus movement smoothly shifts depth scaling, 3D elevation, and poster-aware foc
 - **Dynamic Launch-Time Feed Auto-Refresh**: Every time the TV wakes or the launcher returns to the foreground (`onResume`), the vitrin feed is checked in the background. If new movies are released on Webteizle (or Cinemeta for international setups), posters, titles, and IMDb IDs update dynamically with zero UI stutter.
 - **Direct 4K Stream Playback Integration**: Clicking any poster directly initiates playback in **Nuvio TV** (`launchMode="stream"` with exact `contentId` and `name`), prioritizing 4K HDR10 streams immediately.
 
-### 2. 🍿 Nuvio TV + Cinema Suite & Strict Seeder Sorting
-- Integrates **Nuvio TV** (`com.nuvio.tv`) with the verified **Anthology** repository (41 scrapers + 138 Live TV channels for TR) or Cinemeta/CyberFlix (for international users).
+### 2. 🍿 Nuvio TV & 4K HDR10 Sinema Ekosistemi (Doğrulanmış Depolar & Eklentiler)
+- Integrates **Nuvio TV** (`com.nuvio.tv`) with the verified Turkish & International cinema streaming ecosystem.
 - Official Nuvio wordmark tile (`ic_nuvio_wordmark`) rendered on Apple visionOS liquid glass without redundant duplicate text.
-- **Dynamic 8-Genre Vitrin Rotation**: On every TV boot or launcher return, the vitrin dynamically cycles across 8 curated cinema categories (Vizyondakiler & Popüler, Aksiyon & Macera, Bilim-Kurgu, Animasyon & Aile, Gerilim, Suç & Gizem, Fantastik Dünyalar, IMDb En İyiler).
+- **Dynamic 18-Genre Vitrin Rotation**: On every TV boot or launcher return, the vitrin dynamically cycles across 18 curated cinema categories (Vizyondakiler, Popüler Filmler, IMDb En İyiler, Bilim-Kurgu Başyapıtları, Gerilim & Gizem, Suç & Polisiye, Animasyon & Aile Dünyası, Fantastik Dünyalar, Komedi & Eğlence, Macera & Keşif, Korku & Doğaüstü, Dram & Biyografi, Belgesel & Doğa, Popüler Diziler, vb.).
+
+#### 📦 Doğrulanmış Eklenti, Scraper ve Katalog Ekosistemi
+
+| Eklenti / Depo | Tür | Bağlantı / Manifest | Açıklama & Kapsam |
+|---|:---:|---|---|
+| **Anthology** | Film, Dizi & Canlı TV | [GitHub Deposu](https://github.com/falsisdev/anthology)<br>`https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json` | **41 aktif sağlayıcı**, 138 canlı TV kanalı ve 7 vitrin kataloğu. Nuvio Ayarlar -> Pluginler -> Depo Ekle. |
+| **TurkSinema** | Film, Dizi, Anime & Belgesel | [GitHub Deposu](https://github.com/Wiojelt/TurkSinema)<br>*(Kısa kod: `!turksinema`)* | CloudStream & Nuvio için **56 ayrı film, dizi, anime ve belgesel** scraper sağlayıcısı. |
+| **Torrentio 4K HDR10** | P2P / Debrid Akış Motoru | [Torrentio Yapılandırma](https://torrentio.strem.fun/configure) | 4K REMUX, HDR10 ve Dolby Vision yayınları seeder sayısına ve Türkçe ses/altyazı önceliğine göre sıralar. |
+| **AIOMetadata Türkçe** | Gelişmiş Metadata & Afişler | [Gist Yapılandırması](https://gist.github.com/underd0se/0a623550205661139ee73564051f7e80#file-aiometadata-turkce-config-json) | TMDB, TVDB ve Trakt veritabanlarından zengin Türkçe afiş, özet, oyuncu kadrosu ve yaş sınırı bilgileri. |
+| **Kaptain's Collection** | Özel Stüdyo & Sinema Sanatı | [kaptain.stream](https://kaptain.stream) | Nuvio, Stremio ve Plex için 4K özel stüdyo logoları, seri afişleri ve yüksek kaliteli koleksiyon görselleri. |
+| **TR Altyazı** | Türkçe Altyazı Havuzu | [Manifest URL](https://tr-altyazi.altyazi.workers.dev/manifest.json)<br>*(Tek Tık: `stremio://tr-altyazi.altyazi.workers.dev/manifest.json`)* | AltyaziTR (turkcealtyazi.org), YIFY ve OpenSubtitles ortak havuzundan anında Türkçe altyazı senkronizasyonu. |
+| **Cinemeta Global** | Resmi Box Office Katalogları | `https://v3-cinemeta.strem.io/manifest.json` | Dünya genelinde vizyondaki ve trend olan yapımların anlık resmi katalog akışı. |
+
 - **Strict Torrent Sorting & Filtering Hierarchy**:
   1. Quality Tier: `4K HDR10 / Dolby Vision` > `1080p HDR10` > `1080p` > `720p`.
   2. Language Priority: User-defined spoken languages prioritized for dubbing and subtitles (e.g. `turkish,english`, `german,english`, `spanish,latino`).
   3. **Torrent Seeder Hierarchy**: Within each quality tier, torrent videos are strictly sorted **first by seeder count, then by file size** (`sort=quality`).
   4. Exclusions: Formats below 720p (480p, 360p, CAM, SCR, etc.) are strictly excluded.
 - **Nova Video Player Integration (`scripts/setup_nova_player.sh`)**: If Nuvio TV ever encounters a playback, sync, or codec error on heavy 4K REMUX or obscure audio codecs, users can seamlessly switch to Nova Video Player (`org.courville.nova`) as an external player directly from Nuvio settings.
-- **Hardware Cinema Calibration & Auto Frame Rate (AFR) (`scripts/setup_nuvio_presets.sh`)**: Calibrates the TV display and audio pipeline to cinema standards, enabling hardware Auto Frame Rate matching (`match_content_frame_rate=1`), bit-perfect digital audio passthrough (`sound_digital_output=5`), Dolby Atmos, and HDR10+ dynamic tone mapping.
+- **Hardware Cinema Calibration & Audio Passthrough (`scripts/setup_nuvio_presets.sh`)**: Calibrates the TV display and audio pipeline to cinema standards, enabling bit-perfect digital audio passthrough (`sound_digital_output=5`), Dolby Atmos, and HDR10+ dynamic tone mapping.
 - Completely replaces and retires legacy players (CloudStream, Stremio) cleanly.
 
 ### 3. 🌤️ Real-Time Live Weather & Location Awareness
