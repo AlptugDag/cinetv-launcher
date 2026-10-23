@@ -1448,12 +1448,22 @@ public class MainActivity extends Activity {
     private static final VitrinCategory[] VITRIN_CATEGORIES = new VitrinCategory[] {
         new VitrinCategory("Anthology • Vizyondakiler", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json"),
         new VitrinCategory("TurkSinema • Popüler Filmler", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Action.json"),
-        new VitrinCategory("AIOMetadata • En İyiler", "https://cinemeta-catalogs.strem.io/top/catalog/movie/imdbRating.json"),
-        new VitrinCategory("Nuvio • Bilim-Kurgu", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Sci-Fi.json"),
-        new VitrinCategory("Nuvio • Gerilim & Suç", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Thriller.json"),
-        new VitrinCategory("Nuvio • Animasyon & Aile", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Animation.json"),
+        new VitrinCategory("AIOMetadata • IMDb En İyiler", "https://cinemeta-catalogs.strem.io/top/catalog/movie/imdbRating.json"),
+        new VitrinCategory("Nuvio • Bilim-Kurgu Başyapıtları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Sci-Fi.json"),
+        new VitrinCategory("Anthology • Gerilim & Gizem", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Thriller.json"),
+        new VitrinCategory("TurkSinema • Suç & Polisiye", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Crime.json"),
+        new VitrinCategory("Nuvio • Animasyon & Aile Dünyası", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Animation.json"),
         new VitrinCategory("Anthology • Fantastik Dünyalar", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Fantasy.json"),
-        new VitrinCategory("Nuvio • Komedi & Macera", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Adventure.json")
+        new VitrinCategory("Nuvio • Komedi & Eğlence", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Comedy.json"),
+        new VitrinCategory("Anthology • Macera & Keşif", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Adventure.json"),
+        new VitrinCategory("Nuvio • Korku & Doğaüstü", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Horror.json"),
+        new VitrinCategory("TurkSinema • Dram & Biyografi", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Drama.json"),
+        new VitrinCategory("AIOMetadata • Gizem & Dedektif", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Mystery.json"),
+        new VitrinCategory("Anthology • Romantik & Duygusal", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Romance.json"),
+        new VitrinCategory("Nuvio • Savaş & Tarih Destanları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=War.json"),
+        new VitrinCategory("Anthology • Belgesel & Doğa", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Documentary.json"),
+        new VitrinCategory("TurkSinema • Popüler Diziler", "https://cinemeta-catalogs.strem.io/top/catalog/series/top.json"),
+        new VitrinCategory("AIOMetadata • En Çok Oy Alan Diziler", "https://cinemeta-catalogs.strem.io/top/catalog/series/imdbRating.json")
     };
 
     private static HttpURLConnection openWithRedirects(String urlStr) throws Exception {
