@@ -9,6 +9,8 @@ import android.os.Handler;
 import android.os.Looper;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetAddress;
@@ -48,23 +50,29 @@ public class TvWebRemoteServer {
     }
 
     public static synchronized void start(final Context context) {
-        if (isRunning) return;
+        if (isRunning && serverSocket != null && !serverSocket.isClosed()) return;
+        stop();
         isRunning = true;
+        final Context appCtx = context.getApplicationContext();
         serverThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
                     serverSocket = new ServerSocket(PORT);
-                    while (isRunning && !serverSocket.isClosed()) {
+                    android.util.Log.i("TvWebRemote", "Server listening on port " + PORT);
+                    while (isRunning && serverSocket != null && !serverSocket.isClosed()) {
                         final Socket socket = serverSocket.accept();
                         new Thread(new Runnable() {
                             @Override
                             public void run() {
-                                handleClient(context, socket);
+                                handleClient(appCtx, socket);
                             }
                         }).start();
                     }
-                } catch (Throwable ignored) {
+                } catch (Throwable t) {
+                    android.util.Log.e("TvWebRemote", "Server error: " + t.getMessage());
+                } finally {
+                    isRunning = false;
                 }
             }
         });
@@ -120,7 +128,9 @@ public class TvWebRemoteServer {
             String method = parts[0];
             String uri = parts[1];
 
-            if (uri.startsWith("/api/key")) {
+            if (uri.equals("/") || uri.equals("/index.html") || uri.startsWith("/?")) {
+                sendHtmlResponse(socket, getRemoteHtml());
+            } else if (uri.startsWith("/api/key")) {
                 handleKeyApi(uri);
                 sendJsonResponse(socket, "{\"status\":\"ok\"}");
             } else if (uri.startsWith("/api/search")) {
@@ -162,8 +172,23 @@ public class TvWebRemoteServer {
             } else if (uri.startsWith("/api/text")) {
                 handleTextApi(uri);
                 sendJsonResponse(socket, "{\"status\":\"typed\"}");
+            } else if (uri.startsWith("/liquid-glass/")) {
+                String sub = uri.substring("/liquid-glass/".length());
+                int qIdx = sub.indexOf('?');
+                if (qIdx >= 0) sub = sub.substring(0, qIdx);
+                if (sub.contains("..") || sub.contains("\\") || !sub.matches("^[a-zA-Z0-9_.-]+$")) {
+                    sendErrorResponse(socket, 403, "Forbidden");
+                    return;
+                }
+                String mime = "application/octet-stream";
+                if (sub.endsWith(".js")) mime = "application/javascript; charset=utf-8";
+                else if (sub.endsWith(".css")) mime = "text/css; charset=utf-8";
+                else if (sub.endsWith(".html")) mime = "text/html; charset=utf-8";
+                sendAssetResponse(context, socket, "liquid-glass/" + sub, mime);
+            } else if (uri.equals("/demo") || uri.startsWith("/demo/")) {
+                sendAssetResponse(context, socket, "liquid-glass/index.html", "text/html; charset=utf-8");
             } else {
-                sendHtmlResponse(socket, getRemoteHtml());
+                sendErrorResponse(socket, 404, "Not Found");
             }
         } catch (Throwable ignored) {
         } finally {
@@ -174,12 +199,50 @@ public class TvWebRemoteServer {
         }
     }
 
+    private static void sendErrorResponse(Socket socket, int code, String msg) throws Exception {
+        byte[] bytes = ("{\"error\":\"" + msg + "\"}").getBytes(StandardCharsets.UTF_8);
+        OutputStream os = socket.getOutputStream();
+        os.write(("HTTP/1.1 " + code + " " + msg + "\r\n"
+                + "Content-Type: application/json; charset=utf-8\r\n"
+                + "Access-Control-Allow-Origin: *\r\n"
+                + "Content-Length: " + bytes.length + "\r\n"
+                + "Connection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+        os.write(bytes);
+        os.flush();
+    }
+
+    private static void sendAssetResponse(Context context, Socket socket, String assetPath, String mimeType) throws Exception {
+        try (InputStream is = context.getAssets().open(assetPath)) {
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            int nRead;
+            byte[] data = new byte[8192];
+            while ((nRead = is.read(data, 0, data.length)) != -1) {
+                buffer.write(data, 0, nRead);
+            }
+            buffer.flush();
+            byte[] bytes = buffer.toByteArray();
+            OutputStream os = socket.getOutputStream();
+            os.write(("HTTP/1.1 200 OK\r\n"
+                    + "Content-Type: " + mimeType + "\r\n"
+                    + "Access-Control-Allow-Origin: *\r\n"
+                    + "Cache-Control: public, max-age=3600\r\n"
+                    + "Content-Length: " + bytes.length + "\r\n"
+                    + "Connection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+            os.write(bytes);
+            os.flush();
+        } catch (Throwable e) {
+            sendJsonResponse(socket, "{\"error\":\"not_found\"}");
+        }
+    }
+
     private static void handleKeyApi(String uri) {
         try {
             String codeStr = getQueryParam(uri, "code");
-            if (codeStr != null) {
+            if (codeStr != null && codeStr.matches("^[0-9]{1,4}$")) {
                 int code = Integer.parseInt(codeStr);
-                sendKeyEvent(code);
+                if (code >= 0 && code <= 350) {
+                    sendKeyEvent(code);
+                }
             }
         } catch (Throwable ignored) {
         }
@@ -187,15 +250,19 @@ public class TvWebRemoteServer {
 
     private static void handleSearchApi(String uri) {
         try {
-            final String q = getQueryParam(uri, "q");
-            android.util.Log.i("TvWebRemote", "handleSearchApi: uri=" + uri + " q=" + q + " callback=" + actionCallback);
-            if (q != null && actionCallback != null) {
-                mainHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        actionCallback.onMovieSearchRequested(q);
-                    }
-                });
+            String q = getQueryParam(uri, "q");
+            if (q != null) {
+                q = q.trim();
+                if (q.length() > 200) q = q.substring(0, 200);
+                final String safeQ = q;
+                if (!safeQ.isEmpty() && actionCallback != null) {
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            actionCallback.onMovieSearchRequested(safeQ);
+                        }
+                    });
+                }
             }
         } catch (Throwable ignored) {
         }
@@ -204,7 +271,7 @@ public class TvWebRemoteServer {
     private static void handleLaunchApi(final Context context, String uri) {
         try {
             final String pkg = getQueryParam(uri, "pkg");
-            if (pkg != null) {
+            if (pkg != null && pkg.matches("^[a-zA-Z0-9_.]+$") && pkg.length() <= 128) {
                 mainHandler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -294,79 +361,232 @@ public class TvWebRemoteServer {
                 + "<head>\n"
                 + "<meta charset=\"UTF-8\">\n"
                 + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no\">\n"
-                + "<title>CİNETV • Akıllı TV Kumandası</title>\n"
+                + "<title>CİNETV • Liquid Glass Kumanda</title>\n"
+                + "<link rel=\"stylesheet\" href=\"/liquid-glass/glass.css\">\n"
                 + "<style>\n"
-                + "  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }\n"
-                + "  body { background: #07090E; color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }\n"
+                + "  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }\n"
+                + "  body {\n"
+                + "    background: radial-gradient(circle at 50% 15%, #0B111E 0%, #040508 100%);\n"
+                + "    color: #F8FAFC;\n"
+                + "    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;\n"
+                + "    padding: 24px 16px 40px 16px;\n"
+                + "    display: flex;\n"
+                + "    flex-direction: column;\n"
+                + "    align-items: center;\n"
+                + "    min-height: 100vh;\n"
+                + "  }\n"
                 + "  .header { text-align: center; margin-bottom: 20px; }\n"
-                + "  .brand { font-size: 20px; font-weight: 800; letter-spacing: 2px; color: #38BDF8; }\n"
-                + "  .sub { font-size: 12px; color: #64748B; margin-top: 4px; }\n"
-                + "  .search-card { width: 100%; max-width: 360px; margin-bottom: 20px; background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 8px 14px; display: flex; align-items: center; gap: 8px; }\n"
-                + "  .search-card input { flex: 1; background: transparent; border: none; color: #fff; font-size: 15px; outline: none; }\n"
-                + "  .search-card button { background: #38BDF8; color: #000; border: none; border-radius: 12px; padding: 8px 14px; font-weight: 700; font-size: 13px; cursor: pointer; }\n"
-                + "  .dpad-container { width: 260px; height: 260px; background: rgba(15,23,42,0.8); border: 1.5px solid rgba(255,255,255,0.12); border-radius: 50%; position: relative; margin: 10px 0 25px 0; box-shadow: 0 10px 40px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }\n"
-                + "  .dpad-btn { position: absolute; background: transparent; border: none; color: #E2E8F0; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.15s; }\n"
-                + "  .dpad-btn:active { background: rgba(56,189,248,0.25); color: #38BDF8; }\n"
-                + "  .dpad-up { top: 12px; left: 100px; width: 60px; height: 50px; }\n"
-                + "  .dpad-down { bottom: 12px; left: 100px; width: 60px; height: 50px; }\n"
-                + "  .dpad-left { left: 12px; top: 100px; width: 50px; height: 60px; }\n"
-                + "  .dpad-right { right: 12px; top: 100px; width: 50px; height: 60px; }\n"
-                + "  .dpad-center { width: 90px; height: 90px; background: #1E293B; border: 2px solid rgba(255,255,255,0.15); border-radius: 50%; font-size: 15px; font-weight: 800; color: #38BDF8; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }\n"
-                + "  .dpad-center:active { background: #38BDF8; color: #000; }\n"
-                + "  .actions-row { display: flex; gap: 14px; width: 100%; max-width: 340px; margin-bottom: 20px; }\n"
-                + "  .act-btn { flex: 1; padding: 14px; background: rgba(30,41,59,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; color: #F1F5F9; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }\n"
-                + "  .act-btn:active { background: rgba(56,189,248,0.2); border-color: #38BDF8; }\n"
-                + "  .hotkeys-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 340px; margin-bottom: 20px; }\n"
-                + "  .hot-btn { padding: 14px 10px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); font-weight: 700; font-size: 13px; cursor: pointer; text-align: center; color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px; }\n"
-                + "  .hot-nuvio { background: linear-gradient(135deg, rgba(168,85,247,0.3), rgba(99,102,241,0.3)); border-color: #A855F7; }\n"
-                + "  .hot-yt { background: linear-gradient(135deg, rgba(239,68,68,0.3), rgba(185,28,28,0.3)); border-color: #EF4444; }\n"
-                + "  .hot-wvc { background: linear-gradient(135deg, rgba(234,179,8,0.3), rgba(202,138,4,0.3)); border-color: #EAB308; }\n"
-                + "  .hot-tvp { background: linear-gradient(135deg, rgba(14,165,233,0.3), rgba(2,132,199,0.3)); border-color: #0EA5E9; }\n"
-                + "  .hot-btn:active { transform: scale(0.96); }\n"
-                + "  .vol-row { display: flex; gap: 10px; width: 100%; max-width: 340px; }\n"
-                + "  .vol-btn { flex: 1; padding: 12px; background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; color: #94A3B8; font-size: 13px; font-weight: 600; cursor: pointer; }\n"
+                + "  .brand { font-size: 20px; font-weight: 800; letter-spacing: 2.5px; color: #38BDF8; text-shadow: 0 0 24px rgba(56,189,248,0.4); }\n"
+                + "  .sub { font-size: 11px; color: #64748B; margin-top: 4px; letter-spacing: 0.5px; }\n"
+                + "  .glass-card {\n"
+                + "    width: 100%;\n"
+                + "    max-width: 360px;\n"
+                + "    background: rgba(18, 24, 38, 0.72);\n"
+                + "    backdrop-filter: blur(28px) saturate(190%);\n"
+                + "    -webkit-backdrop-filter: blur(28px) saturate(190%);\n"
+                + "    border: 0.5px solid rgba(255, 255, 255, 0.22);\n"
+                + "    border-radius: 24px;\n"
+                + "    box-shadow: 0 20px 50px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.35);\n"
+                + "    padding: 18px;\n"
+                + "    display: flex;\n"
+                + "    flex-direction: column;\n"
+                + "    align-items: center;\n"
+                + "    margin-bottom: 18px;\n"
+                + "  }\n"
+                + "  .search-row {\n"
+                + "    width: 100%;\n"
+                + "    display: flex;\n"
+                + "    align-items: center;\n"
+                + "    background: rgba(0,0,0,0.35);\n"
+                + "    border: 0.5px solid rgba(255,255,255,0.18);\n"
+                + "    border-radius: 18px;\n"
+                + "    padding: 6px 10px;\n"
+                + "    gap: 8px;\n"
+                + "  }\n"
+                + "  .search-row input {\n"
+                + "    flex: 1;\n"
+                + "    background: transparent;\n"
+                + "    border: none;\n"
+                + "    color: #F8FAFC;\n"
+                + "    font-size: 14px;\n"
+                + "    outline: none;\n"
+                + "    padding: 6px 4px;\n"
+                + "  }\n"
+                + "  .search-row button {\n"
+                + "    background: #38BDF8;\n"
+                + "    color: #040508;\n"
+                + "    border: none;\n"
+                + "    border-radius: 12px;\n"
+                + "    padding: 8px 14px;\n"
+                + "    font-weight: 700;\n"
+                + "    font-size: 13px;\n"
+                + "    cursor: pointer;\n"
+                + "    transition: transform 0.1s, opacity 0.1s;\n"
+                + "  }\n"
+                + "  .search-row button:active { transform: scale(0.95); opacity: 0.9; }\n"
+                + "  .dpad-rim {\n"
+                + "    width: 250px;\n"
+                + "    height: 250px;\n"
+                + "    border-radius: 50%;\n"
+                + "    background: radial-gradient(circle at 50% 30%, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.95) 100%);\n"
+                + "    border: 1px solid rgba(255, 255, 255, 0.16);\n"
+                + "    box-shadow: 0 15px 40px rgba(0,0,0,0.7), inset 0 2px 3px rgba(255,255,255,0.2);\n"
+                + "    position: relative;\n"
+                + "    margin: 8px 0 18px 0;\n"
+                + "    display: flex;\n"
+                + "    align-items: center;\n"
+                + "    justify-content: center;\n"
+                + "  }\n"
+                + "  .dpad-btn {\n"
+                + "    position: absolute;\n"
+                + "    background: transparent;\n"
+                + "    border: none;\n"
+                + "    color: #E2E8F0;\n"
+                + "    font-size: 20px;\n"
+                + "    cursor: pointer;\n"
+                + "    display: flex;\n"
+                + "    align-items: center;\n"
+                + "    justify-content: center;\n"
+                + "    border-radius: 50%;\n"
+                + "    transition: background 0.12s, color 0.12s;\n"
+                + "  }\n"
+                + "  .dpad-btn:active { background: rgba(56,189,248,0.2); color: #38BDF8; }\n"
+                + "  .dpad-up { top: 10px; left: 95px; width: 60px; height: 50px; }\n"
+                + "  .dpad-down { bottom: 10px; left: 95px; width: 60px; height: 50px; }\n"
+                + "  .dpad-left { left: 10px; top: 95px; width: 50px; height: 60px; }\n"
+                + "  .dpad-right { right: 10px; top: 95px; width: 50px; height: 60px; }\n"
+                + "  .dpad-center {\n"
+                + "    width: 86px;\n"
+                + "    height: 86px;\n"
+                + "    border-radius: 50%;\n"
+                + "    background: radial-gradient(circle at 50% 30%, rgba(56,189,248,0.25) 0%, rgba(15,23,42,0.9) 100%);\n"
+                + "    border: 1.5px solid rgba(56,189,248,0.4);\n"
+                + "    box-shadow: 0 4px 18px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.4);\n"
+                + "    color: #38BDF8;\n"
+                + "    font-size: 15px;\n"
+                + "    font-weight: 800;\n"
+                + "    cursor: pointer;\n"
+                + "    display: flex;\n"
+                + "    align-items: center;\n"
+                + "    justify-content: center;\n"
+                + "  }\n"
+                + "  .dpad-center:active { background: #38BDF8; color: #040508; }\n"
+                + "  .pill-row { width: 100%; display: flex; gap: 10px; margin-bottom: 12px; }\n"
+                + "  .glass-pill-btn {\n"
+                + "    flex: 1;\n"
+                + "    padding: 12px;\n"
+                + "    background: rgba(30,41,59,0.5);\n"
+                + "    border: 0.5px solid rgba(255,255,255,0.18);\n"
+                + "    border-radius: 20px;\n"
+                + "    color: #F1F5F9;\n"
+                + "    font-size: 13px;\n"
+                + "    font-weight: 600;\n"
+                + "    cursor: pointer;\n"
+                + "    text-align: center;\n"
+                + "    box-shadow: inset 0 1px 1px rgba(255,255,255,0.25);\n"
+                + "    transition: transform 0.1s, background 0.15s;\n"
+                + "  }\n"
+                + "  .glass-pill-btn:active { transform: scale(0.96); background: rgba(56,189,248,0.22); border-color: #38BDF8; }\n"
+                + "  .apps-grid { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }\n"
+                + "  .app-btn {\n"
+                + "    padding: 13px 8px;\n"
+                + "    border-radius: 18px;\n"
+                + "    font-size: 13px;\n"
+                + "    font-weight: 700;\n"
+                + "    cursor: pointer;\n"
+                + "    text-align: center;\n"
+                + "    color: #fff;\n"
+                + "    border: 0.5px solid rgba(255,255,255,0.18);\n"
+                + "    box-shadow: inset 0 1px 1px rgba(255,255,255,0.3), 0 8px 20px rgba(0,0,0,0.3);\n"
+                + "    transition: transform 0.1s;\n"
+                + "  }\n"
+                + "  .app-btn:active { transform: scale(0.96); }\n"
+                + "  .app-nuvio { background: linear-gradient(135deg, rgba(168,85,247,0.35), rgba(99,102,241,0.25)); border-color: #A855F7; }\n"
+                + "  .app-yt { background: linear-gradient(135deg, rgba(239,68,68,0.35), rgba(185,28,28,0.25)); border-color: #EF4444; }\n"
+                + "  .app-wvc { background: linear-gradient(135deg, rgba(234,179,8,0.35), rgba(202,138,4,0.25)); border-color: #EAB308; }\n"
+                + "  .app-tvp { background: linear-gradient(135deg, rgba(14,165,233,0.35), rgba(2,132,199,0.25)); border-color: #0EA5E9; }\n"
+                + "  .vol-row { width: 100%; display: flex; gap: 8px; }\n"
+                + "  .vol-btn {\n"
+                + "    flex: 1;\n"
+                + "    padding: 11px;\n"
+                + "    background: rgba(15,23,42,0.7);\n"
+                + "    border: 0.5px solid rgba(255,255,255,0.12);\n"
+                + "    border-radius: 16px;\n"
+                + "    color: #94A3B8;\n"
+                + "    font-size: 13px;\n"
+                + "    font-weight: 600;\n"
+                + "    cursor: pointer;\n"
+                + "    text-align: center;\n"
+                + "    transition: color 0.1s, background 0.1s;\n"
+                + "  }\n"
                 + "  .vol-btn:active { color: #fff; background: rgba(255,255,255,0.15); }\n"
+                + "  .quick-bar { width: 100%; display: flex; gap: 8px; margin-top: 10px; }\n"
+                + "  .quick-pill {\n"
+                + "    flex: 1;\n"
+                + "    padding: 8px 4px;\n"
+                + "    background: rgba(255,255,255,0.06);\n"
+                + "    border: 0.5px solid rgba(255,255,255,0.12);\n"
+                + "    border-radius: 14px;\n"
+                + "    font-size: 11px;\n"
+                + "    color: #CBD5E1;\n"
+                + "    cursor: pointer;\n"
+                + "    text-align: center;\n"
+                + "  }\n"
+                + "  .quick-pill:active { background: rgba(56,189,248,0.2); color: #38BDF8; }\n"
                 + "</style>\n"
                 + "</head>\n"
                 + "<body>\n"
                 + "<div class=\"header\">\n"
                 + "  <div class=\"brand\">CİNETV REMOTE</div>\n"
-                + "  <div class=\"sub\">Mobil Dokunmatik &amp; Çift Ekran Kumandası</div>\n"
+                + "  <div class=\"sub\">Liquid Glass Mobil Dokunmatik Kumanda</div>\n"
                 + "</div>\n"
-                + "<div class=\"search-card\">\n"
-                + "  <input type=\"text\" id=\"searchInput\" placeholder=\"Film ara veya Gemini'ye sor...\">\n"
-                + "  <button onclick=\"searchMovie()\">Aç</button>\n"
+                + "<div class=\"glass-card\">\n"
+                + "  <div class=\"search-row\">\n"
+                + "    <input type=\"text\" id=\"searchInput\" placeholder=\"Film ara veya Gemini'ye sor...\" onkeydown=\"if(event.key==='Enter')searchMovie()\">\n"
+                + "    <button onclick=\"searchMovie()\">Aç</button>\n"
+                + "  </div>\n"
+                + "  <div class=\"dpad-rim\">\n"
+                + "    <button class=\"dpad-btn dpad-up\" onclick=\"sendKey(19)\">▲</button>\n"
+                + "    <button class=\"dpad-btn dpad-left\" onclick=\"sendKey(21)\">◀</button>\n"
+                + "    <button class=\"dpad-center\" onclick=\"sendKey(23)\">OK</button>\n"
+                + "    <button class=\"dpad-btn dpad-right\" onclick=\"sendKey(22)\">▶</button>\n"
+                + "    <button class=\"dpad-btn dpad-down\" onclick=\"sendKey(20)\">▼</button>\n"
+                + "  </div>\n"
+                + "  <div class=\"pill-row\">\n"
+                + "    <button class=\"glass-pill-btn\" onclick=\"sendKey(4)\">Geri</button>\n"
+                + "    <button class=\"glass-pill-btn\" onclick=\"sendKey(3)\">Ana Ekran</button>\n"
+                + "  </div>\n"
+                + "  <div class=\"apps-grid\">\n"
+                + "    <div class=\"app-btn app-nuvio\" onclick=\"launchApp('com.nuvio.tv')\">Nuvio 4K</div>\n"
+                + "    <div class=\"app-btn app-yt\" onclick=\"launchApp('io.gh.reisxd.tizentube.cobalt')\">YouTube</div>\n"
+                + "    <div class=\"app-btn app-wvc\" onclick=\"launchApp('com.instantbits.cast.receiver')\">Web Caster</div>\n"
+                + "    <div class=\"app-btn app-tvp\" onclick=\"launchApp('com.turkcell.ott')\">TV+ Canlı</div>\n"
+                + "  </div>\n"
+                + "  <div class=\"vol-row\">\n"
+                + "    <button class=\"vol-btn\" onclick=\"sendKey(25)\">Ses -</button>\n"
+                + "    <button class=\"vol-btn\" onclick=\"sendKey(164)\">Sessiz</button>\n"
+                + "    <button class=\"vol-btn\" onclick=\"sendKey(24)\">Ses +</button>\n"
+                + "  </div>\n"
+                + "  <div class=\"quick-bar\">\n"
+                + "    <button class=\"quick-pill\" onclick=\"triggerEndpoint('/api/screensaver')\">Screensaver</button>\n"
+                + "    <button class=\"quick-pill\" onclick=\"triggerEndpoint('/api/all_apps')\">Uygulamalar</button>\n"
+                + "    <button class=\"quick-pill\" onclick=\"triggerEndpoint('/api/dpad_actions')\">Menü</button>\n"
+                + "  </div>\n"
                 + "</div>\n"
-                + "<div class=\"dpad-container\">\n"
-                + "  <button class=\"dpad-btn dpad-up\" onclick=\"sendKey(19)\">▲</button>\n"
-                + "  <button class=\"dpad-btn dpad-left\" onclick=\"sendKey(21)\">◀</button>\n"
-                + "  <button class=\"dpad-btn dpad-center\" onclick=\"sendKey(23)\">OK</button>\n"
-                + "  <button class=\"dpad-btn dpad-right\" onclick=\"sendKey(22)\">▶</button>\n"
-                + "  <button class=\"dpad-btn dpad-down\" onclick=\"sendKey(20)\">▼</button>\n"
-                + "</div>\n"
-                + "<div class=\"actions-row\">\n"
-                + "  <button class=\"act-btn\" onclick=\"sendKey(4)\">Geri</button>\n"
-                + "  <button class=\"act-btn\" onclick=\"sendKey(3)\">Ana Ekran</button>\n"
-                + "</div>\n"
-                + "<div class=\"hotkeys-grid\">\n"
-                + "  <div class=\"hot-btn hot-nuvio\" onclick=\"launchApp('com.nuvio.tv')\">Nuvio 4K</div>\n"
-                + "  <div class=\"hot-btn hot-yt\" onclick=\"launchApp('io.gh.reisxd.tizentube.cobalt')\">YouTube</div>\n"
-                + "  <div class=\"hot-btn hot-wvc\" onclick=\"launchApp('com.instantbits.cast.receiver')\">Web Caster</div>\n"
-                + "  <div class=\"hot-btn hot-tvp\" onclick=\"launchApp('com.turkcell.ott')\">TV+ Canlı</div>\n"
-                + "</div>\n"
-                + "<div class=\"vol-row\">\n"
-                + "  <button class=\"vol-btn\" onclick=\"sendKey(25)\">Ses -</button>\n"
-                + "  <button class=\"vol-btn\" onclick=\"sendKey(164)\">Sessiz</button>\n"
-                + "  <button class=\"vol-btn\" onclick=\"sendKey(24)\">Ses +</button>\n"
-                + "</div>\n"
+                + "<script src=\"/liquid-glass/container.js\"></script>\n"
+                + "<script src=\"/liquid-glass/button.js\"></script>\n"
                 + "<script>\n"
                 + "  function sendKey(code) {\n"
-                + "    navigator.vibrate && navigator.vibrate(25);\n"
+                + "    navigator.vibrate && navigator.vibrate(22);\n"
                 + "    fetch('/api/key?code=' + code);\n"
                 + "  }\n"
                 + "  function launchApp(pkg) {\n"
                 + "    navigator.vibrate && navigator.vibrate(35);\n"
                 + "    fetch('/api/launch?pkg=' + encodeURIComponent(pkg));\n"
+                + "  }\n"
+                + "  function triggerEndpoint(ep) {\n"
+                + "    navigator.vibrate && navigator.vibrate(25);\n"
+                + "    fetch(ep);\n"
                 + "  }\n"
                 + "  function searchMovie() {\n"
                 + "    var val = document.getElementById('searchInput').value.trim();\n"

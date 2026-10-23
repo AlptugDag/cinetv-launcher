@@ -209,17 +209,29 @@ public final class YouTubeDisguiseHelper {
             canvas.drawRoundRect(posterRect, pCorner, pCorner, imgPaint);
         }
 
+        // Liquid-glass-js inner curvature refraction sheen
+        Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG);
+        sheen.setStyle(Paint.Style.FILL);
+        sheen.setShader(new LinearGradient(
+                0f, 0f, 0f, outH * 0.45f,
+                new int[]{Color.argb(32, 255, 255, 255), Color.argb(0, 255, 255, 255)},
+                new float[]{0f, 1f},
+                Shader.TileMode.CLAMP
+        ));
+        canvas.drawRoundRect(posterRect, pCorner, pCorner, sheen);
+
         Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(1.8f);
         rim.setShader(new LinearGradient(
                 0f, 0f, outW, outH,
                 new int[]{
-                    Color.argb(115, 255, 255, 255),
-                    Color.argb(20, 255, 255, 255),
-                    Color.argb(48, 255, 255, 255)
+                    Color.argb(135, 255, 255, 255),
+                    Color.argb(22, 255, 255, 255),
+                    Color.argb(15, 255, 255, 255),
+                    Color.argb(55, 255, 255, 255)
                 },
-                new float[]{0f, 0.5f, 1f},
+                new float[]{0f, 0.28f, 0.70f, 1f},
                 Shader.TileMode.CLAMP
         ));
         canvas.drawRoundRect(posterRect, pCorner, pCorner, rim);

@@ -773,6 +773,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        TvWebRemoteServer.start(this);
         applyThemeMode();
         cleanupBackgroundAppsMemory();
         if (ambientBackdropView != null) {
