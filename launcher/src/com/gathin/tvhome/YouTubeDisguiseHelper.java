@@ -185,9 +185,9 @@ public final class YouTubeDisguiseHelper {
     }
 
     public static Bitmap createLiquidGlassPosterBitmap(Bitmap rawPoster) {
-        int outW = 320;
-        int outH = 480;
-        float pCorner = 30f;
+        int outW = 260;
+        int outH = 390;
+        float pCorner = 24f;
         RectF posterRect = new RectF(2f, 2f, outW - 2f, outH - 2f);
 
         Bitmap out = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888);
@@ -269,6 +269,49 @@ public final class YouTubeDisguiseHelper {
         canvas.drawRoundRect(innerRect, cornerRadius, cornerRadius, blurPaint);
 
         return bmp;
+    }
+
+    private static final android.util.LruCache<String, Bitmap> sBloomCache = new android.util.LruCache<String, Bitmap>(4);
+
+    public static synchronized Bitmap getCachedHoverBloom(int innerW, int innerH, int padPx, float cornerRadius, int neonColor) {
+        String key = innerW + "x" + innerH + "_" + padPx + "_" + neonColor;
+        Bitmap bmp = sBloomCache.get(key);
+        if (bmp == null || bmp.isRecycled()) {
+            bmp = createWideSoftHoverBloom(innerW, innerH, padPx, cornerRadius, neonColor);
+            sBloomCache.put(key, bmp);
+        }
+        return bmp;
+    }
+
+    public static synchronized void clearBloomCache() {
+        sBloomCache.evictAll();
+    }
+
+    private static Bitmap sSharedVitrinDropShadow = null;
+
+    public static synchronized Bitmap getSharedCardDropShadow(int innerW, int innerH, int padPx, float cornerRadius) {
+        if (sSharedVitrinDropShadow == null || sSharedVitrinDropShadow.isRecycled()) {
+            sSharedVitrinDropShadow = createCardDropShadow(innerW, innerH, padPx, cornerRadius);
+        }
+        return sSharedVitrinDropShadow;
+    }
+
+    /**
+     * Downsamples 640x360 designer cards to exact 380x214 1080p layout dimensions,
+     * reducing memory consumption from 921 KB to 325 KB (65% reduction) and immediately recycling the intermediate bitmap.
+     */
+    public static Bitmap scaleDownToTargetCard(Bitmap rawCard) {
+        if (rawCard == null) return null;
+        int targetW = 380;
+        int targetH = 214;
+        if (rawCard.getWidth() == targetW && rawCard.getHeight() == targetH) {
+            return rawCard;
+        }
+        Bitmap scaled = Bitmap.createScaledBitmap(rawCard, targetW, targetH, true);
+        if (scaled != rawCard && !rawCard.isRecycled()) {
+            rawCard.recycle();
+        }
+        return scaled;
     }
 
     /**
@@ -449,44 +492,44 @@ public final class YouTubeDisguiseHelper {
         String lower = pkg != null ? pkg.toLowerCase() : "";
 
         if (isTizenTube(pkg)) {
-            return new BitmapDrawable(ctx.getResources(), createYouTubeCard(ctx));
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createYouTubeCard(ctx)));
         }
         if (lower.contains("turkcell.ott") || lower.contains("tvplus")) {
-            return new BitmapDrawable(ctx.getResources(), createTvPlusCard(ctx));
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createTvPlusCard(ctx)));
         }
         if (lower.contains("instantbits.cast")) {
-            return new BitmapDrawable(ctx.getResources(), createWebVideoCasterCard(ctx));
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createWebVideoCasterCard(ctx)));
         }
         if (lower.contains("nuvio")) {
-            return new BitmapDrawable(ctx.getResources(), createNuvioCard(ctx));
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createNuvioCard(ctx)));
         }
         if (lower.contains("stremio")) {
-            return new BitmapDrawable(ctx.getResources(), createStremioCard(ctx));
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createStremioCard(ctx)));
         }
         if (lower.contains("dizipal") || lower.contains("lipter")) {
-            return new BitmapDrawable(ctx.getResources(), createDizipalCard(ctx));
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createDizipalCard(ctx)));
         }
         if (lower.contains("courville.nova")) {
-            return new BitmapDrawable(ctx.getResources(), createNovaCard(ctx));
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createNovaCard(ctx)));
         }
         if (lower.equals("com.android.vending")) {
-            return new BitmapDrawable(ctx.getResources(), createPlayStoreCard(ctx));
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createPlayStoreCard(ctx)));
         }
         if (lower.contains("airplay") || lower.contains("airscreen")) {
-            return new BitmapDrawable(ctx.getResources(), createAirPlayCard(ctx));
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createAirPlayCard(ctx)));
         }
         if (lower.contains("mediaplayer")) {
-            return new BitmapDrawable(ctx.getResources(), createUsbMediaCard(ctx));
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createUsbMediaCard(ctx)));
         }
         if (lower.contains("cloudstream") || lower.contains("turksinema")) {
-            return new BitmapDrawable(ctx.getResources(), createTurkSinemaCard(ctx));
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createTurkSinemaCard(ctx)));
         }
         if (lower.contains("chrome") || lower.contains("cromite")) {
-            return new BitmapDrawable(ctx.getResources(), createChromeCard(ctx));
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createChromeCard(ctx)));
         }
 
         return new BitmapDrawable(ctx.getResources(),
-                createGenericProportionalCard(ctx, getCleanLabel(pkg, rawLabel), rawIcon, getAppNeonColor(pkg)));
+                scaleDownToTargetCard(createGenericProportionalCard(ctx, getCleanLabel(pkg, rawLabel), rawIcon, getAppNeonColor(pkg))));
     }
 
     private static Paint createInternalNeonTextPaint(Context ctx, float sizePx, int textColor, int neonGlowColor) {

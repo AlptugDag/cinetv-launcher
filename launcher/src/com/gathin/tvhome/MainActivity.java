@@ -25,6 +25,7 @@ import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
 import android.graphics.Shader;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
@@ -317,7 +318,6 @@ public class MainActivity extends Activity {
         private final Paint breathingPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint interactiveGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final ArgbEvaluator argbEvaluator = new ArgbEvaluator();
-        private final Bitmap watermarkBitmap;
         private final Bitmap tileBitmap;
         private final Paint watermarkPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final Paint watermarkGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -345,15 +345,19 @@ public class MainActivity extends Activity {
             Bitmap scaled = null;
             try {
                 InputStream is = ctx.getAssets().open("signature_logo.png");
-                bm = BitmapFactory.decodeStream(is);
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inSampleSize = 4;
+                bm = BitmapFactory.decodeStream(is, null, opts);
                 is.close();
                 if (bm != null) {
                     int tSize = 114; // Clearly perceivable, recognizable motif tile size
                     scaled = Bitmap.createScaledBitmap(bm, tSize, tSize, true);
+                    if (scaled != bm && !bm.isRecycled()) {
+                        bm.recycle();
+                    }
                 }
             } catch (Throwable ignored) {
             }
-            watermarkBitmap = bm;
             tileBitmap = scaled;
         }
 
@@ -720,12 +724,25 @@ public class MainActivity extends Activity {
                                 }
                             }
                         }
+                        am.killBackgroundProcesses("com.nuvio.tv");
+                        am.killBackgroundProcesses("com.google.android.katniss");
+                        am.killBackgroundProcesses("com.google.android.apps.mediashell");
                     }
+                    YouTubeDisguiseHelper.clearBloomCache();
                     System.gc();
                 } catch (Throwable ignored) {
                 }
             }
         }).start();
+    }
+
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= TRIM_MEMORY_MODERATE) {
+            YouTubeDisguiseHelper.clearBloomCache();
+            System.gc();
+        }
     }
 
     @Override
@@ -993,7 +1010,9 @@ public class MainActivity extends Activity {
         brandTvLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
         try {
             InputStream is = getAssets().open("signature_logo.png");
-            Bitmap logoBm = BitmapFactory.decodeStream(is);
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inSampleSize = 4;
+            Bitmap logoBm = BitmapFactory.decodeStream(is, null, opts);
             is.close();
             if (logoBm != null) {
                 brandTvLogo.setImageBitmap(logoBm);
@@ -1750,7 +1769,7 @@ public class MainActivity extends Activity {
             final ImageView dropShadowView = new ImageView(this);
             dropShadowView.setScaleType(ImageView.ScaleType.FIT_XY);
             dropShadowView.setImageBitmap(
-                    YouTubeDisguiseHelper.createCardDropShadow(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f)
+                    YouTubeDisguiseHelper.getSharedCardDropShadow(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f)
             );
             FrameLayout.LayoutParams shadowLp = new FrameLayout.LayoutParams(
                     VITRIN_POSTER_W + VITRIN_BLOOM_PAD * 2,
@@ -1760,12 +1779,9 @@ public class MainActivity extends Activity {
             shadowLp.setMargins(-VITRIN_BLOOM_PAD, -VITRIN_BLOOM_PAD, -VITRIN_BLOOM_PAD, -VITRIN_BLOOM_PAD);
             cardFrame.addView(dropShadowView, shadowLp);
 
-            // Layer 1: Hover-Only Wide-Dispersion Soft Neon Bloom (alpha = 0f at rest, bright on hover)
+            // Layer 1: Hover-Only Wide-Dispersion Soft Neon Bloom (alpha = 0f at rest, lazy-loaded on hover)
             final ImageView hoverBloomView = new ImageView(this);
             hoverBloomView.setScaleType(ImageView.ScaleType.FIT_XY);
-            hoverBloomView.setImageBitmap(
-                    YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, sampledColor)
-            );
             hoverBloomView.setAlpha(0f);
             FrameLayout.LayoutParams bloomLp = new FrameLayout.LayoutParams(
                     VITRIN_POSTER_W + VITRIN_BLOOM_PAD * 2,
@@ -1905,7 +1921,12 @@ public class MainActivity extends Activity {
                     posterView.animate().alpha(0.88f).setDuration(220L).start();
                 }
                 if (bloomView != null) {
-                    bloomView.animate().alpha(0.0f).setDuration(180L).start();
+                    bloomView.animate().alpha(0.0f).setDuration(180L).withEndAction(new Runnable() {
+                        @Override
+                        public void run() {
+                            bloomView.setImageDrawable(null);
+                        }
+                    }).start();
                 }
             } else {
                 int dist = Math.abs(i - focusedIndex);
@@ -1963,10 +1984,28 @@ public class MainActivity extends Activity {
                             .start();
                 }
                 if (bloomView != null) {
-                    bloomView.animate()
-                            .alpha(bloomAlpha)
-                            .setDuration(bloomAlpha > 0f ? 240L : 180L)
-                            .start();
+                    if (bloomAlpha > 0f) {
+                        if (i < posterNeonColors.size()) {
+                            bloomView.setImageBitmap(
+                                    YouTubeDisguiseHelper.getCachedHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, posterNeonColors.get(i))
+                            );
+                        }
+                        bloomView.animate()
+                                .alpha(bloomAlpha)
+                                .setDuration(240L)
+                                .start();
+                    } else {
+                        bloomView.animate()
+                                .alpha(0.0f)
+                                .setDuration(180L)
+                                .withEndAction(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        bloomView.setImageDrawable(null);
+                                    }
+                                })
+                                .start();
+                    }
                 }
             }
         }
@@ -2140,7 +2179,6 @@ public class MainActivity extends Activity {
                             if (!rawBmp.isRecycled()) {
                                 rawBmp.recycle();
                             }
-                            final Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
                             final int idx = i;
                             final String finalPosterUrl = posterUrl;
 
@@ -2150,10 +2188,15 @@ public class MainActivity extends Activity {
                                 @Override
                                 public void run() {
                                     if (idx < posterImageViews.size()) {
-                                        posterImageViews.get(idx).setImageBitmap(glassPoster);
-                                    }
-                                    if (idx < posterBloomViews.size()) {
-                                        posterBloomViews.get(idx).setImageBitmap(hoverBloom);
+                                        ImageView iv = posterImageViews.get(idx);
+                                        Drawable d = iv.getDrawable();
+                                        if (d instanceof BitmapDrawable) {
+                                            Bitmap oldBmp = ((BitmapDrawable) d).getBitmap();
+                                            if (oldBmp != null && !oldBmp.isRecycled() && oldBmp != glassPoster) {
+                                                oldBmp.recycle();
+                                            }
+                                        }
+                                        iv.setImageBitmap(glassPoster);
                                     }
                                     if (idx < posterNeonColors.size()) {
                                         posterNeonColors.set(idx, distinctColor);
@@ -2488,12 +2531,9 @@ public class MainActivity extends Activity {
         final int cardH = 214;
         final int bloomPad = 68; // Wide 68px optical dispersion around all 4 sides on hover
 
-        // Layer 1: Hover-Only Wide-Dispersion Optical Neon Bloom (alpha = 0f at rest)
+        // Layer 1: Hover-Only Wide-Dispersion Optical Neon Bloom (alpha = 0f at rest, lazy-loaded on hover)
         final ImageView hoverBloomView = new ImageView(this);
         hoverBloomView.setScaleType(ImageView.ScaleType.FIT_XY);
-        hoverBloomView.setImageBitmap(
-                YouTubeDisguiseHelper.createWideSoftHoverBloom(cardW, cardH, bloomPad, 24f, item.neonColor)
-        );
         hoverBloomView.setAlpha(0f);
         FrameLayout.LayoutParams bloomLp = new FrameLayout.LayoutParams(
                 cardW + bloomPad * 2,
@@ -2516,6 +2556,9 @@ public class MainActivity extends Activity {
 
         boolean isCurrentMoving = isMovingTile && movingTileItem != null && movingTileItem.packageName.equals(item.packageName);
         if (isCurrentMoving) {
+            hoverBloomView.setImageBitmap(
+                    YouTubeDisguiseHelper.getCachedHoverBloom(cardW, cardH, bloomPad, 24f, item.neonColor)
+            );
             hoverBloomView.setAlpha(1.0f);
             cardFrame.setScaleX(1.12f);
             cardFrame.setScaleY(1.12f);
@@ -2527,10 +2570,19 @@ public class MainActivity extends Activity {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 if (isMovingTile) return;
-                hoverBloomView.animate()
-                        .alpha(hasFocus ? 1.0f : 0.0f)
-                        .setDuration(hasFocus ? 260L : 190L)
-                        .start();
+                if (hasFocus) {
+                    hoverBloomView.setImageBitmap(
+                            YouTubeDisguiseHelper.getCachedHoverBloom(cardW, cardH, bloomPad, 24f, item.neonColor)
+                    );
+                    hoverBloomView.animate().alpha(1.0f).setDuration(260L).start();
+                } else {
+                    hoverBloomView.animate().alpha(0.0f).setDuration(190L).withEndAction(new Runnable() {
+                        @Override
+                        public void run() {
+                            hoverBloomView.setImageDrawable(null);
+                        }
+                    }).start();
+                }
                 img.animate()
                         .alpha(hasFocus ? 1.0f : 0.90f)
                         .setDuration(180L)
@@ -3057,6 +3109,7 @@ public class MainActivity extends Activity {
                     @Override
                     public void run() {
                         allAppsOverlay.setVisibility(View.GONE);
+                        allAppsOverlay.removeAllViews();
                     }
                 })
                 .start();
@@ -4411,7 +4464,9 @@ public class MainActivity extends Activity {
         logoIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         try {
             InputStream is = getAssets().open("signature_logo.png");
-            Bitmap bm = BitmapFactory.decodeStream(is);
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inSampleSize = 8;
+            Bitmap bm = BitmapFactory.decodeStream(is, null, opts);
             is.close();
             if (bm != null) logoIcon.setImageBitmap(bm);
         } catch (Throwable ignored) {}
@@ -4487,6 +4542,7 @@ public class MainActivity extends Activity {
                     @Override
                     public void run() {
                         settingsModalOverlay.setVisibility(View.GONE);
+                        settingsModalOverlay.removeAllViews();
                     }
                 })
                 .start();
@@ -4799,7 +4855,9 @@ public class MainActivity extends Activity {
             Bitmap sig = null;
             try {
                 InputStream is = ctx.getAssets().open("signature_logo.png");
-                sig = BitmapFactory.decodeStream(is);
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inSampleSize = 2;
+                sig = BitmapFactory.decodeStream(is, null, opts);
                 is.close();
             } catch (Throwable ignored) {
             }

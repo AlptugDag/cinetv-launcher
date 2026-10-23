@@ -240,7 +240,9 @@ public class ClockDream extends DreamService {
             Bitmap sig = null;
             try {
                 InputStream is = ctx.getAssets().open("signature_logo.png");
-                sig = BitmapFactory.decodeStream(is);
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inSampleSize = 2;
+                sig = BitmapFactory.decodeStream(is, null, opts);
                 is.close();
             } catch (Throwable ignored) {
             }
