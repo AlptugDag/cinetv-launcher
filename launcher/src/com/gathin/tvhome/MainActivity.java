@@ -1063,7 +1063,7 @@ public class MainActivity extends Activity {
         setContentView(masterFrame);
         ambientBackdropView.startSeamlessBreathing();
         populateMoviePosterVitrin();
-        loadAppsAndPopulate();
+        loadAppsAndPopulate(true);
         updateClock();
     }
 
@@ -1190,7 +1190,21 @@ public class MainActivity extends Activity {
             }
             Bitmap rawBmp = null;
             if (cachedFile.exists() && cachedFile.length() > 1024) {
-                rawBmp = BitmapFactory.decodeFile(cachedFile.getAbsolutePath());
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inJustDecodeBounds = true;
+                BitmapFactory.decodeFile(cachedFile.getAbsolutePath(), opts);
+                int sample = 1;
+                if (opts.outWidth > 320 || opts.outHeight > 480) {
+                    int halfW = opts.outWidth / 2;
+                    int halfH = opts.outHeight / 2;
+                    while ((halfW / sample) >= 320 && (halfH / sample) >= 480) {
+                        sample *= 2;
+                    }
+                }
+                opts.inSampleSize = Math.max(1, sample);
+                opts.inJustDecodeBounds = false;
+                opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                rawBmp = BitmapFactory.decodeFile(cachedFile.getAbsolutePath(), opts);
             }
             if (rawBmp == null) {
                 try {
@@ -1241,6 +1255,9 @@ public class MainActivity extends Activity {
             posterView.setAlpha(0.88f);
             if (rawBmp != null) {
                 posterView.setImageBitmap(YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp));
+                if (!rawBmp.isRecycled()) {
+                    rawBmp.recycle();
+                }
             }
             cardFrame.addView(posterView, new FrameLayout.LayoutParams(
                     VITRIN_POSTER_W,
@@ -1248,10 +1265,35 @@ public class MainActivity extends Activity {
                     Gravity.CENTER
             ));
 
+            // Layer 3: Cinema Stream Quality Badge (4K HDR10)
+            final TextView qualityBadge = new TextView(this);
+            qualityBadge.setText("4K HDR10");
+            qualityBadge.setTextSize(9f);
+            qualityBadge.setTypeface(FontManager.getBold(this));
+            qualityBadge.setTextColor(Color.parseColor("#E0E7FF"));
+            qualityBadge.setGravity(Gravity.CENTER);
+            qualityBadge.setPadding(14, 5, 14, 5);
+
+            final GradientDrawable badgeBg = new GradientDrawable();
+            badgeBg.setShape(GradientDrawable.RECTANGLE);
+            badgeBg.setCornerRadius(12f);
+            badgeBg.setColor(Color.argb(175, 10, 15, 26));
+            badgeBg.setStroke(1, Color.argb(110, 255, 255, 255));
+            qualityBadge.setBackground(badgeBg);
+
+            FrameLayout.LayoutParams badgeLp = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    Gravity.TOP | Gravity.END
+            );
+            badgeLp.setMargins(0, 18, 18, 0);
+            cardFrame.addView(qualityBadge, badgeLp);
+
             cardFrame.setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View v, boolean hasFocus) {
                     if (hasFocus) {
+                        badgeBg.setStroke(2, slot < posterNeonColors.size() ? posterNeonColors.get(slot) : Color.parseColor("#8B5CF6"));
                         isVitrinFocused = true;
                         updateVitrinParallax(slot);
                         if (ambientBackdropView != null && slot < posterNeonColors.size()) {
@@ -1259,6 +1301,7 @@ public class MainActivity extends Activity {
                         }
                         smoothScrollToVitrinCard(v);
                     } else {
+                        badgeBg.setStroke(1, Color.argb(110, 255, 255, 255));
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
@@ -1300,6 +1343,11 @@ public class MainActivity extends Activity {
                         } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && slot == totalCards - 1 && totalCards > 1) {
                             posterCardFrames.get(0).requestFocus();
                             return true;
+                        } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                            if (dockRow != null && dockRow.getChildCount() > 0) {
+                                dockRow.getChildAt(0).requestFocus();
+                                return true;
+                            }
                         }
                     }
                     return false;
@@ -1566,11 +1614,28 @@ public class MainActivity extends Activity {
 
                 if (cacheFile.exists() && cacheFile.length() > 1024) {
                     if (needsUpdate || (i < posterImageViews.size() && posterImageViews.get(i).getDrawable() == null)) {
-                        Bitmap rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath());
+                        BitmapFactory.Options opts = new BitmapFactory.Options();
+                        opts.inJustDecodeBounds = true;
+                        BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), opts);
+                        int sample = 1;
+                        if (opts.outWidth > 320 || opts.outHeight > 480) {
+                            int halfW = opts.outWidth / 2;
+                            int halfH = opts.outHeight / 2;
+                            while ((halfW / sample) >= 320 && (halfH / sample) >= 480) {
+                                sample *= 2;
+                            }
+                        }
+                        opts.inSampleSize = Math.max(1, sample);
+                        opts.inJustDecodeBounds = false;
+                        opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                        Bitmap rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), opts);
                         if (rawBmp != null) {
                             final int distinctColor = YouTubeDisguiseHelper.sampleDistinctPosterColor(rawBmp, prevColor, i);
                             prevColor = distinctColor;
                             final Bitmap glassPoster = YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp);
+                            if (!rawBmp.isRecycled()) {
+                                rawBmp.recycle();
+                            }
                             final Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
                             final int idx = i;
                             final String finalPosterUrl = posterUrl;
@@ -1649,7 +1714,13 @@ public class MainActivity extends Activity {
         openMovieItem("Film", imdbId);
     }
 
+    private final Set<String> lastKnownPackages = new HashSet<>();
+
     private void loadAppsAndPopulate() {
+        loadAppsAndPopulate(false);
+    }
+
+    private void loadAppsAndPopulate(boolean force) {
         PackageManager pm = getPackageManager();
         Set<String> seenPackages = new HashSet<>();
         List<AppTileItem> discovered = new ArrayList<>();
@@ -1665,6 +1736,21 @@ public class MainActivity extends Activity {
         List<ResolveInfo> combined = new ArrayList<>();
         if (tvApps != null) combined.addAll(tvApps);
         if (phoneApps != null) combined.addAll(phoneApps);
+
+        Set<String> currentRawPackages = new HashSet<>();
+        for (ResolveInfo ri : combined) {
+            if (ri.activityInfo != null && ri.activityInfo.packageName != null) {
+                currentRawPackages.add(ri.activityInfo.packageName);
+            }
+        }
+
+        // Upstream #666 Instant Return to Home:
+        // Skip rebuild if package signatures haven't changed and dock is already populated!
+        if (!force && !dockItems.isEmpty() && dockRow != null && dockRow.getChildCount() > 0 && currentRawPackages.equals(lastKnownPackages)) {
+            return;
+        }
+        lastKnownPackages.clear();
+        lastKnownPackages.addAll(currentRawPackages);
 
         for (ResolveInfo ri : combined) {
             if (ri.activityInfo == null) continue;
@@ -1878,7 +1964,7 @@ public class MainActivity extends Activity {
         final FrameLayout cardFrame = new FrameLayout(this);
         cardFrame.setFocusable(true);
         cardFrame.setClickable(true);
-        cardFrame.setLongClickable(true);
+        cardFrame.setLongClickable(false);
         cardFrame.setClipChildren(false);
         cardFrame.setClipToPadding(false);
 
@@ -1973,6 +2059,9 @@ public class MainActivity extends Activity {
                             tileKeyHandler.removeCallbacks(tileLongPressAction);
                             tileKeyHandler.postDelayed(tileLongPressAction, 1200L);
                         }
+                        if (longPressConsumed[0]) {
+                            return true;
+                        }
                         return false;
                     } else if (event.getAction() == KeyEvent.ACTION_UP) {
                         tileKeyHandler.removeCallbacks(tileLongPressAction);
@@ -1995,6 +2084,16 @@ public class MainActivity extends Activity {
                                 dockRow.getChildAt(0).requestFocus();
                                 return true;
                             }
+                        } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                            if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
+                                posterCardFrames.get(0).requestFocus();
+                                return true;
+                            }
+                        } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                            if (appsGridContainer != null && appsGridContainer.getChildCount() > 0) {
+                                focusGridChild(0);
+                                return true;
+                            }
                         }
                     } else {
                         // Grid item
@@ -2009,6 +2108,12 @@ public class MainActivity extends Activity {
                             int startCol = index - col;
                             focusGridChild(startCol);
                             return true;
+                        } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP && index < columns) {
+                            int dockTarget = Math.min(col, dockRow.getChildCount() - 1);
+                            if (dockTarget >= 0 && dockTarget < dockRow.getChildCount()) {
+                                dockRow.getChildAt(dockTarget).requestFocus();
+                                return true;
+                            }
                         } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                             int nextRowIndex = index + columns;
                             if (nextRowIndex >= total) {
@@ -2023,14 +2128,6 @@ public class MainActivity extends Activity {
                     }
                 }
                 return false;
-            }
-        });
-
-        cardFrame.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                startTileMove(item, inDock, index);
-                return true;
             }
         });
 
@@ -2087,7 +2184,7 @@ public class MainActivity extends Activity {
                 .putString("user_hidden_apps_csv", sb.toString())
                 .apply();
         Toast.makeText(this, label + " ana ekrandan silindi.", Toast.LENGTH_SHORT).show();
-        loadAppsAndPopulate();
+        loadAppsAndPopulate(true);
     }
 
     private final Runnable autoStopTileMoveRunnable = new Runnable() {
@@ -2349,7 +2446,7 @@ public class MainActivity extends Activity {
                         } else if (which == 6) {
                             userHiddenApps.clear();
                             getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString("user_hidden_apps_csv", "").apply();
-                            loadAppsAndPopulate();
+                            loadAppsAndPopulate(true);
                             Toast.makeText(MainActivity.this, "Tüm gizlenen uygulamalar geri yüklendi.", Toast.LENGTH_SHORT).show();
                         } else if (which == 7) {
                             startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));

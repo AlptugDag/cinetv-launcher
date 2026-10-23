@@ -136,6 +136,44 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return;
         }
 
+        // Intercept MediaTek Cold-Boot TV Tuner / Channel Scan Screen
+        if ("com.mediatek.wwtv.tvcenter".equals(currentPkg)) {
+            android.util.Log.i("TvKeyInterceptor", "Intercepted TurnkeyUiMainActivity / Live TV popup. Redirecting to Home.");
+            Intent homeIntent = new Intent(this, MainActivity.class);
+            homeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(homeIntent);
+            performGlobalAction(GLOBAL_ACTION_HOME);
+            return;
+        }
+
+        // Intercept OEM stock app launches triggered by hardware remote keys
+        if ("com.netflix.ninja".equals(currentPkg)) {
+            android.util.Log.i("TvKeyInterceptor", "Intercepted Netflix launch. Redirecting to Nuvio.");
+            launchPackageWithFallback(new String[]{"com.nuvio.tv"}, "Nuvio");
+            return;
+        }
+
+        if ("com.google.android.youtube.tv".equals(currentPkg)) {
+            android.util.Log.i("TvKeyInterceptor", "Intercepted stock YouTube launch. Redirecting to TizenTube Cobalt.");
+            launchPackageWithFallback(new String[]{
+                    "io.gh.reisxd.tizentube.cobalt",
+                    "com.reisxd.tizentube",
+                    "com.teamsmart.videomanager.tv",
+                    "com.liskovsoft.smarttubetv.beta",
+                    "com.liskovsoft.smarttubetv"
+            }, "YouTube");
+            return;
+        }
+
+        if ("com.amazon.amazonvideo.livingroom".equals(currentPkg)) {
+            android.util.Log.i("TvKeyInterceptor", "Intercepted Amazon Prime launch. Redirecting to Web Video Caster.");
+            launchPackageWithFallback(new String[]{
+                    "com.instantbits.cast.receiver",
+                    "com.instantbits.cast.webvideo"
+            }, "Web Video Caster");
+            return;
+        }
+
         // Smart RAM Optimization: When exiting any app back to Home, or switching between heavy media apps,
         // close the exited app's background processes immediately while protecting AirPlay/Chromecast/Assistant.
         if (lastForegroundPackage != null
@@ -231,6 +269,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
         int keyCode = event.getKeyCode();
         int scanCode = event.getScanCode();
         int action = event.getAction();
+        android.util.Log.i("TvKeyInterceptor", "Key intercepted: keyCode=" + keyCode + " scanCode=" + scanCode + " action=" + action);
 
         // When the in-video Cinema HUD overlay is visible, route D-Pad keys to the overlay
         // so the background movie keeps playing smoothly without pausing or exiting!
@@ -361,10 +400,14 @@ public class TvKeyInterceptorService extends AccessibilityService {
         int custom = prefs.getInt(KEY_CUSTOM_TVPLUS, -1);
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
         return keyCode == KeyEvent.KEYCODE_TV
+                || keyCode == 170
                 || keyCode == KeyEvent.KEYCODE_GUIDE
+                || keyCode == 172
                 || keyCode == KeyEvent.KEYCODE_TV_CONTENTS_MENU
                 || keyCode == KeyEvent.KEYCODE_BUTTON_4
+                || keyCode == 191
                 || keyCode == KeyEvent.KEYCODE_PROG_BLUE
+                || keyCode == 186
                 || scanCode == 377 || scanCode == 362;
     }
 
@@ -372,8 +415,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
         int custom = prefs.getInt(KEY_CUSTOM_NETFLIX, -1);
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
         return keyCode == KeyEvent.KEYCODE_BUTTON_1
+                || keyCode == 188
                 || keyCode == KeyEvent.KEYCODE_PROG_RED
-                || keyCode == 191 || keyCode == 265
+                || keyCode == 183
+                || keyCode == 191 || keyCode == 265 || keyCode == 229
                 || scanCode == 191 || scanCode == 412 || scanCode == 249;
     }
 
@@ -381,6 +426,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
         int custom = prefs.getInt(KEY_CUSTOM_BEIN, -1);
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
         return keyCode == KeyEvent.KEYCODE_PROG_GREEN
+                || keyCode == 184
                 || keyCode == KeyEvent.KEYCODE_TV_DATA_SERVICE
                 || keyCode == 248 || keyCode == 252
                 || scanCode == 248 || scanCode == 252 || scanCode == 414;
@@ -390,8 +436,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
         int custom = prefs.getInt(KEY_CUSTOM_YOUTUBE, -1);
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
         return keyCode == KeyEvent.KEYCODE_BUTTON_2
+                || keyCode == 189
                 || keyCode == 190
-                || scanCode == 190 || scanCode == 250;
+                || keyCode == 284
+                || scanCode == 190 || scanCode == 250 || scanCode == 415;
     }
 
     private boolean isAmazonPrimeKey(int keyCode, int scanCode) {
@@ -403,8 +451,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
         int custom = prefs.getInt(KEY_CUSTOM_AMAZON, -1);
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
         return keyCode == KeyEvent.KEYCODE_BUTTON_3
+                || keyCode == 190
                 || keyCode == KeyEvent.KEYCODE_PROG_YELLOW
+                || keyCode == 185
                 || keyCode == KeyEvent.KEYCODE_SETTINGS
+                || keyCode == 176
                 || keyCode == 192 || keyCode == 290 || keyCode == 303
                 || scanCode == 192 || scanCode == 251 || scanCode == 413;
     }
