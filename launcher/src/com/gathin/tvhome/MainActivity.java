@@ -57,6 +57,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -1599,7 +1601,8 @@ public class MainActivity extends Activity {
         new VitrinCategory("Nuvio • Savaş & Tarih Destanları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=War.json"),
         new VitrinCategory("Anthology • Belgesel & Doğa", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Documentary.json"),
         new VitrinCategory("TurkSinema • Popüler Diziler", "https://cinemeta-catalogs.strem.io/top/catalog/series/top.json"),
-        new VitrinCategory("AIOMetadata • En Çok Oy Alan Diziler", "https://cinemeta-catalogs.strem.io/top/catalog/series/imdbRating.json")
+        new VitrinCategory("AIOMetadata • En Çok Oy Alan Diziler", "https://cinemeta-catalogs.strem.io/top/catalog/series/imdbRating.json"),
+        new VitrinCategory("Gemini AI • Günün Özel Sinema Seçkisi", "gemini_ai")
     };
 
     private static HttpURLConnection openWithRedirects(String urlStr) throws Exception {
@@ -1629,6 +1632,13 @@ public class MainActivity extends Activity {
                     int catIdx = prefs.getInt("active_category_idx", 0);
                     final VitrinCategory category = VITRIN_CATEGORIES[Math.abs(catIdx) % VITRIN_CATEGORIES.length];
                     prefs.edit().putInt("active_category_idx", catIdx + 1).apply();
+
+                    if ("gemini_ai".equals(category.catalogUrl)) {
+                        if (getGeminiApiKey() != null) {
+                            fetchGeminiCuratedMovies(null);
+                            return;
+                        }
+                    }
 
                     handler.post(new Runnable() {
                         @Override
@@ -2501,42 +2511,325 @@ public class MainActivity extends Activity {
         }
     }
 
+    private String getGeminiApiKey() {
+        try {
+            String key = Settings.Secure.getString(getContentResolver(), "tv_gemini_api_key");
+            if (key != null && !key.trim().isEmpty()) return key.trim();
+        } catch (Throwable ignored) {
+        }
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String key = prefs.getString("gemini_api_key", null);
+        if (key != null && !key.trim().isEmpty()) return key.trim();
+        return null;
+    }
+
+    private void fetchGeminiCuratedMovies(final String moodOrPrompt) {
+        final String apiKey = getGeminiApiKey();
+        if (apiKey == null) {
+            Toast.makeText(this, "Gemini API anahtarı tanımlanmamış.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(MainActivity.this, "🤖 Gemini yapay zekâ sinema seçkisini hazırlıyor...", Toast.LENGTH_SHORT).show();
+                if (vitrinCategoryLabel != null) {
+                    vitrinCategoryLabel.setText("🤖 GEMINI AI • SİNEMA SEÇKİSİ HAZIRLANIYOR...");
+                }
+            }
+        });
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String timeStr = new SimpleDateFormat("HH:mm, EEEE", Locale.getDefault()).format(new Date());
+                    String promptText = (moodOrPrompt != null && !moodOrPrompt.trim().isEmpty())
+                            ? moodOrPrompt.trim()
+                            : "Şu anki zaman: " + timeStr + ". Akşam veya gece için Türkiye'deki sinemasever izleyiciye büyüleyici, yüksek puanlı, görsel şölen sunan 10 kült film öner.";
+
+                    JSONObject promptObj = new JSONObject();
+                    JSONArray contents = new JSONArray();
+                    JSONObject part = new JSONObject();
+                    JSONArray parts = new JSONArray();
+                    JSONObject textPart = new JSONObject();
+                    textPart.put("text", "Sen dünyanın en iyi film eleştirmeni ve 4K HDR sinema küratörüsün. " + promptText + "\n"
+                            + "Yanıtı YALNIZCA geçerli bir JSON olarak ver. Markdown (```json) veya hiçbir ek metin yazma. Format tam olarak şöyle olmalıdır:\n"
+                            + "{\"category_title\": \"kategori basligi\", \"movies\": [{\"title\": \"Film Adi\", \"imdb_id\": \"tt1234567\", \"reason\": \"kisa aciklama\"}]}");
+                    parts.put(textPart);
+                    part.put("parts", parts);
+                    contents.put(part);
+                    promptObj.put("contents", contents);
+
+                    String urlStr = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=" + apiKey;
+                    URL url = new URL(urlStr);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("POST");
+                    conn.setRequestProperty("Content-Type", "application/json");
+                    conn.setConnectTimeout(8000);
+                    conn.setReadTimeout(12000);
+                    conn.setDoOutput(true);
+
+                    OutputStream os = conn.getOutputStream();
+                    os.write(promptObj.toString().getBytes(StandardCharsets.UTF_8));
+                    os.flush();
+                    os.close();
+
+                    if (conn.getResponseCode() == 200) {
+                        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = br.readLine()) != null) sb.append(line);
+                        br.close();
+
+                        JSONObject resp = new JSONObject(sb.toString());
+                        JSONArray candidates = resp.optJSONArray("candidates");
+                        if (candidates != null && candidates.length() > 0) {
+                            JSONObject cand = candidates.getJSONObject(0);
+                            JSONObject content = cand.optJSONObject("content");
+                            if (content != null) {
+                                JSONArray pArray = content.optJSONArray("parts");
+                                if (pArray != null && pArray.length() > 0) {
+                                    String raw = pArray.getJSONObject(0).optString("text", "").trim();
+                                    if (raw.startsWith("```json")) raw = raw.substring(7);
+                                    if (raw.startsWith("```")) raw = raw.substring(3);
+                                    if (raw.endsWith("```")) raw = raw.substring(0, raw.length() - 3);
+                                    raw = raw.trim();
+
+                                    JSONObject aiData = new JSONObject(raw);
+                                    final String catTitle = aiData.optString("category_title", "GEMINI AI • SİZE ÖZEL SEÇKİ");
+                                    JSONArray movies = aiData.optJSONArray("movies");
+                                    if (movies != null && movies.length() > 0) {
+                                        applyGeminiMoviesToVitrin(catTitle, movies);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (Throwable t) {
+                    android.util.Log.e("GeminiCurator", "Error in AI curation", t);
+                }
+            }
+        }).start();
+    }
+
+    private void applyGeminiMoviesToVitrin(final String categoryTitle, final JSONArray movies) {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (vitrinCategoryLabel != null) {
+                    vitrinCategoryLabel.setText("🤖 " + categoryTitle.toUpperCase(Locale.getDefault()));
+                }
+            }
+        });
+
+        int count = Math.min(BUNDLED_MOVIES.length, movies.length());
+        int prevColor = 0;
+        for (int i = 0; i < count; i++) {
+            JSONObject m = movies.optJSONObject(i);
+            if (m == null) continue;
+            final String imdbId = m.optString("imdb_id", "");
+            final String title = m.optString("title", "Film");
+            if (imdbId.isEmpty()) continue;
+
+            String posterUrl = "https://images.metahub.space/poster/medium/" + imdbId + "/img";
+            String fileKey = "cm_p_" + imdbId + ".jpg";
+            File cacheFile = new File(getCacheDir(), fileKey);
+
+            if (!cacheFile.exists() || cacheFile.length() < 1024) {
+                try {
+                    HttpURLConnection pConn = openWithRedirects(posterUrl);
+                    if (pConn.getResponseCode() == 200) {
+                        InputStream is = pConn.getInputStream();
+                        FileOutputStream fos = new FileOutputStream(cacheFile);
+                        byte[] buf = new byte[8192];
+                        int r;
+                        while ((r = is.read(buf)) != -1) fos.write(buf, 0, r);
+                        fos.close();
+                        is.close();
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+
+            if (cacheFile.exists() && cacheFile.length() > 1024) {
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inJustDecodeBounds = true;
+                BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), opts);
+                int sample = 1;
+                if (opts.outWidth > 320 || opts.outHeight > 480) {
+                    int halfW = opts.outWidth / 2;
+                    int halfH = opts.outHeight / 2;
+                    while ((halfW / sample) >= 320 && (halfH / sample) >= 480) {
+                        sample *= 2;
+                    }
+                }
+                opts.inSampleSize = Math.max(1, sample);
+                opts.inJustDecodeBounds = false;
+                opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                Bitmap rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), opts);
+                if (rawBmp != null) {
+                    final int distinctColor = YouTubeDisguiseHelper.sampleDistinctPosterColor(rawBmp, prevColor, i);
+                    prevColor = distinctColor;
+                    final Bitmap glassPoster = YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp);
+                    if (!rawBmp.isRecycled()) {
+                        rawBmp.recycle();
+                    }
+                    final Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
+                    final int idx = i;
+                    final String finalPosterUrl = posterUrl;
+
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (idx < posterImageViews.size()) {
+                                posterImageViews.get(idx).setImageBitmap(glassPoster);
+                            }
+                            if (idx < posterBloomViews.size()) {
+                                posterBloomViews.get(idx).setImageBitmap(hoverBloom);
+                            }
+                            if (idx < posterNeonColors.size()) {
+                                posterNeonColors.set(idx, distinctColor);
+                            }
+                            if (idx < posterImdbIds.size()) {
+                                posterImdbIds.set(idx, imdbId);
+                            }
+                            if (idx < posterTitles.size()) {
+                                posterTitles.set(idx, title);
+                            }
+                            if (idx < posterUrls.size()) {
+                                posterUrls.set(idx, finalPosterUrl);
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    private void showGeminiMoodDialog() {
+        final String[] moods = new String[]{
+            "🌌  4K HDR Görsel Şölen & Bilim-Kurgu",
+            "🧠  Zihin Bükücü & Akıl Oyunları (Mind-Benders)",
+            "🌙  Gece Yarısı Sakinliği & Derin Sinema",
+            "⚡  Yüksek Adrenalin & Soluksuz Gerilim",
+            "🎭  Nostaljik 90'lar & Kült Klasikler",
+            "🍿  Kafa Yormayan Eğlenceli Akşam Filmi",
+            "✍️  Özel İstek Yaz..."
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("🤖 Gemini AI Sinema Küratörü")
+                .setItems(moods, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (which == 6) {
+                            promptCustomMood();
+                        } else {
+                            fetchGeminiCuratedMovies(moods[which]);
+                        }
+                    }
+                })
+                .show();
+    }
+
+    private void promptCustomMood() {
+        final EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setHint("Örn: David Fincher tarzı karanlık dedektif");
+        input.setPadding(30, 20, 30, 20);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Özel Film İsteği")
+                .setMessage("Yapay zekâdan nasıl bir film önerisi istersiniz?")
+                .setView(input)
+                .setPositiveButton("Öner", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        String text = input.getText().toString().trim();
+                        if (!text.isEmpty()) {
+                            fetchGeminiCuratedMovies(text);
+                        }
+                    }
+                })
+                .setNegativeButton("İptal", null)
+                .show();
+    }
+
+    private void showSetGeminiKeyDialog() {
+        final EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setHint("AIzaSy...");
+        input.setPadding(30, 20, 30, 20);
+        String current = getGeminiApiKey();
+        if (current != null) input.setText(current);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Gemini API Anahtarı")
+                .setMessage("Google AI Studio'dan aldığınız Gemini API anahtarınızı girin:")
+                .setView(input)
+                .setPositiveButton("Kaydet", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        String val = input.getText().toString().trim();
+                        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString("gemini_api_key", val).apply();
+                        Settings.Secure.putString(getContentResolver(), "tv_gemini_api_key", val);
+                        Toast.makeText(MainActivity.this, "Gemini API anahtarı kaydedildi.", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("İptal", null)
+                .show();
+    }
+
     private void showLauncherSettingsDialog() {
         final SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        final String apiKey = getGeminiApiKey();
+        String aiOption = (apiKey != null) ? "🤖  Gemini AI: Ruh Haline Göre Vitrin Oluştur" : "🤖  Gemini AI: API Anahtarı Tanımla";
         String[] options = new String[] {
+            aiOption,
             "🌤️  Hava Durumu Şehri Ayarla (Weather City)",
             "🌓  Tema Modu (Saf OLED / Gece-Gündüz / Aydınlık)",
             "🎬  Sinema Vitrin Akış Kaynağı (Webteizle / Cinemeta)",
             "🔌  Giriş Kaynakları (HDMI / TV+)",
             "🎧  AirPods & Bluetooth Cihazları",
             "🌙  Ekran Koruyucuyu Şimdi Başlat",
+            "🔑  Gemini API Anahtarını Değiştir",
             "👁️  Gizlenen Uygulamaları Geri Getir",
             "⚙️  Android Cihaz Ayarları"
         };
 
         new AlertDialog.Builder(this)
-                .setTitle("TV Master Başlatıcı Ayarları")
+                .setTitle("CİNETV Başlatıcı Ayarları")
                 .setItems(options, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         if (which == 0) {
-                            showSetCityDialog();
+                            if (apiKey != null) {
+                                showGeminiMoodDialog();
+                            } else {
+                                showSetGeminiKeyDialog();
+                            }
                         } else if (which == 1) {
-                            showThemeSelectionDialog();
+                            showSetCityDialog();
                         } else if (which == 2) {
-                            showVitrinSourceDialog();
+                            showThemeSelectionDialog();
                         } else if (which == 3) {
-                            showCollapsibleInputsDialog();
+                            showVitrinSourceDialog();
                         } else if (which == 4) {
-                            startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                            showCollapsibleInputsDialog();
                         } else if (which == 5) {
-                            showIdleScreensaver();
+                            startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                         } else if (which == 6) {
+                            showIdleScreensaver();
+                        } else if (which == 7) {
+                            showSetGeminiKeyDialog();
+                        } else if (which == 8) {
                             userHiddenApps.clear();
                             getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString("user_hidden_apps_csv", "").apply();
                             loadAppsAndPopulate(true);
                             Toast.makeText(MainActivity.this, "Tüm gizlenen uygulamalar geri yüklendi.", Toast.LENGTH_SHORT).show();
-                        } else if (which == 7) {
+                        } else if (which == 9) {
                             startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                         }
                     }
