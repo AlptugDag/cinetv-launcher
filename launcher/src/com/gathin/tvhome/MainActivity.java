@@ -2539,31 +2539,55 @@ public class MainActivity extends Activity {
         }
     }
 
-    private String getGeminiApiKey() {
+    private String getAiApiKey() {
+        try {
+            String key = Settings.Secure.getString(getContentResolver(), "tv_ai_api_key");
+            if (key != null && !key.trim().isEmpty()) return key.trim();
+        } catch (Throwable ignored) {
+        }
         try {
             String key = Settings.Secure.getString(getContentResolver(), "tv_gemini_api_key");
             if (key != null && !key.trim().isEmpty()) return key.trim();
         } catch (Throwable ignored) {
         }
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        String key = prefs.getString("gemini_api_key", null);
+        String key = prefs.getString("ai_api_key", null);
+        if (key != null && !key.trim().isEmpty()) return key.trim();
+        key = prefs.getString("gemini_api_key", null);
         if (key != null && !key.trim().isEmpty()) return key.trim();
         return null;
     }
 
+    private String getGeminiApiKey() {
+        return getAiApiKey();
+    }
+
+    private String getAiProvider(String apiKey) {
+        if (apiKey != null && apiKey.startsWith("sk-ant-")) {
+            return "claude";
+        }
+        if (apiKey != null && apiKey.startsWith("AIza")) {
+            return "gemini";
+        }
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        return prefs.getString("ai_provider", "gemini");
+    }
+
     private void fetchGeminiCuratedMovies(final String moodOrPrompt) {
-        final String apiKey = getGeminiApiKey();
+        final String apiKey = getAiApiKey();
         if (apiKey == null) {
-            Toast.makeText(this, "Gemini API anahtarı tanımlanmamış.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Yapay zekâ API anahtarı (Gemini veya Claude) tanımlanmamış.", Toast.LENGTH_LONG).show();
             return;
         }
+        final String provider = getAiProvider(apiKey);
+        final String providerName = "claude".equals(provider) ? "Claude" : "Gemini";
 
         handler.post(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(MainActivity.this, "🤖 Gemini yapay zekâ sinema seçkisini hazırlıyor...", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "🤖 " + providerName + " yapay zekâ sinema seçkisini hazırlıyor...", Toast.LENGTH_SHORT).show();
                 if (vitrinCategoryLabel != null) {
-                    vitrinCategoryLabel.setText("🤖 GEMINI AI • SİNEMA SEÇKİSİ HAZIRLANIYOR...");
+                    vitrinCategoryLabel.setText("🤖 " + providerName.toUpperCase(Locale.getDefault()) + " AI • SİNEMA SEÇKİSİ HAZIRLANIYOR...");
                 }
             }
         });
@@ -2577,32 +2601,63 @@ public class MainActivity extends Activity {
                             ? moodOrPrompt.trim()
                             : "Şu anki zaman: " + timeStr + ". Akşam veya gece için Türkiye'deki sinemasever izleyiciye büyüleyici, yüksek puanlı, görsel şölen sunan 10 kült film öner.";
 
-                    JSONObject promptObj = new JSONObject();
-                    JSONArray contents = new JSONArray();
-                    JSONObject part = new JSONObject();
-                    JSONArray parts = new JSONArray();
-                    JSONObject textPart = new JSONObject();
-                    textPart.put("text", "Sen dünyanın en iyi film eleştirmeni ve 4K HDR sinema küratörüsün. " + promptText + "\n"
+                    String systemInstruction = "Sen dünyanın en iyi film eleştirmeni ve 4K HDR sinema küratörüsün. " + promptText + "\n"
                             + "Yanıtı YALNIZCA geçerli bir JSON olarak ver. Markdown (```json) veya hiçbir ek metin yazma. Format tam olarak şöyle olmalıdır:\n"
-                            + "{\"category_title\": \"kategori basligi\", \"movies\": [{\"title\": \"Film Adi\", \"imdb_id\": \"tt1234567\", \"reason\": \"kisa aciklama\"}]}");
-                    parts.put(textPart);
-                    part.put("parts", parts);
-                    contents.put(part);
-                    promptObj.put("contents", contents);
+                            + "{\"category_title\": \"kategori basligi\", \"movies\": [{\"title\": \"Film Adi\", \"imdb_id\": \"tt1234567\", \"reason\": \"kisa aciklama\"}]}";
 
-                    String urlStr = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=" + apiKey;
-                    URL url = new URL(urlStr);
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("POST");
-                    conn.setRequestProperty("Content-Type", "application/json");
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(12000);
-                    conn.setDoOutput(true);
+                    HttpURLConnection conn;
+                    if ("claude".equals(provider)) {
+                        URL url = new URL("https://api.anthropic.com/v1/messages");
+                        conn = (HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("POST");
+                        conn.setRequestProperty("x-api-key", apiKey);
+                        conn.setRequestProperty("anthropic-version", "2023-06-01");
+                        conn.setRequestProperty("Content-Type", "application/json");
+                        conn.setConnectTimeout(8000);
+                        conn.setReadTimeout(15000);
+                        conn.setDoOutput(true);
 
-                    OutputStream os = conn.getOutputStream();
-                    os.write(promptObj.toString().getBytes(StandardCharsets.UTF_8));
-                    os.flush();
-                    os.close();
+                        JSONObject claudeReq = new JSONObject();
+                        claudeReq.put("model", "claude-3-5-haiku-latest");
+                        claudeReq.put("max_tokens", 1024);
+                        JSONArray messages = new JSONArray();
+                        JSONObject userMsg = new JSONObject();
+                        userMsg.put("role", "user");
+                        userMsg.put("content", systemInstruction);
+                        messages.put(userMsg);
+                        claudeReq.put("messages", messages);
+
+                        OutputStream os = conn.getOutputStream();
+                        os.write(claudeReq.toString().getBytes(StandardCharsets.UTF_8));
+                        os.flush();
+                        os.close();
+                    } else {
+                        // Google Gemini
+                        JSONObject promptObj = new JSONObject();
+                        JSONArray contents = new JSONArray();
+                        JSONObject part = new JSONObject();
+                        JSONArray parts = new JSONArray();
+                        JSONObject textPart = new JSONObject();
+                        textPart.put("text", systemInstruction);
+                        parts.put(textPart);
+                        part.put("parts", parts);
+                        contents.put(part);
+                        promptObj.put("contents", contents);
+
+                        String urlStr = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=" + apiKey;
+                        URL url = new URL(urlStr);
+                        conn = (HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("POST");
+                        conn.setRequestProperty("Content-Type", "application/json");
+                        conn.setConnectTimeout(8000);
+                        conn.setReadTimeout(12000);
+                        conn.setDoOutput(true);
+
+                        OutputStream os = conn.getOutputStream();
+                        os.write(promptObj.toString().getBytes(StandardCharsets.UTF_8));
+                        os.flush();
+                        os.close();
+                    }
 
                     if (conn.getResponseCode() == 200) {
                         BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -2611,32 +2666,46 @@ public class MainActivity extends Activity {
                         while ((line = br.readLine()) != null) sb.append(line);
                         br.close();
 
-                        JSONObject resp = new JSONObject(sb.toString());
-                        JSONArray candidates = resp.optJSONArray("candidates");
-                        if (candidates != null && candidates.length() > 0) {
-                            JSONObject cand = candidates.getJSONObject(0);
-                            JSONObject content = cand.optJSONObject("content");
-                            if (content != null) {
-                                JSONArray pArray = content.optJSONArray("parts");
-                                if (pArray != null && pArray.length() > 0) {
-                                    String raw = pArray.getJSONObject(0).optString("text", "").trim();
-                                    if (raw.startsWith("```json")) raw = raw.substring(7);
-                                    if (raw.startsWith("```")) raw = raw.substring(3);
-                                    if (raw.endsWith("```")) raw = raw.substring(0, raw.length() - 3);
-                                    raw = raw.trim();
-
-                                    JSONObject aiData = new JSONObject(raw);
-                                    final String catTitle = aiData.optString("category_title", "GEMINI AI • SİZE ÖZEL SEÇKİ");
-                                    JSONArray movies = aiData.optJSONArray("movies");
-                                    if (movies != null && movies.length() > 0) {
-                                        applyGeminiMoviesToVitrin(catTitle, movies);
+                        String rawText = "";
+                        if ("claude".equals(provider)) {
+                            JSONObject resp = new JSONObject(sb.toString());
+                            JSONArray contentArr = resp.optJSONArray("content");
+                            if (contentArr != null && contentArr.length() > 0) {
+                                rawText = contentArr.getJSONObject(0).optString("text", "").trim();
+                            }
+                        } else {
+                            JSONObject resp = new JSONObject(sb.toString());
+                            JSONArray candidates = resp.optJSONArray("candidates");
+                            if (candidates != null && candidates.length() > 0) {
+                                JSONObject cand = candidates.getJSONObject(0);
+                                JSONObject content = cand.optJSONObject("content");
+                                if (content != null) {
+                                    JSONArray pArray = content.optJSONArray("parts");
+                                    if (pArray != null && pArray.length() > 0) {
+                                        rawText = pArray.getJSONObject(0).optString("text", "").trim();
                                     }
                                 }
                             }
                         }
+
+                        if (!rawText.isEmpty()) {
+                            if (rawText.startsWith("```json")) rawText = rawText.substring(7);
+                            if (rawText.startsWith("```")) rawText = rawText.substring(3);
+                            if (rawText.endsWith("```")) rawText = rawText.substring(0, rawText.length() - 3);
+                            rawText = rawText.trim();
+
+                            JSONObject aiData = new JSONObject(rawText);
+                            final String catTitle = aiData.optString("category_title", providerName.toUpperCase(Locale.getDefault()) + " AI • SİZE ÖZEL SEÇKİ");
+                            JSONArray movies = aiData.optJSONArray("movies");
+                            if (movies != null && movies.length() > 0) {
+                                applyGeminiMoviesToVitrin(catTitle, movies);
+                            }
+                        }
+                    } else {
+                        android.util.Log.e("AiCurator", "API error: " + conn.getResponseCode() + " " + conn.getResponseMessage());
                     }
                 } catch (Throwable t) {
-                    android.util.Log.e("GeminiCurator", "Error in AI curation", t);
+                    android.util.Log.e("AiCurator", "Error in AI curation", t);
                 }
             }
         }).start();
@@ -2788,22 +2857,33 @@ public class MainActivity extends Activity {
     private void showSetGeminiKeyDialog() {
         final EditText input = new EditText(this);
         input.setSingleLine(true);
-        input.setHint("AIzaSy...");
+        input.setHint("AIzaSy... veya sk-ant-...");
         input.setPadding(30, 20, 30, 20);
-        String current = getGeminiApiKey();
+        String current = getAiApiKey();
         if (current != null) input.setText(current);
 
         new AlertDialog.Builder(this)
-                .setTitle("Gemini API Anahtarı")
-                .setMessage("Google AI Studio'dan aldığınız Gemini API anahtarınızı girin:")
+                .setTitle("Yapay Zekâ Sinema Küratörü")
+                .setMessage("Google Gemini (AIzaSy...) veya Anthropic Claude (sk-ant-...) API anahtarınızı girin:\n(Anahtar TV'nizin güvenli donanım deposunda saklanır)")
                 .setView(input)
                 .setPositiveButton("Kaydet", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int w) {
                         String val = input.getText().toString().trim();
-                        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString("gemini_api_key", val).apply();
+                        if (val.isEmpty()) return;
+                        String provider = getAiProvider(val);
+                        String providerLabel = "claude".equals(provider) ? "Anthropic Claude" : "Google Gemini";
+
+                        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                                .putString("ai_api_key", val)
+                                .putString("gemini_api_key", val)
+                                .putString("ai_provider", provider)
+                                .apply();
+                        Settings.Secure.putString(getContentResolver(), "tv_ai_api_key", val);
                         Settings.Secure.putString(getContentResolver(), "tv_gemini_api_key", val);
-                        Toast.makeText(MainActivity.this, "Gemini API anahtarı kaydedildi.", Toast.LENGTH_SHORT).show();
+                        Settings.Secure.putString(getContentResolver(), "tv_ai_provider", provider);
+
+                        Toast.makeText(MainActivity.this, "🤖 " + providerLabel + " API anahtarı başarıyla kaydedildi.", Toast.LENGTH_LONG).show();
                     }
                 })
                 .setNegativeButton("İptal", null)
@@ -2812,8 +2892,13 @@ public class MainActivity extends Activity {
 
     private void showLauncherSettingsDialog() {
         final SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        final String apiKey = getGeminiApiKey();
-        String aiOption = (apiKey != null) ? "🤖  Gemini AI: Ruh Haline Göre Vitrin Oluştur" : "🤖  Gemini AI: API Anahtarı Tanımla";
+        final String apiKey = getAiApiKey();
+        final String provider = getAiProvider(apiKey);
+        final String providerName = "claude".equals(provider) ? "Claude" : "Gemini";
+
+        String aiOption = (apiKey != null)
+                ? "🤖  " + providerName + " AI: Ruh Haline Göre Vitrin Oluştur"
+                : "🤖  Yapay Zekâ: API Anahtarı Tanımla (Gemini / Claude)";
         String[] options = new String[] {
             aiOption,
             "🌤️  Hava Durumu Şehri Ayarla (Weather City)",
@@ -2822,7 +2907,7 @@ public class MainActivity extends Activity {
             "🔌  Giriş Kaynakları (HDMI / TV+)",
             "🎧  AirPods & Bluetooth Cihazları",
             "🌙  Ekran Koruyucuyu Şimdi Başlat",
-            "🔑  Gemini API Anahtarını Değiştir",
+            "🔑  Yapay Zekâ API Anahtarını Değiştir (Gemini / Claude)",
             "👁️  Gizlenen Uygulamaları Geri Getir",
             "⚙️  Android Cihaz Ayarları"
         };

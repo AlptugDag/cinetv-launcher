@@ -166,6 +166,12 @@ cd tv-master-launcher
   - Prompts for your city (e.g. Istanbul, Ankara, Berlin, London, New York) or auto-detects from IP; displays real-time weather on the launcher top bar.
 - **Personalized Audio & Subtitle Languages**:
   - Allows specifying multiple languages you speak (e.g. `turkish,english`, `german,english`, `spanish,latino`). Constructs Torrentio stream engine with seeder-first sorting for those exact languages.
+- **Yapay Zekâ Sinema Küratörü (Multi-LLM: Google Gemini & Anthropic Claude)**:
+  - Ruh halinize ("Denis Villeneuve tarzı felsefi bilimkurgu", "Yağmurlu New York dedektif filmi", "Tarkovski derinliği") göre 1 saniyede 10 başyapıt öneren yerleşik yapay zekâ küratörü.
+  - İster **Google Gemini** (`AIzaSy...`), ister **Anthropic Claude** (`sk-ant-...`) API anahtarınızı destekler.
+  - **Gizlilik ve Güvenlik Garantisi:** API anahtarınız GitHub reposunda ASLA yer almaz; kurulum sırasında sorulur veya TV kumandasıyla arayüzden girilip doğrudan TV donanımının güvenli kasasında (`Settings.Secure`) şifrelenir.
+- **Anıtsal Sinematik Ekran Koruyucu & Felsefe**:
+  - OLED/QLED yanma korumalı (Lissajous drift), derin uzay nebula aurası, organik yıldız tozu ve efsanevi sinema aforizmaları (*Blade Runner, Interstellar, Inception, Andrei Tarkovsky, Matrix*).
 - **Interface Theme Selection**:
   - Pure OLED Dark Noir, Auto Day/Night (solar sync), or Modern Frosted Light Glass.
 - **Interactive Debloat & App Removal**:

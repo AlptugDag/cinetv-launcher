@@ -431,9 +431,72 @@ echo "==> Applying zRAM & memory optimization..."
 bash "${SCRIPT_DIR}/optimize_ram.sh" || true
 
 # ------------------------------------------------------------------------------
-# STEP 11: COMPILE & INSTALL TV MASTER LAUNCHER v1.0.0
+# STEP 11: AI CINEMA CURATOR CONFIGURATION (GOOGLE GEMINI / ANTHROPIC CLAUDE)
 # ------------------------------------------------------------------------------
-echo -e "\n${BOLD}[Adım 8/8] TV Master Launcher v1.0.0 Kuruluyor:${NC}"
+if [[ "$LANG" == "tr" ]]; then
+    echo -e "\n${BOLD}[Adım 8/9] 🤖 Yapay Zekâ Sinema Küratörü (Ruh Haline Göre 4K Sinema Vitrini):${NC}"
+    echo "  1) Google Gemini API (Önerilen - Ücretsiz tier mevcuttur)"
+    echo "  2) Anthropic Claude API"
+    echo "  3) Şimdi Atla (Daha sonra TV kumandasıyla sol üst madalyondan tanımlanabilir)"
+    read -r -p "Seçiminiz [1-3] (varsayılan: 3): " AI_CHOICE
+    AI_CHOICE="${AI_CHOICE:-3}"
+
+    if [[ "$AI_CHOICE" == "1" ]]; then
+        echo -e "${CYAN}Google AI Studio'dan aldığınız Gemini API anahtarınızı girin (AIzaSy...):${NC}"
+        read -r -p "Gemini API Key: " USER_AI_KEY
+        if [[ -n "${USER_AI_KEY:-}" ]]; then
+            adb shell "settings put secure tv_gemini_api_key '${USER_AI_KEY}'"
+            adb shell "settings put secure tv_ai_api_key '${USER_AI_KEY}'"
+            adb shell "settings put secure tv_ai_provider 'gemini'"
+            echo -e "${GREEN}[+] Google Gemini API anahtarı TV'nin güvenli donanım deposuna kaydedildi.${NC}"
+        fi
+    elif [[ "$AI_CHOICE" == "2" ]]; then
+        echo -e "${CYAN}Anthropic Console'dan aldığınız Claude API anahtarınızı girin (sk-ant-...):${NC}"
+        read -r -p "Claude API Key: " USER_AI_KEY
+        if [[ -n "${USER_AI_KEY:-}" ]]; then
+            adb shell "settings put secure tv_ai_api_key '${USER_AI_KEY}'"
+            adb shell "settings put secure tv_gemini_api_key '${USER_AI_KEY}'"
+            adb shell "settings put secure tv_ai_provider 'claude'"
+            echo -e "${GREEN}[+] Anthropic Claude API anahtarı TV'nin güvenli donanım deposuna kaydedildi.${NC}"
+        fi
+    else
+        echo -e "${YELLOW}[!] Yapay zekâ anahtarı atlandı. Dilediğiniz zaman kumandayla madalyona tıklayarak ekleyebilirsiniz.${NC}"
+    fi
+else
+    echo -e "\n${BOLD}[Step 8/9] 🤖 AI Cinema Curator Configuration (Mood-Based 4K Vitrin):${NC}"
+    echo "  1) Google Gemini API (Recommended - Free tier available)"
+    echo "  2) Anthropic Claude API"
+    echo "  3) Skip for now (Can be configured anytime from Launcher Settings on TV)"
+    read -r -p "Your choice [1-3] (default: 3): " AI_CHOICE
+    AI_CHOICE="${AI_CHOICE:-3}"
+
+    if [[ "$AI_CHOICE" == "1" ]]; then
+        echo -e "${CYAN}Enter your Google Gemini API key (AIzaSy...):${NC}"
+        read -r -p "Gemini API Key: " USER_AI_KEY
+        if [[ -n "${USER_AI_KEY:-}" ]]; then
+            adb shell "settings put secure tv_gemini_api_key '${USER_AI_KEY}'"
+            adb shell "settings put secure tv_ai_api_key '${USER_AI_KEY}'"
+            adb shell "settings put secure tv_ai_provider 'gemini'"
+            echo -e "${GREEN}[+] Google Gemini API key saved to TV secure hardware settings.${NC}"
+        fi
+    elif [[ "$AI_CHOICE" == "2" ]]; then
+        echo -e "${CYAN}Enter your Anthropic Claude API key (sk-ant-...):${NC}"
+        read -r -p "Claude API Key: " USER_AI_KEY
+        if [[ -n "${USER_AI_KEY:-}" ]]; then
+            adb shell "settings put secure tv_ai_api_key '${USER_AI_KEY}'"
+            adb shell "settings put secure tv_gemini_api_key '${USER_AI_KEY}'"
+            adb shell "settings put secure tv_ai_provider 'claude'"
+            echo -e "${GREEN}[+] Anthropic Claude API key saved to TV secure hardware settings.${NC}"
+        fi
+    else
+        echo -e "${YELLOW}[!] AI key skipped. You can configure it anytime via TV remote settings.${NC}"
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# STEP 12: COMPILE & INSTALL TV MASTER LAUNCHER v1.0.0
+# ------------------------------------------------------------------------------
+echo -e "\n${BOLD}[Adım 9/9] TV Master Launcher v1.0.0 Kuruluyor:${NC}"
 APK_RELEASE="${ROOT_DIR}/release/tv-master-launcher-v1.0.0.apk"
 
 if [[ ! -f "$APK_RELEASE" ]]; then
