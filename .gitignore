@@ -22,6 +22,7 @@ local.properties
 # Private user branding & credentials (never committed to public repository)
 launcher/assets/signature_logo.png
 launcher/res/drawable/custom_screensaver_logo.png
+launcher/res/drawable/ic_user_signature.xml
 *.private.key
 *.private.json
 

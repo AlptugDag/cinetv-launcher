@@ -3,6 +3,7 @@ package com.gathin.tvhome;
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.UiModeManager;
 import android.content.ComponentName;
@@ -843,9 +844,9 @@ public class MainActivity extends Activity {
 
         final GradientDrawable medallionBg = new GradientDrawable();
         medallionBg.setShape(GradientDrawable.RECTANGLE);
-        medallionBg.setCornerRadius(22f);
-        medallionBg.setColor(Color.argb(175, 12, 17, 29)); // Smoked frosted glass
-        medallionBg.setStroke(2, Color.argb(120, 255, 255, 255));
+        medallionBg.setCornerRadius(26f);
+        medallionBg.setColor(Color.argb(210, 10, 15, 29)); // Obsidian Frosted Glass
+        medallionBg.setStroke(3, Color.argb(180, 56, 189, 248)); // Prominent Cyber Blue / Frosted Silver border
         brandMedallion.setBackground(medallionBg);
 
         final ImageView brandTvLogo = new ImageView(this);
@@ -857,7 +858,8 @@ public class MainActivity extends Activity {
             if (logoBm != null) {
                 brandTvLogo.setImageBitmap(logoBm);
             } else {
-                Drawable logoDrawable = getDrawable(R.drawable.ic_tv_clean);
+                Drawable logoDrawable = getDrawable(R.drawable.ic_user_signature);
+                if (logoDrawable == null) logoDrawable = getDrawable(R.drawable.ic_tv_clean);
                 if (logoDrawable != null) {
                     logoDrawable = logoDrawable.mutate();
                     logoDrawable.setTint(Color.parseColor("#F8FAFC"));
@@ -866,7 +868,8 @@ public class MainActivity extends Activity {
             }
         } catch (Throwable ignored) {
             try {
-                Drawable logoDrawable = getDrawable(R.drawable.ic_tv_clean);
+                Drawable logoDrawable = getDrawable(R.drawable.ic_user_signature);
+                if (logoDrawable == null) logoDrawable = getDrawable(R.drawable.ic_tv_clean);
                 if (logoDrawable != null) {
                     logoDrawable = logoDrawable.mutate();
                     logoDrawable.setTint(Color.parseColor("#F8FAFC"));
@@ -876,24 +879,24 @@ public class MainActivity extends Activity {
             }
         }
 
-        FrameLayout.LayoutParams innerLogoLp = new FrameLayout.LayoutParams(54, 54, Gravity.CENTER);
+        FrameLayout.LayoutParams innerLogoLp = new FrameLayout.LayoutParams(66, 66, Gravity.CENTER);
         brandMedallion.addView(brandTvLogo, innerLogoLp);
 
         brandMedallion.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 v.animate()
-                        .scaleX(hasFocus ? 1.15f : 1.0f)
-                        .scaleY(hasFocus ? 1.15f : 1.0f)
-                        .setDuration(200L)
+                        .scaleX(hasFocus ? 1.20f : 1.0f)
+                        .scaleY(hasFocus ? 1.20f : 1.0f)
+                        .setDuration(220L)
                         .start();
                 if (hasFocus) {
-                    medallionBg.setStroke(2, Color.parseColor("#38BDF8"));
+                    medallionBg.setStroke(3, Color.parseColor("#38BDF8"));
                     if (ambientBackdropView != null) {
                         ambientBackdropView.animateToTarget(v, Color.parseColor("#38BDF8"));
                     }
                 } else {
-                    medallionBg.setStroke(2, Color.argb(120, 255, 255, 255));
+                    medallionBg.setStroke(3, Color.argb(180, 56, 189, 248));
                 }
             }
         });
@@ -925,14 +928,14 @@ public class MainActivity extends Activity {
             }
         });
 
-        LinearLayout.LayoutParams logoLp = new LinearLayout.LayoutParams(68, 68);
-        logoLp.setMargins(0, 0, 20, 0);
+        LinearLayout.LayoutParams logoLp = new LinearLayout.LayoutParams(82, 82);
+        logoLp.setMargins(0, 0, 22, 0);
         leftBrandAndClock.addView(brandMedallion, logoLp);
 
         View divider = new View(this);
         divider.setBackgroundColor(Color.parseColor("#33FFFFFF"));
-        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(2, 42);
-        divLp.setMargins(0, 0, 20, 0);
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(2, 52);
+        divLp.setMargins(0, 0, 22, 0);
         leftBrandAndClock.addView(divider, divLp);
 
         LinearLayout clockLine = new LinearLayout(this);
@@ -2232,7 +2235,32 @@ public class MainActivity extends Activity {
         return cardFrame;
     }
 
+    private void proactiveMemoryGovernor(String targetPackage) {
+        try {
+            ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            if (am != null) {
+                String[] candidatePkgs = new String[]{
+                    "com.android.vending",
+                    "com.google.android.gms",
+                    "com.google.android.youtube.tv",
+                    "com.instantbits.cast.receiver",
+                    "com.cybercat.adbappcontrol.tv"
+                };
+                for (String pkg : candidatePkgs) {
+                    if (!pkg.equals(targetPackage)) {
+                        am.killBackgroundProcesses(pkg);
+                    }
+                }
+            }
+            System.gc();
+        } catch (Throwable ignored) {
+        }
+    }
+
     private void launchAppItem(AppTileItem item) {
+        if (item != null && item.packageName != null) {
+            proactiveMemoryGovernor(item.packageName);
+        }
         PackageManager pm = getPackageManager();
         Intent intent = pm.getLeanbackLaunchIntentForPackage(item.packageName);
         if (intent == null) {
@@ -2923,8 +2951,8 @@ public class MainActivity extends Activity {
     private class VibrantScreensaverView extends View {
         private final Paint clockPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint datePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint quotePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint auraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint particlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint starfieldPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
@@ -2934,8 +2962,18 @@ public class MainActivity extends Activity {
         private final Drawable fallbackLogo;
         private boolean isRunning = false;
 
+        private final String[] cinemaQuotes = new String[]{
+            "\"Bütün o anlar zamanda kaybolup gidecek, yağmurdaki gözyaşları gibi...\" — Blade Runner",
+            "\"Yıldızlar arasındaki boşlukta, yalnızca sinema ebedidir.\"",
+            "\"We used to look up at the sky and wonder at our place in the stars.\" — Interstellar",
+            "\"Rüyalar gerçektir, sadece uyanıkken onları göremezsin.\" — Inception",
+            "\"Sinema, zamanı ve anıları donduran tek büyüdür.\" — Andrei Tarkovsky",
+            "\"Her şey bir seçimle başlar.\" — The Matrix",
+            "\"Zaman görecelidir, fakat bu gece senin hikâyen.\""
+        };
+
         // Cinematic floating dust particles & stars
-        private static final int STAR_COUNT = 45;
+        private static final int STAR_COUNT = 55;
         private final float[] starX = new float[STAR_COUNT];
         private final float[] starY = new float[STAR_COUNT];
         private final float[] starSpeed = new float[STAR_COUNT];
@@ -2945,14 +2983,19 @@ public class MainActivity extends Activity {
         VibrantScreensaverView(Context ctx) {
             super(ctx);
             clockPaint.setTypeface(FontManager.getBlack(ctx));
-            clockPaint.setTextSize(104f);
+            clockPaint.setTextSize(78f);
             clockPaint.setColor(Color.WHITE);
-            clockPaint.setLetterSpacing(0.04f);
+            clockPaint.setLetterSpacing(0.05f);
 
             datePaint.setTypeface(FontManager.getMedium(ctx));
-            datePaint.setTextSize(21f);
+            datePaint.setTextSize(18f);
             datePaint.setColor(Color.parseColor("#94A3B8"));
-            datePaint.setLetterSpacing(0.12f);
+            datePaint.setLetterSpacing(0.14f);
+
+            quotePaint.setTypeface(FontManager.getMedium(ctx));
+            quotePaint.setTextSize(16f);
+            quotePaint.setColor(Color.parseColor("#CBD5E1"));
+            quotePaint.setLetterSpacing(0.04f);
 
             Bitmap sig = null;
             try {
@@ -2966,12 +3009,16 @@ public class MainActivity extends Activity {
             Drawable fallback = null;
             if (sig == null) {
                 try {
-                    fallback = ctx.getDrawable(R.drawable.ic_tv_clean);
-                    if (fallback != null) {
-                        fallback = fallback.mutate();
-                        fallback.setTint(Color.WHITE);
+                    fallback = ctx.getDrawable(R.drawable.ic_user_signature);
+                } catch (Throwable t) {
+                    try {
+                        fallback = ctx.getDrawable(R.drawable.ic_tv_clean);
+                    } catch (Throwable ignored) {
                     }
-                } catch (Throwable ignored) {
+                }
+                if (fallback != null) {
+                    fallback = fallback.mutate();
+                    fallback.setTint(Color.WHITE);
                 }
             }
             fallbackLogo = fallback;
@@ -2980,9 +3027,9 @@ public class MainActivity extends Activity {
             for (int i = 0; i < STAR_COUNT; i++) {
                 starX[i] = rnd.nextFloat() * 1920f;
                 starY[i] = rnd.nextFloat() * 1080f;
-                starSpeed[i] = 0.15f + rnd.nextFloat() * 0.35f;
-                starRadius[i] = 1.0f + rnd.nextFloat() * 2.2f;
-                starAlpha[i] = 0.15f + rnd.nextFloat() * 0.45f;
+                starSpeed[i] = 0.12f + rnd.nextFloat() * 0.38f;
+                starRadius[i] = 1.0f + rnd.nextFloat() * 2.4f;
+                starAlpha[i] = 0.15f + rnd.nextFloat() * 0.50f;
             }
         }
 
@@ -2999,7 +3046,7 @@ public class MainActivity extends Activity {
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
             // Deep OLED void black
-            canvas.drawColor(Color.parseColor("#040508"));
+            canvas.drawColor(Color.parseColor("#030407"));
 
             int w = getWidth() > 0 ? getWidth() : 1920;
             int h = getHeight() > 0 ? getHeight() : 1080;
@@ -3013,55 +3060,61 @@ public class MainActivity extends Activity {
                     starY[i] = h;
                     starX[i] = (float) (Math.random() * w);
                 }
-                float twinkle = (float) (Math.sin((nowMs * 0.002) + i) * 0.25 + 0.75);
+                float twinkle = (float) (Math.sin((nowMs * 0.002) + i) * 0.30 + 0.70);
                 int a = (int) (starAlpha[i] * twinkle * 255);
-                starfieldPaint.setColor(Color.argb(Math.min(255, Math.max(0, a)), 200, 220, 255));
+                starfieldPaint.setColor(Color.argb(Math.min(255, Math.max(0, a)), 210, 230, 255));
                 canvas.drawCircle(starX[i], starY[i], starRadius[i], starfieldPaint);
             }
 
-            // 2. Slow subtle orbital drift (Lissajous ±85px) for 100% OLED burn-in immunity
-            double driftT = (nowMs % 160000L) / 1000.0;
-            float driftX = (float) (Math.sin(driftT * 0.12) * 85.0 + Math.sin(driftT * 0.25) * 35.0);
-            float driftY = (float) (Math.cos(driftT * 0.10) * 50.0 + Math.sin(driftT * 0.19) * 25.0);
+            // 2. Slow subtle orbital drift (Lissajous ±55px / ±32px) for 100% OLED burn-in immunity
+            double driftT = (nowMs % 180000L) / 1000.0;
+            float driftX = (float) (Math.sin(driftT * 0.09) * 55.0 + Math.sin(driftT * 0.20) * 20.0);
+            float driftY = (float) (Math.cos(driftT * 0.07) * 32.0 + Math.sin(driftT * 0.15) * 15.0);
 
             float cx = (w / 2f) + driftX;
-            float cy = (h / 2f) - 40f + driftY;
+            float cy = (h / 2f) - 25f + driftY;
 
-            // 3. Luxurious Cinematic Breathing Palette (Cyan-Indigo-Violet-Ruby)
-            float baseHue = (float) ((nowMs % 40000L) / 40000.0 * 360.0);
-            float auroraHue = (baseHue + 40f) % 360f;
-            int cCore = Color.HSVToColor(new float[]{baseHue, 0.75f, 0.95f});
+            // 3. Luxurious Cinematic Breathing Palette (Cyan-Sapphire-Amethyst-Warm Gold-Emerald)
+            float baseHue = (float) ((nowMs % 48000L) / 48000.0 * 360.0);
+            float auroraHue = (baseHue + 45f) % 360f;
+            int cCore = Color.HSVToColor(new float[]{baseHue, 0.70f, 0.95f});
             int cOuter = Color.HSVToColor(new float[]{auroraHue, 0.85f, 0.85f});
 
-            // 4. Subtle, ethereal volumetric ambient fog (soft filmic diffusion, no harsh edges)
-            float pulse = (float) (Math.sin(nowMs * 0.001) * 0.05 + 1.0);
-            float nebulaR = 520f * pulse;
+            // 4. Subtle, ethereal volumetric ambient fog (soft filmic diffusion behind signature)
+            float pulse = (float) (Math.sin(nowMs * 0.0009) * 0.04 + 1.0);
+            float sigSize = Math.min(w, h) * 0.76f * pulse; // Monumental centerpiece filling 76% of screen
+            float nebulaR = sigSize * 0.95f;
+
             auraPaint.setShader(new RadialGradient(
-                    cx, cy - 20f, nebulaR,
+                    cx, cy, nebulaR,
                     new int[]{
-                            Color.argb(0x38, Color.red(cCore), Color.green(cCore), Color.blue(cCore)),
-                            Color.argb(0x18, Color.red(cOuter), Color.green(cOuter), Color.blue(cOuter)),
+                            Color.argb(0x35, Color.red(cCore), Color.green(cCore), Color.blue(cCore)),
+                            Color.argb(0x16, Color.red(cOuter), Color.green(cOuter), Color.blue(cOuter)),
                             Color.TRANSPARENT
                     },
-                    new float[]{0f, 0.55f, 1f},
+                    new float[]{0f, 0.58f, 1f},
                     Shader.TileMode.CLAMP
             ));
-            canvas.drawCircle(cx, cy - 20f, nebulaR, auraPaint);
+            canvas.drawCircle(cx, cy, nebulaR, auraPaint);
 
-            // 5. Signature Heart Logo with subtle luminescence
-            float logoSize = 160f * pulse;
-            float logoLeft = cx - logoSize / 2f;
-            float logoTop = cy - 130f;
+            // 5. Centered Giant Signature Watermark with breathing frosted-crystal luminescence
+            float sigLeft = cx - sigSize / 2f;
+            float sigTop = cy - sigSize / 2f;
+
+            // Soft breathing alpha: 0.20 to 0.34
+            float breathAlpha = (float) (Math.sin(nowMs * 0.0008) * 0.07 + 0.27);
+            int sigAlphaInt = Math.min(255, Math.max(0, (int) (breathAlpha * 255)));
 
             if (signatureBitmap != null) {
-                bitmapPaint.setAlpha(220);
+                bitmapPaint.setAlpha(sigAlphaInt);
                 Rect src = new Rect(0, 0, signatureBitmap.getWidth(), signatureBitmap.getHeight());
-                RectF dst = new RectF(logoLeft, logoTop, logoLeft + logoSize, logoTop + logoSize);
+                RectF dst = new RectF(sigLeft, sigTop, sigLeft + sigSize, sigTop + sigSize);
                 canvas.drawBitmap(signatureBitmap, src, dst, bitmapPaint);
             } else if (fallbackLogo != null) {
-                int leftI = Math.round(logoLeft);
-                int topI = Math.round(logoTop);
-                int sizeI = Math.round(logoSize);
+                fallbackLogo.setAlpha(sigAlphaInt);
+                int leftI = Math.round(sigLeft);
+                int topI = Math.round(sigTop);
+                int sizeI = Math.round(sigSize);
                 fallbackLogo.setBounds(leftI, topI, leftI + sizeI, topI + sizeI);
                 fallbackLogo.draw(canvas);
             }
@@ -3071,15 +3124,33 @@ public class MainActivity extends Activity {
             String timeStr = timeFmt.format(now);
             String dateStr = dateFmt.format(now).toUpperCase(new Locale("tr", "TR"));
 
-            float clockY = cy + 90f;
-            clockPaint.setShadowLayer(38f, 0f, 4f, Color.argb(0x88, Color.red(cCore), Color.green(cCore), Color.blue(cCore)));
+            float clockY = cy + (sigSize * 0.38f);
+            clockPaint.setShadowLayer(32f, 0f, 4f, Color.argb(0x77, Color.red(cCore), Color.green(cCore), Color.blue(cCore)));
             float tw = clockPaint.measureText(timeStr);
             canvas.drawText(timeStr, cx - tw / 2f, clockY, clockPaint);
 
-            // 7. Date string below
-            datePaint.setShadowLayer(16f, 0f, 2f, Color.parseColor("#99000000"));
+            // 7. Date string below clock
+            datePaint.setShadowLayer(14f, 0f, 2f, Color.parseColor("#99000000"));
             float dw = datePaint.measureText(dateStr);
-            canvas.drawText(dateStr, cx - dw / 2f, clockY + 44f, datePaint);
+            canvas.drawText(dateStr, cx - dw / 2f, clockY + 36f, datePaint);
+
+            // 8. Rotating Cinema Poetry & Philosophy
+            long quoteCycleMs = 18000L;
+            long quoteElapsed = nowMs % quoteCycleMs;
+            int quoteIdx = (int) ((nowMs / quoteCycleMs) % cinemaQuotes.length);
+            String currentQuote = cinemaQuotes[quoteIdx];
+
+            float quoteAlpha = 1.0f;
+            if (quoteElapsed < 1500L) {
+                quoteAlpha = quoteElapsed / 1500f; // Fade in
+            } else if (quoteElapsed > quoteCycleMs - 1500L) {
+                quoteAlpha = (quoteCycleMs - quoteElapsed) / 1500f; // Fade out
+            }
+            int qA = (int) (quoteAlpha * 220);
+            quotePaint.setColor(Color.argb(Math.min(255, Math.max(0, qA)), 203, 213, 225));
+            quotePaint.setShadowLayer(12f, 0f, 2f, Color.parseColor("#AA000000"));
+            float qw = quotePaint.measureText(currentQuote);
+            canvas.drawText(currentQuote, cx - qw / 2f, clockY + 76f, quotePaint);
 
             if (isRunning) {
                 postInvalidateOnAnimation();
