@@ -200,6 +200,8 @@ public class MainActivity extends Activity {
     private View btnInputs;
     private View btnAllApps;
     private View searchBarView;
+    private LinearLayout leftBrandAndClock;
+    private LinearLayout headerActions;
     private BroadcastReceiver packageReceiver;
     private FrameLayout settingsModalOverlay;
     private FrameLayout allAppsOverlay;
@@ -223,7 +225,14 @@ public class MainActivity extends Activity {
     private static final int VITRIN_POSTER_W = 260;
     private static final int VITRIN_POSTER_H = 390;
     private static final int VITRIN_BLOOM_PAD = 70;
-    private static final int VITRIN_OVERLAP_MARGIN = -52;
+    private static final int VITRIN_OVERLAP_MARGIN = -82;
+
+    // Visual HUD & Optics Mode Flags (Toggled from Logo Menu)
+    private static boolean isChromaticAberrationEnabled = true;
+    private static boolean isHudVisorModeEnabled = true;
+    private static final String PREF_KEY_CHROMA_ABERRATION = "pref_chroma_aberration";
+    private static final String PREF_KEY_HUD_VISOR = "pref_hud_visor";
+    private static final java.util.List<java.lang.ref.WeakReference<DynamicChromaticBorderView>> activeChromaBorders = new java.util.ArrayList<>();
 
     private final Runnable clockTick = new Runnable() {
         @Override
@@ -323,6 +332,122 @@ public class MainActivity extends Activity {
     }
 
     /**
+     * Dynamic Visor Chromatic Aberration Border View:
+     * - Draws soft, photorealistic optical dispersion fringes directly on the edges of UI elements.
+     * - Micro-split (0.6px to 1.8px) with feather-soft translucent spectral red/cyan refraction.
+     * - Respects the isChromaticAberrationEnabled toggle: renders clean crystal rim when disabled.
+     */
+    public static class DynamicChromaticBorderView extends View {
+        private final Paint redFringePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint cyanFringePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint specularRimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF strokeRect = new RectF();
+        private final RectF redRect = new RectF();
+        private final RectF cyanRect = new RectF();
+        private final float cornerRadius;
+        private final boolean isCircle;
+        private boolean isFocused = false;
+
+        public DynamicChromaticBorderView(Context ctx, float cornerRadius, boolean isCircle) {
+            super(ctx);
+            this.cornerRadius = cornerRadius;
+            this.isCircle = isCircle;
+            setFocusable(false);
+            setClickable(false);
+
+            // Feather-soft optical dispersion crimson tint
+            redFringePaint.setStyle(Paint.Style.STROKE);
+            redFringePaint.setStrokeWidth(1.3f);
+            redFringePaint.setColor(Color.argb(75, 255, 45, 85));
+
+            // Feather-soft optical dispersion cyan tint
+            cyanFringePaint.setStyle(Paint.Style.STROKE);
+            cyanFringePaint.setStrokeWidth(1.3f);
+            cyanFringePaint.setColor(Color.argb(80, 34, 211, 238));
+
+            // Crystal glass facet specular rim
+            specularRimPaint.setStyle(Paint.Style.STROKE);
+            specularRimPaint.setStrokeWidth(1.1f);
+            specularRimPaint.setColor(Color.argb(45, 255, 255, 255));
+
+            activeChromaBorders.add(new java.lang.ref.WeakReference<>(this));
+        }
+
+        public void setFocusedState(boolean focused) {
+            this.isFocused = focused;
+            if (focused) {
+                specularRimPaint.setColor(Color.argb(165, 255, 255, 255));
+                specularRimPaint.setStrokeWidth(1.6f);
+                redFringePaint.setStrokeWidth(1.2f);
+                cyanFringePaint.setStrokeWidth(1.2f);
+            } else {
+                specularRimPaint.setColor(Color.argb(45, 255, 255, 255));
+                specularRimPaint.setStrokeWidth(1.1f);
+                redFringePaint.setStrokeWidth(1.3f);
+                cyanFringePaint.setStrokeWidth(1.3f);
+            }
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            int w = getWidth();
+            int h = getHeight();
+            if (w <= 0 || h <= 0) return;
+
+            float pad = 1.5f;
+            strokeRect.set(pad, pad, w - pad, h - pad);
+
+            if (isChromaticAberrationEnabled) {
+                int[] loc = new int[2];
+                getLocationOnScreen(loc);
+                float cx = loc[0] + w * 0.5f;
+                float cy = loc[1] + h * 0.5f;
+
+                float dx = cx - 960f;
+                float dy = cy - 540f;
+                float dist = (float) Math.hypot(dx, dy);
+                float normDist = Math.min(1.2f, dist / 700f);
+
+                // Subtle natural micro-split: 0.6px to 1.8px (soft natural prism diffraction)
+                float baseSplit = isFocused ? 0.6f : 0.9f;
+                float split = baseSplit + (isFocused ? 0.3f : 0.8f) * normDist;
+                float angle = (float) Math.atan2(dy, dx);
+                float rOffX = (float) Math.cos(angle) * split;
+                float rOffY = (float) Math.sin(angle) * split;
+                float cOffX = -rOffX;
+                float cOffY = -rOffY;
+
+                // 1. Soft Translucent Red Fringe
+                redRect.set(strokeRect.left + rOffX, strokeRect.top + rOffY, strokeRect.right + rOffX, strokeRect.bottom + rOffY);
+                int redAlpha = Math.min(95, (int) (35 + normDist * 45));
+                redFringePaint.setAlpha(redAlpha);
+
+                // 2. Soft Translucent Cyan Fringe
+                cyanRect.set(strokeRect.left + cOffX, strokeRect.top + cOffY, strokeRect.right + cOffX, strokeRect.bottom + cOffY);
+                int cyanAlpha = Math.min(105, (int) (40 + normDist * 50));
+                cyanFringePaint.setAlpha(cyanAlpha);
+
+                if (isCircle) {
+                    canvas.drawOval(redRect, redFringePaint);
+                    canvas.drawOval(cyanRect, cyanFringePaint);
+                } else {
+                    canvas.drawRoundRect(redRect, cornerRadius, cornerRadius, redFringePaint);
+                    canvas.drawRoundRect(cyanRect, cornerRadius, cornerRadius, cyanFringePaint);
+                }
+            }
+
+            // Clean, pristine crystal specular rim
+            if (isCircle) {
+                canvas.drawOval(strokeRect, specularRimPaint);
+            } else {
+                canvas.drawRoundRect(strokeRect, cornerRadius, cornerRadius, specularRimPaint);
+            }
+        }
+    }
+
+    /**
      * Full-screen living backdrop that:
      * 1) Continuously and seamlessly shifts its deep atmospheric tone across a non-blue cinema palette
      *    (Amethyst Noir -> Warm Amber Noir -> Crimson Wine Noir -> Emerald Noir -> Orchid Noir).
@@ -339,15 +464,11 @@ public class MainActivity extends Activity {
         private final Paint watermarkPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final Paint watermarkGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-        // Holographic JARVIS HUD & Screen-Wide RGB Split System
+        // Holographic Crysis Visor Telemetry & Scanline System (NO background edge glow!)
         private final Paint hudArcPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint hudDashedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint hudPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint hudTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint rgbLeftPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint rgbRightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint rgbTopPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint rgbBottomPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint scanlinePaint = new Paint();
         private final Path hudPath = new Path();
 
@@ -454,32 +575,6 @@ public class MainActivity extends Activity {
         protected void onSizeChanged(int w, int h, int oldw, int oldh) {
             super.onSizeChanged(w, h, oldw, oldh);
             buildPatternCache(w, h);
-            if (w > 0 && h > 0) {
-                rgbLeftPaint.setShader(new LinearGradient(
-                        0f, 0f, 95f, 0f,
-                        new int[]{Color.argb(32, 255, 45, 85), Color.argb(12, 255, 55, 80), Color.TRANSPARENT},
-                        new float[]{0f, 0.45f, 1f},
-                        Shader.TileMode.CLAMP
-                ));
-                rgbRightPaint.setShader(new LinearGradient(
-                        w, 0f, w - 95f, 0f,
-                        new int[]{Color.argb(36, 34, 211, 238), Color.argb(14, 56, 189, 248), Color.TRANSPARENT},
-                        new float[]{0f, 0.45f, 1f},
-                        Shader.TileMode.CLAMP
-                ));
-                rgbTopPaint.setShader(new LinearGradient(
-                        0f, 0f, 0f, 65f,
-                        new int[]{Color.argb(26, 255, 55, 80), Color.TRANSPARENT},
-                        null,
-                        Shader.TileMode.CLAMP
-                ));
-                rgbBottomPaint.setShader(new LinearGradient(
-                        0f, h, 0f, h - 65f,
-                        new int[]{Color.argb(28, 34, 211, 238), Color.TRANSPARENT},
-                        null,
-                        Shader.TileMode.CLAMP
-                ));
-            }
         }
 
         public void setLightMode(boolean light) {
@@ -614,71 +709,68 @@ public class MainActivity extends Activity {
             ));
             canvas.drawRect(0, 0, w, h, interactiveGlowPaint);
 
-            // 4. Holographic Screen-Wide RGB Split (Chromatic Aberration Vignette)
-            canvas.drawRect(0, 0, 95f, h, rgbLeftPaint);
-            canvas.drawRect(w - 95f, 0, w, h, rgbRightPaint);
-            canvas.drawRect(0, 0, w, 65f, rgbTopPaint);
-            canvas.drawRect(0, h - 65f, w, h, rgbBottomPaint);
+            // Crysis Visor Telemetry & Holographic Overlays (Active only in HUD Visor Mode)
+            if (isHudVisorModeEnabled) {
+                // 4. Crysis Visor Horizon Guidelines (Curved Latitude Sweeps)
+                hudArcPaint.setColor(isLightMode ? Color.argb(16, 15, 23, 42) : Color.argb(24, 56, 189, 248));
+                hudPath.reset();
+                hudPath.moveTo(42f, 82f);
+                hudPath.quadTo(w * 0.5f, 62f, w - 42f, 82f);
+                canvas.drawPath(hudPath, hudArcPaint);
 
-            // 5. JARVIS Visor Horizon & Cylindrical Latitude Guidelines
-            hudArcPaint.setColor(isLightMode ? Color.argb(16, 15, 23, 42) : Color.argb(24, 56, 189, 248));
-            hudPath.reset();
-            hudPath.moveTo(42f, 82f);
-            hudPath.quadTo(w * 0.5f, 62f, w - 42f, 82f);
-            canvas.drawPath(hudPath, hudArcPaint);
+                hudPath.reset();
+                hudPath.moveTo(42f, h - 50f);
+                hudPath.quadTo(w * 0.5f, h - 70f, w - 42f, h - 50f);
+                canvas.drawPath(hudPath, hudArcPaint);
 
-            hudPath.reset();
-            hudPath.moveTo(42f, h - 50f);
-            hudPath.quadTo(w * 0.5f, h - 70f, w - 42f, h - 50f);
-            canvas.drawPath(hudPath, hudArcPaint);
+                // 6. Interactive Telemetry Targeting Reticle & Concentric Radar Ring Around Focus
+                hudDashedPaint.setColor(isLightMode ? Color.argb(12, 15, 23, 42) : Color.argb(22, 56, 189, 248));
+                canvas.drawCircle(glowX, glowY, 340f, hudDashedPaint);
+                hudArcPaint.setColor(isLightMode ? Color.argb(8, 15, 23, 42) : Color.argb(14, 255, 255, 255));
+                canvas.drawCircle(glowX, glowY, 560f, hudArcPaint);
 
-            // 6. Interactive Telemetry Targeting Reticle & Concentric Radar Ring Around Focus
-            hudDashedPaint.setColor(isLightMode ? Color.argb(12, 15, 23, 42) : Color.argb(22, 56, 189, 248));
-            canvas.drawCircle(glowX, glowY, 340f, hudDashedPaint);
-            hudArcPaint.setColor(isLightMode ? Color.argb(8, 15, 23, 42) : Color.argb(14, 255, 255, 255));
-            canvas.drawCircle(glowX, glowY, 560f, hudArcPaint);
+                // Subtle target crosshair ticks around focused view
+                hudPaint.setColor(isLightMode ? Color.argb(18, 15, 23, 42) : Color.argb(32, 56, 189, 248));
+                canvas.drawLine(glowX - 22f, glowY, glowX - 6f, glowY, hudPaint);
+                canvas.drawLine(glowX + 6f, glowY, glowX + 22f, glowY, hudPaint);
+                canvas.drawLine(glowX, glowY - 22f, glowX, glowY - 6f, hudPaint);
+                canvas.drawLine(glowX, glowY + 6f, glowX, glowY + 22f, hudPaint);
 
-            // Subtle target crosshair ticks around focused view
-            hudPaint.setColor(isLightMode ? Color.argb(18, 15, 23, 42) : Color.argb(32, 56, 189, 248));
-            canvas.drawLine(glowX - 22f, glowY, glowX - 6f, glowY, hudPaint);
-            canvas.drawLine(glowX + 6f, glowY, glowX + 22f, glowY, hudPaint);
-            canvas.drawLine(glowX, glowY - 22f, glowX, glowY - 6f, hudPaint);
-            canvas.drawLine(glowX, glowY + 6f, glowX, glowY + 22f, hudPaint);
+                // 7. Tactical Corner Telemetry Brackets [ + ]
+                hudPaint.setColor(isLightMode ? Color.argb(50, 100, 116, 139) : Color.argb(68, 56, 189, 248));
+                float bSize = 22f;
+                float mX = 40f;
+                float mY = 38f;
 
-            // 7. Tactical Corner Telemetry Brackets [ + ]
-            hudPaint.setColor(isLightMode ? Color.argb(50, 100, 116, 139) : Color.argb(68, 56, 189, 248));
-            float bSize = 22f;
-            float mX = 40f;
-            float mY = 38f;
+                // Top-Left Reticle
+                canvas.drawLine(mX, mY + bSize, mX, mY, hudPaint);
+                canvas.drawLine(mX, mY, mX + bSize, mY, hudPaint);
+                canvas.drawLine(mX + 7f, mY + 12f, mX + 15f, mY + 12f, hudPaint);
+                canvas.drawLine(mX + 11f, mY + 8f, mX + 11f, mY + 16f, hudPaint);
 
-            // Top-Left Reticle
-            canvas.drawLine(mX, mY + bSize, mX, mY, hudPaint);
-            canvas.drawLine(mX, mY, mX + bSize, mY, hudPaint);
-            canvas.drawLine(mX + 7f, mY + 12f, mX + 15f, mY + 12f, hudPaint);
-            canvas.drawLine(mX + 11f, mY + 8f, mX + 11f, mY + 16f, hudPaint);
+                // Top-Right Reticle
+                canvas.drawLine(w - mX - bSize, mY, w - mX, mY, hudPaint);
+                canvas.drawLine(w - mX, mY, w - mX, mY + bSize, hudPaint);
 
-            // Top-Right Reticle
-            canvas.drawLine(w - mX - bSize, mY, w - mX, mY, hudPaint);
-            canvas.drawLine(w - mX, mY, w - mX, mY + bSize, hudPaint);
+                // Bottom-Left Reticle
+                canvas.drawLine(mX, h - mY - bSize, mX, h - mY, hudPaint);
+                canvas.drawLine(mX, h - mY, mX + bSize, h - mY, hudPaint);
 
-            // Bottom-Left Reticle
-            canvas.drawLine(mX, h - mY - bSize, mX, h - mY, hudPaint);
-            canvas.drawLine(mX, h - mY, mX + bSize, h - mY, hudPaint);
+                // Bottom-Right Reticle
+                canvas.drawLine(w - mX - bSize, h - mY, w - mX, h - mY, hudPaint);
+                canvas.drawLine(w - mX, h - mY, w - mX, h - mY + bSize, hudPaint);
 
-            // Bottom-Right Reticle
-            canvas.drawLine(w - mX - bSize, h - mY, w - mX, h - mY, hudPaint);
-            canvas.drawLine(w - mX, h - mY, w - mX, h - mY + bSize, hudPaint);
+                // Holographic Telemetry Label Overlays
+                hudTextPaint.setColor(isLightMode ? Color.argb(55, 100, 116, 139) : Color.argb(65, 148, 163, 184));
+                canvas.drawText("HUD.JARVIS // VISOR-OPTIC v2.7", mX + 30f, mY + 8f, hudTextPaint);
+                canvas.drawText("OPTIC.CURV // 8500R", w - mX - 165f, mY + 8f, hudTextPaint);
+                canvas.drawText("CHROMA // 3-SPLIT DISPERSION", mX + 30f, h - mY + 2f, hudTextPaint);
+                canvas.drawText("STATUS // 60FPS OPTIMAL", w - mX - 170f, h - mY + 2f, hudTextPaint);
 
-            // Holographic Telemetry Label Overlays
-            hudTextPaint.setColor(isLightMode ? Color.argb(55, 100, 116, 139) : Color.argb(65, 148, 163, 184));
-            canvas.drawText("HUD.JARVIS // VISOR-OPTIC v2.7", mX + 30f, mY + 8f, hudTextPaint);
-            canvas.drawText("OPTIC.CURV // 8500R", w - mX - 165f, mY + 8f, hudTextPaint);
-            canvas.drawText("CHROMA // 3-SPLIT DISPERSION", mX + 30f, h - mY + 2f, hudTextPaint);
-            canvas.drawText("STATUS // 60FPS OPTIMAL", w - mX - 170f, h - mY + 2f, hudTextPaint);
-
-            // 8. Subtle Holographic Scanline Grid (hardware-accelerated, zero flicker)
-            for (int y = 0; y < h; y += 14) {
-                canvas.drawLine(0, y, w, y, scanlinePaint);
+                // 8. Subtle Holographic Scanline Grid (hardware-accelerated, zero flicker)
+                for (int y = 0; y < h; y += 14) {
+                    canvas.drawLine(0, y, w, y, scanlinePaint);
+                }
             }
         }
     }
@@ -833,6 +925,8 @@ public class MainActivity extends Activity {
         }
 
         SharedPreferences p = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        isChromaticAberrationEnabled = p.getBoolean(PREF_KEY_CHROMA_ABERRATION, true);
+        isHudVisorModeEnabled = p.getBoolean(PREF_KEY_HUD_VISOR, true);
         String hCsv = p.getString("user_hidden_apps_csv", "");
         if (hCsv != null && !hCsv.isEmpty()) {
             for (String s : hCsv.split(",")) {
@@ -1275,7 +1369,7 @@ public class MainActivity extends Activity {
         topBar.setGravity(Gravity.CENTER_VERTICAL);
         topBar.setPadding(12, 0, 12, 16);
 
-        LinearLayout leftBrandAndClock = new LinearLayout(this);
+        leftBrandAndClock = new LinearLayout(this);
         leftBrandAndClock.setOrientation(LinearLayout.HORIZONTAL);
         leftBrandAndClock.setGravity(Gravity.CENTER_VERTICAL);
 
@@ -1408,12 +1502,12 @@ public class MainActivity extends Activity {
 
         // Center Search / Gemini Chat Bar
         searchBarView = createSearchBar();
-        LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(0, 52, 1f);
         searchLp.setMargins(0, 0, 28, 0);
         topBar.addView(searchBarView, searchLp);
 
         // Header Action Buttons: Network, Inputs, All Apps, Settings
-        LinearLayout headerActions = new LinearLayout(this);
+        headerActions = new LinearLayout(this);
         headerActions.setOrientation(LinearLayout.HORIZONTAL);
         headerActions.setGravity(Gravity.CENTER_VERTICAL);
         headerActions.setClipChildren(false);
@@ -1550,16 +1644,21 @@ public class MainActivity extends Activity {
         headerActions.addView(btnAllApps, btnLp);
         headerActions.addView(gearIconBtn, btnLp);
 
-        // JARVIS 3D Cylindrical Visor Perspective for Top Bar
+        // Crysis 2 3D Visor Curvature for Top Bar (Elements turn and tilt toward center 960, 540)
         float headerDensity = getResources().getDisplayMetrics().density;
-        leftBrandAndClock.setCameraDistance(headerDensity * 8500f);
-        leftBrandAndClock.setRotationY(4.0f);
+        float crysisCameraDist = headerDensity * 2800f;
 
-        searchBarView.setCameraDistance(headerDensity * 8500f);
+        leftBrandAndClock.setCameraDistance(crysisCameraDist);
+        leftBrandAndClock.setRotationY(17.0f);
+        leftBrandAndClock.setRotationX(8.5f);
+
+        searchBarView.setCameraDistance(crysisCameraDist);
         searchBarView.setRotationY(0f);
+        searchBarView.setRotationX(8.5f);
 
-        headerActions.setCameraDistance(headerDensity * 8500f);
-        headerActions.setRotationY(-4.0f);
+        headerActions.setCameraDistance(crysisCameraDist);
+        headerActions.setRotationY(-17.0f);
+        headerActions.setRotationX(8.5f);
 
         topBar.addView(headerActions);
         mainContainer.addView(topBar);
@@ -1571,8 +1670,9 @@ public class MainActivity extends Activity {
         vitrinCategoryLabel.setTextColor(Color.parseColor("#94A3B8"));
         vitrinCategoryLabel.setLetterSpacing(0.12f);
         vitrinCategoryLabel.setText("GÜNÜN AKILLI SİNEMA SEÇKİSİ");
-        vitrinCategoryLabel.setCameraDistance(headerDensity * 8500f);
-        vitrinCategoryLabel.setRotationY(3.0f);
+        vitrinCategoryLabel.setCameraDistance(crysisCameraDist);
+        vitrinCategoryLabel.setRotationY(14.0f);
+        vitrinCategoryLabel.setRotationX(5.0f);
         LinearLayout.LayoutParams vclLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -1785,10 +1885,18 @@ public class MainActivity extends Activity {
         FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(26, 26, Gravity.CENTER);
         frame.addView(icon, iconLp);
 
+        // Dynamic Crysis Visor Chromatic Aberration Rim (circular lens)
+        final DynamicChromaticBorderView chromaBorder = new DynamicChromaticBorderView(this, 26f, true);
+        frame.addView(chromaBorder, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+
         frame.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 frame.setBackground(YouTubeDisguiseHelper.createLiquidGlassLensDrawable(hasFocus));
+                chromaBorder.setFocusedState(hasFocus);
                 v.animate()
                         .scaleX(hasFocus ? 1.15f : 1.0f)
                         .scaleY(hasFocus ? 1.15f : 1.0f)
@@ -1808,6 +1916,11 @@ public class MainActivity extends Activity {
     }
 
     private View createSearchBar() {
+        final FrameLayout container = new FrameLayout(this);
+        container.setFocusable(false);
+        container.setClipChildren(false);
+        container.setClipToPadding(false);
+
         final LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
@@ -1846,17 +1959,32 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams inputLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         bar.addView(searchInputView, inputLp);
 
+        container.addView(bar, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                52,
+                Gravity.CENTER_VERTICAL
+        ));
+
+        // Dynamic Crysis Visor Chromatic Aberration Rim for Search Bar
+        final DynamicChromaticBorderView chromaBorder = new DynamicChromaticBorderView(this, 24f, false);
+        container.addView(chromaBorder, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                52,
+                Gravity.CENTER_VERTICAL
+        ));
+
         searchInputView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 bar.setBackground(YouTubeDisguiseHelper.createLiquidGlassSearchBarWithChromeRim(24f, hasFocus));
-                bar.animate()
+                chromaBorder.setFocusedState(hasFocus);
+                container.animate()
                         .scaleX(hasFocus ? 1.03f : 1.0f)
                         .scaleY(hasFocus ? 1.03f : 1.0f)
                         .setDuration(180L)
                         .start();
                 if (hasFocus && ambientBackdropView != null) {
-                    ambientBackdropView.animateToTarget(bar, Color.parseColor("#38BDF8"));
+                    ambientBackdropView.animateToTarget(container, Color.parseColor("#38BDF8"));
                 }
             }
         });
@@ -1903,7 +2031,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        bar.setOnClickListener(new View.OnClickListener() {
+        container.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (searchInputView != null) {
@@ -1916,7 +2044,7 @@ public class MainActivity extends Activity {
             }
         });
 
-        return bar;
+        return container;
     }
 
     private void openTvInputs() {
@@ -2089,9 +2217,18 @@ public class MainActivity extends Activity {
                     Gravity.CENTER
             ));
 
+            // Layer 3: Dynamic Crysis Visor Chromatic Aberration & Specular Bevel Border
+            final DynamicChromaticBorderView chromaBorder = new DynamicChromaticBorderView(this, 22f, false);
+            cardFrame.addView(chromaBorder, new FrameLayout.LayoutParams(
+                    VITRIN_POSTER_W,
+                    VITRIN_POSTER_H,
+                    Gravity.CENTER
+            ));
+
             cardFrame.setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View v, boolean hasFocus) {
+                    chromaBorder.setFocusedState(hasFocus);
                     if (hasFocus) {
                         isVitrinFocused = true;
                         updateVitrinParallax(slot);
@@ -2202,21 +2339,25 @@ public class MainActivity extends Activity {
         if (count == 0) return;
 
         float density = getResources().getDisplayMetrics().density;
+        float crysisDist = isHudVisorModeEnabled ? (density * 2800f) : (density * 8500f);
 
         for (int i = 0; i < count; i++) {
             final FrameLayout card = posterCardFrames.get(i);
             final ImageView posterView = i < posterImageViews.size() ? posterImageViews.get(i) : null;
             final ImageView bloomView = i < posterBloomViews.size() ? posterBloomViews.get(i) : null;
 
-            card.setCameraDistance(density * 8500f);
+            card.setCameraDistance(crysisDist);
 
             if (focusedIndex < 0) {
-                float restAngle = calculateJarvisRestRotation(i, count, 11.0f);
-                float restZ = calculateJarvisRestZ(i, count, 14.0f);
+                float restAngleY = isHudVisorModeEnabled ? calculateJarvisRestRotation(i, count, 22.0f) : 0f;
+                float restAngleX = isHudVisorModeEnabled ? 5.5f : 0f;
+                float restZ = isHudVisorModeEnabled ? calculateJarvisRestZ(i, count, 20.0f) : 0f;
                 card.animate()
                         .scaleX(1.0f)
                         .scaleY(1.0f)
-                        .rotationY(restAngle)
+                        .rotationY(restAngleY)
+                        .rotationX(restAngleX)
+                        .translationX(0f)
                         .translationY(0f)
                         .translationZ(restZ)
                         .setDuration(220L)
@@ -2238,9 +2379,11 @@ public class MainActivity extends Activity {
                 int diff = i - focusedIndex;
                 float targetScale;
                 float targetAlpha;
+                float targetTransX = 0f;
                 float targetTransZ;
                 float targetTransY;
                 float targetRotationY;
+                float targetRotationX;
                 float elevation;
                 float bloomAlpha;
 
@@ -2248,35 +2391,46 @@ public class MainActivity extends Activity {
                     // Hovered / focused: En önde, belirgin bir biçimde büyük, tam karşıya bakar
                     targetScale = 1.30f;
                     targetAlpha = 1.0f;
-                    targetTransZ = 65f;
-                    targetTransY = -22f;
+                    targetTransX = 0f;
+                    targetTransZ = 75f;
+                    targetTransY = -24f;
                     targetRotationY = 0f;
+                    targetRotationX = 0f;
                     elevation = 50f;
                     bloomAlpha = 1.0f;
-                } else if (dist == 1) {
-                    targetScale = 0.94f;
-                    targetAlpha = 0.82f;
-                    targetTransZ = 25f;
-                    targetTransY = 0f;
-                    targetRotationY = diff < 0 ? 8.5f : -8.5f;
-                    elevation = 20f;
-                    bloomAlpha = 0.0f;
-                } else if (dist == 2) {
-                    targetScale = 0.80f;
-                    targetAlpha = 0.55f;
-                    targetTransZ = 12f;
-                    targetTransY = 8f;
-                    targetRotationY = diff < 0 ? 13.5f : -13.5f;
-                    elevation = 10f;
-                    bloomAlpha = 0.0f;
                 } else {
-                    targetScale = 0.68f;
-                    targetAlpha = 0.35f;
-                    targetTransZ = 0f;
-                    targetTransY = 14f;
-                    targetRotationY = diff < 0 ? 17.0f : -17.0f;
-                    elevation = 2f;
-                    bloomAlpha = 0.0f;
+                    // Dynamic snug pull: eliminates wide gaps between flanking posters
+                    float pull = (dist == 1) ? 30f : ((dist == 2) ? 66f : (98f + (dist - 3) * 24f));
+                    targetTransX = (diff < 0) ? pull : -pull;
+
+                    if (dist == 1) {
+                        targetScale = 0.94f;
+                        targetAlpha = 0.82f;
+                        targetTransZ = 22f;
+                        targetTransY = 0f;
+                        targetRotationY = isHudVisorModeEnabled ? (diff < 0 ? 18.0f : -18.0f) : 0f;
+                        targetRotationX = isHudVisorModeEnabled ? 5.5f : 0f;
+                        elevation = 20f;
+                        bloomAlpha = 0.0f;
+                    } else if (dist == 2) {
+                        targetScale = 0.80f;
+                        targetAlpha = 0.55f;
+                        targetTransZ = 4f;
+                        targetTransY = 8f;
+                        targetRotationY = isHudVisorModeEnabled ? (diff < 0 ? 25.0f : -25.0f) : 0f;
+                        targetRotationX = isHudVisorModeEnabled ? 5.5f : 0f;
+                        elevation = 10f;
+                        bloomAlpha = 0.0f;
+                    } else {
+                        targetScale = 0.68f;
+                        targetAlpha = 0.35f;
+                        targetTransZ = -16f;
+                        targetTransY = 14f;
+                        targetRotationY = isHudVisorModeEnabled ? (diff < 0 ? 30.0f : -30.0f) : 0f;
+                        targetRotationX = isHudVisorModeEnabled ? 5.5f : 0f;
+                        elevation = 2f;
+                        bloomAlpha = 0.0f;
+                    }
                 }
 
                 card.setElevation(elevation);
@@ -2284,6 +2438,8 @@ public class MainActivity extends Activity {
                         .scaleX(targetScale)
                         .scaleY(targetScale)
                         .rotationY(targetRotationY)
+                        .rotationX(targetRotationX)
+                        .translationX(targetTransX)
                         .translationY(targetTransY)
                         .translationZ(targetTransZ)
                         .setDuration(220L)
@@ -2879,20 +3035,25 @@ public class MainActivity extends Activity {
         cardFrame.setClipToPadding(false);
 
         float density = getResources().getDisplayMetrics().density;
-        cardFrame.setCameraDistance(density * 8500f);
+        cardFrame.setCameraDistance(density * 2800f);
 
-        final float restRotation;
+        final float restRotationY;
+        final float restRotationX;
         final float restZ;
         if (inDock) {
             int totalDockCount = Math.max(1, dockItems.size() + 1);
-            restRotation = calculateJarvisRestRotation(index, totalDockCount, 8.5f);
-            restZ = calculateJarvisRestZ(index, totalDockCount, 12f);
+            restRotationY = calculateJarvisRestRotation(index, totalDockCount, 20.0f);
+            restRotationX = -8.0f; // Dock is below optical center, tilt up toward center (960, 540)
+            restZ = calculateJarvisRestZ(index, totalDockCount, 16.0f) - 10f;
         } else {
             int colIndex = index % 4;
-            restRotation = calculateJarvisRestRotation(colIndex, 4, 7.5f);
-            restZ = calculateJarvisRestZ(colIndex, 4, 8f);
+            int rowIndex = index / 4;
+            restRotationY = calculateJarvisRestRotation(colIndex, 4, 18.0f);
+            restRotationX = -8.0f - (rowIndex * 2.0f);
+            restZ = calculateJarvisRestZ(colIndex, 4, 14.0f) - 12f;
         }
-        cardFrame.setRotationY(restRotation);
+        cardFrame.setRotationY(restRotationY);
+        cardFrame.setRotationX(restRotationX);
         cardFrame.setTranslationZ(restZ);
 
         final int cardW = 380;
@@ -2922,22 +3083,34 @@ public class MainActivity extends Activity {
                 Gravity.CENTER
         ));
 
+        // Layer 3: Dynamic Crysis Visor Chromatic Aberration & Specular Bevel Border
+        final DynamicChromaticBorderView chromaBorder = new DynamicChromaticBorderView(this, 24f, false);
+        cardFrame.addView(chromaBorder, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                Gravity.CENTER
+        ));
+
         boolean isCurrentMoving = isMovingTile && movingTileItem != null && movingTileItem.packageName.equals(item.packageName);
         if (isCurrentMoving) {
             hoverBloomView.setImageBitmap(
                     YouTubeDisguiseHelper.getCachedHoverBloom(cardW, cardH, bloomPad, 24f, item.neonColor)
             );
             hoverBloomView.setAlpha(1.0f);
-            cardFrame.setScaleX(1.12f);
-            cardFrame.setScaleY(1.12f);
-            cardFrame.setTranslationY(-10f);
-            cardFrame.setTranslationZ(45f);
+            cardFrame.setScaleX(1.10f);
+            cardFrame.setScaleY(1.10f);
+            cardFrame.setRotationY(0f);
+            cardFrame.setRotationX(0f);
+            cardFrame.setTranslationY(-12f);
+            cardFrame.setTranslationZ(55f);
+            chromaBorder.setFocusedState(true);
         }
 
         cardFrame.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(final View v, boolean hasFocus) {
                 if (isMovingTile) return;
+                chromaBorder.setFocusedState(hasFocus);
                 if (hasFocus) {
                     hoverBloomView.setImageBitmap(
                             YouTubeDisguiseHelper.getCachedHoverBloom(cardW, cardH, bloomPad, 24f, item.neonColor)
@@ -2951,12 +3124,13 @@ public class MainActivity extends Activity {
                         .setDuration(120L)
                         .start();
                 v.animate()
-                        .scaleX(hasFocus ? 1.085f : 1.0f)
-                        .scaleY(hasFocus ? 1.085f : 1.0f)
-                        .rotationY(hasFocus ? 0f : restRotation)
-                        .translationY(hasFocus ? -8f : 0f)
-                        .translationZ(hasFocus ? 35f : restZ)
-                        .setDuration(130L)
+                        .scaleX(hasFocus ? 1.10f : 1.0f)
+                        .scaleY(hasFocus ? 1.10f : 1.0f)
+                        .rotationY(hasFocus ? 0f : restRotationY)
+                        .rotationX(hasFocus ? 0f : restRotationX)
+                        .translationY(hasFocus ? -12f : 0f)
+                        .translationZ(hasFocus ? 55f : restZ)
+                        .setDuration(160L)
                         .start();
                 if (hasFocus && ambientBackdropView != null) {
                     ambientBackdropView.animateToTarget(v, item.neonColor);
@@ -3255,12 +3429,14 @@ public class MainActivity extends Activity {
         card.setClipToPadding(false);
 
         float density = getResources().getDisplayMetrics().density;
-        card.setCameraDistance(density * 8500f);
+        card.setCameraDistance(density * 2800f);
 
         int totalDockCount = Math.max(1, dockItems.size() + 1);
-        final float restRotation = calculateJarvisRestRotation(dockItems.size(), totalDockCount, 8.5f);
-        final float restZ = calculateJarvisRestZ(dockItems.size(), totalDockCount, 12f);
-        card.setRotationY(restRotation);
+        final float restRotationY = calculateJarvisRestRotation(dockItems.size(), totalDockCount, 20.0f);
+        final float restRotationX = -8.0f;
+        final float restZ = calculateJarvisRestZ(dockItems.size(), totalDockCount, 16.0f) - 10f;
+        card.setRotationY(restRotationY);
+        card.setRotationX(restRotationX);
         card.setTranslationZ(restZ);
 
         card.setBackground(YouTubeDisguiseHelper.createLiquidGlassCardDrawable(24f, false));
@@ -3291,18 +3467,28 @@ public class MainActivity extends Activity {
                 Gravity.CENTER
         ));
 
+        // Layer 3: Dynamic Crysis Visor Chromatic Aberration & Specular Bevel Border
+        final DynamicChromaticBorderView chromaBorder = new DynamicChromaticBorderView(this, 24f, false);
+        card.addView(chromaBorder, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                Gravity.CENTER
+        ));
+
         card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 card.setBackground(YouTubeDisguiseHelper.createLiquidGlassCardDrawable(24f, hasFocus));
                 plusMedallion.setImageBitmap(YouTubeDisguiseHelper.createAddAppMedallionBitmap(hasFocus));
+                chromaBorder.setFocusedState(hasFocus);
                 v.animate()
-                        .scaleX(hasFocus ? 1.085f : 1.0f)
-                        .scaleY(hasFocus ? 1.085f : 1.0f)
-                        .rotationY(hasFocus ? 0f : restRotation)
-                        .translationY(hasFocus ? -8f : 0f)
-                        .translationZ(hasFocus ? 35f : restZ)
-                        .setDuration(190L)
+                        .scaleX(hasFocus ? 1.10f : 1.0f)
+                        .scaleY(hasFocus ? 1.10f : 1.0f)
+                        .rotationY(hasFocus ? 0f : restRotationY)
+                        .rotationX(hasFocus ? 0f : restRotationX)
+                        .translationY(hasFocus ? -12f : 0f)
+                        .translationZ(hasFocus ? 55f : restZ)
+                        .setDuration(160L)
                         .start();
                 plusText.setTextColor(hasFocus ? Color.WHITE : Color.parseColor("#94A3B8"));
                 if (hasFocus && ambientBackdropView != null) {
@@ -3652,10 +3838,15 @@ public class MainActivity extends Activity {
 
         card.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
+        // Crysis Visor Dynamic Chromatic Aberration Border
+        final DynamicChromaticBorderView chromaBorder = new DynamicChromaticBorderView(this, 20f, false);
+        card.addView(chromaBorder, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 card.setBackground(hasFocus ? focusBg : normalBg);
+                chromaBorder.setFocusedState(hasFocus);
                 v.animate().scaleX(hasFocus ? 1.05f : 1.0f).scaleY(hasFocus ? 1.05f : 1.0f).setDuration(160L).start();
             }
         });
@@ -5144,7 +5335,7 @@ public class MainActivity extends Activity {
         final LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setPadding(48, 36, 48, 38);
+        card.setPadding(44, 24, 44, 26);
 
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.RECTANGLE);
@@ -5166,14 +5357,14 @@ public class MainActivity extends Activity {
                 logoIcon.setImageBitmap(YouTubeDisguiseHelper.applyArgentLiquidChromeToBitmap(bm));
             }
         } catch (Throwable ignored) {}
-        LinearLayout.LayoutParams lilp = new LinearLayout.LayoutParams(58, 58);
-        lilp.setMargins(0, 0, 0, 10);
+        LinearLayout.LayoutParams lilp = new LinearLayout.LayoutParams(52, 52);
+        lilp.setMargins(0, 0, 0, 6);
         card.addView(logoIcon, lilp);
 
         TextView title = new TextView(this);
         title.setText("CİNETV DONANIM TANILAMA & SİSTEM OPTİMİZASYONU");
         title.setTypeface(FontManager.getBlack(this));
-        title.setTextSize(19f);
+        title.setTextSize(18f);
         title.setTextColor(Color.parseColor("#F8FAFC"));
         title.setLetterSpacing(0.04f);
         title.setGravity(Gravity.CENTER);
@@ -5182,19 +5373,19 @@ public class MainActivity extends Activity {
         final TextView statusSubtitle = new TextView(this);
         statusSubtitle.setText("Donanım testleri yürütülüyor ve sistem optimize ediliyor...");
         statusSubtitle.setTypeface(FontManager.getMedium(this));
-        statusSubtitle.setTextSize(13f);
+        statusSubtitle.setTextSize(12.5f);
         statusSubtitle.setTextColor(Color.parseColor("#38BDF8"));
         statusSubtitle.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        subLp.setMargins(0, 6, 0, 24);
+        subLp.setMargins(0, 4, 0, 14);
         card.addView(statusSubtitle, subLp);
 
         // Metrics Grid Container (2x2 Grid)
         final LinearLayout gridContainer = new LinearLayout(this);
         gridContainer.setOrientation(LinearLayout.VERTICAL);
         gridContainer.setGravity(Gravity.CENTER);
-        gridContainer.setPadding(0, 0, 0, 20);
+        gridContainer.setPadding(0, 0, 0, 10);
         card.addView(gridContainer);
 
         // Progress Text
@@ -5213,7 +5404,7 @@ public class MainActivity extends Activity {
         btnRow.setVisibility(View.GONE);
         LinearLayout.LayoutParams btnRowLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        btnRowLp.setMargins(0, 22, 0, 0);
+        btnRowLp.setMargins(0, 14, 0, 0);
         card.addView(btnRow, btnRowLp);
 
         final FrameLayout closeBtn = createModalActionButton("Tamam (Kapat)", Color.parseColor("#38BDF8"), new View.OnClickListener() {
@@ -5323,6 +5514,55 @@ public class MainActivity extends Activity {
                             row2.addView(createBenchmarkStatCard("DEPOLAMA (I/O)", String.format(Locale.US, "%.1f MB/s", finalDiskSpeed), "Önbellekler Temizlendi", Color.parseColor("#F59E0B")));
                             gridContainer.addView(row2);
 
+                            View rSp2 = new View(MainActivity.this);
+                            gridContainer.addView(rSp2, new LinearLayout.LayoutParams(1, 14));
+
+                            // Visual Modes & Optics Toggles Row
+                            LinearLayout visualModesRow = new LinearLayout(MainActivity.this);
+                            visualModesRow.setOrientation(LinearLayout.HORIZONTAL);
+                            visualModesRow.setGravity(Gravity.CENTER);
+
+                            final FrameLayout chromaToggle = createVisualModeToggleCard(
+                                    "KROMATİK ABERASYON",
+                                    "Optik HUD Saçılımı",
+                                    isChromaticAberrationEnabled
+                            );
+                            chromaToggle.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    isChromaticAberrationEnabled = !isChromaticAberrationEnabled;
+                                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                                            .putBoolean(PREF_KEY_CHROMA_ABERRATION, isChromaticAberrationEnabled)
+                                            .apply();
+                                    updateVisualModeToggleCard(chromaToggle, "KROMATİK ABERASYON", "Optik HUD Saçılımı", isChromaticAberrationEnabled);
+                                    refreshChromaticBorders();
+                                }
+                            });
+                            visualModesRow.addView(chromaToggle);
+
+                            View s3 = new View(MainActivity.this);
+                            visualModesRow.addView(s3, new LinearLayout.LayoutParams(18, 1));
+
+                            final FrameLayout hudToggle = createVisualModeToggleCard(
+                                    "HUD VİZÖR MODU",
+                                    "3D Kavis & Telemetri",
+                                    isHudVisorModeEnabled
+                            );
+                            hudToggle.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    isHudVisorModeEnabled = !isHudVisorModeEnabled;
+                                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                                            .putBoolean(PREF_KEY_HUD_VISOR, isHudVisorModeEnabled)
+                                            .apply();
+                                    updateVisualModeToggleCard(hudToggle, "HUD VİZÖR MODU", "3D Kavis & Telemetri", isHudVisorModeEnabled);
+                                    applyHudVisorMode(isHudVisorModeEnabled);
+                                }
+                            });
+                            visualModesRow.addView(hudToggle);
+
+                            gridContainer.addView(visualModesRow);
+
                             btnRow.setVisibility(View.VISIBLE);
                             closeBtn.requestFocus();
                         }
@@ -5345,7 +5585,7 @@ public class MainActivity extends Activity {
     private View createBenchmarkStatCard(String label, String value, String sub, int accentColor) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(24, 18, 24, 18);
+        box.setPadding(22, 12, 22, 12);
         GradientDrawable gd = new GradientDrawable();
         gd.setColor(Color.argb(200, 18, 24, 38));
         gd.setCornerRadius(18f);
@@ -5364,16 +5604,16 @@ public class MainActivity extends Activity {
         TextView val = new TextView(this);
         val.setText(value);
         val.setTypeface(FontManager.getBlack(this));
-        val.setTextSize(18f);
+        val.setTextSize(17f);
         val.setTextColor(accentColor);
         LinearLayout.LayoutParams valLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        valLp.setMargins(0, 4, 0, 4);
+        valLp.setMargins(0, 3, 0, 3);
         box.addView(val, valLp);
 
         TextView s = new TextView(this);
         s.setText(sub);
         s.setTypeface(FontManager.getMedium(this));
-        s.setTextSize(12f);
+        s.setTextSize(11.5f);
         s.setTextColor(Color.parseColor("#CBD5E1"));
         box.addView(s);
 
@@ -5384,7 +5624,7 @@ public class MainActivity extends Activity {
         final FrameLayout btn = new FrameLayout(this);
         btn.setFocusable(true);
         btn.setClickable(true);
-        btn.setPadding(36, 14, 36, 14);
+        btn.setPadding(32, 10, 32, 10);
 
         final GradientDrawable normal = new GradientDrawable();
         normal.setColor(Color.argb(180, 24, 32, 48));
@@ -5416,6 +5656,181 @@ public class MainActivity extends Activity {
 
         btn.setOnClickListener(onClick);
         return btn;
+    }
+
+    private FrameLayout createVisualModeToggleCard(final String title, final String subtitle, final boolean isEnabled) {
+        final FrameLayout card = new FrameLayout(this);
+        card.setFocusable(true);
+        card.setClickable(true);
+        card.setLayoutParams(new LinearLayout.LayoutParams(420, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        final GradientDrawable normalBg = new GradientDrawable();
+        normalBg.setColor(Color.argb(220, 15, 23, 42));
+        normalBg.setCornerRadius(18f);
+        normalBg.setStroke(1, Color.argb(80, 56, 189, 248));
+
+        final GradientDrawable focusBg = new GradientDrawable();
+        focusBg.setColor(Color.argb(245, 22, 33, 58));
+        focusBg.setCornerRadius(18f);
+        focusBg.setStroke(2, Color.parseColor("#38BDF8"));
+
+        card.setBackground(normalBg);
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(22, 16, 22, 16);
+        card.addView(box, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        updateVisualModeToggleCard(card, title, subtitle, isEnabled);
+
+        card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                card.setBackground(hasFocus ? focusBg : normalBg);
+                v.animate().scaleX(hasFocus ? 1.05f : 1.0f).scaleY(hasFocus ? 1.05f : 1.0f).setDuration(160L).start();
+            }
+        });
+
+        return card;
+    }
+
+    private void updateVisualModeToggleCard(FrameLayout card, String title, String subtitle, boolean isEnabled) {
+        if (card == null || card.getChildCount() == 0) return;
+        View inner = card.getChildAt(0);
+        if (!(inner instanceof LinearLayout)) return;
+        LinearLayout box = (LinearLayout) inner;
+        box.removeAllViews();
+
+        LinearLayout headerRow = new LinearLayout(this);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView lbl = new TextView(this);
+        lbl.setText(title);
+        lbl.setTypeface(FontManager.getBold(this));
+        lbl.setTextSize(11f);
+        lbl.setTextColor(Color.parseColor("#94A3B8"));
+        lbl.setLetterSpacing(0.08f);
+        headerRow.addView(lbl, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView badge = new TextView(this);
+        badge.setText(isEnabled ? "AÇIK" : "KAPALI");
+        badge.setTypeface(FontManager.getBlack(this));
+        badge.setTextSize(10.5f);
+        badge.setTextColor(Color.WHITE);
+        badge.setPadding(14, 4, 14, 4);
+
+        GradientDrawable badgeBg = new GradientDrawable();
+        badgeBg.setCornerRadius(12f);
+        badgeBg.setColor(isEnabled ? Color.argb(230, 5, 150, 105) : Color.argb(200, 51, 65, 85));
+        badge.setBackground(badgeBg);
+        headerRow.addView(badge);
+
+        box.addView(headerRow);
+
+        TextView val = new TextView(this);
+        val.setText(isEnabled ? "Aktif • " + subtitle : "Devre Dışı (Standart 2D)");
+        val.setTypeface(FontManager.getBold(this));
+        val.setTextSize(13f);
+        val.setTextColor(isEnabled ? Color.parseColor("#38BDF8") : Color.parseColor("#64748B"));
+        LinearLayout.LayoutParams valLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        valLp.setMargins(0, 5, 0, 3);
+        box.addView(val, valLp);
+
+        TextView hint = new TextView(this);
+        hint.setText("Değiştirmek için kumandadan [Seç]'e basın");
+        hint.setTypeface(FontManager.getMedium(this));
+        hint.setTextSize(10.5f);
+        hint.setTextColor(Color.parseColor("#94A3B8"));
+        box.addView(hint);
+    }
+
+    private void refreshChromaticBorders() {
+        for (java.util.Iterator<java.lang.ref.WeakReference<DynamicChromaticBorderView>> it = activeChromaBorders.iterator(); it.hasNext(); ) {
+            DynamicChromaticBorderView v = it.next().get();
+            if (v != null) {
+                v.invalidate();
+            } else {
+                it.remove();
+            }
+        }
+    }
+
+    private void applyHudVisorMode(boolean enabled) {
+        float density = getResources().getDisplayMetrics().density;
+        float cameraDist = enabled ? (density * 2800f) : (density * 8500f);
+
+        // 1. Top Bar
+        if (leftBrandAndClock != null) {
+            leftBrandAndClock.setCameraDistance(cameraDist);
+            leftBrandAndClock.animate().rotationY(enabled ? 17.0f : 0f).rotationX(enabled ? 8.5f : 0f).setDuration(220L).start();
+        }
+        if (searchBarView != null) {
+            searchBarView.setCameraDistance(cameraDist);
+            searchBarView.animate().rotationY(0f).rotationX(enabled ? 8.5f : 0f).setDuration(220L).start();
+        }
+        if (headerActions != null) {
+            headerActions.setCameraDistance(cameraDist);
+            headerActions.animate().rotationY(enabled ? -17.0f : 0f).rotationX(enabled ? 8.5f : 0f).setDuration(220L).start();
+        }
+        if (vitrinCategoryLabel != null) {
+            vitrinCategoryLabel.setCameraDistance(cameraDist);
+            vitrinCategoryLabel.animate().rotationY(enabled ? 14.0f : 0f).rotationX(enabled ? 5.0f : 0f).setDuration(220L).start();
+        }
+
+        // 2. Vitrin Shelf
+        if (posterCardFrames != null) {
+            int focusedSlot = -1;
+            for (int i = 0; i < posterCardFrames.size(); i++) {
+                if (posterCardFrames.get(i).hasFocus()) {
+                    focusedSlot = i;
+                    break;
+                }
+            }
+            updateVitrinParallax(focusedSlot);
+        }
+
+        // 3. Dock Row
+        if (dockRow != null) {
+            int childCount = dockRow.getChildCount();
+            for (int i = 0; i < childCount; i++) {
+                View child = dockRow.getChildAt(i);
+                if (child != null) {
+                    child.setCameraDistance(cameraDist);
+                    if (!child.hasFocus()) {
+                        float rotY = enabled ? calculateJarvisRestRotation(i, childCount, 20.0f) : 0f;
+                        float rotX = enabled ? -8.0f : 0f;
+                        float restZ = enabled ? (calculateJarvisRestZ(i, childCount, 16.0f) - 10f) : 0f;
+                        child.animate().rotationY(rotY).rotationX(rotX).translationZ(restZ).setDuration(220L).start();
+                    }
+                }
+            }
+        }
+
+        // 4. Grid Rows
+        if (appsGridContainer != null) {
+            for (int r = 0; r < appsGridContainer.getChildCount(); r++) {
+                View row = appsGridContainer.getChildAt(r);
+                if (row instanceof ViewGroup) {
+                    ViewGroup vg = (ViewGroup) row;
+                    for (int c = 0; c < vg.getChildCount(); c++) {
+                        View tile = vg.getChildAt(c);
+                        if (tile != null && !tile.hasFocus()) {
+                            tile.setCameraDistance(cameraDist);
+                            float rotY = enabled ? calculateJarvisRestRotation(c, 4, 18.0f) : 0f;
+                            float rotX = enabled ? (-8.0f - r * 2.0f) : 0f;
+                            float restZ = enabled ? (calculateJarvisRestZ(c, 4, 14.0f) - 12f) : 0f;
+                            tile.animate().rotationY(rotY).rotationX(rotX).translationZ(restZ).setDuration(220L).start();
+                        }
+                    }
+                }
+            }
+        }
+
+        // 5. Living Ambient Backdrop
+        if (ambientBackdropView != null) {
+            ambientBackdropView.invalidate();
+        }
     }
 
     private void showLauncherSettingsModal() {

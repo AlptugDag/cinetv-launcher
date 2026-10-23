@@ -59,11 +59,11 @@ Captured directly from an Arçelik 4K Android TV (MediaTek platform) running Cin
 
 ### Production Interface Gallery (Direct Hardware Captures)
 
-| Dock Focus Pop: Nuvio 4K (`rotationY = 0°`, Violet Glow) | Dock Focus Pop: TV+ (`rotationY = 0°`, Solar Gold Glow) |
+| Hardware Benchmark & Visual Optics Toggles Menu | Clean 2D Living Cinema Mode (HUD & Chroma Disabled) |
 | :---: | :---: |
+| ![Hardware Diagnostics & Toggles](docs/screenshots/jarvis_hud_menu.png) | ![Clean 2D Cinema Mode](docs/screenshots/modes_off_clean.png) |
+| **Dock Focus Pop: Nuvio 4K (`rotationY = 0°`)** | **Dock Focus Pop: TV+ (`rotationY = 0°`)** |
 | ![Nuvio Dock Focus](docs/screenshots/jarvis_hud_dock.png) | ![TV+ Dock Focus](docs/screenshots/jarvis_hud_tvplus.png) |
-| **Cinematic 3D CoverFlow & Ambient OLED Glow** | **On-Device Hardware Benchmark & Auto-Optimizer HUD** |
-| ![Hero CoverFlow](docs/screenshots/hero_coverflow_3d.png) | ![Cinema HUD Overlay](docs/screenshots/cinema_hud_overlay.png) |
 
 ---
 

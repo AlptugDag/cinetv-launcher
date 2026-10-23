@@ -66,6 +66,7 @@ echo "[6/7] Aligning APK with zipalign..."
 
 echo "[7/7] Signing APK with apksigner..."
 "$BUILD_TOOLS/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out ../release/cinetv-launcher-v1.0.0.apk build/aligned.apk
+rm -f ../release/tv-master-launcher-v1.0.0.apk
 cp ../release/cinetv-launcher-v1.0.0.apk ../release/tv-master-launcher-v1.0.0.apk
 cp ../release/cinetv-launcher-v1.0.0.apk.idsig ../release/tv-master-launcher-v1.0.0.apk.idsig 2>/dev/null || true
 
