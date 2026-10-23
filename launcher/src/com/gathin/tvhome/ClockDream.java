@@ -225,14 +225,14 @@ public class ClockDream extends DreamService {
             datePaint.setLetterSpacing(0.12f);
 
             quotePaint.setTypeface(FontManager.getBold(ctx));
-            quotePaint.setTextSize(34f);
+            quotePaint.setTextSize(40f);
             quotePaint.setColor(Color.parseColor("#F8FAFC"));
-            quotePaint.setLetterSpacing(0.03f);
+            quotePaint.setLetterSpacing(0.02f);
 
-            titlePaint.setTypeface(FontManager.getMedium(ctx));
-            titlePaint.setTextSize(18f);
+            titlePaint.setTypeface(FontManager.getBold(ctx));
+            titlePaint.setTextSize(20f);
             titlePaint.setColor(Color.parseColor("#38BDF8"));
-            titlePaint.setLetterSpacing(0.14f);
+            titlePaint.setLetterSpacing(0.10f);
 
             // Screen / Lighten blend mode for the centered signature logo
             logoPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SCREEN));
@@ -384,7 +384,7 @@ public class ClockDream extends DreamService {
 
             // 0. Dynamic Movie Scene Background from TMDB (low-opacity, blend with OLED)
             if (activeSceneBackdrop != null && !activeSceneBackdrop.isRecycled()) {
-                int sceneAlpha = (int) (quoteAlpha * 65); // ~25% ethereal low opacity
+                int sceneAlpha = (int) (quoteAlpha * 115); // ~45% vibrant low opacity
                 scenePaint.setAlpha(sceneAlpha);
                 Rect src = new Rect(0, 0, activeSceneBackdrop.getWidth(), activeSceneBackdrop.getHeight());
                 RectF dst = new RectF(0, 0, w, h);
@@ -406,10 +406,10 @@ public class ClockDream extends DreamService {
 
             // 2. Center coordinates: Logo is strictly centered (stationary), compact size
             float cx = w / 2f;
-            float cy = (h / 2f) - 60f;
+            float cy = (h / 2f) - 40f;
 
-            // 3. Compact Logo Size (~20% of min dimension, ~210px on 1080p)
-            float sigSize = Math.min(w, h) * 0.21f;
+            // 3. Compact Logo Size (~17% of min dimension, ~185px on 1080p)
+            float sigSize = Math.min(w, h) * 0.17f;
 
             // Soft radial ambient aura behind signature
             float baseHue = (float) ((nowMs % 48000L) / 48000.0 * 360.0);

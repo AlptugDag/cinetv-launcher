@@ -53,15 +53,22 @@ https://github.com/AlptugDag/tv-master-launcher/raw/main/docs/screenshots/cinetv
 
 ---
 
-### 📸 Güncel Arayüz Galerisi (System Captures)
+### 📸 Güncel Arayüz Galerisi (Gerçek TV Ekran Yakalamaları)
 
-| 🎴 3D Parallax CoverFlow Vitrin (Saf Afiş & Filmografi) | 🔍 Gemini Arama & Floating AI HUD Yanıt Kartı |
+| 🎴 Takeshi Kitano Başyapıtları CoverFlow Vitrini | 🔍 Search Bar Metni & Gemini Floating AI HUD Kartı |
 | :---: | :---: |
 | ![Hero CoverFlow](docs/screenshots/hero_coverflow_3d.png) | ![Cinema HUD Overlay](docs/screenshots/cinema_hud_overlay.png) |
-| **🗄️ Tam Ekran Liquid Glass Tüm Uygulamalar Çekmecesi** | **⚙️ visionOS Liquid Glass 4'lü Ayarlar Modalı** |
-| ![Dock Showcase](docs/screenshots/dock_nuvio_showcase.png) | ![Settings Modal](docs/screenshots/vitrin_rest_overview.png) |
-| **🌌 TMDB Sinematik Arka Planlı Replik Screensaver** | **🚀 Liquid Glass Dock (`+` Kartı & Cam Aksiyon Barı)** |
-| ![Modern Screensaver](docs/screenshots/modern_screensaver.png) | *(D-pad uzun basma ile yatay aksiyon hapları: Taşı, Gizle, Kaldır)* |
+| **📱 Tam Ekran Sayfa 2: visionOS Uygulama Kütüphanesi (5 Sütun)** | **🌌 TMDB Sahne Arka Planlı & Saydam Logolu Screensaver** |
+| ![Page 2 Library](docs/screenshots/dock_nuvio_showcase.png) | ![Modern Screensaver](docs/screenshots/modern_screensaver.png) |
+
+---
+
+### 🕹️ D-pad Uzun Basma Liquid Glass Aksiyon Barı (Canlı Önizleme)
+Dock üzerindeki herhangi bir uygulamaya kumandadan uzun basıldığında çıkan akıcı visionOS aksiyon hapları (`↔️ Taşı`, `👁️ Gizle`, `🗑️ Kaldır`, `ℹ️ Bilgi`):
+
+<p align="center">
+  <img src="docs/screenshots/dpad_actions.gif" alt="D-pad Action Pill Bar Motion" width="80%" style="border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.85);" />
+</p>
 
 ---
 

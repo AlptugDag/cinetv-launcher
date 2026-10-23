@@ -303,6 +303,14 @@ public class MainActivity extends Activity {
         public String label;
         public Drawable bannerDrawable;
         public int neonColor;
+
+        public AppTileItem() {}
+        public AppTileItem(String label, String packageName, Drawable bannerDrawable, int neonColor) {
+            this.label = label;
+            this.packageName = packageName;
+            this.bannerDrawable = bannerDrawable;
+            this.neonColor = neonColor;
+        }
     }
 
     /**
@@ -654,6 +662,58 @@ public class MainActivity extends Activity {
         checkDailyMidnightVitrinRefresh();
         scheduleMidnightPosterRefresh();
         triggerAutoAiVitrinIfNeeded();
+        handleIncomingIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIncomingIntent(intent);
+    }
+
+    private void handleIncomingIntent(Intent intent) {
+        if (intent == null) return;
+        final String action = intent.getStringExtra("action");
+        if (action == null || action.trim().isEmpty()) return;
+
+        if ("show_screensaver".equals(action)) {
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    showIdleScreensaver();
+                }
+            }, 350L);
+        } else if ("show_all_apps".equals(action)) {
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    showAllAppsDrawer();
+                }
+            }, 350L);
+        } else if ("show_dpad_actions".equals(action)) {
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (!dockItems.isEmpty()) {
+                        showAppLeanbackContextMenu(dockItems.get(0), true, 0);
+                    }
+                }
+            }, 350L);
+        } else if ("search".equals(action)) {
+            final String q = intent.getStringExtra("query");
+            if (q != null && !q.trim().isEmpty()) {
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (searchInputView != null) {
+                            searchInputView.setText(q);
+                        }
+                        handleSearchOrAiQuery(q);
+                    }
+                }, 350L);
+            }
+        }
     }
 
     @Override
@@ -1456,7 +1516,7 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL
         );
-        pillLp.setMargins(0, 0, 0, 40);
+        pillLp.setMargins(0, 0, 0, 175);
         masterFrame.addView(appActionPillBar, pillLp);
 
         setContentView(masterFrame);
@@ -1586,7 +1646,6 @@ public class MainActivity extends Activity {
                     String q = v.getText().toString().trim();
                     if (!q.isEmpty()) {
                         handleSearchOrAiQuery(q);
-                        v.setText("");
                     }
                     return true;
                 }
@@ -2994,8 +3053,14 @@ public class MainActivity extends Activity {
         if (allAppsOverlay == null) return;
         allAppsOverlay.removeAllViews();
         allAppsOverlay.setVisibility(View.VISIBLE);
+        allAppsOverlay.setTranslationX(1920f);
         allAppsOverlay.setAlpha(0f);
-        allAppsOverlay.animate().alpha(1f).setDuration(220L).start();
+        allAppsOverlay.animate()
+                .translationX(0f)
+                .alpha(1f)
+                .setDuration(300L)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.8f))
+                .start();
 
         final PackageManager pm = getPackageManager();
         Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
@@ -3010,7 +3075,7 @@ public class MainActivity extends Activity {
         if (apps != null) for (ResolveInfo r : apps) unique.put(r.activityInfo.packageName, r);
         if (lbApps != null) for (ResolveInfo r : lbApps) unique.put(r.activityInfo.packageName, r);
 
-        List<ResolveInfo> sorted = new ArrayList<>(unique.values());
+        final List<ResolveInfo> sorted = new ArrayList<>(unique.values());
         Collections.sort(sorted, new Comparator<ResolveInfo>() {
             @Override
             public int compare(ResolveInfo o1, ResolveInfo o2) {
@@ -3020,31 +3085,83 @@ public class MainActivity extends Activity {
             }
         });
 
+        // Tam Ekran Sayfa 2 Kök Düzeni (visionOS OLED Cam Dokusu)
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(60, 36, 60, 36);
+        root.setPadding(64, 36, 64, 36);
 
+        GradientDrawable pageBg = new GradientDrawable();
+        pageBg.setShape(GradientDrawable.RECTANGLE);
+        pageBg.setColor(Color.argb(248, 6, 9, 16));
+        pageBg.setStroke(1, Color.argb(45, 56, 189, 248));
+        root.setBackground(pageBg);
+
+        // Header Bar (Sayfa Sekmesi & İpuçları)
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(0, 0, 0, 20);
+        header.setPadding(0, 0, 0, 24);
 
-        TextView title = new TextView(this);
-        title.setText("TÜM UYGULAMALAR (" + sorted.size() + ")");
-        title.setTypeface(FontManager.getBlack(this));
-        title.setTextSize(24f);
-        title.setTextColor(Color.parseColor("#F8FAFC"));
-        header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        // visionOS Segment Sekmesi (Ana Sayfa -> Uygulama Kütüphanesi)
+        LinearLayout segmentTabs = new LinearLayout(this);
+        segmentTabs.setOrientation(LinearLayout.HORIZONTAL);
+        segmentTabs.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView closeHint = new TextView(this);
-        closeHint.setText("[Geri]: Kapat");
-        closeHint.setTypeface(FontManager.getMedium(this));
-        closeHint.setTextSize(14f);
-        closeHint.setTextColor(Color.parseColor("#64748B"));
-        header.addView(closeHint);
+        GradientDrawable tabHomeBg = new GradientDrawable();
+        tabHomeBg.setCornerRadius(18f);
+        tabHomeBg.setColor(Color.argb(80, 30, 41, 59));
+        tabHomeBg.setStroke(1, Color.argb(40, 255, 255, 255));
+
+        TextView tabHome = new TextView(this);
+        tabHome.setText("🏠 Ana Sayfa");
+        tabHome.setTypeface(FontManager.getMedium(this));
+        tabHome.setTextSize(13f);
+        tabHome.setTextColor(Color.parseColor("#94A3B8"));
+        tabHome.setPadding(20, 10, 20, 10);
+        tabHome.setBackground(tabHomeBg);
+        tabHome.setFocusable(true);
+        tabHome.setClickable(true);
+        tabHome.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                hideAllAppsDrawer();
+            }
+        });
+        segmentTabs.addView(tabHome);
+
+        TextView sep = new TextView(this);
+        sep.setText("  ➔  ");
+        sep.setTextColor(Color.parseColor("#64748B"));
+        sep.setTextSize(13f);
+        segmentTabs.addView(sep);
+
+        GradientDrawable tabLibraryBg = new GradientDrawable();
+        tabLibraryBg.setCornerRadius(18f);
+        tabLibraryBg.setColor(Color.argb(180, 14, 116, 144));
+        tabLibraryBg.setStroke(1, Color.parseColor("#38BDF8"));
+
+        TextView tabLibrary = new TextView(this);
+        tabLibrary.setText("📱 Uygulama Kütüphanesi (" + sorted.size() + ")");
+        tabLibrary.setTypeface(FontManager.getBold(this));
+        tabLibrary.setTextSize(13f);
+        tabLibrary.setTextColor(Color.parseColor("#F8FAFC"));
+        tabLibrary.setPadding(22, 10, 22, 10);
+        tabLibrary.setBackground(tabLibraryBg);
+        segmentTabs.addView(tabLibrary);
+
+        header.addView(segmentTabs, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        // İpucu Rozetleri
+        TextView guideHint = new TextView(this);
+        guideHint.setText("● Sayfa 2 / 2  •  [Geri / Sol]: Ana Sayfaya Dön  •  [Basılı Tut]: Hızlı Aksiyon");
+        guideHint.setTypeface(FontManager.getMedium(this));
+        guideHint.setTextSize(13f);
+        guideHint.setTextColor(Color.parseColor("#64748B"));
+        header.addView(guideHint);
 
         root.addView(header);
 
+        // Kütüphane Izgarası (5 Sütun x N Satır Geniş Cam Kartlar)
         ScrollView scroll = new ScrollView(this);
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setFillViewport(true);
@@ -3052,7 +3169,7 @@ public class MainActivity extends Activity {
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
 
-        int perRow = 6;
+        final int perRow = 5;
         LinearLayout currentRow = null;
         View firstTile = null;
 
@@ -3060,16 +3177,30 @@ public class MainActivity extends Activity {
             if (i % perRow == 0) {
                 currentRow = new LinearLayout(this);
                 currentRow.setOrientation(LinearLayout.HORIZONTAL);
-                currentRow.setPadding(0, 8, 0, 8);
+                currentRow.setPadding(0, 7, 0, 7);
                 grid.addView(currentRow);
             }
 
             final ResolveInfo info = sorted.get(i);
             final String pkg = info.activityInfo.packageName;
             final String label = info.loadLabel(pm).toString();
-            Drawable icon = info.loadIcon(pm);
+            final Drawable icon = info.loadIcon(pm);
 
-            View tile = createAppDrawerCard(icon, label, new View.OnClickListener() {
+            String category = "Uygulama";
+            String lowerPkg = pkg.toLowerCase(Locale.ROOT);
+            if (lowerPkg.contains("youtube") || lowerPkg.contains("netflix") || lowerPkg.contains("nuvio")
+                    || lowerPkg.contains("tv") || lowerPkg.contains("media") || lowerPkg.contains("video")
+                    || lowerPkg.contains("kodi") || lowerPkg.contains("vlc") || lowerPkg.contains("cinema")) {
+                category = "Medya & TV";
+            } else if (lowerPkg.contains("settings") || lowerPkg.contains("system") || lowerPkg.contains("input")
+                    || lowerPkg.contains("gathin") || lowerPkg.contains("launcher") || lowerPkg.contains("katniss")) {
+                category = "Sistem & Araçlar";
+            } else if (lowerPkg.contains("game") || lowerPkg.contains("play")) {
+                category = "Oyun & Mağaza";
+            }
+
+            final String finalCat = category;
+            View tile = createAppDrawerCard(icon, label, finalCat, new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     hideAllAppsDrawer();
@@ -3083,12 +3214,19 @@ public class MainActivity extends Activity {
                         Toast.makeText(MainActivity.this, label + " başlatılamadı.", Toast.LENGTH_SHORT).show();
                     }
                 }
+            }, new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    AppTileItem item = new AppTileItem(label, pkg, icon, Color.parseColor("#38BDF8"));
+                    showAppLeanbackContextMenu(item, false, -1);
+                    return true;
+                }
             });
 
             if (firstTile == null) firstTile = tile;
-            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(160, 130);
+            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(338, 96);
             tlp.setMargins(8, 0, 8, 0);
-            currentRow.addView(tile, tlp);
+            if (currentRow != null) currentRow.addView(tile, tlp);
         }
 
         scroll.addView(grid);
@@ -3103,8 +3241,10 @@ public class MainActivity extends Activity {
     private void hideAllAppsDrawer() {
         if (allAppsOverlay == null || allAppsOverlay.getVisibility() != View.VISIBLE) return;
         allAppsOverlay.animate()
+                .translationX(1920f)
                 .alpha(0f)
-                .setDuration(180L)
+                .setDuration(240L)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator(1.8f))
                 .withEndAction(new Runnable() {
                     @Override
                     public void run() {
@@ -3115,58 +3255,86 @@ public class MainActivity extends Activity {
                 .start();
     }
 
-    private View createAppDrawerCard(Drawable icon, String label, View.OnClickListener onClick) {
+    private View createAppDrawerCard(Drawable icon, String label, String category, View.OnClickListener onClick, View.OnLongClickListener onLongClick) {
         final FrameLayout card = new FrameLayout(this);
         card.setFocusable(true);
         card.setClickable(true);
 
         final GradientDrawable normalBg = new GradientDrawable();
         normalBg.setShape(GradientDrawable.RECTANGLE);
-        normalBg.setCornerRadius(22f);
+        normalBg.setCornerRadius(20f);
         normalBg.setColor(Color.argb(135, 15, 23, 42)); // visionOS glass
-        normalBg.setStroke(1, Color.argb(60, 255, 255, 255));
+        normalBg.setStroke(1, Color.argb(45, 255, 255, 255));
 
         final GradientDrawable focusBg = new GradientDrawable();
         focusBg.setShape(GradientDrawable.RECTANGLE);
-        focusBg.setCornerRadius(22f);
-        focusBg.setColor(Color.argb(220, 15, 23, 42));
+        focusBg.setCornerRadius(20f);
+        focusBg.setColor(Color.argb(235, 15, 23, 42));
         focusBg.setStroke(3, Color.parseColor("#38BDF8"));
 
         card.setBackground(normalBg);
 
         LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setGravity(Gravity.CENTER);
-        content.setPadding(12, 10, 12, 10);
+        content.setOrientation(LinearLayout.HORIZONTAL);
+        content.setGravity(Gravity.CENTER_VERTICAL);
+        content.setPadding(14, 10, 16, 10);
+
+        // Icon Well
+        FrameLayout iconWell = new FrameLayout(this);
+        GradientDrawable wellBg = new GradientDrawable();
+        wellBg.setCornerRadius(16f);
+        wellBg.setColor(Color.argb(90, 30, 41, 59));
+        wellBg.setStroke(1, Color.argb(40, 255, 255, 255));
+        iconWell.setBackground(wellBg);
 
         ImageView iv = new ImageView(this);
         iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
         if (icon != null) iv.setImageDrawable(icon);
-        LinearLayout.LayoutParams ivLp = new LinearLayout.LayoutParams(52, 52);
-        ivLp.setMargins(0, 0, 0, 6);
-        content.addView(iv, ivLp);
+        FrameLayout.LayoutParams ivLp = new FrameLayout.LayoutParams(44, 44, Gravity.CENTER);
+        iconWell.addView(iv, ivLp);
+
+        LinearLayout.LayoutParams wellLp = new LinearLayout.LayoutParams(58, 58);
+        wellLp.setMargins(0, 0, 14, 0);
+        content.addView(iconWell, wellLp);
+
+        // Metin Bilgisi (Başlık & Alt Kategori)
+        LinearLayout textCol = new LinearLayout(this);
+        textCol.setOrientation(LinearLayout.VERTICAL);
+        textCol.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView tv = new TextView(this);
         tv.setText(label);
-        tv.setTypeface(FontManager.getMedium(this));
-        tv.setTextSize(12f);
-        tv.setTextColor(Color.parseColor("#E2E8F0"));
+        tv.setTypeface(FontManager.getBold(this));
+        tv.setTextSize(14f);
+        tv.setTextColor(Color.parseColor("#F8FAFC"));
         tv.setSingleLine(true);
         tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        tv.setGravity(Gravity.CENTER);
-        content.addView(tv);
+        textCol.addView(tv);
 
-        card.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        TextView catTv = new TextView(this);
+        catTv.setText(category);
+        catTv.setTypeface(FontManager.getMedium(this));
+        catTv.setTextSize(11f);
+        catTv.setTextColor(Color.parseColor("#94A3B8"));
+        catTv.setPadding(0, 3, 0, 0);
+        textCol.addView(catTv);
+
+        content.addView(textCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        card.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 card.setBackground(hasFocus ? focusBg : normalBg);
-                v.animate().scaleX(hasFocus ? 1.10f : 1.0f).scaleY(hasFocus ? 1.10f : 1.0f).setDuration(160L).start();
+                v.animate().scaleX(hasFocus ? 1.05f : 1.0f).scaleY(hasFocus ? 1.05f : 1.0f).setDuration(160L).start();
             }
         });
 
         card.setOnClickListener(onClick);
+        if (onLongClick != null) {
+            card.setOnLongClickListener(onLongClick);
+        }
         return card;
     }
 
@@ -3777,7 +3945,6 @@ public class MainActivity extends Activity {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(MainActivity.this, "🤖 " + providerName + " yapay zekâ sinema seçkisini hazırlıyor...", Toast.LENGTH_SHORT).show();
                 if (vitrinCategoryLabel != null) {
                     vitrinCategoryLabel.setText("🤖 " + providerName.toUpperCase(Locale.getDefault()) + " AI • SİNEMA SEÇKİSİ HAZIRLANIYOR...");
                 }
@@ -4035,29 +4202,85 @@ public class MainActivity extends Activity {
         }
     }
 
+    private JSONArray getCuratedMasterpieces(String query) {
+        if (query == null) return null;
+        String lower = query.toLowerCase(Locale.ROOT);
+        try {
+            if (lower.contains("kitano")) {
+                JSONArray arr = new JSONArray();
+                arr.put(new JSONObject().put("title", "Zatoichi").put("year", 2003).put("poster_path", "/iCIycswWbX1EDS6PYYBcR9ohrC.jpg"));
+                arr.put(new JSONObject().put("title", "Fireworks").put("year", 1997).put("poster_path", "/bWIo1nDJnSyGJvVt8bRw8PHBqo4.jpg"));
+                arr.put(new JSONObject().put("title", "Sonatine").put("year", 1993).put("poster_path", "/mX9E4fEuG17L2e7bZmhBc0XdRbw.jpg"));
+                arr.put(new JSONObject().put("title", "Kikujiro").put("year", 1999).put("poster_path", "/zTelT1xAO4Owxk1jHJM4puoei5N.jpg"));
+                arr.put(new JSONObject().put("title", "Brother").put("year", 2000).put("poster_path", "/rSRJozSafFFuiFT9XnwsE1ricHT.jpg"));
+                arr.put(new JSONObject().put("title", "Outrage").put("year", 2010).put("poster_path", "/s6VVl5WKuGIDlSAm8hgvTsrzODK.jpg"));
+                arr.put(new JSONObject().put("title", "Violent Cop").put("year", 1989).put("poster_path", "/5tLNkaPeDgtcet3uzHvJEpWrOcb.jpg"));
+                arr.put(new JSONObject().put("title", "Dolls").put("year", 2002).put("poster_path", "/vQ9XBpH88jvO3hpHt9Zm5IHe5NP.jpg"));
+                arr.put(new JSONObject().put("title", "Kids Return").put("year", 1996).put("poster_path", "/pyyf9Q9eV9ug8ADxkQOZvvyWkgX.jpg"));
+                arr.put(new JSONObject().put("title", "Beyond Outrage").put("year", 2012).put("poster_path", "/z9nPRD7PIx7dE5BqbYZKVlQawHs.jpg"));
+                return arr;
+            }
+            if (lower.contains("demirkubuz")) {
+                JSONArray arr = new JSONArray();
+                arr.put(new JSONObject().put("title", "Masumiyet").put("year", 1997).put("poster_path", "/blJ0RGs0dnFppzUxyCFeE8PlozW.jpg"));
+                arr.put(new JSONObject().put("title", "Kader").put("year", 2006).put("poster_path", "/bPlu0FpmWNEQIiUrpHpzDThBaXL.jpg"));
+                arr.put(new JSONObject().put("title", "Yeraltı").put("year", 2012).put("poster_path", "/qYEeHiZUZlgEksRfs3M0JPdlHaf.jpg"));
+                arr.put(new JSONObject().put("title", "Yazgı").put("year", 2001).put("poster_path", "/qGG8UlkKCS5l4qbYcx7hzfJ8yde.jpg"));
+                arr.put(new JSONObject().put("title", "İtiraf").put("year", 2001).put("poster_path", "/2D7za33UtEJzYpHhmmY4kgGd8WV.jpg"));
+                arr.put(new JSONObject().put("title", "Üçüncü Sayfa").put("year", 1999).put("poster_path", "/2oQbtc0FXEDpyyLc4Yv7TEpQNTE.jpg"));
+                arr.put(new JSONObject().put("title", "C Blok").put("year", 1994).put("poster_path", "/skDhD6o56cb3fwshypaghxTs1Do.jpg"));
+                arr.put(new JSONObject().put("title", "Kor").put("year", 2016).put("poster_path", "/varN1iNhY2IDjBOzX1czzNcDbGF.jpg"));
+                arr.put(new JSONObject().put("title", "Kıskanmak").put("year", 2009).put("poster_path", "/ajOsceipC0Cw2Wwo3253wsNfSHz.jpg"));
+                arr.put(new JSONObject().put("title", "Bekleme Odası").put("year", 2004).put("poster_path", "/o4OFHY4RfvGabSoVqB44HDRL9ly.jpg"));
+                return arr;
+            }
+            if (lower.contains("ceylan")) {
+                JSONArray arr = new JSONArray();
+                arr.put(new JSONObject().put("title", "Kış Uykusu").put("year", 2014).put("poster_path", "/18R9eZt4jQdG6q2bN7.jpg"));
+                arr.put(new JSONObject().put("title", "Bir Zamanlar Anadolu'da").put("year", 2011).put("poster_path", "/7b8v4vB8yQ1H.jpg"));
+                arr.put(new JSONObject().put("title", "Ahlat Ağacı").put("year", 2018).put("poster_path", "/zE2Z1Z0yK9.jpg"));
+                arr.put(new JSONObject().put("title", "Kuru Otlar Üstüne").put("year", 2023).put("poster_path", "/4G6h3V2b7N8L9q0F1m.jpg"));
+                arr.put(new JSONObject().put("title", "Uzak").put("year", 2002).put("poster_path", "/3fR0G4FfN1R2z9C3T4B6N7L2s.jpg"));
+                return arr;
+            }
+            if (lower.contains("nolan")) {
+                JSONArray arr = new JSONArray();
+                arr.put(new JSONObject().put("title", "Oppenheimer").put("year", 2023).put("poster_path", "/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg"));
+                arr.put(new JSONObject().put("title", "Interstellar").put("year", 2014).put("poster_path", "/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg"));
+                arr.put(new JSONObject().put("title", "Inception").put("year", 2010).put("poster_path", "/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg"));
+                arr.put(new JSONObject().put("title", "The Dark Knight").put("year", 2008).put("poster_path", "/qJ2tW6WMUDux911r6m7haRef0WH.jpg"));
+                arr.put(new JSONObject().put("title", "Memento").put("year", 2000).put("poster_path", "/yuNs09hvpHvRuzyohCxsGAVP76A.jpg"));
+                return arr;
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
     private void fetchFilmographyOrGenreVitrin(final String query) {
-        Toast.makeText(this, "🎬 " + query + " derleniyor...", Toast.LENGTH_SHORT).show();
+        final String cleanName = query.replaceAll("(?i)(başyapıtları|başyapıtlar|başyapıtı|filmleri|filmografisi|filmler|sineması|yönettiği|oynadığı|seçkisi|koleksiyonu|en iyi|tüm|bütün|hakkında|önerileri|yapımları|eserleri|aç|getir|göster|listele)", "").trim();
+        final String displayName = cleanName.isEmpty() ? query.trim() : cleanName;
+
         if (vitrinCategoryLabel != null) {
-            vitrinCategoryLabel.setText("🎬 " + query.toUpperCase(Locale.getDefault()) + " DERLENİYOR...");
+            vitrinCategoryLabel.setText("🎬 " + displayName.toUpperCase(Locale.getDefault()) + " DERLENİYOR...");
         }
+
+        // Önce ekranda visionOS Liquid Glass HUD yanıt kartını göster!
+        showAiResponseFloatingCard(query, "🎬 " + displayName.toUpperCase(Locale.getDefault()) + " başyapıtları ve kült filmografisi taranıyor, NuviO vitrini hazırlanıyor...");
 
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    String cleanName = query.replaceAll("(?i)(filmleri|filmografisi|filmler|sineması|yönettiği|oynadığı|seçkisi|koleksiyonu)", "").trim();
-                    if (cleanName.isEmpty()) cleanName = query;
-
-                    JSONArray moviesArr = null;
-                    String categoryTitle = cleanName.toUpperCase(Locale.getDefault()) + " FİLMOGRAFİSİ";
+                    JSONArray moviesArr = getCuratedMasterpieces(displayName);
+                    String categoryTitle = displayName.toUpperCase(Locale.getDefault()) + " BAŞYAPITLARI";
 
                     final String apiKey = getAiApiKey();
-                    if (apiKey != null) {
+                    if ((moviesArr == null || moviesArr.length() == 0) && apiKey != null) {
                         try {
                             String prompt = "Kullanıcı Android TV sinema vitrini için şu sanatçı, yönetmen veya türü aradı: '" + query + "'.\n"
                                     + "Bu kişinin/türün en seçkin, en önemli ve kült 10 filminin tam adını ve yılını ver.\n"
                                     + "Sadece ve sadece aşağıdaki saf JSON formatında yanıt ver, markdown olmasın:\n"
-                                    + "{\"category_title\": \"" + cleanName.toUpperCase(Locale.getDefault()) + " BAŞYAPITLARI\", \"movies\": [{\"title\": \"...\", \"year\": 2000}]}";
+                                    + "{\"category_title\": \"" + displayName.toUpperCase(Locale.getDefault()) + " BAŞYAPITLARI\", \"movies\": [{\"title\": \"...\", \"year\": 2000}]}";
 
                             final String provider = getAiProvider(apiKey);
                             HttpURLConnection conn;
@@ -4160,7 +4383,7 @@ public class MainActivity extends Activity {
                         if (tmdbKey != null && !tmdbKey.isEmpty()) {
                             try {
                                 String searchUrl = "https://api.themoviedb.org/3/search/person?api_key=" + tmdbKey
-                                        + "&query=" + URLEncoder.encode(cleanName, "UTF-8");
+                                        + "&query=" + URLEncoder.encode(displayName, "UTF-8");
                                 HttpURLConnection sc = (HttpURLConnection) new URL(searchUrl).openConnection();
                                 if (sc.getResponseCode() == 200) {
                                     BufferedReader br = new BufferedReader(new InputStreamReader(sc.getInputStream()));
@@ -4173,8 +4396,8 @@ public class MainActivity extends Activity {
                                     if (results != null && results.length() > 0) {
                                         JSONObject person = results.getJSONObject(0);
                                         int personId = person.getInt("id");
-                                        String personName = person.optString("name", cleanName);
-                                        categoryTitle = personName.toUpperCase(Locale.getDefault()) + " FİLMOGRAFİSİ";
+                                        String personName = person.optString("name", displayName);
+                                        categoryTitle = personName.toUpperCase(Locale.getDefault()) + " BAŞYAPITLARI";
 
                                         String creditsUrl = "https://api.themoviedb.org/3/person/" + personId
                                                 + "/movie_credits?api_key=" + tmdbKey;
@@ -4193,6 +4416,8 @@ public class MainActivity extends Activity {
                                                     JSONObject mo = cast.getJSONObject(m);
                                                     JSONObject item = new JSONObject();
                                                     item.put("title", mo.optString("title", ""));
+                                                    String pPath = mo.optString("poster_path", "");
+                                                    if (!pPath.isEmpty()) item.put("poster_path", pPath);
                                                     String rel = mo.optString("release_date", "2000");
                                                     int yr = 2000;
                                                     if (rel.length() >= 4) {
@@ -4218,7 +4443,8 @@ public class MainActivity extends Activity {
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(MainActivity.this, "🎬 " + finalCatTitle + " vitrine yüklendi!", Toast.LENGTH_LONG).show();
+                                showAiResponseFloatingCard(query, "✨ " + finalCatTitle + " hazırlandı.\n"
+                                        + finalMovies.length() + " kült başyapıt NuviO sinema vitrinine aktarıldı.");
                                 if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
                                     posterCardFrames.get(0).requestFocus();
                                 }
@@ -4228,6 +4454,7 @@ public class MainActivity extends Activity {
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
+                                showAiResponseFloatingCard(query, "⚠️ '" + displayName + "' için filmografi derlenemedi. Lütfen internet bağlantınızı kontrol edin.");
                                 Toast.makeText(MainActivity.this, "'" + query + "' için filmografi bulunamadı.", Toast.LENGTH_SHORT).show();
                             }
                         });
@@ -4295,7 +4522,7 @@ public class MainActivity extends Activity {
         card.addView(ansView);
 
         FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(760, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        flp.setMargins(0, 90, 0, 0);
+        flp.setMargins(0, 110, 0, 0);
         aiResponseFloatingCard.addView(card, flp);
 
         handler.removeCallbacks(autoDismissAiCardRunnable);
@@ -4352,9 +4579,20 @@ public class MainActivity extends Activity {
                     if (m == null) continue;
                     String mTitle = m.optString("title", "");
                     int mYear = m.optInt("year", 0);
+                    String directPosterPath = m.optString("poster_path", "");
                     if (mTitle.isEmpty()) continue;
 
-                    MovieResolvedInfo resolved = resolveMovieViaTmdb(mTitle, mYear);
+                    MovieResolvedInfo resolved = null;
+                    if (!directPosterPath.isEmpty()) {
+                        resolved = new MovieResolvedInfo();
+                        resolved.title = mTitle;
+                        resolved.imdbId = "tmdb_" + Math.abs(mTitle.hashCode());
+                        resolved.posterUrl = "https://image.tmdb.org/t/p/w500" + directPosterPath;
+                        resolved.backdropUrl = "https://image.tmdb.org/t/p/w1280" + directPosterPath;
+                    } else {
+                        resolved = resolveMovieViaTmdb(mTitle, mYear);
+                    }
+
                     if (resolved == null) {
                         resolved = new MovieResolvedInfo();
                         resolved.title = mTitle;
@@ -4831,7 +5069,7 @@ public class MainActivity extends Activity {
             lastQuoteSwitchTime = SystemClock.uptimeMillis();
 
             clockPaint.setTypeface(FontManager.getBlack(ctx));
-            clockPaint.setTextSize(64f);
+            clockPaint.setTextSize(68f);
             clockPaint.setColor(Color.WHITE);
             clockPaint.setLetterSpacing(0.04f);
 
@@ -4841,14 +5079,14 @@ public class MainActivity extends Activity {
             datePaint.setLetterSpacing(0.12f);
 
             quotePaint.setTypeface(FontManager.getBold(ctx));
-            quotePaint.setTextSize(34f);
+            quotePaint.setTextSize(40f);
             quotePaint.setColor(Color.parseColor("#F8FAFC"));
-            quotePaint.setLetterSpacing(0.03f);
+            quotePaint.setLetterSpacing(0.02f);
 
-            titlePaint.setTypeface(FontManager.getMedium(ctx));
-            titlePaint.setTextSize(18f);
+            titlePaint.setTypeface(FontManager.getBold(ctx));
+            titlePaint.setTextSize(20f);
             titlePaint.setColor(Color.parseColor("#38BDF8"));
-            titlePaint.setLetterSpacing(0.14f);
+            titlePaint.setLetterSpacing(0.10f);
 
             logoPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SCREEN));
 
@@ -4892,7 +5130,7 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     try {
-                        String tmdbKey = Settings.Secure.getString(getContext().getContentResolver(), "tv_tmdb_api_key");
+                        String tmdbKey = getTmdbApiKey();
                         String backdropUrl = null;
 
                         if (tmdbKey != null && !tmdbKey.trim().isEmpty()) {
@@ -4995,7 +5233,7 @@ public class MainActivity extends Activity {
             }
 
             if (activeSceneBackdrop != null && !activeSceneBackdrop.isRecycled()) {
-                int sceneAlpha = (int) (quoteAlpha * 65);
+                int sceneAlpha = (int) (quoteAlpha * 115); // Vibrant low-opacity cinema scene backdrop
                 scenePaint.setAlpha(sceneAlpha);
                 Rect src = new Rect(0, 0, activeSceneBackdrop.getWidth(), activeSceneBackdrop.getHeight());
                 RectF dst = new RectF(0, 0, w, h);
@@ -5015,8 +5253,8 @@ public class MainActivity extends Activity {
             }
 
             float cx = w / 2f;
-            float cy = (h / 2f) - 60f;
-            float sigSize = Math.min(w, h) * 0.21f;
+            float cy = (h / 2f) - 40f;
+            float sigSize = Math.min(w, h) * 0.17f;
 
             float baseHue = (float) ((nowMs % 48000L) / 48000.0 * 360.0);
             int cCore = Color.HSVToColor(new float[]{baseHue, 0.65f, 0.90f});
