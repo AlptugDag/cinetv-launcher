@@ -1,4 +1,4 @@
-# 📺 TV Master Launcher — Ultimate Cinema Operating Suite
+# 📺 CİNETV Launcher — Ultimate Cinema Operating Suite
 
 [![Release](https://img.shields.io/badge/Release-v1.0.0-blue.svg)](release/tv-master-launcher-v1.0.0.apk)
 [![Platform](https://img.shields.io/badge/Platform-Android%20TV%209%2B%20%7C%20Google%20TV%20%7C%20Projectors-green.svg)](#supported-devices)
