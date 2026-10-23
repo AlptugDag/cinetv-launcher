@@ -226,7 +226,7 @@ public final class YouTubeDisguiseHelper {
         int outW = 260;
         int outH = 390;
         float pCorner = 22f;
-        RectF posterRect = new RectF(2f, 2f, outW - 2f, outH - 2f);
+        RectF posterRect = new RectF(2.5f, 2.5f, outW - 2.5f, outH - 2.5f);
 
         Bitmap out = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(out);
@@ -247,30 +247,47 @@ public final class YouTubeDisguiseHelper {
             canvas.drawRoundRect(posterRect, pCorner, pCorner, imgPaint);
         }
 
-        // 1. Subtle Top-lit Liquid Glass Refraction Sheen (upper 36% specular meniscus)
+        // 1. Top-lit Liquid Glass Refraction Meniscus Sheen (upper 40%)
         Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG);
         sheen.setStyle(Paint.Style.FILL);
         sheen.setShader(new LinearGradient(
-                0f, 0f, 0f, outH * 0.36f,
-                new int[]{Color.argb(22, 255, 255, 255), Color.argb(0, 255, 255, 255)},
-                new float[]{0f, 1f},
+                0f, 0f, 0f, outH * 0.40f,
+                new int[]{Color.argb(38, 255, 255, 255), Color.argb(12, 255, 255, 255), Color.argb(0, 255, 255, 255)},
+                new float[]{0f, 0.48f, 1f},
                 Shader.TileMode.CLAMP
         ));
         canvas.drawRoundRect(posterRect, pCorner, pCorner, sheen);
 
-        // 2. Micro-thin Optical Crystal Meniscus Bevel Rim (clean 1.2px pure specular glass edge)
+        // 2. Chromatic Aberration Optical Spectral Dispersion (hwyuanzi/LiquidGlass-UI & ybouane/liquidglass)
+        // Tangential Spectral Crimson Fringe (offset: -1.2px, -0.8px)
+        Paint redFringe = new Paint(Paint.ANTI_ALIAS_FLAG);
+        redFringe.setStyle(Paint.Style.STROKE);
+        redFringe.setStrokeWidth(1.4f);
+        redFringe.setColor(Color.argb(78, 255, 55, 80));
+        RectF redRect = new RectF(posterRect.left - 1.2f, posterRect.top - 0.8f, posterRect.right - 1.2f, posterRect.bottom - 0.8f);
+        canvas.drawRoundRect(redRect, pCorner, pCorner, redFringe);
+
+        // Tangential Spectral Cyan-Blue Fringe (offset: +1.2px, +0.8px)
+        Paint cyanFringe = new Paint(Paint.ANTI_ALIAS_FLAG);
+        cyanFringe.setStyle(Paint.Style.STROKE);
+        cyanFringe.setStrokeWidth(1.4f);
+        cyanFringe.setColor(Color.argb(88, 56, 189, 248));
+        RectF cyanRect = new RectF(posterRect.left + 1.2f, posterRect.top + 0.8f, posterRect.right + 1.2f, posterRect.bottom + 0.8f);
+        canvas.drawRoundRect(cyanRect, pCorner, pCorner, cyanFringe);
+
+        // 3. Central Specular White Optical Crystal Glass Crest (Sharp Fresnel highlight)
         Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(1.2f);
         rim.setShader(new LinearGradient(
                 0f, 0f, outW, outH,
                 new int[]{
-                    Color.argb(125, 255, 255, 255), // top-left specular glint
-                    Color.argb(35, 255, 255, 255),  // smooth glass rim
-                    Color.argb(10, 255, 255, 255),  // shadow rim
-                    Color.argb(45, 255, 255, 255)   // subtle bottom reflection
+                    Color.argb(145, 255, 255, 255), // top-left glint
+                    Color.argb(45, 226, 232, 240),  // glass facet
+                    Color.argb(15, 255, 255, 255),  // shadow rim
+                    Color.argb(65, 255, 255, 255)   // caustic reflection
                 },
-                new float[]{0f, 0.30f, 0.70f, 1f},
+                new float[]{0f, 0.28f, 0.70f, 1f},
                 Shader.TileMode.CLAMP
         ));
         canvas.drawRoundRect(posterRect, pCorner, pCorner, rim);

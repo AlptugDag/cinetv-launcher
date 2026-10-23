@@ -21,10 +21,13 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RadialGradient;
 import android.graphics.Shader;
+import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -336,6 +339,18 @@ public class MainActivity extends Activity {
         private final Paint watermarkPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final Paint watermarkGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
+        // Holographic JARVIS HUD & Screen-Wide RGB Split System
+        private final Paint hudArcPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint hudDashedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint hudPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint hudTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint rgbLeftPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint rgbRightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint rgbTopPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint rgbBottomPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint scanlinePaint = new Paint();
+        private final Path hudPath = new Path();
+
         // Curated deep cinema ambient palette (avoids repetitive blue!)
         private final int[] AMBIENT_CYCLE_COLORS = new int[] {
             Color.parseColor("#180A1C"), // Deep Amethyst Noir
@@ -356,6 +371,26 @@ public class MainActivity extends Activity {
 
         SeamlessLivingBackdropView(Context ctx) {
             super(ctx);
+
+            hudPaint.setStyle(Paint.Style.STROKE);
+            hudPaint.setStrokeWidth(1.2f);
+
+            hudArcPaint.setStyle(Paint.Style.STROKE);
+            hudArcPaint.setStrokeWidth(1.2f);
+
+            hudDashedPaint.setStyle(Paint.Style.STROKE);
+            hudDashedPaint.setStrokeWidth(1.0f);
+            hudDashedPaint.setPathEffect(new DashPathEffect(new float[]{8f, 16f}, 0f));
+
+            hudTextPaint.setStyle(Paint.Style.FILL);
+            hudTextPaint.setTypeface(Typeface.MONOSPACE);
+            hudTextPaint.setTextSize(10.5f);
+            hudTextPaint.setLetterSpacing(0.08f);
+
+            scanlinePaint.setStyle(Paint.Style.STROKE);
+            scanlinePaint.setStrokeWidth(1.0f);
+            scanlinePaint.setColor(Color.argb(4, 255, 255, 255));
+
             Bitmap bm = null;
             Bitmap scaled = null;
             try {
@@ -419,6 +454,32 @@ public class MainActivity extends Activity {
         protected void onSizeChanged(int w, int h, int oldw, int oldh) {
             super.onSizeChanged(w, h, oldw, oldh);
             buildPatternCache(w, h);
+            if (w > 0 && h > 0) {
+                rgbLeftPaint.setShader(new LinearGradient(
+                        0f, 0f, 95f, 0f,
+                        new int[]{Color.argb(32, 255, 45, 85), Color.argb(12, 255, 55, 80), Color.TRANSPARENT},
+                        new float[]{0f, 0.45f, 1f},
+                        Shader.TileMode.CLAMP
+                ));
+                rgbRightPaint.setShader(new LinearGradient(
+                        w, 0f, w - 95f, 0f,
+                        new int[]{Color.argb(36, 34, 211, 238), Color.argb(14, 56, 189, 248), Color.TRANSPARENT},
+                        new float[]{0f, 0.45f, 1f},
+                        Shader.TileMode.CLAMP
+                ));
+                rgbTopPaint.setShader(new LinearGradient(
+                        0f, 0f, 0f, 65f,
+                        new int[]{Color.argb(26, 255, 55, 80), Color.TRANSPARENT},
+                        null,
+                        Shader.TileMode.CLAMP
+                ));
+                rgbBottomPaint.setShader(new LinearGradient(
+                        0f, h, 0f, h - 65f,
+                        new int[]{Color.argb(28, 34, 211, 238), Color.TRANSPARENT},
+                        null,
+                        Shader.TileMode.CLAMP
+                ));
+            }
         }
 
         public void setLightMode(boolean light) {
@@ -552,6 +613,73 @@ public class MainActivity extends Activity {
                     Shader.TileMode.CLAMP
             ));
             canvas.drawRect(0, 0, w, h, interactiveGlowPaint);
+
+            // 4. Holographic Screen-Wide RGB Split (Chromatic Aberration Vignette)
+            canvas.drawRect(0, 0, 95f, h, rgbLeftPaint);
+            canvas.drawRect(w - 95f, 0, w, h, rgbRightPaint);
+            canvas.drawRect(0, 0, w, 65f, rgbTopPaint);
+            canvas.drawRect(0, h - 65f, w, h, rgbBottomPaint);
+
+            // 5. JARVIS Visor Horizon & Cylindrical Latitude Guidelines
+            hudArcPaint.setColor(isLightMode ? Color.argb(16, 15, 23, 42) : Color.argb(24, 56, 189, 248));
+            hudPath.reset();
+            hudPath.moveTo(42f, 82f);
+            hudPath.quadTo(w * 0.5f, 62f, w - 42f, 82f);
+            canvas.drawPath(hudPath, hudArcPaint);
+
+            hudPath.reset();
+            hudPath.moveTo(42f, h - 50f);
+            hudPath.quadTo(w * 0.5f, h - 70f, w - 42f, h - 50f);
+            canvas.drawPath(hudPath, hudArcPaint);
+
+            // 6. Interactive Telemetry Targeting Reticle & Concentric Radar Ring Around Focus
+            hudDashedPaint.setColor(isLightMode ? Color.argb(12, 15, 23, 42) : Color.argb(22, 56, 189, 248));
+            canvas.drawCircle(glowX, glowY, 340f, hudDashedPaint);
+            hudArcPaint.setColor(isLightMode ? Color.argb(8, 15, 23, 42) : Color.argb(14, 255, 255, 255));
+            canvas.drawCircle(glowX, glowY, 560f, hudArcPaint);
+
+            // Subtle target crosshair ticks around focused view
+            hudPaint.setColor(isLightMode ? Color.argb(18, 15, 23, 42) : Color.argb(32, 56, 189, 248));
+            canvas.drawLine(glowX - 22f, glowY, glowX - 6f, glowY, hudPaint);
+            canvas.drawLine(glowX + 6f, glowY, glowX + 22f, glowY, hudPaint);
+            canvas.drawLine(glowX, glowY - 22f, glowX, glowY - 6f, hudPaint);
+            canvas.drawLine(glowX, glowY + 6f, glowX, glowY + 22f, hudPaint);
+
+            // 7. Tactical Corner Telemetry Brackets [ + ]
+            hudPaint.setColor(isLightMode ? Color.argb(50, 100, 116, 139) : Color.argb(68, 56, 189, 248));
+            float bSize = 22f;
+            float mX = 40f;
+            float mY = 38f;
+
+            // Top-Left Reticle
+            canvas.drawLine(mX, mY + bSize, mX, mY, hudPaint);
+            canvas.drawLine(mX, mY, mX + bSize, mY, hudPaint);
+            canvas.drawLine(mX + 7f, mY + 12f, mX + 15f, mY + 12f, hudPaint);
+            canvas.drawLine(mX + 11f, mY + 8f, mX + 11f, mY + 16f, hudPaint);
+
+            // Top-Right Reticle
+            canvas.drawLine(w - mX - bSize, mY, w - mX, mY, hudPaint);
+            canvas.drawLine(w - mX, mY, w - mX, mY + bSize, hudPaint);
+
+            // Bottom-Left Reticle
+            canvas.drawLine(mX, h - mY - bSize, mX, h - mY, hudPaint);
+            canvas.drawLine(mX, h - mY, mX + bSize, h - mY, hudPaint);
+
+            // Bottom-Right Reticle
+            canvas.drawLine(w - mX - bSize, h - mY, w - mX, h - mY, hudPaint);
+            canvas.drawLine(w - mX, h - mY, w - mX, h - mY + bSize, hudPaint);
+
+            // Holographic Telemetry Label Overlays
+            hudTextPaint.setColor(isLightMode ? Color.argb(55, 100, 116, 139) : Color.argb(65, 148, 163, 184));
+            canvas.drawText("HUD.JARVIS // VISOR-OPTIC v2.7", mX + 30f, mY + 8f, hudTextPaint);
+            canvas.drawText("OPTIC.CURV // 8500R", w - mX - 165f, mY + 8f, hudTextPaint);
+            canvas.drawText("CHROMA // 3-SPLIT DISPERSION", mX + 30f, h - mY + 2f, hudTextPaint);
+            canvas.drawText("STATUS // 60FPS OPTIMAL", w - mX - 170f, h - mY + 2f, hudTextPaint);
+
+            // 8. Subtle Holographic Scanline Grid (hardware-accelerated, zero flicker)
+            for (int y = 0; y < h; y += 14) {
+                canvas.drawLine(0, y, w, y, scanlinePaint);
+            }
         }
     }
 
@@ -1065,8 +1193,8 @@ public class MainActivity extends Activity {
                     }
 
                     String queryUrl = (city != null && !city.trim().isEmpty())
-                            ? ("https://wttr.in/" + URLEncoder.encode(city.trim(), "UTF-8") + "?format=%t+%c")
-                            : "https://wttr.in/?format=%l:+%t+%c";
+                            ? ("https://wttr.in/" + URLEncoder.encode(city.trim(), "UTF-8") + "?format=%t")
+                            : "https://wttr.in/?format=%l:+%t";
 
                     android.util.Log.d("TVHomeWeather", "Fetching weather from: " + queryUrl);
                     URL url = new URL(queryUrl);
@@ -1082,6 +1210,9 @@ public class MainActivity extends Activity {
                         BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
                         String line = br.readLine();
                         br.close();
+                        if (line != null) {
+                            line = line.replaceAll("[\\p{So}\\p{Cn}\\p{Cs}]", "").trim();
+                        }
                         android.util.Log.d("TVHomeWeather", "Raw response line: " + line);
 
                         if (line != null && !line.trim().isEmpty()) {
@@ -1419,6 +1550,17 @@ public class MainActivity extends Activity {
         headerActions.addView(btnAllApps, btnLp);
         headerActions.addView(gearIconBtn, btnLp);
 
+        // JARVIS 3D Cylindrical Visor Perspective for Top Bar
+        float headerDensity = getResources().getDisplayMetrics().density;
+        leftBrandAndClock.setCameraDistance(headerDensity * 8500f);
+        leftBrandAndClock.setRotationY(4.0f);
+
+        searchBarView.setCameraDistance(headerDensity * 8500f);
+        searchBarView.setRotationY(0f);
+
+        headerActions.setCameraDistance(headerDensity * 8500f);
+        headerActions.setRotationY(-4.0f);
+
         topBar.addView(headerActions);
         mainContainer.addView(topBar);
 
@@ -1429,6 +1571,8 @@ public class MainActivity extends Activity {
         vitrinCategoryLabel.setTextColor(Color.parseColor("#94A3B8"));
         vitrinCategoryLabel.setLetterSpacing(0.12f);
         vitrinCategoryLabel.setText("GÜNÜN AKILLI SİNEMA SEÇKİSİ");
+        vitrinCategoryLabel.setCameraDistance(headerDensity * 8500f);
+        vitrinCategoryLabel.setRotationY(3.0f);
         LinearLayout.LayoutParams vclLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -2027,31 +2171,54 @@ public class MainActivity extends Activity {
     }
 
     /**
+     * Calculates 3D Cylindrical JARVIS curvature rotation for a row of elements:
+     * - Left elements angle inward (rotationY > 0), right elements angle inward (rotationY < 0).
+     * - Midpoint faces viewer flat-on (rotationY = 0).
+     */
+    private float calculateJarvisRestRotation(int index, int totalCount, float maxAngle) {
+        if (totalCount <= 1) return 0f;
+        float mid = (totalCount - 1) / 2.0f;
+        float norm = (index - mid) / mid; // -1.0 to +1.0
+        return -norm * maxAngle;
+    }
+
+    private float calculateJarvisRestZ(int index, int totalCount, float maxZ) {
+        if (totalCount <= 1) return 0f;
+        float mid = (totalCount - 1) / 2.0f;
+        float norm = (index - mid) / mid;
+        return (1.0f - (norm * norm)) * maxZ;
+    }
+
+    /**
      * Updates the 3D Parallax Depth for all Vitrin cards based on distance to focused card:
-     * - dist = 0: En önde, belirgin büyük (scale 1.30x), parlak neon ışık, en yüksek elevation (50f)
-     * - dist = 1: Hemen yanındaki kartlar arkaya çekilir, küçülür (0.94x), hafif soluklaşır
+     * - dist = 0: En önde, belirgin büyük (scale 1.30x), parlak neon ışık, en yüksek elevation (50f), rotationY = 0f
+     * - dist = 1: Hemen yanındaki kartlar arkaya çekilir, küçülür (0.94x), hafif soluklaşır, içeri doğru açı alır
      * - dist = 2: İkinci mesafe kartlar daha arkaya gider (0.80x), derinliğe gömülür (0.55 alpha)
      * - dist >= 3: En uzaktaki kartlar en arkada, en küçük (0.68x), en soluk (0.35 alpha)
-     * - focusedIndex < 0: Rölanti / odak yok durumu, tüm kartlar eşit hizaya döner
+     * - focusedIndex < 0: Rölanti / odak yok durumu, tüm kartlar silindirik JARVIS kavisinde durur
      */
     private void updateVitrinParallax(int focusedIndex) {
         int count = posterCardFrames.size();
         if (count == 0) return;
 
-        // In hardware accelerated Android, translationZ and elevation dictate 3D Z-ordering
-        // without re-indexing or disturbing LinearLayout's fixed horizontal layout.
+        float density = getResources().getDisplayMetrics().density;
 
         for (int i = 0; i < count; i++) {
             final FrameLayout card = posterCardFrames.get(i);
             final ImageView posterView = i < posterImageViews.size() ? posterImageViews.get(i) : null;
             final ImageView bloomView = i < posterBloomViews.size() ? posterBloomViews.get(i) : null;
 
+            card.setCameraDistance(density * 8500f);
+
             if (focusedIndex < 0) {
+                float restAngle = calculateJarvisRestRotation(i, count, 11.0f);
+                float restZ = calculateJarvisRestZ(i, count, 14.0f);
                 card.animate()
                         .scaleX(1.0f)
                         .scaleY(1.0f)
+                        .rotationY(restAngle)
                         .translationY(0f)
-                        .translationZ(0f)
+                        .translationZ(restZ)
                         .setDuration(220L)
                         .start();
                 card.setElevation(8f);
@@ -2068,19 +2235,22 @@ public class MainActivity extends Activity {
                 }
             } else {
                 int dist = Math.abs(i - focusedIndex);
+                int diff = i - focusedIndex;
                 float targetScale;
                 float targetAlpha;
                 float targetTransZ;
                 float targetTransY;
+                float targetRotationY;
                 float elevation;
                 float bloomAlpha;
 
                 if (dist == 0) {
-                    // Hovered / focused: En önde, belirgin bir biçimde büyük
+                    // Hovered / focused: En önde, belirgin bir biçimde büyük, tam karşıya bakar
                     targetScale = 1.30f;
                     targetAlpha = 1.0f;
                     targetTransZ = 65f;
                     targetTransY = -22f;
+                    targetRotationY = 0f;
                     elevation = 50f;
                     bloomAlpha = 1.0f;
                 } else if (dist == 1) {
@@ -2088,6 +2258,7 @@ public class MainActivity extends Activity {
                     targetAlpha = 0.82f;
                     targetTransZ = 25f;
                     targetTransY = 0f;
+                    targetRotationY = diff < 0 ? 8.5f : -8.5f;
                     elevation = 20f;
                     bloomAlpha = 0.0f;
                 } else if (dist == 2) {
@@ -2095,6 +2266,7 @@ public class MainActivity extends Activity {
                     targetAlpha = 0.55f;
                     targetTransZ = 12f;
                     targetTransY = 8f;
+                    targetRotationY = diff < 0 ? 13.5f : -13.5f;
                     elevation = 10f;
                     bloomAlpha = 0.0f;
                 } else {
@@ -2102,6 +2274,7 @@ public class MainActivity extends Activity {
                     targetAlpha = 0.35f;
                     targetTransZ = 0f;
                     targetTransY = 14f;
+                    targetRotationY = diff < 0 ? 17.0f : -17.0f;
                     elevation = 2f;
                     bloomAlpha = 0.0f;
                 }
@@ -2110,6 +2283,7 @@ public class MainActivity extends Activity {
                 card.animate()
                         .scaleX(targetScale)
                         .scaleY(targetScale)
+                        .rotationY(targetRotationY)
                         .translationY(targetTransY)
                         .translationZ(targetTransZ)
                         .setDuration(220L)
@@ -2704,6 +2878,23 @@ public class MainActivity extends Activity {
         cardFrame.setClipChildren(false);
         cardFrame.setClipToPadding(false);
 
+        float density = getResources().getDisplayMetrics().density;
+        cardFrame.setCameraDistance(density * 8500f);
+
+        final float restRotation;
+        final float restZ;
+        if (inDock) {
+            int totalDockCount = Math.max(1, dockItems.size() + 1);
+            restRotation = calculateJarvisRestRotation(index, totalDockCount, 8.5f);
+            restZ = calculateJarvisRestZ(index, totalDockCount, 12f);
+        } else {
+            int colIndex = index % 4;
+            restRotation = calculateJarvisRestRotation(colIndex, 4, 7.5f);
+            restZ = calculateJarvisRestZ(colIndex, 4, 8f);
+        }
+        cardFrame.setRotationY(restRotation);
+        cardFrame.setTranslationZ(restZ);
+
         final int cardW = 380;
         final int cardH = 214;
         final int bloomPad = 68; // Wide 68px optical dispersion around all 4 sides on hover
@@ -2762,9 +2953,10 @@ public class MainActivity extends Activity {
                 v.animate()
                         .scaleX(hasFocus ? 1.085f : 1.0f)
                         .scaleY(hasFocus ? 1.085f : 1.0f)
+                        .rotationY(hasFocus ? 0f : restRotation)
                         .translationY(hasFocus ? -8f : 0f)
-                        .translationZ(hasFocus ? 28f : 0f)
-                        .setDuration(120L)
+                        .translationZ(hasFocus ? 35f : restZ)
+                        .setDuration(130L)
                         .start();
                 if (hasFocus && ambientBackdropView != null) {
                     ambientBackdropView.animateToTarget(v, item.neonColor);
@@ -3062,6 +3254,15 @@ public class MainActivity extends Activity {
         card.setClipChildren(false);
         card.setClipToPadding(false);
 
+        float density = getResources().getDisplayMetrics().density;
+        card.setCameraDistance(density * 8500f);
+
+        int totalDockCount = Math.max(1, dockItems.size() + 1);
+        final float restRotation = calculateJarvisRestRotation(dockItems.size(), totalDockCount, 8.5f);
+        final float restZ = calculateJarvisRestZ(dockItems.size(), totalDockCount, 12f);
+        card.setRotationY(restRotation);
+        card.setTranslationZ(restZ);
+
         card.setBackground(YouTubeDisguiseHelper.createLiquidGlassCardDrawable(24f, false));
 
         LinearLayout content = new LinearLayout(this);
@@ -3098,7 +3299,9 @@ public class MainActivity extends Activity {
                 v.animate()
                         .scaleX(hasFocus ? 1.085f : 1.0f)
                         .scaleY(hasFocus ? 1.085f : 1.0f)
+                        .rotationY(hasFocus ? 0f : restRotation)
                         .translationY(hasFocus ? -8f : 0f)
+                        .translationZ(hasFocus ? 35f : restZ)
                         .setDuration(190L)
                         .start();
                 plusText.setTextColor(hasFocus ? Color.WHITE : Color.parseColor("#94A3B8"));

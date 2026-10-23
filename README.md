@@ -39,31 +39,31 @@ The system combines a native **Liquid Glass 3D Parallax CoverFlow** showcase, dy
 
 ## Visual Showcase
 
-### Live Navigation & Fluid 60 FPS CoverFlow (Direct 1080p Hardware Capture)
-Captured directly from an Arçelik 4K Android TV (MediaTek platform) displaying D-pad navigation, NeonKit physical light halos, dynamic depth-of-field scaling, and CoverFlow transitions:
+### Live Navigation & JARVIS 3D Visor Curvature (Direct 1080p Hardware Capture)
+Captured directly from an Arçelik 4K Android TV (MediaTek platform) running CineTV Launcher v1.0.0 with JARVIS 3D cylindrical visor curvature, screen-wide holographic HUD overlay, peripheral RGB split dispersion, and chromatic movie posters:
 
-- **1080p High-Resolution Capture**: `docs/screenshots/cinetv_live_hardware.png`
-- **Fluid 60 FPS Hardware Navigation Video**: `docs/screenshots/cinetv_nav_hardware.mp4`
+- **1080p Master Capture**: `docs/screenshots/hero_jarvis_hud.png`
+- **Dynamic 3D Navigation Video**: `docs/screenshots/jarvis_hud_demo.mp4`
 
 <p align="center">
-  <img src="docs/screenshots/cinetv_live_hardware.png" alt="CineTV Live Hardware Screenshot" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);" />
+  <img src="docs/screenshots/hero_jarvis_hud.png" alt="CineTV JARVIS HUD Live Screenshot" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);" />
 </p>
 
-> For mobile viewports and instant preview, see the motion recording below (`docs/screenshots/liquid_glass_glow.gif`):
+> Real-time D-pad motion demonstration on hardware displaying 3D cylindrical curvature, active focus pop (`rotationY = 0f`), and dynamic HUD telemetry reticle tracking (`docs/screenshots/jarvis_hud_demo.gif`):
 
 <p align="center">
-  <img src="docs/screenshots/liquid_glass_glow.gif" alt="CineTV Liquid Glass Motion" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);" />
+  <img src="docs/screenshots/jarvis_hud_demo.gif" alt="CineTV JARVIS Curvature Motion" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.85);" />
 </p>
 
 ---
 
 ### Production Interface Gallery (Direct Hardware Captures)
 
-| Cinematic 3D CoverFlow & Ambient OLED Glow | Hardware Benchmark & Auto-Optimizer HUD |
+| Dock Focus Pop: Nuvio 4K (`rotationY = 0°`, Violet Glow) | Dock Focus Pop: TV+ (`rotationY = 0°`, Solar Gold Glow) |
 | :---: | :---: |
+| ![Nuvio Dock Focus](docs/screenshots/jarvis_hud_dock.png) | ![TV+ Dock Focus](docs/screenshots/jarvis_hud_tvplus.png) |
+| **Cinematic 3D CoverFlow & Ambient OLED Glow** | **On-Device Hardware Benchmark & Auto-Optimizer HUD** |
 | ![Hero CoverFlow](docs/screenshots/hero_coverflow_3d.png) | ![Cinema HUD Overlay](docs/screenshots/cinema_hud_overlay.png) |
-| **Fullscreen Page 2: 5-Column App Library** | **TMDB Scene Backdrop & OLED Screensaver** |
-| ![Page 2 Library](docs/screenshots/dock_nuvio_showcase.png) | ![Modern Screensaver](docs/screenshots/modern_screensaver.png) |
 
 ---
 
@@ -76,8 +76,8 @@ Long-pressing any application card on the dock displays fluid horizontal liquid 
 
 ---
 
-### 12-Bin Focal Neon Chromatic Bloom (Poster-Aware Ambient Glow)
-The launcher analyzes the color histogram of the focused movie poster across 12 chromatic bins, filters skin tones, and generates an ambient neon backlight matching the artwork:
+### 12-Bin Focal Neon Chromatic Bloom & Tangential Optical Dispersion
+The launcher analyzes the color histogram of the focused movie poster across 12 chromatic bins, filters skin tones, and generates an ambient neon backlight matching the artwork with micro-thin tangential chromatic red/cyan dispersion fringes:
 
 | Crimson Neon | Warm Amber Neon | Electric Cyan Neon |
 | :---: | :---: | :---: |
@@ -115,13 +115,27 @@ The launcher analyzes the color histogram of the focused movie poster across 12 
 
 ---
 
-### 1. Liquid Glass 3D Parallax CoverFlow Graphics Engine
-- **Hardware Z-Ordering**: Employs Android RenderNode `elevation` (`50f`) and `translationZ` (`65f`) hardware layers to manage depth ordering without altering the ViewGroup child hierarchy, maintaining a stable 60 FPS render thread.
-- **Dynamic Perspective Scaling**: The focused poster card expands by **1.30x** and shifts `-22f` on the Y-axis. Flanking cards scale down progressively to **0.94x**, **0.80x**, and **0.68x** with distance-weighted shadow attenuation.
-- **Cinematic OLED Ambilight Diffusion Model**: Replaces harsh wire-like outlines with multi-stage Gaussian backlight radiation. Light emanates softly from behind the card with an atmospheric radial decay, diffuse silhouette halo, and near-field ambient core, decaying completely to zero before canvas borders without clipping.
-- **Micro-Thin Optical Crystal Meniscus Bevel**: Clean 1.2px pure specular glass edge bevel (`Color.argb(125, 255, 255, 255)` specular highlight) catches the room's ambient light, completely eliminating artificial colored fringe lines from movie poster artwork.
+### 1. JARVIS 3D Cylindrical Visor Curvature & Holographic HUD Architecture
+- **3D Cylindrical Projection Algorithm**: Computes physical visor curvature across horizontal coordinates relative to display center (`centerX = 960f` on 1080p).
+  - Normalized distance: `norm = (x - centerX) / centerX` (-1.0 to +1.0).
+  - Inward rotation: `rotationY = -norm * maxAngle` (left elements angle inward to the right `rotationY > 0`; right elements angle inward to the left `rotationY < 0`).
+  - Cylindrical Z-depth: `translationZ = (1.0f - norm^2) * maxZ`, receding peripheral components backward into 3D space.
+- **Deep Telephoto Camera Perspective (8500R)**: Sets `view.setCameraDistance(density * 8500f)` across all views, eliminating trapezoidal perspective distortion and clipping while maintaining razor-sharp typography and geometric consistency.
+- **Dynamic Active Focus Pop**:
+  - When an element gains focus (movie poster, dock app, or grid tile), it smoothly interpolates to `rotationY = 0f` (facing the viewer head-on), with an elevated elevation and scale pop (`1.30x` for posters, `1.085x` for apps).
+  - Flanking items retain or dynamically increase their inward curvature (`+8.5°` to `+17°` on left, `-8.5°` to `-17°` on right), generating an authentic holographic console feel.
+- **Screen-Wide Holographic HUD & Peripheral RGB Split**:
+  - **Peripheral Spectral Vignette**: Subtle crimson/magenta gradient bleeding 95px from the left/top edges (`Color.argb(32, 255, 45, 85)`) and cyan/blue gradient bleeding 95px from the right/bottom edges (`Color.argb(36, 34, 211, 238)`).
+  - **Tactical Visor Horizon Guides**: Anti-aliased curved bezier latitude arcs sweeping across the display at y=82px and y=1030px.
+  - **Focus-Locked Telemetry Reticle**: Interactive concentric radar circles (radii 340px and 560px) and precision crosshairs that dynamically track and lock onto the focused item's screen coordinates.
+  - **Corner Telemetry Accents**: Monospaced tactical HUD reticles (`[ + ]`) displaying active system telemetry (`HUD.JARVIS // VISOR-OPTIC v2.7`, `OPTIC.CURV // 8500R`, `CHROMA // 3-SPLIT DISPERSION`, `STATUS // 60FPS OPTIMAL`).
+  - **Hardware Raster Scanlines**: Microscopic horizontal scanlines spaced by 14px rendered directly via hardware canvas with zero flicker and 0.05ms GPU cost.
+- **Preserved Tangential Chromatic Aberration on Movie Posters**:
+  - Implements authentic optical spectral dispersion inspired by [LiquidGlass-UI](https://github.com/hwyuanzi/LiquidGlass-UI) and [liquidglass](https://github.com/ybouane/liquidglass).
+  - Tangential spectral crimson fringe (`Color.argb(78, 255, 55, 80)`) offset at `(-1.2px, -0.8px)` and cyan-blue fringe (`Color.argb(88, 56, 189, 248)`) offset at `(+1.2px, +0.8px)`.
+  - Layered under a 1.2px pure specular crystal glass crest (Sharp Fresnel highlight) and a 40% top meniscus sheen.
 - **Authentic Brand Color Preservation with Subtle Metallic Luster**:
-  - Eliminates monochromatic grayscale cookie-cutters; preserves 100% of signature brand hues (Turkcell TV+ brilliant Solar Gold `+`, YouTube Ruby Crimson badge, Caster Tangerine Amber, Nuvio Electric Violet, Stremio Violet, Dizipal Magenta, Nova Cyan).
+  - Preserves 100% of signature brand identities (Turkcell TV+ brilliant Solar Gold `+`, YouTube Ruby Crimson badge, Caster Tangerine Amber, Nuvio Electric Violet, Stremio Violet, Dizipal Magenta, Nova Cyan).
   - Delicately overlays a 4-stop anisotropic metallic sheen and top-lit specular meniscus glaze (`Color.argb(80, 255, 255, 255)`), imparting tactile machined depth while keeping brand colors vibrant.
   - High-contrast platinum white typography (`#F8FAFC` to `#FFFFFF`) with radiant volumetric brand back-glows.
 - **Frameless Signature Brand Mark**: The top-left signature logo floats completely unencumbered on the wallpaper with zero outer container, zero border, and zero box background.
@@ -316,7 +330,7 @@ cd cinetv-launcher
 
 #### Wizard Steps:
 1. **Region & Language**: Sets country preferences, curated cinema feeds, and live TV sources.
-2. **Real-Time Weather**: Configures city location for `wttr.in` live temperature integration (e.g. `Ankara • +7°C` or `Istanbul • +14°C 🌤️`).
+2. **Real-Time Weather**: Configures city location for `wttr.in` live temperature integration (e.g. `Ankara • +16°C` or `Istanbul • +18°C`).
 3. **Audio Dubbing & Subtitles**: Prioritizes languages (`turkish,english` etc.) for streaming scrapers.
 4. **AI Cinema Curator (Gemini & Claude)**: Registers API key securely inside local TV hardware storage.
 5. **The Movie Database (TMDB) API**: Enables 4K backdrop integration for screensavers and shelves.
