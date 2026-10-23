@@ -526,6 +526,14 @@ adb install -r -d -g "${APK_RELEASE}"
 echo "==> Setting default home launcher..."
 adb shell "cmd package set-home-activity com.gathin.tvhome/.MainActivity 2>/dev/null || true"
 
+# Configure Cinema Sleep & Screensaver timing (5 min screensaver, 10 min duration = 15 min sleep)
+echo "==> Configuring Cinema Screensaver & Sleep timers (5m idle -> screensaver, 10m -> sleep)..."
+adb shell "settings put system screen_off_timeout 900000 2>/dev/null || true"
+adb shell "settings put secure sleep_timeout 900000 2>/dev/null || true"
+adb shell "settings put secure screensaver_timeout 300000 2>/dev/null || true"
+adb shell "settings put secure screensaver_enabled 1 2>/dev/null || true"
+adb shell "settings put secure screensaver_components com.gathin.tvhome/com.gathin.tvhome.ClockDream 2>/dev/null || true"
+
 # Launch MainActivity
 adb shell "am force-stop com.gathin.tvhome && am start -n com.gathin.tvhome/.MainActivity" >/dev/null 2>&1 || true
 

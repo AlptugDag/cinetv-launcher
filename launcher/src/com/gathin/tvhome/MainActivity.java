@@ -39,6 +39,10 @@ import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.inputmethod.InputMethodManager;
+import android.view.inputmethod.EditorInfo;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
@@ -188,6 +192,12 @@ public class MainActivity extends Activity {
     private View btnAllApps;
     private View searchBarView;
     private BroadcastReceiver packageReceiver;
+    private FrameLayout settingsModalOverlay;
+    private FrameLayout allAppsOverlay;
+    private FrameLayout aiResponseFloatingCard;
+    private LinearLayout appActionPillBar;
+    private EditText searchInputView;
+
 
     private final List<AppTileItem> dockItems = new ArrayList<>();
     private final List<AppTileItem> gridItems = new ArrayList<>();
@@ -577,6 +587,14 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         try {
+            Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_OFF_TIMEOUT, 900000);
+            Settings.Secure.putInt(getContentResolver(), "sleep_timeout", 900000);
+            Settings.Secure.putInt(getContentResolver(), "screensaver_timeout", 300000);
+            Settings.Secure.putInt(getContentResolver(), "screensaver_enabled", 1);
+            Settings.Secure.putString(getContentResolver(), "screensaver_components", "com.gathin.tvhome/com.gathin.tvhome.ClockDream");
+        } catch (Throwable ignored) {}
+
+        try {
             getWindow().setBackgroundDrawable(new ColorDrawable(0xFF040508));
             getWindow().setFormat(PixelFormat.OPAQUE);
         } catch (Throwable ignored) {}
@@ -650,6 +668,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         applyThemeMode();
+        cleanupBackgroundAppsMemory();
         if (ambientBackdropView != null) {
             ambientBackdropView.startSeamlessBreathing();
         }
@@ -676,6 +695,37 @@ public class MainActivity extends Activity {
                 }
             }).start();
         }
+    }
+
+    private void cleanupBackgroundAppsMemory() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                    if (am != null) {
+                        List<ActivityManager.RunningAppProcessInfo> procs = am.getRunningAppProcesses();
+                        if (procs != null) {
+                            String myPkg = getPackageName();
+                            for (ActivityManager.RunningAppProcessInfo p : procs) {
+                                if (p.pkgList != null) {
+                                    for (String pkg : p.pkgList) {
+                                        if (!pkg.equals(myPkg)
+                                                && !pkg.startsWith("com.android.systemui")
+                                                && !pkg.startsWith("com.google.android.inputmethod")
+                                                && !pkg.startsWith("com.mediatek.wwtv")) {
+                                            am.killBackgroundProcesses(pkg);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    System.gc();
+                } catch (Throwable ignored) {
+                }
+            }
+        }).start();
     }
 
     @Override
@@ -782,6 +832,27 @@ public class MainActivity extends Activity {
         if (isScreensaverActive) {
             hideIdleScreensaver();
             resetIdleScreensaverTimer();
+            return;
+        }
+        if (aiResponseFloatingCard != null && aiResponseFloatingCard.getVisibility() == View.VISIBLE) {
+            hideAiResponseFloatingCard();
+            return;
+        }
+        if (settingsModalOverlay != null && settingsModalOverlay.getVisibility() == View.VISIBLE) {
+            hideSettingsModal();
+            return;
+        }
+        if (allAppsOverlay != null && allAppsOverlay.getVisibility() == View.VISIBLE) {
+            hideAllAppsDrawer();
+            return;
+        }
+        if (appActionPillBar != null && appActionPillBar.getVisibility() == View.VISIBLE) {
+            hideAppActionPillBar();
+            return;
+        }
+        if (isMovingTile) {
+            stopTileMove();
+            return;
         }
     }
 
@@ -968,7 +1039,7 @@ public class MainActivity extends Activity {
         brandMedallion.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                showLauncherSettingsDialog();
+                showLauncherSettingsModal();
             }
         });
 
@@ -1076,16 +1147,14 @@ public class MainActivity extends Activity {
         gearIconBtn = createHeaderIconButton(R.drawable.ic_settings_gear, "Ayarlar", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                try {
-                    startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                } catch (Throwable t) {
-                    showLauncherSettingsDialog();
-                }
+                showLauncherSettingsModal();
             }
         }, new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                showLauncherSettingsDialog();
+                try {
+                    startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (Throwable ignored) {}
                 return true;
             }
         });
@@ -1323,6 +1392,54 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
 
+        
+        // 6. LIQUID GLASS SETTINGS MODAL OVERLAY
+        settingsModalOverlay = new FrameLayout(this);
+        settingsModalOverlay.setBackgroundColor(Color.argb(215, 3, 5, 9));
+        settingsModalOverlay.setVisibility(View.GONE);
+        settingsModalOverlay.setFocusable(true);
+        settingsModalOverlay.setClickable(true);
+        masterFrame.addView(settingsModalOverlay, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+
+        // 7. FULL-SCREEN LIQUID GLASS ALL APPS DRAWER OVERLAY
+        allAppsOverlay = new FrameLayout(this);
+        allAppsOverlay.setBackgroundColor(Color.argb(238, 3, 5, 9));
+        allAppsOverlay.setVisibility(View.GONE);
+        allAppsOverlay.setFocusable(true);
+        allAppsOverlay.setClickable(true);
+        masterFrame.addView(allAppsOverlay, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+
+        // 8. FLOATING AI CONVERSATION HUD CARD
+        aiResponseFloatingCard = new FrameLayout(this);
+        aiResponseFloatingCard.setVisibility(View.GONE);
+        aiResponseFloatingCard.setClipChildren(false);
+        aiResponseFloatingCard.setClipToPadding(false);
+        masterFrame.addView(aiResponseFloatingCard, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+
+        // 9. APP LEANBACK ACTION PILL BAR (Floating action bar on long-press)
+        appActionPillBar = new LinearLayout(this);
+        appActionPillBar.setOrientation(LinearLayout.HORIZONTAL);
+        appActionPillBar.setGravity(Gravity.CENTER);
+        appActionPillBar.setBackground(createReorderHudBackground());
+        appActionPillBar.setPadding(28, 12, 28, 12);
+        appActionPillBar.setVisibility(View.GONE);
+        FrameLayout.LayoutParams pillLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL
+        );
+        pillLp.setMargins(0, 0, 0, 40);
+        masterFrame.addView(appActionPillBar, pillLp);
+
         setContentView(masterFrame);
         ambientBackdropView.startSeamlessBreathing();
         populateMoviePosterVitrin();
@@ -1387,16 +1504,16 @@ public class MainActivity extends Activity {
         final LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setFocusable(true);
+        bar.setFocusable(false);
         bar.setClickable(true);
         bar.setClipChildren(false);
         bar.setClipToPadding(false);
-        bar.setPadding(22, 10, 24, 10);
+        bar.setPadding(18, 6, 18, 6);
 
         final GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.RECTANGLE);
-        bg.setCornerRadius(26f);
-        bg.setColor(Color.argb(160, 15, 23, 42)); // Glass obsidian
+        bg.setCornerRadius(24f);
+        bg.setColor(Color.argb(165, 15, 23, 42)); // Glass obsidian
         bg.setStroke(2, Color.argb(80, 255, 255, 255));
         bar.setBackground(bg);
 
@@ -1411,49 +1528,64 @@ public class MainActivity extends Activity {
             }
         } catch (Throwable ignored) {}
         LinearLayout.LayoutParams silp = new LinearLayout.LayoutParams(22, 22);
-        silp.setMargins(0, 0, 14, 0);
+        silp.setMargins(0, 0, 12, 0);
         bar.addView(searchIcon, silp);
 
-        TextView searchHint = new TextView(this);
-        searchHint.setText("Film ara veya Gemini'ye sor...");
-        searchHint.setTypeface(FontManager.getMedium(this));
-        searchHint.setTextSize(14f);
-        searchHint.setTextColor(Color.parseColor("#94A3B8"));
-        bar.addView(searchHint);
+        searchInputView = new EditText(this);
+        searchInputView.setHint("Film ara veya Gemini'ye sor...");
+        searchInputView.setHintTextColor(Color.parseColor("#64748B"));
+        searchInputView.setTextColor(Color.WHITE);
+        searchInputView.setTextSize(14f);
+        searchInputView.setTypeface(FontManager.getMedium(this));
+        searchInputView.setBackground(null);
+        searchInputView.setSingleLine(true);
+        searchInputView.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        searchInputView.setPadding(0, 0, 0, 0);
 
-        bar.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+        searchInputView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                v.animate()
+                bar.animate()
                         .scaleX(hasFocus ? 1.04f : 1.0f)
                         .scaleY(hasFocus ? 1.04f : 1.0f)
-                        .setDuration(190L)
+                        .setDuration(180L)
                         .start();
-                bg.setColor(hasFocus ? Color.argb(220, 30, 41, 59) : Color.argb(160, 15, 23, 42));
+                bg.setColor(hasFocus ? Color.argb(225, 30, 41, 59) : Color.argb(165, 15, 23, 42));
                 bg.setStroke(hasFocus ? 3 : 2, hasFocus ? Color.parseColor("#38BDF8") : Color.argb(80, 255, 255, 255));
                 if (hasFocus && ambientBackdropView != null) {
-                    ambientBackdropView.animateToTarget(v, Color.parseColor("#38BDF8"));
+                    ambientBackdropView.animateToTarget(bar, Color.parseColor("#38BDF8"));
                 }
             }
         });
 
-        bar.setOnClickListener(new View.OnClickListener() {
+        searchInputView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
-            public void onClick(View v) {
-                showSearchAndAiDialog("");
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (actionId == EditorInfo.IME_ACTION_SEARCH
+                        || actionId == EditorInfo.IME_ACTION_DONE
+                        || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
+                    String q = v.getText().toString().trim();
+                    if (!q.isEmpty()) {
+                        handleSearchOrAiQuery(q);
+                        v.setText("");
+                    }
+                    return true;
+                }
+                return false;
             }
         });
 
-        bar.setOnKeyListener(new View.OnKeyListener() {
+        searchInputView.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    EditText et = (EditText) v;
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && et.getSelectionStart() == 0) {
                         if (brandMedallion != null) {
                             brandMedallion.requestFocus();
                             return true;
                         }
-                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && et.getSelectionEnd() == et.getText().length()) {
                         if (btnNetwork != null) {
                             btnNetwork.requestFocus();
                             return true;
@@ -1466,6 +1598,22 @@ public class MainActivity extends Activity {
                     }
                 }
                 return false;
+            }
+        });
+
+        LinearLayout.LayoutParams inLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        bar.addView(searchInputView, inLp);
+
+        bar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (searchInputView != null) {
+                    searchInputView.requestFocus();
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if (imm != null) {
+                        imm.showSoftInput(searchInputView, InputMethodManager.SHOW_IMPLICIT);
+                    }
+                }
             }
         });
 
@@ -2542,33 +2690,110 @@ public class MainActivity extends Activity {
     }
 
     private void showAppLeanbackContextMenu(final AppTileItem item, final boolean inDock, final int index) {
-        if (item == null) return;
-        final String[] actions = new String[] {
-            "↔️  Sırasını Değiştir (Taşı)",
-            "👁️  Ana Ekrandan Gizle",
-            "🗑️  Cihazdan Kaldır (Sil)",
-            "ℹ️  Uygulama Bilgisi"
-        };
+        if (item == null || appActionPillBar == null) return;
+        appActionPillBar.removeAllViews();
+        appActionPillBar.setVisibility(View.VISIBLE);
+        appActionPillBar.setAlpha(0f);
+        appActionPillBar.animate().alpha(1f).setDuration(180L).start();
 
-        new AlertDialog.Builder(this)
-                .setTitle(item.label)
-                .setItems(actions, new DialogInterface.OnClickListener() {
+        TextView title = new TextView(this);
+        title.setText(item.label + ": ");
+        title.setTypeface(FontManager.getBold(this));
+        title.setTextSize(14f);
+        title.setTextColor(Color.parseColor("#38BDF8"));
+        title.setPadding(10, 0, 14, 0);
+        appActionPillBar.addView(title);
+
+        View pillMove = createActionPill("↔️ Taşı", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                hideAppActionPillBar();
+                startTileMove(item, inDock, index);
+            }
+        });
+        appActionPillBar.addView(pillMove);
+
+        View pillHide = createActionPill("👁️ Gizle", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                hideAppActionPillBar();
+                hideAppFromHome(item.packageName, item.label);
+            }
+        });
+        appActionPillBar.addView(pillHide);
+
+        View pillUninstall = createActionPill("🗑️ Kaldır", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                hideAppActionPillBar();
+                uninstallPackage(item.packageName);
+            }
+        });
+        appActionPillBar.addView(pillUninstall);
+
+        View pillInfo = createActionPill("ℹ️ Bilgi", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                hideAppActionPillBar();
+                openAppInfo(item.packageName);
+            }
+        });
+        appActionPillBar.addView(pillInfo);
+
+        pillMove.requestFocus();
+    }
+
+    private void hideAppActionPillBar() {
+        if (appActionPillBar == null || appActionPillBar.getVisibility() != View.VISIBLE) return;
+        appActionPillBar.animate()
+                .alpha(0f)
+                .setDuration(160L)
+                .withEndAction(new Runnable() {
                     @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        if (which == 0) {
-                            startTileMove(item, inDock, index);
-                        } else if (which == 1) {
-                            hideAppFromHome(item.packageName, item.label);
-                            if (isMovingTile) stopTileMove();
-                        } else if (which == 2) {
-                            if (isMovingTile) stopTileMove();
-                            uninstallPackage(item.packageName);
-                        } else if (which == 3) {
-                            openAppInfo(item.packageName);
-                        }
+                    public void run() {
+                        appActionPillBar.setVisibility(View.GONE);
                     }
                 })
-                .show();
+                .start();
+    }
+
+    private View createActionPill(String label, View.OnClickListener onClick) {
+        final TextView btn = new TextView(this);
+        btn.setText(label);
+        btn.setTypeface(FontManager.getMedium(this));
+        btn.setTextSize(13f);
+        btn.setTextColor(Color.WHITE);
+        btn.setFocusable(true);
+        btn.setClickable(true);
+        btn.setPadding(20, 8, 20, 8);
+
+        final GradientDrawable normalBg = new GradientDrawable();
+        normalBg.setShape(GradientDrawable.RECTANGLE);
+        normalBg.setCornerRadius(18f);
+        normalBg.setColor(Color.argb(140, 30, 41, 59));
+        normalBg.setStroke(1, Color.argb(60, 255, 255, 255));
+
+        final GradientDrawable focusBg = new GradientDrawable();
+        focusBg.setShape(GradientDrawable.RECTANGLE);
+        focusBg.setCornerRadius(18f);
+        focusBg.setColor(Color.argb(230, 30, 41, 59));
+        focusBg.setStroke(2, Color.parseColor("#38BDF8"));
+
+        btn.setBackground(normalBg);
+
+        btn.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                btn.setBackground(hasFocus ? focusBg : normalBg);
+                v.animate().scaleX(hasFocus ? 1.08f : 1.0f).scaleY(hasFocus ? 1.08f : 1.0f).setDuration(140L).start();
+            }
+        });
+
+        btn.setOnClickListener(onClick);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(6, 0, 6, 0);
+        btn.setLayoutParams(lp);
+        return btn;
     }
 
     private void openAppInfo(String pkg) {
@@ -2714,34 +2939,182 @@ public class MainActivity extends Activity {
     }
 
     private void showAllAppsDrawer() {
-        final List<AppTileItem> all = new ArrayList<>();
-        all.addAll(dockItems);
-        for (AppTileItem g : gridItems) {
-            boolean exists = false;
-            for (AppTileItem d : all) {
-                if (d.packageName.equals(g.packageName)) {
-                    exists = true;
-                    break;
-                }
+        if (allAppsOverlay == null) return;
+        allAppsOverlay.removeAllViews();
+        allAppsOverlay.setVisibility(View.VISIBLE);
+        allAppsOverlay.setAlpha(0f);
+        allAppsOverlay.animate().alpha(1f).setDuration(220L).start();
+
+        final PackageManager pm = getPackageManager();
+        Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+        List<ResolveInfo> apps = pm.queryIntentActivities(mainIntent, 0);
+
+        Intent leanbackIntent = new Intent(Intent.ACTION_MAIN, null);
+        leanbackIntent.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
+        List<ResolveInfo> lbApps = pm.queryIntentActivities(leanbackIntent, 0);
+
+        java.util.Map<String, ResolveInfo> unique = new java.util.LinkedHashMap<>();
+        if (apps != null) for (ResolveInfo r : apps) unique.put(r.activityInfo.packageName, r);
+        if (lbApps != null) for (ResolveInfo r : lbApps) unique.put(r.activityInfo.packageName, r);
+
+        List<ResolveInfo> sorted = new ArrayList<>(unique.values());
+        Collections.sort(sorted, new Comparator<ResolveInfo>() {
+            @Override
+            public int compare(ResolveInfo o1, ResolveInfo o2) {
+                String l1 = o1.loadLabel(pm).toString();
+                String l2 = o2.loadLabel(pm).toString();
+                return l1.compareToIgnoreCase(l2);
             }
-            if (!exists) all.add(g);
+        });
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(60, 36, 60, 36);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(0, 0, 0, 20);
+
+        TextView title = new TextView(this);
+        title.setText("TÜM UYGULAMALAR (" + sorted.size() + ")");
+        title.setTypeface(FontManager.getBlack(this));
+        title.setTextSize(24f);
+        title.setTextColor(Color.parseColor("#F8FAFC"));
+        header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView closeHint = new TextView(this);
+        closeHint.setText("[Geri]: Kapat");
+        closeHint.setTypeface(FontManager.getMedium(this));
+        closeHint.setTextSize(14f);
+        closeHint.setTextColor(Color.parseColor("#64748B"));
+        header.addView(closeHint);
+
+        root.addView(header);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setFillViewport(true);
+
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+
+        int perRow = 6;
+        LinearLayout currentRow = null;
+        View firstTile = null;
+
+        for (int i = 0; i < sorted.size(); i++) {
+            if (i % perRow == 0) {
+                currentRow = new LinearLayout(this);
+                currentRow.setOrientation(LinearLayout.HORIZONTAL);
+                currentRow.setPadding(0, 8, 0, 8);
+                grid.addView(currentRow);
+            }
+
+            final ResolveInfo info = sorted.get(i);
+            final String pkg = info.activityInfo.packageName;
+            final String label = info.loadLabel(pm).toString();
+            Drawable icon = info.loadIcon(pm);
+
+            View tile = createAppDrawerCard(icon, label, new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    hideAllAppsDrawer();
+                    try {
+                        Intent launchIntent = pm.getLaunchIntentForPackage(pkg);
+                        if (launchIntent != null) {
+                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(launchIntent);
+                        }
+                    } catch (Throwable t) {
+                        Toast.makeText(MainActivity.this, label + " başlatılamadı.", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+
+            if (firstTile == null) firstTile = tile;
+            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(160, 130);
+            tlp.setMargins(8, 0, 8, 0);
+            currentRow.addView(tile, tlp);
         }
 
-        String[] labels = new String[all.size()];
-        for (int i = 0; i < all.size(); i++) {
-            labels[i] = all.get(i).label;
-        }
+        scroll.addView(grid);
+        root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        allAppsOverlay.addView(root, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        new AlertDialog.Builder(this)
-                .setTitle("Tüm Yüklü Uygulamalar (" + all.size() + ")")
-                .setItems(labels, new DialogInterface.OnClickListener() {
+        if (firstTile != null) {
+            firstTile.requestFocus();
+        }
+    }
+
+    private void hideAllAppsDrawer() {
+        if (allAppsOverlay == null || allAppsOverlay.getVisibility() != View.VISIBLE) return;
+        allAppsOverlay.animate()
+                .alpha(0f)
+                .setDuration(180L)
+                .withEndAction(new Runnable() {
                     @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        launchAppItem(all.get(which));
+                    public void run() {
+                        allAppsOverlay.setVisibility(View.GONE);
                     }
                 })
-                .setNegativeButton("Kapat", null)
-                .show();
+                .start();
+    }
+
+    private View createAppDrawerCard(Drawable icon, String label, View.OnClickListener onClick) {
+        final FrameLayout card = new FrameLayout(this);
+        card.setFocusable(true);
+        card.setClickable(true);
+
+        final GradientDrawable normalBg = new GradientDrawable();
+        normalBg.setShape(GradientDrawable.RECTANGLE);
+        normalBg.setCornerRadius(22f);
+        normalBg.setColor(Color.argb(135, 15, 23, 42)); // visionOS glass
+        normalBg.setStroke(1, Color.argb(60, 255, 255, 255));
+
+        final GradientDrawable focusBg = new GradientDrawable();
+        focusBg.setShape(GradientDrawable.RECTANGLE);
+        focusBg.setCornerRadius(22f);
+        focusBg.setColor(Color.argb(220, 15, 23, 42));
+        focusBg.setStroke(3, Color.parseColor("#38BDF8"));
+
+        card.setBackground(normalBg);
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setGravity(Gravity.CENTER);
+        content.setPadding(12, 10, 12, 10);
+
+        ImageView iv = new ImageView(this);
+        iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        if (icon != null) iv.setImageDrawable(icon);
+        LinearLayout.LayoutParams ivLp = new LinearLayout.LayoutParams(52, 52);
+        ivLp.setMargins(0, 0, 0, 6);
+        content.addView(iv, ivLp);
+
+        TextView tv = new TextView(this);
+        tv.setText(label);
+        tv.setTypeface(FontManager.getMedium(this));
+        tv.setTextSize(12f);
+        tv.setTextColor(Color.parseColor("#E2E8F0"));
+        tv.setSingleLine(true);
+        tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        tv.setGravity(Gravity.CENTER);
+        content.addView(tv);
+
+        card.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
+
+        card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                card.setBackground(hasFocus ? focusBg : normalBg);
+                v.animate().scaleX(hasFocus ? 1.10f : 1.0f).scaleY(hasFocus ? 1.10f : 1.0f).setDuration(160L).start();
+            }
+        });
+
+        card.setOnClickListener(onClick);
+        return card;
     }
 
     private void hideAppFromHome(String pkg, String label) {
@@ -3186,74 +3559,6 @@ public class MainActivity extends Activity {
         Toast.makeText(this, name + " bulunamadı.", Toast.LENGTH_SHORT).show();
     }
 
-    private void showSearchAndAiDialog(String initialQuery) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(40, 26, 40, 20);
-
-        TextView title = new TextView(this);
-        title.setText("🎬 Sinema Arama & 🤖 Gemini Asistanı");
-        title.setTypeface(FontManager.getBold(this));
-        title.setTextSize(20f);
-        title.setTextColor(Color.parseColor("#F8FAFC"));
-        layout.addView(title);
-
-        TextView subtitle = new TextView(this);
-        subtitle.setText("Film adı yazıp hemen Nuvio'da açabilir veya Gemini'ye dilediğiniz soruyu sorabilirsiniz.");
-        subtitle.setTextSize(13f);
-        subtitle.setTextColor(Color.parseColor("#94A3B8"));
-        subtitle.setPadding(0, 8, 0, 22);
-        layout.addView(subtitle);
-
-        final EditText input = new EditText(this);
-        input.setHint("Örn: 'Fight Club' veya 'Bu gece için film öner'");
-        input.setHintTextColor(Color.parseColor("#64748B"));
-        input.setTextColor(Color.WHITE);
-        input.setTextSize(16f);
-        if (initialQuery != null) input.setText(initialQuery);
-        input.setSingleLine(true);
-        input.setPadding(24, 16, 24, 16);
-        GradientDrawable edBg = new GradientDrawable();
-        edBg.setCornerRadius(16f);
-        edBg.setColor(Color.argb(180, 30, 41, 59));
-        edBg.setStroke(2, Color.parseColor("#38BDF8"));
-        input.setBackground(edBg);
-        layout.addView(input);
-
-        builder.setView(layout);
-        builder.setPositiveButton("Aç / Gönder", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                String q = input.getText().toString().trim();
-                if (!q.isEmpty()) {
-                    handleSearchOrAiQuery(q);
-                }
-            }
-        });
-        builder.setNegativeButton("İptal", null);
-        AlertDialog dialog = builder.create();
-        dialog.show();
-    }
-
-    private void handleSearchOrAiQuery(final String q) {
-        if (q == null || q.trim().isEmpty()) return;
-        final String query = q.trim();
-
-        String lower = query.toLowerCase();
-        boolean isAssistantPrompt = lower.contains("?")
-                || lower.contains("nedir") || lower.contains("kimdir") || lower.contains("nasıl")
-                || lower.contains("hava") || lower.contains("öner") || lower.contains("tavsiye")
-                || lower.contains("gemini") || lower.contains("felsefe") || lower.contains("neden")
-                || lower.contains("kim") || lower.contains("kaç") || lower.contains("anlat");
-
-        if (isAssistantPrompt && getAiApiKey() != null) {
-            executeAiConversationPrompt(query);
-        } else {
-            searchAndLaunchMovie(query);
-        }
-    }
-
     private void searchAndLaunchMovie(final String rawQuery) {
         new Thread(new Runnable() {
             @Override
@@ -3394,7 +3699,7 @@ public class MainActivity extends Activity {
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
-                                showAiAnswerDialog(userQuery, finalMsg);
+                                showAiResponseFloatingCard(userQuery, finalMsg);
                             }
                         });
                     }
@@ -3405,13 +3710,7 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    private void showAiAnswerDialog(String query, String answer) {
-        new AlertDialog.Builder(this)
-                .setTitle("🤖 " + query)
-                .setMessage(answer)
-                .setPositiveButton("Tamam", null)
-                .show();
-    }
+
 
     private void fetchGeminiCuratedMovies(final String moodOrPrompt) {
         final String apiKey = getAiApiKey();
@@ -3564,108 +3863,6 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    private void applyGeminiMoviesToVitrin(final String categoryTitle, final JSONArray movies) {
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                if (vitrinCategoryLabel != null) {
-                    vitrinCategoryLabel.setText(categoryTitle.toUpperCase(Locale.getDefault()));
-                }
-            }
-        });
-
-        int count = Math.min(BUNDLED_MOVIES.length, movies.length());
-        int prevColor = 0;
-        for (int i = 0; i < count; i++) {
-            JSONObject m = movies.optJSONObject(i);
-            if (m == null) continue;
-            String mTitle = m.optString("title", "");
-            int mYear = m.optInt("year", 0);
-            if (mTitle.isEmpty()) continue;
-
-            MovieResolvedInfo resolved = resolveMovieViaTmdb(mTitle, mYear);
-            if (resolved == null) continue;
-
-            final String imdbId = (resolved.imdbId != null && !resolved.imdbId.isEmpty()) ? resolved.imdbId : ("tt_res_" + Math.abs(mTitle.hashCode()));
-            final String title = resolved.title;
-            String posterUrl = resolved.posterUrl;
-            if (posterUrl == null || posterUrl.isEmpty()) {
-                posterUrl = "https://images.metahub.space/poster/medium/" + imdbId + "/img";
-            }
-            String fileKey = "cm_p_" + Math.abs(mTitle.hashCode()) + ".jpg";
-            File cacheFile = new File(getCacheDir(), fileKey);
-
-            if (!cacheFile.exists() || cacheFile.length() < 1024) {
-                try {
-                    HttpURLConnection pConn = openWithRedirects(posterUrl);
-                    if (pConn.getResponseCode() == 200) {
-                        InputStream is = pConn.getInputStream();
-                        FileOutputStream fos = new FileOutputStream(cacheFile);
-                        byte[] buf = new byte[8192];
-                        int r;
-                        while ((r = is.read(buf)) != -1) fos.write(buf, 0, r);
-                        fos.close();
-                        is.close();
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-
-            if (cacheFile.exists() && cacheFile.length() > 1024) {
-                BitmapFactory.Options opts = new BitmapFactory.Options();
-                opts.inJustDecodeBounds = true;
-                BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), opts);
-                int sample = 1;
-                if (opts.outWidth > 320 || opts.outHeight > 480) {
-                    int halfW = opts.outWidth / 2;
-                    int halfH = opts.outHeight / 2;
-                    while ((halfW / sample) >= 320 && (halfH / sample) >= 480) {
-                        sample *= 2;
-                    }
-                }
-                opts.inSampleSize = Math.max(1, sample);
-                opts.inJustDecodeBounds = false;
-                opts.inPreferredConfig = Bitmap.Config.RGB_565;
-                Bitmap rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), opts);
-                if (rawBmp != null) {
-                    final int distinctColor = YouTubeDisguiseHelper.sampleDistinctPosterColor(rawBmp, prevColor, i);
-                    prevColor = distinctColor;
-                    final Bitmap glassPoster = YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp);
-                    if (!rawBmp.isRecycled()) {
-                        rawBmp.recycle();
-                    }
-                    final Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
-                    final int idx = i;
-                    final String finalPosterUrl = posterUrl;
-
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (idx < posterImageViews.size()) {
-                                posterImageViews.get(idx).setImageBitmap(glassPoster);
-                            }
-                            if (idx < posterBloomViews.size()) {
-                                posterBloomViews.get(idx).setImageBitmap(hoverBloom);
-                            }
-                            if (idx < posterNeonColors.size()) {
-                                posterNeonColors.set(idx, distinctColor);
-                            }
-                            if (idx < posterImdbIds.size()) {
-                                posterImdbIds.set(idx, imdbId);
-                            }
-                            if (idx < posterTitles.size()) {
-                                posterTitles.set(idx, title);
-                            }
-                            if (idx < posterUrls.size()) {
-                                posterUrls.set(idx, finalPosterUrl);
-                            }
-                        }
-                    });
-                }
-            }
-        }
-    }
-
     private void showGeminiMoodDialog() {
         final String[] moods = new String[]{
             "🌌  4K HDR Görsel Şölen & Bilim-Kurgu",
@@ -3751,137 +3948,781 @@ public class MainActivity extends Activity {
                 .show();
     }
 
-    private void showLauncherSettingsDialog() {
-        final SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        final String apiKey = getAiApiKey();
-        final String provider = getAiProvider(apiKey);
-        final String providerName = "claude".equals(provider) ? "Claude" : "Gemini";
+    private void handleSearchOrAiQuery(final String q) {
+        if (q == null || q.trim().isEmpty()) return;
+        final String query = q.trim();
+        String lower = query.toLowerCase(Locale.getDefault());
 
-        String aiOption = (apiKey != null)
-                ? "🤖  " + providerName + " AI: Ruh Haline Göre Vitrin Oluştur"
-                : "🤖  Yapay Zekâ: API Anahtarı Tanımla (Gemini / Claude)";
-        String[] options = new String[] {
-            aiOption,
-            "🌤️  Hava Durumu Şehri Ayarla (Weather City)",
-            "🌓  Tema Modu (Saf OLED / Gece-Gündüz / Aydınlık)",
-            "🎬  Sinema Vitrin Akış Kaynağı (Webteizle / Cinemeta)",
-            "🔌  Giriş Kaynakları (HDMI / TV+)",
-            "🎧  AirPods & Bluetooth Cihazları",
-            "🌙  Ekran Koruyucuyu Şimdi Başlat",
-            "🔑  Yapay Zekâ API Anahtarını Değiştir (Gemini / Claude)",
-            "👁️  Gizlenen Uygulamaları Geri Getir",
-            "⚙️  Android Cihaz Ayarları"
-        };
+        boolean isFilmographyOrCategory = lower.contains("filmleri") || lower.contains("filmografi")
+                || lower.contains("filmler") || lower.contains("sineması") || lower.contains("yönettiği")
+                || lower.contains("oynadığı") || lower.contains("seçkisi") || lower.contains("koleksiyonu")
+                || lower.contains("kitano") || lower.contains("demirkubuz") || lower.contains("tarkovski")
+                || lower.contains("tarkovsky") || lower.contains("kurosawa") || lower.contains("ceylan")
+                || lower.contains("villeneuve") || lower.contains("nolan") || lower.contains("lynch")
+                || lower.contains("kubrick") || lower.contains("fincher") || lower.contains("hitchcock")
+                || lower.contains("scorsese") || lower.contains("coen") || lower.contains("gerilim")
+                || lower.contains("korku") || lower.contains("bilimkurgu") || lower.contains("anime");
 
-        new AlertDialog.Builder(this)
-                .setTitle("CİNETV Başlatıcı Ayarları")
-                .setItems(options, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        if (which == 0) {
-                            if (apiKey != null) {
-                                showGeminiMoodDialog();
+        if (isFilmographyOrCategory) {
+            fetchFilmographyOrGenreVitrin(query);
+            return;
+        }
+
+        boolean isAssistantPrompt = lower.contains("?")
+                || lower.contains("nedir") || lower.contains("kimdir") || lower.contains("nasıl")
+                || lower.contains("hava") || lower.contains("öner") || lower.contains("tavsiye")
+                || lower.contains("gemini") || lower.contains("felsefe") || lower.contains("neden")
+                || lower.contains("kim") || lower.contains("kaç") || lower.contains("anlat")
+                || lower.contains("tarih") || lower.contains("saat");
+
+        if (isAssistantPrompt && getAiApiKey() != null) {
+            executeAiConversationPrompt(query);
+        } else {
+            searchAndLaunchMovie(query);
+        }
+    }
+
+    private void fetchFilmographyOrGenreVitrin(final String query) {
+        Toast.makeText(this, "🎬 " + query + " derleniyor...", Toast.LENGTH_SHORT).show();
+        if (vitrinCategoryLabel != null) {
+            vitrinCategoryLabel.setText("🎬 " + query.toUpperCase(Locale.getDefault()) + " DERLENİYOR...");
+        }
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String cleanName = query.replaceAll("(?i)(filmleri|filmografisi|filmler|sineması|yönettiği|oynadığı|seçkisi|koleksiyonu)", "").trim();
+                    if (cleanName.isEmpty()) cleanName = query;
+
+                    JSONArray moviesArr = null;
+                    String categoryTitle = cleanName.toUpperCase(Locale.getDefault()) + " FİLMOGRAFİSİ";
+
+                    final String apiKey = getAiApiKey();
+                    if (apiKey != null) {
+                        try {
+                            String prompt = "Kullanıcı Android TV sinema vitrini için şu sanatçı, yönetmen veya türü aradı: '" + query + "'.\n"
+                                    + "Bu kişinin/türün en seçkin, en önemli ve kült 10 filminin tam adını ve yılını ver.\n"
+                                    + "Sadece ve sadece aşağıdaki saf JSON formatında yanıt ver, markdown olmasın:\n"
+                                    + "{\"category_title\": \"" + cleanName.toUpperCase(Locale.getDefault()) + " BAŞYAPITLARI\", \"movies\": [{\"title\": \"...\", \"year\": 2000}]}";
+
+                            final String provider = getAiProvider(apiKey);
+                            HttpURLConnection conn;
+                            if ("claude".equals(provider)) {
+                                URL url = new URL("https://api.anthropic.com/v1/messages");
+                                conn = (HttpURLConnection) url.openConnection();
+                                conn.setRequestMethod("POST");
+                                conn.setRequestProperty("x-api-key", apiKey);
+                                conn.setRequestProperty("anthropic-version", "2023-06-01");
+                                conn.setRequestProperty("Content-Type", "application/json");
+                                conn.setConnectTimeout(7000);
+                                conn.setReadTimeout(12000);
+                                conn.setDoOutput(true);
+
+                                JSONObject claudeReq = new JSONObject();
+                                claudeReq.put("model", "claude-3-5-haiku-latest");
+                                claudeReq.put("max_tokens", 700);
+                                JSONArray msgs = new JSONArray();
+                                JSONObject u = new JSONObject();
+                                u.put("role", "user");
+                                u.put("content", prompt);
+                                msgs.put(u);
+                                claudeReq.put("messages", msgs);
+
+                                OutputStream os = conn.getOutputStream();
+                                os.write(claudeReq.toString().getBytes(StandardCharsets.UTF_8));
+                                os.flush();
+                                os.close();
                             } else {
-                                showSetGeminiKeyDialog();
+                                JSONObject promptObj = new JSONObject();
+                                JSONArray contents = new JSONArray();
+                                JSONObject part = new JSONObject();
+                                JSONArray parts = new JSONArray();
+                                JSONObject textPart = new JSONObject();
+                                textPart.put("text", prompt);
+                                parts.put(textPart);
+                                part.put("parts", parts);
+                                contents.put(part);
+                                promptObj.put("contents", contents);
+
+                                String urlStr = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=" + apiKey;
+                                URL url = new URL(urlStr);
+                                conn = (HttpURLConnection) url.openConnection();
+                                conn.setRequestMethod("POST");
+                                conn.setRequestProperty("Content-Type", "application/json");
+                                conn.setConnectTimeout(7000);
+                                conn.setReadTimeout(12000);
+                                conn.setDoOutput(true);
+
+                                OutputStream os = conn.getOutputStream();
+                                os.write(promptObj.toString().getBytes(StandardCharsets.UTF_8));
+                                os.flush();
+                                os.close();
                             }
-                        } else if (which == 1) {
-                            showSetCityDialog();
-                        } else if (which == 2) {
-                            showThemeSelectionDialog();
-                        } else if (which == 3) {
-                            showVitrinSourceDialog();
-                        } else if (which == 4) {
-                            showCollapsibleInputsDialog();
-                        } else if (which == 5) {
-                            startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                        } else if (which == 6) {
-                            showIdleScreensaver();
-                        } else if (which == 7) {
-                            showSetGeminiKeyDialog();
-                        } else if (which == 8) {
-                            userHiddenApps.clear();
-                            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString("user_hidden_apps_csv", "").apply();
-                            loadAppsAndPopulate(true);
-                            Toast.makeText(MainActivity.this, "Tüm gizlenen uygulamalar geri yüklendi.", Toast.LENGTH_SHORT).show();
-                        } else if (which == 9) {
-                            startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+
+                            if (conn.getResponseCode() == 200) {
+                                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                                StringBuilder sb = new StringBuilder();
+                                String line;
+                                while ((line = br.readLine()) != null) sb.append(line);
+                                br.close();
+
+                                String rawText = "";
+                                if ("claude".equals(provider)) {
+                                    JSONObject resp = new JSONObject(sb.toString());
+                                    JSONArray contentArr = resp.optJSONArray("content");
+                                    if (contentArr != null && contentArr.length() > 0) {
+                                        rawText = contentArr.getJSONObject(0).optString("text", "").trim();
+                                    }
+                                } else {
+                                    JSONObject resp = new JSONObject(sb.toString());
+                                    JSONArray candidates = resp.optJSONArray("candidates");
+                                    if (candidates != null && candidates.length() > 0) {
+                                        JSONObject cand = candidates.getJSONObject(0);
+                                        JSONObject contentObj = cand.optJSONObject("content");
+                                        if (contentObj != null) {
+                                            JSONArray pArray = contentObj.optJSONArray("parts");
+                                            if (pArray != null && pArray.length() > 0) {
+                                                rawText = pArray.getJSONObject(0).optString("text", "").trim();
+                                            }
+                                        }
+                                    }
+                                }
+
+                                int start = rawText.indexOf("{");
+                                int end = rawText.lastIndexOf("}");
+                                if (start >= 0 && end > start) {
+                                    JSONObject parsed = new JSONObject(rawText.substring(start, end + 1));
+                                    categoryTitle = parsed.optString("category_title", categoryTitle);
+                                    moviesArr = parsed.optJSONArray("movies");
+                                }
+                            }
+                        } catch (Throwable t) {
+                            android.util.Log.e("Filmography", "AI call error", t);
                         }
                     }
-                })
-                .show();
+
+                    if (moviesArr == null || moviesArr.length() == 0) {
+                        String tmdbKey = getTmdbApiKey();
+                        if (tmdbKey != null && !tmdbKey.isEmpty()) {
+                            try {
+                                String searchUrl = "https://api.themoviedb.org/3/search/person?api_key=" + tmdbKey
+                                        + "&query=" + URLEncoder.encode(cleanName, "UTF-8");
+                                HttpURLConnection sc = (HttpURLConnection) new URL(searchUrl).openConnection();
+                                if (sc.getResponseCode() == 200) {
+                                    BufferedReader br = new BufferedReader(new InputStreamReader(sc.getInputStream()));
+                                    StringBuilder sb = new StringBuilder();
+                                    String line;
+                                    while ((line = br.readLine()) != null) sb.append(line);
+                                    br.close();
+                                    JSONObject sRoot = new JSONObject(sb.toString());
+                                    JSONArray results = sRoot.optJSONArray("results");
+                                    if (results != null && results.length() > 0) {
+                                        JSONObject person = results.getJSONObject(0);
+                                        int personId = person.getInt("id");
+                                        String personName = person.optString("name", cleanName);
+                                        categoryTitle = personName.toUpperCase(Locale.getDefault()) + " FİLMOGRAFİSİ";
+
+                                        String creditsUrl = "https://api.themoviedb.org/3/person/" + personId
+                                                + "/movie_credits?api_key=" + tmdbKey;
+                                        HttpURLConnection cc = (HttpURLConnection) new URL(creditsUrl).openConnection();
+                                        if (cc.getResponseCode() == 200) {
+                                            BufferedReader cbr = new BufferedReader(new InputStreamReader(cc.getInputStream()));
+                                            StringBuilder csb = new StringBuilder();
+                                            while ((line = cbr.readLine()) != null) csb.append(line);
+                                            cbr.close();
+                                            JSONObject cRoot = new JSONObject(csb.toString());
+                                            JSONArray cast = cRoot.optJSONArray("crew");
+                                            if (cast == null || cast.length() == 0) cast = cRoot.optJSONArray("cast");
+                                            if (cast != null) {
+                                                moviesArr = new JSONArray();
+                                                for (int m = 0; m < Math.min(10, cast.length()); m++) {
+                                                    JSONObject mo = cast.getJSONObject(m);
+                                                    JSONObject item = new JSONObject();
+                                                    item.put("title", mo.optString("title", ""));
+                                                    String rel = mo.optString("release_date", "2000");
+                                                    int yr = 2000;
+                                                    if (rel.length() >= 4) {
+                                                        try { yr = Integer.parseInt(rel.substring(0, 4)); } catch (Throwable ignored) {}
+                                                    }
+                                                    item.put("year", yr);
+                                                    moviesArr.put(item);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (Throwable t) {
+                                android.util.Log.e("Filmography", "TMDB error", t);
+                            }
+                        }
+                    }
+
+                    if (moviesArr != null && moviesArr.length() > 0) {
+                        final String finalCatTitle = categoryTitle;
+                        final JSONArray finalMovies = moviesArr;
+                        applyGeminiMoviesToVitrin(finalCatTitle, finalMovies);
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "🎬 " + finalCatTitle + " vitrine yüklendi!", Toast.LENGTH_LONG).show();
+                                if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
+                                    posterCardFrames.get(0).requestFocus();
+                                }
+                            }
+                        });
+                    } else {
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "'" + query + "' için filmografi bulunamadı.", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                } catch (Throwable t) {
+                    android.util.Log.e("Filmography", "Overall error", t);
+                }
+            }
+        }).start();
     }
 
-    private void showSetCityDialog() {
+    private void showAiResponseFloatingCard(final String query, final String answer) {
+        if (aiResponseFloatingCard == null) return;
+        aiResponseFloatingCard.removeAllViews();
+        aiResponseFloatingCard.setVisibility(View.VISIBLE);
+        aiResponseFloatingCard.setAlpha(0f);
+        aiResponseFloatingCard.setTranslationY(-60f);
+        aiResponseFloatingCard.animate().alpha(1f).translationY(0f).setDuration(260L).start();
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(36, 26, 36, 26);
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(24f);
+        bg.setColor(Color.argb(240, 15, 23, 42)); // Deep glass
+        bg.setStroke(2, Color.parseColor("#38BDF8"));
+        card.setBackground(bg);
+
+        LinearLayout top = new LinearLayout(this);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView title = new TextView(this);
+        title.setText("🤖 Gemini Asistanı");
+        title.setTypeface(FontManager.getBold(this));
+        title.setTextSize(17f);
+        title.setTextColor(Color.parseColor("#38BDF8"));
+        top.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView hint = new TextView(this);
+        hint.setText("[Geri]: Kapat");
+        hint.setTypeface(FontManager.getMedium(this));
+        hint.setTextSize(12f);
+        hint.setTextColor(Color.parseColor("#64748B"));
+        top.addView(hint);
+
+        card.addView(top);
+
+        TextView qView = new TextView(this);
+        qView.setText("\"" + query + "\"");
+        qView.setTypeface(FontManager.getMedium(this));
+        qView.setTextSize(13f);
+        qView.setTextColor(Color.parseColor("#94A3B8"));
+        qView.setPadding(0, 8, 0, 12);
+        card.addView(qView);
+
+        TextView ansView = new TextView(this);
+        ansView.setText(answer);
+        ansView.setTypeface(FontManager.getMedium(this));
+        ansView.setTextSize(15f);
+        ansView.setTextColor(Color.parseColor("#F8FAFC"));
+        ansView.setLineSpacing(6f, 1.15f);
+        card.addView(ansView);
+
+        FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(760, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        flp.setMargins(0, 90, 0, 0);
+        aiResponseFloatingCard.addView(card, flp);
+
+        handler.removeCallbacks(autoDismissAiCardRunnable);
+        handler.postDelayed(autoDismissAiCardRunnable, 12000L);
+    }
+
+    private final Runnable autoDismissAiCardRunnable = new Runnable() {
+        @Override
+        public void run() {
+            hideAiResponseFloatingCard();
+        }
+    };
+
+    private void hideAiResponseFloatingCard() {
+        if (aiResponseFloatingCard == null || aiResponseFloatingCard.getVisibility() != View.VISIBLE) return;
+        handler.removeCallbacks(autoDismissAiCardRunnable);
+        aiResponseFloatingCard.animate()
+                .alpha(0f)
+                .translationY(-40f)
+                .setDuration(220L)
+                .withEndAction(new Runnable() {
+                    @Override
+                    public void run() {
+                        aiResponseFloatingCard.setVisibility(View.GONE);
+                    }
+                })
+                .start();
+    }
+
+    private void applyGeminiMoviesToVitrin(final String categoryTitle, final JSONArray movies) {
+        if (heroShelfRow != null) {
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    heroShelfRow.animate().alpha(0.20f).setDuration(220L).start();
+                }
+            });
+        }
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                int count = Math.min(BUNDLED_MOVIES.length, movies.length());
+                final List<Bitmap> readyPosters = new ArrayList<>();
+                final List<Bitmap> readyBlooms = new ArrayList<>();
+                final List<Integer> readyColors = new ArrayList<>();
+                final List<String> readyImdbs = new ArrayList<>();
+                final List<String> readyTitles = new ArrayList<>();
+                final List<String> readyUrls = new ArrayList<>();
+
+                int prevColor = 0;
+                for (int i = 0; i < count; i++) {
+                    JSONObject m = movies.optJSONObject(i);
+                    if (m == null) continue;
+                    String mTitle = m.optString("title", "");
+                    int mYear = m.optInt("year", 0);
+                    if (mTitle.isEmpty()) continue;
+
+                    MovieResolvedInfo resolved = resolveMovieViaTmdb(mTitle, mYear);
+                    if (resolved == null) {
+                        resolved = new MovieResolvedInfo();
+                        resolved.title = mTitle;
+                        resolved.imdbId = "tt" + Math.abs(mTitle.hashCode());
+                        resolved.posterUrl = "";
+                        resolved.backdropUrl = "";
+                    }
+
+                    String imdbId = (resolved.imdbId != null && !resolved.imdbId.isEmpty()) ? resolved.imdbId : ("tt_res_" + Math.abs(mTitle.hashCode()));
+                    String title = (resolved.title != null && !resolved.title.isEmpty()) ? resolved.title : mTitle;
+                    String posterUrl = resolved.posterUrl;
+                    if (posterUrl == null || posterUrl.isEmpty()) {
+                        posterUrl = "https://images.metahub.space/poster/medium/" + imdbId + "/img";
+                    }
+
+                    String fileKey = "cm_p_" + Math.abs(mTitle.hashCode()) + ".jpg";
+                    File cacheFile = new File(getCacheDir(), fileKey);
+
+                    if (!cacheFile.exists() || cacheFile.length() < 1024) {
+                        try {
+                            HttpURLConnection pConn = openWithRedirects(posterUrl);
+                            if (pConn.getResponseCode() == 200) {
+                                InputStream is = pConn.getInputStream();
+                                FileOutputStream fos = new FileOutputStream(cacheFile);
+                                byte[] buf = new byte[8192];
+                                int r;
+                                while ((r = is.read(buf)) != -1) fos.write(buf, 0, r);
+                                fos.close();
+                                is.close();
+                            }
+                        } catch (Throwable ignored) {}
+                    }
+
+                    Bitmap rawBmp = null;
+                    if (cacheFile.exists() && cacheFile.length() > 1024) {
+                        BitmapFactory.Options opts = new BitmapFactory.Options();
+                        opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                        rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), opts);
+                    }
+
+                    int distinctColor = YouTubeDisguiseHelper.sampleDistinctPosterColor(rawBmp, prevColor, i);
+                    prevColor = distinctColor;
+                    Bitmap glassPoster = YouTubeDisguiseHelper.createLiquidGlassPosterBitmap(rawBmp);
+                    if (rawBmp != null && !rawBmp.isRecycled()) {
+                        rawBmp.recycle();
+                    }
+                    Bitmap hoverBloom = YouTubeDisguiseHelper.createWideSoftHoverBloom(VITRIN_POSTER_W, VITRIN_POSTER_H, VITRIN_BLOOM_PAD, 26f, distinctColor);
+
+                    readyPosters.add(glassPoster);
+                    readyBlooms.add(hoverBloom);
+                    readyColors.add(distinctColor);
+                    readyImdbs.add(imdbId);
+                    readyTitles.add(title);
+                    readyUrls.add(posterUrl);
+                }
+
+                // ATOMIC UI UPDATE
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (vitrinCategoryLabel != null) {
+                            vitrinCategoryLabel.setText(categoryTitle.toUpperCase(Locale.getDefault()));
+                        }
+                        for (int k = 0; k < readyPosters.size() && k < posterImageViews.size(); k++) {
+                            posterImageViews.get(k).setImageBitmap(readyPosters.get(k));
+                            if (k < posterBloomViews.size()) posterBloomViews.get(k).setImageBitmap(readyBlooms.get(k));
+                            if (k < posterNeonColors.size()) posterNeonColors.set(k, readyColors.get(k));
+                            if (k < posterImdbIds.size()) posterImdbIds.set(k, readyImdbs.get(k));
+                            if (k < posterTitles.size()) posterTitles.set(k, readyTitles.get(k));
+                            if (k < posterUrls.size()) posterUrls.set(k, readyUrls.get(k));
+                        }
+                        if (heroShelfRow != null) {
+                            heroShelfRow.animate().alpha(1.0f).setDuration(350L).start();
+                        }
+                        if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
+                            smoothScrollToVitrinCard(posterCardFrames.get(0));
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void showLauncherSettingsModal() {
+        if (settingsModalOverlay == null) return;
+        settingsModalOverlay.removeAllViews();
+        settingsModalOverlay.setVisibility(View.VISIBLE);
+        settingsModalOverlay.setAlpha(0f);
+        settingsModalOverlay.animate().alpha(1f).setDuration(220L).start();
+
+        final String currentCity = Settings.Global.getString(getContentResolver(), "tvhome_city");
+        final String apiKey = getAiApiKey();
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setPadding(44, 30, 44, 34);
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(26f);
+        bg.setColor(Color.argb(240, 11, 15, 25));
+        bg.setStroke(2, Color.parseColor("#38BDF8"));
+        card.setBackground(bg);
+
+        ImageView logoIcon = new ImageView(this);
+        logoIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        try {
+            InputStream is = getAssets().open("signature_logo.png");
+            Bitmap bm = BitmapFactory.decodeStream(is);
+            is.close();
+            if (bm != null) logoIcon.setImageBitmap(bm);
+        } catch (Throwable ignored) {}
+        LinearLayout.LayoutParams lilp = new LinearLayout.LayoutParams(52, 52);
+        lilp.setMargins(0, 0, 0, 8);
+        card.addView(logoIcon, lilp);
+
+        TextView title = new TextView(this);
+        title.setText("CİNETV SİSTEM AYARLARI");
+        title.setTypeface(FontManager.getBold(this));
+        title.setTextSize(18f);
+        title.setTextColor(Color.parseColor("#F8FAFC"));
+        title.setLetterSpacing(0.06f);
+        card.addView(title);
+
+        TextView sub = new TextView(this);
+        sub.setText("Kişiselleştirme & Sistem Yönetimi • [Geri]: Kapat");
+        sub.setTypeface(FontManager.getMedium(this));
+        sub.setTextSize(12f);
+        sub.setTextColor(Color.parseColor("#64748B"));
+        sub.setPadding(0, 4, 0, 20);
+        card.addView(sub);
+
+        // 1) Tema Ayarlama
+        View btnTheme = createModalMenuButton("🌓  Tema Modu", "Saf OLED, Otomatik Gece/Gündüz veya Aydınlık Cam", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                cycleThemeMode();
+            }
+        });
+        card.addView(btnTheme);
+
+        // 2) Şehir Ayarlama
+        String cityLabel = (currentCity != null && !currentCity.trim().isEmpty()) ? currentCity.trim() : "Ayarlanmadı";
+        View btnCity = createModalMenuButton("🌤️  Hava Durumu Şehri", "Mevcut: " + cityLabel, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showInlineCityInputModal();
+            }
+        });
+        card.addView(btnCity);
+
+        // 3) Televizyonu Yeniden Başlatma
+        View btnReboot = createModalMenuButton("🔄  Televizyonu Yeniden Başlat", "Cihazı güvenle kapatıp yeniden başlatır", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                confirmRebootTv();
+            }
+        });
+        card.addView(btnReboot);
+
+        // 4) Yapay Zekâ & TMDB API Anahtarı
+        String keyLabel = (apiKey != null) ? "Aktif (" + getAiProvider(apiKey).toUpperCase() + ")" : "Tanımlanmadı";
+        View btnAiKey = createModalMenuButton("🔑  Yapay Zekâ & TMDB API Anahtarı", "Gemini / Claude / TMDB • Durum: " + keyLabel, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showInlineApiKeyModal();
+            }
+        });
+        card.addView(btnAiKey);
+
+        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(600, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        settingsModalOverlay.addView(card, clp);
+        btnTheme.requestFocus();
+    }
+
+    private void hideSettingsModal() {
+        if (settingsModalOverlay == null || settingsModalOverlay.getVisibility() != View.VISIBLE) return;
+        settingsModalOverlay.animate()
+                .alpha(0f)
+                .setDuration(180L)
+                .withEndAction(new Runnable() {
+                    @Override
+                    public void run() {
+                        settingsModalOverlay.setVisibility(View.GONE);
+                    }
+                })
+                .start();
+    }
+
+    private View createModalMenuButton(String title, String desc, View.OnClickListener onClick) {
+        final LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setFocusable(true);
+        row.setClickable(true);
+        row.setPadding(24, 14, 24, 14);
+
+        final GradientDrawable normalBg = new GradientDrawable();
+        normalBg.setShape(GradientDrawable.RECTANGLE);
+        normalBg.setCornerRadius(16f);
+        normalBg.setColor(Color.argb(120, 30, 41, 59));
+        normalBg.setStroke(1, Color.argb(60, 255, 255, 255));
+
+        final GradientDrawable focusBg = new GradientDrawable();
+        focusBg.setShape(GradientDrawable.RECTANGLE);
+        focusBg.setCornerRadius(16f);
+        focusBg.setColor(Color.argb(220, 30, 41, 59));
+        focusBg.setStroke(2, Color.parseColor("#38BDF8"));
+
+        row.setBackground(normalBg);
+
+        TextView tView = new TextView(this);
+        tView.setText(title);
+        tView.setTypeface(FontManager.getBold(this));
+        tView.setTextSize(15f);
+        tView.setTextColor(Color.parseColor("#F8FAFC"));
+        row.addView(tView);
+
+        TextView dView = new TextView(this);
+        dView.setText(desc);
+        dView.setTypeface(FontManager.getMedium(this));
+        dView.setTextSize(12f);
+        dView.setTextColor(Color.parseColor("#94A3B8"));
+        dView.setPadding(0, 3, 0, 0);
+        row.addView(dView);
+
+        row.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                row.setBackground(hasFocus ? focusBg : normalBg);
+                v.animate().scaleX(hasFocus ? 1.04f : 1.0f).scaleY(hasFocus ? 1.04f : 1.0f).setDuration(160L).start();
+            }
+        });
+
+        row.setOnClickListener(onClick);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, 0, 10);
+        row.setLayoutParams(lp);
+        return row;
+    }
+
+    private void cycleThemeMode() {
+        String current = Settings.Global.getString(getContentResolver(), "tvhome_theme_mode");
+        if (current == null) current = "dark";
+        String nextMode;
+        String nextLabel;
+        if ("dark".equalsIgnoreCase(current)) {
+            nextMode = "auto";
+            nextLabel = "Otomatik Gece / Gündüz";
+        } else if ("auto".equalsIgnoreCase(current)) {
+            nextMode = "light";
+            nextLabel = "Aydınlık Buzlu Cam";
+        } else {
+            nextMode = "dark";
+            nextLabel = "Saf OLED Siyah";
+        }
+        Settings.Global.putString(getContentResolver(), "tvhome_theme_mode", nextMode);
+        getSharedPreferences("tvhome_prefs", MODE_PRIVATE).edit().putString("theme_mode", nextMode).apply();
+        applyThemeMode();
+        Toast.makeText(this, "Tema Değiştirildi: " + nextLabel, Toast.LENGTH_SHORT).show();
+        showLauncherSettingsModal();
+    }
+
+    private void confirmRebootTv() {
+        hideSettingsModal();
+        Toast.makeText(this, "Televizyon yeniden başlatılıyor...", Toast.LENGTH_LONG).show();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Runtime.getRuntime().exec(new String[]{"reboot"});
+                } catch (Throwable t) {
+                    try {
+                        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                        if (pm != null) pm.reboot(null);
+                    } catch (Throwable ignored) {}
+                }
+            }
+        }, 800L);
+    }
+
+    private void showInlineCityInputModal() {
+        hideSettingsModal();
         SharedPreferences p = getSharedPreferences("tvhome_prefs", MODE_PRIVATE);
         String current = Settings.Global.getString(getContentResolver(), "tvhome_city");
-        if (current == null) current = p.getString("city", "");
+        if (current == null) current = p.getString("city", "Istanbul");
 
-        final EditText input = new EditText(this);
-        input.setSingleLine(true);
-        input.setText(current);
-        input.setHint("Örn: Istanbul, Ankara, Berlin, New York");
-        input.setPadding(30, 20, 30, 20);
+        if (settingsModalOverlay == null) return;
+        settingsModalOverlay.removeAllViews();
+        settingsModalOverlay.setVisibility(View.VISIBLE);
+        settingsModalOverlay.setAlpha(0f);
+        settingsModalOverlay.animate().alpha(1f).setDuration(200L).start();
 
-        new AlertDialog.Builder(this)
-                .setTitle("Hava Durumu Şehri")
-                .setMessage("Ana ekranda anlık hava durumunu görmek istediğiniz şehri girin:")
-                .setView(input)
-                .setPositiveButton("Kaydet", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface d, int w) {
-                        String val = input.getText().toString().trim();
-                        Settings.Global.putString(getContentResolver(), "tvhome_city", val);
-                        getSharedPreferences("tvhome_prefs", MODE_PRIVATE).edit().putString("city", val).apply();
-                        fetchLiveWeather();
-                        Toast.makeText(MainActivity.this, "Şehir kaydedildi: " + val, Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .setNegativeButton("İptal", null)
-                .show();
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(36, 28, 36, 28);
+
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(24f);
+        bg.setColor(Color.argb(240, 11, 15, 25));
+        bg.setStroke(2, Color.parseColor("#38BDF8"));
+        card.setBackground(bg);
+
+        TextView title = new TextView(this);
+        title.setText("🌤️ HAVA DURUMU ŞEHRİ");
+        title.setTypeface(FontManager.getBold(this));
+        title.setTextSize(18f);
+        title.setTextColor(Color.WHITE);
+        card.addView(title);
+
+        TextView desc = new TextView(this);
+        desc.setText("Ana ekranda sıcaklık ve hava durumunu görmek istediğiniz şehri girin:");
+        desc.setTextSize(13f);
+        desc.setTextColor(Color.parseColor("#94A3B8"));
+        desc.setPadding(0, 6, 0, 16);
+        card.addView(desc);
+
+        final EditText cityInput = new EditText(this);
+        cityInput.setText(current);
+        cityInput.setTextColor(Color.WHITE);
+        cityInput.setTextSize(15f);
+        cityInput.setSingleLine(true);
+        cityInput.setPadding(20, 14, 20, 14);
+        GradientDrawable inBg = new GradientDrawable();
+        inBg.setCornerRadius(14f);
+        inBg.setColor(Color.argb(160, 30, 41, 59));
+        inBg.setStroke(2, Color.parseColor("#38BDF8"));
+        cityInput.setBackground(inBg);
+        card.addView(cityInput);
+
+        View btnSave = createModalMenuButton("💾  Kaydet ve Güncelle", "Hava durumunu anında yeni şehre göre çeker", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String val = cityInput.getText().toString().trim();
+                if (!val.isEmpty()) {
+                    Settings.Global.putString(getContentResolver(), "tvhome_city", val);
+                    getSharedPreferences("tvhome_prefs", MODE_PRIVATE).edit().putString("city", val).apply();
+                    fetchLiveWeather();
+                    Toast.makeText(MainActivity.this, "Şehir kaydedildi: " + val, Toast.LENGTH_SHORT).show();
+                }
+                hideSettingsModal();
+            }
+        });
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        blp.setMargins(0, 16, 0, 0);
+        card.addView(btnSave, blp);
+
+        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(540, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        settingsModalOverlay.addView(card, clp);
+        cityInput.requestFocus();
     }
 
-    private void showThemeSelectionDialog() {
-        String[] modes = new String[] {
-            "Saf OLED Siyah (Deep Obsidian Dark Noir)",
-            "Otomatik Gece / Gündüz (Auto Day/Night)",
-            "Sürekli Aydınlık Buzlu Cam (Modern Frosted Light Glass)"
-        };
-        final String[] keys = new String[]{"dark", "auto", "light"};
+    private void showInlineApiKeyModal() {
+        hideSettingsModal();
+        final String currentKey = getAiApiKey();
 
-        new AlertDialog.Builder(this)
-                .setTitle("Tema Tercihi")
-                .setItems(modes, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface d, int which) {
-                        String selected = keys[which];
-                        Settings.Global.putString(getContentResolver(), "tvhome_theme_mode", selected);
-                        getSharedPreferences("tvhome_prefs", MODE_PRIVATE).edit().putString("theme_mode", selected).apply();
-                        applyThemeMode();
-                        Toast.makeText(MainActivity.this, "Tema uygulandı: " + modes[which], Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .show();
-    }
+        if (settingsModalOverlay == null) return;
+        settingsModalOverlay.removeAllViews();
+        settingsModalOverlay.setVisibility(View.VISIBLE);
+        settingsModalOverlay.setAlpha(0f);
+        settingsModalOverlay.animate().alpha(1f).setDuration(200L).start();
 
-    private void showVitrinSourceDialog() {
-        String[] sources = new String[] {
-            "Webteizle (Türkçe Dublaj & Altyazı • 4K/1080p)",
-            "Cinemeta Global Box Office (Uluslararası / İngilizce)"
-        };
-        final String[] keys = new String[]{"webteizle", "cinemeta"};
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(36, 28, 36, 28);
 
-        new AlertDialog.Builder(this)
-                .setTitle("Sinema Vitrin Akış Kaynağı")
-                .setItems(sources, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface d, int which) {
-                        String selected = keys[which];
-                        Settings.Global.putString(getContentResolver(), "tvhome_vitrin_source", selected);
-                        fetchLiveTheatricalPosters();
-                        Toast.makeText(MainActivity.this, "Vitrin kaynağı güncellendi: " + sources[which], Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .show();
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(24f);
+        bg.setColor(Color.argb(240, 11, 15, 25));
+        bg.setStroke(2, Color.parseColor("#38BDF8"));
+        card.setBackground(bg);
+
+        TextView title = new TextView(this);
+        title.setText("🔑 YAPAY ZEKÂ & TMDB API ANAHTARI");
+        title.setTypeface(FontManager.getBold(this));
+        title.setTextSize(18f);
+        title.setTextColor(Color.WHITE);
+        card.addView(title);
+
+        TextView desc = new TextView(this);
+        desc.setText("Google Gemini (AIzaSy...) veya Claude (sk-ant-...) anahtarınızı girin:\n(Anahtar TV'nin güvenli donanım deposunda saklanır)");
+        desc.setTextSize(12f);
+        desc.setTextColor(Color.parseColor("#94A3B8"));
+        desc.setPadding(0, 6, 0, 16);
+        card.addView(desc);
+
+        final EditText keyInput = new EditText(this);
+        if (currentKey != null) keyInput.setText(currentKey);
+        keyInput.setHint("AIzaSy... veya sk-ant-...");
+        keyInput.setHintTextColor(Color.parseColor("#64748B"));
+        keyInput.setTextColor(Color.WHITE);
+        keyInput.setTextSize(14f);
+        keyInput.setSingleLine(true);
+        keyInput.setPadding(20, 14, 20, 14);
+        GradientDrawable inBg = new GradientDrawable();
+        inBg.setCornerRadius(14f);
+        inBg.setColor(Color.argb(160, 30, 41, 59));
+        inBg.setStroke(2, Color.parseColor("#38BDF8"));
+        keyInput.setBackground(inBg);
+        card.addView(keyInput);
+
+        View btnSave = createModalMenuButton("💾  Anahtarı Güvenle Kaydet", "Vitrin küratörünü ve arama asistanını etkinleştirir", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String val = keyInput.getText().toString().trim();
+                if (!val.isEmpty()) {
+                    Settings.Secure.putString(getContentResolver(), "tv_ai_curator_api_key", val);
+                    Toast.makeText(MainActivity.this, "Yapay zekâ anahtarı kaydedildi (" + getAiProvider(val).toUpperCase() + ")", Toast.LENGTH_SHORT).show();
+                }
+                hideSettingsModal();
+            }
+        });
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        blp.setMargins(0, 16, 0, 0);
+        card.addView(btnSave, blp);
+
+        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(580, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        settingsModalOverlay.addView(card, clp);
+        keyInput.requestFocus();
     }
 
     private void updateClock() {
@@ -3894,22 +4735,14 @@ public class MainActivity extends Activity {
         if (dateText != null) dateText.setText(d);
     }
 
-    private static class CinemaMoment {
-        final String quote;
-        final String imdbId;
-        CinemaMoment(String quote, String imdbId) {
-            this.quote = quote;
-            this.imdbId = imdbId;
-        }
-    }
-
     private class VibrantScreensaverView extends View {
         private final Paint clockPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint datePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint quotePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint auraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint starfieldPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final Paint logoPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final Paint scenePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
         private final SimpleDateFormat dateFmt = new SimpleDateFormat("d MMMM EEEE", new Locale("tr", "TR"));
@@ -3918,21 +4751,15 @@ public class MainActivity extends Activity {
         private final Drawable fallbackLogo;
         private boolean isRunning = false;
 
-        private final CinemaMoment[] cinemaMoments = new CinemaMoment[]{
-            new CinemaMoment("\"Bütün o anlar zamanda kaybolup gidecek, yağmurdaki gözyaşları gibi...\" — Blade Runner", "tt0083658"),
-            new CinemaMoment("\"We used to look up at the sky and wonder at our place in the stars.\" — Interstellar", "tt0816692"),
-            new CinemaMoment("\"Rüyalar gerçektir, sadece uyanıkken onları göremezsin.\" — Inception", "tt1375666"),
-            new CinemaMoment("\"Her şey bir seçimle başlar.\" — The Matrix", "tt0133093"),
-            new CinemaMoment("\"Sinema, zamanı ve anıları donduran tek büyüdür.\" — Solaris", "tt0069291"),
-            new CinemaMoment("\"Karanlık seni korkutmasın, asıl korkulacak olan ışıktaki sahteliktir.\" — Fight Club", "tt0137523"),
-            new CinemaMoment("\"Korku aklı yok eden küçük ölümdür. Korkumla yüzleşeceğim.\" — Dune", "tt1160419")
-        };
+        private final List<ClockDream.CinemaMoment> momentsPool;
+        private final Random random = new Random();
+        private int currentMomentIndex = 0;
+        private long lastQuoteSwitchTime = 0;
+        private static final long QUOTE_DURATION_MS = 14000L;
 
         private Bitmap activeSceneBackdrop = null;
-        private int lastLoadedSceneIdx = -1;
         private boolean isFetchingScene = false;
 
-        // Cinematic floating dust particles & stars
         private static final int STAR_COUNT = 55;
         private final float[] starX = new float[STAR_COUNT];
         private final float[] starY = new float[STAR_COUNT];
@@ -3942,20 +4769,32 @@ public class MainActivity extends Activity {
 
         VibrantScreensaverView(Context ctx) {
             super(ctx);
+            momentsPool = ClockDream.createExtensiveMomentsPool();
+            Collections.shuffle(momentsPool, random);
+            currentMomentIndex = random.nextInt(momentsPool.size());
+            lastQuoteSwitchTime = SystemClock.uptimeMillis();
+
             clockPaint.setTypeface(FontManager.getBlack(ctx));
-            clockPaint.setTextSize(78f);
+            clockPaint.setTextSize(64f);
             clockPaint.setColor(Color.WHITE);
-            clockPaint.setLetterSpacing(0.05f);
+            clockPaint.setLetterSpacing(0.04f);
 
             datePaint.setTypeface(FontManager.getMedium(ctx));
-            datePaint.setTextSize(18f);
+            datePaint.setTextSize(16f);
             datePaint.setColor(Color.parseColor("#94A3B8"));
-            datePaint.setLetterSpacing(0.14f);
+            datePaint.setLetterSpacing(0.12f);
 
             quotePaint.setTypeface(FontManager.getBold(ctx));
-            quotePaint.setTextSize(36f);
+            quotePaint.setTextSize(34f);
             quotePaint.setColor(Color.parseColor("#F8FAFC"));
-            quotePaint.setLetterSpacing(0.04f);
+            quotePaint.setLetterSpacing(0.03f);
+
+            titlePaint.setTypeface(FontManager.getMedium(ctx));
+            titlePaint.setTextSize(18f);
+            titlePaint.setColor(Color.parseColor("#38BDF8"));
+            titlePaint.setLetterSpacing(0.14f);
+
+            logoPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SCREEN));
 
             Bitmap sig = null;
             try {
@@ -3970,75 +4809,54 @@ public class MainActivity extends Activity {
             if (sig == null) {
                 try {
                     fallback = ctx.getDrawable(R.drawable.ic_user_signature);
-                } catch (Throwable t) {
-                    try {
-                        fallback = ctx.getDrawable(R.drawable.ic_tv_clean);
-                    } catch (Throwable ignored) {
-                    }
-                }
-                if (fallback != null) {
-                    fallback = fallback.mutate();
-                    fallback.setTint(Color.WHITE);
+                    if (fallback == null) fallback = ctx.getDrawable(R.drawable.ic_tv_clean);
+                } catch (Throwable ignored) {
                 }
             }
             fallbackLogo = fallback;
 
-            Random rnd = new Random(42);
             for (int i = 0; i < STAR_COUNT; i++) {
-                starX[i] = rnd.nextFloat() * 1920f;
-                starY[i] = rnd.nextFloat() * 1080f;
-                starSpeed[i] = 0.12f + rnd.nextFloat() * 0.38f;
-                starRadius[i] = 1.0f + rnd.nextFloat() * 2.4f;
-                starAlpha[i] = 0.15f + rnd.nextFloat() * 0.50f;
+                starX[i] = (float) (Math.random() * 1920);
+                starY[i] = (float) (Math.random() * 1080);
+                starSpeed[i] = (float) (Math.random() * 0.45 + 0.15);
+                starRadius[i] = (float) (Math.random() * 2.2 + 0.8);
+                starAlpha[i] = (float) (Math.random() * 0.60 + 0.25);
             }
+
+            fetchTmdbBackdropForMoment(momentsPool.get(currentMomentIndex));
         }
 
-        private void fetchDynamicTmdbBackdrop(final int momentIdx) {
-            if (isFetchingScene || momentIdx == lastLoadedSceneIdx) return;
+        private void fetchTmdbBackdropForMoment(final ClockDream.CinemaMoment moment) {
+            if (isFetchingScene || moment == null) return;
             isFetchingScene = true;
+
             new Thread(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        String imdbId = cinemaMoments[momentIdx].imdbId;
-                        String tmdbKey = getTmdbApiKey();
+                        String tmdbKey = Settings.Secure.getString(getContext().getContentResolver(), "tv_tmdb_api_key");
                         String backdropUrl = null;
+
                         if (tmdbKey != null && !tmdbKey.trim().isEmpty()) {
                             try {
-                                String findUrl = "https://api.themoviedb.org/3/find/" + imdbId + "?api_key=" + tmdbKey.trim() + "&external_source=imdb_id";
-                                HttpURLConnection fConn = (HttpURLConnection) new URL(findUrl).openConnection();
-                                fConn.setConnectTimeout(5000);
-                                fConn.setReadTimeout(5000);
-                                if (fConn.getResponseCode() == 200) {
-                                    BufferedReader br = new BufferedReader(new InputStreamReader(fConn.getInputStream()));
+                                String apiUrl = "https://api.themoviedb.org/3/movie/" + (moment.tmdbId > 0 ? moment.tmdbId : moment.imdbId)
+                                        + "/images?api_key=" + tmdbKey.trim();
+                                HttpURLConnection c = (HttpURLConnection) new URL(apiUrl).openConnection();
+                                c.setConnectTimeout(4000);
+                                c.setReadTimeout(5000);
+                                if (c.getResponseCode() == 200) {
+                                    BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream()));
                                     StringBuilder sb = new StringBuilder();
                                     String line;
                                     while ((line = br.readLine()) != null) sb.append(line);
                                     br.close();
-                                    JSONObject findObj = new JSONObject(sb.toString());
-                                    JSONArray mResults = findObj.optJSONArray("movie_results");
-                                    if (mResults != null && mResults.length() > 0) {
-                                        int tmdbMovieId = mResults.getJSONObject(0).optInt("id", 0);
-                                        if (tmdbMovieId > 0) {
-                                            String imgApiUrl = "https://api.themoviedb.org/3/movie/" + tmdbMovieId + "/images?api_key=" + tmdbKey.trim();
-                                            HttpURLConnection imgConn = (HttpURLConnection) new URL(imgApiUrl).openConnection();
-                                            imgConn.setConnectTimeout(5000);
-                                            imgConn.setReadTimeout(5000);
-                                            if (imgConn.getResponseCode() == 200) {
-                                                BufferedReader ibr = new BufferedReader(new InputStreamReader(imgConn.getInputStream()));
-                                                StringBuilder isb = new StringBuilder();
-                                                while ((line = ibr.readLine()) != null) isb.append(line);
-                                                ibr.close();
-                                                JSONObject imgObj = new JSONObject(isb.toString());
-                                                JSONArray bArr = imgObj.optJSONArray("backdrops");
-                                                if (bArr != null && bArr.length() > 0) {
-                                                    int pickIdx = (int) (System.currentTimeMillis() % bArr.length());
-                                                    String fPath = bArr.getJSONObject(pickIdx).optString("file_path", "");
-                                                    if (!fPath.isEmpty()) {
-                                                        backdropUrl = "https://image.tmdb.org/t/p/w1280" + fPath;
-                                                    }
-                                                }
-                                            }
+                                    JSONObject root = new JSONObject(sb.toString());
+                                    JSONArray backdrops = root.optJSONArray("backdrops");
+                                    if (backdrops != null && backdrops.length() > 0) {
+                                        int bIdx = random.nextInt(Math.min(5, backdrops.length()));
+                                        String filePath = backdrops.getJSONObject(bIdx).optString("file_path");
+                                        if (filePath != null && !filePath.isEmpty()) {
+                                            backdropUrl = "https://image.tmdb.org/t/p/w1280" + filePath;
                                         }
                                     }
                                 }
@@ -4047,18 +4865,15 @@ public class MainActivity extends Activity {
                         }
 
                         if (backdropUrl == null) {
-                            backdropUrl = "https://images.metahub.space/background/medium/" + imdbId + "/img";
+                            backdropUrl = "https://images.metahub.space/background/medium/" + moment.imdbId + "/img";
                         }
 
-                        URL url = new URL(backdropUrl);
-                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                        conn.setConnectTimeout(6000);
-                        conn.setReadTimeout(10000);
-                        conn.setInstanceFollowRedirects(true);
-                        if (conn.getResponseCode() == 200) {
-                            InputStream is = conn.getInputStream();
+                        HttpURLConnection imgConn = (HttpURLConnection) new URL(backdropUrl).openConnection();
+                        imgConn.setConnectTimeout(6000);
+                        imgConn.setReadTimeout(9000);
+                        if (imgConn.getResponseCode() == 200) {
+                            InputStream is = imgConn.getInputStream();
                             BitmapFactory.Options opts = new BitmapFactory.Options();
-                            opts.inSampleSize = 2;
                             opts.inPreferredConfig = Bitmap.Config.RGB_565;
                             final Bitmap bmp = BitmapFactory.decodeStream(is, null, opts);
                             is.close();
@@ -4070,7 +4885,6 @@ public class MainActivity extends Activity {
                                             activeSceneBackdrop.recycle();
                                         }
                                         activeSceneBackdrop = bmp;
-                                        lastLoadedSceneIdx = momentIdx;
                                         invalidate();
                                     }
                                 });
@@ -4096,36 +4910,40 @@ public class MainActivity extends Activity {
         @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
-            // Deep OLED void black
             canvas.drawColor(Color.parseColor("#030407"));
 
             int w = getWidth() > 0 ? getWidth() : 1920;
             int h = getHeight() > 0 ? getHeight() : 1080;
 
             long nowMs = SystemClock.uptimeMillis();
+            long elapsedSinceSwitch = nowMs - lastQuoteSwitchTime;
 
-            // 0. Dynamic Movie Scene Background from TMDB (low-opacity, zero device storage)
-            long quoteCycleMs = 18000L;
-            long quoteElapsed = nowMs % quoteCycleMs;
-            int quoteIdx = (int) ((nowMs / quoteCycleMs) % cinemaMoments.length);
-            fetchDynamicTmdbBackdrop(quoteIdx);
+            if (elapsedSinceSwitch >= QUOTE_DURATION_MS) {
+                lastQuoteSwitchTime = nowMs;
+                elapsedSinceSwitch = 0;
+                int nextIdx;
+                do {
+                    nextIdx = random.nextInt(momentsPool.size());
+                } while (nextIdx == currentMomentIndex && momentsPool.size() > 1);
+                currentMomentIndex = nextIdx;
+                fetchTmdbBackdropForMoment(momentsPool.get(currentMomentIndex));
+            }
 
             float quoteAlpha = 1.0f;
-            if (quoteElapsed < 1500L) {
-                quoteAlpha = quoteElapsed / 1500f;
-            } else if (quoteElapsed > quoteCycleMs - 1500L) {
-                quoteAlpha = (quoteCycleMs - quoteElapsed) / 1500f;
+            if (elapsedSinceSwitch < 1400L) {
+                quoteAlpha = elapsedSinceSwitch / 1400f;
+            } else if (elapsedSinceSwitch > QUOTE_DURATION_MS - 1400L) {
+                quoteAlpha = (QUOTE_DURATION_MS - elapsedSinceSwitch) / 1400f;
             }
 
             if (activeSceneBackdrop != null && !activeSceneBackdrop.isRecycled()) {
-                int sceneAlpha = (int) (quoteAlpha * 58); // ~22% ethereal low opacity
+                int sceneAlpha = (int) (quoteAlpha * 65);
                 scenePaint.setAlpha(sceneAlpha);
                 Rect src = new Rect(0, 0, activeSceneBackdrop.getWidth(), activeSceneBackdrop.getHeight());
                 RectF dst = new RectF(0, 0, w, h);
                 canvas.drawBitmap(activeSceneBackdrop, src, dst, scenePaint);
             }
 
-            // 1. Organic Starfield & Micro-Dust Particles
             for (int i = 0; i < STAR_COUNT; i++) {
                 starY[i] -= starSpeed[i];
                 if (starY[i] < 0) {
@@ -4138,49 +4956,37 @@ public class MainActivity extends Activity {
                 canvas.drawCircle(starX[i], starY[i], starRadius[i], starfieldPaint);
             }
 
-            // 2. Slow subtle orbital drift (Lissajous ±55px / ±32px) for 100% OLED burn-in immunity
-            double driftT = (nowMs % 180000L) / 1000.0;
-            float driftX = (float) (Math.sin(driftT * 0.09) * 55.0 + Math.sin(driftT * 0.20) * 20.0);
-            float driftY = (float) (Math.cos(driftT * 0.07) * 32.0 + Math.sin(driftT * 0.15) * 15.0);
+            float cx = w / 2f;
+            float cy = (h / 2f) - 60f;
+            float sigSize = Math.min(w, h) * 0.21f;
 
-            float cx = (w / 2f) + driftX;
-            float cy = (h / 2f) - 25f + driftY;
-
-            // 3. Luxurious Cinematic Breathing Palette (Cyan-Sapphire-Amethyst-Warm Gold-Emerald)
             float baseHue = (float) ((nowMs % 48000L) / 48000.0 * 360.0);
-            float auroraHue = (baseHue + 45f) % 360f;
-            int cCore = Color.HSVToColor(new float[]{baseHue, 0.70f, 0.95f});
-            int cOuter = Color.HSVToColor(new float[]{auroraHue, 0.85f, 0.85f});
-
-            // 4. Subtle, ethereal volumetric ambient fog (soft filmic diffusion behind signature)
-            float pulse = (float) (Math.sin(nowMs * 0.0009) * 0.04 + 1.0);
-            float sigSize = Math.min(w, h) * 0.76f * pulse;
-            float nebulaR = sigSize * 0.95f;
+            int cCore = Color.HSVToColor(new float[]{baseHue, 0.65f, 0.90f});
+            float auraR = sigSize * 1.35f;
 
             auraPaint.setShader(new RadialGradient(
-                    cx, cy, nebulaR,
+                    cx, cy, auraR,
                     new int[]{
-                            Color.argb(0x35, Color.red(cCore), Color.green(cCore), Color.blue(cCore)),
-                            Color.argb(0x16, Color.red(cOuter), Color.green(cOuter), Color.blue(cOuter)),
+                            Color.argb(0x30, Color.red(cCore), Color.green(cCore), Color.blue(cCore)),
+                            Color.argb(0x10, Color.red(cCore), Color.green(cCore), Color.blue(cCore)),
                             Color.TRANSPARENT
                     },
-                    new float[]{0f, 0.58f, 1f},
+                    new float[]{0f, 0.60f, 1f},
                     Shader.TileMode.CLAMP
             ));
-            canvas.drawCircle(cx, cy, nebulaR, auraPaint);
+            canvas.drawCircle(cx, cy, auraR, auraPaint);
 
-            // 5. Centered Giant Signature Watermark with breathing frosted-crystal luminescence
+            float breathAlpha = (float) (Math.sin(nowMs * 0.001) * 0.08 + 0.52);
+            int sigAlphaInt = Math.min(255, Math.max(0, (int) (breathAlpha * 255)));
+            logoPaint.setAlpha(sigAlphaInt);
+
             float sigLeft = cx - sigSize / 2f;
             float sigTop = cy - sigSize / 2f;
 
-            float breathAlpha = (float) (Math.sin(nowMs * 0.0008) * 0.07 + 0.27);
-            int sigAlphaInt = Math.min(255, Math.max(0, (int) (breathAlpha * 255)));
-
             if (signatureBitmap != null) {
-                bitmapPaint.setAlpha(sigAlphaInt);
                 Rect src = new Rect(0, 0, signatureBitmap.getWidth(), signatureBitmap.getHeight());
                 RectF dst = new RectF(sigLeft, sigTop, sigLeft + sigSize, sigTop + sigSize);
-                canvas.drawBitmap(signatureBitmap, src, dst, bitmapPaint);
+                canvas.drawBitmap(signatureBitmap, src, dst, logoPaint);
             } else if (fallbackLogo != null) {
                 fallbackLogo.setAlpha(sigAlphaInt);
                 int leftI = Math.round(sigLeft);
@@ -4190,32 +4996,54 @@ public class MainActivity extends Activity {
                 fallbackLogo.draw(canvas);
             }
 
-            // 6. Typographic Hero Clock (Poppins Black, Crisp White with subtle neon halo)
             Date now = new Date();
             String timeStr = timeFmt.format(now);
             String dateStr = dateFmt.format(now).toUpperCase(new Locale("tr", "TR"));
 
-            float clockY = cy + (sigSize * 0.34f);
-            clockPaint.setShadowLayer(32f, 0f, 4f, Color.argb(0x77, Color.red(cCore), Color.green(cCore), Color.blue(cCore)));
+            float clockY = cy + (sigSize / 2f) + 64f;
+            clockPaint.setShadowLayer(26f, 0f, 4f, Color.argb(0x77, Color.red(cCore), Color.green(cCore), Color.blue(cCore)));
             float tw = clockPaint.measureText(timeStr);
             canvas.drawText(timeStr, cx - tw / 2f, clockY, clockPaint);
 
-            // 7. Date string below clock
             datePaint.setShadowLayer(14f, 0f, 2f, Color.parseColor("#99000000"));
             float dw = datePaint.measureText(dateStr);
-            canvas.drawText(dateStr, cx - dw / 2f, clockY + 34f, datePaint);
+            canvas.drawText(dateStr, cx - dw / 2f, clockY + 30f, datePaint);
 
-            // 8. Rotating Cinema Poetry & Philosophy (Large prominent 36f font)
-            String currentQuote = cinemaMoments[quoteIdx].quote;
-            int qA = (int) (quoteAlpha * 240);
-            quotePaint.setColor(Color.argb(Math.min(255, Math.max(0, qA)), 241, 245, 249));
-            quotePaint.setShadowLayer(18f, 0f, 3f, Color.parseColor("#EE000000"));
-            float qw = quotePaint.measureText(currentQuote);
-            canvas.drawText(currentQuote, cx - qw / 2f, clockY + 74f, quotePaint);
+            ClockDream.CinemaMoment activeMoment = momentsPool.get(currentMomentIndex);
+            String quoteText = activeMoment.quote;
+            String filmLabel = "— " + activeMoment.filmTitle;
+
+            int qA = (int) (quoteAlpha * 245);
+            quotePaint.setColor(Color.argb(Math.min(255, Math.max(0, qA)), 248, 250, 252));
+            quotePaint.setShadowLayer(22f, 0f, 4f, Color.parseColor("#F0000000"));
+
+            titlePaint.setColor(Color.argb(Math.min(255, Math.max(0, (int) (quoteAlpha * 220))), 56, 189, 248));
+            titlePaint.setShadowLayer(18f, 0f, 3f, Color.parseColor("#EE000000"));
+
+            float quoteBottomY = h - 110f;
+            float qw = quotePaint.measureText(quoteText);
+
+            if (qw > w - 160) {
+                int mid = quoteText.length() / 2;
+                int split = quoteText.indexOf(" ", mid);
+                if (split < 0) split = mid;
+                String line1 = quoteText.substring(0, split).trim();
+                String line2 = quoteText.substring(split).trim();
+                float w1 = quotePaint.measureText(line1);
+                float w2 = quotePaint.measureText(line2);
+                canvas.drawText(line1, cx - w1 / 2f, quoteBottomY - 48f, quotePaint);
+                canvas.drawText(line2, cx - w2 / 2f, quoteBottomY - 4f, quotePaint);
+            } else {
+                canvas.drawText(quoteText, cx - qw / 2f, quoteBottomY - 20f, quotePaint);
+            }
+
+            float fw = titlePaint.measureText(filmLabel);
+            canvas.drawText(filmLabel, cx - fw / 2f, quoteBottomY + 36f, titlePaint);
 
             if (isRunning) {
                 postInvalidateOnAnimation();
             }
         }
     }
+
 }

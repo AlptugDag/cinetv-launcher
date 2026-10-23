@@ -55,11 +55,13 @@ https://github.com/AlptugDag/tv-master-launcher/raw/main/docs/screenshots/cinetv
 
 ### 📸 Güncel Arayüz Galerisi (System Captures)
 
-| 🎴 3D Parallax CoverFlow Vitrin (Saf Afiş Estetiği) | 🔍 Gemini Arama, HUD Kontrolleri & Ağ/Giriş Barı |
+| 🎴 3D Parallax CoverFlow Vitrin (Saf Afiş & Filmografi) | 🔍 Gemini Arama & Floating AI HUD Yanıt Kartı |
 | :---: | :---: |
 | ![Hero CoverFlow](docs/screenshots/hero_coverflow_3d.png) | ![Cinema HUD Overlay](docs/screenshots/cinema_hud_overlay.png) |
-| **🚀 Liquid Glass Dock (`+` Kartı & Nuvio Wordmark)** | **🌌 TMDB Sinematik Arka Planlı Replik Screensaver** |
-| ![Dock Showcase](docs/screenshots/dock_nuvio_showcase.png) | ![Modern Screensaver](docs/screenshots/modern_screensaver.png) |
+| **🗄️ Tam Ekran Liquid Glass Tüm Uygulamalar Çekmecesi** | **⚙️ visionOS Liquid Glass 4'lü Ayarlar Modalı** |
+| ![Dock Showcase](docs/screenshots/dock_nuvio_showcase.png) | ![Settings Modal](docs/screenshots/vitrin_rest_overview.png) |
+| **🌌 TMDB Sinematik Arka Planlı Replik Screensaver** | **🚀 Liquid Glass Dock (`+` Kartı & Cam Aksiyon Barı)** |
+| ![Modern Screensaver](docs/screenshots/modern_screensaver.png) | *(D-pad uzun basma ile yatay aksiyon hapları: Taşı, Gizle, Kaldır)* |
 
 ---
 
@@ -84,35 +86,52 @@ Her odaklanan afişin sanatsal renk paletini 12 renk kutusunda analiz ederek ten
 
 ---
 
-### 2. 🤖 Otonom Yapay Zekâ Sinema Küratörü (Google Gemini & Anthropic Claude)
+### 2. 🤖 Otonom Yapay Zekâ Sinema Küratörü & Filmografi Motoru (Google Gemini & Anthropic Claude)
 - **Tarih, Saat, Hava Durumu ve Ruh Hali Odaklı Otomasyon**: Vitrin oluşturmak için manuel istek yapmanıza gerek kalmaz. Launcher; anlık hava durumu (örneğin yağmurlu bir pazar akşamı), saat dilimi ve güncel tarihten yola çıkarak tematik sinema seçkileri hazırlar.
+- **TMDB + Gemini Filmografi & Özel Kategori Arama Motoru**:
+  - *"Takeshi Kitano filmleri"*, *"Zeki Demirkubuz sineması"*, *"Nuri Bilge Ceylan başyapıtları"* veya *"Cannes En İyi Senaryo"* gibi aramalarda rastgele tek bir film açmak yerine; TMDB & Gemini API entegrasyonuyla sanatçının veya temanın en popüler 10 filmlik tam filmografisi vitrine dinamik olarak yüklenir. Kullanıcı tüm filmografiyi 3D CoverFlow ile gezip dilediğini seçer.
+- **Atomik Senkronizasyon (Atomic Crossfade Vitrin)**:
+  - Vitrin güncellenirken başlık ile afişlerin uyumsuz kalması önlendi. Başlık ve afişler eşzamanlı olarak, donanım hızlandırmalı pürüzsüz crossfade geçişiyle atomik olarak güncellenir.
 - **Keskin Ayrılmış Tematik Kategoriler**: Dram ile komedi gibi zıt türler asla aynı vitrinde harmanlanmaz. Seçkiler keskin ve sofistike temalara ayrılır:
   - **Festivaller & Başyapıtlar**: Cannes Altın Palmiye, Venedik Altın Aslan, Oscar Ödüllü Yönetmen Başyapıtları.
   - **Ülke Sinemaları**: Fransız Yeni Dalgası, İskandinav Karanlık Polisiyeleri, Güney Kore Gizem & İntikam Sineması, İtalyan Neo-Realizm.
   - **Spesifik Yönetmen & Oyuncu Odakları**: Christopher Nolan akıl oyunları, Denis Villeneuve felsefi bilimkurguları, David Fincher gerilimleri.
   - **Ruh Hali & Atmosfer**: "Yağmurlu Gece Melankolisi", "Yüksek Nabızlı Siberpunk Maceraları", "Düşündüren Distopyalar".
-- **Dinamik İçerik Yenileme & TMDB Çözümlemesi**: Vitrin başlığı değiştiğinde içeriklerin aynı kalması sorunu çözüldü. Başlık güncellendiğinde tüm filmler TMDB üzerinden dinamik olarak aranır, gerçek 4K afiş (`w500`) ve sinematik backdrop (`w1280`) görselleriyle vitrine yüklenir.
+- **Dinamik İçerik Yenileme & TMDB Çözümlemesi**: Başlık güncellendiğinde tüm filmler TMDB üzerinden dinamik olarak aranır, gerçek 4K afiş (`w500`) ve sinematik backdrop (`w1280`) görselleriyle vitrine yüklenir.
 - **Estetik ve Sade Başlıklar**: Çiğ duran "Öne Çıkanlar • Nuvio" gibi uzantılar kaldırılmış; doğrudan sanatsal ana başlık sunulur.
 - **Gizlilik ve Güvenlik**: Gemini (`AIzaSy...`) veya Claude (`sk-ant-...`) API anahtarınız GitHub kodlarında veya repoda ASLA tutulmaz. Kurulum sihirbazında istenir ve doğrudan TV donanımının güvenli kasasına (`Settings.Secure`) kaydedilir.
 
 ---
 
 ### 3. 🔍 Üst Bar Gemini Arama, Sohbet & Hızlı HUD Kontrolleri
-- **Entegre Arama & Sohbet Çubuğu**: Ekranın sağ üst köşesinde hava durumu ile hızlı kontroller arasında yer alır ("*Film ara veya Gemini'ye sor...*").
-  - Film, dizi veya oyuncu arandığında doğrudan Nuvio kütüphanesinde arama yapar ve tek tıkla oynatır.
-  - Felsefi, teknik veya günlük bir soru sorulduğunda doğrudan Google Gemini üzerinden ekran üzerinde şık bir yanıt balonuyla cevaplar.
+- **Doğrudan Çubuğa Yazılan Inline Arama**: Ayrı bir sistem klavye penceresi veya pop-up açılmaz; D-pad ile odaklanıldığında doğrudan çubuğun içine klavyeyle yazılır (`EditText`).
+- **Floating AI HUD Yanıt Kartı**: Gemini'ye yöneltilen her türlü soru (teknik, felsefi, günlük) standart Android AlertDialog yerine ekran üzerinde temayla uyumlu şık bir Liquid Glass Floating HUD kartı (`showAiResponseFloatingCard`) olarak belirir; 10 saniye sonra veya Back tuşuna basıldığında zarifçe kaybolur.
+- **Entegre Film Arama**: Film, dizi veya oyuncu arandığında doğrudan Nuvio ve TMDB filmografi motorunda arama yapar ve tek tıkla vitrine veya oynatıcıya yönlendirir.
 - **Hızlı Erişim Donanım Düğmeleri**:
   - **Ağ (Network)**: Wi-Fi ve Ethernet bağlantı durumunu görüntüler ve hızlı ağ ayarlarını açar.
   - **Girişler (Inputs)**: HDMI 1, HDMI 2, HDMI 3 ve AV harici girişlerini tek tıkla listeler ve geçiş yaptırır.
-  - **Tüm Uygulamalar (All Apps)**: Cihazda kurulu tüm sistem ve kullanıcı uygulamalarını ızgara biçiminde listeler.
-  - **Hızlı Ayarlar (Gear)**: Görüntü, ses ve sistem ayarlarına anında erişim sağlayan Cinema HUD menüsünü açar.
+  - **Tüm Uygulamalar (All Apps)**: Cihazda kurulu tüm uygulamaları şık cam çekmecede açar.
+  - **Hızlı Ayarlar (Gear)**: 4 seçenekli visionOS sistem modalını açar.
+
+---
+
+### 3b. 🪟 visionOS Liquid Glass Özel Menü Suite (Sıfır Varsayılan Android UI)
+- **4 Seçenekli Logo & Sistem Ayarlar Modalı**: Ekranda logoya veya dişli çarka tıklandığında açılan, saf OLED siyahı ve neon çerçeveli şık visionOS kartı. Yalnızca 4 temel seçenek barındırır:
+  1. *Tema Modu (OLED Siyahı / Buzlu Cam)*
+  2. *Şehir Ayarlama (Canlı hava durumu konumu)*
+  3. *Televizyonu Yeniden Başlatma (Hızlı reboot)*
+  4. *Yapay Zekâ & TMDB API Anahtarı Tanımlama / Değiştirme*
+- **Tam Ekran Cam Çekmece (All Apps Drawer)**: Cihazda kurulu sistem ve kullanıcı uygulamalarının GERÇEKTEN TÜMÜNÜ listeleyen, ana sayfa kartlarıyla birebir aynı cam dokuya sahip akıcı tam ekran çekmece (`allAppsOverlay`).
+- **Yatay Liquid Glass Aksiyon Hapları (Action Pill Bar)**: Dock'taki bir uygulamaya basılı tutulduğunda eski gri Android kutuları yerine ekranın altında beliren yatay visionOS cam hapları (`↔️ Taşı`, `👁️ Gizle`, `🗑️ Kaldır`, `ℹ️ Bilgi`).
 
 ---
 
 ### 4. 🎬 TMDB API Entegreli Sinematik Ekran Koruyucu
 - **Sıfır Depolama Tüketimi (Dinamik Medya Çekme)**: Ekran koruyucu arka planları TV dahili belleğine indirilip cihazı yormaz; TMDB API üzerinden sinema tarihinin kült yapımlarının `media > backgrounds` (backdrop) galerisinden anlık çekilir.
-- **Kişiselleştirilmiş Şeffaf Katman**: Arka planda sahnenin düşük opaklıktaki atmosferik görseli akarken, merkezde OLED kontrastıyla kusursuz uyumlu imza / madalyon yer alır.
+- **35+ Rastgele Replik & Film Havuzu (Random Shuffle)**: Sürekli aynı filmleri ve aynı sırayla göstermez; her açılışta kült sinema yapımları ve aforizmaları rastgele karıştırılarak sunulur.
+- **Merkezi Sabit Kompakt Logo & PorterDuff.Mode.SCREEN**: Ortalanmış kompakt logo (%21), arkadaki TMDB sinema sahnesinin renk ve ışığıyla harmanlanarak ekranla bütünleşir.
 - **Büyük ve Okunaklı Felsefi Replikler**: 36f boyutunda, yumuşak gölgeli ve yüksek okunaklı tipografiyle sinema tarihinin kült replikleri ve felsefi aforizmaları ekranda süzülür (*Blade Runner, Interstellar, 2001: A Space Odyssey, Andrei Tarkovsky, Inception, Matrix*).
+- **5 Dk Boşta Kalma -> Screensaver -> 10 Dk Sonra Tam Ekran Kapanma**: Cihaz 5 dakika eylemsiz kaldığında sinematik ekran koruyucu devreye girer. Ekran koruyucu 10 dakika boyunca aktif kaldıktan sonra TV ekranını tamamen kapatarak (toplam 15 dakika uyku zamanlaması) panel ömrünü ve enerjiyi maksimum korur.
 - **Lissajous Panel Koruması**: Piksel yanmasını (burn-in) önlemek için metinler ve arka planlar sürekli organik bir Lissajous eğrisi üzerinde mikroskopik olarak hareket eder.
 
 ---
@@ -191,6 +210,7 @@ Her odaklanan afişin sanatsal renk paletini 12 renk kutusunda analiz ederek ten
 ---
 
 ### 12. 🚀 Akıllı Bellek Yönetimi (RAM & zRAM Swap)
+- **Geri Dönüşte Otomatik RAM Temizliği (`cleanupBackgroundAppsMemory`)**: Nuvio, YouTube veya ağır bir video/oyun uygulamasından çıkılıp ana ekrana dönüldüğünde (`onResume`), sistem arka planda gereksiz RAM tüketen tüm 3. parti süreçleri sonlandırır ve belleği anında serbest bırakır. Arayüz her zaman ilk açılmış gibi 60 FPS akıcılığını korur.
 - **1024 MB LZ4 zRAM Swap**: `/dev/block/zram0` üzerinde sıkıştırılmış bellek diski oluşturur.
 - **Swappiness & Cache Tuning**: `vm.swappiness=80` ve `vfs_cache_pressure=100` değerleriyle UI iş parçacıklarını anında yanıt verir tutarken, inaktif servisleri zRAM'e aktarır.
 - **RAM Tüketimi**: Başlatıcı bellek kullanımı **35 MB**'ın altındadır.
@@ -270,11 +290,11 @@ tv-master-launcher/
 │   └── screenshots/                 # 1080p canlı video, animasyonlu gif ve ekran görüntüleri
 │       ├── cinetv_showcase.mp4      # 1080p canlı kullanım & akıcı vitrin ekran kaydı
 │       ├── liquid_glass_glow.gif    # Akıcı neon bloom ve coverflow geçiş animasyonu
-│       ├── hero_coverflow_3d.png    # 3D Parallax vitrin (1.30x odaklı saf afiş tasarımı)
-│       ├── cinema_hud_overlay.png   # Gemini Arama, HUD kontrolleri & Ağ/Giriş barı
-│       ├── dock_nuvio_showcase.png  # Apple visionOS dock (`+` kartı & Nuvio wordmark)
+│       ├── hero_coverflow_3d.png    # 3D Parallax vitrin (TMDB & Gemini filmografi seçkisi)
+│       ├── cinema_hud_overlay.png   # Inline Gemini arama & Floating AI HUD kartı
+│       ├── dock_nuvio_showcase.png  # Tam ekran Liquid Glass Tüm Uygulamalar çekmecesi
+│       ├── vitrin_rest_overview.png # 4 seçenekli visionOS sistem ayarlar modalı
 │       ├── modern_screensaver.png   # TMDB dinamik sahne arka planlı & replikli screensaver
-│       ├── vitrin_rest_overview.png # Leanback dock ve genel vitrin perspektifi
 │       ├── focal_neon_amber.png     # Amber neon bloom renk çıkarımı
 │       ├── focal_neon_crimson.png   # Crimson neon bloom renk çıkarımı
 │       └── focal_neon_cyan.png      # Cyan neon bloom renk çıkarımı
