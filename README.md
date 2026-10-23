@@ -1,7 +1,7 @@
-# 📺 TV Master Launcher
+# 📺 TV Master Launcher — Ultimate Cinema Operating Suite
 
 [![Release](https://img.shields.io/badge/Release-v1.0.0-blue.svg)](release/tv-master-launcher-v1.0.0.apk)
-[![Platform](https://img.shields.io/badge/Platform-Android%20TV%209%2B%20%7C%20Google%20TV-green.svg)](#supported-devices)
+[![Platform](https://img.shields.io/badge/Platform-Android%20TV%209%2B%20%7C%20Google%20TV%20%7C%20Projectors-green.svg)](#supported-devices)
 [![Architecture](https://img.shields.io/badge/Arch-armeabi--v7a%20%7C%20arm64--v8a-orange.svg)](#architecture)
 [![Based on](https://img.shields.io/badge/Origin-CleanYourTV-blueviolet.svg)](https://github.com/Gathin23/cleanyourtv)
 [![License](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](LICENSE)
@@ -9,28 +9,28 @@
 <p align="center">
   <a href="#-topics--tags"><code>#android-tv</code></a> •
   <a href="#-topics--tags"><code>#google-tv</code></a> •
+  <a href="#-topics--tags"><code>#projectors</code></a> •
   <a href="#-topics--tags"><code>#tv-launcher</code></a> •
   <a href="#-topics--tags"><code>#nuvio</code></a> •
-  <a href="#-topics--tags"><code>#android-tv-launcher</code></a> •
-  <a href="#-topics--tags"><code>#leanback</code></a> •
-  <a href="#-topics--tags"><code>#4k-hdr</code></a> •
+  <a href="#-topics--tags"><code>#cinema-station</code></a> •
+  <a href="#-topics--tags"><code>#4k-hdr10</code></a> •
   <a href="#-topics--tags"><code>#debloat</code></a>
 </p>
 
-> **Next-generation, bloatware-free, hardware-accelerated Android TV operating suite.**  
-> Features a stunning **Liquid Glass 3D Parallax CoverFlow** vitrin with dynamic focal neon poster glow, launch-time live catalog auto-refresh, **Nuvio TV + Anthology** 4K HDR10/Dolby Vision cinema suite (quality & seeders first), **Real-Time Live Weather**, **AdGuard Private DNS over TLS (DoT)**, **Native AirPlay receiver**, universal multi-brand debloating, and OLED burn-in safe drifting screensaver.
+> **"Sadece televizyonunuzu ve projeksiyonunuzu temizlemekle kalmıyor; onu tek tıkla doğrudan film izleyebileceğiniz eksiksiz bir 4K HDR sinema üssüne çeviriyoruz."**  
+> **"We don't just clean up your TV or Projector — we transform it into a dedicated, one-click 4K HDR cinema powerhouse."**  
+>
+> Features a stunning **Liquid Glass 3D Parallax CoverFlow** vitrin across **18 dynamic cinema & series categories**, launch-time live catalog auto-refresh, **One-Click Nuvio TV + Anthology + TurkSinema** 4K HDR10/Dolby Vision streaming suite (quality & seeders first), **Real-Time Live Weather**, **AdGuard Private DNS over TLS (DoT)**, **Native AirPlay receiver**, universal multi-brand debloating, and OLED/Laser burn-in safe drifting starfield screensaver.
 
 ---
 
 ### 🏷️ Topics & Tags
-`android-tv` `google-tv` `tv-launcher` `nuvio` `nuvio-tv` `androidtv-launcher` `custom-launcher` `leanback` `4k-hdr10` `dolby-vision` `debloat-android-tv` `smart-tv` `cinema-suite` `coverflow` `arcelik-beko-tv`
-
----
+`android-tv` `google-tv` `projectors` `smart-projector` `tv-launcher` `cinema-suite` `nuvio` `nuvio-tv` `anthology` `turksinema` `androidtv-launcher` `custom-launcher` `leanback` `4k-hdr10` `dolby-vision` `debloat-android-tv` `smart-tv` `coverflow`
 
 ---
 
 > [!NOTE]
-> **Attribution & Origin**: This project is built upon the wonderful foundation of [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23. We have re-engineered and expanded it into **TV Master Launcher v1.0.0**, introducing hardware Z-order 3D CoverFlow rendering, dynamic 12-bin focal neon glow extraction, Nuvio & Anthology direct 4K playback integration, AdGuard DoT security, multi-vendor memory optimization, an interactive personalized setup wizard, and zero security vulnerabilities.
+> **Attribution & Origin**: This project is built upon the wonderful foundation of [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23. We have re-engineered and expanded it into **TV Master Launcher v1.0.0**, introducing hardware Z-order 3D CoverFlow rendering across 18 live genres, dynamic 12-bin focal neon glow extraction, Nuvio & Anthology direct 4K playback integration (click any poster to stream instantly), AdGuard DoT security, universal projector & TV support, an interactive personalized setup wizard, and zero security vulnerabilities.
 
 ---
 
@@ -232,6 +232,7 @@ tv-master-launcher/
 | **Xiaomi** | Mi TV 4A/4S/5, TV Box S, TV Stick | `debloat_universal.sh (Profile E)` | Fully Supported |
 | **Hisense / Toshiba** | A6/U6/U7 Android Editions | `debloat_universal.sh (Profile F)` | Fully Supported |
 | **Google** | Chromecast with Google TV (HD/4K) | `debloat_universal.sh (Profile G)` | Fully Supported |
+| **Smart Projectors (Projeksiyonlar)** | Anker Nebula, XGIMI, Dangbei, Epson, Formovie, Wanbo (Android TV / AOSP) | `debloat_universal.sh` | Cinema Calibrated (Big Screen) |
 
 ---
 
