@@ -125,6 +125,15 @@ public class ClockDream extends DreamService {
         }
     }
 
+    private static class CinemaMoment {
+        final String quote;
+        final String imdbId;
+        CinemaMoment(String quote, String imdbId) {
+            this.quote = quote;
+            this.imdbId = imdbId;
+        }
+    }
+
     private class VibrantDriftView extends View {
         private final Paint clockPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint datePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -132,6 +141,7 @@ public class ClockDream extends DreamService {
         private final Paint auraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint starfieldPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final Paint scenePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
         private final SimpleDateFormat dateFmt = new SimpleDateFormat("d MMMM EEEE", new Locale("tr", "TR"));
 
@@ -139,16 +149,21 @@ public class ClockDream extends DreamService {
         private final Drawable fallbackLogo;
         private boolean isRunning = false;
 
-        private final String[] cinemaQuotes = new String[]{
-            "\"Bütün o anlar zamanda kaybolup gidecek, yağmurdaki gözyaşları gibi...\" — Blade Runner",
-            "\"Yıldızlar arasındaki boşlukta, yalnızca sinema ebedidir.\"",
-            "\"We used to look up at the sky and wonder at our place in the stars.\" — Interstellar",
-            "\"Rüyalar gerçektir, sadece uyanıkken onları göremezsin.\" — Inception",
-            "\"Sinema, zamanı ve anıları donduran tek büyüdür.\" — Andrei Tarkovsky",
-            "\"Her şey bir seçimle başlar.\" — The Matrix",
-            "\"Zaman görecelidir, fakat bu gece senin hikâyen.\""
+        private final CinemaMoment[] cinemaMoments = new CinemaMoment[]{
+            new CinemaMoment("\"Bütün o anlar zamanda kaybolup gidecek, yağmurdaki gözyaşları gibi...\" — Blade Runner", "tt0083658"),
+            new CinemaMoment("\"We used to look up at the sky and wonder at our place in the stars.\" — Interstellar", "tt0816692"),
+            new CinemaMoment("\"Rüyalar gerçektir, sadece uyanıkken onları göremezsin.\" — Inception", "tt1375666"),
+            new CinemaMoment("\"Her şey bir seçimle başlar.\" — The Matrix", "tt0133093"),
+            new CinemaMoment("\"Sinema, zamanı ve anıları donduran tek büyüdür.\" — Solaris", "tt0069291"),
+            new CinemaMoment("\"Karanlık seni korkutmasın, asıl korkulacak olan ışıktaki sahteliktir.\" — Fight Club", "tt0137523"),
+            new CinemaMoment("\"Korku aklı yok eden küçük ölümdür. Korkumla yüzleşeceğim.\" — Dune", "tt1160419")
         };
 
+        private Bitmap activeSceneBackdrop = null;
+        private int lastLoadedSceneIdx = -1;
+        private boolean isFetchingScene = false;
+
+        // Cinematic floating dust particles & stars
         private static final int STAR_COUNT = 55;
         private final float[] starX = new float[STAR_COUNT];
         private final float[] starY = new float[STAR_COUNT];
@@ -168,9 +183,9 @@ public class ClockDream extends DreamService {
             datePaint.setColor(Color.parseColor("#94A3B8"));
             datePaint.setLetterSpacing(0.14f);
 
-            quotePaint.setTypeface(FontManager.getMedium(ctx));
-            quotePaint.setTextSize(16f);
-            quotePaint.setColor(Color.parseColor("#CBD5E1"));
+            quotePaint.setTypeface(FontManager.getBold(ctx));
+            quotePaint.setTextSize(36f);
+            quotePaint.setColor(Color.parseColor("#F8FAFC"));
             quotePaint.setLetterSpacing(0.04f);
 
             Bitmap sig = null;
@@ -209,6 +224,103 @@ public class ClockDream extends DreamService {
             }
         }
 
+        private void fetchDynamicTmdbBackdrop(final int momentIdx) {
+            if (isFetchingScene || momentIdx == lastLoadedSceneIdx) return;
+            isFetchingScene = true;
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        String imdbId = cinemaMoments[momentIdx].imdbId;
+                        String tmdbKey = null;
+                        try {
+                            tmdbKey = android.provider.Settings.Secure.getString(getContentResolver(), "tv_tmdb_api_key");
+                        } catch (Throwable ignored) {
+                        }
+
+                        String backdropUrl = null;
+                        if (tmdbKey != null && !tmdbKey.trim().isEmpty()) {
+                            try {
+                                String findUrl = "https://api.themoviedb.org/3/find/" + imdbId + "?api_key=" + tmdbKey.trim() + "&external_source=imdb_id";
+                                java.net.HttpURLConnection fConn = (java.net.HttpURLConnection) new java.net.URL(findUrl).openConnection();
+                                fConn.setConnectTimeout(5000);
+                                fConn.setReadTimeout(5000);
+                                if (fConn.getResponseCode() == 200) {
+                                    java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(fConn.getInputStream()));
+                                    StringBuilder sb = new StringBuilder();
+                                    String line;
+                                    while ((line = br.readLine()) != null) sb.append(line);
+                                    br.close();
+                                    org.json.JSONObject findObj = new org.json.JSONObject(sb.toString());
+                                    org.json.JSONArray mResults = findObj.optJSONArray("movie_results");
+                                    if (mResults != null && mResults.length() > 0) {
+                                        int tmdbMovieId = mResults.getJSONObject(0).optInt("id", 0);
+                                        if (tmdbMovieId > 0) {
+                                            String imgApiUrl = "https://api.themoviedb.org/3/movie/" + tmdbMovieId + "/images?api_key=" + tmdbKey.trim();
+                                            java.net.HttpURLConnection imgConn = (java.net.HttpURLConnection) new java.net.URL(imgApiUrl).openConnection();
+                                            imgConn.setConnectTimeout(5000);
+                                            imgConn.setReadTimeout(5000);
+                                            if (imgConn.getResponseCode() == 200) {
+                                                java.io.BufferedReader ibr = new java.io.BufferedReader(new java.io.InputStreamReader(imgConn.getInputStream()));
+                                                StringBuilder isb = new StringBuilder();
+                                                while ((line = ibr.readLine()) != null) isb.append(line);
+                                                ibr.close();
+                                                org.json.JSONObject imgObj = new org.json.JSONObject(isb.toString());
+                                                org.json.JSONArray bArr = imgObj.optJSONArray("backdrops");
+                                                if (bArr != null && bArr.length() > 0) {
+                                                    // Pick a high-quality backdrop
+                                                    int pickIdx = (int) (System.currentTimeMillis() % bArr.length());
+                                                    String fPath = bArr.getJSONObject(pickIdx).optString("file_path", "");
+                                                    if (!fPath.isEmpty()) {
+                                                        backdropUrl = "https://image.tmdb.org/t/p/w1280" + fPath;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (Throwable ignored) {
+                            }
+                        }
+
+                        if (backdropUrl == null) {
+                            backdropUrl = "https://images.metahub.space/background/medium/" + imdbId + "/img";
+                        }
+
+                        java.net.URL url = new java.net.URL(backdropUrl);
+                        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                        conn.setConnectTimeout(6000);
+                        conn.setReadTimeout(10000);
+                        conn.setInstanceFollowRedirects(true);
+                        if (conn.getResponseCode() == 200) {
+                            InputStream is = conn.getInputStream();
+                            BitmapFactory.Options opts = new BitmapFactory.Options();
+                            opts.inSampleSize = 2; // Lightweight 960x540
+                            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                            final Bitmap bmp = BitmapFactory.decodeStream(is, null, opts);
+                            is.close();
+                            if (bmp != null) {
+                                post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (activeSceneBackdrop != null && !activeSceneBackdrop.isRecycled()) {
+                                            activeSceneBackdrop.recycle();
+                                        }
+                                        activeSceneBackdrop = bmp;
+                                        lastLoadedSceneIdx = momentIdx;
+                                        invalidate();
+                                    }
+                                });
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                    } finally {
+                        isFetchingScene = false;
+                    }
+                }
+            }).start();
+        }
+
         void startAnimating() {
             isRunning = true;
             postInvalidateOnAnimation();
@@ -228,6 +340,27 @@ public class ClockDream extends DreamService {
             int h = getHeight() > 0 ? getHeight() : 1080;
 
             long nowMs = SystemClock.uptimeMillis();
+
+            // 0. Dynamic Movie Scene Background from TMDB (low-opacity, zero device storage)
+            long quoteCycleMs = 18000L;
+            long quoteElapsed = nowMs % quoteCycleMs;
+            int quoteIdx = (int) ((nowMs / quoteCycleMs) % cinemaMoments.length);
+            fetchDynamicTmdbBackdrop(quoteIdx);
+
+            float quoteAlpha = 1.0f;
+            if (quoteElapsed < 1500L) {
+                quoteAlpha = quoteElapsed / 1500f; // Fade in
+            } else if (quoteElapsed > quoteCycleMs - 1500L) {
+                quoteAlpha = (quoteCycleMs - quoteElapsed) / 1500f; // Fade out
+            }
+
+            if (activeSceneBackdrop != null && !activeSceneBackdrop.isRecycled()) {
+                int sceneAlpha = (int) (quoteAlpha * 58); // ~22% ethereal low opacity
+                scenePaint.setAlpha(sceneAlpha);
+                Rect src = new Rect(0, 0, activeSceneBackdrop.getWidth(), activeSceneBackdrop.getHeight());
+                RectF dst = new RectF(0, 0, w, h);
+                canvas.drawBitmap(activeSceneBackdrop, src, dst, scenePaint);
+            }
 
             // 1. Organic Starfield & Micro-Dust Particles
             for (int i = 0; i < STAR_COUNT; i++) {
@@ -300,7 +433,7 @@ public class ClockDream extends DreamService {
             String timeStr = timeFmt.format(now);
             String dateStr = dateFmt.format(now).toUpperCase(new Locale("tr", "TR"));
 
-            float clockY = cy + (sigSize * 0.38f);
+            float clockY = cy + (sigSize * 0.34f);
             clockPaint.setShadowLayer(32f, 0f, 4f, Color.argb(0x77, Color.red(cCore), Color.green(cCore), Color.blue(cCore)));
             float tw = clockPaint.measureText(timeStr);
             canvas.drawText(timeStr, cx - tw / 2f, clockY, clockPaint);
@@ -308,25 +441,15 @@ public class ClockDream extends DreamService {
             // 7. Date string below clock
             datePaint.setShadowLayer(14f, 0f, 2f, Color.parseColor("#99000000"));
             float dw = datePaint.measureText(dateStr);
-            canvas.drawText(dateStr, cx - dw / 2f, clockY + 36f, datePaint);
+            canvas.drawText(dateStr, cx - dw / 2f, clockY + 34f, datePaint);
 
-            // 8. Rotating Cinema Poetry & Philosophy
-            long quoteCycleMs = 18000L;
-            long quoteElapsed = nowMs % quoteCycleMs;
-            int quoteIdx = (int) ((nowMs / quoteCycleMs) % cinemaQuotes.length);
-            String currentQuote = cinemaQuotes[quoteIdx];
-
-            float quoteAlpha = 1.0f;
-            if (quoteElapsed < 1500L) {
-                quoteAlpha = quoteElapsed / 1500f; // Fade in
-            } else if (quoteElapsed > quoteCycleMs - 1500L) {
-                quoteAlpha = (quoteCycleMs - quoteElapsed) / 1500f; // Fade out
-            }
-            int qA = (int) (quoteAlpha * 220);
-            quotePaint.setColor(Color.argb(Math.min(255, Math.max(0, qA)), 203, 213, 225));
-            quotePaint.setShadowLayer(12f, 0f, 2f, Color.parseColor("#AA000000"));
+            // 8. Rotating Cinema Poetry & Philosophy (Prominent, High-Readability Font)
+            String currentQuote = cinemaMoments[quoteIdx].quote;
+            int qA = (int) (quoteAlpha * 240);
+            quotePaint.setColor(Color.argb(Math.min(255, Math.max(0, qA)), 241, 245, 249));
+            quotePaint.setShadowLayer(18f, 0f, 3f, Color.parseColor("#EE000000"));
             float qw = quotePaint.measureText(currentQuote);
-            canvas.drawText(currentQuote, cx - qw / 2f, clockY + 76f, quotePaint);
+            canvas.drawText(currentQuote, cx - qw / 2f, clockY + 74f, quotePaint);
 
             if (isRunning) {
                 postInvalidateOnAnimation();

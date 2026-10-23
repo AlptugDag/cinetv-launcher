@@ -13,67 +13,142 @@
   <a href="#-topics--tags"><code>#tv-launcher</code></a> •
   <a href="#-topics--tags"><code>#nuvio</code></a> •
   <a href="#-topics--tags"><code>#cinema-station</code></a> •
+  <a href="#-topics--tags"><code>#gemini-ai</code></a> •
+  <a href="#-topics--tags"><code>#tmdb-cinema</code></a> •
+  <a href="#-topics--tags"><code>#web-remote</code></a> •
   <a href="#-topics--tags"><code>#4k-hdr10</code></a> •
   <a href="#-topics--tags"><code>#debloat</code></a>
 </p>
 
-> **"Sadece televizyonunuzu ve projeksiyonunuzu temizlemekle kalmıyor; onu tek tıkla doğrudan film izleyebileceğiniz eksiksiz bir 4K HDR sinema üssüne çeviriyoruz."**  
-> **"We don't just clean up your TV or Projector — we transform it into a dedicated, one-click 4K HDR cinema powerhouse."**  
+> **"Sadece televizyonunuzu ve projeksiyonunuzu temizlemekle kalmıyor; onu tek tıkla doğrudan film izleyebileceğiniz, yapay zekâ küratörlü, telefon kumandalı eksiksiz bir 4K HDR sinema üssüne çeviriyoruz."**  
+> **"We don't just clean up your TV or Projector — we transform it into a dedicated, AI-curated, one-click 4K HDR cinema powerhouse with zero bloat and seamless phone remote control."**  
 >
-> Features a stunning **Liquid Glass 3D Parallax CoverFlow** vitrin across **18 dynamic cinema & series categories**, launch-time live catalog auto-refresh, **One-Click Nuvio TV + Anthology + TurkSinema** 4K HDR10/Dolby Vision streaming suite (quality & seeders first), **Real-Time Live Weather**, **AdGuard Private DNS over TLS (DoT)**, **Native AirPlay receiver**, universal multi-brand debloating, and OLED/Laser burn-in safe drifting starfield screensaver.
+> Features a stunning **Liquid Glass 3D Parallax CoverFlow** vitrin across **dynamic cinema & series categories**, **Multi-LLM Autonomous AI Curator (Google Gemini & Anthropic Claude)** driven by time, weather & mood, **Live TMDB Backdrop Screensaver** with cinematic philosophy quotes, **Integrated Search & Gemini Chat HUD Bar**, **Phone Web Remote (Port 8080)**, **One-Click Nuvio TV + Anthology + TurkSinema** 4K HDR10/Dolby Vision streaming suite, **Hardware Remote Key Interceptor (Netflix, YouTube, Prime, Live TV)**, **Leanback Reorder / Uninstall Dock Management with `+` Card**, **Real-Time Live Weather**, **AdGuard Private DNS over TLS (DoT)**, **Native AirPlay receiver**, universal multi-brand debloating, and OLED/Laser burn-in safe drifting starfield screensaver.
 
 ---
 
 ### 🏷️ Topics & Tags
-`android-tv` `google-tv` `projectors` `smart-projector` `tv-launcher` `cinema-suite` `nuvio` `nuvio-tv` `anthology` `turksinema` `androidtv-launcher` `custom-launcher` `leanback` `4k-hdr10` `dolby-vision` `debloat-android-tv` `smart-tv` `coverflow`
+`android-tv` `google-tv` `projectors` `smart-projector` `tv-launcher` `cinema-suite` `nuvio` `nuvio-tv` `anthology` `turksinema` `androidtv-launcher` `custom-launcher` `leanback` `gemini-ai` `tmdb-api` `web-remote` `4k-hdr10` `dolby-vision` `debloat-android-tv` `smart-tv` `coverflow`
 
 ---
 
 > [!NOTE]
-> **Attribution & Origin**: This project is built upon the wonderful foundation of [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23. We have re-engineered and expanded it into **TV Master Launcher v1.0.0**, introducing hardware Z-order 3D CoverFlow rendering across 18 live genres, dynamic 12-bin focal neon glow extraction, Nuvio & Anthology direct 4K playback integration (click any poster to stream instantly), AdGuard DoT security, universal projector & TV support, an interactive personalized setup wizard, and zero security vulnerabilities.
+> **Attribution & Origin**: This project is built upon the wonderful foundation of [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23. We have re-engineered and expanded it into **CİNETV / TV Master Launcher v1.0.0**, introducing hardware Z-order 3D CoverFlow rendering, dynamic 12-bin focal neon glow extraction, Nuvio & Anthology direct 4K playback integration (click any poster to stream instantly), autonomous Gemini/Claude mood & context curation, TMDB media backdrop integration, full remote control hardware remapping, phone web remote server, AdGuard DoT security, universal projector & TV support, an interactive setup wizard, and strict user privacy.
 
 ---
 
-## 🌟 Visual Showcase
+## 🌟 Canlı Görsel & Video Vitrini (Visual Showcase)
 
-### Dynamic Liquid Glass Ambient Glow in Motion
-Focus movement smoothly shifts depth scaling, 3D elevation, and poster-aware focal neon chromatic blooms in real time:
+### 🎬 Canlı Kullanım ve Akıcı Arayüz Deneyimi (1080p Screen Record)
+Televizyon üzerinden doğrudan kaydedilen akıcı 60 FPS D-pad gezinmesi, dinamik odak derinliği ve 3D CoverFlow vitrin geçişleri:
 
-![Liquid Glass Glow Animation](docs/screenshots/liquid_glass_glow.gif)
+https://github.com/AlptugDag/tv-master-launcher/raw/main/docs/screenshots/cinetv_showcase.mp4
+
+> *Tarayıcınızda doğrudan video oynatıcı açılmazsa veya mobil önizlemedeyseniz:*  
+> Akıcı animasyon önizlemesi için `docs/screenshots/liquid_glass_glow.gif` dosyasına göz atabilirsiniz.
+
+<p align="center">
+  <img src="docs/screenshots/liquid_glass_glow.gif" alt="CineTV Liquid Glass Motion" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);" />
+</p>
 
 ---
 
-### Diversified System Views
+### 📸 Güncel Arayüz Galerisi (System Captures)
 
-| 🎴 3D Parallax CoverFlow Vitrin | ⚙️ In-Video Cinema HUD Overlay |
+| 🎴 3D Parallax CoverFlow Vitrin (Saf Afiş Estetiği) | 🔍 Gemini Arama, HUD Kontrolleri & Ağ/Giriş Barı |
 | :---: | :---: |
 | ![Hero CoverFlow](docs/screenshots/hero_coverflow_3d.png) | ![Cinema HUD Overlay](docs/screenshots/cinema_hud_overlay.png) |
-| **🚀 Liquid Glass Dock (Nuvio Wordmark)** | **🌙 Modern OLED Drifting Clock Screensaver** |
+| **🚀 Liquid Glass Dock (`+` Kartı & Nuvio Wordmark)** | **🌌 TMDB Sinematik Arka Planlı Replik Screensaver** |
 | ![Dock Showcase](docs/screenshots/dock_nuvio_showcase.png) | ![Modern Screensaver](docs/screenshots/modern_screensaver.png) |
 
 ---
 
-### Focal Neon Accent Extraction (Poster-Aware Chromatic Bloom)
+### 🎨 12-Bin Focal Neon Kromatik Bloom (Poster-Aware Ambient Glow)
+Her odaklanan afişin sanatsal renk paletini 12 renk kutusunda analiz ederek ten tonlarını filtreler ve afişe özel canlı neon parıltısı üretir:
+
 | Crimson Neon | Warm Amber Neon | Electric Cyan Neon |
 | :---: | :---: | :---: |
 | ![Crimson Neon](docs/screenshots/focal_neon_crimson.png) | ![Warm Amber Neon](docs/screenshots/focal_neon_amber.png) | ![Electric Cyan Neon](docs/screenshots/focal_neon_cyan.png) |
 
 ---
 
-## ⚡ Key Highlights & Architecture
+## ⚡ Temel Yetenekler & Mimari (Key Highlights & Architecture)
 
-### 1. 🎴 Liquid Glass 3D Parallax CoverFlow Vitrin
-- **Hardware Z-Ordering**: Employs Android RenderNode `elevation` (`50f`) and `translationZ` (`65f`) rather than modifying ViewGroup hierarchy, guaranteeing smooth 60 FPS D-pad navigation.
-- **Dynamic Depth Scaling**: Focused poster scales to **1.30x** with a `-22f` vertical lift; neighboring posters smoothly recede to **0.94x**, **0.80x**, and **0.68x** with physical drop shadows and distance alpha dimming.
-- **12-Bin Focal Neon Histogram**: Replaces generic dominant color math with a 12-bin chromatic histogram. Dampens skin tones by 65% to isolate pure graphic neon accents (Crimson, Cyan, Emerald, Gold, Cobalt, Violet).
-- **Hue Separation Rule**: Enforces a minimum `48°` hue delta between adjacent posters, ensuring adjacent cards never share the same ambient glow.
-- **Dynamic Launch-Time Feed Auto-Refresh**: Every time the TV wakes or the launcher returns to the foreground (`onResume`), the vitrin feed is checked in the background. If new movies are released on Webteizle (or Cinemeta for international setups), posters, titles, and IMDb IDs update dynamically with zero UI stutter.
-- **Direct 4K Stream Playback Integration**: Clicking any poster directly initiates playback in **Nuvio TV** (`launchMode="stream"` with exact `contentId` and `name`), prioritizing 4K HDR10 streams immediately.
+### 1. 🎴 Liquid Glass 3D Parallax CoverFlow Vitrin & Saf Afiş Estetiği
+- **Hardware Z-Ordering**: Android RenderNode `elevation` (`50f`) ve `translationZ` (`65f`) donanım katmanlarını kullanarak ViewGroup hiyerarşisini bozmadan akıcı 60 FPS gezinme sağlar.
+- **Dinamik Derinlik Ölçekleme**: Odaklanan afiş **1.30x** büyür ve `-22f` yukarı kalkar; komşu kartlar mesafeye göre **0.94x**, **0.80x** ve **0.68x** oranında fiziksel gölge ve mesafe sönümlemesiyle geriye çekilir.
+- **Saf ve Net Afiş Tasarımı**: Afişlerin üzerindeki dikkat dağıtıcı ve çiğ format etiketleri ("4K HDR10") kaldırılmış; afişin orijinal sinematik sanatı ön plana çıkarılmıştır.
+- **Kırpılmayan Neon Parıltısı**: Odaklanma sırasında sol kartın ve logonun etrafındaki yumuşak ışık huzmeleri (`setClipChildren(false)` ve 80px iç dolgu ile) ekranda asla kesilmeden yayılır.
+- **Sıfır Gri Flaş**: Uygulamalardan çıkıp ana ekrana dönüldüğünde yaşanan gri ekran flaşı tamamen engellenmiş, saf OLED siyahına (`#040508`) sabitlenmiştir.
+- **Tek Tıkla Doğrudan 4K Oynatma**: Vitrindeki herhangi bir afişe tıklandığında anında **Nuvio TV** (`launchMode="stream"`) üzerinden en yüksek seeder'lı 4K HDR10 / Dolby Vision akış başlatılır.
 
-### 2. 🍿 Nuvio TV & 4K HDR10 Sinema Ekosistemi (Doğrulanmış Depolar & Eklentiler)
-- Integrates **Nuvio TV** (`com.nuvio.tv`) with the verified Turkish & International cinema streaming ecosystem.
-- Official Nuvio wordmark tile (`ic_nuvio_wordmark`) rendered on Apple visionOS liquid glass without redundant duplicate text.
-- **Dynamic 18-Genre Vitrin Rotation**: On every TV boot or launcher return, the vitrin dynamically cycles across 18 curated cinema categories (Vizyondakiler, Popüler Filmler, IMDb En İyiler, Bilim-Kurgu Başyapıtları, Gerilim & Gizem, Suç & Polisiye, Animasyon & Aile Dünyası, Fantastik Dünyalar, Komedi & Eğlence, Macera & Keşif, Korku & Doğaüstü, Dram & Biyografi, Belgesel & Doğa, Popüler Diziler, vb.).
+---
+
+### 2. 🤖 Otonom Yapay Zekâ Sinema Küratörü (Google Gemini & Anthropic Claude)
+- **Tarih, Saat, Hava Durumu ve Ruh Hali Odaklı Otomasyon**: Vitrin oluşturmak için manuel istek yapmanıza gerek kalmaz. Launcher; anlık hava durumu (örneğin yağmurlu bir pazar akşamı), saat dilimi ve güncel tarihten yola çıkarak tematik sinema seçkileri hazırlar.
+- **Keskin Ayrılmış Tematik Kategoriler**: Dram ile komedi gibi zıt türler asla aynı vitrinde harmanlanmaz. Seçkiler keskin ve sofistike temalara ayrılır:
+  - **Festivaller & Başyapıtlar**: Cannes Altın Palmiye, Venedik Altın Aslan, Oscar Ödüllü Yönetmen Başyapıtları.
+  - **Ülke Sinemaları**: Fransız Yeni Dalgası, İskandinav Karanlık Polisiyeleri, Güney Kore Gizem & İntikam Sineması, İtalyan Neo-Realizm.
+  - **Spesifik Yönetmen & Oyuncu Odakları**: Christopher Nolan akıl oyunları, Denis Villeneuve felsefi bilimkurguları, David Fincher gerilimleri.
+  - **Ruh Hali & Atmosfer**: "Yağmurlu Gece Melankolisi", "Yüksek Nabızlı Siberpunk Maceraları", "Düşündüren Distopyalar".
+- **Dinamik İçerik Yenileme & TMDB Çözümlemesi**: Vitrin başlığı değiştiğinde içeriklerin aynı kalması sorunu çözüldü. Başlık güncellendiğinde tüm filmler TMDB üzerinden dinamik olarak aranır, gerçek 4K afiş (`w500`) ve sinematik backdrop (`w1280`) görselleriyle vitrine yüklenir.
+- **Estetik ve Sade Başlıklar**: Çiğ duran "Öne Çıkanlar • Nuvio" gibi uzantılar kaldırılmış; doğrudan sanatsal ana başlık sunulur.
+- **Gizlilik ve Güvenlik**: Gemini (`AIzaSy...`) veya Claude (`sk-ant-...`) API anahtarınız GitHub kodlarında veya repoda ASLA tutulmaz. Kurulum sihirbazında istenir ve doğrudan TV donanımının güvenli kasasına (`Settings.Secure`) kaydedilir.
+
+---
+
+### 3. 🔍 Üst Bar Gemini Arama, Sohbet & Hızlı HUD Kontrolleri
+- **Entegre Arama & Sohbet Çubuğu**: Ekranın sağ üst köşesinde hava durumu ile hızlı kontroller arasında yer alır ("*Film ara veya Gemini'ye sor...*").
+  - Film, dizi veya oyuncu arandığında doğrudan Nuvio kütüphanesinde arama yapar ve tek tıkla oynatır.
+  - Felsefi, teknik veya günlük bir soru sorulduğunda doğrudan Google Gemini üzerinden ekran üzerinde şık bir yanıt balonuyla cevaplar.
+- **Hızlı Erişim Donanım Düğmeleri**:
+  - **Ağ (Network)**: Wi-Fi ve Ethernet bağlantı durumunu görüntüler ve hızlı ağ ayarlarını açar.
+  - **Girişler (Inputs)**: HDMI 1, HDMI 2, HDMI 3 ve AV harici girişlerini tek tıkla listeler ve geçiş yaptırır.
+  - **Tüm Uygulamalar (All Apps)**: Cihazda kurulu tüm sistem ve kullanıcı uygulamalarını ızgara biçiminde listeler.
+  - **Hızlı Ayarlar (Gear)**: Görüntü, ses ve sistem ayarlarına anında erişim sağlayan Cinema HUD menüsünü açar.
+
+---
+
+### 4. 🎬 TMDB API Entegreli Sinematik Ekran Koruyucu
+- **Sıfır Depolama Tüketimi (Dinamik Medya Çekme)**: Ekran koruyucu arka planları TV dahili belleğine indirilip cihazı yormaz; TMDB API üzerinden sinema tarihinin kült yapımlarının `media > backgrounds` (backdrop) galerisinden anlık çekilir.
+- **Kişiselleştirilmiş Şeffaf Katman**: Arka planda sahnenin düşük opaklıktaki atmosferik görseli akarken, merkezde OLED kontrastıyla kusursuz uyumlu imza / madalyon yer alır.
+- **Büyük ve Okunaklı Felsefi Replikler**: 36f boyutunda, yumuşak gölgeli ve yüksek okunaklı tipografiyle sinema tarihinin kült replikleri ve felsefi aforizmaları ekranda süzülür (*Blade Runner, Interstellar, 2001: A Space Odyssey, Andrei Tarkovsky, Inception, Matrix*).
+- **Lissajous Panel Koruması**: Piksel yanmasını (burn-in) önlemek için metinler ve arka planlar sürekli organik bir Lissajous eğrisi üzerinde mikroskopik olarak hareket eder.
+
+---
+
+### 5. 📲 Telefondan Web Kumandası (Çift Ekran Deneyimi — Port 8080)
+- **Dahili Web Remote Sunucusu**: Launcher içinde çalışan ultra hafif HTTP sunucusu (`TvWebRemoteServer`) port 8080 üzerinden yayın yapar.
+- **Uygulama İndirmeye Gerek Yok**: Aynı Wi-Fi ağındaki herhangi bir telefondan, tabletten veya bilgisayardan `http://<TV_IP>:8080` adresine girerek TV'yi kontrol edin:
+  - **Klavye Girişi**: TV kumandasıyla tek tek harf seçmek yerine telefondan hızlıca film adı yazma ve Gemini'ye soru iletme.
+  - **D-Pad & Yön Tuşları**: Yukarı, Aşağı, Sol, Sağ, Seç (OK), Geri, Ana Sayfa, Ses Açma/Kısma.
+  - **Hızlı Kısayollar**: Nuvio TV, YouTube, Ayarlar ve HDMI girişlerini telefondan tek dokunuşla başlatma.
+
+---
+
+### 6. 🎮 Donanım Kumanda Özel Tuş Atamaları & Erişilebilirlik Servisi
+- **Kusursuz Tuş Yakalama**: Televizyon kumandasındaki özel donanım tuşları (`TvKeyInterceptorService`) arka plan servisiyle sisteme entegre edilmiştir:
+  - **Netflix Tuşu (`207`)**: Netflix veya Nuvio sinema moduna anında yönlendirme.
+  - **YouTube Tuşu (`218`)**: Reklamsız akıllı oynatıcıyı anında tetikler.
+  - **Prime Video Tuşu (`185, 209, 228, 192`)**: Doğrudan video merkezine yönlendirme.
+  - **Canlı TV / TV+ Tuşu (`277, 170`)**: Canlı TV / DVB-S2 uydu yayınını veya Anthology TV akışını başlatır.
+
+---
+
+### 7. 🎛️ Leanback Dock Yönetimi & `+` Kartı
+- **`+` Uygulama Ekleme Kartı**: Dock sırasının en sağına eklenen şık visionOS cam kartı ile cihazdaki yüklü uygulamalar arasından tek tıkla dock'a yeni uygulama ekleyin.
+- **Profesyonel Uzun Basma Menüsü (Leanback Context Menu)**:
+  - **Konumu Değiştir**: Uygulama kartını D-pad sol/sağ tuşlarıyla dock üzerinde dilediğiniz sıraya taşıyın.
+  - **Ana Ekrandan Kaldır**: Dock'u sadeleştirmek için uygulamayı ana ekrandan gizleyin.
+  - **Cihazdan Tamamen Sil (Uninstall)**: İstenmeyen uygulamaları doğrudan TV arayüzünden sistemden silin.
+  - **Uygulama Bilgisi**: Android sistem uygulama detaylarına gidin.
+- **Hayalet Uygulama Önleme (Chrome Bug Çözümü)**: Cihazdan silinen bir uygulama ana ekranda asılı kalmaz; dinamik paket denetleyicisi ve `BroadcastReceiver` sayesinde kaldırılan uygulamalar dock'tan anında temizlenir.
+
+---
+
+### 8. 🍿 Nuvio TV & 4K HDR10 Sinema Ekosistemi (Doğrulanmış Depolar & Eklentiler)
+- **Doğrulanmış Nuvio TV Entegrasyonu**: Nuvio TV (`com.nuvio.tv`) ve Apple visionOS liquid glass dock simgesi.
+- **18 Dinamik Kategori & Canlı Yayın**: Vizyondakiler, Popüler Filmler, IMDb En İyiler, Bilim-Kurgu Başyapıtları, Gerilim & Gizem, Suç & Polisiye, Animasyon & Aile, Belgesel & Doğa vb.
 
 #### 📦 Doğrulanmış Eklenti, Scraper ve Katalog Ekosistemi
 
@@ -87,71 +162,63 @@ Focus movement smoothly shifts depth scaling, 3D elevation, and poster-aware foc
 | **TR Altyazı** | Türkçe Altyazı Havuzu | [Manifest URL](https://tr-altyazi.altyazi.workers.dev/manifest.json)<br>*(Tek Tık: `stremio://tr-altyazi.altyazi.workers.dev/manifest.json`)* | AltyaziTR (turkcealtyazi.org), YIFY ve OpenSubtitles ortak havuzundan anında Türkçe altyazı senkronizasyonu. |
 | **Cinemeta Global** | Resmi Box Office Katalogları | `https://v3-cinemeta.strem.io/manifest.json` | Dünya genelinde vizyondaki ve trend olan yapımların anlık resmi katalog akışı. |
 
-- **Strict Torrent Sorting & Filtering Hierarchy**:
-  1. Quality Tier: `4K HDR10 / Dolby Vision` > `1080p HDR10` > `1080p` > `720p`.
-  2. Language Priority: User-defined spoken languages prioritized for dubbing and subtitles (e.g. `turkish,english`, `german,english`, `spanish,latino`).
-  3. **Torrent Seeder Hierarchy**: Within each quality tier, torrent videos are strictly sorted **first by seeder count, then by file size** (`sort=quality`).
-  4. Exclusions: Formats below 720p (480p, 360p, CAM, SCR, etc.) are strictly excluded.
-- **Nova Video Player Integration (`scripts/setup_nova_player.sh`)**: If Nuvio TV ever encounters a playback, sync, or codec error on heavy 4K REMUX or obscure audio codecs, users can seamlessly switch to Nova Video Player (`org.courville.nova`) as an external player directly from Nuvio settings.
-- **Hardware Cinema Calibration & Audio Passthrough (`scripts/setup_nuvio_presets.sh`)**: Calibrates the TV display and audio pipeline to cinema standards, enabling bit-perfect digital audio passthrough (`sound_digital_output=5`), Dolby Atmos, and HDR10+ dynamic tone mapping.
-- Completely replaces and retires legacy players (CloudStream, Stremio) cleanly.
-
-### 3. 🌤️ Real-Time Live Weather & Location Awareness
-- **Keyless Zero-Latency Weather**: Fetches real-time local weather and conditions using keyless `wttr.in` integration.
-- **Top Bar Integration**: Displays current temperature, weather emoji, and city (e.g. `Ankara • +7°C ✨` or `London • +12°C 🌧️`) directly next to the date/clock.
-- Auto-refreshes every 30 minutes in the background with zero battery or RAM overhead.
-- City can be configured via installer, auto-detected from IP, or changed on the TV screen via the Settings dialog.
-
-### 4. 🌓 Theme Customization: Dark, Auto Day/Night & Light Glass
-- **Saf OLED Siyah (Deep Obsidian Dark Noir)**: Absolute pitch-black cinema canvas optimized for OLED/QLED panels with zero light bleed.
-- **Otomatik Gece / Gündüz (Auto Day/Night)**: Frosted silver glass theme during daytime hours, automatically transitioning to pure OLED obsidian at dusk.
-- **Aydınlık Buzlu Cam (Modern Frosted Light Glass)**: High-contrast modern platinum silver palette with deep obsidian typography.
-- Changeable on the fly from the TV remote or installation wizard.
-
-### 5. 🎮 Native Remote Control Layout Preservation
-- **Zero Remote Key Tampering**: TV Master Launcher strictly preserves your TV's original hardware remote control keycodes, branded buttons, and behaviors.
-- Does not hijack, intercept, or overwrite any dedicated hardware remote buttons (Netflix, Prime Video, YouTube, TV+, etc.).
-- Picture, sound, and quick settings remain seamlessly accessible on-screen via the top-bar Quick Settings gear icon without requiring background accessibility services.
-
-### 6. 🔒 AdGuard Private DNS over TLS (DoT)
-- Configures `dns.adguard-dns.com` system-wide over TLS.
-- Blocks ads, telemetry, and tracking at the network level, while bypassing ISP DNS tampering/poisoning.
-
-### 7. 📲 Native AirPlay & Wireless Casting
-- Built-in support for **AirPlay** audio and video mirroring directly from iOS, iPadOS, and macOS devices.
-- Battery-idle exemptions and persistent daemon management keep AirPlay discovery active 24/7.
-
-### 8. 🚀 Smart RAM & Storage-to-RAM Expansion
-- **1024 MB LZ4 zRAM Swap**: Creates an in-kernel compressed memory disk on `/dev/block/zram0`.
-- **Swappiness & Cache Tuning**: Sets `vm.swappiness=80` and `vfs_cache_pressure=100`, keeping UI threads instantly responsive while moving inactive background services to zRAM.
-- **Low Memory Killer (LMK) Optimization**: Sets `sys.sysctl.extra_free_kbytes=24300` and enables `trim_empty_apps`, cutting launcher RAM usage to under **35 MB**.
-- **Storage-to-RAM Virtual Allocation**: Enables Android 11+ virtual memory expansion (`ram_expand_size_list: 2048`).
-
-### 9. 🛡️ Universal Multi-Brand Debloater & Custom App Removal
-Safely removes factory menus, telemetry, and pre-installed storefront bloatware for user 0 without breaking HDMI ports, DVB-S2 satellite tuners, or picture settings:
-- **Targeted Brand Debloaters**: Arçelik/Beko, TCL, Sony Bravia, Philips, Xiaomi, Hisense, and Chromecast with Google TV.
-- **Custom Interactive Removal**: Inspects all user and vendor packages on the TV and allows the user to choose exact packages to remove or keep.
-- **Hardened Safety Guard**: Protected hardware packages (HDMI, DVB, Audio, Bluetooth, Settings, SystemUI) can never be accidentally removed.
-- **TV-Core Lockout (`scripts/lib/tv_safety.sh`)**: Every removal path (brand lists, interactive input) goes through one shared guard that refuses OEM TV-core packages such as `com.mediatek.wwtv.tvcenter` (+ `.rro`), `com.mediatek.tv.*`, `com.tcl.tvmanager`, etc. Removing these breaks HDMI inputs, picture/HDR settings and display configuration.
-- **Self-Healing (`scripts/restore_tv_core.sh`)**: Re-enables / re-installs (for user 0) any TV-core package an older version of this project or another tool disabled. It runs automatically at the end of both debloaters and the wizard, and can be run manually (`adb reboot` afterwards).
-
-### 9b. 🔬 Display & HDR Verification (`scripts/verify_display.sh`)
-```bash
-./scripts/verify_display.sh                  # quick health report
-./scripts/verify_display.sh --playback-test  # plays a real 4K HEVC HDR10 clip and measures it
-```
-> **"My TV shows 1080p60 / no HDR in Nuvio or Developer options — is it broken?"**
-> Usually **no**. On MediaTek TVs (Arçelik, Beko, Grundig, Vestel, ...) Android deliberately renders the *UI* at 1920×1080@60 and exposes only that one display mode (see `/vendor/etc/uhd_keeping_packages.xml`). Video is decoded at native resolution and shown on a separate hardware video plane that is scaled to the 4K panel, with HDR10/HLG signalled through the video path. The `--playback-test` is the authoritative check: it looks for a `3840x2160` video layer and the `BT2020_ITU_PQ` (HDR10) dataspace. If the quick report shows a disabled TV-core package, run `./scripts/restore_tv_core.sh` and reboot.
-
-### 10. 🌙 OLED Burn-In Safe Drifting Screensaver
-- Modern minimalist screensaver with Poppins typography and luminous radial chromatic glow.
-- Continuous interpolated drift animation prevents static burn-in on OLED and QLED panels.
+- **Torrent Sıralama & Filtreleme Hiyerarşisi**:
+  1. Kalite Katmanı: `4K HDR10 / Dolby Vision` > `1080p HDR10` > `1080p` > `720p`.
+  2. Dil Önceliği: Kullanıcının seçtiği dublaj ve altyazı dilleri (`turkish,english`, `german,english`, vb.).
+  3. **Seeder Önceliği**: Torrentler önce seeder sayısına göre, ardından dosya boyutuna göre sıralanır (`sort=quality`).
+  4. Düşük formatlar (480p, CAM, SCR) tamamen elenir.
+- **Nova Video Player Entegrasyonu (`scripts/setup_nova_player.sh`)**: Ağır 4K REMUX veya nadir ses kodeklerinde Nuvio ayarlarından harici oynatıcı olarak Nova Video Player (`org.courville.nova`) seçilebilir.
+- **Donanım Sinema Kalibrasyonu & Passthrough (`scripts/setup_nuvio_presets.sh`)**: Bit-perfect dijital ses passthrough (`sound_digital_output=5`), Dolby Atmos ve HDR10+ dinamik ton eşleme.
 
 ---
 
-## 🚀 One-Command Universal Setup Wizard
+### 9. 🌤️ Canlı Hava Durumu & Konum Farkındalığı
+- **Sıfır Gecikmeli Entegrasyon**: Keyless `wttr.in` servisi üzerinden anlık sıcaklık, hava durumu emojisi ve şehir bilgisi (örneğin `Ankara • +7°C ✨` veya `Istanbul • +14°C 🌤️`) üst bar üzerinde gösterilir.
+- Arka planda 30 dakikada bir sıfır bellek tüketimiyle kendini yeniler.
 
-TV Master Launcher v1.0.0 includes an interactive, bilingual setup wizard that automatically fingerprints your hardware, asks your regional preferences, and applies the complete transformation:
+---
+
+### 10. 🔒 AdGuard Private DNS over TLS (DoT)
+- Sistem genelinde `dns.adguard-dns.com` şifreli DNS profilini etkinleştirir.
+- Reklamları, telemetriyi ve izleyicileri ağ düzeyinde engellerken, ISS kaynaklı DNS engellerini aşar.
+
+---
+
+### 11. 📲 Yerel AirPlay & Kablosuz Yansıtma
+- iOS, iPadOS ve macOS aygıtlarından doğrudan AirPlay ses ve video yansıtma desteği.
+- Arka plan güç tasarrufu muafiyetiyle 7/24 kesintisiz keşfedilebilirlik.
+
+---
+
+### 12. 🚀 Akıllı Bellek Yönetimi (RAM & zRAM Swap)
+- **1024 MB LZ4 zRAM Swap**: `/dev/block/zram0` üzerinde sıkıştırılmış bellek diski oluşturur.
+- **Swappiness & Cache Tuning**: `vm.swappiness=80` ve `vfs_cache_pressure=100` değerleriyle UI iş parçacıklarını anında yanıt verir tutarken, inaktif servisleri zRAM'e aktarır.
+- **RAM Tüketimi**: Başlatıcı bellek kullanımı **35 MB**'ın altındadır.
+- **Depolamadan RAM Genişletme**: Android 11+ sanal bellek genişletme (`ram_expand_size_list: 2048`).
+
+---
+
+### 13. 🛡️ Evrensel Debloater & TV-Core Koruma Kalkanı
+Fabrika menülerini, telemetriyi ve gereksiz mağaza bloatware'lerini HDMI girişlerini, DVB-S2 uydu alıcısını veya görüntü ayarlarını bozmadan güvenle kaldırır:
+- **Marka Profilleri**: Arçelik/Beko, TCL, Sony Bravia, Philips, Xiaomi, Hisense ve Chromecast with Google TV.
+- **TV-Core Koruması (`scripts/lib/tv_safety.sh`)**: Donanım çekirdeği paketlerinin (`com.mediatek.wwtv.tvcenter`, `com.tcl.tvmanager`, vb.) silinmesini engeller.
+- **Kendi Kendini Onarma (`scripts/restore_tv_core.sh`)**: Yanlışlıkla devre dışı bırakılmış TV çekirdek paketlerini tek komutla kurtarır.
+
+---
+
+### 13b. 🔬 Ekran & HDR Doğrulama Testi (`scripts/verify_display.sh`)
+```bash
+./scripts/verify_display.sh                  # Hızlı sağlık raporu
+./scripts/verify_display.sh --playback-test  # Gerçek 4K HEVC HDR10 klibi oynatarak donanım katmanını ölçer
+```
+> **"Televizyonum Nuvio'da veya Geliştirici Seçeneklerinde 1080p60 gösteriyor, 4K bozuk mu?"**  
+> **Hayır**. MediaTek çipli televizyonlarda (Arçelik, Beko, Grundig, Vestel vb.) Android, arayüzü (UI) 1920×1080@60 olarak işler. Video akışı başladığında ayrı bir donanım video katmanı (hardware overlay plane) devreye girerek paneli yerel 3840×2160 (4K) çözünürlüğe ve `BT2020_ITU_PQ` (HDR10) renk uzayına geçirir. `--playback-test` komutu bunu donanımdan bizzat doğrular.
+
+---
+
+## 🚀 Tek Komutla Evrensel Kurulum Sihirbazı (Setup Wizard)
+
+TV Master Launcher v1.0.0; donanımınızı tanıyan, tercihlerinizi soran ve tüm optimizasyonu tek adımda uygulayan interaktif bir sihirbaz içerir:
 
 ```bash
 git clone https://github.com/AlptugDag/tv-master-launcher.git
@@ -159,109 +226,103 @@ cd tv-master-launcher
 ./install.sh
 ```
 
-### Wizard Features:
-- **Language & Regional Persona**:
-  - Country selection (TR, US, DE, GB, FR, ES, IT, or custom ISO): automatically tailors cinema feeds, live TV catalogs, and vitrin.
-- **Live Weather Integration**:
-  - Prompts for your city (e.g. Istanbul, Ankara, Berlin, London, New York) or auto-detects from IP; displays real-time weather on the launcher top bar.
-- **Personalized Audio & Subtitle Languages**:
-  - Allows specifying multiple languages you speak (e.g. `turkish,english`, `german,english`, `spanish,latino`). Constructs Torrentio stream engine with seeder-first sorting for those exact languages.
-- **Yapay Zekâ Sinema Küratörü (Multi-LLM: Google Gemini & Anthropic Claude)**:
-  - Ruh halinize ("Denis Villeneuve tarzı felsefi bilimkurgu", "Yağmurlu New York dedektif filmi", "Tarkovski derinliği") göre 1 saniyede 10 başyapıt öneren yerleşik yapay zekâ küratörü.
-  - İster **Google Gemini** (`AIzaSy...`), ister **Anthropic Claude** (`sk-ant-...`) API anahtarınızı destekler.
-  - **Gizlilik ve Güvenlik Garantisi:** API anahtarınız GitHub reposunda ASLA yer almaz; kurulum sırasında sorulur veya TV kumandasıyla arayüzden girilip doğrudan TV donanımının güvenli kasasında (`Settings.Secure`) şifrelenir.
-- **Anıtsal Sinematik Ekran Koruyucu & Felsefe**:
-  - OLED/QLED yanma korumalı (Lissajous drift), derin uzay nebula aurası, organik yıldız tozu ve efsanevi sinema aforizmaları (*Blade Runner, Interstellar, Inception, Andrei Tarkovsky, Matrix*).
-- **Interface Theme Selection**:
-  - Pure OLED Dark Noir, Auto Day/Night (solar sync), or Modern Frosted Light Glass.
-- **Interactive Debloat & App Removal**:
-  - Choose between recommended safe brand debloat, custom interactive package removal (with safety guards for core services), or skip.
-- **DNS & Ad Blocking**:
-  - AdGuard DoT, Cloudflare DoT, or keep existing.
-- **Untouched Remote Controls**:
-  - Zero interference with hardware remote control buttons.
+### Sihirbaz Adımları:
+1. **Dil ve Bölge**: Türkiye, ABD, Almanya, İngiltere, Fransa vb. vitrin ve canlı yayın seçimi.
+2. **Canlı Hava Durumu**: Şehir belirleme (örneğin Ankara, Istanbul, Berlin) veya IP üzerinden otomatik algılama.
+3. **Dublaj & Altyazı Dilleri**: Tercih ettiğiniz diller (`turkish,english` vb.) ile seeder öncelikli Torrentio motoru.
+4. **Yapay Zekâ Sinema Küratörü (Google Gemini & Anthropic Claude)**:
+   - Dilediğiniz zaman hava durumu, saat ve ruh halinize göre otomatik yaratıcı vitrin seçkileri.
+   - API anahtarınızı güvenle TV'nin şifreli deposuna kaydeder (repoda asla tutulmaz).
+5. **The Movie Database (TMDB) API**:
+   - Ekran koruyucuda ve vitrinde dinamik 4K sinematik sahne arka planları.
+6. **Tema Seçimi**: Saf OLED Siyahı, Otomatik Gece/Gündüz veya Aydınlık Buzlu Cam.
+7. **Debloat & Güvenli Temizlik**: Üretici bloatware'lerini donanıma zarar vermeden temizleme.
+8. **DNS & Reklam Engelleme**: AdGuard DoT veya Cloudflare DoT.
+9. **Donanım Kumandası**: Tuş atamaları ve erişilebilirlik servisinin aktifleştirilmesi.
 
 ---
 
-## 🤖 Universal AI Auto-Installation
+## 🤖 Yapay Zekâ ile Otomatik Kurulum (AI Prompt)
 
-You can also transform your TV using any modern conversational AI (ChatGPT, Claude, Gemini, DeepSeek):
+Televizyonunuzu ChatGPT, Claude, Gemini veya DeepSeek aracılığıyla da kurabilirsiniz:
 
-1. Connect your computer to your TV over Wi-Fi ADB:
+1. Televizyonunuza Wi-Fi ADB ile bağlanın:
    ```bash
-   adb connect <YOUR_TV_IP>:5555
+   adb connect <TV_IP_ADRESINIZ>:5555
    ```
-2. Open [`AI_AUTO_INSTALL_PROMPT.md`](AI_AUTO_INSTALL_PROMPT.md).
-3. Copy the prompt and paste it into your AI assistant.
-4. The AI will interview you, inspect hardware, select the correct debloat profile, boost RAM, install the launcher, and configure cinema streaming sources automatically.
+2. [`AI_AUTO_INSTALL_PROMPT.md`](AI_AUTO_INSTALL_PROMPT.md) dosyasını açın.
+3. İçeriği kopyalayıp yapay zekâ asistanınıza yapıştırın.
+4. Yapay zekâ donanımınızı analiz edecek, en doğru debloat profilini seçecek, RAM'i artıracak ve sinema üssünüzü kuracaktır.
 
 ---
 
-## 📂 Repository Structure
+## 📂 Depo Yapısı (Repository Structure)
 
 ```
 tv-master-launcher/
-├── AI_AUTO_INSTALL_PROMPT.md        # Master interactive prompt for AI models
-├── LICENSE                          # Apache 2.0 License
-├── README.md                        # Documentation & visual showcase
-├── install.sh                       # One-command interactive setup wizard (symlink)
+├── AI_AUTO_INSTALL_PROMPT.md        # AI modelleri için ana kurulum promptu
+├── LICENSE                          # Apache 2.0 Lisansı
+├── README.md                        # Dokümantasyon & görsel vitrin
+├── install.sh                       # Tek komutla çalışan interaktif kurulum sihirbazı
 ├── release/
-│   └── tv-master-launcher-v1.0.0.apk # Pre-built, signed, production APK (v1.0.0)
+│   └── tv-master-launcher-v1.0.0.apk # Derlenmiş, imzalanmış üretime hazır APK (v1.0.0)
 ├── docs/
-│   └── screenshots/                 # Diversified captures & animated glow GIF
-│       ├── liquid_glass_glow.gif    # Animated focal neon bloom transitions
-│       ├── hero_coverflow_3d.png    # 3D Parallax vitrin with 1.30x focal card
-│       ├── cinema_hud_overlay.png   # In-video picture/sound settings HUD
-│       ├── dock_nuvio_showcase.png  # Apple visionOS dock with Nuvio wordmark
-│       ├── modern_screensaver.png   # Minimalist OLED drifting screensaver
-│       ├── focal_neon_amber.png     # Amber neon bloom extraction
-│       ├── focal_neon_crimson.png   # Crimson neon bloom extraction
-│       └── focal_neon_cyan.png      # Cyan neon bloom extraction
-├── launcher/                        # Complete Android Studio / Gradle source code
+│   └── screenshots/                 # 1080p canlı video, animasyonlu gif ve ekran görüntüleri
+│       ├── cinetv_showcase.mp4      # 1080p canlı kullanım & akıcı vitrin ekran kaydı
+│       ├── liquid_glass_glow.gif    # Akıcı neon bloom ve coverflow geçiş animasyonu
+│       ├── hero_coverflow_3d.png    # 3D Parallax vitrin (1.30x odaklı saf afiş tasarımı)
+│       ├── cinema_hud_overlay.png   # Gemini Arama, HUD kontrolleri & Ağ/Giriş barı
+│       ├── dock_nuvio_showcase.png  # Apple visionOS dock (`+` kartı & Nuvio wordmark)
+│       ├── modern_screensaver.png   # TMDB dinamik sahne arka planlı & replikli screensaver
+│       ├── vitrin_rest_overview.png # Leanback dock ve genel vitrin perspektifi
+│       ├── focal_neon_amber.png     # Amber neon bloom renk çıkarımı
+│       ├── focal_neon_crimson.png   # Crimson neon bloom renk çıkarımı
+│       └── focal_neon_cyan.png      # Cyan neon bloom renk çıkarımı
+├── launcher/                        # Android Studio kaynak kodları
 │   ├── AndroidManifest.xml          # v1.0.0 (versionCode 100)
-│   ├── build.sh                     # Fast APK compiler script
-│   ├── src/                         # Java sources (CoverFlow, KeyInterceptor, Shaders)
-│   ├── res/                         # Vector drawables, layouts, themes
-│   └── assets/                      # High-res poster artwork & fallback database
-└── scripts/                         # Shell automation scripts
-    ├── install.sh                   # Master interactive setup wizard
-    ├── debloat_universal.sh         # Auto-detects brand & removes bloat
-    ├── debloat_arcelik_beko.sh      # Arçelik / Beko specific debloat script
-    ├── restore_tv_core.sh           # Re-enable OEM TV-core packages (self-heal)
-    ├── verify_display.sh            # Display / HDR / TV-core health + 4K HDR10 playback test
-    ├── lib/tv_safety.sh             # Shared protected-package guard & safe helpers
-    ├── optimize_ram.sh              # zRAM, swappiness, LMK & memory tuning
-    ├── setup_dns_and_streaming.sh   # AdGuard DoT & Nuvio 4K HDR10 setup
-    ├── setup_nuvio_presets.sh       # Nuvio addon presets & cinema hardware AFR calibration
-    ├── setup_nova_player.sh         # Nova Video Player fallback integration
-    ├── setup_youtube.sh             # Ad-free YouTube disguise installer
-    └── setup_airplay.sh             # AirPlay receiver configuration
+│   ├── build.sh                     # Hızlı APK derleyici
+│   ├── src/                         # Java kaynak kodları (CoverFlow, KeyInterceptor, WebRemote, TMDB)
+│   ├── res/                         # Vektörel çizimler, layout'lar, temalar
+│   └── assets/                      # Yüksek çözünürlüklü afişler ve yedek veritabanı
+└── scripts/                         # Otomasyon betikleri
+    ├── install.sh                   # Master interaktif kurulum sihirbazı
+    ├── debloat_universal.sh         # Marka algılayıcı evrensel debloater
+    ├── debloat_arcelik_beko.sh      # Arçelik / Beko özel debloat betiği
+    ├── restore_tv_core.sh           # TV çekirdek paketlerini kurtarma (self-heal)
+    ├── verify_display.sh            # Ekran / HDR sağlık raporu ve 4K playback testi
+    ├── lib/tv_safety.sh             # Korunan sistem paketleri güvenlik muhafızı
+    ├── optimize_ram.sh              # zRAM, swappiness, LMK & bellek ayarları
+    ├── setup_dns_and_streaming.sh   # AdGuard DoT & Nuvio 4K HDR10 kurulumu
+    ├── setup_nuvio_presets.sh       # Nuvio eklenti ön ayarları & AFR kalibrasyonu
+    ├── setup_nova_player.sh         # Nova Video Player harici oynatıcı entegrasyonu
+    ├── setup_youtube.sh             # Reklamsız YouTube entegrasyonu
+    └── setup_airplay.sh             # AirPlay alıcı yapılandırması
 ```
 
 ---
 
-## 📺 Supported Devices & Brands
+## 📺 Desteklenen Cihazlar & Markalar
 
-| Manufacturer | Tested Devices | Optimization Profile | Status |
+| Üretici / Marka | Test Edilen Modeller | Optimizasyon Profili | Durum |
 | :--- | :--- | :--- | :--- |
-| **Arçelik / Beko / Grundig** | 4K UHD Smart TVs (MediaTek SoC) | `debloat_arcelik_beko.sh` | Verified 60 FPS |
-| **TCL / Thomson / FFALCON** | C-Series, Q-Series, P-Series | `debloat_universal.sh (Profile B)` | Fully Supported |
-| **Sony Bravia** | XR, X80, X90 Series | `debloat_universal.sh (Profile C)` | Fully Supported |
-| **Philips Android TV** | Ambilight / OLED Series | `debloat_universal.sh (Profile D)` | Fully Supported |
-| **Xiaomi** | Mi TV 4A/4S/5, TV Box S, TV Stick | `debloat_universal.sh (Profile E)` | Fully Supported |
-| **Hisense / Toshiba** | A6/U6/U7 Android Editions | `debloat_universal.sh (Profile F)` | Fully Supported |
-| **Google** | Chromecast with Google TV (HD/4K) | `debloat_universal.sh (Profile G)` | Fully Supported |
-| **Smart Projectors (Projeksiyonlar)** | Anker Nebula, XGIMI, Dangbei, Epson, Formovie, Wanbo (Android TV / AOSP) | `debloat_universal.sh` | Cinema Calibrated (Big Screen) |
+| **Arçelik / Beko / Grundig** | 4K UHD Smart TVs (MediaTek SoC) | `debloat_arcelik_beko.sh` | Doğrulandı 60 FPS |
+| **TCL / Thomson / FFALCON** | C-Serisi, Q-Serisi, P-Serisi | `debloat_universal.sh (Profil B)` | Tam Uyumlu |
+| **Sony Bravia** | XR, X80, X90 Serisi | `debloat_universal.sh (Profil C)` | Tam Uyumlu |
+| **Philips Android TV** | Ambilight / OLED Serisi | `debloat_universal.sh (Profil D)` | Tam Uyumlu |
+| **Xiaomi** | Mi TV 4A/4S/5, TV Box S, TV Stick | `debloat_universal.sh (Profil E)` | Tam Uyumlu |
+| **Hisense / Toshiba** | A6/U6/U7 Android Sürümleri | `debloat_universal.sh (Profil F)` | Tam Uyumlu |
+| **Google** | Chromecast with Google TV (HD/4K) | `debloat_universal.sh (Profil G)` | Tam Uyumlu |
+| **Akıllı Projeksiyonlar** | Anker Nebula, XGIMI, Dangbei, Epson, Formovie, Wanbo (Android TV / AOSP) | `debloat_universal.sh` | Sinema Kalibrasyonu (Dev Ekran) |
 
 ---
 
-## 🔒 Security & Privacy Guarantee
-- **Zero Security Vulnerabilities**: All shell scripts employ strict variable quotation, input sanitization (regex validation for IPs), safe temporary file handling with automatic exit traps, and zero arbitrary shell execution within Android components.
-- **No Private Data**: Contains **NO personal credentials, accounts, tokens, proprietary logos, or private watermarks**.
-- All components operate strictly through standard, public Android SDK and Leanback APIs.
+## 🔒 Güvenlik & Gizlilik Garantisi (Security & Privacy)
+- **Sıfır Güvenlik Açığı**: Tüm betikler katı değişken tırnaklama, güvenli IP sanitizasyonu ve güvenli geçici dosya yönetimi içerir.
+- **Kişisel Veri İçermez**: Depoda **hiçbir kişisel API anahtarı (Gemini, Claude, TMDB vb.), hesap bilgisi, şifre veya özel imza/filigran yer almaz**. Kullanıcı kendi anahtarlarını kurulum sırasında güvenle girer ve bu anahtarlar yalnızca TV'nin yerel donanım deposunda saklanır.
+- Tüm bileşenler standart açık Android SDK ve Leanback API'leri üzerinden çalışır.
 
 ---
 
-## 📜 License & Acknowledgments
-- Distributed under the **Apache 2.0 License**. See [LICENSE](LICENSE) for details.
-- Special thanks to [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) by Gathin23 for the original project foundation.
+## 📜 Lisans & Teşekkür
+- Bu proje **Apache 2.0 Lisansı** ile lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakabilirsiniz.
+- Temel mimari için [**CleanYourTV**](https://github.com/Gathin23/cleanyourtv) (Gathin23) projesine teşekkür ederiz.

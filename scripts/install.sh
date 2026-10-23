@@ -462,6 +462,14 @@ if [[ "$LANG" == "tr" ]]; then
     else
         echo -e "${YELLOW}[!] Yapay zekâ anahtarı atlandı. Dilediğiniz zaman kumandayla madalyona tıklayarak ekleyebilirsiniz.${NC}"
     fi
+
+    echo -e "\n${BOLD}🎬 The Movie Database (TMDB) API Entegrasyonu:${NC}"
+    echo "  (Ekran koruyucu sinematik sahne arka planları ve dinamik 4K afişler için)"
+    read -r -p "TMDB API Anahtarınız (İsteğe bağlı - Atlamak için Enter): " USER_TMDB_KEY
+    if [[ -n "${USER_TMDB_KEY:-}" ]]; then
+        adb shell "settings put secure tv_tmdb_api_key '${USER_TMDB_KEY}'"
+        echo -e "${GREEN}[+] TMDB API anahtarı TV'nin güvenli donanım deposuna kaydedildi.${NC}"
+    fi
 else
     echo -e "\n${BOLD}[Step 8/9] 🤖 AI Cinema Curator Configuration (Mood-Based 4K Vitrin):${NC}"
     echo "  1) Google Gemini API (Recommended - Free tier available)"
@@ -490,6 +498,14 @@ else
         fi
     else
         echo -e "${YELLOW}[!] AI key skipped. You can configure it anytime via TV remote settings.${NC}"
+    fi
+
+    echo -e "\n${BOLD}🎬 The Movie Database (TMDB) API Configuration:${NC}"
+    echo "  (For dynamic cinematic screensaver backgrounds and rich posters)"
+    read -r -p "TMDB API Key (Optional - Press Enter to skip): " USER_TMDB_KEY
+    if [[ -n "${USER_TMDB_KEY:-}" ]]; then
+        adb shell "settings put secure tv_tmdb_api_key '${USER_TMDB_KEY}'"
+        echo -e "${GREEN}[+] TMDB API key saved to TV secure hardware settings.${NC}"
     fi
 fi
 

@@ -403,6 +403,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 || keyCode == 170
                 || keyCode == KeyEvent.KEYCODE_GUIDE
                 || keyCode == 172
+                || keyCode == 277 // KEYCODE_LIVE_TV
                 || keyCode == KeyEvent.KEYCODE_TV_CONTENTS_MENU
                 || keyCode == KeyEvent.KEYCODE_BUTTON_4
                 || keyCode == 191
@@ -414,7 +415,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
     private boolean isNetflixKey(int keyCode, int scanCode, SharedPreferences prefs) {
         int custom = prefs.getInt(KEY_CUSTOM_NETFLIX, -1);
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
-        return keyCode == KeyEvent.KEYCODE_BUTTON_1
+        return keyCode == 207 // KEYCODE_NETFLIX
+                || keyCode == KeyEvent.KEYCODE_BUTTON_1
                 || keyCode == 188
                 || keyCode == KeyEvent.KEYCODE_PROG_RED
                 || keyCode == 183
@@ -435,7 +437,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
     private boolean isYouTubeKey(int keyCode, int scanCode, SharedPreferences prefs) {
         int custom = prefs.getInt(KEY_CUSTOM_YOUTUBE, -1);
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
-        return keyCode == KeyEvent.KEYCODE_BUTTON_2
+        return keyCode == 218 // KEYCODE_YOUTUBE
+                || keyCode == KeyEvent.KEYCODE_BUTTON_2
                 || keyCode == 189
                 || keyCode == 190
                 || keyCode == 284
@@ -456,6 +459,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 || keyCode == 185
                 || keyCode == KeyEvent.KEYCODE_SETTINGS
                 || keyCode == 176
+                || keyCode == 209 || keyCode == 228
                 || keyCode == 192 || keyCode == 290 || keyCode == 303
                 || scanCode == 192 || scanCode == 251 || scanCode == 413;
     }

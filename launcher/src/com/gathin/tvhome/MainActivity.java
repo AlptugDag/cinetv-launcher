@@ -6,6 +6,10 @@ import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.UiModeManager;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.PixelFormat;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -179,6 +183,11 @@ public class MainActivity extends Activity {
     private TextView vitrinCategoryLabel;
     private FrameLayout brandMedallion;
     private View gearIconBtn;
+    private View btnNetwork;
+    private View btnInputs;
+    private View btnAllApps;
+    private View searchBarView;
+    private BroadcastReceiver packageReceiver;
 
     private final List<AppTileItem> dockItems = new ArrayList<>();
     private final List<AppTileItem> gridItems = new ArrayList<>();
@@ -567,7 +576,51 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        try {
+            getWindow().setBackgroundDrawable(new ColorDrawable(0xFF040508));
+            getWindow().setFormat(PixelFormat.OPAQUE);
+        } catch (Throwable ignored) {}
         applyThemeMode();
+
+        TvWebRemoteServer.start(this);
+        TvWebRemoteServer.setCallback(new TvWebRemoteServer.RemoteActionCallback() {
+            @Override
+            public void onMovieSearchRequested(final String query) {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        handleSearchOrAiQuery(query);
+                    }
+                });
+            }
+
+            @Override
+            public void onAppLaunchRequested(final String pkg) {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        launchAppByPackage(pkg);
+                    }
+                });
+            }
+        });
+
+        packageReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                loadAppsAndPopulate(true);
+            }
+        };
+        try {
+            IntentFilter pFilter = new IntentFilter();
+            pFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+            pFilter.addAction(Intent.ACTION_PACKAGE_FULLY_REMOVED);
+            pFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
+            pFilter.addDataScheme("package");
+            registerReceiver(packageReceiver, pFilter);
+        } catch (Throwable ignored) {
+        }
+
         SharedPreferences p = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String hCsv = p.getString("user_hidden_apps_csv", "");
         if (hCsv != null && !hCsv.isEmpty()) {
@@ -578,6 +631,19 @@ public class MainActivity extends Activity {
         buildUi();
         checkDailyMidnightVitrinRefresh();
         scheduleMidnightPosterRefresh();
+        triggerAutoAiVitrinIfNeeded();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (packageReceiver != null) {
+            try {
+                unregisterReceiver(packageReceiver);
+            } catch (Throwable ignored) {}
+            packageReceiver = null;
+        }
+        TvWebRemoteServer.stop();
+        super.onDestroy();
     }
 
     @Override
@@ -636,6 +702,25 @@ public class MainActivity extends Activity {
             }
             resetIdleScreensaverTimer();
 
+            int kc = event.getKeyCode();
+            // Dedicated Remote Hardware Buttons
+            if (kc == 207 || kc == 188 || kc == 183 || kc == 265 || kc == 229) {
+                openNuvioApp();
+                return true;
+            }
+            if (kc == 218 || kc == 189 || kc == 190 || kc == 284) {
+                openYouTubeApp();
+                return true;
+            }
+            if (kc == 185 || kc == 209 || kc == 228 || kc == 192) {
+                openWebVideoCasterApp();
+                return true;
+            }
+            if (kc == 277 || kc == 170 || kc == 172 || kc == 186) {
+                openTvPlusApp();
+                return true;
+            }
+
             if (isMovingTile) {
                 resetTileMoveTimeout();
                 int code = event.getKeyCode();
@@ -655,7 +740,7 @@ public class MainActivity extends Activity {
                     stopTileMove();
                     return true;
                 } else if (code == KeyEvent.KEYCODE_MENU) {
-                    showAppSimpleMenu(movingTileItem);
+                    showAppLeanbackContextMenu(movingTileItem, movingTileInDock, movingTileIndex);
                     return true;
                 }
             }
@@ -709,17 +794,7 @@ public class MainActivity extends Activity {
             }
             currentThemeMode = mode.toLowerCase();
 
-            boolean isDaytime = true;
-            if ("auto".equals(currentThemeMode)) {
-                int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-                isDaytime = (hour >= 7 && hour < 19);
-            } else if ("light".equals(currentThemeMode)) {
-                isDaytime = true;
-            } else {
-                isDaytime = false;
-            }
-
-            boolean isLight = ("light".equals(currentThemeMode)) || ("auto".equals(currentThemeMode) && isDaytime);
+            boolean isLight = "light".equalsIgnoreCase(currentThemeMode);
 
             UiModeManager uiManager = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
             if (uiManager != null) {
@@ -841,13 +916,7 @@ public class MainActivity extends Activity {
         brandMedallion = new FrameLayout(this);
         brandMedallion.setFocusable(true);
         brandMedallion.setClickable(true);
-
-        final GradientDrawable medallionBg = new GradientDrawable();
-        medallionBg.setShape(GradientDrawable.RECTANGLE);
-        medallionBg.setCornerRadius(26f);
-        medallionBg.setColor(Color.argb(210, 10, 15, 29)); // Obsidian Frosted Glass
-        medallionBg.setStroke(3, Color.argb(180, 56, 189, 248)); // Prominent Cyber Blue / Frosted Silver border
-        brandMedallion.setBackground(medallionBg);
+        brandMedallion.setBackground(null); // Pure transparent logo floating directly on canvas
 
         final ImageView brandTvLogo = new ImageView(this);
         brandTvLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -879,24 +948,19 @@ public class MainActivity extends Activity {
             }
         }
 
-        FrameLayout.LayoutParams innerLogoLp = new FrameLayout.LayoutParams(66, 66, Gravity.CENTER);
+        FrameLayout.LayoutParams innerLogoLp = new FrameLayout.LayoutParams(76, 76, Gravity.CENTER);
         brandMedallion.addView(brandTvLogo, innerLogoLp);
 
         brandMedallion.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 v.animate()
-                        .scaleX(hasFocus ? 1.20f : 1.0f)
-                        .scaleY(hasFocus ? 1.20f : 1.0f)
+                        .scaleX(hasFocus ? 1.18f : 1.0f)
+                        .scaleY(hasFocus ? 1.18f : 1.0f)
                         .setDuration(220L)
                         .start();
-                if (hasFocus) {
-                    medallionBg.setStroke(3, Color.parseColor("#38BDF8"));
-                    if (ambientBackdropView != null) {
-                        ambientBackdropView.animateToTarget(v, Color.parseColor("#38BDF8"));
-                    }
-                } else {
-                    medallionBg.setStroke(3, Color.argb(180, 56, 189, 248));
+                if (hasFocus && ambientBackdropView != null) {
+                    ambientBackdropView.animateToTarget(v, Color.parseColor("#38BDF8"));
                 }
             }
         });
@@ -918,8 +982,8 @@ public class MainActivity extends Activity {
                             return true;
                         }
                     } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                        if (gearIconBtn != null) {
-                            gearIconBtn.requestFocus();
+                        if (searchBarView != null) {
+                            searchBarView.requestFocus();
                             return true;
                         }
                     }
@@ -965,16 +1029,57 @@ public class MainActivity extends Activity {
 
         leftBrandAndClock.addView(clockLine);
 
-        LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        leftLp.setMargins(0, 0, 36, 0);
         topBar.addView(leftBrandAndClock, leftLp);
 
-        gearIconBtn = createVectorGearButton(new View.OnClickListener() {
+        // Center Search / Gemini Chat Bar
+        searchBarView = createSearchBar();
+        LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        searchLp.setMargins(0, 0, 28, 0);
+        topBar.addView(searchBarView, searchLp);
+
+        // Header Action Buttons: Network, Inputs, All Apps, Settings
+        LinearLayout headerActions = new LinearLayout(this);
+        headerActions.setOrientation(LinearLayout.HORIZONTAL);
+        headerActions.setGravity(Gravity.CENTER_VERTICAL);
+        headerActions.setClipChildren(false);
+        headerActions.setClipToPadding(false);
+
+        btnNetwork = createHeaderIconButton(R.drawable.ic_network, "Ağ Ayarları", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (Throwable t) {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    } catch (Throwable ignored) {}
+                }
+            }
+        }, null);
+
+        btnInputs = createHeaderIconButton(R.drawable.ic_inputs, "Girişler", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openTvInputs();
+            }
+        }, null);
+
+        btnAllApps = createHeaderIconButton(R.drawable.ic_all_apps, "Tüm Uygulamalar", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showAllAppsDrawer();
+            }
+        }, null);
+
+        gearIconBtn = createHeaderIconButton(R.drawable.ic_settings_gear, "Ayarlar", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 try {
                     startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                 } catch (Throwable t) {
-                    android.util.Log.e("TVHomeWeather", "Weather fetch error", t);
+                    showLauncherSettingsDialog();
                 }
             }
         }, new View.OnLongClickListener() {
@@ -985,15 +1090,17 @@ public class MainActivity extends Activity {
             }
         });
 
-        gearIconBtn.setOnKeyListener(new View.OnKeyListener() {
+        // Key Navigation for Header Action Buttons
+        btnNetwork.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                        if (brandMedallion != null) {
-                            brandMedallion.requestFocus();
-                            return true;
-                        }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && searchBarView != null) {
+                        searchBarView.requestFocus();
+                        return true;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && btnInputs != null) {
+                        btnInputs.requestFocus();
+                        return true;
                     } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                         if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
                             posterCardFrames.get(0).requestFocus();
@@ -1004,7 +1111,75 @@ public class MainActivity extends Activity {
                 return false;
             }
         });
-        topBar.addView(gearIconBtn);
+
+        btnInputs.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && btnNetwork != null) {
+                        btnNetwork.requestFocus();
+                        return true;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && btnAllApps != null) {
+                        btnAllApps.requestFocus();
+                        return true;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
+                            posterCardFrames.get(0).requestFocus();
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+        });
+
+        btnAllApps.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && btnInputs != null) {
+                        btnInputs.requestFocus();
+                        return true;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && gearIconBtn != null) {
+                        gearIconBtn.requestFocus();
+                        return true;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
+                            posterCardFrames.get(0).requestFocus();
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+        });
+
+        gearIconBtn.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && btnAllApps != null) {
+                        btnAllApps.requestFocus();
+                        return true;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
+                            posterCardFrames.get(0).requestFocus();
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+        });
+
+        LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(52, 52);
+        btnLp.setMargins(10, 0, 0, 0);
+        headerActions.addView(btnNetwork, btnLp);
+        headerActions.addView(btnInputs, btnLp);
+        headerActions.addView(btnAllApps, btnLp);
+        headerActions.addView(gearIconBtn, btnLp);
+
+        topBar.addView(headerActions);
         mainContainer.addView(topBar);
 
         // 2. MOVIE POSTER VITRİN (Hover-Only Wide Optical Bloom + Chromatic Hue Separation)
@@ -1013,7 +1188,7 @@ public class MainActivity extends Activity {
         vitrinCategoryLabel.setTextSize(13f);
         vitrinCategoryLabel.setTextColor(Color.parseColor("#94A3B8"));
         vitrinCategoryLabel.setLetterSpacing(0.12f);
-        vitrinCategoryLabel.setText("ÖNE ÇIKANLAR • VİZYONDAKİLER & POPÜLER");
+        vitrinCategoryLabel.setText("GÜNÜN AKILLI SİNEMA SEÇKİSİ");
         LinearLayout.LayoutParams vclLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -1029,7 +1204,7 @@ public class MainActivity extends Activity {
         heroShelfRow.setOrientation(LinearLayout.HORIZONTAL);
         heroShelfRow.setClipToPadding(false);
         heroShelfRow.setClipChildren(false);
-        heroShelfRow.setPadding(30, 36, 30, 36);
+        heroShelfRow.setPadding(80, 40, 80, 40);
         heroScroll.addView(heroShelfRow);
         mainContainer.addView(heroScroll);
 
@@ -1155,7 +1330,7 @@ public class MainActivity extends Activity {
         updateClock();
     }
 
-    private View createVectorGearButton(View.OnClickListener onClick, View.OnLongClickListener onLongClick) {
+    private View createHeaderIconButton(int iconRes, String contentDesc, View.OnClickListener onClick, View.OnLongClickListener onLongClick) {
         final FrameLayout frame = new FrameLayout(this);
         frame.setFocusable(true);
         frame.setClickable(true);
@@ -1163,49 +1338,164 @@ public class MainActivity extends Activity {
 
         final GradientDrawable bg = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.argb(145, 38, 38, 44), Color.argb(125, 18, 18, 22)}
+                new int[]{Color.argb(165, 30, 41, 59), Color.argb(145, 15, 23, 42)}
         );
         bg.setShape(GradientDrawable.OVAL);
-        bg.setStroke(2, Color.argb(75, 255, 255, 255));
+        bg.setStroke(2, Color.argb(85, 255, 255, 255));
         frame.setBackground(bg);
 
-        final ImageView gearIcon = new ImageView(this);
-        gearIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        final ImageView icon = new ImageView(this);
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         try {
-            Drawable d = getDrawable(R.drawable.ic_settings_gear);
+            Drawable d = getDrawable(iconRes);
             if (d != null) {
                 d = d.mutate();
                 d.setTint(Color.parseColor("#F1F5F9"));
-                gearIcon.setImageDrawable(d);
+                icon.setImageDrawable(d);
             }
         } catch (Throwable ignored) {
         }
 
         FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(26, 26, Gravity.CENTER);
-        frame.addView(gearIcon, iconLp);
+        frame.addView(icon, iconLp);
 
         frame.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 bg.setStroke(hasFocus ? 3 : 2,
-                        hasFocus ? Color.WHITE : Color.argb(75, 255, 255, 255));
+                        hasFocus ? Color.parseColor("#38BDF8") : Color.argb(85, 255, 255, 255));
+                bg.setColor(hasFocus ? Color.argb(220, 30, 41, 59) : Color.argb(165, 30, 41, 59));
                 v.animate()
                         .scaleX(hasFocus ? 1.15f : 1.0f)
                         .scaleY(hasFocus ? 1.15f : 1.0f)
-                        .rotation(hasFocus ? 45f : 0f)
-                        .setDuration(180)
+                        .setDuration(180L)
                         .start();
                 if (hasFocus && ambientBackdropView != null) {
-                    ambientBackdropView.animateToTarget(v, Color.parseColor("#E2E8F0"));
+                    ambientBackdropView.animateToTarget(v, Color.parseColor("#38BDF8"));
                 }
             }
         });
-        frame.setOnClickListener(onClick);
-        if (onLongClick != null) frame.setOnLongClickListener(onLongClick);
 
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(52, 52);
-        frame.setLayoutParams(lp);
+        frame.setOnClickListener(onClick);
+        if (onLongClick != null) {
+            frame.setOnLongClickListener(onLongClick);
+        }
         return frame;
+    }
+
+    private View createSearchBar() {
+        final LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setFocusable(true);
+        bar.setClickable(true);
+        bar.setClipChildren(false);
+        bar.setClipToPadding(false);
+        bar.setPadding(22, 10, 24, 10);
+
+        final GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.RECTANGLE);
+        bg.setCornerRadius(26f);
+        bg.setColor(Color.argb(160, 15, 23, 42)); // Glass obsidian
+        bg.setStroke(2, Color.argb(80, 255, 255, 255));
+        bar.setBackground(bg);
+
+        ImageView searchIcon = new ImageView(this);
+        searchIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        try {
+            Drawable sd = getDrawable(R.drawable.ic_search);
+            if (sd != null) {
+                sd = sd.mutate();
+                sd.setTint(Color.parseColor("#38BDF8"));
+                searchIcon.setImageDrawable(sd);
+            }
+        } catch (Throwable ignored) {}
+        LinearLayout.LayoutParams silp = new LinearLayout.LayoutParams(22, 22);
+        silp.setMargins(0, 0, 14, 0);
+        bar.addView(searchIcon, silp);
+
+        TextView searchHint = new TextView(this);
+        searchHint.setText("Film ara veya Gemini'ye sor...");
+        searchHint.setTypeface(FontManager.getMedium(this));
+        searchHint.setTextSize(14f);
+        searchHint.setTextColor(Color.parseColor("#94A3B8"));
+        bar.addView(searchHint);
+
+        bar.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                v.animate()
+                        .scaleX(hasFocus ? 1.04f : 1.0f)
+                        .scaleY(hasFocus ? 1.04f : 1.0f)
+                        .setDuration(190L)
+                        .start();
+                bg.setColor(hasFocus ? Color.argb(220, 30, 41, 59) : Color.argb(160, 15, 23, 42));
+                bg.setStroke(hasFocus ? 3 : 2, hasFocus ? Color.parseColor("#38BDF8") : Color.argb(80, 255, 255, 255));
+                if (hasFocus && ambientBackdropView != null) {
+                    ambientBackdropView.animateToTarget(v, Color.parseColor("#38BDF8"));
+                }
+            }
+        });
+
+        bar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showSearchAndAiDialog("");
+            }
+        });
+
+        bar.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                        if (brandMedallion != null) {
+                            brandMedallion.requestFocus();
+                            return true;
+                        }
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        if (btnNetwork != null) {
+                            btnNetwork.requestFocus();
+                            return true;
+                        }
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
+                            posterCardFrames.get(0).requestFocus();
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+        });
+
+        return bar;
+    }
+
+    private void openTvInputs() {
+        String[][] targets = new String[][]{
+            {"com.android.tv.settings", "com.android.tv.settings.inputs.InputsActivity"},
+            {"com.mediatek.wwtv.tvcenter", "com.mediatek.wwtv.tvcenter.nav.TurnkeyUiMainActivity"},
+            {"com.google.android.tv.frameworkpackagestubs", "com.google.android.tv.frameworkpackagestubs.InputActivity"}
+        };
+        for (String[] t : targets) {
+            try {
+                Intent intent = new Intent();
+                intent.setClassName(t[0], t[1]);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                return;
+            } catch (Throwable ignored) {}
+        }
+        try {
+            Intent intent = new Intent("android.media.tv.action.QUERY_CONTENT_RATING_SYSTEMS");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            return;
+        } catch (Throwable ignored) {}
+        try {
+            startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (Throwable ignored) {}
     }
 
     /**
@@ -1353,35 +1643,10 @@ public class MainActivity extends Activity {
                     Gravity.CENTER
             ));
 
-            // Layer 3: Cinema Stream Quality Badge (4K HDR10)
-            final TextView qualityBadge = new TextView(this);
-            qualityBadge.setText("4K HDR10");
-            qualityBadge.setTextSize(9f);
-            qualityBadge.setTypeface(FontManager.getBold(this));
-            qualityBadge.setTextColor(Color.parseColor("#E0E7FF"));
-            qualityBadge.setGravity(Gravity.CENTER);
-            qualityBadge.setPadding(14, 5, 14, 5);
-
-            final GradientDrawable badgeBg = new GradientDrawable();
-            badgeBg.setShape(GradientDrawable.RECTANGLE);
-            badgeBg.setCornerRadius(12f);
-            badgeBg.setColor(Color.argb(175, 10, 15, 26));
-            badgeBg.setStroke(1, Color.argb(110, 255, 255, 255));
-            qualityBadge.setBackground(badgeBg);
-
-            FrameLayout.LayoutParams badgeLp = new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    Gravity.TOP | Gravity.END
-            );
-            badgeLp.setMargins(0, 18, 18, 0);
-            cardFrame.addView(qualityBadge, badgeLp);
-
             cardFrame.setOnFocusChangeListener(new View.OnFocusChangeListener() {
                 @Override
                 public void onFocusChange(View v, boolean hasFocus) {
                     if (hasFocus) {
-                        badgeBg.setStroke(2, slot < posterNeonColors.size() ? posterNeonColors.get(slot) : Color.parseColor("#8B5CF6"));
                         isVitrinFocused = true;
                         updateVitrinParallax(slot);
                         if (ambientBackdropView != null && slot < posterNeonColors.size()) {
@@ -1389,7 +1654,6 @@ public class MainActivity extends Activity {
                         }
                         smoothScrollToVitrinCard(v);
                     } else {
-                        badgeBg.setStroke(1, Color.argb(110, 255, 255, 255));
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
@@ -1587,25 +1851,16 @@ public class MainActivity extends Activity {
     }
 
     private static final VitrinCategory[] VITRIN_CATEGORIES = new VitrinCategory[] {
-        new VitrinCategory("Anthology • Vizyondakiler", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json"),
-        new VitrinCategory("TurkSinema • Popüler Filmler", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Action.json"),
-        new VitrinCategory("AIOMetadata • IMDb En İyiler", "https://cinemeta-catalogs.strem.io/top/catalog/movie/imdbRating.json"),
-        new VitrinCategory("Nuvio • Bilim-Kurgu Başyapıtları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Sci-Fi.json"),
-        new VitrinCategory("Anthology • Gerilim & Gizem", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Thriller.json"),
-        new VitrinCategory("TurkSinema • Suç & Polisiye", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Crime.json"),
-        new VitrinCategory("Nuvio • Animasyon & Aile Dünyası", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Animation.json"),
-        new VitrinCategory("Anthology • Fantastik Dünyalar", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Fantasy.json"),
-        new VitrinCategory("Nuvio • Komedi & Eğlence", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Comedy.json"),
-        new VitrinCategory("Anthology • Macera & Keşif", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Adventure.json"),
-        new VitrinCategory("Nuvio • Korku & Doğaüstü", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Horror.json"),
-        new VitrinCategory("TurkSinema • Dram & Biyografi", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Drama.json"),
-        new VitrinCategory("AIOMetadata • Gizem & Dedektif", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Mystery.json"),
-        new VitrinCategory("Anthology • Romantik & Duygusal", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Romance.json"),
-        new VitrinCategory("Nuvio • Savaş & Tarih Destanları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=War.json"),
-        new VitrinCategory("Anthology • Belgesel & Doğa", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Documentary.json"),
-        new VitrinCategory("TurkSinema • Popüler Diziler", "https://cinemeta-catalogs.strem.io/top/catalog/series/top.json"),
-        new VitrinCategory("AIOMetadata • En Çok Oy Alan Diziler", "https://cinemeta-catalogs.strem.io/top/catalog/series/imdbRating.json"),
-        new VitrinCategory("Gemini AI • Günün Özel Sinema Seçkisi", "gemini_ai")
+        new VitrinCategory("Günün Akıllı Sinema Seçkisi", "gemini_ai"),
+        new VitrinCategory("Cannes & Venedik Altın Palmiye Başyapıtları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Drama.json"),
+        new VitrinCategory("Christopher Nolan & Denis Villeneuve Vizyonu", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Sci-Fi.json"),
+        new VitrinCategory("Siberpunk & Retro-Fütüristik Distopyalar", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Fantasy.json"),
+        new VitrinCategory("İskandinav & Fransız Suç Gerilimleri", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Crime.json"),
+        new VitrinCategory("Kore Sineması: Zeka ve Gerilim Başyapıtları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Thriller.json"),
+        new VitrinCategory("Studio Ghibli & Büyülü Sinema Evrenleri", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Animation.json"),
+        new VitrinCategory("90'lar Atmosferik Neo-Noir & Gizem", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Mystery.json"),
+        new VitrinCategory("Kült Bilim Kurgu & Kozmik Yolculuklar", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json"),
+        new VitrinCategory("Psikolojik Çıkmazlar ve Zihin Oyunları", "https://cinemeta-catalogs.strem.io/top/catalog/movie/imdbRating.json")
     };
 
     private static HttpURLConnection openWithRedirects(String urlStr) throws Exception {
@@ -1647,7 +1902,7 @@ public class MainActivity extends Activity {
                         @Override
                         public void run() {
                             if (vitrinCategoryLabel != null) {
-                                vitrinCategoryLabel.setText("ÖNE ÇIKANLAR • " + category.name.toUpperCase(Locale.getDefault()));
+                                vitrinCategoryLabel.setText(category.name.toUpperCase(Locale.getDefault()));
                             }
                         }
                     });
@@ -1896,11 +2151,17 @@ public class MainActivity extends Activity {
         }
         ensureEssentialAppTile(discovered, seenPackages, "com.nuvio.tv", "Nuvio");
 
-        // Ensure Chrome is discoverable in apps grid
-        String chromePkg = seenPackages.contains("org.cromite.cromite") ? "org.cromite.cromite" : "com.android.chrome";
-        if (!userHiddenApps.contains(chromePkg)) {
-            ensureEssentialAppTile(discovered, seenPackages, chromePkg, "Chrome");
+        // Filter out any uninstalled apps
+        List<AppTileItem> validDiscovered = new ArrayList<>();
+        for (AppTileItem itm : discovered) {
+            try {
+                if (pm.getLaunchIntentForPackage(itm.packageName) != null || pm.getLeanbackLaunchIntentForPackage(itm.packageName) != null) {
+                    validDiscovered.add(itm);
+                }
+            } catch (Throwable ignored) {}
         }
+        discovered.clear();
+        discovered.addAll(validDiscovered);
 
         dockItems.clear();
         gridItems.clear();
@@ -2015,6 +2276,12 @@ public class MainActivity extends Activity {
             lp.setMargins(12, 6, 12, 6);
             dockRow.addView(tile, lp);
         }
+
+        // Dedicated '+' Add App Card at dock end
+        View addCard = createAddAppCard();
+        LinearLayout.LayoutParams addLp = new LinearLayout.LayoutParams(160, 214);
+        addLp.setMargins(12, 6, 12, 6);
+        dockRow.addView(addCard, addLp);
 
         appsGridContainer.removeAllViews();
         int columns = 4;
@@ -2146,7 +2413,7 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 longPressConsumed[0] = true;
-                startTileMove(item, inDock, index);
+                showAppLeanbackContextMenu(item, inDock, index);
             }
         };
 
@@ -2274,11 +2541,13 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void showAppSimpleMenu(final AppTileItem item) {
+    private void showAppLeanbackContextMenu(final AppTileItem item, final boolean inDock, final int index) {
         if (item == null) return;
         final String[] actions = new String[] {
-            "Ana Ekrandan Sil",
-            "Kaldır"
+            "↔️  Sırasını Değiştir (Taşı)",
+            "👁️  Ana Ekrandan Gizle",
+            "🗑️  Cihazdan Kaldır (Sil)",
+            "ℹ️  Uygulama Bilgisi"
         };
 
         new AlertDialog.Builder(this)
@@ -2287,14 +2556,191 @@ public class MainActivity extends Activity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         if (which == 0) {
+                            startTileMove(item, inDock, index);
+                        } else if (which == 1) {
                             hideAppFromHome(item.packageName, item.label);
                             if (isMovingTile) stopTileMove();
-                        } else if (which == 1) {
+                        } else if (which == 2) {
                             if (isMovingTile) stopTileMove();
                             uninstallPackage(item.packageName);
+                        } else if (which == 3) {
+                            openAppInfo(item.packageName);
                         }
                     }
                 })
+                .show();
+    }
+
+    private void openAppInfo(String pkg) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + pkg));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private View createAddAppCard() {
+        final FrameLayout card = new FrameLayout(this);
+        card.setFocusable(true);
+        card.setClickable(true);
+        card.setClipChildren(false);
+        card.setClipToPadding(false);
+
+        final GradientDrawable normalBg = new GradientDrawable();
+        normalBg.setShape(GradientDrawable.RECTANGLE);
+        normalBg.setCornerRadius(24f);
+        normalBg.setColor(Color.argb(130, 15, 23, 42)); // Glass obsidian
+        normalBg.setStroke(2, Color.argb(80, 255, 255, 255));
+
+        final GradientDrawable focusBg = new GradientDrawable();
+        focusBg.setShape(GradientDrawable.RECTANGLE);
+        focusBg.setCornerRadius(24f);
+        focusBg.setColor(Color.argb(190, 15, 23, 42));
+        focusBg.setStroke(3, Color.parseColor("#38BDF8"));
+
+        card.setBackground(normalBg);
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setGravity(Gravity.CENTER);
+
+        TextView plusIcon = new TextView(this);
+        plusIcon.setText("+");
+        plusIcon.setTypeface(FontManager.getBlack(this));
+        plusIcon.setTextSize(34f);
+        plusIcon.setTextColor(Color.parseColor("#38BDF8"));
+        plusIcon.setGravity(Gravity.CENTER);
+        content.addView(plusIcon);
+
+        TextView plusText = new TextView(this);
+        plusText.setText("Ekle");
+        plusText.setTypeface(FontManager.getBold(this));
+        plusText.setTextSize(13f);
+        plusText.setTextColor(Color.parseColor("#94A3B8"));
+        plusText.setGravity(Gravity.CENTER);
+        content.addView(plusText);
+
+        card.addView(content, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                Gravity.CENTER
+        ));
+
+        card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                card.setBackground(hasFocus ? focusBg : normalBg);
+                v.animate()
+                        .scaleX(hasFocus ? 1.085f : 1.0f)
+                        .scaleY(hasFocus ? 1.085f : 1.0f)
+                        .translationY(hasFocus ? -8f : 0f)
+                        .setDuration(190L)
+                        .start();
+                plusText.setTextColor(hasFocus ? Color.WHITE : Color.parseColor("#94A3B8"));
+                if (hasFocus && ambientBackdropView != null) {
+                    ambientBackdropView.animateToTarget(v, Color.parseColor("#38BDF8"));
+                }
+            }
+        });
+
+        card.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showAddAppToDockDialog();
+            }
+        });
+
+        card.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                        if (posterCardFrames != null && !posterCardFrames.isEmpty()) {
+                            posterCardFrames.get(0).requestFocus();
+                            return true;
+                        }
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        if (appsGridContainer != null && appsGridContainer.getChildCount() > 0) {
+                            focusGridChild(0);
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+        });
+
+        return card;
+    }
+
+    private void showAddAppToDockDialog() {
+        Set<String> dockPkgs = new HashSet<>();
+        for (AppTileItem d : dockItems) dockPkgs.add(d.packageName);
+
+        final List<AppTileItem> candidates = new ArrayList<>();
+        for (AppTileItem g : gridItems) {
+            if (!dockPkgs.contains(g.packageName)) {
+                candidates.add(g);
+            }
+        }
+
+        if (candidates.isEmpty()) {
+            Toast.makeText(this, "Tüm uygulamalar zaten ana ekranda.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] names = new String[candidates.size()];
+        for (int i = 0; i < candidates.size(); i++) {
+            names[i] = candidates.get(i).label;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Ana Ekrana Uygulama Ekle")
+                .setItems(names, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        AppTileItem picked = candidates.get(which);
+                        gridItems.remove(picked);
+                        dockItems.add(picked);
+                        saveCurrentAppOrder();
+                        renderDockAndGrid();
+                        Toast.makeText(MainActivity.this, picked.label + " ana ekrana eklendi.", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Kapat", null)
+                .show();
+    }
+
+    private void showAllAppsDrawer() {
+        final List<AppTileItem> all = new ArrayList<>();
+        all.addAll(dockItems);
+        for (AppTileItem g : gridItems) {
+            boolean exists = false;
+            for (AppTileItem d : all) {
+                if (d.packageName.equals(g.packageName)) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) all.add(g);
+        }
+
+        String[] labels = new String[all.size()];
+        for (int i = 0; i < all.size(); i++) {
+            labels[i] = all.get(i).label;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Tüm Yüklü Uygulamalar (" + all.size() + ")")
+                .setItems(labels, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        launchAppItem(all.get(which));
+                    }
+                })
+                .setNegativeButton("Kapat", null)
                 .show();
     }
 
@@ -2573,6 +3019,400 @@ public class MainActivity extends Activity {
         return prefs.getString("ai_provider", "gemini");
     }
 
+    public String getTmdbApiKey() {
+        try {
+            String key = Settings.Secure.getString(getContentResolver(), "tv_tmdb_api_key");
+            if (key != null && !key.trim().isEmpty()) return key.trim();
+        } catch (Throwable ignored) {
+        }
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        return prefs.getString("tmdb_api_key", null);
+    }
+
+    public static class MovieResolvedInfo {
+        public String title;
+        public String imdbId;
+        public String posterUrl;
+        public String backdropUrl;
+        public double rating;
+    }
+
+    private MovieResolvedInfo resolveMovieViaTmdb(String title, int year) {
+        if (title == null || title.trim().isEmpty()) return null;
+        String cleanTitle = title.trim();
+        String apiKey = getTmdbApiKey();
+        if (apiKey != null && !apiKey.trim().isEmpty()) {
+            try {
+                String encoded = URLEncoder.encode(cleanTitle, "UTF-8");
+                String urlStr = "https://api.themoviedb.org/3/search/movie?api_key=" + apiKey.trim() + "&query=" + encoded;
+                if (year > 1900) urlStr += "&year=" + year;
+                HttpURLConnection conn = openWithRedirects(urlStr);
+                if (conn.getResponseCode() == 200) {
+                    BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = br.readLine()) != null) sb.append(line);
+                    br.close();
+                    JSONObject root = new JSONObject(sb.toString());
+                    JSONArray results = root.optJSONArray("results");
+                    if (results != null && results.length() > 0) {
+                        JSONObject first = results.getJSONObject(0);
+                        int tmdbId = first.optInt("id", 0);
+                        String pPath = first.optString("poster_path", "");
+                        String bPath = first.optString("backdrop_path", "");
+                        String realTitle = first.optString("title", cleanTitle);
+
+                        MovieResolvedInfo info = new MovieResolvedInfo();
+                        info.title = realTitle;
+                        info.rating = first.optDouble("vote_average", 0.0);
+                        if (!pPath.isEmpty()) {
+                            info.posterUrl = "https://image.tmdb.org/t/p/w500" + pPath;
+                        }
+                        if (!bPath.isEmpty()) {
+                            info.backdropUrl = "https://image.tmdb.org/t/p/w1280" + bPath;
+                        }
+                        if (tmdbId > 0) {
+                            try {
+                                String extUrl = "https://api.themoviedb.org/3/movie/" + tmdbId + "/external_ids?api_key=" + apiKey.trim();
+                                HttpURLConnection extConn = openWithRedirects(extUrl);
+                                if (extConn.getResponseCode() == 200) {
+                                    BufferedReader ebr = new BufferedReader(new InputStreamReader(extConn.getInputStream()));
+                                    StringBuilder esb = new StringBuilder();
+                                    while ((line = ebr.readLine()) != null) esb.append(line);
+                                    ebr.close();
+                                    JSONObject extObj = new JSONObject(esb.toString());
+                                    info.imdbId = extObj.optString("imdb_id", "");
+                                }
+                            } catch (Throwable ignored) {}
+                        }
+                        return info;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+
+        // Cinemeta search fallback
+        try {
+            String encoded = URLEncoder.encode(cleanTitle, "UTF-8");
+            String cUrl = "https://v3-cinemeta.strem.io/catalog/movie/top/search=" + encoded + ".json";
+            HttpURLConnection conn = openWithRedirects(cUrl);
+            if (conn.getResponseCode() == 200) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                br.close();
+                JSONObject root = new JSONObject(sb.toString());
+                JSONArray metas = root.optJSONArray("metas");
+                if (metas != null && metas.length() > 0) {
+                    JSONObject m = metas.getJSONObject(0);
+                    MovieResolvedInfo info = new MovieResolvedInfo();
+                    info.title = m.optString("name", cleanTitle);
+                    info.imdbId = m.optString("imdb_id", "");
+                    info.posterUrl = m.optString("poster", "");
+                    if (info.posterUrl.isEmpty() && !info.imdbId.isEmpty()) {
+                        info.posterUrl = "https://images.metahub.space/poster/medium/" + info.imdbId + "/img";
+                    }
+                    return info;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    private void triggerAutoAiVitrinIfNeeded() {
+        if (getAiApiKey() == null) return;
+        SharedPreferences prefs = getSharedPreferences("vitrin_cache", MODE_PRIVATE);
+        long lastTime = prefs.getLong("last_ai_auto_vitrin", 0L);
+        long now = System.currentTimeMillis();
+        // Auto-refresh creative selection every 3 hours or on initial boot
+        if (now - lastTime > 3 * 60 * 60 * 1000L) {
+            prefs.edit().putLong("last_ai_auto_vitrin", now).apply();
+            fetchGeminiCuratedMovies(null);
+        }
+    }
+
+    private void launchAppByPackage(String pkg) {
+        try {
+            PackageManager pm = getPackageManager();
+            Intent intent = pm.getLeanbackLaunchIntentForPackage(pkg);
+            if (intent == null) intent = pm.getLaunchIntentForPackage(pkg);
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void openNuvioApp() {
+        launchPackageWithFallback(new String[]{"com.nuvio.tv", "com.stremio.one"}, "Nuvio");
+    }
+
+    private void openYouTubeApp() {
+        launchPackageWithFallback(new String[]{
+                "io.gh.reisxd.tizentube.cobalt",
+                "com.reisxd.tizentube",
+                "com.teamsmart.videomanager.tv",
+                "com.liskovsoft.smarttubetv.beta",
+                "com.liskovsoft.smarttubetv"
+        }, "YouTube");
+    }
+
+    private void openWebVideoCasterApp() {
+        launchPackageWithFallback(new String[]{"com.instantbits.cast.receiver", "com.instantbits.cast.webvideo"}, "Web Video Caster");
+    }
+
+    private void openTvPlusApp() {
+        launchPackageWithFallback(new String[]{"com.turkcell.ott", "com.turkcell.tvplus"}, "TV+");
+    }
+
+    private void launchPackageWithFallback(String[] packages, String name) {
+        PackageManager pm = getPackageManager();
+        for (String p : packages) {
+            try {
+                Intent launch = pm.getLeanbackLaunchIntentForPackage(p);
+                if (launch == null) launch = pm.getLaunchIntentForPackage(p);
+                if (launch != null) {
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(launch);
+                    return;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        Toast.makeText(this, name + " bulunamadı.", Toast.LENGTH_SHORT).show();
+    }
+
+    private void showSearchAndAiDialog(String initialQuery) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(40, 26, 40, 20);
+
+        TextView title = new TextView(this);
+        title.setText("🎬 Sinema Arama & 🤖 Gemini Asistanı");
+        title.setTypeface(FontManager.getBold(this));
+        title.setTextSize(20f);
+        title.setTextColor(Color.parseColor("#F8FAFC"));
+        layout.addView(title);
+
+        TextView subtitle = new TextView(this);
+        subtitle.setText("Film adı yazıp hemen Nuvio'da açabilir veya Gemini'ye dilediğiniz soruyu sorabilirsiniz.");
+        subtitle.setTextSize(13f);
+        subtitle.setTextColor(Color.parseColor("#94A3B8"));
+        subtitle.setPadding(0, 8, 0, 22);
+        layout.addView(subtitle);
+
+        final EditText input = new EditText(this);
+        input.setHint("Örn: 'Fight Club' veya 'Bu gece için film öner'");
+        input.setHintTextColor(Color.parseColor("#64748B"));
+        input.setTextColor(Color.WHITE);
+        input.setTextSize(16f);
+        if (initialQuery != null) input.setText(initialQuery);
+        input.setSingleLine(true);
+        input.setPadding(24, 16, 24, 16);
+        GradientDrawable edBg = new GradientDrawable();
+        edBg.setCornerRadius(16f);
+        edBg.setColor(Color.argb(180, 30, 41, 59));
+        edBg.setStroke(2, Color.parseColor("#38BDF8"));
+        input.setBackground(edBg);
+        layout.addView(input);
+
+        builder.setView(layout);
+        builder.setPositiveButton("Aç / Gönder", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String q = input.getText().toString().trim();
+                if (!q.isEmpty()) {
+                    handleSearchOrAiQuery(q);
+                }
+            }
+        });
+        builder.setNegativeButton("İptal", null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
+    private void handleSearchOrAiQuery(final String q) {
+        if (q == null || q.trim().isEmpty()) return;
+        final String query = q.trim();
+
+        String lower = query.toLowerCase();
+        boolean isAssistantPrompt = lower.contains("?")
+                || lower.contains("nedir") || lower.contains("kimdir") || lower.contains("nasıl")
+                || lower.contains("hava") || lower.contains("öner") || lower.contains("tavsiye")
+                || lower.contains("gemini") || lower.contains("felsefe") || lower.contains("neden")
+                || lower.contains("kim") || lower.contains("kaç") || lower.contains("anlat");
+
+        if (isAssistantPrompt && getAiApiKey() != null) {
+            executeAiConversationPrompt(query);
+        } else {
+            searchAndLaunchMovie(query);
+        }
+    }
+
+    private void searchAndLaunchMovie(final String rawQuery) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String clean = rawQuery.replaceAll("(?i)(filmini|filmi|film|aç|oynat|başlat|izle)", "").trim();
+                    if (clean.isEmpty()) clean = rawQuery.trim();
+
+                    final MovieResolvedInfo resolved = resolveMovieViaTmdb(clean, 0);
+                    if (resolved != null && resolved.imdbId != null && !resolved.imdbId.isEmpty()) {
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "Nuvio ile başlatılıyor: " + resolved.title, Toast.LENGTH_LONG).show();
+                                openMovieItem(resolved.title, resolved.imdbId, resolved.posterUrl);
+                            }
+                        });
+                    } else if (getAiApiKey() != null) {
+                        executeAiConversationPrompt(rawQuery);
+                    } else {
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "'" + rawQuery + "' bulunamadı.", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                } catch (Throwable t) {
+                    android.util.Log.e("MovieSearch", "Search error", t);
+                }
+            }
+        }).start();
+    }
+
+    private void executeAiConversationPrompt(final String userQuery) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    final String provider = getAiProvider(getAiApiKey());
+                    final String apiKey = getAiApiKey();
+                    if (apiKey == null) {
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "Yapay zekâ anahtarı yapılandırılmamış.", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                        return;
+                    }
+
+                    String sysPrompt = "Sen akıllı ve kültürlü bir Android TV yapay zekâ asistanısın. Kullanıcının sorusuna televizyon ekranında rahatça okunacak biçimde net, samimi, özlü ve Türkçe yanıt ver. Maksimum 3-4 cümle olsun.";
+                    String fullPrompt = sysPrompt + "\n\nKullanıcı: " + userQuery;
+
+                    HttpURLConnection conn;
+                    if ("claude".equals(provider)) {
+                        URL url = new URL("https://api.anthropic.com/v1/messages");
+                        conn = (HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("POST");
+                        conn.setRequestProperty("x-api-key", apiKey);
+                        conn.setRequestProperty("anthropic-version", "2023-06-01");
+                        conn.setRequestProperty("Content-Type", "application/json");
+                        conn.setConnectTimeout(8000);
+                        conn.setReadTimeout(15000);
+                        conn.setDoOutput(true);
+
+                        JSONObject claudeReq = new JSONObject();
+                        claudeReq.put("model", "claude-3-5-haiku-latest");
+                        claudeReq.put("max_tokens", 512);
+                        JSONArray messages = new JSONArray();
+                        JSONObject userMsg = new JSONObject();
+                        userMsg.put("role", "user");
+                        userMsg.put("content", fullPrompt);
+                        messages.put(userMsg);
+                        claudeReq.put("messages", messages);
+
+                        OutputStream os = conn.getOutputStream();
+                        os.write(claudeReq.toString().getBytes(StandardCharsets.UTF_8));
+                        os.flush();
+                        os.close();
+                    } else {
+                        JSONObject promptObj = new JSONObject();
+                        JSONArray contents = new JSONArray();
+                        JSONObject part = new JSONObject();
+                        JSONArray parts = new JSONArray();
+                        JSONObject textPart = new JSONObject();
+                        textPart.put("text", fullPrompt);
+                        parts.put(textPart);
+                        part.put("parts", parts);
+                        contents.put(part);
+                        promptObj.put("contents", contents);
+
+                        String urlStr = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=" + apiKey;
+                        URL url = new URL(urlStr);
+                        conn = (HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("POST");
+                        conn.setRequestProperty("Content-Type", "application/json");
+                        conn.setConnectTimeout(8000);
+                        conn.setReadTimeout(12000);
+                        conn.setDoOutput(true);
+
+                        OutputStream os = conn.getOutputStream();
+                        os.write(promptObj.toString().getBytes(StandardCharsets.UTF_8));
+                        os.flush();
+                        os.close();
+                    }
+
+                    if (conn.getResponseCode() == 200) {
+                        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = br.readLine()) != null) sb.append(line);
+                        br.close();
+
+                        String responseText = "";
+                        if ("claude".equals(provider)) {
+                            JSONObject resp = new JSONObject(sb.toString());
+                            JSONArray contentArr = resp.optJSONArray("content");
+                            if (contentArr != null && contentArr.length() > 0) {
+                                responseText = contentArr.getJSONObject(0).optString("text", "").trim();
+                            }
+                        } else {
+                            JSONObject resp = new JSONObject(sb.toString());
+                            JSONArray candidates = resp.optJSONArray("candidates");
+                            if (candidates != null && candidates.length() > 0) {
+                                JSONObject cand = candidates.getJSONObject(0);
+                                JSONObject content = cand.optJSONObject("content");
+                                if (content != null) {
+                                    JSONArray pArray = content.optJSONArray("parts");
+                                    if (pArray != null && pArray.length() > 0) {
+                                        responseText = pArray.getJSONObject(0).optString("text", "").trim();
+                                    }
+                                }
+                            }
+                        }
+
+                        final String finalMsg = responseText;
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                showAiAnswerDialog(userQuery, finalMsg);
+                            }
+                        });
+                    }
+                } catch (Throwable t) {
+                    android.util.Log.e("AiChat", "Error executing prompt", t);
+                }
+            }
+        }).start();
+    }
+
+    private void showAiAnswerDialog(String query, String answer) {
+        new AlertDialog.Builder(this)
+                .setTitle("🤖 " + query)
+                .setMessage(answer)
+                .setPositiveButton("Tamam", null)
+                .show();
+    }
+
     private void fetchGeminiCuratedMovies(final String moodOrPrompt) {
         final String apiKey = getAiApiKey();
         if (apiKey == null) {
@@ -2596,14 +3436,27 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 try {
-                    String timeStr = new SimpleDateFormat("HH:mm, EEEE", Locale.getDefault()).format(new Date());
+                    Calendar cal = Calendar.getInstance();
+                    int hour = cal.get(Calendar.HOUR_OF_DAY);
+                    String dayName = cal.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.LONG, new Locale("tr", "TR"));
+                    String timeContext;
+                    if (hour >= 5 && hour < 12) {
+                        timeContext = "Sabah saatleri (" + dayName + "). Zihni açan, taze, ilham verici sinema başyapıtları.";
+                    } else if (hour >= 12 && hour < 18) {
+                        timeContext = "Öğleden sonra (" + dayName + "). Yüksek anlatı gücüne sahip prestijli festival filmleri veya görsel şölen sunan yönetmen seçkileri.";
+                    } else if (hour >= 18 && hour < 23) {
+                        timeContext = "Akşam saatleri (" + dayName + "). Sürükleyici, yüksek gerilimli, zihin açıcı modern kült başyapıtlar.";
+                    } else {
+                        timeContext = "Gece yarısı / loş ışık saatleri (" + dayName + "). Atmosferik neo-noir, siberpunk, kozmik yalnızlık ve derin psikolojik gerilimler.";
+                    }
+
                     String promptText = (moodOrPrompt != null && !moodOrPrompt.trim().isEmpty())
                             ? moodOrPrompt.trim()
-                            : "Şu anki zaman: " + timeStr + ". Akşam veya gece için Türkiye'deki sinemasever izleyiciye büyüleyici, yüksek puanlı, görsel şölen sunan 10 kült film öner.";
+                            : "Şu anki atmosfer: " + timeContext + ". Sinema zevki yüksek izleyiciler için tek ve KESKİN bir tema etrafında 10 kült film öner. Dram ve komediyi asla birbiriyle karıştırma; seçki kesinlikle tek ve keskin bir sanatsal vizyona sahip olsun (Örn: belirli bir yönetmen retrospektifi, festival kazananları, siberpunk veya neo-noir). Başlık doğrudan konsepti anlatsın (Örn: '90'LAR NEO-NOIR & GİZEM' veya 'DENIS VILLENEUVE VİZYONU').";
 
-                    String systemInstruction = "Sen dünyanın en iyi film eleştirmeni ve 4K HDR sinema küratörüsün. " + promptText + "\n"
+                    String systemInstruction = "Sen dünyanın en iyi film eleştirmeni ve sinema küratörüsün. " + promptText + "\n"
                             + "Yanıtı YALNIZCA geçerli bir JSON olarak ver. Markdown (```json) veya hiçbir ek metin yazma. Format tam olarak şöyle olmalıdır:\n"
-                            + "{\"category_title\": \"kategori basligi\", \"movies\": [{\"title\": \"Film Adi\", \"imdb_id\": \"tt1234567\", \"reason\": \"kisa aciklama\"}]}";
+                            + "{\"category_title\": \"KESKİN BAŞLIK\", \"movies\": [{\"title\": \"Exact English or International Title\", \"year\": 2014, \"director\": \"...\"}]}";
 
                     HttpURLConnection conn;
                     if ("claude".equals(provider)) {
@@ -2716,7 +3569,7 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 if (vitrinCategoryLabel != null) {
-                    vitrinCategoryLabel.setText("🤖 " + categoryTitle.toUpperCase(Locale.getDefault()));
+                    vitrinCategoryLabel.setText(categoryTitle.toUpperCase(Locale.getDefault()));
                 }
             }
         });
@@ -2726,12 +3579,20 @@ public class MainActivity extends Activity {
         for (int i = 0; i < count; i++) {
             JSONObject m = movies.optJSONObject(i);
             if (m == null) continue;
-            final String imdbId = m.optString("imdb_id", "");
-            final String title = m.optString("title", "Film");
-            if (imdbId.isEmpty()) continue;
+            String mTitle = m.optString("title", "");
+            int mYear = m.optInt("year", 0);
+            if (mTitle.isEmpty()) continue;
 
-            String posterUrl = "https://images.metahub.space/poster/medium/" + imdbId + "/img";
-            String fileKey = "cm_p_" + imdbId + ".jpg";
+            MovieResolvedInfo resolved = resolveMovieViaTmdb(mTitle, mYear);
+            if (resolved == null) continue;
+
+            final String imdbId = (resolved.imdbId != null && !resolved.imdbId.isEmpty()) ? resolved.imdbId : ("tt_res_" + Math.abs(mTitle.hashCode()));
+            final String title = resolved.title;
+            String posterUrl = resolved.posterUrl;
+            if (posterUrl == null || posterUrl.isEmpty()) {
+                posterUrl = "https://images.metahub.space/poster/medium/" + imdbId + "/img";
+            }
+            String fileKey = "cm_p_" + Math.abs(mTitle.hashCode()) + ".jpg";
             File cacheFile = new File(getCacheDir(), fileKey);
 
             if (!cacheFile.exists() || cacheFile.length() < 1024) {
@@ -3033,6 +3894,15 @@ public class MainActivity extends Activity {
         if (dateText != null) dateText.setText(d);
     }
 
+    private static class CinemaMoment {
+        final String quote;
+        final String imdbId;
+        CinemaMoment(String quote, String imdbId) {
+            this.quote = quote;
+            this.imdbId = imdbId;
+        }
+    }
+
     private class VibrantScreensaverView extends View {
         private final Paint clockPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint datePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -3040,6 +3910,7 @@ public class MainActivity extends Activity {
         private final Paint auraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint starfieldPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint bitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final Paint scenePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
         private final SimpleDateFormat dateFmt = new SimpleDateFormat("d MMMM EEEE", new Locale("tr", "TR"));
 
@@ -3047,15 +3918,19 @@ public class MainActivity extends Activity {
         private final Drawable fallbackLogo;
         private boolean isRunning = false;
 
-        private final String[] cinemaQuotes = new String[]{
-            "\"Bütün o anlar zamanda kaybolup gidecek, yağmurdaki gözyaşları gibi...\" — Blade Runner",
-            "\"Yıldızlar arasındaki boşlukta, yalnızca sinema ebedidir.\"",
-            "\"We used to look up at the sky and wonder at our place in the stars.\" — Interstellar",
-            "\"Rüyalar gerçektir, sadece uyanıkken onları göremezsin.\" — Inception",
-            "\"Sinema, zamanı ve anıları donduran tek büyüdür.\" — Andrei Tarkovsky",
-            "\"Her şey bir seçimle başlar.\" — The Matrix",
-            "\"Zaman görecelidir, fakat bu gece senin hikâyen.\""
+        private final CinemaMoment[] cinemaMoments = new CinemaMoment[]{
+            new CinemaMoment("\"Bütün o anlar zamanda kaybolup gidecek, yağmurdaki gözyaşları gibi...\" — Blade Runner", "tt0083658"),
+            new CinemaMoment("\"We used to look up at the sky and wonder at our place in the stars.\" — Interstellar", "tt0816692"),
+            new CinemaMoment("\"Rüyalar gerçektir, sadece uyanıkken onları göremezsin.\" — Inception", "tt1375666"),
+            new CinemaMoment("\"Her şey bir seçimle başlar.\" — The Matrix", "tt0133093"),
+            new CinemaMoment("\"Sinema, zamanı ve anıları donduran tek büyüdür.\" — Solaris", "tt0069291"),
+            new CinemaMoment("\"Karanlık seni korkutmasın, asıl korkulacak olan ışıktaki sahteliktir.\" — Fight Club", "tt0137523"),
+            new CinemaMoment("\"Korku aklı yok eden küçük ölümdür. Korkumla yüzleşeceğim.\" — Dune", "tt1160419")
         };
+
+        private Bitmap activeSceneBackdrop = null;
+        private int lastLoadedSceneIdx = -1;
+        private boolean isFetchingScene = false;
 
         // Cinematic floating dust particles & stars
         private static final int STAR_COUNT = 55;
@@ -3077,9 +3952,9 @@ public class MainActivity extends Activity {
             datePaint.setColor(Color.parseColor("#94A3B8"));
             datePaint.setLetterSpacing(0.14f);
 
-            quotePaint.setTypeface(FontManager.getMedium(ctx));
-            quotePaint.setTextSize(16f);
-            quotePaint.setColor(Color.parseColor("#CBD5E1"));
+            quotePaint.setTypeface(FontManager.getBold(ctx));
+            quotePaint.setTextSize(36f);
+            quotePaint.setColor(Color.parseColor("#F8FAFC"));
             quotePaint.setLetterSpacing(0.04f);
 
             Bitmap sig = null;
@@ -3118,6 +3993,97 @@ public class MainActivity extends Activity {
             }
         }
 
+        private void fetchDynamicTmdbBackdrop(final int momentIdx) {
+            if (isFetchingScene || momentIdx == lastLoadedSceneIdx) return;
+            isFetchingScene = true;
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        String imdbId = cinemaMoments[momentIdx].imdbId;
+                        String tmdbKey = getTmdbApiKey();
+                        String backdropUrl = null;
+                        if (tmdbKey != null && !tmdbKey.trim().isEmpty()) {
+                            try {
+                                String findUrl = "https://api.themoviedb.org/3/find/" + imdbId + "?api_key=" + tmdbKey.trim() + "&external_source=imdb_id";
+                                HttpURLConnection fConn = (HttpURLConnection) new URL(findUrl).openConnection();
+                                fConn.setConnectTimeout(5000);
+                                fConn.setReadTimeout(5000);
+                                if (fConn.getResponseCode() == 200) {
+                                    BufferedReader br = new BufferedReader(new InputStreamReader(fConn.getInputStream()));
+                                    StringBuilder sb = new StringBuilder();
+                                    String line;
+                                    while ((line = br.readLine()) != null) sb.append(line);
+                                    br.close();
+                                    JSONObject findObj = new JSONObject(sb.toString());
+                                    JSONArray mResults = findObj.optJSONArray("movie_results");
+                                    if (mResults != null && mResults.length() > 0) {
+                                        int tmdbMovieId = mResults.getJSONObject(0).optInt("id", 0);
+                                        if (tmdbMovieId > 0) {
+                                            String imgApiUrl = "https://api.themoviedb.org/3/movie/" + tmdbMovieId + "/images?api_key=" + tmdbKey.trim();
+                                            HttpURLConnection imgConn = (HttpURLConnection) new URL(imgApiUrl).openConnection();
+                                            imgConn.setConnectTimeout(5000);
+                                            imgConn.setReadTimeout(5000);
+                                            if (imgConn.getResponseCode() == 200) {
+                                                BufferedReader ibr = new BufferedReader(new InputStreamReader(imgConn.getInputStream()));
+                                                StringBuilder isb = new StringBuilder();
+                                                while ((line = ibr.readLine()) != null) isb.append(line);
+                                                ibr.close();
+                                                JSONObject imgObj = new JSONObject(isb.toString());
+                                                JSONArray bArr = imgObj.optJSONArray("backdrops");
+                                                if (bArr != null && bArr.length() > 0) {
+                                                    int pickIdx = (int) (System.currentTimeMillis() % bArr.length());
+                                                    String fPath = bArr.getJSONObject(pickIdx).optString("file_path", "");
+                                                    if (!fPath.isEmpty()) {
+                                                        backdropUrl = "https://image.tmdb.org/t/p/w1280" + fPath;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (Throwable ignored) {
+                            }
+                        }
+
+                        if (backdropUrl == null) {
+                            backdropUrl = "https://images.metahub.space/background/medium/" + imdbId + "/img";
+                        }
+
+                        URL url = new URL(backdropUrl);
+                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                        conn.setConnectTimeout(6000);
+                        conn.setReadTimeout(10000);
+                        conn.setInstanceFollowRedirects(true);
+                        if (conn.getResponseCode() == 200) {
+                            InputStream is = conn.getInputStream();
+                            BitmapFactory.Options opts = new BitmapFactory.Options();
+                            opts.inSampleSize = 2;
+                            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                            final Bitmap bmp = BitmapFactory.decodeStream(is, null, opts);
+                            is.close();
+                            if (bmp != null) {
+                                post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (activeSceneBackdrop != null && !activeSceneBackdrop.isRecycled()) {
+                                            activeSceneBackdrop.recycle();
+                                        }
+                                        activeSceneBackdrop = bmp;
+                                        lastLoadedSceneIdx = momentIdx;
+                                        invalidate();
+                                    }
+                                });
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                    } finally {
+                        isFetchingScene = false;
+                    }
+                }
+            }).start();
+        }
+
         void startAnimating() {
             isRunning = true;
             postInvalidateOnAnimation();
@@ -3137,6 +4103,27 @@ public class MainActivity extends Activity {
             int h = getHeight() > 0 ? getHeight() : 1080;
 
             long nowMs = SystemClock.uptimeMillis();
+
+            // 0. Dynamic Movie Scene Background from TMDB (low-opacity, zero device storage)
+            long quoteCycleMs = 18000L;
+            long quoteElapsed = nowMs % quoteCycleMs;
+            int quoteIdx = (int) ((nowMs / quoteCycleMs) % cinemaMoments.length);
+            fetchDynamicTmdbBackdrop(quoteIdx);
+
+            float quoteAlpha = 1.0f;
+            if (quoteElapsed < 1500L) {
+                quoteAlpha = quoteElapsed / 1500f;
+            } else if (quoteElapsed > quoteCycleMs - 1500L) {
+                quoteAlpha = (quoteCycleMs - quoteElapsed) / 1500f;
+            }
+
+            if (activeSceneBackdrop != null && !activeSceneBackdrop.isRecycled()) {
+                int sceneAlpha = (int) (quoteAlpha * 58); // ~22% ethereal low opacity
+                scenePaint.setAlpha(sceneAlpha);
+                Rect src = new Rect(0, 0, activeSceneBackdrop.getWidth(), activeSceneBackdrop.getHeight());
+                RectF dst = new RectF(0, 0, w, h);
+                canvas.drawBitmap(activeSceneBackdrop, src, dst, scenePaint);
+            }
 
             // 1. Organic Starfield & Micro-Dust Particles
             for (int i = 0; i < STAR_COUNT; i++) {
@@ -3167,7 +4154,7 @@ public class MainActivity extends Activity {
 
             // 4. Subtle, ethereal volumetric ambient fog (soft filmic diffusion behind signature)
             float pulse = (float) (Math.sin(nowMs * 0.0009) * 0.04 + 1.0);
-            float sigSize = Math.min(w, h) * 0.76f * pulse; // Monumental centerpiece filling 76% of screen
+            float sigSize = Math.min(w, h) * 0.76f * pulse;
             float nebulaR = sigSize * 0.95f;
 
             auraPaint.setShader(new RadialGradient(
@@ -3186,7 +4173,6 @@ public class MainActivity extends Activity {
             float sigLeft = cx - sigSize / 2f;
             float sigTop = cy - sigSize / 2f;
 
-            // Soft breathing alpha: 0.20 to 0.34
             float breathAlpha = (float) (Math.sin(nowMs * 0.0008) * 0.07 + 0.27);
             int sigAlphaInt = Math.min(255, Math.max(0, (int) (breathAlpha * 255)));
 
@@ -3209,7 +4195,7 @@ public class MainActivity extends Activity {
             String timeStr = timeFmt.format(now);
             String dateStr = dateFmt.format(now).toUpperCase(new Locale("tr", "TR"));
 
-            float clockY = cy + (sigSize * 0.38f);
+            float clockY = cy + (sigSize * 0.34f);
             clockPaint.setShadowLayer(32f, 0f, 4f, Color.argb(0x77, Color.red(cCore), Color.green(cCore), Color.blue(cCore)));
             float tw = clockPaint.measureText(timeStr);
             canvas.drawText(timeStr, cx - tw / 2f, clockY, clockPaint);
@@ -3217,25 +4203,15 @@ public class MainActivity extends Activity {
             // 7. Date string below clock
             datePaint.setShadowLayer(14f, 0f, 2f, Color.parseColor("#99000000"));
             float dw = datePaint.measureText(dateStr);
-            canvas.drawText(dateStr, cx - dw / 2f, clockY + 36f, datePaint);
+            canvas.drawText(dateStr, cx - dw / 2f, clockY + 34f, datePaint);
 
-            // 8. Rotating Cinema Poetry & Philosophy
-            long quoteCycleMs = 18000L;
-            long quoteElapsed = nowMs % quoteCycleMs;
-            int quoteIdx = (int) ((nowMs / quoteCycleMs) % cinemaQuotes.length);
-            String currentQuote = cinemaQuotes[quoteIdx];
-
-            float quoteAlpha = 1.0f;
-            if (quoteElapsed < 1500L) {
-                quoteAlpha = quoteElapsed / 1500f; // Fade in
-            } else if (quoteElapsed > quoteCycleMs - 1500L) {
-                quoteAlpha = (quoteCycleMs - quoteElapsed) / 1500f; // Fade out
-            }
-            int qA = (int) (quoteAlpha * 220);
-            quotePaint.setColor(Color.argb(Math.min(255, Math.max(0, qA)), 203, 213, 225));
-            quotePaint.setShadowLayer(12f, 0f, 2f, Color.parseColor("#AA000000"));
+            // 8. Rotating Cinema Poetry & Philosophy (Large prominent 36f font)
+            String currentQuote = cinemaMoments[quoteIdx].quote;
+            int qA = (int) (quoteAlpha * 240);
+            quotePaint.setColor(Color.argb(Math.min(255, Math.max(0, qA)), 241, 245, 249));
+            quotePaint.setShadowLayer(18f, 0f, 3f, Color.parseColor("#EE000000"));
             float qw = quotePaint.measureText(currentQuote);
-            canvas.drawText(currentQuote, cx - qw / 2f, clockY + 76f, quotePaint);
+            canvas.drawText(currentQuote, cx - qw / 2f, clockY + 74f, quotePaint);
 
             if (isRunning) {
                 postInvalidateOnAnimation();
