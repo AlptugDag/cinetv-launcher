@@ -39,10 +39,15 @@ The system combines a native **Liquid Glass 3D Parallax CoverFlow** showcase, dy
 
 ## Visual Showcase
 
-### Live Navigation & Fluid 60 FPS CoverFlow (1080p Capture)
-Captured directly from a MediaTek-powered 4K Android TV displaying D-pad navigation, dynamic depth-of-field scaling, and CoverFlow transitions:
+### Live Navigation & Fluid 60 FPS CoverFlow (Direct 1080p Hardware Capture)
+Captured directly from an Arçelik 4K Android TV (MediaTek platform) displaying D-pad navigation, NeonKit physical light halos, dynamic depth-of-field scaling, and CoverFlow transitions:
 
-https://github.com/AlptugDag/cinetv-launcher/raw/main/docs/screenshots/cinetv_showcase.mp4
+- **1080p High-Resolution Capture**: `docs/screenshots/cinetv_live_hardware.png`
+- **Fluid 60 FPS Hardware Navigation Video**: `docs/screenshots/cinetv_nav_hardware.mp4`
+
+<p align="center">
+  <img src="docs/screenshots/cinetv_live_hardware.png" alt="CineTV Live Hardware Screenshot" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);" />
+</p>
 
 > For mobile viewports and instant preview, see the motion recording below (`docs/screenshots/liquid_glass_glow.gif`):
 
@@ -113,7 +118,9 @@ The launcher analyzes the color histogram of the focused movie poster across 12 
 ### 1. Liquid Glass 3D Parallax CoverFlow Graphics Engine
 - **Hardware Z-Ordering**: Employs Android RenderNode `elevation` (`50f`) and `translationZ` (`65f`) hardware layers to manage depth ordering without altering the ViewGroup child hierarchy, maintaining a stable 60 FPS render thread.
 - **Dynamic Perspective Scaling**: The focused poster card expands by **1.30x** and shifts `-22f` on the Y-axis. Flanking cards scale down progressively to **0.94x**, **0.80x**, and **0.68x** with distance-weighted shadow attenuation.
-- **Unclipped Chromatic Bloom**: Ambient glow and edge halos bypass view bounds via `setClipChildren(false)` and `setClipToPadding(false)` combined with 80px internal margin padding.
+- **NeonKit Physical Light Model (AadiXC0DE/NeonKit Integration)**: Replaces standard circular blurs with a physical light tube architecture. Combines a core intense bent-glass tube stroke (`225` alpha), direct aura, and an exponential atmospheric halo (`85` -> `45` -> `18` -> `0` alpha) bounded safely inside an expanded horizontal cushion (`padH = padPx * 1.55f`). The light completely decays to zero before reaching canvas borders, eliminating all left/right edge-clipping.
+- **Chromatic Aberration Optical Refraction (ybouane/liquidglass & hwyuanzi/LiquidGlass-UI)**: Implements tangential spectral dispersion along card boundaries. Splits refraction highlights into an upper-left red fringe (`Color.argb(55, 255, 68, 90)` at `-1.0px, -0.7px`) and a lower-right cyan-blue fringe (`Color.argb(65, 56, 189, 248)` at `+1.0px, +0.7px`), anchored by a sharp central white specular crest.
+- **Argent Liquid Metal Chrome Accents (seangeng/argent)**: The launcher medallion logo (`brandMedallion`) and primary controls feature a multi-stop liquid chrome gradient (`#FFFFFF` -> `#E2E8F0` -> `#94A3B8` -> `#64748B` -> `#CBD5E1`) creating dynamic specular reflections without clashing with the liquid glass housing.
 - **Zero-Latency Return (#040508 Noir)**: Eliminates display flicker when returning from external video playback by enforcing an immediate OLED `#040508` background clear.
 - **Direct 4K Playback Pipeline**: Selecting any shelf poster immediately invokes **Nuvio TV** (`launchMode="stream"`) with highest-seeder 4K HDR10 and Dolby Vision source prioritization.
 
@@ -127,15 +134,15 @@ The launcher analyzes the color histogram of the focused movie poster across 12 
 
 ---
 
-### 3. Integrated Search Bar & Floating AI HUD Card
+### 3. Integrated Search Bar & Floating AI HUD Card (Deepika Builds Liquid Glass)
 - **Inline D-pad Input**: Replaces standard full-screen Android dialog overlays with an inline `EditText` field embedded directly into the home bar.
-- **Floating Acrylic HUD Window**: Responses to natural language queries appear in a floating liquid glass HUD overlay (`showAiResponseFloatingCard`) matching the exact style of the app tiles (`#121622` at 72% opacity, 0.5px border highlight).
-- **Auto-Dismiss Lifecycle**: The HUD presents response text, executes the corresponding shelf or playback action, and fades out cleanly after 4.5 seconds or upon receiving a remote `Back` key event.
+- **Deepika Builds Refractive Glass Card (deepika-builds/liquid-glass)**: Natural language queries to Gemini AI present answers inside an optical acrylic floating card (`#0F172A` / `#1E293B` gradient, glowing 2px `#38BDF8` border, subtle scale-in transition `0.93f -> 1.0f`, auto-dismiss after 6 seconds or on remote Back).
+- **Auto-Dismiss Lifecycle**: The HUD presents response text, executes the corresponding shelf or playback action, and fades out cleanly after 6.0 seconds or upon receiving a remote `Back` key event.
 - **Quick Action Triggers**:
   - **Network Status**: Displays active Wi-Fi / Ethernet state and opens standard network settings.
   - **Input Selector**: Directly accesses HDMI 1, HDMI 2, HDMI 3, and AV inputs.
   - **All Apps Drawer**: Opens the 5-column visionOS application library.
-  - **System Settings**: Opens the 4-option modal (Theme, Weather Location, Quick Reboot, API Keys).
+  - **System Settings**: Opens the 5-option modal (Theme, Weather Location, Quick Reboot, API Keys, Remote Key Remapper).
 
 ---
 
@@ -155,24 +162,45 @@ The launcher analyzes the color histogram of the focused movie poster across 12 
 
 ---
 
-### 5. Hardware Remote Key Interception (Accessibility Service)
+### 5. Hardware Remote Key Interception & In-App Key Remapper
 - **Low-Level Key Interceptor**: Operates via a background `AccessibilityService` (`TvKeyInterceptorService`) that intercepts hardware OEM remote buttons before the underlying system firmware processes them:
-  - **Netflix Button (`183`, `188`, `207`, `289`)**: Remapped to launch Nuvio 4K Cinema Center.
-  - **YouTube Button (`184`, `189`, `218`, `290`)**: Remapped to launch ad-free player (TizenTube / SmartTube).
-  - **Prime Video Button (`185`, `190`, `209`, `228`, `291`)**: Remapped to Web Video Caster receiver.
-  - **Live TV / TV+ Button (`170`, `172`, `186`, `277`, `292`)**: Remapped to Turkcell TV+ or Anthology live broadcast streams.
+  - **Netflix Button (`96`, `183`, `188`, `207`, `229`, `265`, `289`)**: Remapped to launch Nuvio 4K Cinema Center.
+  - **YouTube Button (`97`, `189`, `190`, `218`, `250`, `284`, `290`, `415`)**: Remapped to launch ad-free player (TizenTube Cobalt / SmartTube).
+  - **Prime Video Button (`98`, `185`, `192`, `209`, `228`, `291`, `303`, `413`)**: Remapped to Web Video Caster / Prime / Nuvio fallback.
+  - **Live TV / TV+ Button (`99`, `170`, `172`, `186`, `277`, `292`, `362`, `377`)**: Remapped to Turkcell TV+ or Anthology live broadcast streams.
+  - **Color Teletext Keys**: Red (`398`) -> Nuvio, Green (`399`) -> YouTube, Yellow (`400`) -> TV+, Blue (`401`) -> System Settings.
+- **Interactive In-App Remote Key Remapper (`showKeyRemapperModal`)**:
+  - Accessible directly in Launcher Settings ("Özel TV Kumandası Tuşlarını Ata").
+  - Users press any physical button on their remote; the launcher captures the exact `keyCode` and `scanCode` in real-time.
+  - Presents a 1-click binding dialog allowing the button to be mapped to any target application or system action (YouTube, Nuvio, TV+, Web Video Caster, RAM Cleaner, App Library).
+  - Persisted globally in `cleanyourtv_prefs` and checked dynamically in both `MainActivity` and `TvKeyInterceptorService`.
 - **Safe Intent Dispatching (`getSafeLaunchIntent`)**: Bypasses Android TV restrictions for mobile packages lacking `LEANBACK_LAUNCHER` categories (e.g. `com.nuvio.tv`), constructing direct `ACTION_MAIN` component intents with `FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_RESET_TASK_IF_NEEDED`.
 
 ---
 
-### 6. Dock Management & System Overlays
+### 6. Dock Management & Strict Modal Focus Trap
 - **Quick-Add (`+`) Tile**: Sits at the trailing edge of the dock row, allowing users to pin installed applications directly to the home screen.
-- **Contextual Action Pill Bar**: Long-pressing any dock icon displays horizontal visionOS pills:
-  - **Move**: Shift the selected app horizontally across the dock using D-pad Left/Right.
-  - **Hide**: Remove the shortcut from the dock without uninstalling the application.
-  - **Uninstall**: Trigger the system package uninstaller directly from the interface.
-  - **App Info**: Open system application settings.
+- **Contextual Action Pill Bar**: Long-pressing any dock icon displays horizontal visionOS pills (`Move`, `Hide`, `Uninstall`, `App Info`).
+- **Strict Modal Focus Trap**:
+  - When the action pill bar is active, D-pad `Up` and `Down` events are strictly consumed, preventing focus from escaping to background posters or dock items.
+  - `Left` from the first pill cycles to the last pill; `Right` from the last pill cycles to the first pill.
+  - Pressing `Back` cleanly dismisses the action bar and restores focus to the origin application tile.
 - **Ghost Application Suppression**: A dynamic `BroadcastReceiver` monitoring `ACTION_PACKAGE_REMOVED` purges deleted applications immediately, preventing blank tiles.
+
+---
+
+### 7. Upstream CleanYourTV 2.7 Synchronization
+- **Core Protection Whitelist**: Merged upstream CleanYourTV 2.7 safety rules preventing accidental disabling of core system components across 248 TV models and 72 brands.
+- **HDMI & Signal Passthrough**: The home redirect engine preserves active HDMI switch events without forcing unwanted home launches.
+- **Network Status Reliability**: Network indicators properly handle concurrent Ethernet + VPN socket configurations.
+
+---
+
+### 8. Catalog Indexing & Cinemeta Metadata Cache Latency Analysis
+When newly released television series or seasons (e.g. *Çekiç ve Gül: Bir Behzat Ç. Hikayesi* Season 4, released on Max on October 23, 2026) appear on stream scraping addons, they may not immediately render in Stremio or Nuvio season pickers:
+- **Root Cause**: Stremio and Nuvio catalog interfaces query Cinemeta (`https://v3-cinemeta.strem.io/meta/series/tt21095396.json`) for their authoritative season and episode manifest.
+- **Cache Interval**: Cinemeta refreshes upstream IMDb and TMDB records on an asynchronous schedule (typically 6 to 24 hours). Even though torrent and debrid scraper addons (Torrentio, MediaFusion, TurkSub) already have the 8 new episodes available, the UI cannot display a "Season 4" tab until Cinemeta updates its JSON manifest.
+- **Resolution**: Users can force a catalog reload via secondary metadata plugins (TMDB Addon / CyberFlix Catalog) or wait for Cinemeta's automated daily cache synchronization.
 
 ---
 

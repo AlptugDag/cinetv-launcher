@@ -346,6 +346,18 @@ public class TvKeyInterceptorService extends AccessibilityService {
             }
         }
 
+        // 0. Dynamic In-App Remapped Custom Keys (Interactive Key Remapper)
+        String customAction = prefs.getString("custom_map_" + keyCode, null);
+        if (customAction == null && scanCode > 0) {
+            customAction = prefs.getString("custom_map_sc_" + scanCode, null);
+        }
+        if (customAction != null) {
+            if (action == KeyEvent.ACTION_DOWN) {
+                executeCustomAction(customAction);
+            }
+            return true;
+        }
+
         // 1. Netflix Button -> Opens Nuvio
         if (isNetflixKey(keyCode, scanCode, prefs)) {
             if (action == KeyEvent.ACTION_DOWN) {
@@ -368,13 +380,15 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return true;
         }
 
-        // 3. Amazon Prime / Bein Button -> Opens Web Video Caster
+        // 3. Amazon Prime / Bein Button -> Opens Web Video Caster or Fallback
         if (isAmazonPrimeKey(keyCode, scanCode, prefs) || isBeinConnectKey(keyCode, scanCode, prefs)) {
             if (action == KeyEvent.ACTION_DOWN) {
                 launchPackageWithFallback(new String[]{
                         "com.instantbits.cast.receiver",
-                        "com.instantbits.cast.webvideo"
-                }, "Web Video Caster");
+                        "com.instantbits.cast.webvideo",
+                        "com.amazon.amazonvideo.livingroom",
+                        "com.nuvio.tv"
+                }, "Prime Video");
             }
             return true;
         }
@@ -388,6 +402,37 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
 
         return false;
+    }
+
+    private void executeCustomAction(String action) {
+        if (action == null || action.isEmpty()) return;
+        if (action.startsWith("pkg:")) {
+            String pkg = action.substring(4);
+            launchPackageWithFallback(new String[]{pkg}, pkg);
+        } else if ("youtube".equals(action)) {
+            launchPackageWithFallback(new String[]{
+                    "io.gh.reisxd.tizentube.cobalt",
+                    "com.reisxd.tizentube",
+                    "com.teamsmart.videomanager.tv",
+                    "com.liskovsoft.smarttubetv.beta",
+                    "com.liskovsoft.smarttubetv"
+            }, "Reklamsız YouTube");
+        } else if ("nuvio".equals(action)) {
+            launchPackageWithFallback(new String[]{"com.nuvio.tv", "com.stremio.one"}, "Nuvio");
+        } else if ("tvplus".equals(action)) {
+            launchPackageWithFallback(new String[]{"com.turkcell.ott", "com.turkcell.tvplus"}, "TV+");
+        } else if ("webvideo".equals(action)) {
+            launchPackageWithFallback(new String[]{"com.instantbits.cast.receiver", "com.instantbits.cast.webvideo"}, "Web Video Caster");
+        } else if ("clean_ram".equals(action)) {
+            int cleaned = cleanAllBackgroundApps(this, "com.gathin.tvhome");
+            Toast.makeText(this, cleaned + " arka plan uygulaması kapatıldı.", Toast.LENGTH_SHORT).show();
+        } else if ("all_apps".equals(action)) {
+            Intent homeIntent = new Intent(this, MainActivity.class);
+            homeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(homeIntent);
+        } else {
+            launchPackageWithFallback(new String[]{action}, action);
+        }
     }
 
     private boolean isStandardNavigationKey(int keyCode) {
@@ -456,10 +501,14 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
         return keyCode == 218 // KEYCODE_YOUTUBE
                 || keyCode == KeyEvent.KEYCODE_BUTTON_2
+                || keyCode == 97
                 || keyCode == 189
                 || keyCode == 190
+                || keyCode == 250
                 || keyCode == 284
-                || scanCode == 190 || scanCode == 250 || scanCode == 415;
+                || keyCode == 290
+                || keyCode == 415
+                || scanCode == 190 || scanCode == 218 || scanCode == 250 || scanCode == 413 || scanCode == 415;
     }
 
     private boolean isAmazonPrimeKey(int keyCode, int scanCode) {
@@ -471,14 +520,15 @@ public class TvKeyInterceptorService extends AccessibilityService {
         int custom = prefs.getInt(KEY_CUSTOM_AMAZON, -1);
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
         return keyCode == KeyEvent.KEYCODE_BUTTON_3
+                || keyCode == 98
                 || keyCode == 190
                 || keyCode == KeyEvent.KEYCODE_PROG_YELLOW
                 || keyCode == 185
                 || keyCode == KeyEvent.KEYCODE_SETTINGS
                 || keyCode == 176
                 || keyCode == 209 || keyCode == 228
-                || keyCode == 192 || keyCode == 290 || keyCode == 303
-                || scanCode == 192 || scanCode == 251 || scanCode == 413;
+                || keyCode == 192 || keyCode == 290 || keyCode == 291 || keyCode == 303
+                || scanCode == 185 || scanCode == 192 || scanCode == 251 || scanCode == 413;
     }
 
     public static Intent getSafeLaunchIntent(PackageManager pm, String pkg) {

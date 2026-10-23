@@ -16,6 +16,7 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 
 /**
  * Apple tvOS / visionOS Liquid Glass & Chromatic Diversity Engine:
@@ -166,17 +167,30 @@ public final class YouTubeDisguiseHelper {
         ));
         canvas.drawRoundRect(cardRect, CORNER, CORNER, sheen);
 
-        // 4. Whisper-thin 1.5px Optical Glass Caustic Rim (neutral white/silver + subtle internal color tint)
+        // 4. Chromatic Aberration Dispersion Rim (ybouane/liquidglass)
+        Paint redFringe = new Paint(Paint.ANTI_ALIAS_FLAG);
+        redFringe.setStyle(Paint.Style.STROKE);
+        redFringe.setStrokeWidth(1.2f);
+        redFringe.setColor(Color.argb(55, 255, 68, 90));
+        canvas.drawRoundRect(new RectF(1.5f, 1.8f, CARD_W - 3.5f, CARD_H - 3.2f), CORNER, CORNER, redFringe);
+
+        Paint blueFringe = new Paint(Paint.ANTI_ALIAS_FLAG);
+        blueFringe.setStyle(Paint.Style.STROKE);
+        blueFringe.setStrokeWidth(1.2f);
+        blueFringe.setColor(Color.argb(65, 56, 189, 248));
+        canvas.drawRoundRect(new RectF(3.5f, 3.2f, CARD_W - 1.5f, CARD_H - 1.8f), CORNER, CORNER, blueFringe);
+
+        // 5. Specular Optical Glass Caustic Rim (neutral white/silver + subtle internal color tint)
         Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(1.8f);
         rim.setShader(new LinearGradient(
                 0f, 0f, CARD_W, CARD_H,
                 new int[]{
-                    Color.argb(110, 255, 255, 255),
-                    Color.argb(20, 255, 255, 255),
-                    Color.argb(32, r, g, b),
-                    Color.argb(52, 255, 255, 255)
+                    Color.argb(125, 255, 255, 255),
+                    Color.argb(25, 255, 255, 255),
+                    Color.argb(38, r, g, b),
+                    Color.argb(65, 255, 255, 255)
                 },
                 new float[]{0f, 0.38f, 0.75f, 1f},
                 Shader.TileMode.CLAMP
@@ -209,27 +223,44 @@ public final class YouTubeDisguiseHelper {
             canvas.drawRoundRect(posterRect, pCorner, pCorner, imgPaint);
         }
 
-        // Liquid-glass-js inner curvature refraction sheen
+        // Chromatic Aberration + Liquid Glass Refraction Sheen (ybouane/liquidglass & hwyuanzi/LiquidGlass-UI)
         Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG);
         sheen.setStyle(Paint.Style.FILL);
         sheen.setShader(new LinearGradient(
                 0f, 0f, 0f, outH * 0.45f,
-                new int[]{Color.argb(32, 255, 255, 255), Color.argb(0, 255, 255, 255)},
+                new int[]{Color.argb(36, 255, 255, 255), Color.argb(0, 255, 255, 255)},
                 new float[]{0f, 1f},
                 Shader.TileMode.CLAMP
         ));
         canvas.drawRoundRect(posterRect, pCorner, pCorner, sheen);
 
+        // 1. Tangential Red Spectral Fringe (dispersion offset: -1.0px, -0.7px)
+        Paint redFringe = new Paint(Paint.ANTI_ALIAS_FLAG);
+        redFringe.setStyle(Paint.Style.STROKE);
+        redFringe.setStrokeWidth(1.4f);
+        redFringe.setColor(Color.argb(65, 255, 68, 90));
+        RectF redRect = new RectF(posterRect.left - 1.0f, posterRect.top - 0.7f, posterRect.right - 1.0f, posterRect.bottom - 0.7f);
+        canvas.drawRoundRect(redRect, pCorner, pCorner, redFringe);
+
+        // 2. Tangential Cyan-Blue Spectral Fringe (dispersion offset: +1.0px, +0.7px)
+        Paint blueFringe = new Paint(Paint.ANTI_ALIAS_FLAG);
+        blueFringe.setStyle(Paint.Style.STROKE);
+        blueFringe.setStrokeWidth(1.4f);
+        blueFringe.setColor(Color.argb(75, 56, 189, 248));
+        RectF blueRect = new RectF(posterRect.left + 1.0f, posterRect.top + 0.7f, posterRect.right + 1.0f, posterRect.bottom + 0.7f);
+        canvas.drawRoundRect(blueRect, pCorner, pCorner, blueFringe);
+
+        // 3. Central Specular White Glass Crest (Sharp Fresnel reflection)
         Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(1.8f);
         rim.setShader(new LinearGradient(
                 0f, 0f, outW, outH,
                 new int[]{
-                    Color.argb(135, 255, 255, 255),
-                    Color.argb(22, 255, 255, 255),
+                    Color.argb(145, 255, 255, 255),
+                    Color.argb(25, 255, 255, 255),
                     Color.argb(15, 255, 255, 255),
-                    Color.argb(55, 255, 255, 255)
+                    Color.argb(65, 255, 255, 255)
                 },
                 new float[]{0f, 0.28f, 0.70f, 1f},
                 Shader.TileMode.CLAMP
@@ -239,13 +270,16 @@ public final class YouTubeDisguiseHelper {
     }
 
     /**
-     * Apple tvOS Hover Illumination + Liquid Glass Specular Shimmer:
-     * - Wide-spread (padPx = 68px), low-density exponential atmospheric diffusion (no harsh border!).
-     * - Diagonal Apple tvOS specular glass sheen across the focused surface.
+     * NeonKit (AadiXC0DE/NeonKit) Physical Neon Light Model with Zero-Edge Clipping:
+     * - Physical light behavior: light emanates outward from the rounded perimeter like bent neon glass tubes.
+     * - Generous horizontal padding prevents premature edge-clipping.
+     * - Multi-band diffusion: Core bent tube + direct aura + medium band + decay reaches 0 before bitmap edge.
      */
     public static Bitmap createWideSoftHoverBloom(int innerW, int innerH, int padPx, float cornerRadius, int neonColor) {
-        int totalW = innerW + padPx * 2;
-        int totalH = innerH + padPx * 2;
+        int padH = (int) (padPx * 1.55f); // Generous horizontal cushion prevents sharp edge clipping
+        int padV = padPx;
+        int totalW = innerW + padH * 2;
+        int totalH = innerH + padV * 2;
         Bitmap bmp = Bitmap.createBitmap(totalW, totalH, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
 
@@ -253,34 +287,112 @@ public final class YouTubeDisguiseHelper {
         int g = Color.green(neonColor);
         int b = Color.blue(neonColor);
 
-        float cx = totalW / 2f;
-        float cy = totalH / 2f;
-        float radius = Math.max(totalW, totalH) * 0.54f;
+        RectF innerRect = new RectF(padH, padV, padH + innerW, padV + innerH);
 
-        // 1. Wide, rich atmospheric radial diffusion
-        Paint radialPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        radialPaint.setShader(new RadialGradient(
-                cx, cy, radius,
+        // 1. Exponential Atmospheric Falloff (decay safely reaches 0 inside the padded canvas)
+        float safeRadius = Math.min(totalW * 0.46f, totalH * 0.46f);
+        Paint atmosphericHalo = new Paint(Paint.ANTI_ALIAS_FLAG);
+        atmosphericHalo.setShader(new RadialGradient(
+                totalW * 0.5f, totalH * 0.5f, safeRadius,
                 new int[]{
-                    Color.argb(105, r, g, b),
-                    Color.argb(70, r, g, b),
-                    Color.argb(38, r, g, b),
-                    Color.argb(14, r, g, b),
+                    Color.argb(85, r, g, b),
+                    Color.argb(45, r, g, b),
+                    Color.argb(18, r, g, b),
+                    Color.argb(4, r, g, b),
                     Color.argb(0, r, g, b)
                 },
-                new float[]{0f, 0.28f, 0.55f, 0.80f, 1f},
+                new float[]{0f, 0.35f, 0.65f, 0.88f, 1.0f},
                 Shader.TileMode.CLAMP
         ));
-        canvas.drawRect(0, 0, totalW, totalH, radialPaint);
+        canvas.drawRect(0, 0, totalW, totalH, atmosphericHalo);
 
-        // 2. Wide Gaussian blur halo around the silhouette (radius = padPx * 0.78f for wide feathering)
-        Paint blurPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        blurPaint.setColor(Color.argb(110, r, g, b));
-        blurPaint.setMaskFilter(new BlurMaskFilter(padPx * 0.78f, BlurMaskFilter.Blur.NORMAL));
-        RectF innerRect = new RectF(padPx, padPx, totalW - padPx, totalH - padPx);
-        canvas.drawRoundRect(innerRect, cornerRadius, cornerRadius, blurPaint);
+        // 2. Wide Soft Neon Secondary Halo (conforms to card silhouette)
+        Paint wideHalo = new Paint(Paint.ANTI_ALIAS_FLAG);
+        wideHalo.setColor(Color.argb(75, r, g, b));
+        wideHalo.setMaskFilter(new BlurMaskFilter(padV * 0.70f, BlurMaskFilter.Blur.NORMAL));
+        canvas.drawRoundRect(innerRect, cornerRadius, cornerRadius, wideHalo);
+
+        // 3. Medium Neon Diffusion Band (NeonKit Layer 2)
+        Paint midHalo = new Paint(Paint.ANTI_ALIAS_FLAG);
+        midHalo.setColor(Color.argb(125, r, g, b));
+        midHalo.setMaskFilter(new BlurMaskFilter(padV * 0.35f, BlurMaskFilter.Blur.NORMAL));
+        canvas.drawRoundRect(innerRect, cornerRadius, cornerRadius, midHalo);
+
+        // 4. Core Intense Neon Tube (NeonKit Layer 1 - Bent Glass Light Tube)
+        Paint tubeCore = new Paint(Paint.ANTI_ALIAS_FLAG);
+        tubeCore.setStyle(Paint.Style.STROKE);
+        tubeCore.setStrokeWidth(3.5f);
+        tubeCore.setColor(Color.argb(225, Math.min(255, r + 45), Math.min(255, g + 45), Math.min(255, b + 45)));
+        tubeCore.setMaskFilter(new BlurMaskFilter(4.5f, BlurMaskFilter.Blur.NORMAL));
+        canvas.drawRoundRect(innerRect, cornerRadius, cornerRadius, tubeCore);
 
         return bmp;
+    }
+
+    /**
+     * Argent Liquid Metal (seangeng/argent):
+     * Multi-stop specular chrome / liquid mercury gradient with metallic reflection,
+     * harmoniously paired with chromatic aberration liquid glass contouring.
+     */
+    public static Drawable createArgentLiquidMetalDrawable(float corner, boolean isFocused) {
+        GradientDrawable gd = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                isFocused ? new int[]{
+                    Color.parseColor("#FFFFFF"),
+                    Color.parseColor("#E2E8F0"),
+                    Color.parseColor("#94A3B8"),
+                    Color.parseColor("#FFFFFF"),
+                    Color.parseColor("#64748B"),
+                    Color.parseColor("#CBD5E1")
+                } : new int[]{
+                    Color.argb(235, 45, 55, 72),
+                    Color.argb(240, 30, 41, 59),
+                    Color.argb(245, 15, 23, 42),
+                    Color.argb(235, 30, 41, 59)
+                }
+        );
+        gd.setShape(GradientDrawable.RECTANGLE);
+        gd.setCornerRadius(corner);
+        gd.setStroke(isFocused ? 2 : 1, isFocused ? Color.parseColor("#38BDF8") : Color.argb(80, 203, 213, 225));
+        return gd;
+    }
+
+    /**
+     * Deepika Builds Liquid Glass (deepika-builds/liquid-glass):
+     * Refractive acrylic glass card with glowing borders and inner optical sheen for Gemini HUD responses.
+     */
+    public static Drawable createDeepikaLiquidGlassCardDrawable(float corner) {
+        GradientDrawable gd = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                    Color.argb(225, 15, 23, 42),
+                    Color.argb(205, 30, 41, 59),
+                    Color.argb(220, 11, 15, 25)
+                }
+        );
+        gd.setShape(GradientDrawable.RECTANGLE);
+        gd.setCornerRadius(corner);
+        gd.setStroke(2, Color.parseColor("#38BDF8"));
+        return gd;
+    }
+
+    /**
+     * Chromatic Aberration Glass (ybouane/liquidglass & hwyuanzi/LiquidGlass-UI):
+     * Frosted glass translucent plate with subtle chromatic refractive edge styling.
+     */
+    public static Drawable createChromaticGlassDrawable(float corner, boolean isFocused) {
+        GradientDrawable gd = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                    Color.argb(isFocused ? 210 : 140, 20, 28, 45),
+                    Color.argb(isFocused ? 190 : 120, 15, 23, 42),
+                    Color.argb(isFocused ? 200 : 130, 11, 15, 25)
+                }
+        );
+        gd.setShape(GradientDrawable.RECTANGLE);
+        gd.setCornerRadius(corner);
+        gd.setStroke(isFocused ? 2 : 1, isFocused ? Color.parseColor("#38BDF8") : Color.argb(60, 255, 255, 255));
+        return gd;
     }
 
     private static final android.util.LruCache<String, Bitmap> sBloomCache = new android.util.LruCache<String, Bitmap>(4);

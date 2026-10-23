@@ -351,6 +351,7 @@ public class MainActivity extends Activity {
         private boolean isLightMode = false;
         private ValueAnimator focusAnimator;
         private ValueAnimator breathingAnimator;
+        private Bitmap cachedPatternBitmap = null;
 
         SeamlessLivingBackdropView(Context ctx) {
             super(ctx);
@@ -372,6 +373,51 @@ public class MainActivity extends Activity {
             } catch (Throwable ignored) {
             }
             tileBitmap = scaled;
+        }
+
+        private void buildPatternCache(int w, int h) {
+            if (tileBitmap == null || w <= 0 || h <= 0) return;
+            if (cachedPatternBitmap != null && !cachedPatternBitmap.isRecycled()) {
+                cachedPatternBitmap.recycle();
+            }
+            int cw = w + 160;
+            int ch = h + 160;
+            try {
+                cachedPatternBitmap = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888);
+                Canvas pc = new Canvas(cachedPatternBitmap);
+                int tileSize = tileBitmap.getWidth();
+                int stepX = 168;
+                int stepY = 146;
+                float halfTile = tileSize * 0.5f;
+                int cols = (cw / stepX) + 2;
+                int rows = (ch / stepY) + 2;
+                Rect src = new Rect(0, 0, tileBitmap.getWidth(), tileBitmap.getHeight());
+                RectF dst = new RectF(-halfTile, -halfTile, halfTile, halfTile);
+                Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+
+                for (int row = -1; row < rows; row++) {
+                    float y = row * stepY;
+                    float xOffset = ((row % 2) != 0) ? (stepX * 0.5f) : 0f;
+                    for (int col = -1; col < cols; col++) {
+                        float x = col * stepX + xOffset;
+                        int seed = (row * 374761393) ^ (col * 668265263);
+                        seed = (seed ^ (seed >> 13)) * 1274126177;
+                        float rot = ((seed % 360) + 360) % 360;
+                        pc.save();
+                        pc.translate(x, y);
+                        pc.rotate(rot);
+                        pc.drawBitmap(tileBitmap, src, dst, p);
+                        pc.restore();
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+
+        @Override
+        protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+            super.onSizeChanged(w, h, oldw, oldh);
+            buildPatternCache(w, h);
         }
 
         public void setLightMode(boolean light) {
@@ -417,8 +463,8 @@ public class MainActivity extends Activity {
                 focusAnimator.cancel();
             }
             focusAnimator = ValueAnimator.ofFloat(0f, 1f);
-            focusAnimator.setDuration(440L);
-            focusAnimator.setInterpolator(new DecelerateInterpolator(1.7f));
+            focusAnimator.setDuration(180L);
+            focusAnimator.setInterpolator(new DecelerateInterpolator(2.0f));
             focusAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                 @Override
                 public void onAnimationUpdate(ValueAnimator animation) {
@@ -480,45 +526,12 @@ public class MainActivity extends Activity {
             ));
             canvas.drawRect(0, 0, w, h, breathingPaint);
 
-            // 2. 3D Parallax Non-Overlapping Geometric Motif Pattern ("Desen")
-            if (tileBitmap != null) {
-                canvas.save();
-                float parallaxX = (glowX - (w / 2f)) * -0.035f;
-                float parallaxY = (glowY - (h / 2f)) * -0.025f;
-
-                int tileSize = tileBitmap.getWidth();
-                int stepX = 168;
-                int stepY = 146;
-                float halfTile = tileSize * 0.5f;
-
-                // Translucent luxury watermark sheen (clearly recognizable yet elegant)
+            // 2. 3D Parallax Hardware-Cached Motif Pattern ("Desen")
+            if (cachedPatternBitmap != null && !cachedPatternBitmap.isRecycled()) {
+                float parallaxX = (glowX - (w / 2f)) * -0.035f - 80f;
+                float parallaxY = (glowY - (h / 2f)) * -0.025f - 80f;
                 watermarkPaint.setAlpha(isLightMode ? 18 : 28);
-
-                int cols = (w / stepX) + 3;
-                int rows = (h / stepY) + 3;
-                Rect src = new Rect(0, 0, tileBitmap.getWidth(), tileBitmap.getHeight());
-                RectF dst = new RectF(-halfTile, -halfTile, halfTile, halfTile);
-
-                for (int row = -1; row < rows; row++) {
-                    float y = row * stepY + parallaxY;
-                    // Stagger alternate rows by half-step for a diamond monogram motif
-                    float xOffset = ((row % 2) != 0) ? (stepX * 0.5f) : 0f;
-                    for (int col = -1; col < cols; col++) {
-                        float x = col * stepX + xOffset + parallaxX;
-
-                        // Deterministic rotation per tile so angles are varied but completely stable
-                        int seed = (row * 374761393) ^ (col * 668265263);
-                        seed = (seed ^ (seed >> 13)) * 1274126177;
-                        float rot = ((seed % 360) + 360) % 360;
-
-                        canvas.save();
-                        canvas.translate(x, y);
-                        canvas.rotate(rot);
-                        canvas.drawBitmap(tileBitmap, src, dst, watermarkPaint);
-                        canvas.restore();
-                    }
-                }
-                canvas.restore();
+                canvas.drawBitmap(cachedPatternBitmap, parallaxX, parallaxY, watermarkPaint);
             }
 
             // 3. Interactive wide-dispersion atmospheric light field following the focused card/poster
@@ -876,29 +889,64 @@ public class MainActivity extends Activity {
             }
             resetIdleScreensaverTimer();
 
-            // Dedicated Remote Hardware Buttons (Netflix, YouTube, Prime, TV+)
-            if (kc == 207 || kc == 188 || kc == 183 || kc == 265 || kc == 229 || kc == 289 || kc == KeyEvent.KEYCODE_BUTTON_1
+            // Strict Modal Focus Trap: Dismiss Context Bar on Back
+            if (appActionPillBar != null && appActionPillBar.getVisibility() == View.VISIBLE) {
+                if (kc == KeyEvent.KEYCODE_BACK || kc == KeyEvent.KEYCODE_ESCAPE) {
+                    hideAppActionPillBar();
+                    return true;
+                }
+            }
+
+            // 0. Dynamic In-App Remapped Custom Keys (Interactive Key Remapper)
+            SharedPreferences keyPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+            String customAction = keyPrefs.getString("custom_map_" + kc, null);
+            if (customAction == null && sc > 0) {
+                customAction = keyPrefs.getString("custom_map_sc_" + sc, null);
+            }
+            if (customAction != null) {
+                executeCustomKeyAction(customAction);
+                return true;
+            }
+
+            // Dedicated Remote Hardware Buttons (Netflix, YouTube, Prime, TV+, Color Keys)
+            if (kc == 207 || kc == 188 || kc == 183 || kc == 265 || kc == 229 || kc == 289 || kc == 96 || kc == KeyEvent.KEYCODE_BUTTON_1
                     || sc == 191 || sc == 412 || sc == 249) {
                 android.util.Log.i("TvKeyEvent", "Hardware key matched: Nuvio");
                 openNuvioApp();
                 return true;
             }
-            if (kc == 218 || kc == 189 || kc == 190 || kc == 284 || kc == 290 || kc == KeyEvent.KEYCODE_BUTTON_2
-                    || sc == 218 || sc == 413) {
+            if (kc == 218 || kc == 189 || kc == 190 || kc == 250 || kc == 284 || kc == 290 || kc == 415 || kc == 97 || kc == KeyEvent.KEYCODE_BUTTON_2
+                    || sc == 190 || sc == 218 || sc == 250 || sc == 413 || sc == 415) {
                 android.util.Log.i("TvKeyEvent", "Hardware key matched: YouTube");
                 openYouTubeApp();
                 return true;
             }
-            if (kc == 185 || kc == 209 || kc == 228 || kc == 192 || kc == 291 || kc == KeyEvent.KEYCODE_BUTTON_3
-                    || sc == 185 || sc == 415) {
-                android.util.Log.i("TvKeyEvent", "Hardware key matched: Web Video Caster");
-                openWebVideoCasterApp();
+            if (kc == 185 || kc == 209 || kc == 228 || kc == 192 || kc == 291 || kc == 303 || kc == 98 || kc == KeyEvent.KEYCODE_BUTTON_3
+                    || sc == 185 || sc == 192 || sc == 251 || sc == 413) {
+                android.util.Log.i("TvKeyEvent", "Hardware key matched: Prime / Caster");
+                openPrimeVideoOrFallback();
                 return true;
             }
-            if (kc == 277 || kc == 170 || kc == 172 || kc == 186 || kc == 292 || kc == KeyEvent.KEYCODE_TV || kc == KeyEvent.KEYCODE_GUIDE
+            if (kc == 277 || kc == 170 || kc == 172 || kc == 186 || kc == 292 || kc == 99 || kc == KeyEvent.KEYCODE_TV || kc == KeyEvent.KEYCODE_GUIDE
                     || sc == 377 || sc == 362) {
                 android.util.Log.i("TvKeyEvent", "Hardware key matched: TV+");
                 openTvPlusApp();
+                return true;
+            }
+            if (kc == 398) { // PROG_RED
+                openNuvioApp();
+                return true;
+            }
+            if (kc == 399) { // PROG_GREEN
+                openYouTubeApp();
+                return true;
+            }
+            if (kc == 400) { // PROG_YELLOW
+                openTvPlusApp();
+                return true;
+            }
+            if (kc == 401) { // PROG_BLUE
+                showLauncherSettingsModal();
                 return true;
             }
 
@@ -1118,7 +1166,8 @@ public class MainActivity extends Activity {
         brandMedallion = new FrameLayout(this);
         brandMedallion.setFocusable(true);
         brandMedallion.setClickable(true);
-        brandMedallion.setBackground(null); // Pure transparent logo floating directly on canvas
+        brandMedallion.setBackground(YouTubeDisguiseHelper.createArgentLiquidMetalDrawable(24f, false));
+        brandMedallion.setPadding(8, 8, 8, 8);
 
         final ImageView brandTvLogo = new ImageView(this);
         brandTvLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -1158,10 +1207,11 @@ public class MainActivity extends Activity {
         brandMedallion.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
+                brandMedallion.setBackground(YouTubeDisguiseHelper.createArgentLiquidMetalDrawable(24f, hasFocus));
                 v.animate()
                         .scaleX(hasFocus ? 1.18f : 1.0f)
                         .scaleY(hasFocus ? 1.18f : 1.0f)
-                        .setDuration(220L)
+                        .setDuration(180L)
                         .start();
                 if (hasFocus && ambientBackdropView != null) {
                     ambientBackdropView.animateToTarget(v, Color.parseColor("#38BDF8"));
@@ -1896,12 +1946,14 @@ public class MainActivity extends Activity {
             final ImageView hoverBloomView = new ImageView(this);
             hoverBloomView.setScaleType(ImageView.ScaleType.FIT_XY);
             hoverBloomView.setAlpha(0f);
+            int bloomPadH = (int) (VITRIN_BLOOM_PAD * 1.55f);
+            int bloomPadV = VITRIN_BLOOM_PAD;
             FrameLayout.LayoutParams bloomLp = new FrameLayout.LayoutParams(
-                    VITRIN_POSTER_W + VITRIN_BLOOM_PAD * 2,
-                    VITRIN_POSTER_H + VITRIN_BLOOM_PAD * 2,
+                    VITRIN_POSTER_W + bloomPadH * 2,
+                    VITRIN_POSTER_H + bloomPadV * 2,
                     Gravity.CENTER
             );
-            bloomLp.setMargins(-VITRIN_BLOOM_PAD, -VITRIN_BLOOM_PAD, -VITRIN_BLOOM_PAD, -VITRIN_BLOOM_PAD);
+            bloomLp.setMargins(-bloomPadH, -bloomPadV, -bloomPadH, -bloomPadV);
             cardFrame.addView(hoverBloomView, bloomLp);
 
             // Layer 2: Clean 2:3 Liquid Glass Movie Poster (0.88 alpha at rest)
@@ -2720,31 +2772,26 @@ public class MainActivity extends Activity {
 
         cardFrame.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
-            public void onFocusChange(View v, boolean hasFocus) {
+            public void onFocusChange(final View v, boolean hasFocus) {
                 if (isMovingTile) return;
                 if (hasFocus) {
                     hoverBloomView.setImageBitmap(
                             YouTubeDisguiseHelper.getCachedHoverBloom(cardW, cardH, bloomPad, 24f, item.neonColor)
                     );
-                    hoverBloomView.animate().alpha(1.0f).setDuration(260L).start();
+                    hoverBloomView.animate().alpha(1.0f).setDuration(120L).start();
                 } else {
-                    hoverBloomView.animate().alpha(0.0f).setDuration(190L).withEndAction(new Runnable() {
-                        @Override
-                        public void run() {
-                            hoverBloomView.setImageDrawable(null);
-                        }
-                    }).start();
+                    hoverBloomView.animate().alpha(0.0f).setDuration(100L).start();
                 }
                 img.animate()
                         .alpha(hasFocus ? 1.0f : 0.90f)
-                        .setDuration(180L)
+                        .setDuration(120L)
                         .start();
                 v.animate()
                         .scaleX(hasFocus ? 1.085f : 1.0f)
                         .scaleY(hasFocus ? 1.085f : 1.0f)
                         .translationY(hasFocus ? -8f : 0f)
                         .translationZ(hasFocus ? 28f : 0f)
-                        .setDuration(190L)
+                        .setDuration(120L)
                         .start();
                 if (hasFocus && ambientBackdropView != null) {
                     ambientBackdropView.animateToTarget(v, item.neonColor);
@@ -2904,7 +2951,7 @@ public class MainActivity extends Activity {
         title.setPadding(10, 0, 14, 0);
         appActionPillBar.addView(title);
 
-        View pillMove = createActionPill("Taşı", new View.OnClickListener() {
+        final View pillMove = createActionPill("Taşı", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 hideAppActionPillBar();
@@ -2913,7 +2960,7 @@ public class MainActivity extends Activity {
         });
         appActionPillBar.addView(pillMove);
 
-        View pillHide = createActionPill("Gizle", new View.OnClickListener() {
+        final View pillHide = createActionPill("Gizle", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 hideAppActionPillBar();
@@ -2922,7 +2969,7 @@ public class MainActivity extends Activity {
         });
         appActionPillBar.addView(pillHide);
 
-        View pillUninstall = createActionPill("Kaldır", new View.OnClickListener() {
+        final View pillUninstall = createActionPill("Kaldır", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 hideAppActionPillBar();
@@ -2931,7 +2978,7 @@ public class MainActivity extends Activity {
         });
         appActionPillBar.addView(pillUninstall);
 
-        View pillInfo = createActionPill("Bilgi", new View.OnClickListener() {
+        final View pillInfo = createActionPill("Bilgi", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 hideAppActionPillBar();
@@ -2939,6 +2986,37 @@ public class MainActivity extends Activity {
             }
         });
         appActionPillBar.addView(pillInfo);
+
+        // Strict Modal Focus Trap (ybouane/liquidglass modal isolation):
+        // Prevents D-pad focus from escaping to background vitrin or dock cards while panel is open!
+        final View[] pills = new View[]{pillMove, pillHide, pillUninstall, pillInfo};
+        for (int p = 0; p < pills.length; p++) {
+            final int pillIdx = p;
+            final View pv = pills[p];
+            pv.setOnKeyListener(new View.OnKeyListener() {
+                @Override
+                public boolean onKey(View v, int keyCode, KeyEvent event) {
+                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                        if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                            return true; // Strictly trap focus inside context bar
+                        }
+                        if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
+                            hideAppActionPillBar();
+                            return true;
+                        }
+                        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && pillIdx == 0) {
+                            pills[pills.length - 1].requestFocus();
+                            return true;
+                        }
+                        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && pillIdx == pills.length - 1) {
+                            pills[0].requestFocus();
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            });
+        }
 
         pillMove.requestFocus();
     }
@@ -2967,25 +3045,13 @@ public class MainActivity extends Activity {
         btn.setClickable(true);
         btn.setPadding(20, 8, 20, 8);
 
-        final GradientDrawable normalBg = new GradientDrawable();
-        normalBg.setShape(GradientDrawable.RECTANGLE);
-        normalBg.setCornerRadius(18f);
-        normalBg.setColor(Color.argb(140, 30, 41, 59));
-        normalBg.setStroke(1, Color.argb(60, 255, 255, 255));
-
-        final GradientDrawable focusBg = new GradientDrawable();
-        focusBg.setShape(GradientDrawable.RECTANGLE);
-        focusBg.setCornerRadius(18f);
-        focusBg.setColor(Color.argb(230, 30, 41, 59));
-        focusBg.setStroke(2, Color.parseColor("#38BDF8"));
-
-        btn.setBackground(normalBg);
+        btn.setBackground(YouTubeDisguiseHelper.createChromaticGlassDrawable(18f, false));
 
         btn.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                btn.setBackground(hasFocus ? focusBg : normalBg);
-                v.animate().scaleX(hasFocus ? 1.08f : 1.0f).scaleY(hasFocus ? 1.08f : 1.0f).setDuration(140L).start();
+                btn.setBackground(YouTubeDisguiseHelper.createChromaticGlassDrawable(18f, hasFocus));
+                v.animate().scaleX(hasFocus ? 1.08f : 1.0f).scaleY(hasFocus ? 1.08f : 1.0f).setDuration(120L).start();
             }
         });
 
@@ -3890,8 +3956,41 @@ public class MainActivity extends Activity {
         launchPackageWithFallback(new String[]{"com.instantbits.cast.receiver", "com.instantbits.cast.webvideo"}, "Web Video Caster");
     }
 
+    private void openPrimeVideoOrFallback() {
+        launchPackageWithFallback(new String[]{
+                "com.instantbits.cast.receiver",
+                "com.instantbits.cast.webvideo",
+                "com.amazon.amazonvideo.livingroom",
+                "com.nuvio.tv"
+        }, "Prime Video");
+    }
+
     private void openTvPlusApp() {
         launchPackageWithFallback(new String[]{"com.turkcell.ott", "com.turkcell.tvplus"}, "TV+");
+    }
+
+    private void executeCustomKeyAction(String action) {
+        if (action == null || action.isEmpty()) return;
+        if (action.startsWith("pkg:")) {
+            launchAppByPackage(action.substring(4));
+        } else if ("youtube".equals(action)) {
+            openYouTubeApp();
+        } else if ("nuvio".equals(action)) {
+            openNuvioApp();
+        } else if ("tvplus".equals(action)) {
+            openTvPlusApp();
+        } else if ("webvideo".equals(action)) {
+            openPrimeVideoOrFallback();
+        } else if ("clean_ram".equals(action)) {
+            int cleaned = TvKeyInterceptorService.cleanAllBackgroundApps(this, "com.gathin.tvhome");
+            Toast.makeText(this, cleaned + " arka plan uygulaması kapatıldı.", Toast.LENGTH_SHORT).show();
+        } else if ("all_apps".equals(action)) {
+            if (appsGridContainer != null) {
+                focusGridChild(0);
+            }
+        } else {
+            launchAppByPackage(action);
+        }
     }
 
     private void launchPackageWithFallback(String[] packages, String name) {
@@ -4612,20 +4711,22 @@ public class MainActivity extends Activity {
         aiResponseFloatingCard.removeAllViews();
         aiResponseFloatingCard.setVisibility(View.VISIBLE);
         aiResponseFloatingCard.setAlpha(0f);
-        aiResponseFloatingCard.setTranslationY(-40f);
-        aiResponseFloatingCard.animate().alpha(1f).translationY(0f).setDuration(240L).start();
+        aiResponseFloatingCard.setScaleX(0.93f);
+        aiResponseFloatingCard.setScaleY(0.93f);
+        aiResponseFloatingCard.setTranslationY(-30f);
+        aiResponseFloatingCard.animate()
+                .alpha(1f)
+                .scaleX(1.0f)
+                .scaleY(1.0f)
+                .translationY(0f)
+                .setDuration(220L)
+                .setInterpolator(new DecelerateInterpolator(1.8f))
+                .start();
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(32, 22, 32, 22);
-
-        // Tam olarak uygulama ikon çerçeveleriyle aynı saydam buzlu cam doku
-        GradientDrawable bg = new GradientDrawable();
-        bg.setShape(GradientDrawable.RECTANGLE);
-        bg.setCornerRadius(20f);
-        bg.setColor(Color.argb(135, 15, 23, 42)); // Translucent acrylic frosted glass
-        bg.setStroke(1, Color.argb(55, 255, 255, 255)); // 1px specular edge
-        card.setBackground(bg);
+        card.setPadding(36, 26, 36, 26);
+        card.setBackground(YouTubeDisguiseHelper.createDeepikaLiquidGlassCardDrawable(26f));
 
         LinearLayout top = new LinearLayout(this);
         top.setOrientation(LinearLayout.HORIZONTAL);
@@ -4663,13 +4764,13 @@ public class MainActivity extends Activity {
         ansView.setLineSpacing(5f, 1.15f);
         card.addView(ansView);
 
-        FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(720, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(740, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
         flp.setMargins(0, 105, 0, 0);
         aiResponseFloatingCard.addView(card, flp);
 
-        // 4.5 saniye sonra kendiliğinden pürüzsüzce kaybolur
+        // Deepika Builds Liquid Glass: Auto-dismisses smoothly after 6 seconds
         handler.removeCallbacks(autoDismissAiCardRunnable);
-        handler.postDelayed(autoDismissAiCardRunnable, 4500L);
+        handler.postDelayed(autoDismissAiCardRunnable, 6000L);
     }
 
     private final Runnable autoDismissAiCardRunnable = new Runnable() {
@@ -4945,9 +5046,121 @@ public class MainActivity extends Activity {
         });
         card.addView(btnAiKey);
 
+        // 5) Özel TV Kumandası Tuşlarını Ata (Interactive Key Remapper)
+        View btnRemap = createModalMenuButton("Özel TV Kumandası Tuşlarını Ata", "Kumandanızdaki özel tuşları yakalayıp istediğiniz uygulamaya bağlar", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showKeyRemapperModal();
+            }
+        });
+        card.addView(btnRemap);
+
         FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(600, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
         settingsModalOverlay.addView(card, clp);
         btnTheme.requestFocus();
+    }
+
+    private void showKeyRemapperModal() {
+        if (settingsModalOverlay == null) return;
+        settingsModalOverlay.removeAllViews();
+        settingsModalOverlay.setVisibility(View.VISIBLE);
+        settingsModalOverlay.setAlpha(1f);
+
+        final LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setPadding(40, 28, 40, 32);
+        card.setBackground(YouTubeDisguiseHelper.createDeepikaLiquidGlassCardDrawable(26f));
+
+        TextView title = new TextView(this);
+        title.setText("ÖZEL KUMANDA TUŞU ATAMA");
+        title.setTypeface(FontManager.getBold(this));
+        title.setTextSize(18f);
+        title.setTextColor(Color.parseColor("#F8FAFC"));
+        title.setLetterSpacing(0.06f);
+        card.addView(title);
+
+        final TextView statusText = new TextView(this);
+        statusText.setText("Lütfen kumandanızdan atamak istediğiniz tuşa basın...\n(YouTube, Netflix, Prime, TV+, Canlı TV, Renkli Tuş vb.)\n\n[Geri]: Vazgeç");
+        statusText.setTypeface(FontManager.getMedium(this));
+        statusText.setTextSize(13f);
+        statusText.setTextColor(Color.parseColor("#38BDF8"));
+        statusText.setGravity(Gravity.CENTER);
+        statusText.setPadding(0, 14, 0, 18);
+        card.addView(statusText);
+
+        final LinearLayout choicesContainer = new LinearLayout(this);
+        choicesContainer.setOrientation(LinearLayout.VERTICAL);
+        choicesContainer.setVisibility(View.GONE);
+        card.addView(choicesContainer);
+
+        final int[] capturedKey = new int[]{0, 0};
+
+        card.setFocusable(true);
+        card.setFocusableInTouchMode(true);
+        card.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
+                        showLauncherSettingsModal();
+                        return true;
+                    }
+                    if (capturedKey[0] == 0 && keyCode != KeyEvent.KEYCODE_DPAD_CENTER && keyCode != KeyEvent.KEYCODE_ENTER
+                            && keyCode != KeyEvent.KEYCODE_DPAD_UP && keyCode != KeyEvent.KEYCODE_DPAD_DOWN
+                            && keyCode != KeyEvent.KEYCODE_DPAD_LEFT && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        capturedKey[0] = keyCode;
+                        capturedKey[1] = event.getScanCode();
+                        statusText.setText("Tuş Başarıyla Yakalandı! (Kod: " + keyCode + ", ScanCode: " + capturedKey[1] + ")\nBu tuş basıldığında açılacak uygulamayı seçin:");
+                        statusText.setTextColor(Color.parseColor("#4ADE80"));
+                        populateKeyRemapChoices(choicesContainer, capturedKey[0], capturedKey[1]);
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+
+        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(640, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        settingsModalOverlay.addView(card, clp);
+        card.requestFocus();
+    }
+
+    private void populateKeyRemapChoices(final LinearLayout container, final int keyCode, final int scanCode) {
+        container.removeAllViews();
+        container.setVisibility(View.VISIBLE);
+
+        String[][] apps = new String[][]{
+            {"Reklamsız YouTube (TizenTube Cobalt)", "youtube"},
+            {"Nuvio TV (4K Sinema & Dizi)", "nuvio"},
+            {"Turkcell TV+", "tvplus"},
+            {"Web Video Caster / Prime", "webvideo"},
+            {"Hafıza & RAM Temizleyici", "clean_ram"},
+            {"Uygulama Kütüphanesi", "all_apps"}
+        };
+
+        View firstBtn = null;
+        for (int i = 0; i < apps.length; i++) {
+            final String appLabel = apps[i][0];
+            final String actionCode = apps[i][1];
+            View btn = createModalMenuButton(appLabel, "Bu tuşa atamak için tıklayın", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                    prefs.edit()
+                            .putString("custom_map_" + keyCode, actionCode)
+                            .putString("custom_map_sc_" + scanCode, actionCode)
+                            .apply();
+                    Toast.makeText(MainActivity.this, appLabel + " tuşa atandı! (Kod: " + keyCode + ")", Toast.LENGTH_SHORT).show();
+                    showLauncherSettingsModal();
+                }
+            });
+            container.addView(btn);
+            if (firstBtn == null) firstBtn = btn;
+        }
+        if (firstBtn != null) {
+            firstBtn.requestFocus();
+        }
     }
 
     private void hideSettingsModal() {
@@ -4972,19 +5185,7 @@ public class MainActivity extends Activity {
         row.setClickable(true);
         row.setPadding(24, 14, 24, 14);
 
-        final GradientDrawable normalBg = new GradientDrawable();
-        normalBg.setShape(GradientDrawable.RECTANGLE);
-        normalBg.setCornerRadius(16f);
-        normalBg.setColor(Color.argb(120, 30, 41, 59));
-        normalBg.setStroke(1, Color.argb(60, 255, 255, 255));
-
-        final GradientDrawable focusBg = new GradientDrawable();
-        focusBg.setShape(GradientDrawable.RECTANGLE);
-        focusBg.setCornerRadius(16f);
-        focusBg.setColor(Color.argb(220, 30, 41, 59));
-        focusBg.setStroke(2, Color.parseColor("#38BDF8"));
-
-        row.setBackground(normalBg);
+        row.setBackground(YouTubeDisguiseHelper.createChromaticGlassDrawable(16f, false));
 
         TextView tView = new TextView(this);
         tView.setText(title);
@@ -5004,8 +5205,8 @@ public class MainActivity extends Activity {
         row.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
-                row.setBackground(hasFocus ? focusBg : normalBg);
-                v.animate().scaleX(hasFocus ? 1.04f : 1.0f).scaleY(hasFocus ? 1.04f : 1.0f).setDuration(160L).start();
+                row.setBackground(YouTubeDisguiseHelper.createChromaticGlassDrawable(16f, hasFocus));
+                v.animate().scaleX(hasFocus ? 1.04f : 1.0f).scaleY(hasFocus ? 1.04f : 1.0f).setDuration(140L).start();
             }
         });
 
