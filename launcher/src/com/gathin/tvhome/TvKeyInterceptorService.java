@@ -380,8 +380,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return true;
         }
 
-        // 3. Amazon Prime / Bein Button -> Opens Web Video Caster or Fallback
-        if (isAmazonPrimeKey(keyCode, scanCode, prefs) || isBeinConnectKey(keyCode, scanCode, prefs)) {
+        // 3. Amazon Prime / Caster Button -> Opens Web Video Caster or Fallback
+        if (isAmazonPrimeKey(keyCode, scanCode, prefs)) {
             if (action == KeyEvent.ACTION_DOWN) {
                 launchPackageWithFallback(new String[]{
                         "com.instantbits.cast.receiver",
@@ -469,9 +469,12 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 || keyCode == KeyEvent.KEYCODE_TV_CONTENTS_MENU
                 || keyCode == KeyEvent.KEYCODE_BUTTON_4
                 || keyCode == 191
-                || keyCode == KeyEvent.KEYCODE_PROG_BLUE
                 || keyCode == 186
-                || scanCode == 377 || scanCode == 362;
+                || keyCode == 292
+                || keyCode == 401 // KEYCODE_PROG_BLUE
+                || keyCode == KeyEvent.KEYCODE_PROG_BLUE
+                || keyCode == 99
+                || scanCode == 186 || scanCode == 377 || scanCode == 362 || scanCode == 401;
     }
 
     private boolean isNetflixKey(int keyCode, int scanCode, SharedPreferences prefs) {
@@ -482,18 +485,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 || keyCode == 188
                 || keyCode == KeyEvent.KEYCODE_PROG_RED
                 || keyCode == 183
-                || keyCode == 191 || keyCode == 265 || keyCode == 229
-                || scanCode == 191 || scanCode == 412 || scanCode == 249;
-    }
-
-    private boolean isBeinConnectKey(int keyCode, int scanCode, SharedPreferences prefs) {
-        int custom = prefs.getInt(KEY_CUSTOM_BEIN, -1);
-        if (matchesCustomToken(keyCode, scanCode, custom)) return true;
-        return keyCode == KeyEvent.KEYCODE_PROG_GREEN
-                || keyCode == 184
-                || keyCode == KeyEvent.KEYCODE_TV_DATA_SERVICE
-                || keyCode == 248 || keyCode == 252
-                || scanCode == 248 || scanCode == 252 || scanCode == 414;
+                || keyCode == 398 // KEYCODE_PROG_RED
+                || keyCode == 191 || keyCode == 265 || keyCode == 229 || keyCode == 289 || keyCode == 96
+                || scanCode == 183 || scanCode == 191 || scanCode == 398 || scanCode == 412 || scanCode == 249;
     }
 
     private boolean isYouTubeKey(int keyCode, int scanCode, SharedPreferences prefs) {
@@ -502,13 +496,16 @@ public class TvKeyInterceptorService extends AccessibilityService {
         return keyCode == 218 // KEYCODE_YOUTUBE
                 || keyCode == KeyEvent.KEYCODE_BUTTON_2
                 || keyCode == 97
+                || keyCode == 184
                 || keyCode == 189
                 || keyCode == 190
                 || keyCode == 250
                 || keyCode == 284
                 || keyCode == 290
+                || keyCode == 399 // KEYCODE_PROG_GREEN
+                || keyCode == KeyEvent.KEYCODE_PROG_GREEN
                 || keyCode == 415
-                || scanCode == 190 || scanCode == 218 || scanCode == 250 || scanCode == 413 || scanCode == 415;
+                || scanCode == 184 || scanCode == 190 || scanCode == 218 || scanCode == 250 || scanCode == 399 || scanCode == 413 || scanCode == 414 || scanCode == 415;
     }
 
     private boolean isAmazonPrimeKey(int keyCode, int scanCode) {
@@ -521,14 +518,14 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
         return keyCode == KeyEvent.KEYCODE_BUTTON_3
                 || keyCode == 98
-                || keyCode == 190
-                || keyCode == KeyEvent.KEYCODE_PROG_YELLOW
                 || keyCode == 185
+                || keyCode == 400 // KEYCODE_PROG_YELLOW
+                || keyCode == KeyEvent.KEYCODE_PROG_YELLOW
                 || keyCode == KeyEvent.KEYCODE_SETTINGS
                 || keyCode == 176
                 || keyCode == 209 || keyCode == 228
                 || keyCode == 192 || keyCode == 290 || keyCode == 291 || keyCode == 303
-                || scanCode == 185 || scanCode == 192 || scanCode == 251 || scanCode == 413;
+                || scanCode == 185 || scanCode == 192 || scanCode == 251 || scanCode == 400 || scanCode == 416 || scanCode == 417;
     }
 
     public static Intent getSafeLaunchIntent(PackageManager pm, String pkg) {

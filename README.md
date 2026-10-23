@@ -59,7 +59,7 @@ Captured directly from an Arçelik 4K Android TV (MediaTek platform) displaying 
 
 ### Production Interface Gallery (Direct Hardware Captures)
 
-| Takeshi Kitano Filmography 3D CoverFlow | Inline Search & Floating Acrylic HUD Card |
+| Cinematic 3D CoverFlow & Ambient OLED Glow | Hardware Benchmark & Auto-Optimizer HUD |
 | :---: | :---: |
 | ![Hero CoverFlow](docs/screenshots/hero_coverflow_3d.png) | ![Cinema HUD Overlay](docs/screenshots/cinema_hud_overlay.png) |
 | **Fullscreen Page 2: 5-Column App Library** | **TMDB Scene Backdrop & OLED Screensaver** |
@@ -92,7 +92,7 @@ The launcher analyzes the color histogram of the focused movie poster across 12 
 |                              CineTV Launcher UI                               |
 |  +--------------------+  +----------------------+  +-----------------------+  |
 |  | Search & AI HUD    |  | 3D CoverFlow Shelf   |  | visionOS App Dock     |  |
-|  | Inline EditText    |  | RenderNode Z-Ordering|  | Long-press Pill Bar   |  |
+|  | Chrome-Rimmed Bar  |  | OLED Ambilight Glow  |  | Centered Add Medallion|  |
 |  +--------------------+  +----------------------+  +-----------------------+  |
 +-------------------------------------------------------------------------------+
 |                              Native Core Engines                              |
@@ -101,8 +101,8 @@ The launcher analyzes the color histogram of the focused movie poster across 12 
 |  | 4-Thread Pool      |  | Gemini 1.5 & Claude  |  | Interceptor Service   |  |
 |  +--------------------+  +----------------------+  +-----------------------+  |
 |  +--------------------+  +----------------------+  +-----------------------+  |
-|  | WebRemote Server   |  | TMDB Backdrop Engine |  | Memory Manager        |  |
-|  | Port 8080 (WebGL)  |  | Lissajous Starfield  |  | zRAM + Auto Trim      |  |
+|  | WebRemote Server   |  | TMDB Backdrop Engine |  | Benchmark & Optimizer |  |
+|  | Port 8080 (WebGL)  |  | Lissajous Starfield  |  | Live TV Diagnostics   |  |
 |  +--------------------+  +----------------------+  +-----------------------+  |
 +-------------------------------------------------------------------------------+
 |                      Underlying OS & Streaming Layer                          |
@@ -118,9 +118,13 @@ The launcher analyzes the color histogram of the focused movie poster across 12 
 ### 1. Liquid Glass 3D Parallax CoverFlow Graphics Engine
 - **Hardware Z-Ordering**: Employs Android RenderNode `elevation` (`50f`) and `translationZ` (`65f`) hardware layers to manage depth ordering without altering the ViewGroup child hierarchy, maintaining a stable 60 FPS render thread.
 - **Dynamic Perspective Scaling**: The focused poster card expands by **1.30x** and shifts `-22f` on the Y-axis. Flanking cards scale down progressively to **0.94x**, **0.80x**, and **0.68x** with distance-weighted shadow attenuation.
-- **NeonKit Physical Light Model (AadiXC0DE/NeonKit Integration)**: Replaces standard circular blurs with a physical light tube architecture. Combines a core intense bent-glass tube stroke (`225` alpha), direct aura, and an exponential atmospheric halo (`85` -> `45` -> `18` -> `0` alpha) bounded safely inside an expanded horizontal cushion (`padH = padPx * 1.55f`). The light completely decays to zero before reaching canvas borders, eliminating all left/right edge-clipping.
-- **Chromatic Aberration Optical Refraction (ybouane/liquidglass & hwyuanzi/LiquidGlass-UI)**: Implements tangential spectral dispersion along card boundaries. Splits refraction highlights into an upper-left red fringe (`Color.argb(55, 255, 68, 90)` at `-1.0px, -0.7px`) and a lower-right cyan-blue fringe (`Color.argb(65, 56, 189, 248)` at `+1.0px, +0.7px`), anchored by a sharp central white specular crest.
-- **Argent Liquid Metal Chrome Accents (seangeng/argent)**: The launcher medallion logo (`brandMedallion`) and primary controls feature a multi-stop liquid chrome gradient (`#FFFFFF` -> `#E2E8F0` -> `#94A3B8` -> `#64748B` -> `#CBD5E1`) creating dynamic specular reflections without clashing with the liquid glass housing.
+- **Cinematic OLED Ambilight Diffusion Model**: Replaces harsh wire-like outlines with multi-stage Gaussian backlight radiation. Light emanates softly from behind the card with an atmospheric radial decay, diffuse silhouette halo, and near-field ambient core, decaying completely to zero before canvas borders without clipping.
+- **Micro-Thin Optical Crystal Meniscus Bevel**: Clean 1.2px pure specular glass edge bevel (`Color.argb(125, 255, 255, 255)` specular highlight) catches the room's ambient light, completely eliminating artificial colored fringe lines from movie poster artwork.
+- **Authentic Brand Color Preservation with Subtle Metallic Luster**:
+  - Eliminates monochromatic grayscale cookie-cutters; preserves 100% of signature brand hues (Turkcell TV+ brilliant Solar Gold `+`, YouTube Ruby Crimson badge, Caster Tangerine Amber, Nuvio Electric Violet, Stremio Violet, Dizipal Magenta, Nova Cyan).
+  - Delicately overlays a 4-stop anisotropic metallic sheen and top-lit specular meniscus glaze (`Color.argb(80, 255, 255, 255)`), imparting tactile machined depth while keeping brand colors vibrant.
+  - High-contrast platinum white typography (`#F8FAFC` to `#FFFFFF`) with radiant volumetric brand back-glows.
+- **Frameless Signature Brand Mark**: The top-left signature logo floats completely unencumbered on the wallpaper with zero outer container, zero border, and zero box background.
 - **Zero-Latency Return (#040508 Noir)**: Eliminates display flicker when returning from external video playback by enforcing an immediate OLED `#040508` background clear.
 - **Direct 4K Playback Pipeline**: Selecting any shelf poster immediately invokes **Nuvio TV** (`launchMode="stream"`) with highest-seeder 4K HDR10 and Dolby Vision source prioritization.
 
@@ -178,13 +182,28 @@ The launcher analyzes the color histogram of the focused movie poster across 12 
 
 ---
 
-### 6. Dock Management & Strict Modal Focus Trap
-- **Quick-Add (`+`) Tile**: Sits at the trailing edge of the dock row, allowing users to pin installed applications directly to the home screen.
+### 6. Dock Architecture & Interactive On-Device Auto-Optimizer
+- **Sub-Pixel Centered Vector Cross (`+`) Add App Tile**:
+  - Replaces legacy Android `TextView` implementations with an exact mathematical vector cross drawn directly to Canvas (`22px x 3.8px` symmetric bars centered precisely at `28f, 28f`).
+  - Completely eliminates font metric ascent/descent baseline drift, ensuring flawless vertical and horizontal centering within the 56x56 circular frosted glass lens.
+  - Features dynamic illumination: Electric cyan `#38BDF8` at rest with ambient glow, flaring to brilliant pure white `#FFFFFF` with specular rim highlights upon remote focus.
+- **On-Device Hardware Benchmark & Automated Self-Optimizer**:
+  - Invoked directly by pressing or clicking the frameless signature logo (`brandMedallion`) on the home screen.
+  - **Live Diagnostics Pipeline**:
+    - **Memory Subsystem**: Real-time evaluation of total, used, and free RAM via `ActivityManager.MemoryInfo`.
+    - **CPU Response**: Measures multithreaded calculation latency across intensive trigonometric and matrix benchmarks.
+    - **Graphics & UI Thread**: Validates hardware canvas render latency and ensures 60 FPS zero-frame-drop fluid operation.
+    - **Storage I/O**: Performs 512 KB block write/read throughput benchmarks directly on TV flash cache.
+  - **Automated Self-Optimization Cycle**:
+    - Safely terminates leaked or zombie background media tasks via `cleanAllBackgroundApps` without disturbing core OS, AirPlay, Chromecast, or Assistant services.
+    - Purges launcher bloom and bitmap caches (`clearBloomCache`).
+    - Executes memory compaction (`System.gc`).
+    - Measures reclaimed memory (`+XX MB`) and presents an executive status HUD with action buttons (`Tamam` to dismiss, `Sistem Ayarları` to open settings).
 - **Contextual Action Pill Bar**: Long-pressing any dock icon displays horizontal visionOS pills (`Move`, `Hide`, `Uninstall`, `App Info`).
 - **Strict Modal Focus Trap**:
-  - When the action pill bar is active, D-pad `Up` and `Down` events are strictly consumed, preventing focus from escaping to background posters or dock items.
-  - `Left` from the first pill cycles to the last pill; `Right` from the last pill cycles to the first pill.
-  - Pressing `Back` cleanly dismisses the action bar and restores focus to the origin application tile.
+  - When the action pill bar or benchmark modal is active, D-pad events are strictly trapped within the container, preventing accidental navigation to background posters or dock items.
+  - `Left` from the first item cycles to the last; `Right` from the last item cycles to the first.
+  - Pressing `Back` cleanly dismisses the modal and returns focus to the origin component.
 - **Ghost Application Suppression**: A dynamic `BroadcastReceiver` monitoring `ACTION_PACKAGE_REMOVED` purges deleted applications immediately, preventing blank tiles.
 
 ---
