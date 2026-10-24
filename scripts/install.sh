@@ -433,6 +433,11 @@ bash "${SCRIPT_DIR}/optimize_ram.sh" || true
 # ------------------------------------------------------------------------------
 # STEP 11: AI CINEMA CURATOR CONFIGURATION (GOOGLE GEMINI / ANTHROPIC CLAUDE)
 # ------------------------------------------------------------------------------
+sanitize_setting_value() {
+    local val="$1"
+    echo "$val" | tr -cd 'a-zA-Z0-9_\-\.:'
+}
+
 if [[ "$LANG" == "tr" ]]; then
     echo -e "\n${BOLD}[Adım 8/9] Yapay Zekâ Sinema Küratörü (Ruh Haline Göre 4K Sinema Vitrini):${NC}"
     echo "  1) Google Gemini API (Önerilen - Ücretsiz tier mevcuttur)"
@@ -444,19 +449,21 @@ if [[ "$LANG" == "tr" ]]; then
     if [[ "$AI_CHOICE" == "1" ]]; then
         echo -e "${CYAN}Google AI Studio'dan aldığınız Gemini API anahtarınızı girin (AIzaSy...):${NC}"
         read -r -p "Gemini API Key: " USER_AI_KEY
-        if [[ -n "${USER_AI_KEY:-}" ]]; then
-            adb shell "settings put secure tv_gemini_api_key '${USER_AI_KEY}'"
-            adb shell "settings put secure tv_ai_api_key '${USER_AI_KEY}'"
-            adb shell "settings put secure tv_ai_provider 'gemini'"
+        USER_AI_KEY=$(sanitize_setting_value "${USER_AI_KEY:-}")
+        if [[ -n "$USER_AI_KEY" ]]; then
+            adb shell settings put secure tv_gemini_api_key "$USER_AI_KEY"
+            adb shell settings put secure tv_ai_api_key "$USER_AI_KEY"
+            adb shell settings put secure tv_ai_provider 'gemini'
             echo -e "${GREEN}[+] Google Gemini API anahtarı TV'nin güvenli donanım deposuna kaydedildi.${NC}"
         fi
     elif [[ "$AI_CHOICE" == "2" ]]; then
         echo -e "${CYAN}Anthropic Console'dan aldığınız Claude API anahtarınızı girin (sk-ant-...):${NC}"
         read -r -p "Claude API Key: " USER_AI_KEY
-        if [[ -n "${USER_AI_KEY:-}" ]]; then
-            adb shell "settings put secure tv_ai_api_key '${USER_AI_KEY}'"
-            adb shell "settings put secure tv_gemini_api_key '${USER_AI_KEY}'"
-            adb shell "settings put secure tv_ai_provider 'claude'"
+        USER_AI_KEY=$(sanitize_setting_value "${USER_AI_KEY:-}")
+        if [[ -n "$USER_AI_KEY" ]]; then
+            adb shell settings put secure tv_ai_api_key "$USER_AI_KEY"
+            adb shell settings put secure tv_gemini_api_key "$USER_AI_KEY"
+            adb shell settings put secure tv_ai_provider 'claude'
             echo -e "${GREEN}[+] Anthropic Claude API anahtarı TV'nin güvenli donanım deposuna kaydedildi.${NC}"
         fi
     else
@@ -466,8 +473,9 @@ if [[ "$LANG" == "tr" ]]; then
     echo -e "\n${BOLD}The Movie Database (TMDB) API Entegrasyonu:${NC}"
     echo "  (Ekran koruyucu sinematik sahne arka planları ve dinamik 4K afişler için)"
     read -r -p "TMDB API Anahtarınız (İsteğe bağlı - Atlamak için Enter): " USER_TMDB_KEY
-    if [[ -n "${USER_TMDB_KEY:-}" ]]; then
-        adb shell "settings put secure tv_tmdb_api_key '${USER_TMDB_KEY}'"
+    USER_TMDB_KEY=$(sanitize_setting_value "${USER_TMDB_KEY:-}")
+    if [[ -n "$USER_TMDB_KEY" ]]; then
+        adb shell settings put secure tv_tmdb_api_key "$USER_TMDB_KEY"
         echo -e "${GREEN}[+] TMDB API anahtarı TV'nin güvenli donanım deposuna kaydedildi.${NC}"
     fi
 else
@@ -481,19 +489,21 @@ else
     if [[ "$AI_CHOICE" == "1" ]]; then
         echo -e "${CYAN}Enter your Google Gemini API key (AIzaSy...):${NC}"
         read -r -p "Gemini API Key: " USER_AI_KEY
-        if [[ -n "${USER_AI_KEY:-}" ]]; then
-            adb shell "settings put secure tv_gemini_api_key '${USER_AI_KEY}'"
-            adb shell "settings put secure tv_ai_api_key '${USER_AI_KEY}'"
-            adb shell "settings put secure tv_ai_provider 'gemini'"
+        USER_AI_KEY=$(sanitize_setting_value "${USER_AI_KEY:-}")
+        if [[ -n "$USER_AI_KEY" ]]; then
+            adb shell settings put secure tv_gemini_api_key "$USER_AI_KEY"
+            adb shell settings put secure tv_ai_api_key "$USER_AI_KEY"
+            adb shell settings put secure tv_ai_provider 'gemini'
             echo -e "${GREEN}[+] Google Gemini API key saved to TV secure hardware settings.${NC}"
         fi
     elif [[ "$AI_CHOICE" == "2" ]]; then
         echo -e "${CYAN}Enter your Anthropic Claude API key (sk-ant-...):${NC}"
         read -r -p "Claude API Key: " USER_AI_KEY
-        if [[ -n "${USER_AI_KEY:-}" ]]; then
-            adb shell "settings put secure tv_ai_api_key '${USER_AI_KEY}'"
-            adb shell "settings put secure tv_gemini_api_key '${USER_AI_KEY}'"
-            adb shell "settings put secure tv_ai_provider 'claude'"
+        USER_AI_KEY=$(sanitize_setting_value "${USER_AI_KEY:-}")
+        if [[ -n "$USER_AI_KEY" ]]; then
+            adb shell settings put secure tv_ai_api_key "$USER_AI_KEY"
+            adb shell settings put secure tv_gemini_api_key "$USER_AI_KEY"
+            adb shell settings put secure tv_ai_provider 'claude'
             echo -e "${GREEN}[+] Anthropic Claude API key saved to TV secure hardware settings.${NC}"
         fi
     else
@@ -503,8 +513,9 @@ else
     echo -e "\n${BOLD}The Movie Database (TMDB) API Configuration:${NC}"
     echo "  (For dynamic cinematic screensaver backgrounds and rich posters)"
     read -r -p "TMDB API Key (Optional - Press Enter to skip): " USER_TMDB_KEY
-    if [[ -n "${USER_TMDB_KEY:-}" ]]; then
-        adb shell "settings put secure tv_tmdb_api_key '${USER_TMDB_KEY}'"
+    USER_TMDB_KEY=$(sanitize_setting_value "${USER_TMDB_KEY:-}")
+    if [[ -n "$USER_TMDB_KEY" ]]; then
+        adb shell settings put secure tv_tmdb_api_key "$USER_TMDB_KEY"
         echo -e "${GREEN}[+] TMDB API key saved to TV secure hardware settings.${NC}"
     fi
 fi

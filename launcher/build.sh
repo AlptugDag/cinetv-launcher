@@ -64,8 +64,12 @@ cd build/dex && zip -u ../packaged.apk classes.dex && cd ../..
 echo "[6/7] Aligning APK with zipalign..."
 "$BUILD_TOOLS/zipalign" -f -p 4 build/packaged.apk build/aligned.apk
 
-echo "[7/7] Signing APK with apksigner..."
-"$BUILD_TOOLS/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out ../release/cinetv-launcher-v1.0.0.apk build/aligned.apk
+KEYSTORE="${CINETV_KS:-debug.keystore}"
+KEYSTORE_PASS="${CINETV_KS_PASS:-pass:android}"
+KEY_PASS="${CINETV_KEY_PASS:-$KEYSTORE_PASS}"
+
+echo "[7/7] Signing APK with apksigner ($KEYSTORE)..."
+"$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-pass "$KEYSTORE_PASS" --key-pass "$KEY_PASS" --out ../release/cinetv-launcher-v1.0.0.apk build/aligned.apk
 rm -f ../release/tv-master-launcher-v1.0.0.apk
 cp ../release/cinetv-launcher-v1.0.0.apk ../release/tv-master-launcher-v1.0.0.apk
 cp ../release/cinetv-launcher-v1.0.0.apk.idsig ../release/tv-master-launcher-v1.0.0.apk.idsig 2>/dev/null || true

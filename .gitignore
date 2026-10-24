@@ -26,3 +26,9 @@ launcher/res/drawable/ic_user_signature.xml
 *.private.key
 *.private.json
 
+# Release Keystores & Properties (keep debug.keystore for dev builds)
+*.jks
+*.keystore
+!launcher/debug.keystore
+keystore.properties
+

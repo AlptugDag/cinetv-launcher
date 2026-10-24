@@ -834,6 +834,30 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    private void enableOwnAccessibilityService() {
+        try {
+            final String ownService = "com.gathin.tvhome/com.gathin.tvhome.TvKeyInterceptorService";
+            String currentServices = Settings.Secure.getString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            boolean found = false;
+            if (currentServices != null && !currentServices.isEmpty()) {
+                String[] parts = currentServices.split(":");
+                for (String part : parts) {
+                    if (ownService.equalsIgnoreCase(part.trim())) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (!found) {
+                String updated = (currentServices == null || currentServices.trim().isEmpty())
+                        ? ownService
+                        : currentServices.trim() + ":" + ownService;
+                Settings.Secure.putString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, updated);
+            }
+            Settings.Secure.putInt(getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, 1);
+        } catch (Throwable ignored) {}
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -843,8 +867,7 @@ public class MainActivity extends Activity {
             Settings.Secure.putInt(getContentResolver(), "screensaver_timeout", 300000);
             Settings.Secure.putInt(getContentResolver(), "screensaver_enabled", 1);
             Settings.Secure.putString(getContentResolver(), "screensaver_components", "com.gathin.tvhome/com.gathin.tvhome.ClockDream");
-            Settings.Secure.putString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, "com.gathin.tvhome/com.gathin.tvhome.TvKeyInterceptorService");
-            Settings.Secure.putInt(getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, 1);
+            enableOwnAccessibilityService();
         } catch (Throwable ignored) {}
 
         try {
@@ -1002,7 +1025,19 @@ public class MainActivity extends Activity {
             } catch (Throwable ignored) {}
             packageReceiver = null;
         }
+        TvWebRemoteServer.setCallback(null);
         TvWebRemoteServer.stop();
+        if (handler != null) {
+            handler.removeCallbacksAndMessages(null);
+        }
+        if (posterDownloadExecutor != null && !posterDownloadExecutor.isShutdown()) {
+            try {
+                posterDownloadExecutor.shutdownNow();
+            } catch (Throwable ignored) {}
+        }
+        if (ambientBackdropView != null) {
+            ambientBackdropView.stopSeamlessBreathing();
+        }
         super.onDestroy();
     }
 
@@ -1040,7 +1075,15 @@ public class MainActivity extends Activity {
         }
     }
 
+    private long lastMemoryCleanupTime = 0L;
+
     private void cleanupBackgroundAppsMemory() {
+        long now = System.currentTimeMillis();
+        if (now - lastMemoryCleanupTime < 15000L) {
+            return;
+        }
+        lastMemoryCleanupTime = now;
+
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -1053,7 +1096,8 @@ public class MainActivity extends Activity {
                             for (ActivityManager.RunningAppProcessInfo p : procs) {
                                 if (p.pkgList != null) {
                                     for (String pkg : p.pkgList) {
-                                        if (!pkg.equals(myPkg)
+                                        if (pkg != null && !pkg.equals(myPkg)
+                                                && !TvKeyInterceptorService.isProtectedPackage(pkg)
                                                 && !pkg.startsWith("com.android.systemui")
                                                 && !pkg.startsWith("com.google.android.inputmethod")
                                                 && !pkg.startsWith("com.mediatek.wwtv")) {
@@ -1064,8 +1108,6 @@ public class MainActivity extends Activity {
                             }
                         }
                         am.killBackgroundProcesses("com.nuvio.tv");
-                        am.killBackgroundProcesses("com.google.android.katniss");
-                        am.killBackgroundProcesses("com.google.android.apps.mediashell");
                     }
                     YouTubeDisguiseHelper.clearBloomCache();
                     System.gc();
@@ -1242,6 +1284,13 @@ public class MainActivity extends Activity {
         }
     }
 
+    public static boolean isLightThemeNow(String mode) {
+        if ("light".equalsIgnoreCase(mode)) return true;
+        if ("dark".equalsIgnoreCase(mode)) return false;
+        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        return hour >= 7 && hour < 19;
+    }
+
     private void applyThemeMode() {
         try {
             SharedPreferences prefs = getSharedPreferences("tvhome_prefs", MODE_PRIVATE);
@@ -1251,11 +1300,14 @@ public class MainActivity extends Activity {
             }
             currentThemeMode = mode.toLowerCase();
 
-            boolean isLight = "light".equalsIgnoreCase(currentThemeMode);
+            boolean isLight = isLightThemeNow(currentThemeMode);
 
             UiModeManager uiManager = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
             if (uiManager != null) {
-                uiManager.setNightMode(isLight ? UiModeManager.MODE_NIGHT_NO : UiModeManager.MODE_NIGHT_YES);
+                int targetMode = isLight ? UiModeManager.MODE_NIGHT_NO : UiModeManager.MODE_NIGHT_YES;
+                if (uiManager.getNightMode() != targetMode) {
+                    uiManager.setNightMode(targetMode);
+                }
             }
 
             if (ambientBackdropView != null) {
@@ -1275,7 +1327,19 @@ public class MainActivity extends Activity {
         }
     }
 
+    private long lastWeatherFetchTime = 0L;
+
     private void fetchLiveWeather() {
+        fetchLiveWeather(false);
+    }
+
+    private void fetchLiveWeather(boolean force) {
+        long now = System.currentTimeMillis();
+        if (!force && (now - lastWeatherFetchTime < 10 * 60 * 1000L)) {
+            return;
+        }
+        lastWeatherFetchTime = now;
+
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -2528,6 +2592,13 @@ public class MainActivity extends Activity {
     };
 
     private static HttpURLConnection openWithRedirects(String urlStr) throws Exception {
+        return openWithRedirects(urlStr, 0);
+    }
+
+    private static HttpURLConnection openWithRedirects(String urlStr, int depth) throws Exception {
+        if (depth > 5) {
+            throw new java.io.IOException("Too many redirects (depth=" + depth + ")");
+        }
         URL url = new URL(urlStr);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
@@ -2536,10 +2607,11 @@ public class MainActivity extends Activity {
         conn.setInstanceFollowRedirects(true);
         int status = conn.getResponseCode();
         if (status == HttpURLConnection.HTTP_MOVED_TEMP || status == HttpURLConnection.HTTP_MOVED_PERM || status == 307 || status == 308) {
-            String newUrl = conn.getHeaderField("Location");
-            if (newUrl != null && !newUrl.isEmpty()) {
+            String newLocation = conn.getHeaderField("Location");
+            if (newLocation != null && !newLocation.isEmpty()) {
                 conn.disconnect();
-                return openWithRedirects(newUrl);
+                String absoluteRedirect = new URL(url, newLocation).toString();
+                return openWithRedirects(absoluteRedirect, depth + 1);
             }
         }
         return conn;
@@ -2649,18 +2721,26 @@ public class MainActivity extends Activity {
                 boolean needsUpdate = !imdbId.equals(savedImdb) || !title.equals(currentTitle);
 
                 if (!cacheFile.exists() || cacheFile.length() < 1024) {
+                    File tempFile = new File(getCacheDir(), fileKey + ".tmp");
                     try {
                         HttpURLConnection pConn = openWithRedirects(posterUrl);
                         if (pConn.getResponseCode() == 200) {
                             InputStream is = pConn.getInputStream();
-                            FileOutputStream fos = new FileOutputStream(cacheFile);
+                            FileOutputStream fos = new FileOutputStream(tempFile);
                             byte[] buf = new byte[8192];
                             int r;
                             while ((r = is.read(buf)) != -1) fos.write(buf, 0, r);
+                            fos.flush();
                             fos.close();
                             is.close();
+                            if (tempFile.length() > 512) {
+                                tempFile.renameTo(cacheFile);
+                            } else {
+                                tempFile.delete();
+                            }
                         }
                     } catch (Throwable ignored) {
+                        if (tempFile.exists()) tempFile.delete();
                     }
                 }
 
@@ -2721,6 +2801,8 @@ public class MainActivity extends Activity {
                                     }
                                 }
                             });
+                        } else {
+                            cacheFile.delete();
                         }
                     }
                 }
@@ -4119,14 +4201,7 @@ public class MainActivity extends Activity {
     }
 
     private String getAiProvider(String apiKey) {
-        if (apiKey != null && apiKey.startsWith("sk-ant-")) {
-            return "claude";
-        }
-        if (apiKey != null && apiKey.startsWith("AIza")) {
-            return "gemini";
-        }
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        return prefs.getString("ai_provider", "gemini");
+        return LlmClient.resolveProvider(this, apiKey);
     }
 
     public String getTmdbApiKey() {
@@ -4417,9 +4492,8 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 try {
-                    final String provider = getAiProvider(getAiApiKey());
                     final String apiKey = getAiApiKey();
-                    if (apiKey == null) {
+                    if (apiKey == null || apiKey.trim().isEmpty()) {
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
@@ -4428,108 +4502,22 @@ public class MainActivity extends Activity {
                         });
                         return;
                     }
-
+                    final String provider = getAiProvider(apiKey);
                     String sysPrompt = "Sen akıllı ve kültürlü bir Android TV yapay zekâ asistanısın. Kullanıcının sorusuna televizyon ekranında rahatça okunacak biçimde net, samimi, özlü ve Türkçe yanıt ver. Maksimum 3-4 cümle olsun.";
-                    String fullPrompt = sysPrompt + "\n\nKullanıcı: " + userQuery;
-
-                    HttpURLConnection conn;
-                    if ("claude".equals(provider)) {
-                        URL url = new URL("https://api.anthropic.com/v1/messages");
-                        conn = (HttpURLConnection) url.openConnection();
-                        conn.setRequestMethod("POST");
-                        conn.setRequestProperty("x-api-key", apiKey);
-                        conn.setRequestProperty("anthropic-version", "2023-06-01");
-                        conn.setRequestProperty("Content-Type", "application/json");
-                        conn.setConnectTimeout(8000);
-                        conn.setReadTimeout(15000);
-                        conn.setDoOutput(true);
-
-                        JSONObject claudeReq = new JSONObject();
-                        claudeReq.put("model", "claude-3-5-haiku-latest");
-                        claudeReq.put("max_tokens", 512);
-                        JSONArray messages = new JSONArray();
-                        JSONObject userMsg = new JSONObject();
-                        userMsg.put("role", "user");
-                        userMsg.put("content", fullPrompt);
-                        messages.put(userMsg);
-                        claudeReq.put("messages", messages);
-
-                        OutputStream os = conn.getOutputStream();
-                        os.write(claudeReq.toString().getBytes(StandardCharsets.UTF_8));
-                        os.flush();
-                        os.close();
-                    } else {
-                        JSONObject promptObj = new JSONObject();
-                        JSONArray contents = new JSONArray();
-                        JSONObject part = new JSONObject();
-                        JSONArray parts = new JSONArray();
-                        JSONObject textPart = new JSONObject();
-                        textPart.put("text", fullPrompt);
-                        parts.put(textPart);
-                        part.put("parts", parts);
-                        contents.put(part);
-                        promptObj.put("contents", contents);
-
-                        String urlStr = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=" + apiKey;
-                        URL url = new URL(urlStr);
-                        conn = (HttpURLConnection) url.openConnection();
-                        conn.setRequestMethod("POST");
-                        conn.setRequestProperty("Content-Type", "application/json");
-                        conn.setConnectTimeout(8000);
-                        conn.setReadTimeout(12000);
-                        conn.setDoOutput(true);
-
-                        OutputStream os = conn.getOutputStream();
-                        os.write(promptObj.toString().getBytes(StandardCharsets.UTF_8));
-                        os.flush();
-                        os.close();
-                    }
-
-                    if (conn.getResponseCode() == 200) {
-                        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                        StringBuilder sb = new StringBuilder();
-                        String line;
-                        while ((line = br.readLine()) != null) sb.append(line);
-                        br.close();
-
-                        String responseText = "";
-                        if ("claude".equals(provider)) {
-                            JSONObject resp = new JSONObject(sb.toString());
-                            JSONArray contentArr = resp.optJSONArray("content");
-                            if (contentArr != null && contentArr.length() > 0) {
-                                responseText = contentArr.getJSONObject(0).optString("text", "").trim();
-                            }
-                        } else {
-                            JSONObject resp = new JSONObject(sb.toString());
-                            JSONArray candidates = resp.optJSONArray("candidates");
-                            if (candidates != null && candidates.length() > 0) {
-                                JSONObject cand = candidates.getJSONObject(0);
-                                JSONObject content = cand.optJSONObject("content");
-                                if (content != null) {
-                                    JSONArray pArray = content.optJSONArray("parts");
-                                    if (pArray != null && pArray.length() > 0) {
-                                        responseText = pArray.getJSONObject(0).optString("text", "").trim();
-                                    }
-                                }
-                            }
+                    final LlmClient.LlmResult result = LlmClient.generate(MainActivity.this, provider, apiKey, sysPrompt, userQuery, 512, 8000, 15000);
+                    final String finalMsg = result.success ? result.text : result.errorMessage;
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            showAiResponseFloatingCard(userQuery, finalMsg);
                         }
-
-                        final String finalMsg = responseText;
-                        handler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                showAiResponseFloatingCard(userQuery, finalMsg);
-                            }
-                        });
-                    }
+                    });
                 } catch (Throwable t) {
                     android.util.Log.e("AiChat", "Error executing prompt", t);
                 }
             }
         }).start();
     }
-
-
 
     private void fetchGeminiCuratedMovies(final String moodOrPrompt) {
         final String apiKey = getAiApiKey();
@@ -4571,108 +4559,28 @@ public class MainActivity extends Activity {
                             ? moodOrPrompt.trim()
                             : "Şu anki atmosfer: " + timeContext + ". Sinema zevki yüksek izleyiciler için tek ve KESKİN bir tema etrafında 10 kült film öner. Dram ve komediyi asla birbiriyle karıştırma; seçki kesinlikle tek ve keskin bir sanatsal vizyona sahip olsun (Örn: belirli bir yönetmen retrospektifi, festival kazananları, siberpunk veya neo-noir). Başlık doğrudan konsepti anlatsın (Örn: '90'LAR NEO-NOIR & GİZEM' veya 'DENIS VILLENEUVE VİZYONU').";
 
-                    String systemInstruction = "Sen dünyanın en iyi film eleştirmeni ve sinema küratörüsün. " + promptText + "\n"
+                    String sysPrompt = "Sen dünyanın en iyi film eleştirmeni ve sinema küratörüsün.\n"
                             + "Yanıtı YALNIZCA geçerli bir JSON olarak ver. Markdown (```json) veya hiçbir ek metin yazma. Format tam olarak şöyle olmalıdır:\n"
                             + "{\"category_title\": \"KESKİN BAŞLIK\", \"movies\": [{\"title\": \"Exact English or International Title\", \"year\": 2014, \"director\": \"...\"}]}";
 
-                    HttpURLConnection conn;
-                    if ("claude".equals(provider)) {
-                        URL url = new URL("https://api.anthropic.com/v1/messages");
-                        conn = (HttpURLConnection) url.openConnection();
-                        conn.setRequestMethod("POST");
-                        conn.setRequestProperty("x-api-key", apiKey);
-                        conn.setRequestProperty("anthropic-version", "2023-06-01");
-                        conn.setRequestProperty("Content-Type", "application/json");
-                        conn.setConnectTimeout(8000);
-                        conn.setReadTimeout(15000);
-                        conn.setDoOutput(true);
-
-                        JSONObject claudeReq = new JSONObject();
-                        claudeReq.put("model", "claude-3-5-haiku-latest");
-                        claudeReq.put("max_tokens", 1024);
-                        JSONArray messages = new JSONArray();
-                        JSONObject userMsg = new JSONObject();
-                        userMsg.put("role", "user");
-                        userMsg.put("content", systemInstruction);
-                        messages.put(userMsg);
-                        claudeReq.put("messages", messages);
-
-                        OutputStream os = conn.getOutputStream();
-                        os.write(claudeReq.toString().getBytes(StandardCharsets.UTF_8));
-                        os.flush();
-                        os.close();
+                    final LlmClient.LlmResult result = LlmClient.generate(MainActivity.this, provider, apiKey, sysPrompt, promptText, 1024, 8000, 15000);
+                    if (result.success) {
+                        JSONObject aiData = LlmClient.extractJsonObject(result.text);
+                        final String catTitle = aiData.optString("category_title", providerName.toUpperCase(Locale.getDefault()) + " AI • SİZE ÖZEL SEÇKİ");
+                        JSONArray movies = aiData.optJSONArray("movies");
+                        if (movies != null && movies.length() > 0) {
+                            applyGeminiMoviesToVitrin(catTitle, movies);
+                        }
                     } else {
-                        // Google Gemini
-                        JSONObject promptObj = new JSONObject();
-                        JSONArray contents = new JSONArray();
-                        JSONObject part = new JSONObject();
-                        JSONArray parts = new JSONArray();
-                        JSONObject textPart = new JSONObject();
-                        textPart.put("text", systemInstruction);
-                        parts.put(textPart);
-                        part.put("parts", parts);
-                        contents.put(part);
-                        promptObj.put("contents", contents);
-
-                        String urlStr = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=" + apiKey;
-                        URL url = new URL(urlStr);
-                        conn = (HttpURLConnection) url.openConnection();
-                        conn.setRequestMethod("POST");
-                        conn.setRequestProperty("Content-Type", "application/json");
-                        conn.setConnectTimeout(8000);
-                        conn.setReadTimeout(12000);
-                        conn.setDoOutput(true);
-
-                        OutputStream os = conn.getOutputStream();
-                        os.write(promptObj.toString().getBytes(StandardCharsets.UTF_8));
-                        os.flush();
-                        os.close();
-                    }
-
-                    if (conn.getResponseCode() == 200) {
-                        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                        StringBuilder sb = new StringBuilder();
-                        String line;
-                        while ((line = br.readLine()) != null) sb.append(line);
-                        br.close();
-
-                        String rawText = "";
-                        if ("claude".equals(provider)) {
-                            JSONObject resp = new JSONObject(sb.toString());
-                            JSONArray contentArr = resp.optJSONArray("content");
-                            if (contentArr != null && contentArr.length() > 0) {
-                                rawText = contentArr.getJSONObject(0).optString("text", "").trim();
-                            }
-                        } else {
-                            JSONObject resp = new JSONObject(sb.toString());
-                            JSONArray candidates = resp.optJSONArray("candidates");
-                            if (candidates != null && candidates.length() > 0) {
-                                JSONObject cand = candidates.getJSONObject(0);
-                                JSONObject content = cand.optJSONObject("content");
-                                if (content != null) {
-                                    JSONArray pArray = content.optJSONArray("parts");
-                                    if (pArray != null && pArray.length() > 0) {
-                                        rawText = pArray.getJSONObject(0).optString("text", "").trim();
-                                    }
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (vitrinCategoryLabel != null) {
+                                    vitrinCategoryLabel.setText(providerName.toUpperCase(Locale.getDefault()) + " AI • SEÇKİ YÜKLENEMEDİ (" + result.statusCode + ")");
                                 }
+                                Toast.makeText(MainActivity.this, result.errorMessage, Toast.LENGTH_LONG).show();
                             }
-                        }
-
-                        if (!rawText.isEmpty()) {
-                            if (rawText.startsWith("```json")) rawText = rawText.substring(7);
-                            if (rawText.startsWith("```")) rawText = rawText.substring(3);
-                            if (rawText.endsWith("```")) rawText = rawText.substring(0, rawText.length() - 3);
-                            rawText = rawText.trim();
-
-                            JSONObject aiData = new JSONObject(rawText);
-                            final String catTitle = aiData.optString("category_title", providerName.toUpperCase(Locale.getDefault()) + " AI • SİZE ÖZEL SEÇKİ");
-                            JSONArray movies = aiData.optJSONArray("movies");
-                            if (movies != null && movies.length() > 0) {
-                                applyGeminiMoviesToVitrin(catTitle, movies);
-                            }
-                        }
-                    } else {
-                        android.util.Log.e("AiCurator", "API error: " + conn.getResponseCode() + " " + conn.getResponseMessage());
+                        });
                     }
                 } catch (Throwable t) {
                     android.util.Log.e("AiCurator", "Error in AI curation", t);
@@ -4883,101 +4791,17 @@ public class MainActivity extends Activity {
                     final String apiKey = getAiApiKey();
                     if ((moviesArr == null || moviesArr.length() == 0) && apiKey != null) {
                         try {
-                            String prompt = "Kullanıcı Android TV sinema vitrini için şu sanatçı, yönetmen veya türü aradı: '" + query + "'.\n"
-                                    + "Bu kişinin/türün en seçkin, en önemli ve kült 10 filminin tam adını ve yılını ver.\n"
-                                    + "Sadece ve sadece aşağıdaki saf JSON formatında yanıt ver, markdown olmasın:\n"
+                            String sysPrompt = "Sen dünyanın en iyi sinema veri uzmanısın. Sadece ve sadece aşağıdaki formatta saf JSON yanıt ver, markdown olmasın:\n"
                                     + "{\"category_title\": \"" + displayName.toUpperCase(Locale.getDefault()) + " BAŞYAPITLARI\", \"movies\": [{\"title\": \"...\", \"year\": 2000}]}";
+                            String userPrompt = "Kullanıcı Android TV sinema vitrini için şu sanatçı, yönetmen veya türü aradı: '" + query + "'.\n"
+                                    + "Bu kişinin/türün en seçkin, en önemli ve kült 10 filminin tam adını ve yılını ver.";
 
                             final String provider = getAiProvider(apiKey);
-                            HttpURLConnection conn;
-                            if ("claude".equals(provider)) {
-                                URL url = new URL("https://api.anthropic.com/v1/messages");
-                                conn = (HttpURLConnection) url.openConnection();
-                                conn.setRequestMethod("POST");
-                                conn.setRequestProperty("x-api-key", apiKey);
-                                conn.setRequestProperty("anthropic-version", "2023-06-01");
-                                conn.setRequestProperty("Content-Type", "application/json");
-                                conn.setConnectTimeout(7000);
-                                conn.setReadTimeout(12000);
-                                conn.setDoOutput(true);
-
-                                JSONObject claudeReq = new JSONObject();
-                                claudeReq.put("model", "claude-3-5-haiku-latest");
-                                claudeReq.put("max_tokens", 700);
-                                JSONArray msgs = new JSONArray();
-                                JSONObject u = new JSONObject();
-                                u.put("role", "user");
-                                u.put("content", prompt);
-                                msgs.put(u);
-                                claudeReq.put("messages", msgs);
-
-                                OutputStream os = conn.getOutputStream();
-                                os.write(claudeReq.toString().getBytes(StandardCharsets.UTF_8));
-                                os.flush();
-                                os.close();
-                            } else {
-                                JSONObject promptObj = new JSONObject();
-                                JSONArray contents = new JSONArray();
-                                JSONObject part = new JSONObject();
-                                JSONArray parts = new JSONArray();
-                                JSONObject textPart = new JSONObject();
-                                textPart.put("text", prompt);
-                                parts.put(textPart);
-                                part.put("parts", parts);
-                                contents.put(part);
-                                promptObj.put("contents", contents);
-
-                                String urlStr = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=" + apiKey;
-                                URL url = new URL(urlStr);
-                                conn = (HttpURLConnection) url.openConnection();
-                                conn.setRequestMethod("POST");
-                                conn.setRequestProperty("Content-Type", "application/json");
-                                conn.setConnectTimeout(7000);
-                                conn.setReadTimeout(12000);
-                                conn.setDoOutput(true);
-
-                                OutputStream os = conn.getOutputStream();
-                                os.write(promptObj.toString().getBytes(StandardCharsets.UTF_8));
-                                os.flush();
-                                os.close();
-                            }
-
-                            if (conn.getResponseCode() == 200) {
-                                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                                StringBuilder sb = new StringBuilder();
-                                String line;
-                                while ((line = br.readLine()) != null) sb.append(line);
-                                br.close();
-
-                                String rawText = "";
-                                if ("claude".equals(provider)) {
-                                    JSONObject resp = new JSONObject(sb.toString());
-                                    JSONArray contentArr = resp.optJSONArray("content");
-                                    if (contentArr != null && contentArr.length() > 0) {
-                                        rawText = contentArr.getJSONObject(0).optString("text", "").trim();
-                                    }
-                                } else {
-                                    JSONObject resp = new JSONObject(sb.toString());
-                                    JSONArray candidates = resp.optJSONArray("candidates");
-                                    if (candidates != null && candidates.length() > 0) {
-                                        JSONObject cand = candidates.getJSONObject(0);
-                                        JSONObject contentObj = cand.optJSONObject("content");
-                                        if (contentObj != null) {
-                                            JSONArray pArray = contentObj.optJSONArray("parts");
-                                            if (pArray != null && pArray.length() > 0) {
-                                                rawText = pArray.getJSONObject(0).optString("text", "").trim();
-                                            }
-                                        }
-                                    }
-                                }
-
-                                int start = rawText.indexOf("{");
-                                int end = rawText.lastIndexOf("}");
-                                if (start >= 0 && end > start) {
-                                    JSONObject parsed = new JSONObject(rawText.substring(start, end + 1));
-                                    categoryTitle = parsed.optString("category_title", categoryTitle);
-                                    moviesArr = parsed.optJSONArray("movies");
-                                }
+                            LlmClient.LlmResult result = LlmClient.generate(MainActivity.this, provider, apiKey, sysPrompt, userPrompt, 700, 7000, 12000);
+                            if (result.success) {
+                                JSONObject parsed = LlmClient.extractJsonObject(result.text);
+                                categoryTitle = parsed.optString("category_title", categoryTitle);
+                                moviesArr = parsed.optJSONArray("movies");
                             }
                         } catch (Throwable t) {
                             android.util.Log.e("Filmography", "AI call error", t);
@@ -5230,18 +5054,27 @@ public class MainActivity extends Activity {
                                     String fileKey = "cm_p_" + Math.abs(mTitle.hashCode()) + ".jpg";
                                     File cacheFile = new File(getCacheDir(), fileKey);
                                     if (!cacheFile.exists() || cacheFile.length() < 1024) {
+                                        File tempFile = new File(getCacheDir(), fileKey + ".tmp");
                                         try {
                                             HttpURLConnection pConn = openWithRedirects(posterUrl);
                                             if (pConn.getResponseCode() == 200) {
                                                 InputStream is = pConn.getInputStream();
-                                                FileOutputStream fos = new FileOutputStream(cacheFile);
+                                                FileOutputStream fos = new FileOutputStream(tempFile);
                                                 byte[] buf = new byte[8192];
                                                 int r;
                                                 while ((r = is.read(buf)) != -1) fos.write(buf, 0, r);
+                                                fos.flush();
                                                 fos.close();
                                                 is.close();
+                                                if (tempFile.length() > 512) {
+                                                    tempFile.renameTo(cacheFile);
+                                                } else {
+                                                    tempFile.delete();
+                                                }
                                             }
-                                        } catch (Throwable ignored) {}
+                                        } catch (Throwable ignored) {
+                                            if (tempFile.exists()) tempFile.delete();
+                                        }
                                     }
 
                                     Bitmap rawBmp = null;
@@ -5249,6 +5082,9 @@ public class MainActivity extends Activity {
                                         BitmapFactory.Options opts = new BitmapFactory.Options();
                                         opts.inPreferredConfig = Bitmap.Config.RGB_565;
                                         rawBmp = BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), opts);
+                                        if (rawBmp == null) {
+                                            cacheFile.delete();
+                                        }
                                     }
 
                                     int distinctColor = YouTubeDisguiseHelper.sampleDistinctPosterColor(rawBmp, 0, slot);
@@ -6276,6 +6112,8 @@ public class MainActivity extends Activity {
         keyInput.requestFocus();
     }
 
+    private boolean lastClockLightState = false;
+
     private void updateClock() {
         Date now = new Date();
         SimpleDateFormat timeFmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
@@ -6284,6 +6122,14 @@ public class MainActivity extends Activity {
         String d = dateFmt.format(now);
         if (clockText != null) clockText.setText(t);
         if (dateText != null) dateText.setText(d);
+
+        if ("auto".equalsIgnoreCase(currentThemeMode)) {
+            boolean nowLight = isLightThemeNow("auto");
+            if (nowLight != lastClockLightState) {
+                lastClockLightState = nowLight;
+                applyThemeMode();
+            }
+        }
     }
 
     private class VibrantScreensaverView extends View {

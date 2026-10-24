@@ -1,12 +1,14 @@
 package com.gathin.tvhome;
 
+import android.accessibilityservice.AccessibilityService;
+import android.app.Instrumentation;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
+import android.content.SharedPreferences;
+import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -21,19 +23,29 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Built-in Zero-Latency Web Remote & Second-Screen Controller for Smart TV.
- * Runs on Port 8080.
- * Accessible from any phone, tablet, or browser on the local Wi-Fi.
+ * Runs on Port 8080 with bounded threading, token auth, DNS rebinding guards,
+ * and native non-root Android input injection.
  */
 public class TvWebRemoteServer {
 
+    private static final String TAG = "TvWebRemote";
     private static final int PORT = 8080;
+    private static final Object SERVER_LOCK = new Object();
+
     private static ServerSocket serverSocket;
     private static Thread serverThread;
-    private static boolean isRunning = false;
+    private static volatile boolean isRunning = false;
+    private static int currentGeneration = 0;
+
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private static final ExecutorService clientPool = Executors.newFixedThreadPool(6);
 
     public interface RemoteActionCallback {
         void onMovieSearchRequested(String query);
@@ -43,83 +55,140 @@ public class TvWebRemoteServer {
         void onDpadActionsRequested();
     }
 
-    private static RemoteActionCallback actionCallback;
+    private static volatile RemoteActionCallback actionCallback;
 
     public static void setCallback(RemoteActionCallback callback) {
         actionCallback = callback;
     }
 
-    public static synchronized void start(final Context context) {
-        if (isRunning && serverSocket != null && !serverSocket.isClosed()) return;
-        stop();
-        isRunning = true;
-        final Context appCtx = context.getApplicationContext();
-        serverThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    serverSocket = new ServerSocket(PORT);
-                    android.util.Log.i("TvWebRemote", "Server listening on port " + PORT);
-                    while (isRunning && serverSocket != null && !serverSocket.isClosed()) {
-                        final Socket socket = serverSocket.accept();
-                        new Thread(new Runnable() {
-                            @Override
-                            public void run() {
-                                handleClient(appCtx, socket);
-                            }
-                        }).start();
-                    }
-                } catch (Throwable t) {
-                    android.util.Log.e("TvWebRemote", "Server error: " + t.getMessage());
-                } finally {
-                    isRunning = false;
-                }
-            }
-        });
-        serverThread.setDaemon(true);
-        serverThread.start();
+    public static synchronized String getAuthToken(Context context) {
+        if (context == null) return "cinetv";
+        SharedPreferences prefs = context.getSharedPreferences("tvhome_prefs", Context.MODE_PRIVATE);
+        String token = prefs.getString("remote_auth_token", null);
+        if (token == null || token.trim().isEmpty()) {
+            token = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+            prefs.edit().putString("remote_auth_token", token).apply();
+        }
+        return token;
     }
 
-    public static synchronized void stop() {
-        isRunning = false;
-        if (serverSocket != null) {
-            try {
-                serverSocket.close();
-            } catch (Throwable ignored) {
+    public static void start(final Context context) {
+        synchronized (SERVER_LOCK) {
+            if (isRunning && serverSocket != null && !serverSocket.isClosed()) {
+                return;
             }
-            serverSocket = null;
+            stop();
+            isRunning = true;
+            final int gen = ++currentGeneration;
+            final Context appCtx = context.getApplicationContext();
+
+            serverThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        serverSocket = new ServerSocket(PORT);
+                        Log.i(TAG, "Server listening on port " + PORT + " [gen=" + gen + "]");
+                        while (isRunning && gen == currentGeneration) {
+                            final Socket socket;
+                            try {
+                                socket = serverSocket.accept();
+                            } catch (Throwable acceptErr) {
+                                if (!isRunning || gen != currentGeneration) break;
+                                throw acceptErr;
+                            }
+                            socket.setSoTimeout(5000);
+                            clientPool.execute(new Runnable() {
+                                @Override
+                                public void run() {
+                                    handleClient(appCtx, socket);
+                                }
+                            });
+                        }
+                    } catch (Throwable t) {
+                        if (isRunning && gen == currentGeneration) {
+                            Log.e(TAG, "Server error: " + t.getMessage());
+                        }
+                    } finally {
+                        synchronized (SERVER_LOCK) {
+                            if (gen == currentGeneration) {
+                                isRunning = false;
+                            }
+                        }
+                    }
+                }
+            }, "TvWebRemoteServer-Listen");
+            serverThread.setDaemon(true);
+            serverThread.start();
+        }
+    }
+
+    public static void stop() {
+        synchronized (SERVER_LOCK) {
+            isRunning = false;
+            currentGeneration++;
+            if (serverSocket != null) {
+                try {
+                    serverSocket.close();
+                } catch (Throwable ignored) {
+                }
+                serverSocket = null;
+            }
         }
     }
 
     public static String getLocalIpAddress(Context context) {
         try {
             List<NetworkInterface> interfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
+            // First pass: look for active WiFi (wlan) or Ethernet (eth)
             for (NetworkInterface intf : interfaces) {
-                List<InetAddress> addrs = Collections.list(intf.getInetAddresses());
-                for (InetAddress addr : addrs) {
-                    if (!addr.isLoopbackAddress()) {
-                        String sAddr = addr.getHostAddress();
-                        if (sAddr != null && sAddr.indexOf(':') < 0) {
-                            return sAddr;
-                        }
+                String name = intf.getName().toLowerCase();
+                if (name.startsWith("wlan") || name.startsWith("eth")) {
+                    String ip = extractValidIpv4(intf);
+                    if (ip != null) return ip;
+                }
+            }
+            // Second pass: other non-virtual interfaces
+            for (NetworkInterface intf : interfaces) {
+                String name = intf.getName().toLowerCase();
+                if (name.contains("tun") || name.contains("p2p") || name.contains("dummy")
+                        || name.contains("docker") || name.contains("vbox")) {
+                    continue;
+                }
+                String ip = extractValidIpv4(intf);
+                if (ip != null) return ip;
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    private static String extractValidIpv4(NetworkInterface intf) {
+        try {
+            if (!intf.isUp() || intf.isLoopback()) return null;
+            List<InetAddress> addrs = Collections.list(intf.getInetAddresses());
+            for (InetAddress addr : addrs) {
+                if (!addr.isLoopbackAddress() && !addr.isLinkLocalAddress()) {
+                    String sAddr = addr.getHostAddress();
+                    if (sAddr != null && sAddr.indexOf(':') < 0 && !sAddr.startsWith("127.")) {
+                        return sAddr;
                     }
                 }
             }
         } catch (Throwable ignored) {
         }
-        return "192.168.1.128";
+        return null;
     }
 
     private static void handleClient(Context context, Socket socket) {
         try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            String line = reader.readLine();
-            if (line == null) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+            String reqLine = reader.readLine();
+            if (reqLine == null) {
                 socket.close();
                 return;
             }
 
-            String[] parts = line.split(" ");
+            String[] parts = reqLine.split(" ");
             if (parts.length < 2) {
                 socket.close();
                 return;
@@ -128,10 +197,64 @@ public class TvWebRemoteServer {
             String method = parts[0];
             String uri = parts[1];
 
+            // 1. Drain and parse HTTP request headers before writing response
+            String hostHeader = null;
+            String tokenHeader = null;
+            String headerLine;
+            while ((headerLine = reader.readLine()) != null && !headerLine.isEmpty()) {
+                String lower = headerLine.toLowerCase();
+                if (lower.startsWith("host:")) {
+                    hostHeader = headerLine.substring(5).trim();
+                } else if (lower.startsWith("x-cinetv-token:")) {
+                    tokenHeader = headerLine.substring(15).trim();
+                } else if (lower.startsWith("authorization:")) {
+                    String auth = headerLine.substring(14).trim();
+                    if (auth.toLowerCase().startsWith("bearer ")) {
+                        tokenHeader = auth.substring(7).trim();
+                    }
+                }
+            }
+
+            // 2. HTTP Method Guard (Only GET supported for web remote control)
+            if (!"GET".equalsIgnoreCase(method)) {
+                sendErrorResponse(socket, 405, "Method Not Allowed");
+                return;
+            }
+
+            // 3. DNS Rebinding Protection (Host Header check)
+            if (hostHeader != null) {
+                String hostOnly = hostHeader;
+                int colonIdx = hostHeader.indexOf(':');
+                if (colonIdx > 0) hostOnly = hostHeader.substring(0, colonIdx);
+                String localIp = getLocalIpAddress(context);
+                boolean isAllowedHost = "localhost".equalsIgnoreCase(hostOnly)
+                        || "127.0.0.1".equals(hostOnly)
+                        || "cinetv.local".equalsIgnoreCase(hostOnly)
+                        || (localIp != null && localIp.equals(hostOnly));
+                if (!isAllowedHost) {
+                    sendErrorResponse(socket, 403, "Forbidden Host");
+                    return;
+                }
+            }
+
+            // 4. Token Auth for API endpoints
+            if (uri.startsWith("/api/")) {
+                String requiredToken = getAuthToken(context);
+                String queryToken = getQueryParam(uri, "token");
+                if (queryToken == null) queryToken = getQueryParam(uri, "k");
+                boolean authorized = (queryToken != null && queryToken.equals(requiredToken))
+                        || (tokenHeader != null && tokenHeader.equals(requiredToken));
+                if (!authorized) {
+                    sendErrorResponse(socket, 401, "Unauthorized");
+                    return;
+                }
+            }
+
+            // 5. Route handling
             if (uri.equals("/") || uri.equals("/index.html") || uri.startsWith("/?")) {
-                sendHtmlResponse(socket, getRemoteHtml());
+                sendHtmlResponse(socket, getRemoteHtml(getAuthToken(context)));
             } else if (uri.startsWith("/api/key")) {
-                handleKeyApi(uri);
+                handleKeyApi(context, uri);
                 sendJsonResponse(socket, "{\"status\":\"ok\"}");
             } else if (uri.startsWith("/api/search")) {
                 handleSearchApi(uri);
@@ -141,7 +264,7 @@ public class TvWebRemoteServer {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            actionCallback.onScreensaverRequested();
+                            if (actionCallback != null) actionCallback.onScreensaverRequested();
                         }
                     });
                 }
@@ -151,7 +274,7 @@ public class TvWebRemoteServer {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            actionCallback.onAllAppsRequested();
+                            if (actionCallback != null) actionCallback.onAllAppsRequested();
                         }
                     });
                 }
@@ -161,7 +284,7 @@ public class TvWebRemoteServer {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            actionCallback.onDpadActionsRequested();
+                            if (actionCallback != null) actionCallback.onDpadActionsRequested();
                         }
                     });
                 }
@@ -204,7 +327,6 @@ public class TvWebRemoteServer {
         OutputStream os = socket.getOutputStream();
         os.write(("HTTP/1.1 " + code + " " + msg + "\r\n"
                 + "Content-Type: application/json; charset=utf-8\r\n"
-                + "Access-Control-Allow-Origin: *\r\n"
                 + "Content-Length: " + bytes.length + "\r\n"
                 + "Connection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
         os.write(bytes);
@@ -224,24 +346,23 @@ public class TvWebRemoteServer {
             OutputStream os = socket.getOutputStream();
             os.write(("HTTP/1.1 200 OK\r\n"
                     + "Content-Type: " + mimeType + "\r\n"
-                    + "Access-Control-Allow-Origin: *\r\n"
                     + "Cache-Control: public, max-age=3600\r\n"
                     + "Content-Length: " + bytes.length + "\r\n"
                     + "Connection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
             os.write(bytes);
             os.flush();
         } catch (Throwable e) {
-            sendJsonResponse(socket, "{\"error\":\"not_found\"}");
+            sendErrorResponse(socket, 404, "not_found");
         }
     }
 
-    private static void handleKeyApi(String uri) {
+    private static void handleKeyApi(Context context, String uri) {
         try {
             String codeStr = getQueryParam(uri, "code");
             if (codeStr != null && codeStr.matches("^[0-9]{1,4}$")) {
                 int code = Integer.parseInt(codeStr);
                 if (code >= 0 && code <= 350) {
-                    sendKeyEvent(code);
+                    sendKeyEvent(context, code);
                 }
             }
         } catch (Throwable ignored) {
@@ -259,7 +380,7 @@ public class TvWebRemoteServer {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            actionCallback.onMovieSearchRequested(safeQ);
+                            if (actionCallback != null) actionCallback.onMovieSearchRequested(safeQ);
                         }
                     });
                 }
@@ -298,18 +419,107 @@ public class TvWebRemoteServer {
     private static void handleTextApi(String uri) {
         try {
             String text = getQueryParam(uri, "text");
-            if (text != null) {
-                String decoded = URLDecoder.decode(text, "UTF-8");
-                Runtime.getRuntime().exec(new String[]{"input", "text", decoded});
+            if (text != null && !text.isEmpty()) {
+                if (text.length() > 120) text = text.substring(0, 120);
+                // getQueryParam has already decoded the text from URL encoding. Do not decode twice.
+                final String safeText = text.replaceAll("[^a-zA-Z0-9 _.,?!-]", "");
+                clientPool.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        Process p = null;
+                        try {
+                            p = Runtime.getRuntime().exec(new String[]{"input", "text", safeText});
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                p.waitFor(2, TimeUnit.SECONDS);
+                            } else {
+                                p.waitFor();
+                            }
+                        } catch (Throwable ignored) {
+                        } finally {
+                            if (p != null) {
+                                try { p.destroy(); } catch (Throwable ignored) {}
+                            }
+                        }
+                    }
+                });
             }
         } catch (Throwable ignored) {
         }
     }
 
-    private static void sendKeyEvent(int keyCode) {
+    private static void sendKeyEvent(final Context context, final int keyCode) {
+        if (context == null) return;
+
+        // 1. Volume keys -> AudioManager
+        if (keyCode == 24 || keyCode == 25 || keyCode == 164) {
+            try {
+                AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                if (am != null) {
+                    if (keyCode == 24) {
+                        am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
+                    } else if (keyCode == 25) {
+                        am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
+                    } else {
+                        am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_TOGGLE_MUTE, AudioManager.FLAG_SHOW_UI);
+                    }
+                    return;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+
+        // 2. Home key (3) -> Home Intent
+        if (keyCode == 3) {
+            try {
+                Intent homeIntent = new Intent(Intent.ACTION_MAIN);
+                homeIntent.addCategory(Intent.CATEGORY_HOME);
+                homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(homeIntent);
+                return;
+            } catch (Throwable ignored) {
+            }
+        }
+
+        // 3. Back key (4) -> TvKeyInterceptorService performGlobalAction
+        if (keyCode == 4) {
+            TvKeyInterceptorService service = TvKeyInterceptorService.getInstance();
+            if (service != null) {
+                try {
+                    service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
+                    return;
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+
+        // 4. Focused D-Pad / Other Keys -> Instrumentation with process fallback
+        clientPool.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Instrumentation inst = new Instrumentation();
+                    inst.sendKeyDownUpSync(keyCode);
+                } catch (Throwable t) {
+                    fallbackExec(keyCode);
+                }
+            }
+        });
+    }
+
+    private static void fallbackExec(int keyCode) {
+        Process p = null;
         try {
-            Runtime.getRuntime().exec(new String[]{"input", "keyevent", String.valueOf(keyCode)});
+            p = Runtime.getRuntime().exec(new String[]{"input", "keyevent", String.valueOf(keyCode)});
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                p.waitFor(2, TimeUnit.SECONDS);
+            } else {
+                p.waitFor();
+            }
         } catch (Throwable ignored) {
+        } finally {
+            if (p != null) {
+                try { p.destroy(); } catch (Throwable ignored) {}
+            }
         }
     }
 
@@ -336,7 +546,6 @@ public class TvWebRemoteServer {
         OutputStream os = socket.getOutputStream();
         os.write(("HTTP/1.1 200 OK\r\n"
                 + "Content-Type: application/json; charset=utf-8\r\n"
-                + "Access-Control-Allow-Origin: *\r\n"
                 + "Content-Length: " + bytes.length + "\r\n"
                 + "Connection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
         os.write(bytes);
@@ -348,14 +557,13 @@ public class TvWebRemoteServer {
         OutputStream os = socket.getOutputStream();
         os.write(("HTTP/1.1 200 OK\r\n"
                 + "Content-Type: text/html; charset=utf-8\r\n"
-                + "Access-Control-Allow-Origin: *\r\n"
                 + "Content-Length: " + bytes.length + "\r\n"
                 + "Connection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
         os.write(bytes);
         os.flush();
     }
 
-    private static String getRemoteHtml() {
+    private static String getRemoteHtml(String token) {
         return "<!DOCTYPE html>\n"
                 + "<html lang=\"tr\">\n"
                 + "<head>\n"
@@ -576,23 +784,25 @@ public class TvWebRemoteServer {
                 + "<script src=\"/liquid-glass/container.js\"></script>\n"
                 + "<script src=\"/liquid-glass/button.js\"></script>\n"
                 + "<script>\n"
+                + "  var AUTH_TOKEN = \"" + (token != null ? token : "") + "\";\n"
                 + "  function sendKey(code) {\n"
                 + "    navigator.vibrate && navigator.vibrate(22);\n"
-                + "    fetch('/api/key?code=' + code);\n"
+                + "    fetch('/api/key?code=' + code + '&token=' + encodeURIComponent(AUTH_TOKEN));\n"
                 + "  }\n"
                 + "  function launchApp(pkg) {\n"
                 + "    navigator.vibrate && navigator.vibrate(35);\n"
-                + "    fetch('/api/launch?pkg=' + encodeURIComponent(pkg));\n"
+                + "    fetch('/api/launch?pkg=' + encodeURIComponent(pkg) + '&token=' + encodeURIComponent(AUTH_TOKEN));\n"
                 + "  }\n"
                 + "  function triggerEndpoint(ep) {\n"
                 + "    navigator.vibrate && navigator.vibrate(25);\n"
-                + "    fetch(ep);\n"
+                + "    var delim = ep.indexOf('?') >= 0 ? '&' : '?';\n"
+                + "    fetch(ep + delim + 'token=' + encodeURIComponent(AUTH_TOKEN));\n"
                 + "  }\n"
                 + "  function searchMovie() {\n"
                 + "    var val = document.getElementById('searchInput').value.trim();\n"
                 + "    if (!val) return;\n"
                 + "    navigator.vibrate && navigator.vibrate(40);\n"
-                + "    fetch('/api/search?q=' + encodeURIComponent(val));\n"
+                + "    fetch('/api/search?q=' + encodeURIComponent(val) + '&token=' + encodeURIComponent(AUTH_TOKEN));\n"
                 + "    document.getElementById('searchInput').value = '';\n"
                 + "  }\n"
                 + "</script>\n"

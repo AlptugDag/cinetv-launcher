@@ -21,6 +21,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.view.Gravity;
+import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -56,6 +57,14 @@ public class TvKeyInterceptorService extends AccessibilityService {
     public static final String KEY_CUSTOM_AMAZON = "custom_keycode_amazon";
     public static final String KEY_CUSTOM_BEIN = "custom_keycode_bein";
     public static final String KEY_CUSTOM_YOUTUBE = "custom_keycode_youtube";
+
+    private static volatile TvKeyInterceptorService sInstance;
+
+    public static TvKeyInterceptorService getInstance() {
+        return sInstance;
+    }
+
+    private static final boolean DEBUG_KEYS = false;
 
     private static final Set<String> PROTECTED_PACKAGES = new HashSet<>(Arrays.asList(
             "com.gathin.tvhome",
@@ -103,6 +112,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
+        sInstance = this;
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         try {
             AccessibilityServiceInfo info = getServiceInfo();
@@ -132,12 +142,22 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     @Override
     public void onDestroy() {
+        sInstance = null;
         try {
             unregisterReceiver(timeReceiver);
         } catch (Throwable ignored) {
         }
         hideCinemaHudOverlay();
+        if (handler != null) {
+            handler.removeCallbacksAndMessages(null);
+        }
         super.onDestroy();
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        sInstance = null;
+        return super.onUnbind(intent);
     }
 
     @Override
@@ -286,7 +306,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
         int keyCode = event.getKeyCode();
         int scanCode = event.getScanCode();
         int action = event.getAction();
-        android.util.Log.i("TvKeyInterceptor", "Key intercepted: keyCode=" + keyCode + " scanCode=" + scanCode + " action=" + action);
+        if (DEBUG_KEYS) {
+            android.util.Log.i("TvKeyInterceptor", "Key intercepted: keyCode=" + keyCode + " scanCode=" + scanCode + " action=" + action);
+        }
 
         // When the in-video Cinema HUD overlay is visible, route D-Pad keys to the overlay
         // so the background movie keeps playing smoothly without pausing or exiting!
@@ -317,14 +339,22 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return true;
         }
 
+        // Ignore Gamepad / Joystick button events (e.g. A/B/X/Y, triggers) to prevent hijacking games
+        int source = event.getSource();
+        boolean isGamepad = (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
+                || (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
+
+        // Ensure single trigger on key press (ignore key repeat spam)
+        boolean isActionDownFirst = (action == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0);
+
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String learnTarget = prefs.getString(KEY_LEARN_MODE, null);
         if (learnTarget != null && !learnTarget.isEmpty()) {
-            if (action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK) {
+            if (isActionDownFirst && keyCode == KeyEvent.KEYCODE_BACK) {
                 prefs.edit().remove(KEY_LEARN_MODE).apply();
                 return false;
             }
-            if (action == KeyEvent.ACTION_DOWN && !isStandardNavigationKey(keyCode)) {
+            if (isActionDownFirst && !isStandardNavigationKey(keyCode)) {
                 int token = (keyCode != KeyEvent.KEYCODE_UNKNOWN && keyCode != 0) ? keyCode : (10000 + scanCode);
                 if ("tvplus".equals(learnTarget)) {
                     prefs.edit().putInt(KEY_CUSTOM_TVPLUS, token).remove(KEY_LEARN_MODE).apply();
@@ -347,20 +377,29 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
 
         // 0. Dynamic In-App Remapped Custom Keys (Interactive Key Remapper)
-        String customAction = prefs.getString("custom_map_" + keyCode, null);
-        if (customAction == null && scanCode > 0) {
+        // Guard keyCode > 0 so KEYCODE_UNKNOWN / 0 doesn't trigger custom_map_0
+        String customAction = null;
+        if (keyCode > 0 && !isGamepad) {
+            customAction = prefs.getString("custom_map_" + keyCode, null);
+        }
+        if (customAction == null && scanCode > 0 && !isGamepad) {
             customAction = prefs.getString("custom_map_sc_" + scanCode, null);
         }
         if (customAction != null) {
-            if (action == KeyEvent.ACTION_DOWN) {
+            if (isActionDownFirst) {
                 executeCustomAction(customAction);
             }
             return true;
         }
 
+        if (isGamepad) {
+            // Never hijack gamepad buttons during games
+            return false;
+        }
+
         // 1. Netflix Button -> Opens Nuvio
         if (isNetflixKey(keyCode, scanCode, prefs)) {
-            if (action == KeyEvent.ACTION_DOWN) {
+            if (isActionDownFirst) {
                 launchPackageWithFallback(new String[]{"com.nuvio.tv"}, "Nuvio");
             }
             return true;
@@ -368,7 +407,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
         // 2. YouTube Button -> Opens Reklamsız YouTube (TizenTube / Cobalt)
         if (isYouTubeKey(keyCode, scanCode, prefs)) {
-            if (action == KeyEvent.ACTION_DOWN) {
+            if (isActionDownFirst) {
                 launchPackageWithFallback(new String[]{
                         "io.gh.reisxd.tizentube.cobalt",
                         "com.reisxd.tizentube",
@@ -382,7 +421,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
         // 3. Amazon Prime / Caster Button -> Opens Web Video Caster or Fallback
         if (isAmazonPrimeKey(keyCode, scanCode, prefs)) {
-            if (action == KeyEvent.ACTION_DOWN) {
+            if (isActionDownFirst) {
                 launchPackageWithFallback(new String[]{
                         "com.instantbits.cast.receiver",
                         "com.instantbits.cast.webvideo",
@@ -395,7 +434,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
         // 4. TV+ Button -> Opens Turkcell TV+
         if (isTvPlusKey(keyCode, scanCode, prefs)) {
-            if (action == KeyEvent.ACTION_DOWN) {
+            if (isActionDownFirst) {
                 launchPackageWithFallback(new String[]{"com.turkcell.ott", "com.turkcell.tvplus"}, "TV+");
             }
             return true;
@@ -467,13 +506,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 || keyCode == 172
                 || keyCode == 277 // KEYCODE_LIVE_TV
                 || keyCode == KeyEvent.KEYCODE_TV_CONTENTS_MENU
-                || keyCode == KeyEvent.KEYCODE_BUTTON_4
-                || keyCode == 191
                 || keyCode == 186
                 || keyCode == 292
                 || keyCode == 401 // KEYCODE_PROG_BLUE
                 || keyCode == KeyEvent.KEYCODE_PROG_BLUE
-                || keyCode == 99
                 || scanCode == 186 || scanCode == 377 || scanCode == 362 || scanCode == 401;
     }
 
@@ -481,12 +517,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
         int custom = prefs.getInt(KEY_CUSTOM_NETFLIX, -1);
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
         return keyCode == 207 // KEYCODE_NETFLIX
-                || keyCode == KeyEvent.KEYCODE_BUTTON_1
                 || keyCode == 188
                 || keyCode == KeyEvent.KEYCODE_PROG_RED
                 || keyCode == 183
                 || keyCode == 398 // KEYCODE_PROG_RED
-                || keyCode == 191 || keyCode == 265 || keyCode == 229 || keyCode == 289 || keyCode == 96
+                || keyCode == 265 || keyCode == 229 || keyCode == 289
                 || scanCode == 183 || scanCode == 191 || scanCode == 398 || scanCode == 412 || scanCode == 249;
     }
 
@@ -494,14 +529,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
         int custom = prefs.getInt(KEY_CUSTOM_YOUTUBE, -1);
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
         return keyCode == 218 // KEYCODE_YOUTUBE
-                || keyCode == KeyEvent.KEYCODE_BUTTON_2
-                || keyCode == 97
                 || keyCode == 184
                 || keyCode == 189
                 || keyCode == 190
                 || keyCode == 250
                 || keyCode == 284
-                || keyCode == 290
                 || keyCode == 399 // KEYCODE_PROG_GREEN
                 || keyCode == KeyEvent.KEYCODE_PROG_GREEN
                 || keyCode == 415
@@ -516,15 +548,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
     private boolean isAmazonPrimeKey(int keyCode, int scanCode, SharedPreferences prefs) {
         int custom = prefs.getInt(KEY_CUSTOM_AMAZON, -1);
         if (matchesCustomToken(keyCode, scanCode, custom)) return true;
-        return keyCode == KeyEvent.KEYCODE_BUTTON_3
-                || keyCode == 98
-                || keyCode == 185
+        return keyCode == 185
                 || keyCode == 400 // KEYCODE_PROG_YELLOW
                 || keyCode == KeyEvent.KEYCODE_PROG_YELLOW
-                || keyCode == KeyEvent.KEYCODE_SETTINGS
-                || keyCode == 176
                 || keyCode == 209 || keyCode == 228
-                || keyCode == 192 || keyCode == 290 || keyCode == 291 || keyCode == 303
+                || keyCode == 192 || keyCode == 291 || keyCode == 303
                 || scanCode == 185 || scanCode == 192 || scanCode == 251 || scanCode == 400 || scanCode == 416 || scanCode == 417;
     }
 
@@ -828,11 +856,26 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     public void syncDayNightUiMode() {
         try {
+            SharedPreferences prefs = getSharedPreferences("tvhome_prefs", MODE_PRIVATE);
+            String mode = Settings.Global.getString(getContentResolver(), "tvhome_theme_mode");
+            if (mode == null || mode.trim().isEmpty()) {
+                mode = prefs.getString("theme_mode", "dark");
+            }
+            int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+            boolean isLight = "light".equalsIgnoreCase(mode) || ("auto".equalsIgnoreCase(mode) && (hour >= 7 && hour < 19));
+
             UiModeManager uiManager = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
             if (uiManager != null) {
-                uiManager.setNightMode(UiModeManager.MODE_NIGHT_YES);
+                int targetMode = isLight ? UiModeManager.MODE_NIGHT_NO : UiModeManager.MODE_NIGHT_YES;
+                if (uiManager.getNightMode() != targetMode) {
+                    uiManager.setNightMode(targetMode);
+                }
             }
-            Settings.Secure.putInt(getContentResolver(), "ui_night_mode", 2);
+            int targetSetting = isLight ? 1 : 2;
+            int currentSetting = Settings.Secure.getInt(getContentResolver(), "ui_night_mode", -1);
+            if (currentSetting != targetSetting) {
+                Settings.Secure.putInt(getContentResolver(), "ui_night_mode", targetSetting);
+            }
         } catch (Throwable ignored) {
         }
     }
