@@ -1432,10 +1432,14 @@ public class MainActivity extends Activity {
         topBar.setOrientation(LinearLayout.HORIZONTAL);
         topBar.setGravity(Gravity.CENTER_VERTICAL);
         topBar.setPadding(12, 0, 12, 16);
+        topBar.setClipChildren(false);
+        topBar.setClipToPadding(false);
 
         leftBrandAndClock = new LinearLayout(this);
         leftBrandAndClock.setOrientation(LinearLayout.HORIZONTAL);
         leftBrandAndClock.setGravity(Gravity.CENTER_VERTICAL);
+        leftBrandAndClock.setClipChildren(false);
+        leftBrandAndClock.setClipToPadding(false);
 
         brandMedallion = new FrameLayout(this);
         brandMedallion.setFocusable(true);
@@ -1443,18 +1447,20 @@ public class MainActivity extends Activity {
         // Strictly ZERO box, ZERO border, ZERO container background:
         brandMedallion.setBackground(null);
         brandMedallion.setPadding(0, 0, 0, 0);
+        brandMedallion.setClipChildren(false);
+        brandMedallion.setClipToPadding(false);
 
         final ImageView brandTvLogo = new ImageView(this);
         brandTvLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        brandTvLogo.setAdjustViewBounds(true);
         try {
             InputStream is = getAssets().open("signature_logo.png");
             BitmapFactory.Options opts = new BitmapFactory.Options();
-            opts.inSampleSize = 2; // High-definition rendering
+            opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
             Bitmap logoBm = BitmapFactory.decodeStream(is, null, opts);
             is.close();
             if (logoBm != null) {
-                // Apply seangeng/argent liquid chrome shader directly onto the signature glyph
-                logoBm = YouTubeDisguiseHelper.applyArgentLiquidChromeToBitmap(logoBm);
+                // Pristine natural white signature glyph without artificial metal/chrome filters
                 brandTvLogo.setImageBitmap(logoBm);
             } else {
                 Drawable logoDrawable = getDrawable(R.drawable.ic_user_signature);
@@ -1478,7 +1484,8 @@ public class MainActivity extends Activity {
             }
         }
 
-        FrameLayout.LayoutParams innerLogoLp = new FrameLayout.LayoutParams(76, 76, Gravity.CENTER);
+        FrameLayout.LayoutParams innerLogoLp = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT, Gravity.CENTER);
         brandMedallion.addView(brandTvLogo, innerLogoLp);
 
         brandMedallion.setOnFocusChangeListener(new View.OnFocusChangeListener() {
@@ -5186,11 +5193,11 @@ public class MainActivity extends Activity {
         try {
             InputStream is = getAssets().open("signature_logo.png");
             BitmapFactory.Options opts = new BitmapFactory.Options();
-            opts.inSampleSize = 4;
+            opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
             Bitmap bm = BitmapFactory.decodeStream(is, null, opts);
             is.close();
             if (bm != null) {
-                logoIcon.setImageBitmap(YouTubeDisguiseHelper.applyArgentLiquidChromeToBitmap(bm));
+                logoIcon.setImageBitmap(bm);
             }
         } catch (Throwable ignored) {}
         LinearLayout.LayoutParams lilp = new LinearLayout.LayoutParams(52, 52);

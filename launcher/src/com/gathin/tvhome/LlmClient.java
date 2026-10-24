@@ -27,8 +27,11 @@ public final class LlmClient {
 
     private static final String TAG = "CineTvLlmClient";
 
-    public static final String DEFAULT_CLAUDE_MODEL = "claude-3-5-haiku-20241022";
-    public static final String DEFAULT_GEMINI_MODEL = "gemini-1.5-flash";
+    public static final String DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
+    public static final String DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+
+    public static final String FALLBACK_CLAUDE_MODEL = "claude-3-5-sonnet-20241022";
+    public static final String FALLBACK_GEMINI_MODEL = "gemini-1.5-flash";
 
     private LlmClient() {
     }
@@ -114,6 +117,7 @@ public final class LlmClient {
 
     /**
      * Executes a synchronous LLM generation request with provider-appropriate authentication and prompt schemas.
+     * Automatically attempts fallback to proven stable endpoints if a cutting-edge model is not yet registered upstream.
      */
     public static LlmResult generate(Context ctx, String provider, String apiKey,
                                      String systemPrompt, String userPrompt,
@@ -126,11 +130,36 @@ public final class LlmClient {
         }
 
         final boolean isClaude = "claude".equalsIgnoreCase(provider);
+        final String primaryModel = isClaude ? getClaudeModel(ctx) : getGeminiModel(ctx);
+
+        LlmResult res = executeSingle(isClaude, primaryModel, apiKey, systemPrompt, userPrompt,
+                maxTokens, connectTimeoutMs, readTimeoutMs);
+
+        // Fallback safety: if the upstream endpoint returns 404 (model not found) or 400 (invalid model),
+        // gracefully attempt fallback to the stable production model so user queries never stall.
+        if (!res.success && (res.statusCode == 404 || res.statusCode == 400)) {
+            final String fallbackModel = isClaude ? FALLBACK_CLAUDE_MODEL : FALLBACK_GEMINI_MODEL;
+            if (!fallbackModel.equalsIgnoreCase(primaryModel)) {
+                Log.w(TAG, "Primary model [" + primaryModel + "] returned HTTP " + res.statusCode
+                        + ". Falling back seamlessly to stable model [" + fallbackModel + "]...");
+                LlmResult fallbackRes = executeSingle(isClaude, fallbackModel, apiKey, systemPrompt, userPrompt,
+                        maxTokens, connectTimeoutMs, readTimeoutMs);
+                if (fallbackRes.success) {
+                    return fallbackRes;
+                }
+            }
+        }
+
+        return res;
+    }
+
+    private static LlmResult executeSingle(boolean isClaude, String model, String apiKey,
+                                           String systemPrompt, String userPrompt,
+                                           int maxTokens, int connectTimeoutMs, int readTimeoutMs) {
         HttpURLConnection conn = null;
 
         try {
             if (isClaude) {
-                String model = getClaudeModel(ctx);
                 URL url = new URL("https://api.anthropic.com/v1/messages");
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
@@ -163,7 +192,6 @@ public final class LlmClient {
                 }
             } else {
                 // Google Gemini: key is passed securely via x-goog-api-key header (never in URL query string)
-                String model = getGeminiModel(ctx);
                 String urlStr = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent";
                 URL url = new URL(urlStr);
                 conn = (HttpURLConnection) url.openConnection();
@@ -246,14 +274,14 @@ public final class LlmClient {
                 return LlmResult.ok(extractedText);
             } else {
                 String errorPayload = readStreamToString(conn.getErrorStream());
-                Log.w(TAG, "LLM request failed (" + statusCode + "): " + errorPayload);
+                Log.w(TAG, "LLM request failed (" + statusCode + ") for model " + model + ": " + errorPayload);
                 return LlmResult.error(statusCode, mapHttpStatusToTurkish(statusCode));
             }
         } catch (SocketTimeoutException ste) {
-            Log.w(TAG, "LLM connection timed out: " + ste.getMessage());
+            Log.w(TAG, "LLM connection timed out for model " + model + ": " + ste.getMessage());
             return LlmResult.error(408, "Bağlantı zaman aşımına uğradı, lütfen tekrar deneyin.");
         } catch (Throwable t) {
-            Log.e(TAG, "LLM execution error: " + t.getMessage(), t);
+            Log.e(TAG, "LLM execution error for model " + model + ": " + t.getMessage(), t);
             return LlmResult.error(-1, "Ağ bağlantısı kurulamadı veya yapay zekâ yanıt vermedi.");
         } finally {
             if (conn != null) {
