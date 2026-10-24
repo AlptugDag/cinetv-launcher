@@ -1624,6 +1624,16 @@ public class MainActivity extends Activity {
         heroScroll.setHorizontalScrollBarEnabled(false);
         heroScroll.setClipToPadding(false);
         heroScroll.setClipChildren(false);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            heroScroll.setOnScrollChangeListener(new View.OnScrollChangeListener() {
+                @Override
+                public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+                    if (scrollX != oldScrollX) {
+                        DynamicChromaticBorderView.refreshAllBorders();
+                    }
+                }
+            });
+        }
         heroShelfRow = new LinearLayout(this);
         heroShelfRow.setOrientation(LinearLayout.HORIZONTAL);
         heroShelfRow.setClipToPadding(false);
@@ -2417,6 +2427,7 @@ public class MainActivity extends Activity {
                 }
             }
         }
+        DynamicChromaticBorderView.refreshAllBorders();
     }
 
     private void smoothScrollToVitrinCard(final View card) {
@@ -2929,6 +2940,7 @@ public class MainActivity extends Activity {
                 }
             }
         }
+        DynamicChromaticBorderView.refreshAllBorders();
     }
 
     private View createLiquidGlassAppTile(final AppTileItem item, final boolean inDock, final int index) {
