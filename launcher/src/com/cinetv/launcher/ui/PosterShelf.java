@@ -311,7 +311,7 @@ public class PosterShelf extends FrameLayout {
             float blur = Math.max(0f, Math.min(1f, (far - 1.5f) / 2.5f));
             float yaw = Math.signum(d) * SIDE_ANGLE * near + PROFILE_ANGLE * (1f - near);
             float lift = focused ? 1f - near : 0f;
-            float tilt = spatial ? 5.5f * (1f - lift) : 0f;
+            float tilt = spatial ? 7.5f * (1f - lift) : 0f;
             float turn = 0f, glint = 0f;
             if (i == index && sway > 0f) {
                 // Idle turn: from its slight profile round to face the light, then back.

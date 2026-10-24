@@ -144,10 +144,10 @@ public class AppGrid {
         int row = inDock ? 0 : index / columns;
         float mid = (n - 1) / 2f;
         float norm = n <= 1 ? 0 : (col - mid) / mid;
-        float rotY = -norm * (inDock ? 20f : 18f);
-        float rotX = -8f - row * 2f;
+        float rotY = -norm * (inDock ? 27f : 24f);
+        float rotX = -11f - row * 2.5f;
         float z = (1f - norm * norm) * (inDock ? 16f : 14f) - (inDock ? 10f : 12f);
-        return new float[]{rotY, Math.max(-14f, rotX), z};
+        return new float[]{rotY, Math.max(-18f, rotX), z};
     }
 
     private View tile(final AppTileItem item, final boolean inDock, final int index, int count) {

@@ -87,7 +87,7 @@ public final class MovieCatalog {
             new Category(R.string.cat_classics, "discover/movie?primary_release_date.lte=1979-12-31&sort_by=vote_count.desc&vote_average.gte=7.8&", CINEMETA_TOP + ".json"),
     };
 
-    private static final ExecutorService resolver = Executors.newFixedThreadPool(4);
+    private static final ExecutorService resolver = Executors.newFixedThreadPool(6);
     private static final Map<String, String> taglineCache = Collections.synchronizedMap(new HashMap<>());
     private static final Map<String, Integer> tmdbIdCache = Collections.synchronizedMap(new HashMap<>());
 
@@ -144,6 +144,147 @@ public final class MovieCatalog {
         List<Movie> out = cinemetaList(CINEMETA + "movie/top/search=" + q + ".json", "movie", max);
         out.addAll(cinemetaList(CINEMETA + "series/top/search=" + q + ".json", "series", Math.max(0, max - out.size())));
         return out;
+    }
+
+    // ---- assistant search ---------------------------------------------------------------------
+
+    /** A person's work, films and series together, best known first; director credits when they direct. */
+    public static List<Movie> personWork(Context ctx, String person, String role, int max) {
+        List<Movie> out = new ArrayList<>();
+        if (!hasTmdb(ctx) || person == null || person.trim().isEmpty()) return out;
+        try {
+            JSONArray people = tmdb(ctx, "search/person?query=" + enc(person.trim())).optJSONArray("results");
+            if (people == null || people.length() == 0) return out;
+            JSONObject who = people.getJSONObject(0);
+            return personWork(ctx, who.getInt("id"), role, "Directing".equals(who.optString("known_for_department")), max);
+        } catch (Throwable t) {
+            Log.w(TAG, "Person search failed: " + t.getMessage());
+            return out;
+        }
+    }
+
+    public static List<Movie> personWork(Context ctx, int personId, String role, boolean directs, int max) {
+        List<Movie> out = new ArrayList<>();
+        try {
+            JSONObject credits = tmdb(ctx, "person/" + personId + "/combined_credits?language=" + language());
+            boolean wantCrew = "director".equals(role) || (!"actor".equals(role) && directs);
+            List<JSONObject> picked = new ArrayList<>();
+            JSONArray crew = credits.optJSONArray("crew");
+            if (wantCrew && crew != null) {
+                for (int i = 0; i < crew.length(); i++) {
+                    JSONObject c = crew.getJSONObject(i);
+                    String job = c.optString("job");
+                    if ("Director".equals(job) || "Creator".equals(job)) picked.add(c);
+                }
+            }
+            JSONArray cast = credits.optJSONArray("cast");
+            if (picked.isEmpty() && cast != null) {
+                for (int i = 0; i < cast.length(); i++) {
+                    JSONObject c = cast.getJSONObject(i);
+                    // Talk shows and award ceremonies are not "their films".
+                    if ("tv".equals(c.optString("media_type")) && c.optInt("episode_count") < 3) continue;
+                    String g = String.valueOf(c.optJSONArray("genre_ids"));
+                    if (g.contains("10767") || g.contains("10763")) continue;
+                    picked.add(c);
+                }
+            }
+            Collections.sort(picked, (a, b) -> Integer.compare(b.optInt("vote_count"), a.optInt("vote_count")));
+            JSONArray results = new JSONArray();
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (JSONObject o : picked) if (seen.add(o.optString("media_type") + o.optInt("id"))) results.put(o);
+            out = parseTmdbResults(new JSONObject().put("results", results), null, max);
+        } catch (Throwable t) {
+            Log.w(TAG, "Person credits failed: " + t.getMessage());
+        }
+        return out;
+    }
+
+    /** Every film or series with this title (two pages), the closest names first. */
+    public static List<Movie> titled(Context ctx, String query, String type, int max) {
+        List<Movie> out = new ArrayList<>();
+        if (!hasTmdb(ctx)) return search(ctx, query, max);
+        String kind = "tv".equals(type) ? "tv" : "movie".equals(type) ? "movie" : "multi";
+        for (int page = 1; page <= 2 && out.size() < max; page++) {
+            try {
+                JSONObject root = tmdb(ctx, "search/" + kind + "?include_adult=false&page=" + page + "&language=" + language() + "&query=" + enc(query));
+                out.addAll(parseTmdbResults(root, "multi".equals(kind) ? null : ("tv".equals(kind) ? "series" : "movie"), max - out.size()));
+                if (root.optInt("total_pages") <= page) break;
+            } catch (Throwable t) {
+                break;
+            }
+        }
+        final String q = query.toLowerCase(Locale.ROOT).trim();
+        Collections.sort(out, (a, b) -> Boolean.compare(!a.title.toLowerCase(Locale.ROOT).equals(q), !b.title.toLowerCase(Locale.ROOT).equals(q)));
+        return out;
+    }
+
+    private static final String[][] GENRES = {
+            {"action", "28", "10759"}, {"adventure", "12", "10759"}, {"animation", "16", "16"}, {"comedy", "35", "35"},
+            {"crime", "80", "80"}, {"documentary", "99", "99"}, {"drama", "18", "18"}, {"family", "10751", "10751"},
+            {"fantasy", "14", "10765"}, {"history", "36", "10768"}, {"horror", "27", "9648"}, {"music", "10402", "10402"},
+            {"mystery", "9648", "9648"}, {"romance", "10749", "10749"}, {"science fiction", "878", "10765"},
+            {"thriller", "53", "80"}, {"war", "10752", "10768"}, {"western", "37", "37"}};
+
+    /** TMDB discovery by theme keywords and genres, films and/or series, the most-watched first. */
+    public static List<Movie> discover(Context ctx, List<String> keywords, List<String> genres, String type,
+                                       String country, int from, int to, int max) {
+        List<Movie> out = new ArrayList<>();
+        if (!hasTmdb(ctx)) return out;
+        try {
+            StringBuilder kw = new StringBuilder();
+            for (String k : keywords) {
+                JSONArray r = tmdb(ctx, "search/keyword?query=" + enc(k)).optJSONArray("results");
+                for (int i = 0; r != null && i < Math.min(2, r.length()); i++) {
+                    if (kw.length() > 0) kw.append('|');
+                    kw.append(r.getJSONObject(i).optInt("id"));
+                }
+            }
+            String[] kinds = "tv".equals(type) ? new String[]{"tv"} : "movie".equals(type) ? new String[]{"movie"} : new String[]{"movie", "tv"};
+            for (String kind : kinds) {
+                StringBuilder g = new StringBuilder();
+                for (String name : genres) {
+                    for (String[] row : GENRES) {
+                        if (row[0].equalsIgnoreCase(name.trim())) {
+                            if (g.length() > 0) g.append(',');
+                            g.append("tv".equals(kind) ? row[2] : row[1]);
+                        }
+                    }
+                }
+                if (kw.length() == 0 && g.length() == 0 && (country == null || country.isEmpty())) continue;
+                String date = "tv".equals(kind) ? "first_air_date" : "primary_release_date";
+                String path = "discover/" + kind + "?include_adult=false&sort_by=vote_count.desc&vote_count.gte=40&language=" + language()
+                        + (kw.length() > 0 ? "&with_keywords=" + enc(kw.toString()) : "")
+                        + (g.length() > 0 ? "&with_genres=" + enc(g.toString()) : "")
+                        + (country != null && country.length() == 2 ? "&with_origin_country=" + country.toUpperCase(Locale.ROOT) : "")
+                        + (from > 1900 ? "&" + date + ".gte=" + from + "-01-01" : "")
+                        + (to > 1900 ? "&" + date + ".lte=" + to + "-12-31" : "");
+                out.addAll(parseTmdbResults(tmdb(ctx, path), "tv".equals(kind) ? "series" : "movie", max - out.size()));
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Discover failed: " + t.getMessage());
+        }
+        return out;
+    }
+
+    /** A title the AI named, as a film or series; the IMDb id is looked up only when it is opened. */
+    public static Movie resolveQuick(Context ctx, String title, int year, boolean tv) {
+        if (title == null || title.trim().isEmpty()) return null;
+        if (!hasTmdb(ctx)) return resolve(ctx, title, year);
+        try {
+            String kind = tv ? "tv" : "movie";
+            String yearParam = year > 1900 ? (tv ? "&first_air_date_year=" : "&year=") + year : "";
+            List<Movie> list = parseTmdbResults(tmdb(ctx, "search/" + kind + "?language=" + language() + "&query=" + enc(title.trim()) + yearParam),
+                    tv ? "series" : "movie", 1);
+            if (list.isEmpty() && year > 1900) return resolveQuick(ctx, title, 0, tv);
+            return list.isEmpty() ? null : list.get(0);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** Fills a missing IMDb id (needed to open the title in Nuvio). */
+    public static void ensureImdb(Context ctx, Movie m) {
+        if (m != null && m.imdbId.isEmpty() && m.tmdbId > 0) m.imdbId = imdbFor(ctx, m.tmdbId, m.type);
     }
 
     /** Best match for a title (and optional year), with its IMDb id. */

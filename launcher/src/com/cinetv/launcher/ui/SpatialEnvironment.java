@@ -24,14 +24,14 @@ import com.cinetv.launcher.service.ThemeManager;
 
 /**
  * The room the home screen floats in. Layers, back to front:
- *  1. the theme's picture, or the slowly breathing cinema palette of the Signature theme;
- *  2. a slow orbital ambient light;
- *  3. the signature watermark texture, shifting with the focus (parallax depth);
- *  4. the interactive light field that glides behind whatever is focused, in its colour.
+ *  1. the theme's picture, or a quiet, neutral dark room (no coloured bands of its own);
+ *  2. the signature watermark texture, shifting with the focus (parallax depth);
+ *  3. the only colour in the room: a soft neon wash in the colour of whatever is focused, gliding
+ *     behind it - a wide glow and a brighter core, like light spilling from a lit sign.
  *
  * It also renders a small blurred copy of itself that {@link Glass} panels sample, so glass shows
- * the environment behind it. Animations are throttled: the palette breathes at ~15 fps, the focus
- * light runs at full rate only while it moves, and nothing allocates per frame.
+ * the environment behind it. Nothing animates at rest; the light runs only while it moves, and
+ * nothing allocates per frame.
  */
 public class SpatialEnvironment extends View {
 
@@ -50,22 +50,17 @@ public class SpatialEnvironment extends View {
     private Bitmap pattern;
     private Bitmap blurred;
     private Bitmap lightSprite;
-    private float cyclePhase;
-    private int lastTone;
-    private LinearGradient toneGradient;
+    private LinearGradient roomGradient;
     private Paint toneVeil;
     private int toneVeilHeight;
 
     private float glowX = 960, glowY = 540;
     private int glowColor = Color.parseColor("#38BDF8");
     private ValueAnimator focusAnimator;
-    private ValueAnimator breathing;
-    private boolean ambientMotion;
     private boolean focusLight;
     /** Lower tiers draw the whole environment from one pre-composited bitmap: one textured quad per frame. */
     private boolean composited;
     private Bitmap baseCache;
-    private long lastBreath;
     private static final float OVERSIZE = 1.06f;
 
     public SpatialEnvironment(Context ctx) {
@@ -88,14 +83,12 @@ public class SpatialEnvironment extends View {
         this.theme = theme;
         this.light = light;
         composited = PerformanceProfile.tier(getContext()) != PerformanceProfile.Tier.HIGH;
-        ambientMotion = PerformanceProfile.ambientMotion(getContext());
         focusLight = PerformanceProfile.focusLight(getContext());
         String wp = ThemeManager.wallpaperNow(theme);
         wallpaper = wp == null ? null : PosterCache.decodeAsset(getContext(), wp, 1280, 720);
         pattern = null;
-        toneGradient = null;
+        roomGradient = null;
         if (getWidth() > 0) rebuild(getWidth(), getHeight());
-        restartBreathing();
         invalidate();
     }
 
@@ -129,8 +122,10 @@ public class SpatialEnvironment extends View {
     // ---- focus light & parallax -----------------------------------------------------------------
 
     /** Glides the light field behind the focused view, in the view's colour. */
-    public void focusOn(View v, int color) {
-        if (v == null || !focusLight) return;
+    public void focusOn(View v, int rawColor) {
+        if (v == null) return;
+        final int color = neon(rawColor);
+        if (!focusLight) return;
         int[] loc = new int[2];
         v.getLocationOnScreen(loc);
         final float tx = loc[0] + v.getWidth() * v.getScaleX() * 0.5f;
@@ -152,30 +147,9 @@ public class SpatialEnvironment extends View {
     }
 
     public void pause() {
-        if (breathing != null) breathing.cancel();
-        breathing = null;
     }
 
     public void resume() {
-        restartBreathing();
-    }
-
-    private void restartBreathing() {
-        pause();
-        if (!ambientMotion || theme == null) return;
-        breathing = ValueAnimator.ofFloat(0f, theme.palette.length);
-        breathing.setDuration(45_000L);
-        breathing.setRepeatCount(ValueAnimator.INFINITE);
-        breathing.setInterpolator(new LinearInterpolator());
-        breathing.addUpdateListener(a -> {
-            // The palette changes over 45 s; repainting ~15 times a second is plenty.
-            long now = android.os.SystemClock.uptimeMillis();
-            if (now - lastBreath < 66) return;
-            lastBreath = now;
-            cyclePhase = (float) a.getAnimatedValue();
-            invalidate();
-        });
-        breathing.start();
     }
 
     // ---- drawing ----------------------------------------------------------------------------------
@@ -196,9 +170,15 @@ public class SpatialEnvironment extends View {
         }
         if (focusLight) {
             int r = Color.red(glowColor), g = Color.green(glowColor), b = Color.blue(glowColor);
-            float radius = Math.max(w, h) * 0.45f;
-            lightPaint.setColorFilter(filter(Color.argb(light ? 40 : 58, r, g, b)));
-            dst.set(glowX - radius, glowY - radius, glowX + radius, glowY + radius);
+            // Wide spill, slightly flattened like light on a wall...
+            float rx = Math.max(w, h) * 0.56f, ry = rx * 0.78f;
+            lightPaint.setColorFilter(filter(Color.argb(light ? 34 : 52, r, g, b)));
+            dst.set(glowX - rx, glowY - ry, glowX + rx, glowY + ry);
+            canvas.drawBitmap(lightSprite, null, dst, lightPaint);
+            // ...and the brighter neon core right behind the focused item.
+            float core = Math.max(w, h) * 0.19f;
+            lightPaint.setColorFilter(filter(Color.argb(light ? 40 : 66, r, g, b)));
+            dst.set(glowX - core * 1.25f, glowY - core, glowX + core * 1.25f, glowY + core);
             canvas.drawBitmap(lightSprite, null, dst, lightPaint);
         }
     }
@@ -206,7 +186,6 @@ public class SpatialEnvironment extends View {
     private void drawBase(Canvas canvas, int w, int h, boolean withParallax) {
         float px = withParallax ? (glowX - w / 2f) * -0.035f : 0f;
         float py = withParallax ? (glowY - h / 2f) * -0.025f : 0f;
-        int tone = breathingTone();
         if (light) {
             canvas.drawColor(Color.parseColor("#E8ECF2"));
         } else if (wallpaper != null) {
@@ -225,26 +204,15 @@ public class SpatialEnvironment extends View {
             }
             canvas.drawRect(0, 0, w, h, toneVeil);
         } else {
-            if (toneGradient == null || Math.abs(tone - lastTone) > 0) {
-                toneGradient = new LinearGradient(0, 0, w, h,
-                        new int[]{Color.parseColor("#060608"), tone, Color.parseColor("#050507")},
-                        new float[]{0f, 0.52f, 1f}, Shader.TileMode.CLAMP);
-                lastTone = tone;
+            // A dark, neutral room: a hint of ceiling light, deeper towards the floor. No colour of its own.
+            if (roomGradient == null) {
+                roomGradient = new LinearGradient(0, 0, 0, h,
+                        new int[]{Color.parseColor("#0C0C10"), Color.parseColor("#07070A"), Color.parseColor("#030304")},
+                        new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP);
             }
-            paint.setShader(toneGradient);
+            paint.setShader(roomGradient);
             canvas.drawRect(0, 0, w, h, paint);
             paint.setShader(null);
-        }
-
-        if (!light && ambientMotion) {
-            double angle = (cyclePhase / theme.palette.length) * Math.PI * 2.0;
-            float ox = w * 0.52f + (float) Math.cos(angle) * w * 0.135f;
-            float oy = h * 0.45f + (float) Math.sin(angle) * h * 0.13f;
-            float radius = w * 0.48f;
-            lightPaint.setColorFilter(filter(Color.argb(60,
-                    Math.min(255, Color.red(tone) * 2), Math.min(255, Color.green(tone) * 2), Math.min(255, Color.blue(tone) * 2))));
-            dst.set(ox - radius, oy - radius, ox + radius, oy + radius);
-            canvas.drawBitmap(lightSprite, null, dst, lightPaint);
         }
 
         if (pattern != null) {
@@ -266,12 +234,14 @@ public class SpatialEnvironment extends View {
         return f;
     }
 
-    private int breathingTone() {
-        int[] p = theme.palette;
-        int a = ((int) Math.floor(cyclePhase)) % p.length;
-        int b = (a + 1) % p.length;
-        float f = cyclePhase - (float) Math.floor(cyclePhase);
-        return (int) argb.evaluate(f, p[a], p[b]);
+    /** Any colour as a light: full brightness and enough saturation to read as neon. */
+    static int neon(int color) {
+        float[] hsv = new float[3];
+        Color.colorToHSV(color, hsv);
+        if (hsv[1] < 0.12f) return Color.rgb(200, 210, 230);
+        hsv[1] = Math.max(0.72f, hsv[1]);
+        hsv[2] = 1f;
+        return Color.HSVToColor(hsv);
     }
 
     private static float pxPad() {

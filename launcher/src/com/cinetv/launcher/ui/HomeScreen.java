@@ -29,8 +29,8 @@ import com.cinetv.launcher.device.PerformanceProfile;
  *   dock     favourite apps
  *   grid     all other apps
  *
- * With Spatial HUD on, the header groups keep the original visor curvature: the left group turns
- * +17 degrees, the right group -17 degrees, everything tilts 8.5 degrees toward the optical centre.
+ * With Spatial HUD on, the screen becomes a curved visor: the left header group turns +24 degrees,
+ * the right group -24 degrees and everything tilts 11 degrees toward the optical centre.
  */
 public class HomeScreen {
 
@@ -84,7 +84,7 @@ public class HomeScreen {
         content.setOrientation(LinearLayout.VERTICAL);
         content.setClipChildren(false);
         content.setClipToPadding(false);
-        content.setPadding(UiKit.px(64), UiKit.px(40), UiKit.px(64), UiKit.px(80));
+        content.setPadding(UiKit.px(64), UiKit.px(22), UiKit.px(64), UiKit.px(80));
         scroll.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(scroll, match());
 
@@ -93,6 +93,8 @@ public class HomeScreen {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setClipChildren(false);
         header.setClipToPadding(false);
+        // Room inside the header's GPU layer for the visor tilt, which would otherwise clip text.
+        header.setPadding(UiKit.px(12), UiKit.px(18), UiKit.px(12), UiKit.px(18));
 
         leftGroup = new LinearLayout(ctx);
         leftGroup.setGravity(Gravity.CENTER_VERTICAL);
@@ -309,7 +311,7 @@ public class HomeScreen {
     public void applySpatial(boolean on) {
         float cam = ctx.getResources().getDisplayMetrics().density * (on ? 2800f : 8500f);
         View[] groups = {leftGroup, searchBox, rightGroup, shelfLabel};
-        float[][] rot = {{17f, 8.5f}, {0f, 8.5f}, {-17f, 8.5f}, {14f, 5f}};
+        float[][] rot = {{24f, 11f}, {0f, 11f}, {-24f, 11f}, {18f, 6f}};
         for (int i = 0; i < groups.length; i++) {
             groups[i].setCameraDistance(cam);
             groups[i].animate().rotationY(on ? rot[i][0] : 0f).rotationX(on ? rot[i][1] : 0f)
@@ -317,6 +319,7 @@ public class HomeScreen {
         }
         shelf.setSpatial(on);
         apps.setSpatial(on);
+
     }
 
     // ---- AI answer card ---------------------------------------------------------------------------

@@ -95,11 +95,8 @@ public final class PerformanceProfile {
     /** Frosted glass samples a pre-blurred bitmap: one textured quad, so every tier can afford it. */
     public static boolean frostedGlass(Context ctx) { return true; }
 
-    /** Slowly breathing ambient light behind the content. */
-    public static boolean ambientMotion(Context ctx) { return tier(ctx) == Tier.HIGH; }
-
-    /** Light spill from the focused item onto the environment. */
-    public static boolean focusLight(Context ctx) { return tier(ctx) != Tier.LOW; }
+    /** The focused item's neon wash on the room: two textured quads, so every tier keeps it. */
+    public static boolean focusLight(Context ctx) { return true; }
 
     public static int animationMs(Context ctx, int base) {
         return tier(ctx) == Tier.LOW ? base * 2 / 3 : base;
