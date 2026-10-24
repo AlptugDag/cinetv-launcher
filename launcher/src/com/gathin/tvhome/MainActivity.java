@@ -228,11 +228,9 @@ public class MainActivity extends Activity {
     private static final int VITRIN_OVERLAP_MARGIN = -82;
 
     // Visual HUD & Optics Mode Flags (Toggled from Logo Menu)
-    private static boolean isChromaticAberrationEnabled = true;
     private static boolean isHudVisorModeEnabled = true;
     private static final String PREF_KEY_CHROMA_ABERRATION = "pref_chroma_aberration";
     private static final String PREF_KEY_HUD_VISOR = "pref_hud_visor";
-    private static final java.util.List<java.lang.ref.WeakReference<DynamicChromaticBorderView>> activeChromaBorders = new java.util.ArrayList<>();
 
     private final Runnable clockTick = new Runnable() {
         @Override
@@ -316,136 +314,7 @@ public class MainActivity extends Activity {
         }
     };
 
-    public static class AppTileItem {
-        public String packageName;
-        public String label;
-        public Drawable bannerDrawable;
-        public int neonColor;
 
-        public AppTileItem() {}
-        public AppTileItem(String label, String packageName, Drawable bannerDrawable, int neonColor) {
-            this.label = label;
-            this.packageName = packageName;
-            this.bannerDrawable = bannerDrawable;
-            this.neonColor = neonColor;
-        }
-    }
-
-    /**
-     * Dynamic Visor Chromatic Aberration Border View:
-     * - Draws soft, photorealistic optical dispersion fringes directly on the edges of UI elements.
-     * - Micro-split (0.6px to 1.8px) with feather-soft translucent spectral red/cyan refraction.
-     * - Respects the isChromaticAberrationEnabled toggle: renders clean crystal rim when disabled.
-     */
-    public static class DynamicChromaticBorderView extends View {
-        private final Paint redFringePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint cyanFringePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint specularRimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final RectF strokeRect = new RectF();
-        private final RectF redRect = new RectF();
-        private final RectF cyanRect = new RectF();
-        private final float cornerRadius;
-        private final boolean isCircle;
-        private boolean isFocused = false;
-
-        public DynamicChromaticBorderView(Context ctx, float cornerRadius, boolean isCircle) {
-            super(ctx);
-            this.cornerRadius = cornerRadius;
-            this.isCircle = isCircle;
-            setFocusable(false);
-            setClickable(false);
-
-            // Feather-soft optical dispersion crimson tint
-            redFringePaint.setStyle(Paint.Style.STROKE);
-            redFringePaint.setStrokeWidth(1.3f);
-            redFringePaint.setColor(Color.argb(75, 255, 45, 85));
-
-            // Feather-soft optical dispersion cyan tint
-            cyanFringePaint.setStyle(Paint.Style.STROKE);
-            cyanFringePaint.setStrokeWidth(1.3f);
-            cyanFringePaint.setColor(Color.argb(80, 34, 211, 238));
-
-            // Crystal glass facet specular rim
-            specularRimPaint.setStyle(Paint.Style.STROKE);
-            specularRimPaint.setStrokeWidth(1.1f);
-            specularRimPaint.setColor(Color.argb(45, 255, 255, 255));
-
-            activeChromaBorders.add(new java.lang.ref.WeakReference<>(this));
-        }
-
-        public void setFocusedState(boolean focused) {
-            this.isFocused = focused;
-            if (focused) {
-                specularRimPaint.setColor(Color.argb(165, 255, 255, 255));
-                specularRimPaint.setStrokeWidth(1.6f);
-                redFringePaint.setStrokeWidth(1.2f);
-                cyanFringePaint.setStrokeWidth(1.2f);
-            } else {
-                specularRimPaint.setColor(Color.argb(45, 255, 255, 255));
-                specularRimPaint.setStrokeWidth(1.1f);
-                redFringePaint.setStrokeWidth(1.3f);
-                cyanFringePaint.setStrokeWidth(1.3f);
-            }
-            invalidate();
-        }
-
-        @Override
-        protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            int w = getWidth();
-            int h = getHeight();
-            if (w <= 0 || h <= 0) return;
-
-            float pad = 1.5f;
-            strokeRect.set(pad, pad, w - pad, h - pad);
-
-            if (isChromaticAberrationEnabled) {
-                int[] loc = new int[2];
-                getLocationOnScreen(loc);
-                float cx = loc[0] + w * 0.5f;
-                float cy = loc[1] + h * 0.5f;
-
-                float dx = cx - 960f;
-                float dy = cy - 540f;
-                float dist = (float) Math.hypot(dx, dy);
-                float normDist = Math.min(1.2f, dist / 700f);
-
-                // Subtle natural micro-split: 0.6px to 1.8px (soft natural prism diffraction)
-                float baseSplit = isFocused ? 0.6f : 0.9f;
-                float split = baseSplit + (isFocused ? 0.3f : 0.8f) * normDist;
-                float angle = (float) Math.atan2(dy, dx);
-                float rOffX = (float) Math.cos(angle) * split;
-                float rOffY = (float) Math.sin(angle) * split;
-                float cOffX = -rOffX;
-                float cOffY = -rOffY;
-
-                // 1. Soft Translucent Red Fringe
-                redRect.set(strokeRect.left + rOffX, strokeRect.top + rOffY, strokeRect.right + rOffX, strokeRect.bottom + rOffY);
-                int redAlpha = Math.min(95, (int) (35 + normDist * 45));
-                redFringePaint.setAlpha(redAlpha);
-
-                // 2. Soft Translucent Cyan Fringe
-                cyanRect.set(strokeRect.left + cOffX, strokeRect.top + cOffY, strokeRect.right + cOffX, strokeRect.bottom + cOffY);
-                int cyanAlpha = Math.min(105, (int) (40 + normDist * 50));
-                cyanFringePaint.setAlpha(cyanAlpha);
-
-                if (isCircle) {
-                    canvas.drawOval(redRect, redFringePaint);
-                    canvas.drawOval(cyanRect, cyanFringePaint);
-                } else {
-                    canvas.drawRoundRect(redRect, cornerRadius, cornerRadius, redFringePaint);
-                    canvas.drawRoundRect(cyanRect, cornerRadius, cornerRadius, cyanFringePaint);
-                }
-            }
-
-            // Clean, pristine crystal specular rim
-            if (isCircle) {
-                canvas.drawOval(strokeRect, specularRimPaint);
-            } else {
-                canvas.drawRoundRect(strokeRect, cornerRadius, cornerRadius, specularRimPaint);
-            }
-        }
-    }
 
     /**
      * Full-screen living backdrop that:
@@ -948,7 +817,7 @@ public class MainActivity extends Activity {
         }
 
         SharedPreferences p = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        isChromaticAberrationEnabled = p.getBoolean(PREF_KEY_CHROMA_ABERRATION, true);
+        DynamicChromaticBorderView.setAberrationEnabled(p.getBoolean(PREF_KEY_CHROMA_ABERRATION, true));
         isHudVisorModeEnabled = p.getBoolean(PREF_KEY_HUD_VISOR, true);
         String hCsv = p.getString("user_hidden_apps_csv", "");
         if (hCsv != null && !hCsv.isEmpty()) {
@@ -2567,61 +2436,8 @@ public class MainActivity extends Activity {
         });
     }
 
-    private static class VitrinCategory {
-        final String name;
-        final String tmdbEndpoint;
-        final String fallbackUrl;
-
-        VitrinCategory(String name, String tmdbEndpoint, String fallbackUrl) {
-            this.name = name;
-            this.tmdbEndpoint = tmdbEndpoint;
-            this.fallbackUrl = fallbackUrl;
-        }
-    }
-
-    private static final VitrinCategory[] DYNAMIC_VITRIN_CATEGORIES = new VitrinCategory[] {
-        new VitrinCategory("Günün En Popüler Sinema Yapımları", "trending/movie/day?", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json"),
-        new VitrinCategory("Tüm Zamanların En Yüksek Puanlı Başyapıtları", "movie/top_rated?", "https://cinemeta-catalogs.strem.io/top/catalog/movie/imdbRating.json"),
-        new VitrinCategory("Vizyondaki Güncel Sinema Filmleri", "movie/now_playing?", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json"),
-        new VitrinCategory("Kült Bilim Kurgu ve Kozmik Yolculuklar", "discover/movie?with_genres=878&sort_by=vote_count.desc&vote_average.gte=7.4&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Sci-Fi.json"),
-        new VitrinCategory("Psikolojik Gerilim ve Zihin Oyunları", "discover/movie?with_genres=53,18&sort_by=vote_count.desc&vote_average.gte=7.4&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Thriller.json"),
-        new VitrinCategory("Karanlık Polisiye ve Kara Film Başyapıtları", "discover/movie?with_genres=80,18&sort_by=vote_count.desc&vote_average.gte=7.5&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Crime.json"),
-        new VitrinCategory("Güney Kore Sineması Seçkisi", "discover/movie?with_origin_country=KR&sort_by=vote_count.desc&vote_average.gte=7.5&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Drama.json"),
-        new VitrinCategory("Fransız Sineması ve Yeni Dalga", "discover/movie?with_origin_country=FR&sort_by=vote_count.desc&vote_average.gte=7.2&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Drama.json"),
-        new VitrinCategory("Japon Sineması ve Anime Başyapıtları", "discover/movie?with_origin_country=JP&with_genres=16,18&sort_by=vote_count.desc&vote_average.gte=7.6&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Animation.json"),
-        new VitrinCategory("Türk Sineması ve Festival Başyapıtları", "discover/movie?with_origin_country=TR&sort_by=vote_count.desc&vote_average.gte=6.8&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Drama.json"),
-        new VitrinCategory("İtalyan Sineması Klasikleri", "discover/movie?with_origin_country=IT&sort_by=vote_count.desc&vote_average.gte=7.4&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Drama.json"),
-        new VitrinCategory("90'lar Atmosferik Neo-Noir Sineması", "discover/movie?primary_release_date.gte=1990-01-01&primary_release_date.lte=1999-12-31&with_genres=18,80&sort_by=vote_count.desc&vote_average.gte=7.6&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Mystery.json"),
-        new VitrinCategory("Ufuk Açıcı Doğa ve İnsan Belgeselleri", "discover/movie?with_genres=99&sort_by=vote_count.desc&vote_average.gte=7.5&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Documentary.json"),
-        new VitrinCategory("Epik Tarih ve Savaş Dramaları", "discover/movie?with_genres=36,18&sort_by=vote_count.desc&vote_average.gte=7.5&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=History.json"),
-        new VitrinCategory("Studio Ghibli ve Büyülü Animasyon Dünyaları", "discover/movie?with_companies=10342&sort_by=vote_count.desc&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top/genre=Animation.json"),
-        new VitrinCategory("Sinema Tarihinin Unutulmaz Klasikleri", "discover/movie?primary_release_date.lte=1979-12-31&sort_by=vote_count.desc&vote_average.gte=7.8&", "https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json")
-    };
-
     private static HttpURLConnection openWithRedirects(String urlStr) throws Exception {
-        return openWithRedirects(urlStr, 0);
-    }
-
-    private static HttpURLConnection openWithRedirects(String urlStr, int depth) throws Exception {
-        if (depth > 5) {
-            throw new java.io.IOException("Too many redirects (depth=" + depth + ")");
-        }
-        URL url = new URL(urlStr);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
-        conn.setConnectTimeout(6000);
-        conn.setReadTimeout(6000);
-        conn.setInstanceFollowRedirects(true);
-        int status = conn.getResponseCode();
-        if (status == HttpURLConnection.HTTP_MOVED_TEMP || status == HttpURLConnection.HTTP_MOVED_PERM || status == 307 || status == 308) {
-            String newLocation = conn.getHeaderField("Location");
-            if (newLocation != null && !newLocation.isEmpty()) {
-                conn.disconnect();
-                String absoluteRedirect = new URL(url, newLocation).toString();
-                return openWithRedirects(absoluteRedirect, depth + 1);
-            }
-        }
-        return conn;
+        return TmdbVitrinRepository.openWithRedirects(urlStr);
     }
 
     private void fetchLiveTheatricalPosters() {
@@ -2631,7 +2447,7 @@ public class MainActivity extends Activity {
                 try {
                     SharedPreferences prefs = getSharedPreferences("vitrin_cache", MODE_PRIVATE);
                     int catIdx = prefs.getInt("active_category_idx", 0);
-                    final VitrinCategory category = DYNAMIC_VITRIN_CATEGORIES[Math.abs(catIdx) % DYNAMIC_VITRIN_CATEGORIES.length];
+                    final TmdbVitrinRepository.VitrinCategory category = TmdbVitrinRepository.DYNAMIC_VITRIN_CATEGORIES[Math.abs(catIdx) % TmdbVitrinRepository.DYNAMIC_VITRIN_CATEGORIES.length];
                     prefs.edit().putInt("active_category_idx", catIdx + 1).apply();
 
                     String tmdbKey = getTmdbApiKey();
@@ -5368,16 +5184,17 @@ public class MainActivity extends Activity {
                             final FrameLayout chromaToggle = createVisualModeToggleCard(
                                     "KROMATİK ABERASYON",
                                     "Optik HUD Saçılımı",
-                                    isChromaticAberrationEnabled
+                                    DynamicChromaticBorderView.isAberrationEnabled()
                             );
                             chromaToggle.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
-                                    isChromaticAberrationEnabled = !isChromaticAberrationEnabled;
+                                    boolean nextState = !DynamicChromaticBorderView.isAberrationEnabled();
+                                    DynamicChromaticBorderView.setAberrationEnabled(nextState);
                                     getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
-                                            .putBoolean(PREF_KEY_CHROMA_ABERRATION, isChromaticAberrationEnabled)
+                                            .putBoolean(PREF_KEY_CHROMA_ABERRATION, nextState)
                                             .apply();
-                                    updateVisualModeToggleCard(chromaToggle, "KROMATİK ABERASYON", "Optik HUD Saçılımı", isChromaticAberrationEnabled);
+                                    updateVisualModeToggleCard(chromaToggle, "KROMATİK ABERASYON", "Optik HUD Saçılımı", nextState);
                                     refreshChromaticBorders();
                                 }
                             });
@@ -5589,14 +5406,7 @@ public class MainActivity extends Activity {
     }
 
     private void refreshChromaticBorders() {
-        for (java.util.Iterator<java.lang.ref.WeakReference<DynamicChromaticBorderView>> it = activeChromaBorders.iterator(); it.hasNext(); ) {
-            DynamicChromaticBorderView v = it.next().get();
-            if (v != null) {
-                v.invalidate();
-            } else {
-                it.remove();
-            }
-        }
+        DynamicChromaticBorderView.refreshAllBorders();
     }
 
     private void applyHudVisorMode(boolean enabled) {
