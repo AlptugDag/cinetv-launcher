@@ -5583,7 +5583,7 @@ public class MainActivity extends Activity {
 
         // 4) Yapay Zekâ & TMDB API Anahtarı
         String keyLabel = (apiKey != null) ? "Aktif (" + getAiProvider(apiKey).toUpperCase() + ")" : "Tanımlanmadı";
-        View btnAiKey = createModalMenuButton("Yapay Zekâ ve TMDB API Anahtarı", "Gemini / Claude / TMDB • Durum: " + keyLabel, new View.OnClickListener() {
+        View btnAiKey = createModalMenuButton("Yapay Zekâ ve TMDB API Anahtarı", "Gemini 3.8 Flash / Claude 5.5 / TMDB • Durum: " + keyLabel, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 showInlineApiKeyModal();
@@ -5903,7 +5903,7 @@ public class MainActivity extends Activity {
         card.addView(title);
 
         TextView desc = new TextView(this);
-        desc.setText("Google Gemini (AIzaSy...) veya Claude (sk-ant-...) anahtarınızı girin:\n(Anahtar TV'nin güvenli donanım deposunda saklanır)");
+        desc.setText("Google Gemini 3.8 Flash (AIzaSy...) veya Claude 5.5 (sk-ant-...) anahtarınızı girin:\n(Anahtar TV'nin güvenli donanım deposunda saklanır)");
         desc.setTextSize(12f);
         desc.setTextColor(Color.parseColor("#94A3B8"));
         desc.setPadding(0, 6, 0, 16);
