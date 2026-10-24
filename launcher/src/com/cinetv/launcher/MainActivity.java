@@ -551,8 +551,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             int[] loc = new int[2];
             from.getLocationOnScreen(loc);
             float cx = loc[0] + from.getWidth() / 2f, cy = loc[1] + from.getHeight() / 2f;
-            float w = from.caseWidth() * 1.3f, h = from.caseHeight() * 1.3f;
-            home.opening.play(from.dvdCase(), m.title, new RectF(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2), cb);
+            float w = from.caseWidth() * 1.52f, h = from.caseHeight() * 1.52f;
+            home.opening.play(from.dvdCase(), m, new RectF(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2), 0, cb);
+            writeInnerNote(m, from.dvdCase());
             return;
         }
         // Opened from the phone or search: bake a case from the poster first.
@@ -567,8 +568,21 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             DvdCase dvd = DvdCase.bake(app, poster, m.title, m.year, AppArtwork.sampleDistinctPosterColor(poster, 0, 0), cw, ch, 0);
             ui(() -> {
                 float cx = home.root.getWidth() / 2f, cy = home.root.getHeight() / 2f;
-                home.opening.play(dvd, m.title, new RectF(cx - cw / 2f, cy + ch * 0.4f, cx + cw / 2f, cy + ch * 1.4f), cb);
+                home.opening.play(dvd, m, new RectF(cx - cw / 2f, cy + ch * 0.4f, cx + cw / 2f, cy + ch * 1.4f), 3200, cb);
+                writeInnerNote(m, dvd);
             });
+        });
+    }
+
+    /** Fetches the synopsis and a still, then writes the note inside the open case. */
+    private void writeInnerNote(final Movie m, final DvdCase dvd) {
+        final Context app = getApplicationContext();
+        final int w = home.opening.innerWidth(), h = home.opening.innerHeight();
+        background(() -> {
+            MovieCatalog.details(app, m);
+            Bitmap still = m.backdropUrl.isEmpty() ? null : PosterCache.load(app, m.backdropUrl, w * 2, h);
+            Bitmap inner = DvdOpeningView.bakeInner(app, w, h, dvd.cover, still, m);
+            ui(() -> home.opening.setInner(inner));
         });
     }
 

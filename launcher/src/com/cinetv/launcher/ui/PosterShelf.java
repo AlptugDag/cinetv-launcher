@@ -41,6 +41,9 @@ public class PosterShelf extends FrameLayout {
     private static final int VISIBLE_RANGE = 10;
     private static final float SIDE_ANGLE = 62f;
     private static final float PROFILE_ANGLE = -16f;
+    /** The focused case comes far forward, as if taken off the shelf. */
+    private static final float FOCUS_SCALE = 1.52f;
+    private static final long SWAY_AFTER_MS = 2600, SWAY_EVERY_MS = 9000, SWAY_MS = 2800;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<Movie> movies = new ArrayList<>();
@@ -55,6 +58,14 @@ public class PosterShelf extends FrameLayout {
     private int generation;
     private boolean spatial;
     private boolean asCases;
+    /** Lean of the whole row while moving (degrees), from the shelf's velocity: cases sway like real boxes. */
+    private float lean;
+    private float lastPos;
+    private long lastFrameNs;
+    /** Idle turn of the focused case: 0..1 progress, and its reflection sweep. */
+    private float sway;
+    private ValueAnimator swayAnim;
+    private final Runnable startSway = this::sway;
 
     public PosterShelf(Context ctx) {
         super(ctx);
@@ -84,7 +95,7 @@ public class PosterShelf extends FrameLayout {
     }
 
     public int shelfHeight() {
-        return Math.round(caseW / DvdCase.ASPECT * 1.30f) + glowPad;
+        return Math.round(caseW / DvdCase.ASPECT * FOCUS_SCALE) + glowPad;
     }
 
     public Movie focusedMovie() {
@@ -141,6 +152,8 @@ public class PosterShelf extends FrameLayout {
     @Override
     protected void onFocusChanged(boolean gained, int direction, android.graphics.Rect previous) {
         super.onFocusChanged(gained, direction, previous);
+        stopSway();
+        if (gained) postDelayed(startSway, SWAY_AFTER_MS);
         layoutCases();
         DvdCaseView v = focusedCase();
         if (gained && v != null && listener != null && v.dvdCase() != null) listener.onFocusCase(v, v.dvdCase().accent);
@@ -175,19 +188,74 @@ public class PosterShelf extends FrameLayout {
     public void step(int delta) {
         int n = cases.size();
         if (n == 0) return;
+        stopSway();
         targetPos += delta;
         index = Math.floorMod(targetPos, n);
         if (anim != null) anim.cancel();
         anim = ValueAnimator.ofFloat(focusPos, targetPos);
-        anim.setDuration(PerformanceProfile.animationMs(getContext(), 260));
-        anim.setInterpolator(new DecelerateInterpolator(1.8f));
+        // A light spring: the row glides, slightly overshoots and settles, like boxes sliding on a shelf.
+        anim.setDuration(PerformanceProfile.animationMs(getContext(), 420));
+        anim.setInterpolator(new android.view.animation.OvershootInterpolator(0.9f));
+        lastPos = focusPos;
+        lastFrameNs = 0;
         anim.addUpdateListener(a -> {
             focusPos = (float) a.getAnimatedValue();
+            long now = System.nanoTime();
+            if (lastFrameNs != 0) {
+                float dt = Math.max(0.008f, (now - lastFrameNs) / 1e9f);
+                float target = Math.max(-14f, Math.min(14f, -(focusPos - lastPos) / dt * 2.2f));
+                lean += (target - lean) * 0.35f;
+            }
+            lastFrameNs = now;
+            lastPos = focusPos;
+            if (a.getAnimatedFraction() >= 1f) lean = 0f;
             layoutCases();
         });
         anim.start();
+        if (hasFocus()) postDelayed(startSway, SWAY_AFTER_MS);
         DvdCaseView v = focusedCase();
         if (v != null && v.dvdCase() != null && listener != null) listener.onFocusCase(v, v.dvdCase().accent);
+    }
+
+    /** The focused case turns a little towards the light and back; its wrap catches the light on the way. */
+    private void sway() {
+        if (!hasFocus() || cases.isEmpty() || !isShown()) return;
+        swayAnim = ValueAnimator.ofFloat(0f, 1f);
+        swayAnim.setDuration(SWAY_MS);
+        swayAnim.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+        swayAnim.addUpdateListener(a -> {
+            sway = (float) a.getAnimatedValue();
+            layoutCases();
+        });
+        swayAnim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                sway = 0f;
+                layoutCases();
+                if (swayAnim == animation) postDelayed(startSway, SWAY_EVERY_MS);
+            }
+        });
+        swayAnim.start();
+    }
+
+    private void stopSway() {
+        removeCallbacks(startSway);
+        if (swayAnim != null) {
+            ValueAnimator a = swayAnim;
+            swayAnim = null;
+            a.cancel();
+        }
+        if (sway != 0f) {
+            sway = 0f;
+            DvdCaseView v = focusedCase();
+            if (v != null) v.setGlint(0f);
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        stopSway();
+        super.onDetachedFromWindow();
     }
 
     /** Places and poses every case for the current (possibly fractional) focus position. */
@@ -198,7 +266,7 @@ public class PosterShelf extends FrameLayout {
         boolean focused = hasFocus();
         float anchor = w * 0.5f;
         float range = Math.min(VISIBLE_RANGE, n / 2f);
-        float step1 = caseW * 0.98f;
+        float step1 = caseW * (focused ? 1.14f : 0.98f);
         // Fewer films spread a little wider so both sides of the screen are always filled.
         int perSide = Math.max(1, (n - 1) / 2);
         float stepN = Math.max(caseW * 0.30f, Math.min(caseW * 0.48f, (w * 0.47f - step1) / Math.max(1, perSide - 1)));
@@ -226,7 +294,8 @@ public class PosterShelf extends FrameLayout {
                 v.setTranslationX(px - v.getWidth() / 2f);
                 v.setTranslationY((h - v.getHeight()) / 2f - UiKit.pxf(24) * pLift + UiKit.pxf(8) * Math.min(ad, 2f));
                 v.setTranslationZ(100f - ad * 10f);
-                v.setPose(pYaw, spatial ? 5.5f * (1f - pLift) : 0f, pScale, pLift, 0f, pDim, false, focusPos);
+                v.setDepthBlur(Math.max(0f, Math.min(1f, (ad - 2.5f) / 2f)));
+                v.setPose(pYaw, spatial ? 5.5f * (1f - pLift) : 0f, pScale, pLift, lean * 0.6f, pDim, false, focusPos);
                 continue;
             }
             // Cover Flow: the focus stands forward in slight profile; every other case turns the
@@ -235,18 +304,29 @@ public class PosterShelf extends FrameLayout {
             float far = Math.max(0f, ad - 1f);
             float offset = step1 * near + stepN * far;
             float x = anchor + Math.signum(d) * offset;
-            float focusScale = focused ? 1.30f : 1.08f;
-            float scale = focusScale + (0.86f - focusScale) * near - Math.min(0.08f, 0.012f * far);
-            float dim = (focused ? 1f : 0.94f) - 0.10f * near - Math.min(0.40f, 0.055f * far);
+            float focusScale = focused ? FOCUS_SCALE : 1.12f;
+            float scale = focusScale + (0.86f - focusScale) * near - Math.min(0.10f, 0.014f * far);
+            // Further down the shelf: darker and out of focus, like a real room lit at the front.
+            float dim = (focused ? 1f : 0.94f) - 0.10f * near - Math.min(0.52f, 0.075f * far);
+            float blur = Math.max(0f, Math.min(1f, (far - 1.5f) / 2.5f));
             float yaw = Math.signum(d) * SIDE_ANGLE * near + PROFILE_ANGLE * (1f - near);
             float lift = focused ? 1f - near : 0f;
             float tilt = spatial ? 5.5f * (1f - lift) : 0f;
+            float turn = 0f, glint = 0f;
+            if (i == index && sway > 0f) {
+                // Idle turn: from its slight profile round to face the light, then back.
+                float s = (float) Math.sin(Math.PI * sway);
+                turn = 24f * s;
+                glint = s;
+            }
             // Spatial HUD: the shelf bends slightly away, like a curved wall of discs.
             float arc = spatial ? UiKit.pxf(5) * far * far * 0.35f : 0f;
             v.setTranslationX(x - v.getWidth() / 2f);
-            v.setTranslationY((h - v.getHeight()) / 2f - UiKit.pxf(18) * lift + UiKit.pxf(10) * near - arc);
+            v.setTranslationY((h - v.getHeight()) / 2f - UiKit.pxf(22) * lift + UiKit.pxf(12) * near - arc);
             v.setTranslationZ(100f - ad * 10f);
-            v.setPose(yaw, tilt, scale, lift, 0f, dim, d > 0.5f, focusPos);
+            v.setDepthBlur(blur);
+            v.setGlint(glint);
+            v.setPose(yaw + turn, tilt, scale, lift, lean * (0.5f + 0.5f * near), dim, d > 0.5f, focusPos + sway * 1.5f);
         }
     }
 

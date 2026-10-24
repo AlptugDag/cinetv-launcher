@@ -6,6 +6,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.LightingColorFilter;
 import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
@@ -14,16 +17,26 @@ import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.SweepGradient;
+import android.text.Layout;
+import android.text.StaticLayout;
+import android.text.TextPaint;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.animation.LinearInterpolator;
 
 import com.cinetv.launcher.FontManager;
+import com.cinetv.launcher.R;
+import com.cinetv.launcher.service.MovieCatalog.Movie;
 
 /**
- * The moment before a film starts: the case flies off the shelf, its cover swings open on the hinge,
- * and the disc - printed with the film's art and title - lifts from the tray and spins up, then the
- * player opens. About 1.6 s; OK skips ahead, Back cancels.
+ * Taking a film off the shelf, in two steps like a real DVD:
+ *
+ *   1. OK on a case: it flies off the shelf and opens. The inside of the cover shows the inner insert
+ *      with the story written over it in black felt-tip; the disc rests in its tray. The case waits.
+ *   2. OK again: the disc lifts from the hub, spins up and comes towards you until it fills the
+ *      screen, then the film starts. Back closes the case at any time.
+ *
+ * Opened from the phone or from search, step 2 follows by itself after a short pause.
  */
 public class DvdOpeningView extends View {
 
@@ -32,20 +45,23 @@ public class DvdOpeningView extends View {
         void onCancelled();
     }
 
-    private static final long FLY_END = 380, OPEN_END = 1080, LAUNCH_AT = 1500, TOTAL = 1750;
+    private static final long FLY_END = 380, OPEN_END = 1150;
+    private static final long PLAY_TOTAL = 1350, PLAY_LAUNCH = 1180;
+    private static final float OPEN_ANGLE = 174f;
 
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final TextPaint hintPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix m = new Matrix();
     private final RectF r = new RectF();
-    private final Path path = new Path();
     private final float[] src = new float[8], dst = new float[8];
 
     private DvdCase dvd;
     private Bitmap inner, disc;
     private RectF from;
     private int accent;
-    private long t;
+    /** Step 1 clock (ms) and step 2 clock (ms, -1 until the second OK). */
+    private long t, play = -1;
     private boolean launched;
     private ValueAnimator anim;
     private Callback callback;
@@ -53,21 +69,36 @@ public class DvdOpeningView extends View {
     private Shader roomGlow, discGlow, sheen, trayShade;
     private float discGlowR;
     private int caseW, caseH;
-    private float trayW, trayH;
+    private final Runnable autoPlay = this::startPlay;
 
     public DvdOpeningView(Context ctx) {
         super(ctx);
         setFocusable(true);
         // INVISIBLE, not GONE: the view stays laid out so it knows the screen size before it plays.
         setVisibility(INVISIBLE);
+        hintPaint.setTypeface(FontManager.getMedium(ctx));
+        hintPaint.setTextSize(UiKit.pxf(22));
+        hintPaint.setColor(Color.argb(210, 255, 255, 255));
     }
 
     public boolean isPlaying() {
         return getVisibility() == VISIBLE;
     }
 
-    /** {@code fromScreen} is the case's rectangle on screen, so the flight starts exactly where it was. */
-    public void play(DvdCase dvd, String title, RectF fromScreen, Callback cb) {
+    /** Size of the inner insert texture for the current screen (bake it with {@link #bakeInner}). */
+    public int innerWidth() {
+        return Math.max(2, Math.round(getHeight() * 0.62f * DvdCase.ASPECT));
+    }
+
+    public int innerHeight() {
+        return Math.max(2, Math.round(getHeight() * 0.62f));
+    }
+
+    /**
+     * {@code fromScreen} is the case's rectangle on screen, so the flight starts exactly where it was.
+     * With {@code autoPlayAfterMs} > 0 the disc comes out by itself after the case has opened.
+     */
+    public void play(DvdCase dvd, Movie movie, RectF fromScreen, long autoPlayAfterMs, Callback cb) {
         if (getHeight() == 0) {
             cb.onLaunch();
             return;
@@ -78,10 +109,8 @@ public class DvdOpeningView extends View {
         this.accent = dvd.accent;
         caseH = Math.round(getHeight() * 0.62f);
         caseW = Math.round(caseH * DvdCase.ASPECT);
-        trayW = caseW;
-        trayH = caseH;
-        inner = bakeInner(dvd.cover);
-        disc = bakeDisc(getContext(), dvd.cover, title, Math.round(caseW * 0.88f));
+        inner = bakeInner(getContext(), caseW, caseH, dvd.cover, null, movie);
+        disc = bakeDisc(getContext(), dvd.cover, movie.title, Math.round(caseW * 0.88f));
         int w = getWidth(), h = getHeight();
         roomGlow = new RadialGradient(w / 2f, h / 2f, h * 0.75f,
                 new int[]{UiKit.withAlpha(accent, 90), UiKit.withAlpha(accent, 24), Color.TRANSPARENT},
@@ -93,18 +122,45 @@ public class DvdOpeningView extends View {
         trayShade = new LinearGradient(0, 0, caseW, caseH, Color.parseColor("#1B1B21"), Color.parseColor("#0A0A0D"), Shader.TileMode.CLAMP);
         launched = false;
         t = 0;
+        play = -1;
         spin = 0;
+        removeCallbacks(autoPlay);
         setVisibility(VISIBLE);
         requestFocus();
         if (anim != null) anim.cancel();
-        anim = ValueAnimator.ofFloat(0, TOTAL);
-        anim.setDuration(TOTAL);
+        anim = ValueAnimator.ofFloat(0, OPEN_END);
+        anim.setDuration(OPEN_END);
         anim.setInterpolator(new LinearInterpolator());
         anim.addUpdateListener(a -> {
-            long prev = t;
             t = (long) (float) a.getAnimatedValue();
-            if (t > OPEN_END - 80) spin += (t - prev) * (0.05f + 0.5f * clamp((t - OPEN_END) / 500f));
-            if (!launched && t >= LAUNCH_AT) launch();
+            invalidate();
+        });
+        anim.start();
+        if (autoPlayAfterMs > 0) postDelayed(autoPlay, OPEN_END + autoPlayAfterMs);
+    }
+
+    /** The synopsis arrived (and maybe a backdrop): the note appears inside the open cover. */
+    public void setInner(Bitmap baked) {
+        if (baked == null || getVisibility() != VISIBLE) return;
+        inner = baked;
+        invalidate();
+    }
+
+    /** Step 2: the disc lifts, spins up and comes towards the viewer; the film starts. */
+    private void startPlay() {
+        if (play >= 0 || dvd == null) return;
+        removeCallbacks(autoPlay);
+        if (anim != null) anim.cancel();
+        t = OPEN_END;
+        play = 0;
+        anim = ValueAnimator.ofFloat(0, PLAY_TOTAL);
+        anim.setDuration(PLAY_TOTAL);
+        anim.setInterpolator(new LinearInterpolator());
+        anim.addUpdateListener(a -> {
+            long prev = play;
+            play = (long) (float) a.getAnimatedValue();
+            spin += (play - prev) * (0.05f + 0.85f * clamp(play / 700f));
+            if (!launched && play >= PLAY_LAUNCH) launch();
             invalidate();
         });
         anim.start();
@@ -112,6 +168,7 @@ public class DvdOpeningView extends View {
 
     public void dismiss() {
         if (anim != null) anim.cancel();
+        removeCallbacks(autoPlay);
         setVisibility(INVISIBLE);
         inner = null;
         disc = null;
@@ -129,8 +186,19 @@ public class DvdOpeningView extends View {
             if (callback != null && !launched) callback.onCancelled();
             return true;
         }
-        if ((keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) && !launched) {
-            launch();
+        if ((keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
+                || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+                && event.getRepeatCount() == 0) {
+            if (play < 0 && t < OPEN_END) {
+                // Still opening: skip to the open case.
+                if (anim != null) anim.cancel();
+                t = OPEN_END;
+                invalidate();
+            } else if (play < 0) {
+                startPlay();
+            } else if (!launched) {
+                launch();
+            }
             return true;
         }
         return true;
@@ -142,7 +210,8 @@ public class DvdOpeningView extends View {
         int w = getWidth(), h = getHeight();
         float fly = ease(clamp(t / (float) FLY_END));
         float open = easeInOut(clamp((t - FLY_END) / (float) (OPEN_END - FLY_END)));
-        float rise = ease(clamp((t - OPEN_END + 150) / 520f));
+        float rise = play < 0 ? 0f : ease(clamp(play / 380f));
+        float approach = play < 0 ? 0f : easeIn(clamp((play - 260) / 1000f));
 
         // Room dims, and the film's colour glows behind the case (the CineTV bloom, full screen).
         canvas.drawColor(Color.argb((int) (215 * fly), 3, 3, 6));
@@ -162,21 +231,49 @@ public class DvdOpeningView extends View {
         float ch = from.height() + (caseH - from.height()) * fly;
         float left = cx - cw / 2f, top = cy - ch / 2f;
 
-        if (open > 0.01f) {
-            drawTray(canvas, left, top, cw, ch);
-            if (disc != null) drawDisc(canvas, left + cw / 2f, top + ch / 2f, cw * 0.88f, rise);
+        // While the disc comes forward the case falls back into the dark.
+        int caseAlpha = (int) (255 * (1f - clamp(approach * 1.6f)));
+        if (caseAlpha > 0) {
+            int save = caseAlpha < 255 ? canvas.saveLayerAlpha(0, 0, w, h, caseAlpha) : -1;
+            if (open > 0.01f) drawTray(canvas, left, top, cw, ch);
+            drawCover(canvas, left, top, cw, ch, open * OPEN_ANGLE);
+            if (save >= 0) canvas.restoreToCount(save);
         }
-        drawCover(canvas, left, top, cw, ch, open * 168f);
+        if (open > 0.01f && disc != null) {
+            float d = cw * 0.88f;
+            float dcx = left + cw / 2f, dcy = top + ch / 2f;
+            // Towards the viewer: to the centre of the screen, growing until it fills it.
+            float x = dcx + (w / 2f - dcx) * approach;
+            float y = dcy - rise * d * 0.03f + (h / 2f - dcy) * approach;
+            float size = d * (1f + 0.06f * rise) * (1f + approach * 2.6f);
+            drawDisc(canvas, x, y, size, rise);
+        }
+        if (play < 0 && t >= OPEN_END) drawHint(canvas, w, h);
+        if (approach > 0.7f) canvas.drawColor(Color.argb((int) (255 * clamp((approach - 0.7f) / 0.3f)), 0, 0, 0));
+    }
+
+    private void drawHint(Canvas c, int w, int h) {
+        String s = getContext().getString(R.string.dvd_play_hint);
+        float tw = hintPaint.measureText(s);
+        float ph = UiKit.pxf(54), pw = tw + UiKit.pxf(56);
+        r.set(w / 2f - pw / 2f, h - UiKit.pxf(96), w / 2f + pw / 2f, h - UiKit.pxf(96) + ph);
+        fill.setColor(Color.argb(120, 20, 20, 28));
+        c.drawRoundRect(r, ph / 2f, ph / 2f, fill);
+        fill.setStyle(Paint.Style.STROKE);
+        fill.setStrokeWidth(Math.max(1f, UiKit.pxf(1.5f)));
+        fill.setColor(Color.argb(60, 255, 255, 255));
+        c.drawRoundRect(r, ph / 2f, ph / 2f, fill);
+        fill.setStyle(Paint.Style.FILL);
+        c.drawText(s, w / 2f - tw / 2f, r.centerY() - (hintPaint.ascent() + hintPaint.descent()) / 2f, hintPaint);
     }
 
     private void drawTray(Canvas c, float l, float t, float w, float h) {
-        r.set(0, 0, w, h);
         c.save();
         c.translate(l, t);
-        c.scale(w / Math.max(1f, trayW), h / Math.max(1f, trayH));
-        r.set(0, 0, trayW, trayH);
+        c.scale(w / Math.max(1f, caseW), h / Math.max(1f, caseH));
+        r.set(0, 0, caseW, caseH);
         fill.setShader(trayShade);
-        c.drawRoundRect(r, trayW * 0.03f, trayW * 0.03f, fill);
+        c.drawRoundRect(r, caseW * 0.03f, caseW * 0.03f, fill);
         fill.setShader(null);
         c.restore();
         float cx = l + w / 2f, cy = t + h / 2f, rr = w * 0.45f;
@@ -194,13 +291,12 @@ public class DvdOpeningView extends View {
         c.drawCircle(cx, cy, w * 0.035f, fill);
     }
 
-    private void drawDisc(Canvas c, float cx, float cy, float d, float rise) {
-        float s = 1f + 0.06f * rise;
-        float dd = d * s;
-        float y = cy - h() * 0.0f - rise * d * 0.02f;
+    private void drawDisc(Canvas c, float cx, float cy, float dd, float rise) {
         if (rise > 0) {
+            float g = dd / (caseW * 0.88f);
             c.save();
-            c.translate(cx, y);
+            c.translate(cx, cy);
+            c.scale(g, g);
             fill.setShader(discGlow);
             fill.setAlpha((int) (255 * rise));
             c.drawCircle(0, 0, discGlowR, fill);
@@ -209,7 +305,7 @@ public class DvdOpeningView extends View {
             c.restore();
         }
         c.save();
-        c.translate(cx, y);
+        c.translate(cx, cy);
         c.rotate(spin);
         r.set(-dd / 2f, -dd / 2f, dd / 2f, dd / 2f);
         p.setAlpha(255);
@@ -217,15 +313,11 @@ public class DvdOpeningView extends View {
         c.restore();
         // The rainbow sheen stays put while the disc turns underneath it.
         c.save();
-        c.translate(cx, y);
+        c.translate(cx, cy);
         fill.setShader(sheen);
         c.drawCircle(0, 0, dd / 2f, fill);
         fill.setShader(null);
         c.restore();
-    }
-
-    private float h() {
-        return getHeight();
     }
 
     /** The front cover hinged on its left edge; past 90 degrees we see its inside. */
@@ -240,6 +332,7 @@ public class DvdOpeningView extends View {
         float freeTop = cy - h / 2f * f, freeBottom = cy + h / 2f * f;
         boolean front = angle < 90f;
         Bitmap tex = front ? dvd.cover : inner;
+        if (tex == null) return;
         src[0] = 0; src[1] = 0; src[2] = tex.getWidth(); src[3] = 0;
         src[4] = tex.getWidth(); src[5] = tex.getHeight(); src[6] = 0; src[7] = tex.getHeight();
         if (front) {
@@ -251,37 +344,142 @@ public class DvdOpeningView extends View {
         }
         if (Math.abs(freeX - hingeX) < 1f) return;
         m.setPolyToPoly(src, 0, dst, 0, 4);
-        float shade = front ? 1f - (float) Math.sin(a) * 0.35f : 0.75f + 0.25f * (float) -Math.cos(a);
+        float shade = front ? 1f - (float) Math.sin(a) * 0.35f : 0.80f + 0.20f * (float) -Math.cos(a);
         int l8 = (int) (255 * Math.max(0.3f, Math.min(1f, shade)));
-        p.setColorFilter(l8 >= 250 ? null : new android.graphics.LightingColorFilter(Color.rgb(l8, l8, l8), 0));
+        p.setColorFilter(l8 >= 250 ? null : new LightingColorFilter(Color.rgb(l8, l8, l8), 0));
         c.drawBitmap(tex, m, p);
         p.setColorFilter(null);
     }
 
-    private static Bitmap bakeInner(Bitmap cover) {
-        int w = cover.getWidth(), h = cover.getHeight();
+    /**
+     * The inside of the front cover: the inner insert (the film's still, printed pale like the back of
+     * a real insert) under the clear sleeve, with the story handwritten over it in black felt-tip.
+     * Any thread; {@code still} and the movie's overview may be missing.
+     */
+    public static Bitmap bakeInner(Context ctx, int w, int h, Bitmap cover, Bitmap still, Movie movie) {
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         p.setColor(Color.parseColor("#15151A"));
         c.drawRoundRect(new RectF(0, 0, w, h), w * 0.03f, w * 0.03f, p);
-        // The back of the printed insert shows faintly through the clear inner sleeve.
-        // Only a soft, unreadable trace of the insert shows through the clear inner sleeve.
-        Bitmap trace = Bitmap.createScaledBitmap(cover, Math.max(2, w / 12), Math.max(2, h / 12), true);
-        c.save();
-        c.scale(-1, 1, w / 2f, 0);
-        p.setAlpha(34);
-        c.drawBitmap(trace, null, new RectF(0, 0, w, h), p);
-        c.restore();
-        p.setAlpha(255);
-        p.setShader(new LinearGradient(0, 0, w, h, Color.argb(36, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+
+        float lip = w * 0.03f;
+        RectF paper = new RectF(lip, lip, w - lip * 1.6f, h - lip);
+        // Paper.
+        p.setColor(Color.parseColor("#EEE8DC"));
+        c.drawRoundRect(paper, w * 0.01f, w * 0.01f, p);
+        // The inner print: the still (or the poster) faded and desaturated, so ink reads over it.
+        Bitmap art = still != null ? still : cover;
+        if (art != null) {
+            BitmapShader bs = new BitmapShader(art, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+            float s = Math.max(paper.width() / art.getWidth(), paper.height() / art.getHeight());
+            Matrix mm = new Matrix();
+            mm.setScale(s, s);
+            mm.postTranslate(paper.left + (paper.width() - art.getWidth() * s) / 2f, paper.top + (paper.height() - art.getHeight() * s) / 2f);
+            bs.setLocalMatrix(mm);
+            ColorMatrix cm = new ColorMatrix();
+            cm.setSaturation(0.35f);
+            p.setColorFilter(new ColorMatrixColorFilter(cm));
+            p.setShader(bs);
+            p.setAlpha(255);
+            c.drawRoundRect(paper, w * 0.01f, w * 0.01f, p);
+            p.setShader(null);
+            p.setColorFilter(null);
+            p.setColor(Color.argb(196, 242, 237, 226));
+            c.drawRoundRect(paper, w * 0.01f, w * 0.01f, p);
+        }
+
+        if (movie != null) {
+            float pad = w * 0.075f;
+            float textW = paper.width() - pad * 2;
+            TextPaint ink = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+            ink.setTypeface(FontManager.getMarker(ctx));
+            ink.setColor(Color.argb(240, 18, 18, 22));
+            c.save();
+            c.rotate(-1.6f, w / 2f, h / 2f);
+            float y = paper.top + pad * 0.9f;
+
+            // Title, underlined with one quick stroke.
+            ink.setTextSize(w * 0.092f);
+            StaticLayout title = layout(movie.title, ink, (int) textW, 1.0f);
+            drawInk(c, title, paper.left + pad, y, ink);
+            y += title.getHeight();
+            Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+            stroke.setColor(Color.argb(220, 18, 18, 22));
+            stroke.setStrokeWidth(Math.max(2f, w * 0.008f));
+            stroke.setStrokeCap(Paint.Cap.ROUND);
+            stroke.setStyle(Paint.Style.STROKE);
+            Path line = new Path();
+            float lw = Math.min(textW, title.getLineWidth(title.getLineCount() - 1) * 1.05f);
+            line.moveTo(paper.left + pad, y + w * 0.012f);
+            line.quadTo(paper.left + pad + lw * 0.5f, y + w * 0.004f, paper.left + pad + lw, y + w * 0.016f);
+            c.drawPath(line, stroke);
+            y += w * 0.05f;
+
+            // Signature line at the bottom: director and year.
+            String by = (movie.director == null || movie.director.isEmpty() ? "" : movie.director)
+                    + (movie.year > 1900 ? (movie.director == null || movie.director.isEmpty() ? "" : ", ") + movie.year : "");
+            float bottom = paper.bottom - pad * 0.8f;
+            if (!by.isEmpty()) {
+                ink.setTextSize(w * 0.064f);
+                String sig = "— " + by;
+                float sw = ink.measureText(sig);
+                c.drawText(sig, paper.right - pad - Math.min(sw, textW), bottom, ink);
+                bottom -= w * 0.11f;
+            }
+
+            // The story: as large as fits, never smaller than legible.
+            String story = movie.overview == null ? "" : movie.overview.trim();
+            if (!story.isEmpty()) {
+                float avail = bottom - y;
+                float size = w * 0.072f;
+                StaticLayout body = layout(story, ink, (int) textW, 1.02f);
+                while (size > w * 0.046f) {
+                    ink.setTextSize(size);
+                    body = layout(story, ink, (int) textW, 1.02f);
+                    if (body.getHeight() <= avail) break;
+                    size -= w * 0.003f;
+                }
+                if (body.getHeight() > avail) {
+                    // Still too long: cut at a sentence and end with an ellipsis, as one would by hand.
+                    int lines = Math.max(1, body.getLineForVertical((int) avail) - 1);
+                    String cut = story.substring(0, body.getLineEnd(lines)).trim();
+                    body = layout(cut.replaceAll("[\\s,;:.]+$", "") + "…", ink, (int) textW, 1.02f);
+                }
+                drawInk(c, body, paper.left + pad, y, ink);
+            }
+            c.restore();
+        }
+
+        // Clear sleeve over everything and the two tabs that hold the insert.
+        p.setShader(new LinearGradient(0, 0, w, h, Color.argb(34, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
         c.drawRect(0, 0, w, h, p);
         p.setShader(null);
         p.setColor(Color.parseColor("#26262D"));
-        float clipW = w * 0.08f, clipH = h * 0.06f;
-        c.drawRoundRect(new RectF(w * 0.06f, h * 0.12f, w * 0.06f + clipW, h * 0.12f + clipH), clipW * 0.3f, clipW * 0.3f, p);
-        c.drawRoundRect(new RectF(w * 0.06f, h * 0.82f, w * 0.06f + clipW, h * 0.82f + clipH), clipW * 0.3f, clipW * 0.3f, p);
+        float clipW = w * 0.07f, clipH = h * 0.05f;
+        c.drawRoundRect(new RectF(w - clipW - lip * 0.4f, h * 0.10f, w - lip * 0.4f, h * 0.10f + clipH), clipW * 0.3f, clipW * 0.3f, p);
+        c.drawRoundRect(new RectF(w - clipW - lip * 0.4f, h * 0.85f, w - lip * 0.4f, h * 0.85f + clipH), clipW * 0.3f, clipW * 0.3f, p);
         return out;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static StaticLayout layout(String text, TextPaint paint, int width, float spacing) {
+        return new StaticLayout(text, paint, Math.max(1, width), Layout.Alignment.ALIGN_NORMAL, spacing, 0f, false);
+    }
+
+    /** Felt-tip: a faint bleed under the stroke. */
+    private static void drawInk(Canvas c, StaticLayout l, float x, float y, TextPaint ink) {
+        int a = ink.getAlpha();
+        c.save();
+        c.translate(x + ink.getTextSize() * 0.02f, y + ink.getTextSize() * 0.015f);
+        ink.setAlpha(60);
+        l.draw(c);
+        c.restore();
+        ink.setAlpha(a);
+        c.save();
+        c.translate(x, y);
+        l.draw(c);
+        c.restore();
     }
 
     static Bitmap bakeDisc(Context ctx, Bitmap art, String title, int size) {
@@ -348,6 +546,10 @@ public class DvdOpeningView extends View {
 
     private static float ease(float x) {
         return 1f - (1f - x) * (1f - x) * (1f - x);
+    }
+
+    private static float easeIn(float x) {
+        return x * x * x;
     }
 
     private static float easeInOut(float x) {

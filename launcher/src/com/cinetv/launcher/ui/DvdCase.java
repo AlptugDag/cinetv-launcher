@@ -32,15 +32,24 @@ public final class DvdCase {
 
     public final Bitmap cover;
     public final Bitmap spine;
+    /** Out-of-focus versions for cases far down the shelf (depth of field). */
+    public final Bitmap coverSoft, spineSoft;
     public final int accent;
-    /** The focus glow in the film's colour, built here (off the main thread) because blurring is slow. */
+    /**
+     * The focus light in the film's colour, built here (off the main thread). For posters it is the
+     * neon bloom; for cases a soft back-light halo, like a lamp behind the box, with no hard edge.
+     */
     public final Bitmap bloom;
+    public final boolean halo;
 
-    private DvdCase(Bitmap cover, Bitmap spine, int accent, Bitmap bloom) {
+    private DvdCase(Bitmap cover, Bitmap spine, int accent, Bitmap bloom, boolean halo) {
         this.cover = cover;
         this.spine = spine;
         this.accent = accent;
         this.bloom = bloom;
+        this.halo = halo;
+        this.coverSoft = soften(cover, 10, 3);
+        this.spineSoft = spine == null ? null : soften(spine, 4, 2);
     }
 
     /** Off the main thread: builds the textures from a poster (any size; cropped to fill). */
@@ -51,10 +60,37 @@ public final class DvdCase {
     /** With {@code asCase} false only a borderless poster is baked (the plain poster shelf). */
     public static DvdCase bake(Context ctx, Bitmap poster, String title, int year, int accent, int w, int h, int glowPad, boolean asCase) {
         if (!asCase) {
-            return new DvdCase(bakePoster(poster, w, h), null, accent, glowPad > 0 ? Glow.bloom(w, h, glowPad, w * 0.085f, accent) : null);
+            return new DvdCase(bakePoster(poster, w, h), null, accent, glowPad > 0 ? Glow.bloom(w, h, glowPad, w * 0.085f, accent) : null, false);
         }
         return new DvdCase(bakeCover(poster, w, h), bakeSpine(ctx, title, year, accent, Math.max(6, Math.round(w * DEPTH)), h), accent,
-                glowPad > 0 ? Glow.bloom(w, h, glowPad, w * 0.04f, accent) : null);
+                glowPad > 0 ? bakeHalo(accent) : null, true);
+    }
+
+    /** Downscales hard then back up with filtering: a cheap, smooth blur. */
+    static Bitmap soften(Bitmap src, int down, int keep) {
+        if (src == null) return null;
+        int sw = Math.max(2, src.getWidth() / down), sh = Math.max(2, src.getHeight() / down);
+        Bitmap small = Bitmap.createScaledBitmap(src, sw, sh, true);
+        Bitmap out = Bitmap.createScaledBitmap(small, Math.max(2, src.getWidth() / keep), Math.max(2, src.getHeight() / keep), true);
+        if (small != out) small.recycle();
+        return out;
+    }
+
+    /** A soft elliptical light in the film's colour: brightest behind the box, fading to nothing. */
+    static Bitmap bakeHalo(int accent) {
+        int w = 128, h = 128;
+        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        float[] hsv = new float[3];
+        Color.colorToHSV(accent, hsv);
+        hsv[1] = Math.min(1f, hsv[1] * 1.1f);
+        hsv[2] = 1f;
+        int c = Color.HSVToColor(hsv);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setShader(new android.graphics.RadialGradient(w / 2f, h / 2f, w / 2f,
+                new int[]{UiKit.withAlpha(c, 150), UiKit.withAlpha(c, 96), UiKit.withAlpha(c, 34), UiKit.withAlpha(c, 8), Color.TRANSPARENT},
+                new float[]{0f, 0.28f, 0.55f, 0.8f, 1f}, Shader.TileMode.CLAMP));
+        new Canvas(out).drawRect(0, 0, w, h, p);
+        return out;
     }
 
     static Bitmap bakeCover(Bitmap poster, int w, int h) {
@@ -255,12 +291,14 @@ public final class DvdCase {
 
     public static synchronized Bitmap shadow() {
         if (shadow == null) {
-            int w = 256, h = 64;
+            // The box's footprint on the floor, blurred: mapped under each case in perspective so the
+            // shadow always runs parallel to the case's bottom edge, whatever its angle.
+            int w = 128, h = 128;
             shadow = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
             Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-            p.setColor(Color.argb(200, 0, 0, 0));
-            p.setMaskFilter(new BlurMaskFilter(14, BlurMaskFilter.Blur.NORMAL));
-            new Canvas(shadow).drawOval(new RectF(24, 18, w - 24, h - 18), p);
+            p.setColor(Color.argb(235, 0, 0, 0));
+            p.setMaskFilter(new BlurMaskFilter(18, BlurMaskFilter.Blur.NORMAL));
+            new Canvas(shadow).drawRoundRect(new RectF(26, 26, w - 26, h - 26), 14, 14, p);
         }
         return shadow;
     }

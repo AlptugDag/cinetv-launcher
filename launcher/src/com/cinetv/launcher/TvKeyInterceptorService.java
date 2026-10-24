@@ -42,7 +42,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
         @Override
         public void run() {
             String top = lastPackage;
-            if (top == null || top.equals(getPackageName()) || DeviceTweaks.isMediaPlaying(TvKeyInterceptorService.this)) {
+            android.util.Log.i("CineTvSaver", "idle over " + top + ", playing=" + DeviceTweaks.isMediaPlaying(TvKeyInterceptorService.this));
+            // Never over live TV / HDMI (the tuner's audio is not "music"), nor while anything plays.
+            if (top == null || top.equals(getPackageName()) || top.startsWith("com.mediatek.wwtv")
+                    || DeviceTweaks.isMediaPlaying(TvKeyInterceptorService.this)) {
                 handler.postDelayed(this, 60_000L);
                 return;
             }
@@ -121,12 +124,17 @@ public class TvKeyInterceptorService extends AccessibilityService {
             }, 900);
         }
         lastPackage = pkg;
+        armIdleSaver();
+    }
+
+    private void armIdleSaver() {
+        handler.removeCallbacks(idleSaver);
+        handler.postDelayed(idleSaver, APP_IDLE_SAVER_MS);
     }
 
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
-        handler.removeCallbacks(idleSaver);
-        handler.postDelayed(idleSaver, APP_IDLE_SAVER_MS);
+        armIdleSaver();
         int source = event.getSource();
         boolean gamepad = (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
                 || (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;

@@ -12,6 +12,7 @@
     <string name="all_apps">All apps</string>
     <string name="all_apps_count">All apps · %d</string>
     <string name="add">Add</string>
+    <string name="dvd_play_hint">OK  Play the film     ·     Back  Close the case</string>
     <string name="add_nothing">Every installed app is already on Home. New apps you install appear here automatically.</string>
     <string name="add_to_home">Add to home</string>
     <string name="move">Move</string>

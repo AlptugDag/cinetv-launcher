@@ -10,6 +10,7 @@
     <string name="all_apps">Tüm uygulamalar</string>
     <string name="all_apps_count">Tüm uygulamalar · %d</string>
     <string name="add">Ekle</string>
+    <string name="dvd_play_hint">OK  Filmi oynat     ·     Geri  Kutuyu kapat</string>
     <string name="add_nothing">Yüklü tüm uygulamalar zaten ana ekranda. Yeni yüklediğin uygulamalar buraya kendiliğinden gelir.</string>
     <string name="add_to_home">Ana ekrana ekle</string>
     <string name="move">Taşı</string>

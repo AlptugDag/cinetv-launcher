@@ -35,6 +35,7 @@ public final class MovieCatalog {
         public String posterUrl = "";
         public String backdropUrl = "";
         public String overview = "";
+        public String director = "";
         public double rating;
 
         public JSONObject toJson() {
@@ -234,6 +235,43 @@ public final class MovieCatalog {
             }
         }
         return "https://images.metahub.space/background/medium/" + imdbId + "/img";
+    }
+
+    /** Synopsis, director and a backdrop for the inside of the DVD case. Blocks; fills what it can. */
+    public static Movie details(Context ctx, Movie m) {
+        if (!hasTmdb(ctx)) return m;
+        try {
+            String kind = "series".equals(m.type) ? "tv" : "movie";
+            int id = m.tmdbId;
+            if (id <= 0 && m.imdbId.startsWith("tt")) {
+                JSONObject found = tmdb(ctx, "find/" + m.imdbId + "?external_source=imdb_id");
+                JSONArray r = found.optJSONArray("series".equals(m.type) ? "tv_results" : "movie_results");
+                if (r != null && r.length() > 0) id = r.getJSONObject(0).optInt("id");
+            }
+            if (id <= 0) return m;
+            m.tmdbId = id;
+            JSONObject d = tmdb(ctx, kind + "/" + id + "?append_to_response=credits&language=" + language());
+            String overview = d.optString("overview", "").trim();
+            if (overview.isEmpty()) overview = tmdb(ctx, kind + "/" + id + "?language=en-US").optString("overview", "").trim();
+            if (!overview.isEmpty()) m.overview = overview;
+            String backdrop = d.optString("backdrop_path", "");
+            if (!backdrop.isEmpty() && !"null".equals(backdrop)) m.backdropUrl = TMDB_IMG + "w780" + backdrop;
+            m.director = "";
+            JSONArray crew = d.optJSONObject("credits") != null ? d.optJSONObject("credits").optJSONArray("crew") : null;
+            if (crew != null) {
+                for (int i = 0; i < crew.length(); i++) {
+                    JSONObject c = crew.getJSONObject(i);
+                    if ("Director".equals(c.optString("job"))) { m.director = c.optString("name"); break; }
+                }
+            }
+            if (m.director.isEmpty()) {
+                JSONArray by = d.optJSONArray("created_by");
+                if (by != null && by.length() > 0) m.director = by.getJSONObject(0).optString("name");
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Details failed: " + t.getMessage());
+        }
+        return m;
     }
 
     /** The film's official tagline in the device language, or null when TMDB has none. */

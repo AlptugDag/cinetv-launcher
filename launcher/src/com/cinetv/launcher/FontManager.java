@@ -7,6 +7,7 @@ public final class FontManager {
     private static Typeface poppinsBlack;
     private static Typeface poppinsBold;
     private static Typeface poppinsMedium;
+    private static Typeface marker;
 
     private FontManager() {}
 
@@ -41,5 +42,17 @@ public final class FontManager {
             }
         }
         return poppinsMedium;
+    }
+
+    /** Caveat Brush: a felt-tip handwriting face (full Turkish coverage) for notes inside the DVD case. */
+    public static synchronized Typeface getMarker(Context context) {
+        if (marker == null) {
+            try {
+                marker = Typeface.createFromAsset(context.getAssets(), "fonts/CaveatBrush-Regular.ttf");
+            } catch ( Throwable t ) {
+                marker = Typeface.create("casual", Typeface.NORMAL);
+            }
+        }
+        return marker;
     }
 }
