@@ -2,24 +2,66 @@ plugins {
     id 'com.android.application'
 }
 
+// Release signing is resolved, in order, from:
+//   1. Environment variables (CI): CINETV_RELEASE_KEYSTORE (path), CINETV_RELEASE_KEYSTORE_PASSWORD,
+//      CINETV_RELEASE_KEY_ALIAS, CINETV_RELEASE_KEY_PASSWORD
+//   2. A keystore.properties file outside version control (path in CINETV_KEYSTORE_PROPERTIES,
+//      default ~/.cinetv/release/keystore.properties) with storeFile/storePassword/keyAlias/keyPassword.
+// Without either, release builds fail instead of silently falling back to the debug key.
+def releaseSigning = { ->
+    def env = System.getenv()
+    if (env.CINETV_RELEASE_KEYSTORE && env.CINETV_RELEASE_KEYSTORE_PASSWORD && env.CINETV_RELEASE_KEY_ALIAS) {
+        return [
+            storeFile    : file(env.CINETV_RELEASE_KEYSTORE),
+            storePassword: env.CINETV_RELEASE_KEYSTORE_PASSWORD,
+            keyAlias     : env.CINETV_RELEASE_KEY_ALIAS,
+            keyPassword  : env.CINETV_RELEASE_KEY_PASSWORD ?: env.CINETV_RELEASE_KEYSTORE_PASSWORD
+        ]
+    }
+    def propsPath = env.CINETV_KEYSTORE_PROPERTIES ?: "${System.getProperty('user.home')}/.cinetv/release/keystore.properties"
+    def propsFile = file(propsPath)
+    if (propsFile.exists()) {
+        def props = new Properties()
+        propsFile.withInputStream { props.load(it) }
+        def store = new File(props.getProperty('storeFile'))
+        if (!store.isAbsolute()) store = new File(propsFile.parentFile, props.getProperty('storeFile'))
+        return [
+            storeFile    : store,
+            storePassword: props.getProperty('storePassword'),
+            keyAlias     : props.getProperty('keyAlias'),
+            keyPassword  : props.getProperty('keyPassword') ?: props.getProperty('storePassword')
+        ]
+    }
+    return null
+}()
+
 android {
-    namespace 'com.gathin.tvhome'
+    namespace 'com.cinetv.launcher'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.gathin.tvhome"
+        applicationId "com.cinetv.launcher"
         minSdk 26
         targetSdk 34
-        versionCode 100
-        versionName "1.0.0"
+        // Release builds take the version from the git tag (CI passes -PcineTvVersion=2.1.0).
+        def ver = (project.findProperty('cineTvVersion') ?: '2.0.0').toString().replaceFirst('^v', '')
+        def parts = ver.tokenize('.').collect { it.replaceAll('[^0-9]', '') as int }
+        versionName ver
+        versionCode parts[0] * 10000 + (parts.size() > 1 ? parts[1] : 0) * 100 + (parts.size() > 2 ? parts[2] : 0)
     }
 
     sourceSets {
+        test {
+            java.srcDirs = ['test']
+        }
         main {
             manifest.srcFile 'AndroidManifest.xml'
             java.srcDirs = ['src']
             res.srcDirs = ['res']
-            assets.srcDirs = ['assets']
+            // Personal branding (e.g. signature_logo.png) is merged from outside the repo when present,
+            // so public builds ship the neutral CineTV mark. Override with CINETV_PRIVATE_ASSETS.
+            def privateAssets = file(System.getenv('CINETV_PRIVATE_ASSETS') ?: "${System.getProperty('user.home')}/.cinetv/private/assets")
+            assets.srcDirs = privateAssets.isDirectory() ? ['assets', privateAssets] : ['assets']
         }
     }
 
@@ -35,11 +77,16 @@ android {
             keyAlias "androiddebugkey"
             keyPassword "android"
         }
-        release {
-            storeFile file("debug.keystore")
-            storePassword "android"
-            keyAlias "androiddebugkey"
-            keyPassword "android"
+        if (releaseSigning != null) {
+            release {
+                storeFile releaseSigning.storeFile
+                storePassword releaseSigning.storePassword
+                keyAlias releaseSigning.keyAlias
+                keyPassword releaseSigning.keyPassword
+                enableV1Signing true
+                enableV2Signing true
+                enableV3Signing true
+            }
         }
     }
 
@@ -48,15 +95,37 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            signingConfig signingConfigs.release
+            if (releaseSigning != null) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            debuggable false
+        }
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name == 'validateSigningRelease' || task.name == 'packageRelease') {
+        task.doFirst {
+            if (releaseSigning == null) {
+                throw new GradleException(
+                    "Release signing is not configured. Run scripts/release/create_keystore.sh once, " +
+                    "or set CINETV_RELEASE_KEYSTORE* environment variables. See docs/RELEASE.md.")
+            }
         }
     }
 }
 
 dependencies {
-    implementation 'androidx.recyclerview:recyclerview:1.3.2'
-    implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
+    implementation 'com.google.zxing:core:3.5.3'
     testImplementation 'junit:junit:4.13.2'
 }

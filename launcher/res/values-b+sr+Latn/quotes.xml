@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Svi ti trenuci biće izgubljeni u vremenu, kao suze na kiši.</item>
+        <item>Nekada smo gledali u nebo i pitali se koje je naše mesto među zvezdama.</item>
+        <item>Ne smeš da se plašiš da sanjaš malo veće, dušo.</item>
+        <item>Kašika ne postoji.</item>
+        <item>Strah ubija um.</item>
+        <item>Zašto tako ozbiljno?</item>
+        <item>Žao mi je, Dejve. Bojim se da to ne mogu da uradim.</item>
+        <item>Za tebe, mala.</item>
+        <item>Daću mu ponudu koju ne može da odbije.</item>
+        <item>Život je kao kutija čokoladnih bombona: nikad ne znaš šta ćeš dobiti.</item>
+        <item>Ili se baviš životom, ili se baviš umiranjem.</item>
+        <item>Stvari koje poseduješ na kraju poseduju tebe.</item>
+        <item>Ono što činimo u životu odjekuje u večnosti.</item>
+        <item>Neka Sila bude s tobom.</item>
+        <item>Sve što moramo da odlučimo jeste šta ćemo učiniti s vremenom koje nam je dato.</item>
+        <item>Carpe diem. Iskoristite dan, momci. Učinite svoje živote izuzetnim.</item>
+        <item>Putevi? Tamo gde idemo, putevi nam nisu potrebni.</item>
+        <item>Kada jednom nekoga upoznaš, nikada ga zaista ne zaboraviš.</item>
+        <item>Nije tvoja krivica.</item>
+        <item>Seti se ko si.</item>
+        <item>Do beskonačnosti i dalje!</item>
+        <item>Trebaće nam veći čamac.</item>
+        <item>Vratiću se.</item>
+        <item>Šta god da na kraju budeš radio, voli to.</item>
+        <item>Svako može da kuva.</item>
+    </string-array>
+</resources>

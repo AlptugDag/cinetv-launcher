@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TV Master Launcher — Display / HDR / TV-core verification
+# CineTV — Display / HDR / TV-core verification
 #
 #   ./scripts/verify_display.sh                 # quick report (no playback)
 #   ./scripts/verify_display.sh --playback-test # also plays a real 4K HEVC HDR10 clip and measures it
@@ -30,7 +30,7 @@ warn() { echo "  [WARN] $*"; }
 info() { echo "  [..]   $*"; }
 
 echo "================================================================"
-echo "  TV Master Launcher — Display / HDR verification"
+echo "  CineTV — Display / HDR verification"
 echo "================================================================"
 
 # --- 1. TV core health ---------------------------------------------------------------------
@@ -102,7 +102,7 @@ if [ "$PLAYBACK_TEST" = "1" ]; then
         else
             warn "HDR10 dataspace (BT2020_ITU_PQ) not seen"
         fi
-        adb shell "input keyevent KEYCODE_BACK; sleep 1; am force-stop org.courville.nova; am start -n com.gathin.tvhome/.MainActivity" >/dev/null 2>&1
+        adb shell "input keyevent KEYCODE_BACK; sleep 1; am force-stop org.courville.nova; am start -n com.cinetv.launcher/.MainActivity" >/dev/null 2>&1
     fi
 else
     info "Tip: run with --playback-test to prove 4K + HDR10 with a real clip."

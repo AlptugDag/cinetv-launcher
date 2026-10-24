@@ -29,3 +29,11 @@ local.properties
 !launcher/debug.keystore
 keystore.properties
 
+
+# Personal branding and secrets live outside the repo (~/.cinetv); never commit them
+signature_logo.png
+ic_user_signature.xml
+private-assets/
+*.env
+.env*
+google-services.json

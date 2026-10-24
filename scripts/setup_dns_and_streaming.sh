@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# TV Master Launcher — AdGuard Private DNS (DoT) & Nuvio + Anthology + 4K HDR10 Cinema Suite
+# CineTV — AdGuard Private DNS (DoT) & Nuvio + Anthology + 4K HDR10 Cinema Suite
 # 1. Configures AdGuard DNS over TLS (dns.adguard-dns.com) to completely eliminate ads & ISP DNS redirects.
 # 2. Installs and configures Nuvio TV (com.nuvio.tv) with Anthology repository and 4K HDR10 Turkish stream engine.
 # 3. Uninstalls legacy/deprecated players (CloudStream, Stremio) cleanly.
 set -e
 
 echo "================================================================"
-echo "  TV Master Launcher — DNS & Nuvio 4K HDR10 Cinema Setup"
+echo "  CineTV — DNS & Nuvio 4K HDR10 Cinema Setup"
 echo "================================================================"
 
 DEVICE=$(adb devices | grep -E "device$" | head -n 1 | awk '{print $1}')

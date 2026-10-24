@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Alle disse øyeblikkene vil gå tapt i tiden, som tårer i regn.</item>
+        <item>Før pleide vi å se opp mot himmelen og undre oss over vår plass blant stjernene.</item>
+        <item>Du må ikke være redd for å drømme litt større, kjære.</item>
+        <item>Det finnes ingen skje.</item>
+        <item>Frykt dreper sinnet.</item>
+        <item>Hvorfor så alvorlig?</item>
+        <item>Beklager, Dave. Jeg er redd jeg ikke kan gjøre det.</item>
+        <item>Skål for deg, lille venn.</item>
+        <item>Jeg skal gi ham et tilbud han ikke kan avslå.</item>
+        <item>Livet er som en eske sjokolade: Du vet aldri hva du får.</item>
+        <item>Enten bruker du tiden på å leve, eller så bruker du den på å dø.</item>
+        <item>Tingene du eier, ender opp med å eie deg.</item>
+        <item>Det vi gjør i livet, gir gjenlyd i evigheten.</item>
+        <item>Måtte Kraften være med deg.</item>
+        <item>Alt vi må bestemme, er hva vi skal gjøre med tiden vi har fått.</item>
+        <item>Carpe diem. Grip dagen, gutter. Gjør livene deres ekstraordinære.</item>
+        <item>Veier? Der vi skal, trenger vi ikke veier.</item>
+        <item>Når du først har møtt noen, glemmer du dem aldri helt.</item>
+        <item>Det er ikke din feil.</item>
+        <item>Husk hvem du er.</item>
+        <item>Til uendeligheten og videre!</item>
+        <item>Vi trenger en større båt.</item>
+        <item>Jeg kommer tilbake.</item>
+        <item>Uansett hva du ender opp med å gjøre, elsk det.</item>
+        <item>Alle kan lage mat.</item>
+    </string-array>
+</resources>

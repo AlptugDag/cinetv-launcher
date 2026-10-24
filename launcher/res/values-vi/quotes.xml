@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Tất cả những khoảnh khắc ấy sẽ tan biến theo thời gian, như những giọt nước mắt trong mưa.</item>
+        <item>Chúng ta từng ngước nhìn bầu trời và tự hỏi về vị trí của mình giữa các vì sao.</item>
+        <item>Đừng sợ mơ lớn hơn một chút, anh yêu.</item>
+        <item>Không có cái thìa nào cả.</item>
+        <item>Nỗi sợ là kẻ giết chết tâm trí.</item>
+        <item>Sao nghiêm túc thế?</item>
+        <item>Xin lỗi, Dave. Tôi e là tôi không thể làm điều đó.</item>
+        <item>Nâng ly vì em, cô bé.</item>
+        <item>Tôi sẽ đưa ra cho hắn một lời đề nghị không thể từ chối.</item>
+        <item>Cuộc đời giống như một hộp sô-cô-la, bạn không bao giờ biết mình sẽ nhận được gì.</item>
+        <item>Hoặc bận rộn sống, hoặc bận rộn chết.</item>
+        <item>Những thứ bạn sở hữu rốt cuộc sẽ sở hữu bạn.</item>
+        <item>Những gì ta làm trong đời sẽ vang vọng đến muôn đời.</item>
+        <item>Nguyện Thần Lực ở bên bạn.</item>
+        <item>Tất cả những gì chúng ta phải quyết định là sẽ làm gì với thời gian được ban cho.</item>
+        <item>Carpe diem. Hãy nắm bắt ngày hôm nay, các cậu. Hãy biến cuộc đời mình thành phi thường.</item>
+        <item>Đường ư? Nơi chúng ta sắp đến không cần đường.</item>
+        <item>Một khi đã gặp ai đó, bạn sẽ chẳng bao giờ thật sự quên họ.</item>
+        <item>Không phải lỗi của cậu.</item>
+        <item>Hãy nhớ con là ai.</item>
+        <item>Tới vô cực và xa hơn nữa!</item>
+        <item>Chúng ta sẽ cần một con thuyền lớn hơn.</item>
+        <item>Tôi sẽ trở lại.</item>
+        <item>Dù cuối cùng con làm gì, hãy yêu nó.</item>
+        <item>Ai cũng có thể nấu ăn.</item>
+    </string-array>
+</resources>

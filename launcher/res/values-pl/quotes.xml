@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Wszystkie te chwile przepadną w czasie jak łzy w deszczu.</item>
+        <item>Kiedyś patrzyliśmy w niebo i zastanawialiśmy się nad naszym miejscem wśród gwiazd.</item>
+        <item>Nie bój się marzyć trochę śmielej, kochanie.</item>
+        <item>Nie ma łyżki.</item>
+        <item>Strach zabija umysł.</item>
+        <item>Czemu taki poważny?</item>
+        <item>Przykro mi, Dave. Obawiam się, że nie mogę tego zrobić.</item>
+        <item>Zdrowie twoje, mała.</item>
+        <item>Złożę mu propozycję nie do odrzucenia.</item>
+        <item>Życie jest jak pudełko czekoladek: nigdy nie wiesz, co ci się trafi.</item>
+        <item>Albo zajmiesz się życiem, albo zajmiesz się umieraniem.</item>
+        <item>Rzeczy, które posiadasz, w końcu zaczynają posiadać ciebie.</item>
+        <item>To, co robimy w życiu, odbija się echem w wieczności.</item>
+        <item>Niech Moc będzie z tobą.</item>
+        <item>Musimy tylko zdecydować, co zrobić z czasem, który nam dano.</item>
+        <item>Carpe diem. Chwytajcie dzień, chłopcy. Uczyńcie swoje życie niezwykłym.</item>
+        <item>Drogi? Tam, dokąd jedziemy, drogi nie są nam potrzebne.</item>
+        <item>Kiedy raz kogoś poznasz, nigdy tak naprawdę go nie zapominasz.</item>
+        <item>To nie twoja wina.</item>
+        <item>Pamiętaj, kim jesteś.</item>
+        <item>Do nieskończoności i jeszcze dalej!</item>
+        <item>Potrzebujemy większej łodzi.</item>
+        <item>Wrócę.</item>
+        <item>Cokolwiek będziesz robić, kochaj to.</item>
+        <item>Każdy może gotować.</item>
+    </string-array>
+</resources>

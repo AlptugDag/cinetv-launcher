@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Todos esses momentos se perderão no tempo, como lágrimas na chuva.</item>
+        <item>Antigamente, olhávamos para o céu e nos perguntávamos qual era o nosso lugar nas estrelas.</item>
+        <item>Você não pode ter medo de sonhar um pouco maior, querido.</item>
+        <item>Não existe colher.</item>
+        <item>O medo mata a mente.</item>
+        <item>Por que tão sério?</item>
+        <item>Desculpe, Dave. Receio não poder fazer isso.</item>
+        <item>Um brinde a você, garota.</item>
+        <item>Vou fazer uma oferta que ele não poderá recusar.</item>
+        <item>A vida é como uma caixa de chocolates: você nunca sabe o que vai encontrar.</item>
+        <item>Ocupe-se em viver ou ocupe-se em morrer.</item>
+        <item>As coisas que você possui acabam possuindo você.</item>
+        <item>O que fazemos em vida ecoa na eternidade.</item>
+        <item>Que a Força esteja com você.</item>
+        <item>Tudo o que temos de decidir é o que fazer com o tempo que nos é dado.</item>
+        <item>Carpe diem. Aproveitem o dia, rapazes. Tornem suas vidas extraordinárias.</item>
+        <item>Estradas? Para onde vamos, não precisamos de estradas.</item>
+        <item>Depois que você conhece alguém, nunca o esquece de verdade.</item>
+        <item>Não é culpa sua.</item>
+        <item>Lembre-se de quem você é.</item>
+        <item>Ao infinito e além!</item>
+        <item>Vamos precisar de um barco maior.</item>
+        <item>Eu voltarei.</item>
+        <item>Seja o que for que você acabe fazendo, ame isso.</item>
+        <item>Qualquer um pode cozinhar.</item>
+    </string-array>
+</resources>

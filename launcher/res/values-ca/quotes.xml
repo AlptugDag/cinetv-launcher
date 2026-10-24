@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Tots aquests moments es perdran en el temps, com llàgrimes sota la pluja.</item>
+        <item>Abans miràvem el cel i ens preguntàvem quin era el nostre lloc entre les estrelles.</item>
+        <item>No has de tenir por de somiar una mica més gran, estimat.</item>
+        <item>No hi ha cullera.</item>
+        <item>La por mata la ment.</item>
+        <item>Per què tan seriós?</item>
+        <item>Ho sento, Dave. Em temo que no puc fer això.</item>
+        <item>A la teva salut, petita.</item>
+        <item>Li faré una oferta que no podrà rebutjar.</item>
+        <item>La vida és com una capsa de bombons: mai no saps què et tocarà.</item>
+        <item>O t\'afanyes a viure, o t\'afanyes a morir.</item>
+        <item>Les coses que tens acaben tenint-te a tu.</item>
+        <item>El que fem en vida ressona en l\'eternitat.</item>
+        <item>Que la Força t\'acompanyi.</item>
+        <item>L\'únic que hem de decidir és què fer amb el temps que se\'ns ha donat.</item>
+        <item>Carpe diem. Aprofiteu el dia, nois. Feu que les vostres vides siguin extraordinàries.</item>
+        <item>Carreteres? On anem no ens calen carreteres.</item>
+        <item>Quan coneixes algú, mai no l\'oblides del tot.</item>
+        <item>No és culpa teva.</item>
+        <item>Recorda qui ets.</item>
+        <item>Fins a l\'infinit i més enllà!</item>
+        <item>Necessitarem una barca més gran.</item>
+        <item>Tornaré.</item>
+        <item>Facis el que facis, estima-ho.</item>
+        <item>Tothom pot cuinar.</item>
+    </string-array>
+</resources>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TV Master Launcher — Nova Video Player Setup & Integration
+# CineTV — Nova Video Player Setup & Integration
 # Automatically downloads and installs the official Nova Video Player APK from GitHub releases.
 # Serves as the ultimate hardware-accelerated fallback player for Nuvio TV (AFR + Bitstream Audio).
 set -e

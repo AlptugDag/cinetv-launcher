@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TV Master Launcher — Nuvio TV Cinema Presets & Hardware Calibration
+# CineTV — Nuvio TV Cinema Presets & Hardware Calibration
 # OPTIONAL / MODULAR SCRIPT (Not run by default; executed on demand by user or AI wizard)
 # Configures cinema-grade picture, bit-perfect surround sound, AFR frame rate matching,
 # and verified Turkish 4K HDR10 streaming repositories (Anthology, Torrentio, Subtitles).

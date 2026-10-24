@@ -1,0 +1,12 @@
+title = "CineTV secret scan"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public Android debug key and test fixtures"
+paths = [
+  '''launcher/debug\.keystore''',
+  '''release-signing/cert-sha256\.txt''',
+  '''examples/.*/debloat\.txt''',
+]

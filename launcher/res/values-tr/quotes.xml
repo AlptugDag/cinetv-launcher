@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Bütün o anlar zamanda kaybolacak, yağmurdaki gözyaşları gibi.</item>
+        <item>Eskiden gökyüzüne bakar, yıldızlar arasındaki yerimizi merak ederdik.</item>
+        <item>Biraz daha büyük hayal kurmaktan korkmamalısın, canım.</item>
+        <item>Kaşık yok.</item>
+        <item>Korku, zihni öldürendir.</item>
+        <item>Neden bu kadar ciddisin?</item>
+        <item>Üzgünüm Dave. Korkarım bunu yapamam.</item>
+        <item>Gözlerine bakıyorum, bebeğim.</item>
+        <item>Ona reddedemeyeceği bir teklif yapacağım.</item>
+        <item>Hayat bir kutu çikolata gibidir. Ne çıkacağını asla bilemezsin.</item>
+        <item>Ya yaşamakla meşgul ol ya da ölmekle.</item>
+        <item>Sahip olduğun şeyler sonunda sana sahip olur.</item>
+        <item>Hayatta yaptıklarımız sonsuzlukta yankılanır.</item>
+        <item>Güç seninle olsun.</item>
+        <item>Karar vermemiz gereken tek şey, bize verilen zamanla ne yapacağımız.</item>
+        <item>Carpe diem. Günü yakalayın çocuklar. Hayatlarınızı olağanüstü kılın.</item>
+        <item>Yollar mı? Gittiğimiz yerde yollara ihtiyacımız yok.</item>
+        <item>Biriyle bir kez tanıştın mı, onu asla gerçekten unutmazsın.</item>
+        <item>Senin suçun değil.</item>
+        <item>Kim olduğunu hatırla.</item>
+        <item>Sonsuzluğa ve ötesine!</item>
+        <item>Daha büyük bir tekneye ihtiyacın olacak.</item>
+        <item>Geri döneceğim.</item>
+        <item>Sonunda ne yaparsan yap, onu sev.</item>
+        <item>Herkes yemek yapabilir.</item>
+    </string-array>
+</resources>

@@ -1,60 +1,41 @@
 #!/usr/bin/env bash
-# TV Master Launcher — Ad-Free YouTube Disguise Engine
-# Replaces stock bloated YouTube with an ad-free client (SmartTube / TizenTube / Cobalt)
-# disguised with the official YouTube logo and name for a seamless family experience.
-set -e
+# CineTV — ad-free YouTube.
+#
+# Installs TizenTube Cobalt (ad-free YouTube TV client; SmartTube as fallback) and disables the
+# stock YouTube app (reversible: Settings › Apps › YouTube › Enable). CineTV then shows it with the
+# YouTube name and logo, sends the remote's YouTube button and every YouTube link to it, and
+# redirects anything that still opens the stock app.
+set -euo pipefail
 
-echo "==> [YouTube Disguise & Ad-Free Setup]"
-DEVICE=$(adb devices | grep -E "device$" | head -n 1 | awk '{print $1}')
+adb get-state >/dev/null 2>&1 || { echo "No adb device. Run: adb connect <TV_IP>:5555" >&2; exit 1; }
+tv() { adb shell "$@" 2>/dev/null | tr -d '\r'; }
 
-if [ -z "$DEVICE" ]; then
-    echo "ERROR: No ADB device connected."
-    exit 1
-fi
-
-echo "==> Connected to: $DEVICE"
-
-# 1. Disable / remove stock YouTube TV (cluttered with unskippable ads & telemetry)
-echo "==> Disabling stock YouTube TV app..."
-adb shell "pm uninstall -k --user 0 com.google.android.youtube.tv 2>/dev/null || pm disable-user --user 0 com.google.android.youtube.tv 2>/dev/null || true"
-
-# 2. Check architecture (arm vs arm64)
-ABI=$(adb shell getprop ro.product.cpu.abi | tr -d '\r')
-echo "==> Target SoC Architecture: $ABI"
-
-# 3. Detect installed ad-free YouTube clients
-# Supported packages:
-# - io.gh.reisxd.tizentube.cobalt (TizenTube Cobalt TV)
-# - com.teamsmart.videomanager.tv (SmartTube Stable)
-# - com.liskovsoft.smarttubetv.beta (SmartTube Beta)
-INSTALLED_YT=""
-for pkg in "io.gh.reisxd.tizentube.cobalt" "com.teamsmart.videomanager.tv" "com.liskovsoft.smarttubetv.beta"; do
-    if adb shell "pm list packages" | grep -q "$pkg"; then
-        INSTALLED_YT="$pkg"
-        echo "==> Found installed ad-free YouTube client: $pkg"
+for pkg in io.gh.reisxd.tizentube.cobalt com.teamsmart.videomanager.tv com.liskovsoft.smarttubetv.beta; do
+    if tv pm list packages | grep -qx "package:$pkg"; then
+        echo "Ad-free YouTube already installed: $pkg"
+        INSTALLED="$pkg"
         break
     fi
 done
 
-if [ -z "$INSTALLED_YT" ]; then
-    echo "==> No ad-free client found. Downloading SmartTube Stable (TV edition)..."
-    ST_URL="https://github.com/yuliskov/SmartTube/releases/latest/download/smarttube_stable.apk"
-    TMP_APK=$(mktemp -t smarttube_XXXXXX.apk)
-    trap 'rm -f "$TMP_APK"' EXIT
-    curl -L -s -o "$TMP_APK" "$ST_URL" || wget -q -O "$TMP_APK" "$ST_URL"
-    echo "==> Installing SmartTube..."
-    adb install -r -d -g "$TMP_APK"
-    INSTALLED_YT="com.teamsmart.videomanager.tv"
-    rm -f "$TMP_APK"
-    trap - EXIT
+if [ -z "${INSTALLED:-}" ]; then
+    TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+    ABI="$(tv getprop ro.product.cpu.abi)"
+    case "$ABI" in arm64*) ASSET="cobalt-arm64.apk" ;; *) ASSET="cobalt-arm.apk" ;; esac
+    URL="$(curl -fsSL https://api.github.com/repos/reisxd/TizenTubeCobalt/releases/latest \
+        | grep -o "\"browser_download_url\": *\"[^\"]*$ASSET\"" | sed 's/.*"\(http[^"]*\)"/\1/' || true)"
+    if [ -n "$URL" ] && curl -fsSL -o "$TMP/yt.apk" "$URL" && adb install -r "$TMP/yt.apk" >/dev/null; then
+        INSTALLED="io.gh.reisxd.tizentube.cobalt"
+    else
+        echo "TizenTube download failed; installing SmartTube instead."
+        curl -fsSL -o "$TMP/yt.apk" "https://github.com/yuliskov/SmartTube/releases/latest/download/smarttube_stable.apk"
+        adb install -r "$TMP/yt.apk" >/dev/null
+        INSTALLED="com.teamsmart.videomanager.tv"
+    fi
+    echo "Installed $INSTALLED"
 fi
 
-# 4. Enable SponsorBlock & High-Bitrate VP9/AV1 codec settings if supported
-echo "==> Optimizing playback buffers..."
-adb shell "setprop persist.sys.media.use_awesome 0 2>/dev/null || true"
-adb shell "setprop media.stagefright.enable-player true 2>/dev/null || true"
-
-echo "==> Ad-Free YouTube Disguise Setup Complete!"
-echo "    App: $INSTALLED_YT"
-echo "    Icon: Official YouTube Red Icon (via TV Master Launcher)"
-echo "    Ads: Blocked (Video ads + sponsor segments + banners)"
+if tv pm list packages -e | grep -qx "package:com.google.android.youtube.tv"; then
+    tv pm disable-user --user 0 com.google.android.youtube.tv >/dev/null && echo "Stock YouTube disabled (reversible)"
+fi
+echo "Done: the YouTube tile, the remote's YouTube button and YouTube links now open $INSTALLED."

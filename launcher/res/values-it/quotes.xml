@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>E tutti quei momenti andranno perduti nel tempo, come lacrime nella pioggia.</item>
+        <item>Una volta guardavamo il cielo e ci chiedevamo quale fosse il nostro posto tra le stelle.</item>
+        <item>Non devi aver paura di sognare un po\' più in grande, tesoro.</item>
+        <item>Il cucchiaio non esiste.</item>
+        <item>La paura uccide la mente.</item>
+        <item>Perché così serio?</item>
+        <item>Mi dispiace, Dave. Purtroppo non posso farlo.</item>
+        <item>Alla salute, bambina.</item>
+        <item>Gli farò un\'offerta che non potrà rifiutare.</item>
+        <item>La vita è come una scatola di cioccolatini: non sai mai quello che ti capita.</item>
+        <item>O fai di tutto per vivere, o fai di tutto per morire.</item>
+        <item>Le cose che possiedi alla fine ti possiedono.</item>
+        <item>Ciò che facciamo in vita riecheggia nell\'eternità.</item>
+        <item>Che la Forza sia con te.</item>
+        <item>Tutto ciò che dobbiamo decidere è cosa fare con il tempo che ci viene concesso.</item>
+        <item>Carpe diem. Cogliete l\'attimo, ragazzi. Rendete straordinaria la vostra vita.</item>
+        <item>Strade? Dove stiamo andando non c\'è bisogno di strade.</item>
+        <item>Una volta che incontri qualcuno, non lo dimentichi mai davvero.</item>
+        <item>Non è colpa tua.</item>
+        <item>Ricordati chi sei.</item>
+        <item>Verso l\'infinito e oltre!</item>
+        <item>Ci serve una barca più grande.</item>
+        <item>Tornerò.</item>
+        <item>Qualunque cosa farai, amala.</item>
+        <item>Chiunque può cucinare.</item>
+    </string-array>
+</resources>

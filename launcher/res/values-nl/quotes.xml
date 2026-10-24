@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Al die momenten zullen verloren gaan in de tijd, als tranen in de regen.</item>
+        <item>Vroeger keken we omhoog naar de hemel en vroegen we ons af wat onze plaats tussen de sterren was.</item>
+        <item>Je moet niet bang zijn om iets groter te dromen, schat.</item>
+        <item>Er is geen lepel.</item>
+        <item>Angst doodt de geest.</item>
+        <item>Waarom zo serieus?</item>
+        <item>Het spijt me, Dave. Ik ben bang dat ik dat niet kan doen.</item>
+        <item>Op jou, schat.</item>
+        <item>Ik ga hem een aanbod doen dat hij niet kan weigeren.</item>
+        <item>Het leven is als een doos bonbons: je weet nooit wat je krijgt.</item>
+        <item>Je bent bezig met leven, of je bent bezig met sterven.</item>
+        <item>De dingen die je bezit, gaan uiteindelijk jou bezitten.</item>
+        <item>Wat we in het leven doen, weerklinkt in de eeuwigheid.</item>
+        <item>Moge de Kracht met je zijn.</item>
+        <item>Het enige wat we moeten beslissen, is wat we doen met de tijd die ons gegeven is.</item>
+        <item>Carpe diem. Pluk de dag, jongens. Maak jullie leven buitengewoon.</item>
+        <item>Wegen? Waar wij heen gaan, hebben we geen wegen nodig.</item>
+        <item>Als je iemand eenmaal hebt ontmoet, vergeet je diegene nooit echt.</item>
+        <item>Het is jouw schuld niet.</item>
+        <item>Vergeet niet wie je bent.</item>
+        <item>Tot in de oneindigheid en nog verder!</item>
+        <item>We hebben een grotere boot nodig.</item>
+        <item>Ik kom terug.</item>
+        <item>Wat je uiteindelijk ook gaat doen, hou ervan.</item>
+        <item>Iedereen kan koken.</item>
+    </string-array>
+</resources>

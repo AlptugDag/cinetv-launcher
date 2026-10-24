@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Todos esos momentos se perderán en el tiempo, como lágrimas en la lluvia.</item>
+        <item>Antes mirábamos al cielo y nos preguntábamos cuál era nuestro lugar entre las estrellas.</item>
+        <item>No debes tener miedo de soñar un poco más a lo grande, cariño.</item>
+        <item>No hay cuchara.</item>
+        <item>El miedo mata la mente.</item>
+        <item>¿Por qué tan serio?</item>
+        <item>Lo siento, Dave. Me temo que no puedo hacer eso.</item>
+        <item>Brindo por ti, pequeña.</item>
+        <item>Le haré una oferta que no podrá rechazar.</item>
+        <item>La vida es como una caja de bombones: nunca sabes lo que te va a tocar.</item>
+        <item>O te empeñas en vivir, o te empeñas en morir.</item>
+        <item>Las cosas que posees acaban poseyéndote.</item>
+        <item>Lo que hacemos en la vida tiene su eco en la eternidad.</item>
+        <item>Que la Fuerza te acompañe.</item>
+        <item>Lo único que podemos decidir es qué hacer con el tiempo que se nos ha dado.</item>
+        <item>Carpe diem. Aprovechad el día, chicos. Haced que vuestras vidas sean extraordinarias.</item>
+        <item>¿Carreteras? A donde vamos no necesitamos carreteras.</item>
+        <item>Cuando conoces a alguien, nunca lo olvidas del todo.</item>
+        <item>No es culpa tuya.</item>
+        <item>Recuerda quién eres.</item>
+        <item>¡Hasta el infinito y más allá!</item>
+        <item>Vamos a necesitar un barco más grande.</item>
+        <item>Volveré.</item>
+        <item>Hagas lo que hagas, ámalo.</item>
+        <item>Cualquiera puede cocinar.</item>
+    </string-array>
+</resources>

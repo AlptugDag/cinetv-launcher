@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TV Master Launcher — Restore TV core services
+# CineTV — Restore TV core services
 #
 # Re-enables (or re-installs for user 0) the OEM TV-core packages that must never be removed.
 # Safe to run any time; it is a no-op when everything is already healthy.

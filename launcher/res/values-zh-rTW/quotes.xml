@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>所有這些時刻，終將消逝在時間裡，就像雨中的淚水。</item>
+        <item>我們曾仰望星空，思索我們在群星中的位置。</item>
+        <item>親愛的，別害怕把夢做得更大一點。</item>
+        <item>根本沒有湯匙。</item>
+        <item>恐懼是心靈的殺手。</item>
+        <item>為什麼這麼嚴肅？</item>
+        <item>對不起，戴夫。恐怕我不能那麼做。</item>
+        <item>為妳乾杯，孩子。</item>
+        <item>我會給他一個無法拒絕的條件。</item>
+        <item>人生就像一盒巧克力，你永遠不知道下一顆是什麼口味。</item>
+        <item>要嘛忙著活，要嘛忙著死。</item>
+        <item>你擁有的東西，最終會擁有你。</item>
+        <item>我們生前的所作所為，將在永恆中迴盪。</item>
+        <item>願原力與你同在。</item>
+        <item>我們唯一要決定的，是如何運用被賦予的時間。</item>
+        <item>及時行樂。把握今天，孩子們，讓你們的生命非凡。</item>
+        <item>路？我們要去的地方，不需要路。</item>
+        <item>一旦遇見了誰，就永遠不會真正忘記。</item>
+        <item>這不是你的錯。</item>
+        <item>記住你是誰。</item>
+        <item>飛向宇宙，浩瀚無垠！</item>
+        <item>我們需要一艘更大的船。</item>
+        <item>我會回來的。</item>
+        <item>不管最後你做什麼，都要熱愛它。</item>
+        <item>人人都能當廚師。</item>
+    </string-array>
+</resources>

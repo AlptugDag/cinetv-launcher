@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TV Master Launcher — shared safety helpers (source this file, do not execute it).
+# CineTV — shared safety helpers (source this file, do not execute it).
 #
 # Why this exists:
 #   Removing the OEM "TV core" (e.g. com.mediatek.wwtv.tvcenter on Arçelik/Beko/Grundig MediaTek
@@ -35,7 +35,7 @@ is_protected_pkg() {
         *hdmi*|*tvinput*|*tvapi*|*tvservice*|*display*|*hdr*|*panel*|*picture*|*tuner*|*dvb*|*cec*)
             return 0 ;;
         # --- This project ---
-        com.gathin.tvhome|com.nuvio.tv|org.courville.nova|io.github.jqssun.airplay)
+        com.cinetv.launcher|com.nuvio.tv|org.courville.nova|io.github.jqssun.airplay)
             return 0 ;;
     esac
     return 1

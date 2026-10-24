@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Všechny ty okamžiky budou ztraceny v čase jako slzy v dešti.</item>
+        <item>Dřív jsme vzhlíželi k obloze a přemýšleli o svém místě mezi hvězdami.</item>
+        <item>Nesmíš se bát snít trochu víc ve velkém, drahoušku.</item>
+        <item>Žádná lžíce neexistuje.</item>
+        <item>Strach zabíjí mysl.</item>
+        <item>Proč tak vážně?</item>
+        <item>Je mi líto, Dave. Obávám se, že to nemohu udělat.</item>
+        <item>Na tvé zdraví, maličká.</item>
+        <item>Udělám mu nabídku, kterou nebude moct odmítnout.</item>
+        <item>Život je jako bonboniéra: nikdy nevíš, co ochutnáš.</item>
+        <item>Buď se snaž žít, nebo se snaž umřít.</item>
+        <item>Věci, které vlastníš, nakonec vlastní tebe.</item>
+        <item>Co v životě vykonáme, zní ozvěnou věčností.</item>
+        <item>Ať tě provází Síla.</item>
+        <item>Musíme se jen rozhodnout, co uděláme s časem, který nám byl dán.</item>
+        <item>Carpe diem. Užívejte dne, chlapci. Udělejte své životy výjimečnými.</item>
+        <item>Silnice? Tam, kam jedeme, silnice nepotřebujeme.</item>
+        <item>Když už jednou někoho potkáš, nikdy na něj doopravdy nezapomeneš.</item>
+        <item>Není to tvoje vina.</item>
+        <item>Pamatuj, kdo jsi.</item>
+        <item>Do nekonečna a ještě dál!</item>
+        <item>Budeme potřebovat větší loď.</item>
+        <item>Vrátím se.</item>
+        <item>Ať nakonec budeš dělat cokoliv, miluj to.</item>
+        <item>Vařit může každý.</item>
+    </string-array>
+</resources>

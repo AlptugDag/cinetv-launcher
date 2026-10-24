@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#07070c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>CineTV</title>
+<style>
+:root{
+  --bg:#07070c;--ink:#f5f5f7;--dim:rgba(235,235,245,.6);--faint:rgba(235,235,245,.32);
+  --glass:rgba(255,255,255,.08);--glass-hi:rgba(255,255,255,.14);--edge:rgba(255,255,255,.16);
+  --accent:#8b5cf6;--accent2:#c4b5fd;--ok:#34d399;--radius:22px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font:15px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+body::before{content:"";position:fixed;inset:-20%;z-index:-1;
+  background:radial-gradient(40% 35% at 20% 10%,rgba(139,92,246,.35),transparent 70%),
+             radial-gradient(35% 30% at 85% 30%,rgba(56,189,248,.18),transparent 70%),
+             radial-gradient(45% 40% at 50% 100%,rgba(236,72,153,.16),transparent 70%);filter:blur(10px)}
+.glass{background:var(--glass);border:1px solid var(--edge);border-radius:var(--radius);
+  -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 10px 30px rgba(0,0,0,.35)}
+header{position:sticky;top:0;z-index:5;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 10px;
+  background:linear-gradient(var(--bg) 55%,transparent)}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.brand b{font-size:22px;letter-spacing:-.02em}
+.brand span{font-size:12px;color:var(--dim);margin-left:auto;display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+.dot.on{background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.search{display:flex;align-items:center;gap:10px;padding:12px 16px}
+.search input{flex:1;background:none;border:0;outline:0;color:var(--ink);font-size:16px}
+.search svg{opacity:.7}
+main{padding:0 16px calc(96px + var(--safe-b))}
+section{display:none}section.on{display:block}
+h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:18px 2px 10px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(min-width:560px){.grid{grid-template-columns:repeat(5,1fr)}}
+.card{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:2/3;background:var(--glass);
+  box-shadow:0 8px 20px rgba(0,0,0,.45);transform:translateZ(0);transition:transform .25s}
+.card:active{transform:scale(.96)}
+.card img{width:100%;height:100%;object-fit:cover;display:block}
+.card .t{position:absolute;inset:auto 0 0 0;padding:22px 8px 7px;font-size:11.5px;font-weight:600;
+  background:linear-gradient(transparent,rgba(0,0,0,.85))}
+.card .badge{position:absolute;top:6px;left:6px;font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(0,0,0,.55)}
+.empty{color:var(--dim);text-align:center;padding:40px 10px}
+nav{position:fixed;left:12px;right:12px;bottom:calc(10px + var(--safe-b));z-index:9;display:flex;padding:6px}
+nav button{flex:1;background:none;border:0;color:var(--dim);font-size:11px;padding:8px 0;border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button.on{color:var(--ink);background:var(--glass-hi)}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.25s;z-index:20}
+.sheet-bg.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.9,.2,1);
+  border-radius:28px 28px 0 0;padding:18px 18px calc(22px + var(--safe-b));max-height:86vh;overflow:auto}
+.sheet.on{transform:none}
+.sheet .row{display:flex;gap:16px}
+.sheet img{width:110px;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.5)}
+.sheet h3{margin:4px 0 6px;font-size:20px;line-height:1.2}
+.meta{color:var(--dim);font-size:13px}
+.ov{color:var(--dim);font-size:14px;margin:14px 0}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:16px;padding:15px;font-size:16px;font-weight:600;color:#fff;
+  background:linear-gradient(180deg,#9b6cff,#7c3aed);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 10px 24px rgba(124,58,237,.45)}
+.btn.ghost{background:var(--glass-hi);box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 16px);transform:translate(-50%,-140%);transition:.3s;z-index:40;padding:10px 18px;font-size:14px}
+.toast.on{transform:translate(-50%,0)}
+/* remote */
+.pad{margin:20px auto 8px;width:260px;height:260px;border-radius:50%;position:relative}
+.pad button{position:absolute;background:none;border:0;color:var(--ink);font-size:22px;width:80px;height:80px}
+.pad .u{top:0;left:90px}.pad .d{bottom:0;left:90px}.pad .l{left:0;top:90px}.pad .r{right:0;top:90px}
+.pad .ok{left:75px;top:75px;width:110px;height:110px;border-radius:50%;background:var(--glass-hi);font-size:16px;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.keys button{padding:16px 0;font-size:14px;color:var(--ink);border:1px solid var(--edge)}
+.field{display:flex;gap:8px;margin-top:16px;padding:6px 6px 6px 14px;align-items:center}
+.field input{flex:1;background:none;border:0;outline:0;color:var(--ink);font-size:15px}
+.field button{border:0;border-radius:14px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:600}
+/* calibration */
+.cal{padding:16px;margin-top:12px}
+.slider{margin:14px 0}
+.slider label{display:flex;justify-content:space-between;font-size:13px;color:var(--dim);margin-bottom:6px}
+.slider label b{color:var(--ink);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:30px;background:none}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(255,255,255,.12),rgba(255,255,255,.3))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-10px;border-radius:50%;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.5)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--edge);background:var(--glass);color:var(--ink);border-radius:999px;padding:9px 14px;font-size:13px}
+.chip.on{background:var(--accent);border-color:transparent}
+.note{font-size:12.5px;color:var(--dim);margin-top:8px}
+.pair{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+.pair .icon{width:84px;height:84px;border-radius:24px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;font-size:38px}
+.skeleton{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,.12),rgba(255,255,255,.05));background-size:200% 100%;animation:sk 1.2s infinite}
+@keyframes sk{to{background-position:-200% 0}}
+</style>
+</head>
+<body>
+<div id="pair" class="pair" hidden>
+  <div class="icon glass">📺</div>
+  <h3 data-i="pairTitle"></h3>
+  <p class="meta" data-i="pairBody"></p>
+</div>
+
+<div id="app" hidden>
+<header>
+  <div class="brand"><b>CineTV</b><span><i id="dot" class="dot"></i><em id="status" data-i="connecting"></em></span></div>
+  <div class="search glass" id="searchBox">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" enterkeyhint="search" autocomplete="off" data-ph="searchPh">
+  </div>
+</header>
+
+<main>
+  <section id="tab-search" class="on">
+    <h2 id="listTitle" data-i="trending"></h2>
+    <div class="grid" id="results"></div>
+  </section>
+
+  <section id="tab-remote">
+    <div class="pad glass">
+      <button class="u" data-key="19">▲</button><button class="d" data-key="20">▼</button>
+      <button class="l" data-key="21">◀</button><button class="r" data-key="22">▶</button>
+      <button class="ok" data-key="23">OK</button>
+    </div>
+    <div class="keys">
+      <button class="glass" data-key="4" data-i="back"></button>
+      <button class="glass" data-key="3" data-i="home"></button>
+      <button class="glass" data-key="82" data-i="menu"></button>
+      <button class="glass" data-key="25">🔉</button>
+      <button class="glass" data-key="164">🔇</button>
+      <button class="glass" data-key="24">🔊</button>
+    </div>
+    <div class="field glass">
+      <input id="tvq" data-ph="tvSearchPh">
+      <button id="tvqGo" data-i="send"></button>
+    </div>
+    <button class="btn ghost" style="margin-top:12px" id="saver" data-i="screensaver"></button>
+  </section>
+
+  <section id="tab-cal">
+    <div class="cal glass">
+      <h2 style="margin-top:0" data-i="presets"></h2>
+      <div class="chips" id="presets"></div>
+      <h2 data-i="patterns"></h2>
+      <div class="chips" id="patterns"></div>
+      <p class="note" data-i="patternNote"></p>
+    </div>
+    <div class="cal glass" id="panelBox">
+      <h2 style="margin-top:0" data-i="picture"></h2>
+      <div id="sliders"></div>
+    </div>
+    <div class="cal glass">
+      <div class="slider"><label><span data-i="warmth"></span><b id="warmthV"></b></label>
+        <input type="range" id="warmth" min="2700" max="6500" step="100"></div>
+      <button class="btn ghost" id="reset" data-i="reset"></button>
+      <p class="note" id="calNote"></p>
+    </div>
+  </section>
+</main>
+
+<nav class="glass">
+  <button class="on" data-tab="search"><span>🎬</span><span data-i="tabSearch"></span></button>
+  <button data-tab="remote"><span>🕹️</span><span data-i="tabRemote"></span></button>
+  <button data-tab="cal"><span>🎨</span><span data-i="tabCal"></span></button>
+</nav>
+</div>
+
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet glass" id="sheet"></div>
+<div class="toast glass" id="toast"></div>
+
+<script>
+(() => {
+  const T = {
+    en: {pairTitle:"Scan the code on your TV",pairBody:"Open CineTV on the TV, choose “Connect phone” and scan the QR code with your camera.",
+      connecting:"Connecting…",connected:"Connected",offline:"TV not reachable",searchPh:"Films, series, people…",trending:"Trending",
+      results:"Results",noResults:"Nothing found",openTv:"Open on TV",opening:"Opening on your TV…",movie:"Film",series:"Series",
+      back:"Back",home:"Home",menu:"Menu",send:"Send",tvSearchPh:"Search or ask on the TV",screensaver:"Start screensaver",
+      tabSearch:"Discover",tabRemote:"Remote",tabCal:"Picture",presets:"Presets",patterns:"Test patterns",picture:"Picture engine",
+      warmth:"Colour temperature",reset:"Restore my original settings",patternNote:"Choose a pattern, adjust until it looks right, then tap Off.",
+      noPanel:"This TV takes picture changes only from its own menu. Show a pattern here, then adjust Picture settings with the TV remote until the pattern looks right.",
+      p_natural:"Natural",p_cinema:"Cinema",p_night:"Dark room",p_vivid:"Vivid",
+      t_off:"Off",t_gray:"Gray ramp",t_bars:"Colour bars",t_black:"Black level",t_white:"White level",t_skin:"Skin tones",
+      backlight:"Backlight",brightness:"Brightness",contrast:"Contrast",saturation:"Colour",hue:"Tint",sharpness:"Sharpness",red:"Red gain",green:"Green gain",blue:"Blue gain",done:"Saved"},
+    tr: {pairTitle:"TV'deki kodu okutun",pairBody:"TV'de CineTV'yi açın, “Telefonu bağla”yı seçin ve QR kodunu kameranızla okutun.",
+      connecting:"Bağlanıyor…",connected:"Bağlı",offline:"TV'ye ulaşılamıyor",searchPh:"Film, dizi, oyuncu…",trending:"Trend",
+      results:"Sonuçlar",noResults:"Bir şey bulunamadı",openTv:"TV'de aç",opening:"TV'de açılıyor…",movie:"Film",series:"Dizi",
+      back:"Geri",home:"Ana sayfa",menu:"Menü",send:"Gönder",tvSearchPh:"TV'de ara veya sor",screensaver:"Ekran koruyucuyu başlat",
+      tabSearch:"Keşfet",tabRemote:"Kumanda",tabCal:"Görüntü",presets:"Hazır ayarlar",patterns:"Test desenleri",picture:"Görüntü motoru",
+      warmth:"Renk sıcaklığı",reset:"Orijinal ayarlarıma dön",patternNote:"Bir desen seçin, doğru görünene kadar ayarlayın, sonra Kapat'a dokunun.",
+      noPanel:"Bu TV görüntü değişikliklerini yalnızca kendi menüsünden kabul ediyor. Buradan bir desen gösterin, sonra TV kumandasıyla Görüntü ayarlarını desen doğru görünene kadar değiştirin.",
+      p_natural:"Doğal",p_cinema:"Sinema",p_night:"Karanlık oda",p_vivid:"Canlı",
+      t_off:"Kapat",t_gray:"Gri geçiş",t_bars:"Renk çubukları",t_black:"Siyah seviyesi",t_white:"Beyaz seviyesi",t_skin:"Ten tonları",
+      backlight:"Arka ışık",brightness:"Parlaklık",contrast:"Kontrast",saturation:"Renk",hue:"Ton",sharpness:"Keskinlik",red:"Kırmızı kazanç",green:"Yeşil kazanç",blue:"Mavi kazanç",done:"Kaydedildi"}
+  };
+  const L = T[(navigator.language||"en").slice(0,2)] || T.en;
+  const t = k => L[k] || T.en[k] || k;
+  document.documentElement.lang = (navigator.language||"en").slice(0,2);
+  document.querySelectorAll("[data-i]").forEach(e => e.textContent = t(e.dataset.i));
+  document.querySelectorAll("[data-ph]").forEach(e => e.placeholder = t(e.dataset.ph));
+
+  const url = new URL(location.href);
+  let token = url.searchParams.get("k");
+  try { if (token) localStorage.setItem("cinetv.k", token); else token = localStorage.getItem("cinetv.k"); } catch (e) {}
+  if (url.searchParams.has("k")) history.replaceState(null, "", "/" + location.hash);
+  if (!token) { document.getElementById("pair").hidden = false; return; }
+  document.getElementById("app").hidden = false;
+
+  const $ = id => document.getElementById(id);
+  const api = async (path, params = {}) => {
+    const qs = new URLSearchParams(Object.assign({k: token}, params));
+    const r = await fetch("/api/" + path + "?" + qs, {cache: "no-store"});
+    if (r.status === 401) { try { localStorage.removeItem("cinetv.k"); } catch (e) {} location.replace("/"); throw 0; }
+    return r.json();
+  };
+  let toastTimer;
+  const toast = msg => { const el = $("toast"); el.textContent = msg; el.classList.add("on");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("on"), 2200); };
+  const esc = s => String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  // tabs
+  const show = name => {
+    document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === "tab-" + name));
+    document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+    $("searchBox").style.display = name === "search" ? "" : "none";
+    if (name === "cal") loadCal();
+  };
+  document.querySelectorAll("nav button").forEach(b => b.onclick = () => { show(b.dataset.tab); location.hash = b.dataset.tab; });
+
+  // discover
+  const render = (list, title) => {
+    $("listTitle").textContent = title;
+    const box = $("results");
+    if (!list.length) { box.innerHTML = `<div class="empty" style="grid-column:1/-1">${t("noResults")}</div>`; return; }
+    box.innerHTML = list.map((m, i) => `<div class="card" data-i="${i}"><img loading="lazy" src="${esc(m.poster)}" alt="">
+      ${m.type === "series" ? `<span class="badge">${t("series")}</span>` : ""}<div class="t">${esc(m.title)}</div></div>`).join("");
+    box.querySelectorAll(".card").forEach(c => c.onclick = () => openSheet(list[+c.dataset.i]));
+  };
+  const skeleton = () => $("results").innerHTML = Array.from({length: 9}, () => '<div class="card skeleton"></div>').join("");
+  const trending = async () => { skeleton(); try { render((await api("catalog/trending")).results || [], t("trending")); } catch (e) {} };
+  let searchTimer, seq = 0;
+  $("q").addEventListener("input", e => {
+    clearTimeout(searchTimer);
+    const q = e.target.value.trim();
+    searchTimer = setTimeout(async () => {
+      if (!q) return trending();
+      const my = ++seq; skeleton();
+      try { const r = await api("catalog/search", {q}); if (my === seq) render(r.results || [], t("results")); } catch (e) {}
+    }, 350);
+  });
+
+  const sheet = $("sheet"), bg = $("sheetBg");
+  const closeSheet = () => { sheet.classList.remove("on"); bg.classList.remove("on"); };
+  bg.onclick = closeSheet;
+  const openSheet = m => {
+    sheet.innerHTML = `<div class="row"><img src="${esc(m.poster)}" alt=""><div>
+      <h3>${esc(m.title)}</h3><div class="meta">${m.year || ""} · ${m.type === "series" ? t("series") : t("movie")}${m.rating ? " · ★ " + (+m.rating).toFixed(1) : ""}</div></div></div>
+      <p class="ov">${esc(m.overview)}</p><button class="btn" id="go">▶︎ ${t("openTv")}</button>`;
+    sheet.classList.add("on"); bg.classList.add("on");
+    $("go").onclick = async () => {
+      $("go").disabled = true;
+      try { const r = await api("open", {imdb: m.imdb || "", tmdb: m.tmdb || 0, type: m.type, title: m.title, poster: m.poster});
+        toast(r.ok ? t("opening") : t("noResults")); } catch (e) { toast(t("offline")); }
+      closeSheet();
+    };
+  };
+
+  // remote
+  document.querySelectorAll("[data-key]").forEach(b => b.onclick = () => { navigator.vibrate && navigator.vibrate(8); api("key", {code: b.dataset.key}).catch(() => {}); });
+  $("tvqGo").onclick = () => { const q = $("tvq").value.trim(); if (q) { api("tv/search", {q}); $("tvq").value = ""; toast(t("done")); } };
+  $("saver").onclick = () => api("screensaver");
+
+  // calibration
+  const presets = ["natural", "cinema", "night", "vivid"], patterns = ["off", "gray", "bars", "black", "white", "skin"];
+  $("presets").innerHTML = presets.map(p => `<button class="chip" data-p="${p}">${t("p_" + p)}</button>`).join("");
+  $("patterns").innerHTML = patterns.map(p => `<button class="chip" data-t="${p}">${t("t_" + p)}</button>`).join("");
+  document.querySelectorAll("[data-p]").forEach(b => b.onclick = async () => {
+    document.querySelectorAll("[data-p]").forEach(x => x.classList.toggle("on", x === b));
+    const r = await api("calibration/preset", {name: b.dataset.p}); drawCal(r.calibration); toast(t("done")); });
+  document.querySelectorAll("[data-t]").forEach(b => b.onclick = () => {
+    document.querySelectorAll("[data-t]").forEach(x => x.classList.toggle("on", x === b && b.dataset.t !== "off"));
+    api("calibration/pattern", {name: b.dataset.t}); });
+  const debounce = {};
+  const drawCal = c => {
+    if (!c) return;
+    const values = c.values || {}, ranges = c.ranges || {};
+    $("panelBox").style.display = c.panel ? "" : "none";
+    $("calNote").textContent = c.panel ? "" : t("noPanel");
+    $("sliders").innerHTML = Object.keys(values).map(n => `<div class="slider"><label><span>${t(n)}</span><b id="v-${n}">${values[n]}</b></label>
+      <input type="range" data-n="${n}" min="${ranges[n][0]}" max="${ranges[n][1]}" value="${values[n]}"></div>`).join("");
+    $("sliders").querySelectorAll("input").forEach(s => s.oninput = () => {
+      $("v-" + s.dataset.n).textContent = s.value; clearTimeout(debounce[s.dataset.n]);
+      debounce[s.dataset.n] = setTimeout(() => api("calibration/set", {name: s.dataset.n, value: s.value}), 120); });
+    $("warmth").value = c.warmthOn ? c.warmthValue : 6500; $("warmthV").textContent = $("warmth").value + " K";
+  };
+  $("warmth").oninput = e => { $("warmthV").textContent = e.target.value + " K"; clearTimeout(debounce.w);
+    debounce.w = setTimeout(() => api("calibration/warmth", {k: e.target.value}), 150); };
+  $("reset").onclick = async () => { const r = await api("calibration/reset"); drawCal(r.calibration); toast(t("done")); };
+  const loadCal = async () => { try { drawCal((await api("calibration")).calibration); } catch (e) {} };
+
+  // connect
+  api("hello").then(() => { $("dot").classList.add("on"); $("status").textContent = t("connected"); })
+    .catch(() => { $("status").textContent = t("offline"); });
+  trending();
+  const start = location.hash.replace("#", "");
+  if (["remote", "cal", "search"].includes(start)) show(start);
+})();
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TV Master Launcher — Arçelik / Beko / Grundig (MediaTek Android 11) Debloater
+# CineTV — Arçelik / Beko / Grundig (MediaTek Android 11) Debloater
 # Safely removes non-app bloatware, telemetry, and storefronts for user 0.
 #
 # SAFETY: the MediaTek TV core (com.mediatek.wwtv.tvcenter + its .rro overlay, com.mediatek.tv.*,
@@ -25,7 +25,7 @@ PACKAGES_TO_REMOVE=(
     "com.lagradost.cloudstream3"
     "com.stremio.one"
 
-    # Stock launcher clutter and telemetry (replaced by TV Master Launcher)
+    # Stock launcher clutter and telemetry (replaced by CineTV)
     "com.google.android.tvlauncher"
     "com.google.android.apps.tv.launcherx"
     "com.google.android.tungsten.setupwraith"

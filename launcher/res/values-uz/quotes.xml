@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Bu lahzalarning barchasi vaqt ichida yo‘qolib ketadi, yomg‘irdagi ko‘z yoshlari kabi.</item>
+        <item>Ilgari biz osmonga qarab, yulduzlar orasidagi o‘rnimiz haqida o‘ylardik.</item>
+        <item>Biroz kattaroq orzu qilishdan qo‘rqma, azizim.</item>
+        <item>Qoshiq yo‘q.</item>
+        <item>Qo‘rquv aqlning qotilidir.</item>
+        <item>Nega bunchalik jiddiy?</item>
+        <item>Kechirasan, Deyv. Afsuski, buni qila olmayman.</item>
+        <item>Sening sog‘lig‘ing uchun, jonim.</item>
+        <item>Men unga rad eta olmaydigan taklif qilaman.</item>
+        <item>Hayot bir quti shokoladga o‘xshaydi: nima tushishini hech qachon bilmaysan.</item>
+        <item>Yo yashash bilan band bo‘l, yo o‘lish bilan.</item>
+        <item>Sen egalik qilgan narsalar oxir-oqibat senga egalik qiladi.</item>
+        <item>Hayotda qilgan ishlarimiz abadiyatda aks-sado beradi.</item>
+        <item>Kuch sen bilan bo‘lsin.</item>
+        <item>Biz faqat bizga berilgan vaqt bilan nima qilishni hal qilishimiz kerak.</item>
+        <item>Carpe diem. Kunni qo‘ldan boy bermang, bolalar. Hayotingizni ajoyib qiling.</item>
+        <item>Yo‘llar? Biz boradigan joyda yo‘llar kerak emas.</item>
+        <item>Kimdir bilan bir marta tanishsang, uni hech qachon chinakamiga unutmaysan.</item>
+        <item>Bu sening aybing emas.</item>
+        <item>Kim ekaningni unutma.</item>
+        <item>Cheksizlikka va undan ham narida!</item>
+        <item>Bizga kattaroq qayiq kerak bo‘ladi.</item>
+        <item>Men qaytaman.</item>
+        <item>Oxir-oqibat nima qilsang ham, uni sev.</item>
+        <item>Har kim ovqat pishira oladi.</item>
+    </string-array>
+</resources>

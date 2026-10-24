@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Kaikki nuo hetket katoavat ajan myötä kuin kyyneleet sateeseen.</item>
+        <item>Ennen katsoimme taivaalle ja pohdimme paikkaamme tähtien joukossa.</item>
+        <item>Älä pelkää unelmoida vähän isommin, kultaseni.</item>
+        <item>Lusikkaa ei ole.</item>
+        <item>Pelko tappaa mielen.</item>
+        <item>Miksi noin vakava?</item>
+        <item>Olen pahoillani, Dave. Pelkäänpä, etten voi tehdä sitä.</item>
+        <item>Maljasi, pikkuinen.</item>
+        <item>Teen hänelle tarjouksen, josta hän ei voi kieltäytyä.</item>
+        <item>Elämä on kuin suklaarasia: koskaan ei tiedä, mitä saa.</item>
+        <item>Joko keskityt elämään tai keskityt kuolemaan.</item>
+        <item>Asiat, jotka omistat, alkavat lopulta omistaa sinut.</item>
+        <item>Se, mitä teemme elämässä, kaikuu ikuisuudessa.</item>
+        <item>Voima olkoon kanssasi.</item>
+        <item>Meidän on vain päätettävä, mitä teemme meille annetulla ajalla.</item>
+        <item>Carpe diem. Tarttukaa hetkeen, pojat. Tehkää elämästänne poikkeuksellista.</item>
+        <item>Teitä? Siellä minne menemme, emme tarvitse teitä.</item>
+        <item>Kun kerran tapaa jonkun, häntä ei koskaan oikeasti unohda.</item>
+        <item>Se ei ole sinun syytäsi.</item>
+        <item>Muista, kuka olet.</item>
+        <item>Kohti ääretöntä ja sen yli!</item>
+        <item>Tarvitsemme isomman veneen.</item>
+        <item>Minä palaan.</item>
+        <item>Mitä ikinä päädytkin tekemään, rakasta sitä.</item>
+        <item>Kuka tahansa voi kokata.</item>
+    </string-array>
+</resources>

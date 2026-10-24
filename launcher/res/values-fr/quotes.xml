@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Tous ces moments se perdront dans l\'oubli, comme les larmes dans la pluie.</item>
+        <item>Avant, on levait les yeux vers le ciel et on se demandait quelle était notre place parmi les étoiles.</item>
+        <item>Il ne faut pas avoir peur de rêver un peu plus grand, chéri.</item>
+        <item>La cuillère n\'existe pas.</item>
+        <item>La peur tue l\'esprit.</item>
+        <item>Pourquoi tant de sérieux ?</item>
+        <item>Je suis désolé, Dave. Je crains de ne pas pouvoir faire ça.</item>
+        <item>À la tienne, mon petit.</item>
+        <item>Je vais lui faire une offre qu\'il ne pourra pas refuser.</item>
+        <item>La vie, c\'est comme une boîte de chocolats : on ne sait jamais sur quoi on va tomber.</item>
+        <item>Soit on s\'occupe de vivre, soit on s\'occupe de mourir.</item>
+        <item>Les choses que tu possèdes finissent par te posséder.</item>
+        <item>Ce que l\'on fait dans sa vie résonne dans l\'éternité.</item>
+        <item>Que la Force soit avec toi.</item>
+        <item>Tout ce que nous avons à décider, c\'est ce que nous devons faire du temps qui nous est imparti.</item>
+        <item>Carpe diem. Profitez du jour présent, les gars. Rendez vos vies extraordinaires.</item>
+        <item>Des routes ? Là où on va, on n\'a pas besoin de routes.</item>
+        <item>Quand on a rencontré quelqu\'un, on ne l\'oublie jamais vraiment.</item>
+        <item>Ce n\'est pas ta faute.</item>
+        <item>Souviens-toi de qui tu es.</item>
+        <item>Vers l\'infini et au-delà !</item>
+        <item>Il va nous falloir un plus gros bateau.</item>
+        <item>Je reviendrai.</item>
+        <item>Quoi que tu finisses par faire, aime-le.</item>
+        <item>Tout le monde peut cuisiner.</item>
+    </string-array>
+</resources>

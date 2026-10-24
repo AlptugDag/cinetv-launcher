@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>All diese Momente werden verloren sein in der Zeit, so wie Tränen im Regen.</item>
+        <item>Früher haben wir zum Himmel aufgeschaut und uns gefragt, welchen Platz wir unter den Sternen haben.</item>
+        <item>Du darfst keine Angst haben, ein bisschen größer zu träumen, Schatz.</item>
+        <item>Es gibt keinen Löffel.</item>
+        <item>Die Angst tötet das Bewusstsein.</item>
+        <item>Warum so ernst?</item>
+        <item>Tut mir leid, Dave. Das kann ich leider nicht tun.</item>
+        <item>Ich schau dir in die Augen, Kleines.</item>
+        <item>Ich mache ihm ein Angebot, das er nicht ablehnen kann.</item>
+        <item>Das Leben ist wie eine Schachtel Pralinen. Man weiß nie, was man kriegt.</item>
+        <item>Entweder man lebt, oder man stirbt.</item>
+        <item>Alles, was du besitzt, besitzt irgendwann dich.</item>
+        <item>Was wir im Leben tun, das hallt wider in der Ewigkeit.</item>
+        <item>Möge die Macht mit dir sein.</item>
+        <item>Wir müssen nur entscheiden, was wir mit der Zeit anfangen wollen, die uns gegeben ist.</item>
+        <item>Carpe diem. Nutzt den Tag, Jungs. Macht etwas Außergewöhnliches aus eurem Leben.</item>
+        <item>Straßen? Wo wir hinfahren, brauchen wir keine Straßen.</item>
+        <item>Wen man einmal getroffen hat, den vergisst man nie wirklich.</item>
+        <item>Es ist nicht deine Schuld.</item>
+        <item>Vergiss nicht, wer du bist.</item>
+        <item>Bis zur Unendlichkeit und noch viel weiter!</item>
+        <item>Wir brauchen ein größeres Boot.</item>
+        <item>Ich komme wieder.</item>
+        <item>Was auch immer du machst, liebe es.</item>
+        <item>Jeder kann kochen.</item>
+    </string-array>
+</resources>

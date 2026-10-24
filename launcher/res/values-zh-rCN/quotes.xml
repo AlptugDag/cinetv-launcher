@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>所有这些时刻，终将消逝在时间里，就像雨中的泪水。</item>
+        <item>我们曾仰望星空，思考我们在群星中的位置。</item>
+        <item>亲爱的，别害怕把梦做得更大一点。</item>
+        <item>根本没有勺子。</item>
+        <item>恐惧是思维的杀手。</item>
+        <item>为什么这么严肃？</item>
+        <item>对不起，戴夫。恐怕我不能那样做。</item>
+        <item>为你干杯，孩子。</item>
+        <item>我会给他一个无法拒绝的条件。</item>
+        <item>人生就像一盒巧克力，你永远不知道下一颗是什么味道。</item>
+        <item>要么忙着活，要么忙着死。</item>
+        <item>你拥有的东西，最终会拥有你。</item>
+        <item>我们生前的所作所为，将在永恒中回响。</item>
+        <item>愿原力与你同在。</item>
+        <item>我们唯一要决定的，是如何利用被赋予的时间。</item>
+        <item>及时行乐。抓住今天，孩子们，让你们的生命非凡。</item>
+        <item>路？我们要去的地方，不需要路。</item>
+        <item>一旦遇见了谁，就永远不会真正忘记。</item>
+        <item>这不是你的错。</item>
+        <item>记住你是谁。</item>
+        <item>飞向宇宙，浩瀚无垠！</item>
+        <item>我们需要一艘更大的船。</item>
+        <item>我会回来的。</item>
+        <item>不管最后你做什么，都要热爱它。</item>
+        <item>人人都能当厨师。</item>
+    </string-array>
+</resources>

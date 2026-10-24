@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TV Master Launcher — Universal Multi-Brand Android TV Debloater
+# CineTV — Universal Multi-Brand Android TV Debloater
 # Automatically detects TV brand and removes manufacturer telemetry, retail bloatware,
 # and heavy default launchers without breaking HDMI inputs, DVB tuners, or picture settings.
 set -e
@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/tv_safety.sh"
 
 echo "================================================================"
-echo "    TV Master Launcher — Universal Android TV Debloater"
+echo "    CineTV — Universal Android TV Debloater"
 echo "================================================================"
 
 DEVICE=$(adb devices | grep -E "device$" | head -n 1 | awk '{print $1}')

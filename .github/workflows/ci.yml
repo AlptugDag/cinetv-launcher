@@ -1,90 +1,53 @@
-name: CineTV CI/CD Pipeline
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  test:
-    name: Unit & Security Verification
+  secrets:
+    name: Secret scan
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup OpenJDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Run Test Suites
-        run: bash scripts/run_tests.sh
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build:
-    name: Build & Package APK
-    needs: test
+    name: Test & build
     runs-on: ubuntu-latest
-    env:
-      ANDROID_HOME: /usr/local/lib/android/sdk
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup OpenJDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
-
-      - name: Install Build Utilities & Verify SDK
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Shell scripts parse
+        run: for f in install.sh scripts/*.sh scripts/*/*.sh; do bash -n "$f"; done
+      - name: Unit tests
+        run: ./gradlew :launcher:testDebugUnitTest --console=plain
+      - name: Debug APK
+        run: ./gradlew :launcher:assembleDebug --console=plain
+      - name: No private files tracked
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y zip unzip
-          echo "Using Android SDK at: $ANDROID_HOME"
-          echo "Available build-tools:"
-          ls -la "$ANDROID_HOME/build-tools" || true
-          echo "Available platforms:"
-          ls -la "$ANDROID_HOME/platforms" || true
-
-      - name: Compile and Package CineTV Launcher
-        env:
-          CINETV_RELEASE_KEYSTORE_BASE64: ${{ secrets.CINETV_RELEASE_KEYSTORE_BASE64 }}
-          CINETV_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.CINETV_RELEASE_KEYSTORE_PASSWORD }}
-          CINETV_RELEASE_KEY_ALIAS: ${{ secrets.CINETV_RELEASE_KEY_ALIAS }}
-          CINETV_RELEASE_KEY_PASSWORD: ${{ secrets.CINETV_RELEASE_KEY_PASSWORD }}
-        run: |
-          set -o pipefail
-          bash -x launcher/build.sh 2>&1 | tee /tmp/build.log || {
-            STATUS=$?
-            ERR_MSG=$(tail -n 20 /tmp/build.log | tr '\n' ' ' | tr -d '\r')
-            echo "::error title=BuildFailure::Exit $STATUS - $ERR_MSG"
-            exit $STATUS
-          }
-
-      - name: Generate Reproducible Cryptographic Checksums
-        run: |
-          cd release
-          if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum cinetv-launcher-v1.0.0.apk tv-master-launcher-v1.0.0.apk > SHA256SUMS.txt
-          elif command -v shasum >/dev/null 2>&1; then
-            shasum -a 256 cinetv-launcher-v1.0.0.apk tv-master-launcher-v1.0.0.apk > SHA256SUMS.txt
+          if git ls-files | grep -E '\.(jks|keystore)$|keystore\.properties|signature_logo\.png|\.env' | grep -v '^launcher/debug.keystore$'; then
+            echo "::error::Private files are tracked"; exit 1
           fi
-          cat SHA256SUMS.txt
-
-      - name: Upload Release Artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: cinetv-launcher-apk
-          path: |
-            release/cinetv-launcher-v1.0.0.apk
-            release/tv-master-launcher-v1.0.0.apk
-            release/SHA256SUMS.txt
-          if-no-files-found: error
+          name: cinetv-debug
+          path: launcher/build/outputs/apk/debug/*.apk
+          retention-days: 14

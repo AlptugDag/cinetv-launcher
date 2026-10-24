@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Screensaver film lines; order matches CinemaMoments.FILMS. -->
+<resources>
+    <string-array name="cinema_quotes">
+        <item>Semua momen itu akan hilang ditelan waktu, seperti air mata dalam hujan.</item>
+        <item>Dulu kita menatap langit dan bertanya-tanya tentang tempat kita di antara bintang-bintang.</item>
+        <item>Kau tak boleh takut bermimpi sedikit lebih besar, Sayang.</item>
+        <item>Tidak ada sendok.</item>
+        <item>Ketakutan adalah pembunuh pikiran.</item>
+        <item>Kenapa begitu serius?</item>
+        <item>Maaf, Dave. Sepertinya aku tidak bisa melakukan itu.</item>
+        <item>Bersulang untukmu, Nak.</item>
+        <item>Aku akan memberinya tawaran yang tak bisa ia tolak.</item>
+        <item>Hidup itu seperti sekotak cokelat. Kau tak pernah tahu apa yang akan kau dapat.</item>
+        <item>Sibuklah hidup, atau sibuklah mati.</item>
+        <item>Barang-barang yang kau miliki pada akhirnya memilikimu.</item>
+        <item>Apa yang kita lakukan dalam hidup bergema dalam keabadian.</item>
+        <item>Semoga Kekuatan menyertaimu.</item>
+        <item>Yang harus kita putuskan hanyalah apa yang akan kita lakukan dengan waktu yang diberikan kepada kita.</item>
+        <item>Carpe diem. Raihlah hari ini, anak-anak. Jadikan hidup kalian luar biasa.</item>
+        <item>Jalan? Ke tempat yang kita tuju, kita tidak butuh jalan.</item>
+        <item>Begitu kau bertemu seseorang, kau tak akan pernah benar-benar melupakannya.</item>
+        <item>Itu bukan salahmu.</item>
+        <item>Ingatlah siapa dirimu.</item>
+        <item>Menuju tak terbatas dan melampauinya!</item>
+        <item>Kita butuh perahu yang lebih besar.</item>
+        <item>Aku akan kembali.</item>
+        <item>Apa pun yang akhirnya kau lakukan, cintailah.</item>
+        <item>Siapa pun bisa memasak.</item>
+    </string-array>
+</resources>

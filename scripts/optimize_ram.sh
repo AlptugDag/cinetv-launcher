@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TV Master Launcher — Smart RAM & Storage-to-RAM Optimizer
+# CineTV — Smart RAM & Storage-to-RAM Optimizer
 # Optimizes zRAM, Low Memory Killer (LMK), and cache thresholds for smooth 4K TV operation.
 set -e
 

@@ -1,0 +1,214 @@
+package com.cinetv.launcher.ui;
+
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.LightingColorFilter;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.view.View;
+
+/**
+ * One DVD keep case drawn as a real box in perspective: the cover under its shrink-wrap, the
+ * printed spine, the plastic top, bottom and opening edges, each lit by a light above-left of the
+ * viewer, a soft shadow underneath and, when focused, the film's own colour glowing behind it.
+ *
+ * Every face is a textured quad (no paths, no clipping), so a case costs the GPU about as much as a
+ * flat poster - this is what lets even a 1 GB TV show the shelf in 3D. Faces turned away are culled.
+ */
+public class DvdCaseView extends View {
+
+    private static final float LX = -0.35f, LY = -0.55f, LZ = -0.76f;
+
+    private DvdCase dvd;
+    private final int caseW, caseH, depth;
+    private final int glowPad;
+    private float yaw, tilt, scale = 1f, lift, spatialYaw;
+    private float dim = 1f;
+    private boolean spineRight;
+    private float drift;
+
+    private final Paint bmpPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Paint wrapPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+    private final Paint fxPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Matrix matrix = new Matrix();
+    private final RectF rect = new RectF();
+    private final float[] proj = new float[16];
+    private final float[] src = new float[8];
+    private final float[] dst = new float[8];
+    private final int[] idx = new int[4];
+    private final android.graphics.Rect sliceSrc = new android.graphics.Rect();
+
+    public DvdCaseView(Context ctx, int caseW, int glowPad) {
+        super(ctx);
+        this.caseW = caseW;
+        this.caseH = Math.round(caseW / DvdCase.ASPECT);
+        this.depth = Math.max(6, Math.round(caseW * DvdCase.DEPTH));
+        this.glowPad = glowPad;
+    }
+
+    /** Alpha is applied per draw call instead of through an offscreen layer (much cheaper on TV GPUs). */
+    @Override
+    public boolean hasOverlappingRendering() {
+        return false;
+    }
+
+    public int caseWidth() { return caseW; }
+    public int caseHeight() { return caseH; }
+
+    /** View size that leaves room for the bloom and the turned case. */
+    public int viewWidth() { return caseW + Glow.padH(glowPad) * 2; }
+    public int viewHeight() { return caseH + glowPad * 2; }
+
+    public void setCase(DvdCase dvd) {
+        this.dvd = dvd;
+        invalidate();
+    }
+
+    public DvdCase dvdCase() { return dvd; }
+
+    public void setPose(float yaw, float tilt, float scale, float lift, float extraYaw) {
+        setPose(yaw, tilt, scale, lift, extraYaw, 1f, false, 0f);
+    }
+
+    /**
+     * yaw/tilt in degrees; lift 0..1 (focus); extraYaw corrects perspective for the screen position;
+     * dim darkens cases further back (solid objects, never see-through); spineRight mirrors the case
+     * so cases right of the focus also show a printed spine; drift is the shelf's motion, which makes
+     * the shrink-wrap reflections slide.
+     */
+    public void setPose(float yaw, float tilt, float scale, float lift, float extraYaw, float dim, boolean spineRight, float drift) {
+        this.yaw = yaw;
+        this.tilt = tilt;
+        this.scale = scale;
+        this.lift = lift;
+        this.spatialYaw = extraYaw;
+        this.dim = dim;
+        this.spineRight = spineRight;
+        this.drift = drift;
+        invalidate();
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        float cx = getWidth() / 2f, cy = getHeight() / 2f;
+        if (lift > 0.01f && dvd != null && dvd.bloom != null) {
+            fxPaint.setAlpha((int) (255 * lift));
+            float bw = dvd.bloom.getWidth() * scale, bh = dvd.bloom.getHeight() * scale;
+            rect.set(cx - bw / 2f, cy - bh / 2f, cx + bw / 2f, cy + bh / 2f);
+            canvas.drawBitmap(dvd.bloom, null, rect, fxPaint);
+        }
+        drawShadow(canvas, cx, cy);
+        if (dvd == null) return;
+
+        project(cx, cy);
+        double a = Math.toRadians(yaw + spatialYaw), b = Math.toRadians(tilt);
+        if (dvd.spine == null) {
+            // Plain poster shelf: only the front face, no case, no wrap.
+            float ca0 = (float) Math.cos(a), sa0 = (float) Math.sin(a);
+            drawFace(canvas, 0, 1, 2, 3, dvd.cover, 0f, 0f, -1f, ca0, sa0, (float) Math.cos(b), (float) Math.sin(b), false);
+            return;
+        }
+        float ca = (float) Math.cos(a), sa = (float) Math.sin(a), cb = (float) Math.cos(b), sb = (float) Math.sin(b);
+        // Faces as corner indexes, seen from outside: front, left, right, top, bottom.
+        drawFace(canvas, 0, 1, 2, 3, dvd.cover, 0f, 0f, -1f, ca, sa, cb, sb, true);
+        drawFace(canvas, 4, 0, 3, 7, spineRight ? DvdCase.edge() : dvd.spine, -1f, 0f, 0f, ca, sa, cb, sb, !spineRight);
+        drawFace(canvas, 1, 5, 6, 2, spineRight ? dvd.spine : DvdCase.edge(), 1f, 0f, 0f, ca, sa, cb, sb, spineRight);
+        drawFace(canvas, 4, 5, 1, 0, DvdCase.edge(), 0f, -1f, 0f, ca, sa, cb, sb, false);
+        drawFace(canvas, 3, 2, 6, 7, DvdCase.edge(), 0f, 1f, 0f, ca, sa, cb, sb, false);
+    }
+
+    private static final LightingColorFilter[] LIGHTING = new LightingColorFilter[256];
+
+    private static LightingColorFilter lighting(int l) {
+        LightingColorFilter f = LIGHTING[l];
+        if (f == null) LIGHTING[l] = f = new LightingColorFilter(Color.rgb(l, l, l), 0);
+        return f;
+    }
+
+    private void drawShadow(Canvas canvas, float cx, float cy) {
+        Bitmap sh = DvdCase.shadow();
+        float w = caseW * scale * 1.15f;
+        float h = caseH * scale * 0.16f;
+        float y = cy + caseH * scale / 2f + h * 0.15f + lift * caseH * 0.05f;
+        fxPaint.setAlpha((int) ((170 - lift * 60) * dim));
+        rect.set(cx - w / 2f, y - h / 2f, cx + w / 2f, y + h / 2f);
+        canvas.drawBitmap(sh, null, rect, fxPaint);
+    }
+
+    /** Rotates the box (yaw then tilt), places it at distance D and projects the 8 corners. */
+    private void project(float cx, float cy) {
+        float hw = caseW / 2f, hh = caseH / 2f, hd = dvd != null && dvd.spine == null ? 0f : depth / 2f;
+        double a = Math.toRadians(yaw + spatialYaw), b = Math.toRadians(tilt);
+        float ca = (float) Math.cos(a), sa = (float) Math.sin(a), cb = (float) Math.cos(b), sb = (float) Math.sin(b);
+        float d = caseH * 2.2f;
+        for (int i = 0; i < 8; i++) {
+            float x = (i == 0 || i == 3 || i == 4 || i == 7) ? -hw : hw;
+            float y = (i == 0 || i == 1 || i == 4 || i == 5) ? -hh : hh;
+            float z = i < 4 ? -hd : hd;
+            float x1 = x * ca + z * sa;
+            float z1 = -x * sa + z * ca;
+            float y2 = y * cb - z1 * sb;
+            float z2 = y * sb + z1 * cb;
+            float f = d / (d + z2) * scale;
+            proj[i * 2] = cx + x1 * f;
+            proj[i * 2 + 1] = cy + y2 * f;
+        }
+    }
+
+    private void drawFace(Canvas canvas, int i0, int i1, int i2, int i3, Bitmap tex, float nx, float ny, float nz,
+                          float ca, float sa, float cb, float sb, boolean wrapped) {
+        idx[0] = i0; idx[1] = i1; idx[2] = i2; idx[3] = i3;
+        float area = 0;
+        for (int k = 0; k < 4; k++) {
+            int p = idx[k], q = idx[(k + 1) % 4];
+            area += proj[p * 2] * proj[q * 2 + 1] - proj[q * 2] * proj[p * 2 + 1];
+        }
+        if (area <= 0) return;
+
+        // Lambert shading, rotated like the box.
+        float x1 = nx * ca + nz * sa;
+        float z1 = -nx * sa + nz * ca;
+        float y2 = ny * cb - z1 * sb;
+        float z2 = ny * sb + z1 * cb;
+        float lambert = Math.max(0f, x1 * LX + y2 * LY + z2 * LZ);
+        float light = Math.min(1f, 0.38f + 0.62f * lambert / 0.76f);
+        int l = Math.min(255, (int) (255 * light * dim));
+
+        for (int k = 0; k < 4; k++) {
+            dst[k * 2] = proj[idx[k] * 2];
+            dst[k * 2 + 1] = proj[idx[k] * 2 + 1];
+        }
+        mapTo(tex, 0, tex.getWidth());
+        bmpPaint.setColorFilter(l >= 250 ? null : lighting(l));
+        canvas.drawBitmap(tex, matrix, bmpPaint);
+
+        if (wrapped) {
+            // Shrink-wrap: a window onto a wide reflection texture, sliding as the case turns and the shelf moves.
+            Bitmap wrap = DvdCase.wrap();
+            float facing = Math.max(0f, -z2);
+            float slide = (x1 * 0.5f + 0.5f) * 0.55f + drift * 0.08f;
+            int win = wrap.getWidth() / 3;
+            int off = (int) ((slide - Math.floor(slide)) * (wrap.getWidth() - win));
+            mapTo(tex, 0, tex.getWidth());
+            wrapPaint.setAlpha((int) (255 * Math.min(1f, (0.45f + 0.55f * lift) * (0.6f + 0.4f * facing)) * dim));
+            sliceSrc.set(off, 0, off + win, wrap.getHeight());
+            rect.set(0, 0, tex.getWidth(), tex.getHeight());
+            canvas.save();
+            canvas.concat(matrix);
+            canvas.drawBitmap(wrap, sliceSrc, rect, wrapPaint);
+            canvas.restore();
+        }
+    }
+
+    /** Maps the horizontal slice [x0, x1] of a texture onto the current face quad. */
+    private void mapTo(Bitmap tex, float x0, float x1) {
+        src[0] = x0; src[1] = 0;
+        src[2] = x1; src[3] = 0;
+        src[4] = x1; src[5] = tex.getHeight();
+        src[6] = x0; src[7] = tex.getHeight();
+        matrix.setPolyToPoly(src, 0, dst, 0, 4);
+    }
+}

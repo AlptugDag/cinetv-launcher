@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TV Master Launcher — AirPlay & Cast Integration Suite
+# CineTV — AirPlay & Cast Integration Suite
 # Configures native AirPlay screen mirroring & audio streaming from iOS/macOS to Android TV.
 set -e
 
