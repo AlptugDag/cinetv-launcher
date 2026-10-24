@@ -59,6 +59,36 @@ if [ -z "${ANDROID_HOME:-}" ] || [ ! -d "$ANDROID_HOME" ]; then
     exit 1
 fi
 
+export ANDROID_HOME
+export ANDROID_SDK_ROOT="${ANDROID_HOME}"
+
+# Preferred: Standard Android Gradle Engine if gradlew is present
+if [ -f "../gradlew" ]; then
+    echo "================================================================================"
+    echo "  CineTV Launcher — Building via Gradle Engine (:launcher:assembleRelease)"
+    echo "================================================================================"
+    chmod +x ../gradlew
+    (cd .. && ./gradlew :launcher:assembleRelease --console=plain)
+    mkdir -p ../release
+    cp build/outputs/apk/release/launcher-release.apk ../release/cinetv-launcher-v1.0.0.apk
+    cp build/outputs/apk/release/launcher-release.apk ../release/tv-master-launcher-v1.0.0.apk
+    (
+        cd ../release
+        if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum cinetv-launcher-v1.0.0.apk tv-master-launcher-v1.0.0.apk > SHA256SUMS.txt
+        elif command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 cinetv-launcher-v1.0.0.apk tv-master-launcher-v1.0.0.apk > SHA256SUMS.txt
+        fi
+    )
+    echo "================================================================================"
+    echo "  [SUCCESS] Built signed artifacts with SHA-256 verification:"
+    echo "    -> release/cinetv-launcher-v1.0.0.apk"
+    echo "    -> release/tv-master-launcher-v1.0.0.apk"
+    echo "    -> release/SHA256SUMS.txt"
+    echo "================================================================================"
+    exit 0
+fi
+
 # 3. Build Tools & Platform JAR Detection
 if [ -z "${BUILD_TOOLS:-}" ]; then
     if [ -d "$ANDROID_HOME/build-tools/34.0.0" ]; then

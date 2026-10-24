@@ -106,6 +106,9 @@ import java.util.regex.Pattern;
  */
 public class MainActivity extends Activity {
 
+    public static final String ACTION_LAUNCHER_SETTINGS = "com.gathin.tvhome.action.LAUNCHER_SETTINGS";
+    public static final String ACTION_VIEW_INPUTS = "com.android.tv.action.VIEW_INPUTS";
+
     private static final String PREFS_NAME = TvKeyInterceptorService.PREFS_NAME;
     private static final String KEY_APP_ORDER = "custom_app_order_csv";
     private static final String KEY_DOCK_ORDER = "custom_dock_order_csv";
