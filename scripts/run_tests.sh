@@ -46,6 +46,10 @@ echo "==> Executing LlmTest..."
 java -cp "$BUILD_DIR" com.gathin.tvhome.test.LlmTest
 
 echo ""
+echo "==> Executing NavigationAndResolutionTest..."
+java -cp "$BUILD_DIR" com.gathin.tvhome.test.NavigationAndResolutionTest
+
+echo ""
 echo "================================================================================"
 echo "  [ALL TESTS PASSED SUCCESSFULLY]"
 echo "================================================================================"

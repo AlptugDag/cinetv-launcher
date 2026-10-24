@@ -157,8 +157,19 @@ fi
 cp ../release/cinetv-launcher-v1.0.0.apk ../release/tv-master-launcher-v1.0.0.apk
 cp ../release/cinetv-launcher-v1.0.0.apk.idsig ../release/tv-master-launcher-v1.0.0.apk.idsig 2>/dev/null || true
 
+# Generate reproducible cryptographic SHA-256 manifest
+(
+    cd ../release
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum cinetv-launcher-v1.0.0.apk tv-master-launcher-v1.0.0.apk > SHA256SUMS.txt
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 cinetv-launcher-v1.0.0.apk tv-master-launcher-v1.0.0.apk > SHA256SUMS.txt
+    fi
+)
+
 echo "================================================================================"
-echo "  [SUCCESS] Built signed artifacts:"
+echo "  [SUCCESS] Built signed artifacts with SHA-256 verification:"
 echo "    -> release/cinetv-launcher-v1.0.0.apk"
 echo "    -> release/tv-master-launcher-v1.0.0.apk"
+echo "    -> release/SHA256SUMS.txt"
 echo "================================================================================"

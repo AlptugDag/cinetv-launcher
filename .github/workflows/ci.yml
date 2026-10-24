@@ -58,6 +58,12 @@ jobs:
         run: |
           bash launcher/build.sh
 
+      - name: Generate Reproducible Cryptographic Checksums
+        run: |
+          cd release
+          sha256sum cinetv-launcher-v1.0.0.apk tv-master-launcher-v1.0.0.apk > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -65,4 +71,5 @@ jobs:
           path: |
             release/cinetv-launcher-v1.0.0.apk
             release/tv-master-launcher-v1.0.0.apk
+            release/SHA256SUMS.txt
           if-no-files-found: error
