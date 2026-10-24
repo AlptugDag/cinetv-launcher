@@ -151,6 +151,9 @@ public final class Panels {
         boolean tmdb = MovieCatalog.hasTmdb(ctx);
         c3.addView(Controls.tile(ctx, ctx.getString(R.string.tmdb_key), ctx.getString(tmdb ? R.string.state_on : R.string.not_set), tmdb,
                 v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.TMDB_KEY, R.string.tmdb_key, R.string.tmdb_key_hint))));
+        boolean mdb = SecretStore.has(ctx, SecretStore.MDBLIST_KEY);
+        c3.addView(Controls.tile(ctx, ctx.getString(R.string.mdblist_key), ctx.getString(mdb ? R.string.state_on : R.string.not_set), mdb,
+                v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.MDBLIST_KEY, R.string.mdblist_key, R.string.mdblist_key_hint))));
         c3.addView(Controls.tile(ctx, ctx.getString(R.string.ai_curate), ctx.getString(R.string.ai_curate_hint), false, v -> {
             if (!LlmClient.isConfigured(ctx)) {
                 Toast.makeText(ctx, R.string.ai_err_no_key, Toast.LENGTH_LONG).show();

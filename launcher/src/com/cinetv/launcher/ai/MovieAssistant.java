@@ -45,8 +45,8 @@ public final class MovieAssistant {
     private static final String[] QUESTION_WORDS = {
             "?", "nedir", "kimdir", "nasıl", "neden", "kaç", "anlat", "öner", "tavsiye",
             "what", "who", "how", "why", "recommend", "suggest", "tell me"};
-    private static final String STRIP_PLAY = "(?iU)\\b(filmini|filmi|film|aç|oynat|başlat|izle|play|watch|open)\\b";
-    private static final String STRIP_SHELF = "(?iU)\\b(başyapıtları|filmleri|filmografisi|filmler|sineması|yönettiği|oynadığı"
+    private static final String STRIP_PLAY = "(?iu)\\b(filmini|filmi|film|aç|oynat|başlat|izle|play|watch|open)\\b";
+    private static final String STRIP_SHELF = "(?iu)\\b(başyapıtları|filmleri|filmografisi|filmler|sineması|yönettiği|oynadığı"
             + "|seçkisi|koleksiyonu|en iyi|tüm|bütün|films|movies|filmography|directed by|starring|collection|best of)\\b";
 
     private static final ExecutorService pool = Executors.newFixedThreadPool(4);

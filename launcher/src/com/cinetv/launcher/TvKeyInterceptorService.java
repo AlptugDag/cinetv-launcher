@@ -32,8 +32,24 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     private static volatile TvKeyInterceptorService instance;
 
+    private static final long APP_IDLE_SAVER_MS = 3 * 60 * 1000L;
+
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String lastPackage;
+
+    /** Idle over another app (Nuvio, YouTube menus...) with nothing playing: show our screensaver. */
+    private final Runnable idleSaver = new Runnable() {
+        @Override
+        public void run() {
+            String top = lastPackage;
+            if (top == null || top.equals(getPackageName()) || DeviceTweaks.isMediaPlaying(TvKeyInterceptorService.this)) {
+                handler.postDelayed(this, 60_000L);
+                return;
+            }
+            startActivity(new Intent(TvKeyInterceptorService.this, ScreensaverActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        }
+    };
 
     private final BroadcastReceiver timeTick = new BroadcastReceiver() {
         @Override
@@ -76,9 +92,13 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
         switch (pkg) {
             case "com.mediatek.wwtv.tvcenter":
-                // The tuner screen MediaTek TVs show after a cold boot: go to CineTV instead.
-                startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
-                return;
+                // The "scan channels" tuner screen MediaTek TVs push right after power-on: go home.
+                // Later (Inputs, HDMI, live TV opened by the user) it is left alone.
+                if (DeviceTweaks.isUnwantedBootTuner()) {
+                    startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+                    return;
+                }
+                break;
             case "com.netflix.ninja":
                 AppLauncher.launchFirst(this, AppLauncher.NUVIO_PACKAGES);
                 return;
@@ -105,6 +125,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
+        handler.removeCallbacks(idleSaver);
+        handler.postDelayed(idleSaver, APP_IDLE_SAVER_MS);
         int source = event.getSource();
         boolean gamepad = (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
                 || (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;

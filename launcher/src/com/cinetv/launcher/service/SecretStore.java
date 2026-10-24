@@ -29,6 +29,7 @@ public final class SecretStore {
     public static final String AI_KEY = "ai_api_key";
     public static final String TMDB_KEY = "tmdb_api_key";
     public static final String TMDB_READ_TOKEN = "tmdb_read_token";
+    public static final String MDBLIST_KEY = "mdblist_api_key";
 
     private static final String TAG = "CineTvSecrets";
     private static final String FILE = "cinetv_secrets";
@@ -42,6 +43,7 @@ public final class SecretStore {
             {"tv_gemini_api_key", AI_KEY},
             {"tv_tmdb_api_key", TMDB_KEY},
             {"tv_tmdb_read_token", TMDB_READ_TOKEN},
+            {"tv_mdblist_api_key", MDBLIST_KEY},
     };
     private static final String[][] LEGACY_PREF_KEYS = {
             {"ai_api_key", AI_KEY},

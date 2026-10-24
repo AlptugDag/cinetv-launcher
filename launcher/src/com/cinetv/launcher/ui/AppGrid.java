@@ -103,28 +103,31 @@ public class AppGrid {
     public void render() {
         if (dock == null) return;
         dockRow.removeAllViews();
-        int total = dock.size() + 1;
         for (int i = 0; i < dock.size(); i++) {
-            dockRow.addView(tile(dock.get(i), true, i, total), tileParams(1f));
+            dockRow.addView(tile(dock.get(i), true, i, dock.size()), tileParams(1f));
         }
-        LinearLayout.LayoutParams addLp = new LinearLayout.LayoutParams(UiKit.px(170), UiKit.px(TILE_H));
-        addLp.setMargins(UiKit.px(12), UiKit.px(6), UiKit.px(12), UiKit.px(6));
-        dockRow.addView(addTile(dock.size(), total), addLp);
 
+        // The grid always ends with the "Add" tile, right after the last app.
         gridBox.removeAllViews();
         LinearLayout row = null;
-        for (int i = 0; i < grid.size(); i++) {
+        int cells = gridCells();
+        for (int i = 0; i < cells; i++) {
             if (i % columns == 0) {
                 row = new LinearLayout(ctx);
                 row.setClipChildren(false);
                 row.setClipToPadding(false);
                 gridBox.addView(row);
             }
-            row.addView(tile(grid.get(i), false, i, columns), tileParams(1f));
+            row.addView(i < grid.size() ? tile(grid.get(i), false, i, columns) : addTile(i), tileParams(1f));
         }
         if (row != null) {
-            for (int r = grid.size() % columns; r != 0 && r < columns; r++) row.addView(new View(ctx), tileParams(1f));
+            for (int r = cells % columns; r != 0 && r < columns; r++) row.addView(new View(ctx), tileParams(1f));
         }
+    }
+
+    /** Grid apps plus the trailing "Add" tile. */
+    private int gridCells() {
+        return grid.size() + 1;
     }
 
     private LinearLayout.LayoutParams tileParams(float weight) {
@@ -234,7 +237,7 @@ public class AppGrid {
                 .setDuration(ms).start();
     }
 
-    private View addTile(int index, int total) {
+    private View addTile(final int index) {
         final FrameLayout card = new FrameLayout(ctx);
         card.setFocusable(true);
         final Glass material = Glass.panel(card, 36f);
@@ -251,7 +254,7 @@ public class AppGrid {
         card.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         final GlassBevelView bevel = new GlassBevelView(ctx, UiKit.pxf(36), false);
         card.addView(bevel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        final float[] rest = restPose(true, index, total);
+        final float[] rest = restPose(false, index, columns);
         card.setCameraDistance(ctx.getResources().getDisplayMetrics().density * 2800f);
         card.setRotationY(rest[0]);
         card.setRotationX(rest[1]);
@@ -265,7 +268,7 @@ public class AppGrid {
             if (has) host.onTileFocused(v, UiKit.INK);
         });
         card.setOnClickListener(v -> host.onAddToDock());
-        card.setOnKeyListener((v, keyCode, e) -> e.getAction() == KeyEvent.ACTION_DOWN && navigate(keyCode, true, index));
+        card.setOnKeyListener((v, keyCode, e) -> e.getAction() == KeyEvent.ACTION_DOWN && moving == null && navigate(keyCode, false, index));
         return card;
     }
 
@@ -276,16 +279,19 @@ public class AppGrid {
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && index == 0) { dockRow.getChildAt(n - 1).requestFocus(); return true; }
             if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && index == n - 1) { dockRow.getChildAt(0).requestFocus(); return true; }
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) { host.onEdgeUp(); return true; }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && !grid.isEmpty()) { focusGrid(Math.min(index, columns - 1)); return true; }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) { focusGrid(Math.min(index, Math.min(columns, gridCells()) - 1)); return true; }
             return false;
         }
-        int col = index % columns;
-        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && col == 0) { focusGrid(Math.min(index + columns - 1, grid.size() - 1)); return true; }
-        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && (col == columns - 1 || index == grid.size() - 1)) { focusGrid(index - col); return true; }
-        if (keyCode == KeyEvent.KEYCODE_DPAD_UP && index < columns) { focusDock(Math.min(col, dockRow.getChildCount() - 1)); return true; }
-        if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && index + columns >= grid.size()) {
-            if (index + columns < ((grid.size() + columns - 1) / columns) * columns) { focusGrid(grid.size() - 1); return true; }
-            focusDock(Math.min(col, dockRow.getChildCount() - 1));
+        int col = index % columns, cells = gridCells();
+        if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && col == 0) { focusGrid(Math.min(index + columns - 1, cells - 1)); return true; }
+        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && (col == columns - 1 || index == cells - 1)) { focusGrid(index - col); return true; }
+        if (keyCode == KeyEvent.KEYCODE_DPAD_UP && index < columns) {
+            if (dockRow.getChildCount() == 0) host.onEdgeUp();
+            else focusDock(Math.min(col, dockRow.getChildCount() - 1));
+            return true;
+        }
+        if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && index + columns >= cells) {
+            if (index + columns < ((cells + columns - 1) / columns) * columns) { focusGrid(cells - 1); return true; }
             return true;
         }
         return false;

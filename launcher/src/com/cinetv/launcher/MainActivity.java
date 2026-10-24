@@ -206,8 +206,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (isNewDay()) refreshShelf();
     }
 
+    private long lastKeyAt;
+
     @Override
     protected void onPause() {
+        // Right after power-on the TV's tuner app pushes itself over Home with a "scan channels"
+        // screen. If Home is covered without the user pressing anything, come straight back.
+        if (DeviceTweaks.isUnwantedBootTuner() && android.os.SystemClock.uptimeMillis() - lastKeyAt > 3000) {
+            handler.postDelayed(() -> startActivity(new Intent(this, MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)), 250);
+        }
         home.environment.pause();
         handler.removeCallbacks(clockTick);
         handler.removeCallbacks(idle);
@@ -257,7 +265,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
-        if (down) resetIdle();
+        if (down) {
+            resetIdle();
+            lastKeyAt = android.os.SystemClock.uptimeMillis();
+        }
         if (home.screensaver.getVisibility() == View.VISIBLE) {
             if (down) hideScreensaver();
             return true;
@@ -350,19 +361,24 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void onAllApps() {
-        AllApps.show(this, home.modal, new AllApps.Listener() {
-            @Override
-            public void open(String pkg) {
-                if (!AppLauncher.launch(MainActivity.this, pkg)) toast(R.string.app_not_found);
-            }
+        final Context app = getApplicationContext();
+        background(() -> {
+            List<AppCatalog.Entry> apps = AppCatalog.drawerApps(app);
+            ui(() -> AllApps.show(this, home.modal, getString(R.string.all_apps_count, apps.size()), apps, "",
+                    new AllApps.Listener() {
+                        @Override
+                        public void open(String pkg) {
+                            if (!AppLauncher.launch(MainActivity.this, pkg)) toast(R.string.app_not_found);
+                        }
 
-            @Override
-            public void actions(String pkg, String label) {
-                AppTileItem item = new AppTileItem();
-                item.packageName = pkg;
-                item.label = label;
-                showActions(item, false, -1);
-            }
+                        @Override
+                        public void actions(String pkg, String label) {
+                            AppTileItem item = new AppTileItem();
+                            item.packageName = pkg;
+                            item.label = label;
+                            showActions(item, false, -1);
+                        }
+                    }));
         });
     }
 
@@ -628,24 +644,27 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         return v;
     }
 
+    /** "Add" sits after the last app: it offers every installed app that is not on Home yet. */
     @Override
     public void onAddToDock() {
-        final List<AppTileItem> grid = new ArrayList<>(home.apps.gridItems());
-        if (grid.isEmpty()) return;
-        home.modal.push(() -> {
-            android.widget.ScrollView sv = new android.widget.ScrollView(this);
-            android.widget.LinearLayout col = new android.widget.LinearLayout(this);
-            col.setOrientation(android.widget.LinearLayout.VERTICAL);
-            col.addView(Controls.header(this, getString(R.string.add_to_home)));
-            for (final AppTileItem item : grid) {
-                col.addView(Controls.tile(this, item.label, null, false, v -> {
-                    home.modal.close();
-                    home.apps.addToDock(item);
-                }));
-            }
-            sv.addView(col);
-            sv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(UiKit.px(560), UiKit.px(640)));
-            return sv;
+        final Context app = getApplicationContext();
+        final Set<String> onHome = new java.util.HashSet<>();
+        for (AppTileItem i : home.apps.dockItems()) onHome.add(i.packageName);
+        for (AppTileItem i : home.apps.gridItems()) onHome.add(i.packageName);
+        background(() -> {
+            List<AppCatalog.Entry> apps = AppCatalog.addable(app, onHome);
+            ui(() -> AllApps.show(this, home.modal, getString(R.string.add_to_home), apps, getString(R.string.add_nothing),
+                    new AllApps.Listener() {
+                        @Override
+                        public void open(String pkg) {
+                            AppCatalog.addToHome(app, pkg);
+                            loadApps(true);
+                        }
+
+                        @Override
+                        public void actions(String pkg, String label) {
+                        }
+                    }));
         });
     }
 

@@ -56,6 +56,21 @@ public final class DeviceTweaks {
         }
     }
 
+    /** Window after power-on during which the MediaTek tuner app pushes its "scan channels" screen. */
+    public static final long BOOT_GUARD_MS = 90_000L;
+    private static long lastUserIntent;
+
+    /** Call when the user deliberately opens live TV or an input, so it is never sent away. */
+    public static void markUserOpenedTv() {
+        lastUserIntent = android.os.SystemClock.elapsedRealtime();
+    }
+
+    /** True right after boot when the tuner screen appeared on its own (not because the user asked). */
+    public static boolean isUnwantedBootTuner() {
+        long now = android.os.SystemClock.elapsedRealtime();
+        return now < BOOT_GUARD_MS && now - lastUserIntent > 10_000L;
+    }
+
     public static boolean isMediaPlaying(Context ctx) {
         try {
             AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);

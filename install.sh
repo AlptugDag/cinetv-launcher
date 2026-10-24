@@ -20,7 +20,7 @@
 #
 # API keys are optional and never go on the command line (shell history). Provide them as
 # environment variables, or type them when asked (input is hidden):
-#   CINETV_TMDB_KEY=...  CINETV_AI_KEY=...  ./install.sh
+#   CINETV_TMDB_KEY=...  CINETV_TMDB_TOKEN=...  CINETV_MDBLIST_KEY=...  CINETV_AI_KEY=...  ./install.sh
 # They are handed to the TV once and the launcher moves them into its encrypted keystore.
 # =================================================================================================
 set -euo pipefail
@@ -154,7 +154,7 @@ fi
 [ -n "$THEME" ] || THEME=$(ask "Theme: cinetv, glass, aurora, ruska, scenes, sweden, dussehra, six-columns, oled" "cinetv")
 if [ "$YOUTUBE" = 0 ] && [ "$(ask "Install ad-free YouTube (TizenTube)? y/n" "y")" = "y" ] && [ "$YES" = 0 ]; then YOUTUBE=1; fi
 if [ "$DEBLOAT" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Disable bloatware (reversible)? y/n" "n")" = "y" ]; then DEBLOAT=1; fi
-AI_KEY="${CINETV_AI_KEY:-}"; TMDB_KEY="${CINETV_TMDB_KEY:-}"
+AI_KEY="${CINETV_AI_KEY:-}"; TMDB_KEY="${CINETV_TMDB_KEY:-}"; TMDB_TOKEN="${CINETV_TMDB_TOKEN:-}"; MDBLIST_KEY="${CINETV_MDBLIST_KEY:-}"
 if [ "$YES" = 0 ] && [ -t 0 ]; then
     [ -n "$TMDB_KEY" ] || { read -r -s -p "  TMDB API key (optional, localized titles & posters; Enter to skip): " TMDB_KEY; echo; }
     [ -n "$AI_KEY" ] || { read -r -s -p "  Gemini or Claude API key (optional, AI search & curation; Enter to skip): " AI_KEY; echo; }
@@ -189,6 +189,8 @@ ok "Remote buttons and screensaver configured"
 
 [ -z "$CITY" ] || { tv settings put global cinetv_city "\"$CITY\""; ok "Weather city: $CITY"; }
 [ -z "$TMDB_KEY" ] || { tv settings put secure tv_tmdb_api_key "$TMDB_KEY"; ok "TMDB key handed over (moved into the encrypted store on first start)"; }
+[ -z "$TMDB_TOKEN" ] || { tv settings put secure tv_tmdb_read_token "$TMDB_TOKEN"; ok "TMDB read token handed over"; }
+[ -z "$MDBLIST_KEY" ] || { tv settings put secure tv_mdblist_api_key "$MDBLIST_KEY"; ok "MDBList key handed over"; }
 [ -z "$AI_KEY" ] || { tv settings put secure tv_ai_api_key "$AI_KEY"; ok "AI key handed over (moved into the encrypted store on first start)"; }
 
 if [ "$KEEP_OLD" = 0 ]; then
@@ -207,6 +209,8 @@ fi
 [ "$YOUTUBE" = 0 ] || bash "$DIR/scripts/setup_youtube.sh"
 
 # --- 5. start ---------------------------------------------------------------------------------------
+# Restart so the launcher picks up the handed-over keys (it moves them into its keystore on start).
+tv am force-stop $PKG
 tv am start -n "$HOME_ACTIVITY" ${THEME:+--es theme "$THEME"} >/dev/null
 ok "On first start CineTV tunes picture & sound, switches on ad-blocking DNS and measures the network (Settings › Picture, sound & network tuning to repeat)."
 if [ -n "$THEME" ] && [ "$THEME" != "cinetv" ]; then

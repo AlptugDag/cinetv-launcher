@@ -15,6 +15,8 @@ public final class Prefs {
     public static final String APP_ORDER = "custom_app_order_csv";
     public static final String DOCK_ORDER = "custom_dock_order_csv";
     public static final String HIDDEN_APPS = "user_hidden_apps_csv";
+    /** Apps the user added to Home that CineTV would hide by default (players, AirPlay...). */
+    public static final String PINNED_APPS = "user_pinned_apps_csv";
     public static final String CUSTOM_KEY_PREFIX = "custom_map_";
     public static final String CUSTOM_SCAN_PREFIX = "custom_map_sc_";
     public static final String THEME = "theme_id";

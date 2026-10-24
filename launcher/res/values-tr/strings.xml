@@ -10,6 +10,7 @@
     <string name="all_apps">Tüm uygulamalar</string>
     <string name="all_apps_count">Tüm uygulamalar · %d</string>
     <string name="add">Ekle</string>
+    <string name="add_nothing">Yüklü tüm uygulamalar zaten ana ekranda. Yeni yüklediğin uygulamalar buraya kendiliğinden gelir.</string>
     <string name="add_to_home">Ana ekrana ekle</string>
     <string name="move">Taşı</string>
     <string name="hide">Gizle</string>
@@ -80,6 +81,8 @@
     <string name="saved_securely">Güvenle kaydedildi</string>
     <string name="save_failed">Kaydedilemedi</string>
     <string name="not_set">Ayarlanmadı</string>
+    <string name="mdblist_key">MDBList anahtarı</string>
+    <string name="mdblist_key_hint">MDBList API anahtarı (IMDb, Rotten Tomatoes, Letterboxd puanları)</string>
     <string name="ai_curate">Yapay zekâ seçkisi</string>
     <string name="ai_curate_hint">Bir ruh hâli seç, rafını al</string>
     <string name="mood_custom_hint">Ya da anlat: Fincher tarzı karanlık dedektif hikâyeleri…</string>

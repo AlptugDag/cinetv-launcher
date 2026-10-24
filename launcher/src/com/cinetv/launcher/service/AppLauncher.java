@@ -106,6 +106,7 @@ public final class AppLauncher {
     }
 
     public static void openTvInputs(Context ctx) {
+        com.cinetv.launcher.device.DeviceTweaks.markUserOpenedTv();
         String[][] targets = {
                 {"com.android.tv.settings", "com.android.tv.settings.inputs.InputsActivity"},
                 {"com.mediatek.wwtv.tvcenter", "com.mediatek.wwtv.tvcenter.nav.TurnkeyUiMainActivity"},

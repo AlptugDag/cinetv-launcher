@@ -49,6 +49,11 @@ public final class AppCatalog {
             "com.google.android.webview", "com.mediatek.tv.service", "io.github.jqssun.airplay", "org.courville.nova",
             "com.mediatek.wwtv.mediaplayer"));
 
+    /** Never offered anywhere: this launcher, firmware services, factory and test menus. */
+    private static final String[] NEVER_FRAGMENTS = {
+            "com.cinetv.launcher", "factory", "webview", "tv.service", "tvcenter", "setupwraith", "tvlauncher",
+            "launcherx", "rctest", "channeleditor", "wwtv.mediaplayer"};
+
     private static final String[] HIDDEN_FRAGMENTS = {
             "factory", "webview", "mediaplayer", "rctest", "channeleditor", "airplay", "nova", "bein"};
 
@@ -58,6 +63,7 @@ public final class AppCatalog {
         PackageManager pm = ctx.getPackageManager();
         SharedPreferences prefs = Prefs.get(ctx);
         Set<String> userHidden = csvSet(prefs.getString(Prefs.HIDDEN_APPS, ""));
+        Set<String> pinned = csvSet(prefs.getString(Prefs.PINNED_APPS, ""));
         Snapshot snap = new Snapshot();
         Map<String, AppTileItem> found = new LinkedHashMap<>();
 
@@ -65,7 +71,7 @@ public final class AppCatalog {
             if (ri.activityInfo == null) continue;
             String pkg = ri.activityInfo.packageName;
             snap.packages.add(pkg);
-            if (found.containsKey(pkg) || isHidden(pkg) || userHidden.contains(pkg)) continue;
+            if (found.containsKey(pkg) || userHidden.contains(pkg) || (isHidden(pkg) && !pinned.contains(pkg))) continue;
             AppTileItem item = new AppTileItem();
             item.packageName = pkg;
             CharSequence label = ri.loadLabel(pm);
@@ -115,6 +121,31 @@ public final class AppCatalog {
         return out;
     }
 
+    /** The app drawer: real apps only, without this launcher and the TV's own service packages. */
+    public static List<Entry> drawerApps(Context ctx) {
+        List<Entry> out = new ArrayList<>();
+        for (Entry e : allApps(ctx)) if (!isNever(e.packageName) && !isHidden(e.packageName)) out.add(e);
+        return out;
+    }
+
+    /** Apps that could be added to Home: installed, not on Home now, not a firmware service. */
+    public static List<Entry> addable(Context ctx, Set<String> onHome) {
+        List<Entry> out = new ArrayList<>();
+        for (Entry e : allApps(ctx)) if (!onHome.contains(e.packageName) && !isNever(e.packageName)) out.add(e);
+        return out;
+    }
+
+    /** Puts an app back on Home (after Hide, or one CineTV hides by default). */
+    public static void addToHome(Context ctx, String pkg) {
+        SharedPreferences prefs = Prefs.get(ctx);
+        Set<String> hidden = csvSet(prefs.getString(Prefs.HIDDEN_APPS, ""));
+        hidden.remove(pkg);
+        Set<String> pinned = csvSet(prefs.getString(Prefs.PINNED_APPS, ""));
+        if (isHidden(pkg)) pinned.add(pkg);
+        prefs.edit().putString(Prefs.HIDDEN_APPS, String.join(",", hidden))
+                .putString(Prefs.PINNED_APPS, String.join(",", pinned)).apply();
+    }
+
     public static List<Entry> allApps(Context ctx) {
         PackageManager pm = ctx.getPackageManager();
         Map<String, Entry> unique = new LinkedHashMap<>();
@@ -140,7 +171,10 @@ public final class AppCatalog {
         SharedPreferences prefs = Prefs.get(ctx);
         Set<String> hidden = csvSet(prefs.getString(Prefs.HIDDEN_APPS, ""));
         hidden.add(pkg);
-        prefs.edit().putString(Prefs.HIDDEN_APPS, String.join(",", hidden)).apply();
+        Set<String> pinned = csvSet(prefs.getString(Prefs.PINNED_APPS, ""));
+        pinned.remove(pkg);
+        prefs.edit().putString(Prefs.HIDDEN_APPS, String.join(",", hidden))
+                .putString(Prefs.PINNED_APPS, String.join(",", pinned)).apply();
     }
 
     public static boolean isTizenTube(String pkg) {
@@ -153,6 +187,12 @@ public final class AppCatalog {
         for (String p : AppLauncher.YOUTUBE_PACKAGES) if (pkgs.contains(p)) return p;
         for (String p : pkgs) if (isTizenTube(p)) return p;
         return AppLauncher.YOUTUBE_PACKAGES[0];
+    }
+
+    private static boolean isNever(String pkg) {
+        String lower = pkg.toLowerCase(Locale.ROOT);
+        for (String f : NEVER_FRAGMENTS) if (lower.contains(f)) return true;
+        return false;
     }
 
     private static boolean isHidden(String pkg) {
