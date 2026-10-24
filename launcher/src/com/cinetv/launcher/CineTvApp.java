@@ -1,0 +1,37 @@
+package com.cinetv.launcher;
+
+import android.app.Application;
+import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
+
+import com.cinetv.launcher.device.DeviceTweaks;
+
+/**
+ * On MediaTek TVs the firmware starts its tuner app over Home right after power-on, showing "please
+ * scan channels" until boot finishes (~20 s). Our process starts with Home, long before the key
+ * service is bound, so it re-fronts Home a few times during that window. Needs the display-over-apps
+ * permission the installer grants; the user pressing an input key cancels it.
+ */
+public class CineTvApp extends Application {
+
+    private static final long[] BOOT_RESCUES_MS = {1500, 3500, 6000, 9000, 13000};
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        if (SystemClock.elapsedRealtime() > DeviceTweaks.BOOT_GUARD_MS) return;
+        Handler h = new Handler(Looper.getMainLooper());
+        for (long delay : BOOT_RESCUES_MS) {
+            h.postDelayed(() -> {
+                if (!DeviceTweaks.isUnwantedBootTuner() || MainActivity.isInFront()) return;
+                try {
+                    startActivity(new Intent(this, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+                } catch (Throwable ignored) {
+                }
+            }, delay);
+        }
+    }
+}

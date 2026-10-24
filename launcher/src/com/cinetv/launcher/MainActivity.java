@@ -194,6 +194,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     protected void onResume() {
         super.onResume();
+        inFront = true;
         home.opening.dismiss();
         home.environment.resume();
         DeviceTweaks.syncNightMode(this);
@@ -206,16 +207,15 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (isNewDay()) refreshShelf();
     }
 
-    private long lastKeyAt;
+    private static boolean inFront;
+
+    public static boolean isInFront() {
+        return inFront;
+    }
 
     @Override
     protected void onPause() {
-        // Right after power-on the TV's tuner app pushes itself over Home with a "scan channels"
-        // screen. If Home is covered without the user pressing anything, come straight back.
-        if (DeviceTweaks.isUnwantedBootTuner() && android.os.SystemClock.uptimeMillis() - lastKeyAt > 3000) {
-            handler.postDelayed(() -> startActivity(new Intent(this, MainActivity.class)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)), 250);
-        }
+        inFront = false;
         home.environment.pause();
         handler.removeCallbacks(clockTick);
         handler.removeCallbacks(idle);
@@ -267,7 +267,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         if (down) {
             resetIdle();
-            lastKeyAt = android.os.SystemClock.uptimeMillis();
         }
         if (home.screensaver.getVisibility() == View.VISIBLE) {
             if (down) hideScreensaver();
