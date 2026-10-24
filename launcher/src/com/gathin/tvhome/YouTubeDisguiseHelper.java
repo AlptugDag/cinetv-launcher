@@ -189,22 +189,7 @@ public final class YouTubeDisguiseHelper {
         ));
         canvas.drawRoundRect(cardRect, CORNER, CORNER, meniscusCrest);
 
-        // 4. Chromatic Aberration Dispersion Rim (ybouane/liquidglass & hwyuanzi/LiquidGlass-UI)
-        // Tangential Spectral Red offset (-1.4px, -1.0px)
-        Paint redFringe = new Paint(Paint.ANTI_ALIAS_FLAG);
-        redFringe.setStyle(Paint.Style.STROKE);
-        redFringe.setStrokeWidth(1.5f);
-        redFringe.setColor(Color.argb(72, 255, 68, 90));
-        canvas.drawRoundRect(new RectF(1.3f, 1.5f, CARD_W - 3.7f, CARD_H - 3.5f), CORNER, CORNER, redFringe);
-
-        // Tangential Spectral Cyan offset (+1.4px, +1.0px)
-        Paint blueFringe = new Paint(Paint.ANTI_ALIAS_FLAG);
-        blueFringe.setStyle(Paint.Style.STROKE);
-        blueFringe.setStrokeWidth(1.5f);
-        blueFringe.setColor(Color.argb(82, 56, 189, 248));
-        canvas.drawRoundRect(new RectF(3.7f, 3.5f, CARD_W - 1.3f, CARD_H - 1.5f), CORNER, CORNER, blueFringe);
-
-        // 5. Specular Optical Glass & Argent Chrome Caustic Rim
+        // 4. Specular Optical Glass & Argent Chrome Caustic Rim
         Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(1.8f);
@@ -258,24 +243,7 @@ public final class YouTubeDisguiseHelper {
         ));
         canvas.drawRoundRect(posterRect, pCorner, pCorner, sheen);
 
-        // 2. Chromatic Aberration Optical Spectral Dispersion (hwyuanzi/LiquidGlass-UI & ybouane/liquidglass)
-        // Tangential Spectral Crimson Fringe (offset: -1.2px, -0.8px)
-        Paint redFringe = new Paint(Paint.ANTI_ALIAS_FLAG);
-        redFringe.setStyle(Paint.Style.STROKE);
-        redFringe.setStrokeWidth(1.4f);
-        redFringe.setColor(Color.argb(78, 255, 55, 80));
-        RectF redRect = new RectF(posterRect.left - 1.2f, posterRect.top - 0.8f, posterRect.right - 1.2f, posterRect.bottom - 0.8f);
-        canvas.drawRoundRect(redRect, pCorner, pCorner, redFringe);
-
-        // Tangential Spectral Cyan-Blue Fringe (offset: +1.2px, +0.8px)
-        Paint cyanFringe = new Paint(Paint.ANTI_ALIAS_FLAG);
-        cyanFringe.setStyle(Paint.Style.STROKE);
-        cyanFringe.setStrokeWidth(1.4f);
-        cyanFringe.setColor(Color.argb(88, 56, 189, 248));
-        RectF cyanRect = new RectF(posterRect.left + 1.2f, posterRect.top + 0.8f, posterRect.right + 1.2f, posterRect.bottom + 0.8f);
-        canvas.drawRoundRect(cyanRect, pCorner, pCorner, cyanFringe);
-
-        // 3. Central Specular White Optical Crystal Glass Crest (Sharp Fresnel highlight)
+        // 2. Central Specular White Optical Crystal Glass Crest (Sharp Fresnel highlight)
         Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(1.2f);

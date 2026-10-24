@@ -636,7 +636,7 @@ public class MainActivity extends Activity {
                 hudTextPaint.setColor(isLightMode ? Color.argb(55, 100, 116, 139) : Color.argb(65, 148, 163, 184));
                 canvas.drawText("HUD.JARVIS // VISOR-OPTIC v2.7", mX + 30f, mY + 8f, hudTextPaint);
                 canvas.drawText("OPTIC.CURV // 8500R", w - mX - 165f, mY + 8f, hudTextPaint);
-                canvas.drawText("CHROMA // 3-SPLIT DISPERSION", mX + 30f, h - mY + 2f, hudTextPaint);
+                canvas.drawText("OPTIC // 3D PARALLAX DEPTH", mX + 30f, h - mY + 2f, hudTextPaint);
                 canvas.drawText("STATUS // 60FPS OPTIMAL", w - mX - 170f, h - mY + 2f, hudTextPaint);
 
                 // 8. Subtle Holographic Scanline Grid (hardware-accelerated, zero flicker)
@@ -5197,8 +5197,8 @@ public class MainActivity extends Activity {
                             visualModesRow.setGravity(Gravity.CENTER);
 
                             final FrameLayout chromaToggle = createVisualModeToggleCard(
-                                    "KROMATİK ABERASYON",
-                                    "Optik HUD Saçılımı",
+                                    "3D SIVI CAM BEVEL",
+                                    "Apple TV & Bravia Derinliği",
                                     DynamicChromaticBorderView.isAberrationEnabled()
                             );
                             chromaToggle.setOnClickListener(new View.OnClickListener() {
@@ -5209,7 +5209,7 @@ public class MainActivity extends Activity {
                                     getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                                             .putBoolean(PREF_KEY_CHROMA_ABERRATION, nextState)
                                             .apply();
-                                    updateVisualModeToggleCard(chromaToggle, "KROMATİK ABERASYON", "Optik HUD Saçılımı", nextState);
+                                    updateVisualModeToggleCard(chromaToggle, "3D SIVI CAM BEVEL", "Apple TV & Bravia Derinliği", nextState);
                                     refreshChromaticBorders();
                                 }
                             });
