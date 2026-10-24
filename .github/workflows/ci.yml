@@ -1,0 +1,68 @@
+name: CineTV CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Unit & Security Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup OpenJDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Run Test Suites
+        run: bash scripts/run_tests.sh
+
+  build:
+    name: Build & Package APK
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup OpenJDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android Build-Tools & Platforms
+        run: |
+          sdkmanager --install "build-tools;34.0.0" "platforms;android-34"
+
+      - name: Compile and Package CineTV Launcher
+        env:
+          CINETV_RELEASE_KEYSTORE_BASE64: ${{ secrets.CINETV_RELEASE_KEYSTORE_BASE64 }}
+          CINETV_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.CINETV_RELEASE_KEYSTORE_PASSWORD }}
+          CINETV_RELEASE_KEY_ALIAS: ${{ secrets.CINETV_RELEASE_KEY_ALIAS }}
+          CINETV_RELEASE_KEY_PASSWORD: ${{ secrets.CINETV_RELEASE_KEY_PASSWORD }}
+        run: |
+          bash launcher/build.sh
+
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinetv-launcher-apk
+          path: |
+            release/cinetv-launcher-v1.0.0.apk
+            release/tv-master-launcher-v1.0.0.apk
+          if-no-files-found: error
