@@ -61,8 +61,10 @@ fi
 
 # 3. Build Tools & Platform JAR Detection
 if [ -z "${BUILD_TOOLS:-}" ]; then
-    if [ -d "$ANDROID_HOME/build-tools" ]; then
-        BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 | sort -V | tail -n 1)
+    if [ -d "$ANDROID_HOME/build-tools/34.0.0" ]; then
+        BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0"
+    elif [ -d "$ANDROID_HOME/build-tools" ]; then
+        BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)
     fi
 fi
 
@@ -73,7 +75,9 @@ if [ -z "${BUILD_TOOLS:-}" ] || [ ! -x "${BUILD_TOOLS}/aapt2" ]; then
 fi
 
 if [ -z "${ANDROID_JAR:-}" ]; then
-    if [ -d "$ANDROID_HOME/platforms" ]; then
+    if [ -f "$ANDROID_HOME/platforms/android-34/android.jar" ]; then
+        ANDROID_JAR="$ANDROID_HOME/platforms/android-34/android.jar"
+    elif [ -d "$ANDROID_HOME/platforms" ]; then
         ANDROID_JAR=$(find "$ANDROID_HOME/platforms" -name "android.jar" | sort -V | tail -n 1)
     fi
 fi
@@ -120,7 +124,16 @@ echo "[4/7] Compiling DEX bytecode with D8..."
 
 echo "[5/7] Packaging classes.dex into APK..."
 cp build/unaligned.apk build/packaged.apk
-(cd build/dex && zip -u ../packaged.apk classes.dex)
+if command -v zip >/dev/null 2>&1; then
+    (cd build/dex && zip -u ../packaged.apk classes.dex)
+elif command -v jar >/dev/null 2>&1; then
+    (cd build/dex && jar -uf ../packaged.apk classes.dex)
+elif command -v python3 >/dev/null 2>&1; then
+    python3 -c "import zipfile, glob, os; z = zipfile.ZipFile('build/packaged.apk', 'a'); [z.write(f, os.path.basename(f)) for f in glob.glob('build/dex/*.dex')]; z.close()"
+else
+    echo "ERROR: Neither zip, jar, nor python3 found to package classes.dex."
+    exit 1
+fi
 
 echo "[6/7] 4-Byte Page Aligning APK with zipalign..."
 "$BUILD_TOOLS/zipalign" -f -p 4 build/packaged.apk build/aligned.apk
@@ -148,10 +161,11 @@ elif [ -n "${CINETV_RELEASE_KEYSTORE:-}" ] && [ -f "$CINETV_RELEASE_KEYSTORE" ];
 else
     KEYSTORE="${CINETV_KS:-debug.keystore}"
     KEYSTORE_PASS="${CINETV_KS_PASS:-pass:android}"
+    KEY_ALIAS="${CINETV_KS_ALIAS:-androiddebugkey}"
     KEY_PASS="${CINETV_KEY_PASS:-$KEYSTORE_PASS}"
     echo "[7/7] Signing APK with Development Keystore ($KEYSTORE)..."
     echo "      [Note: For official production distribution, set CINETV_RELEASE_KEYSTORE_BASE64 in CI]"
-    "$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-pass "$KEYSTORE_PASS" --key-pass "$KEY_PASS" --out ../release/cinetv-launcher-v1.0.0.apk build/aligned.apk
+    "$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-pass "$KEYSTORE_PASS" --ks-key-alias "$KEY_ALIAS" --key-pass "$KEY_PASS" --out ../release/cinetv-launcher-v1.0.0.apk build/aligned.apk
 fi
 
 cp ../release/cinetv-launcher-v1.0.0.apk ../release/tv-master-launcher-v1.0.0.apk
