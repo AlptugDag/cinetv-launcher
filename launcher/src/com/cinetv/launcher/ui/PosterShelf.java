@@ -294,7 +294,7 @@ public class PosterShelf extends FrameLayout {
                 v.setTranslationX(px - v.getWidth() / 2f);
                 v.setTranslationY((h - v.getHeight()) / 2f - UiKit.pxf(24) * pLift + UiKit.pxf(8) * Math.min(ad, 2f));
                 v.setTranslationZ(100f - ad * 10f);
-                v.setDepthBlur(Math.max(0f, Math.min(1f, (ad - 2.5f) / 2f)));
+                v.setDepthBlur(0.55f * Math.max(0f, Math.min(1f, (ad - 3f) / 4f)));
                 v.setPose(pYaw, spatial ? 5.5f * (1f - pLift) : 0f, pScale, pLift, lean * 0.6f, pDim, false, focusPos);
                 continue;
             }
@@ -308,7 +308,8 @@ public class PosterShelf extends FrameLayout {
             float scale = focusScale + (0.86f - focusScale) * near - Math.min(0.10f, 0.014f * far);
             // Further down the shelf: darker and out of focus, like a real room lit at the front.
             float dim = (focused ? 1f : 0.94f) - 0.10f * near - Math.min(0.52f, 0.075f * far);
-            float blur = Math.max(0f, Math.min(1f, (far - 1.5f) / 2.5f));
+            // Only a hint of depth of field: soft, never smeared.
+            float blur = 0.55f * Math.max(0f, Math.min(1f, (far - 2f) / 4f));
             float yaw = Math.signum(d) * SIDE_ANGLE * near + PROFILE_ANGLE * (1f - near);
             float lift = focused ? 1f - near : 0f;
             float tilt = spatial ? 7.5f * (1f - lift) : 0f;

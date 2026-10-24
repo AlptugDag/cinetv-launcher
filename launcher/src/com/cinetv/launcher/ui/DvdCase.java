@@ -48,8 +48,8 @@ public final class DvdCase {
         this.accent = accent;
         this.bloom = bloom;
         this.halo = halo;
-        this.coverSoft = soften(cover, 10, 3);
-        this.spineSoft = spine == null ? null : soften(spine, 4, 2);
+        this.coverSoft = soften(cover, 4, 2);
+        this.spineSoft = spine == null ? null : soften(spine, 3, 2);
     }
 
     /** Off the main thread: builds the textures from a poster (any size; cropped to fill). */

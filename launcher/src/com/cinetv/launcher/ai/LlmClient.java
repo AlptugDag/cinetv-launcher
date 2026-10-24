@@ -27,9 +27,12 @@ public final class LlmClient {
     public static final String PROVIDER_GEMINI = "gemini";
 
     static final String DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
+    static final String FAST_CLAUDE_MODEL = "claude-haiku-5-5";
     static final String FALLBACK_CLAUDE_MODEL = "claude-haiku-5-5";
-    static final String DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
-    static final String FALLBACK_GEMINI_MODEL = "gemini-2.5-flash";
+    static final String DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
+    /** Search and spoken answers: about a second, which a remote in hand needs. */
+    static final String FAST_GEMINI_MODEL = "gemini-3.5-flash-lite";
+    static final String FALLBACK_GEMINI_MODEL = "gemini-2.5-flash-lite";
 
     private static final String TAG = "CineTvLlm";
 
@@ -61,19 +64,32 @@ public final class LlmClient {
         return PROVIDER_CLAUDE.equals(providerFor(key)) ? "Claude" : "Gemini";
     }
 
-    /** Blocking call. On a 400/404 (model not yet available to this key) retries once with a stable model. */
+    /** Blocking call with the provider's balanced model. */
     public static Result generate(Context ctx, String system, String user, int maxTokens) {
+        return generate(ctx, system, user, maxTokens, false);
+    }
+
+    /**
+     * Blocking call. {@code fast} picks the quickest model (search, answers). When the model is busy,
+     * missing for this key or times out, retries once with a stable fallback.
+     */
+    public static Result generate(Context ctx, String system, String user, int maxTokens, boolean fast) {
         String key = SecretStore.get(ctx, SecretStore.AI_KEY);
         if (key == null || key.isEmpty()) return new Result(false, ctx.getString(R.string.ai_err_no_key), 401);
         boolean claude = PROVIDER_CLAUDE.equals(providerFor(key));
-        String model = Prefs.get(ctx).getString(claude ? "ai_claude_model" : "ai_gemini_model",
-                claude ? DEFAULT_CLAUDE_MODEL : DEFAULT_GEMINI_MODEL);
+        String model = fast ? (claude ? FAST_CLAUDE_MODEL : FAST_GEMINI_MODEL)
+                : Prefs.get(ctx).getString(claude ? "ai_claude_model" : "ai_gemini_model", claude ? DEFAULT_CLAUDE_MODEL : DEFAULT_GEMINI_MODEL);
         Result r = call(ctx, claude, model, key, system, user, maxTokens);
-        if (!r.success && (r.status == 400 || r.status == 404)) {
+        int st = r.status;
+        if (!r.success && (st == 400 || st == 404 || st == 408 || st == 429 || st >= 500 || st == -1)) {
             String fallback = claude ? FALLBACK_CLAUDE_MODEL : FALLBACK_GEMINI_MODEL;
             if (!fallback.equals(model)) {
-                Log.w(TAG, "Model " + model + " unavailable (" + r.status + "), retrying with " + fallback);
+                Log.w(TAG, "Model " + model + " failed (" + st + "), retrying with " + fallback);
                 Result f = call(ctx, claude, fallback, key, system, user, maxTokens);
+                if (f.success && st == 404 && !fast) {
+                    // This key cannot use the model at all: go straight to the fallback from now on.
+                    Prefs.get(ctx).edit().putString(claude ? "ai_claude_model" : "ai_gemini_model", fallback).apply();
+                }
                 if (f.success) return f;
             }
         }
@@ -101,12 +117,16 @@ public final class LlmClient {
                 }
                 body.put("contents", new JSONArray().put(new JSONObject().put("role", "user")
                         .put("parts", new JSONArray().put(new JSONObject().put("text", user)))));
-                body.put("generationConfig", new JSONObject().put("maxOutputTokens", maxTokens));
+                // Little or no "thinking": these are short, factual jobs and the viewer is waiting.
+                JSONObject thinking = model.startsWith("gemini-2")
+                        ? new JSONObject().put("thinkingBudget", 0)
+                        : new JSONObject().put("thinkingLevel", model.contains("lite") ? "minimal" : "low");
+                body.put("generationConfig", new JSONObject().put("maxOutputTokens", maxTokens).put("thinkingConfig", thinking));
             }
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             conn.setConnectTimeout(8000);
-            conn.setReadTimeout(20000);
+            conn.setReadTimeout(25000);
             conn.setDoOutput(true);
             try (OutputStream os = conn.getOutputStream()) {
                 os.write(body.toString().getBytes(StandardCharsets.UTF_8));

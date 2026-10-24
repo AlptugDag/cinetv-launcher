@@ -36,6 +36,7 @@ public class HomeScreen {
 
     public interface Listener {
         void onSearch(String query);
+        void onVoice();
         void onLogo();
         void onPhone();
         void onNetwork();
@@ -57,6 +58,7 @@ public class HomeScreen {
     public final CinemaScreensaverView screensaverView;
     public final TextView clock, date, weather, shelfLabel, caption, moveHint;
     public final EditText search;
+    public final GlassKeyboard keyboard;
 
     private final Context ctx;
     private final Listener listener;
@@ -64,6 +66,7 @@ public class HomeScreen {
     private final FrameLayout searchBox;
     private final FrameLayout logoButton;
     private final FrameLayout aiCard;
+    private final FrameLayout micButton;
     private final View[] headerButtons;
 
     public HomeScreen(Context ctx, Listener listener, AppGrid.Host appHost) {
@@ -150,8 +153,32 @@ public class HomeScreen {
         search.setTypeface(FontManager.getMedium(ctx));
         search.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.pxf(22));
         search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        // CineTV's own glass keyboard opens instead of the system one.
+        search.setShowSoftInputOnFocus(false);
         search.setPadding(UiKit.px(16), 0, 0, 0);
         searchRow.addView(search, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        // Voice search: the microphone at the end of the bar.
+        micButton = new FrameLayout(ctx);
+        micButton.setFocusable(true);
+        micButton.setClickable(true);
+        micButton.setContentDescription(ctx.getString(R.string.voice_search));
+        final Glass micGlass = new Glass(micButton, UiKit.pxf(24), Glass.Style.CONTROL);
+        micButton.setBackground(micGlass);
+        final ImageView micIcon = new ImageView(ctx);
+        final android.graphics.drawable.Drawable md = ctx.getDrawable(R.drawable.ic_mic).mutate();
+        md.setTint(UiKit.INK_DIM);
+        micIcon.setImageDrawable(md);
+        micButton.addView(micIcon, new FrameLayout.LayoutParams(UiKit.px(26), UiKit.px(26), Gravity.CENTER));
+        micButton.setOnFocusChangeListener((v, has) -> {
+            micGlass.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
+            md.setTint(has ? UiKit.INK_DARK : UiKit.INK_DIM);
+            UiKit.lift(v, has, 1.12f, 140);
+            if (has) listener.onFocusLight(v, Color.parseColor("#A78BFA"));
+        });
+        micButton.setOnClickListener(v -> listener.onVoice());
+        LinearLayout.LayoutParams mlp0 = new LinearLayout.LayoutParams(UiKit.px(48), UiKit.px(48));
+        mlp0.setMargins(UiKit.px(10), 0, -UiKit.px(12), 0);
+        searchRow.addView(micButton, mlp0);
         searchBox.addView(searchRow, match());
         final GlassBevelView searchBevel = new GlassBevelView(ctx, UiKit.pxf(34), false);
         searchBox.addView(searchBevel, match());
@@ -219,9 +246,13 @@ public class HomeScreen {
 
         aiCard = new FrameLayout(ctx);
         aiCard.setVisibility(View.GONE);
-        FrameLayout.LayoutParams alp = new FrameLayout.LayoutParams(UiKit.px(900), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        alp.setMargins(0, UiKit.px(130), 0, 0);
+        aiCard.setClipChildren(false);
+        FrameLayout.LayoutParams alp = new FrameLayout.LayoutParams(UiKit.px(860), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        alp.setMargins(0, UiKit.px(118), 0, 0);
         root.addView(aiCard, alp);
+
+        keyboard = new GlassKeyboard(ctx);
+        root.addView(keyboard, match());
 
         moveHint = UiKit.label(ctx, 20, UiKit.INK);
         moveHint.setText(R.string.move_hint);
@@ -278,7 +309,7 @@ public class HomeScreen {
             headerButtons[i].setOnKeyListener((v, keyCode, e) -> {
                 if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
                 if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    (idx == 0 ? search : headerButtons[idx - 1]).requestFocus();
+                    (idx == 0 ? micButton : headerButtons[idx - 1]).requestFocus();
                     return true;
                 }
                 if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && idx == headerButtons.length - 1) return true;
@@ -286,12 +317,28 @@ public class HomeScreen {
             });
         }
         search.setOnKeyListener((v, keyCode, e) -> {
+            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                if (e.getAction() == KeyEvent.ACTION_UP) keyboard.show(search);
+                return true;
+            }
             if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
-            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && search.getSelectionStart() == 0) {
+            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
                 logoButton.requestFocus();
                 return true;
             }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && search.getSelectionEnd() == search.length()) {
+            if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                micButton.requestFocus();
+                return true;
+            }
+            return toShelf.onKey(v, keyCode, e);
+        });
+        micButton.setOnKeyListener((v, keyCode, e) -> {
+            if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
+            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                search.requestFocus();
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
                 headerButtons[0].requestFocus();
                 return true;
             }
@@ -326,30 +373,64 @@ public class HomeScreen {
 
     private final Runnable hideAi = this::hideAiCard;
 
+    /**
+     * The assistant's bubble, right under the search bar like Siri's: the answer (or "thinking"
+     * while it works) on frosted glass with a soft violet-to-cyan rim. It leaves by itself.
+     */
     public void showAiCard(CharSequence title, CharSequence query, CharSequence answer) {
+        showBubble(answer, false, 9000);
+    }
+
+    public void showThinking() {
+        showBubble(ctx.getString(R.string.assistant_thinking), true, 30000);
+    }
+
+    /** Shows an answer; {@code staysMs} after which it leaves unless {@link #hideAiCardSoon} is called first. */
+    public void showBubble(CharSequence text, boolean thinking, long staysMs) {
         aiCard.removeAllViews();
         LinearLayout card = new LinearLayout(ctx);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(UiKit.px(40), UiKit.px(30), UiKit.px(40), UiKit.px(32));
-        card.setBackground(Glass.panel(card, 36));
-        TextView t = UiKit.bold(ctx, 22, Color.parseColor("#C4B5FD"));
-        t.setText(title);
-        card.addView(t);
-        TextView q = UiKit.label(ctx, 18, UiKit.INK_DIM);
-        q.setText("“" + query + "”");
-        q.setPadding(0, UiKit.px(8), 0, UiKit.px(14));
-        card.addView(q);
-        TextView a = UiKit.label(ctx, 22, UiKit.INK);
-        a.setText(answer);
-        a.setLineSpacing(UiKit.pxf(8), 1f);
-        card.addView(a);
-        aiCard.addView(card, match());
-        aiCard.setVisibility(View.VISIBLE);
-        aiCard.setAlpha(0f);
-        aiCard.setTranslationY(-UiKit.pxf(30));
-        aiCard.animate().alpha(1f).translationY(0).setDuration(220).start();
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(UiKit.px(30), UiKit.px(22), UiKit.px(34), UiKit.px(24));
+        card.setBackground(Glass.panel(card, 34));
+        View orb = new View(ctx);
+        android.graphics.drawable.GradientDrawable od = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.parseColor("#F472B6"), Color.parseColor("#A78BFA"), Color.parseColor("#22D3EE")});
+        od.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        orb.setBackground(od);
+        LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(UiKit.px(34), UiKit.px(34));
+        olp.setMargins(0, 0, UiKit.px(22), 0);
+        card.addView(orb, olp);
+        if (thinking) {
+            orb.animate().scaleX(0.7f).scaleY(0.7f).setDuration(600).withEndAction(new Runnable() {
+                boolean in = true;
+                @Override public void run() {
+                    if (aiCard.getVisibility() != View.VISIBLE || orb.getParent() == null) return;
+                    in = !in;
+                    orb.animate().scaleX(in ? 0.7f : 1f).scaleY(in ? 0.7f : 1f).setDuration(600).withEndAction(this).start();
+                }
+            }).start();
+        }
+        TextView a = UiKit.label(ctx, 23, thinking ? UiKit.INK_DIM : UiKit.INK);
+        a.setText(text);
+        a.setLineSpacing(UiKit.pxf(7), 1f);
+        card.addView(a, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        aiCard.addView(card, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        if (aiCard.getVisibility() != View.VISIBLE) {
+            aiCard.setVisibility(View.VISIBLE);
+            aiCard.setAlpha(0f);
+            aiCard.setTranslationY(-UiKit.pxf(24));
+            aiCard.setScaleX(0.96f);
+            aiCard.animate().alpha(1f).translationY(0).scaleX(1f).setDuration(240).start();
+        }
         aiCard.removeCallbacks(hideAi);
-        aiCard.postDelayed(hideAi, 8000);
+        aiCard.postDelayed(hideAi, staysMs);
+    }
+
+    public void hideAiCardSoon(long ms) {
+        aiCard.removeCallbacks(hideAi);
+        aiCard.postDelayed(hideAi, ms);
     }
 
     public boolean isAiCardShowing() {

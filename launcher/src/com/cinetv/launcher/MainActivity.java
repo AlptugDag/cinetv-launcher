@@ -16,6 +16,7 @@ import android.widget.Toast;
 
 import com.cinetv.launcher.ai.LlmClient;
 import com.cinetv.launcher.ai.MovieAssistant;
+import com.cinetv.launcher.ai.Speaker;
 import com.cinetv.launcher.device.DeviceTweaks;
 import com.cinetv.launcher.device.HardwareKeys;
 import com.cinetv.launcher.device.MemoryOptimizer;
@@ -133,6 +134,27 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.applySpatial(Prefs.spatial3d(this));
         home.modal.setOnClosed(() -> {
             if (!home.shelf.hasFocus() && getCurrentFocus() == null) home.focusLogo();
+        });
+        home.keyboard.setListener(new com.cinetv.launcher.ui.GlassKeyboard.Listener() {
+            @Override
+            public void onSubmit(String text) {
+                onSearch(text);
+            }
+
+            @Override
+            public void onVoice() {
+                MainActivity.this.onVoice();
+            }
+
+            @Override
+            public void onFocusLight(View v, int color) {
+                home.environment.focusOn(v, color);
+            }
+
+            @Override
+            public void onClosed() {
+                if (!home.shelf.hasFocus()) home.search.requestFocus();
+            }
         });
         home.shelf.setListener(new com.cinetv.launcher.ui.PosterShelf.Listener() {
             @Override
@@ -277,6 +299,15 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             return true;
         }
         if (home.opening.isPlaying()) return home.opening.dispatchKeyEvent(e);
+        if (home.keyboard.isShowing()) {
+            if (home.keyboard.handleKey(e, getCurrentFocus())) return true;
+            return super.dispatchKeyEvent(e);
+        }
+        if (down && e.getRepeatCount() == 0 && !home.modal.isShowing()
+                && (e.getKeyCode() == KeyEvent.KEYCODE_SEARCH || e.getKeyCode() == KeyEvent.KEYCODE_VOICE_ASSIST)) {
+            onVoice();
+            return true;
+        }
         if (home.modal.isShowing()) {
             if (home.modal.handleKey(e, getCurrentFocus())) return true;
             return super.dispatchKeyEvent(e);
@@ -301,6 +332,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void onBackPressed() {
         if (home.isAiCardShowing()) {
+            Speaker.stop();
             home.hideAiCard();
         } else if (!home.shelf.hasFocus()) {
             home.shelf.requestFocus();
@@ -393,55 +425,73 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     // ---- search & AI ------------------------------------------------------------------------------
 
+    private static final int REQ_VOICE = 41;
+    private int searchGen;
+
     @Override
     public void onSearch(final String query) {
+        if (query == null || query.trim().isEmpty()) return;
+        home.keyboard.hide();
         home.search.setText(query);
-        final MovieAssistant.Kind kind = MovieAssistant.classify(this, query);
-        final String assistant = LlmClient.providerName(this) != null ? LlmClient.providerName(this) : getString(R.string.app_name);
-        if (kind == MovieAssistant.Kind.SHELF) {
-            home.shelfLabel.setText(getString(R.string.shelf_building, MovieAssistant.cleanShelfName(query)).toUpperCase(Locale.getDefault()));
-        }
+        Speaker.stop();
+        final int gen = ++searchGen;
+        home.showThinking();
+        final Context app = getApplicationContext();
         background(() -> {
-            switch (kind) {
-                case SHELF: {
-                    MovieAssistant.Shelf s = MovieAssistant.shelfFor(this, query, 12);
-                    ui(() -> {
-                        if (s == null || s.movies.isEmpty()) {
-                            home.showAiCard(assistant, query, getString(R.string.nothing_found));
-                            restoreShelfLabel();
-                        } else {
-                            setShelf(s.title.isEmpty() ? MovieAssistant.cleanShelfName(query) : s.title, s.movies, true);
-                            home.shelf.requestFocus();
-                        }
-                    });
-                    break;
+            MovieAssistant.Reply r = MovieAssistant.ask(app, query, PerformanceProfile.shelfSize(app));
+            ui(() -> {
+                if (gen != searchGen) return;
+                if (r.kind == MovieAssistant.Kind.PLAY && !r.movies.isEmpty()) {
+                    home.hideAiCard();
+                    openTitle(r.movies.get(0), null);
+                    return;
                 }
-                case CHAT: {
-                    String answer = MovieAssistant.chat(this, query);
-                    ui(() -> home.showAiCard(assistant, query, answer));
-                    break;
+                if (!r.movies.isEmpty()) {
+                    setShelf(r.title.isEmpty() ? MovieAssistant.cleanShelfName(query) : r.title, r.movies, true);
+                    home.shelf.requestFocus();
                 }
-                default: {
-                    Movie m = MovieAssistant.findToPlay(this, query);
-                    ui(() -> {
-                        if (m == null || m.imdbId.isEmpty()) {
-                            home.showAiCard(assistant, query, getString(R.string.nothing_found));
-                        } else {
-                            home.showAiCard(assistant, query, getString(R.string.opening_title, m.title));
-                            openTitle(m, null);
-                        }
-                    });
+                if (!r.answer.isEmpty()) {
+                    home.showBubble(r.answer, false, 60000);
+                    Speaker.say(this, r.answer, () -> home.hideAiCardSoon(3500));
+                } else if (r.movies.isEmpty()) {
+                    home.showBubble(getString(LlmClient.isConfigured(this) || MovieCatalog.hasTmdb(this)
+                            ? R.string.nothing_found : R.string.ai_err_no_key), false, 6000);
+                } else {
+                    home.hideAiCard();
                 }
-            }
+            });
         });
+    }
+
+    @Override
+    public void onVoice() {
+        home.keyboard.hide();
+        try {
+            Intent i = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                    .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
+                    .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, getString(R.string.voice_prompt));
+            startActivityForResult(i, REQ_VOICE);
+        } catch (Throwable t) {
+            home.showBubble(getString(R.string.voice_unavailable), false, 5000);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQ_VOICE || resultCode != RESULT_OK || data == null) return;
+        ArrayList<String> said = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+        if (said != null && !said.isEmpty()) handler.postDelayed(() -> onSearch(said.get(0)), 200);
     }
 
     @Override
     public void curate(final String mood) {
         String provider = LlmClient.providerName(this);
         home.shelfLabel.setText(getString(R.string.shelf_curating, provider == null ? "AI" : provider).toUpperCase(Locale.getDefault()));
+        final String moment = MovieAssistant.momentContext(home.weather.getText().toString());
         background(() -> {
-            MovieAssistant.Shelf s = MovieAssistant.curate(this, mood, 12);
+            MovieAssistant.Shelf s = MovieAssistant.curate(this, mood, moment, PerformanceProfile.shelfSize(this));
             ui(() -> {
                 if (s != null && !s.movies.isEmpty()) setShelf(s.title, s.movies, true);
                 else restoreShelfLabel();
@@ -530,7 +580,18 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     /** Plays the DVD opening (when enabled and the TV can afford it), then opens the title in Nuvio. */
     public void openTitle(final Movie m, DvdCaseView from) {
-        final Runnable launch = () -> AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl);
+        final Context appCtx = getApplicationContext();
+        final Runnable launch = () -> {
+            if (!m.imdbId.isEmpty()) {
+                AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl);
+                return;
+            }
+            // Search results carry only TMDB ids: look the IMDb id up now.
+            background(() -> {
+                MovieCatalog.ensureImdb(appCtx, m);
+                ui(() -> AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl));
+            });
+        };
         boolean animate = Prefs.dvdAnimation(this);
         if (!animate) {
             launch.run();

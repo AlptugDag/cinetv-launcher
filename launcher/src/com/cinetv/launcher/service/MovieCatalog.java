@@ -282,6 +282,22 @@ public final class MovieCatalog {
         }
     }
 
+    /** The first sentences of a person's TMDB biography in the device language (English if none). */
+    public static String personBio(Context ctx, int personId, int sentences) {
+        if (!hasTmdb(ctx)) return "";
+        try {
+            String bio = tmdb(ctx, "person/" + personId + "?language=" + language()).optString("biography", "").trim();
+            if (bio.isEmpty()) bio = tmdb(ctx, "person/" + personId + "?language=en-US").optString("biography", "").trim();
+            // Sentence ends, but not abbreviations like "d." (doğum) or initials.
+            String[] parts = bio.split("(?<=[^\\s.]{3}[.!?])\\s+");
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < parts.length && i < sentences; i++) sb.append(i > 0 ? " " : "").append(parts[i]);
+            return sb.toString();
+        } catch (Throwable t) {
+            return "";
+        }
+    }
+
     /** Fills a missing IMDb id (needed to open the title in Nuvio). */
     public static void ensureImdb(Context ctx, Movie m) {
         if (m != null && m.imdbId.isEmpty() && m.tmdbId > 0) m.imdbId = imdbFor(ctx, m.tmdbId, m.type);
