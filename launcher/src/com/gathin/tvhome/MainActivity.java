@@ -348,14 +348,6 @@ public class MainActivity extends Activity {
         private final Paint watermarkPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         private final Paint watermarkGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-        // Holographic Crysis Visor Telemetry & Scanline System (NO background edge glow!)
-        private final Paint hudArcPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint hudDashedPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint hudPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint hudTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint scanlinePaint = new Paint();
-        private final Path hudPath = new Path();
-
         // Curated deep cinema ambient palette (avoids repetitive blue!)
         private int[] ambientCycleColors = new int[] {
             Color.parseColor("#180A1C"), // Deep Amethyst Noir
@@ -388,25 +380,6 @@ public class MainActivity extends Activity {
 
         SeamlessLivingBackdropView(Context ctx) {
             super(ctx);
-
-            hudPaint.setStyle(Paint.Style.STROKE);
-            hudPaint.setStrokeWidth(1.2f);
-
-            hudArcPaint.setStyle(Paint.Style.STROKE);
-            hudArcPaint.setStrokeWidth(1.2f);
-
-            hudDashedPaint.setStyle(Paint.Style.STROKE);
-            hudDashedPaint.setStrokeWidth(1.0f);
-            hudDashedPaint.setPathEffect(new DashPathEffect(new float[]{8f, 16f}, 0f));
-
-            hudTextPaint.setStyle(Paint.Style.FILL);
-            hudTextPaint.setTypeface(Typeface.MONOSPACE);
-            hudTextPaint.setTextSize(10.5f);
-            hudTextPaint.setLetterSpacing(0.08f);
-
-            scanlinePaint.setStyle(Paint.Style.STROKE);
-            scanlinePaint.setStrokeWidth(1.0f);
-            scanlinePaint.setColor(Color.argb(4, 255, 255, 255));
 
             Bitmap bm = null;
             Bitmap scaled = null;
@@ -604,70 +577,6 @@ public class MainActivity extends Activity {
                     Shader.TileMode.CLAMP
             ));
             canvas.drawRect(0, 0, w, h, interactiveGlowPaint);
-
-            // Crysis Visor Telemetry & Holographic Overlays (Active only in HUD Visor Mode)
-            if (isHudVisorModeEnabled) {
-                // 4. Crysis Visor Horizon Guidelines (Curved Latitude Sweeps)
-                hudArcPaint.setColor(isLightMode ? Color.argb(16, 15, 23, 42) : Color.argb(24, 56, 189, 248));
-                hudPath.reset();
-                hudPath.moveTo(42f, 82f);
-                hudPath.quadTo(w * 0.5f, 62f, w - 42f, 82f);
-                canvas.drawPath(hudPath, hudArcPaint);
-
-                hudPath.reset();
-                hudPath.moveTo(42f, h - 50f);
-                hudPath.quadTo(w * 0.5f, h - 70f, w - 42f, h - 50f);
-                canvas.drawPath(hudPath, hudArcPaint);
-
-                // 6. Interactive Telemetry Targeting Reticle & Concentric Radar Ring Around Focus
-                hudDashedPaint.setColor(isLightMode ? Color.argb(12, 15, 23, 42) : Color.argb(22, 56, 189, 248));
-                canvas.drawCircle(glowX, glowY, 340f, hudDashedPaint);
-                hudArcPaint.setColor(isLightMode ? Color.argb(8, 15, 23, 42) : Color.argb(14, 255, 255, 255));
-                canvas.drawCircle(glowX, glowY, 560f, hudArcPaint);
-
-                // Subtle target crosshair ticks around focused view
-                hudPaint.setColor(isLightMode ? Color.argb(18, 15, 23, 42) : Color.argb(32, 56, 189, 248));
-                canvas.drawLine(glowX - 22f, glowY, glowX - 6f, glowY, hudPaint);
-                canvas.drawLine(glowX + 6f, glowY, glowX + 22f, glowY, hudPaint);
-                canvas.drawLine(glowX, glowY - 22f, glowX, glowY - 6f, hudPaint);
-                canvas.drawLine(glowX, glowY + 6f, glowX, glowY + 22f, hudPaint);
-
-                // 7. Tactical Corner Telemetry Brackets [ + ]
-                hudPaint.setColor(isLightMode ? Color.argb(50, 100, 116, 139) : Color.argb(68, 56, 189, 248));
-                float bSize = 22f;
-                float mX = 40f;
-                float mY = 38f;
-
-                // Top-Left Reticle
-                canvas.drawLine(mX, mY + bSize, mX, mY, hudPaint);
-                canvas.drawLine(mX, mY, mX + bSize, mY, hudPaint);
-                canvas.drawLine(mX + 7f, mY + 12f, mX + 15f, mY + 12f, hudPaint);
-                canvas.drawLine(mX + 11f, mY + 8f, mX + 11f, mY + 16f, hudPaint);
-
-                // Top-Right Reticle
-                canvas.drawLine(w - mX - bSize, mY, w - mX, mY, hudPaint);
-                canvas.drawLine(w - mX, mY, w - mX, mY + bSize, hudPaint);
-
-                // Bottom-Left Reticle
-                canvas.drawLine(mX, h - mY - bSize, mX, h - mY, hudPaint);
-                canvas.drawLine(mX, h - mY, mX + bSize, h - mY, hudPaint);
-
-                // Bottom-Right Reticle
-                canvas.drawLine(w - mX - bSize, h - mY, w - mX, h - mY, hudPaint);
-                canvas.drawLine(w - mX, h - mY, w - mX, h - mY + bSize, hudPaint);
-
-                // Holographic Telemetry Label Overlays
-                hudTextPaint.setColor(isLightMode ? Color.argb(55, 100, 116, 139) : Color.argb(65, 148, 163, 184));
-                canvas.drawText("HUD.JARVIS // VISOR-OPTIC v2.7", mX + 30f, mY + 8f, hudTextPaint);
-                canvas.drawText("OPTIC.CURV // 8500R", w - mX - 165f, mY + 8f, hudTextPaint);
-                canvas.drawText("OPTIC // 3D PARALLAX DEPTH", mX + 30f, h - mY + 2f, hudTextPaint);
-                canvas.drawText("STATUS // 60FPS OPTIMAL", w - mX - 170f, h - mY + 2f, hudTextPaint);
-
-                // 8. Subtle Holographic Scanline Grid (hardware-accelerated, zero flicker)
-                for (int y = 0; y < h; y += 14) {
-                    canvas.drawLine(0, y, w, y, scanlinePaint);
-                }
-            }
         }
     }
 
