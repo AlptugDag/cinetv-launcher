@@ -61,6 +61,13 @@ import android.widget.Toast;
 import android.widget.EditText;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.view.FocusFinder;
+import android.view.ViewParent;
+import android.text.TextUtils;
+import java.net.InetAddress;
+import java.net.Inet4Address;
+import java.net.NetworkInterface;
+import java.util.Enumeration;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -207,6 +214,7 @@ public class MainActivity extends Activity {
     private LinearLayout headerActions;
     private BroadcastReceiver packageReceiver;
     private FrameLayout settingsModalOverlay;
+    private ScrollView rootScroll;
     private FrameLayout allAppsOverlay;
     private FrameLayout aiResponseFloatingCard;
     private LinearLayout appActionPillBar;
@@ -301,6 +309,10 @@ public class MainActivity extends Activity {
     private final Runnable vitrinAutoSlide = new Runnable() {
         @Override
         public void run() {
+            if (settingsModalOverlay != null && settingsModalOverlay.getVisibility() == View.VISIBLE) {
+                handler.postDelayed(this, 8000L);
+                return;
+            }
             if (!isVitrinFocused && heroScroll != null && heroShelfRow != null && heroShelfRow.getChildCount() > 1) {
                 int step = VITRIN_POSTER_W + VITRIN_OVERLAP_MARGIN;
                 int maxScroll = heroShelfRow.getWidth() - heroScroll.getWidth();
@@ -345,13 +357,25 @@ public class MainActivity extends Activity {
         private final Path hudPath = new Path();
 
         // Curated deep cinema ambient palette (avoids repetitive blue!)
-        private final int[] AMBIENT_CYCLE_COLORS = new int[] {
+        private int[] ambientCycleColors = new int[] {
             Color.parseColor("#180A1C"), // Deep Amethyst Noir
             Color.parseColor("#1D0B11"), // Midnight Ruby Wine
             Color.parseColor("#1A1108"), // Warm Amber Gold Noir
             Color.parseColor("#081712"), // Deep Emerald Noir
             Color.parseColor("#160B22")  // Deep Violet Orchid
         };
+
+        public void setAmbientPalette(int[] palette) {
+            if (palette != null && palette.length > 0) {
+                this.ambientCycleColors = palette;
+                if (breathingAnimator != null) {
+                    breathingAnimator.cancel();
+                    breathingAnimator = null;
+                }
+                startSeamlessBreathing();
+                invalidate();
+            }
+        }
 
         private float glowX = 960f;
         private float glowY = 540f;
@@ -456,7 +480,7 @@ public class MainActivity extends Activity {
 
         void startSeamlessBreathing() {
             if (breathingAnimator != null && breathingAnimator.isRunning()) return;
-            breathingAnimator = ValueAnimator.ofFloat(0f, (float) AMBIENT_CYCLE_COLORS.length);
+            breathingAnimator = ValueAnimator.ofFloat(0f, (float) ambientCycleColors.length);
             breathingAnimator.setDuration(45000L); // 45-second ultra-slow seamless cycle
             breathingAnimator.setRepeatCount(ValueAnimator.INFINITE);
             breathingAnimator.setRepeatMode(ValueAnimator.RESTART);
@@ -513,10 +537,10 @@ public class MainActivity extends Activity {
             int w = getWidth() > 0 ? getWidth() : 1920;
             int h = getHeight() > 0 ? getHeight() : 1080;
 
-            int idxA = ((int) Math.floor(cyclePhase)) % AMBIENT_CYCLE_COLORS.length;
-            int idxB = (idxA + 1) % AMBIENT_CYCLE_COLORS.length;
+            int idxA = ((int) Math.floor(cyclePhase)) % ambientCycleColors.length;
+            int idxB = (idxA + 1) % ambientCycleColors.length;
             float frac = cyclePhase - (float) Math.floor(cyclePhase);
-            int breathingTone = (Integer) argbEvaluator.evaluate(frac, AMBIENT_CYCLE_COLORS[idxA], AMBIENT_CYCLE_COLORS[idxB]);
+            int breathingTone = (Integer) argbEvaluator.evaluate(frac, ambientCycleColors[idxA], ambientCycleColors[idxB]);
 
             // 1. Seamless, slowly morphing background gradient
             if (isLightMode) {
@@ -537,7 +561,7 @@ public class MainActivity extends Activity {
             canvas.drawRect(0, 0, w, h, bgPaint);
 
             // Slow orbital ambient drift across the upper-center canvas
-            double angle = (cyclePhase / AMBIENT_CYCLE_COLORS.length) * Math.PI * 2.0;
+            double angle = (cyclePhase / ambientCycleColors.length) * Math.PI * 2.0;
             float orbitX = (w * 0.52f) + (float) Math.cos(angle) * 260f;
             float orbitY = (h * 0.45f) + (float) Math.sin(angle) * 140f;
             int br = Color.red(breathingTone);
@@ -1034,6 +1058,36 @@ public class MainActivity extends Activity {
                 }
             }
 
+            // Strict Modal Focus Trap: When settingsModalOverlay is visible, TRAP all navigation inside!
+            if (settingsModalOverlay != null && settingsModalOverlay.getVisibility() == View.VISIBLE) {
+                if (kc == KeyEvent.KEYCODE_BACK || kc == KeyEvent.KEYCODE_ESCAPE) {
+                    hideSettingsModal();
+                    return true;
+                }
+                if (isDedicatedHardwareMediaKey(kc, sc)) {
+                    return true;
+                }
+
+                View current = getCurrentFocus();
+                if (current == null || !isViewDescendantOf(current, settingsModalOverlay)) {
+                    View first = findFirstFocusableChild(settingsModalOverlay);
+                    if (first != null) {
+                        first.requestFocus();
+                        return true;
+                    }
+                } else if (kc == KeyEvent.KEYCODE_DPAD_UP || kc == KeyEvent.KEYCODE_DPAD_DOWN
+                        || kc == KeyEvent.KEYCODE_DPAD_LEFT || kc == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    int dir = View.FOCUS_DOWN;
+                    if (kc == KeyEvent.KEYCODE_DPAD_UP) dir = View.FOCUS_UP;
+                    else if (kc == KeyEvent.KEYCODE_DPAD_DOWN) dir = View.FOCUS_DOWN;
+                    else if (kc == KeyEvent.KEYCODE_DPAD_LEFT) dir = View.FOCUS_LEFT;
+                    else if (kc == KeyEvent.KEYCODE_DPAD_RIGHT) dir = View.FOCUS_RIGHT;
+
+                    return handleModalDpadNavigation(current, dir);
+                }
+                return true;
+            }
+
             // 0. Dynamic In-App Remapped Custom Keys (Interactive Key Remapper)
             SharedPreferences keyPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
             String customAction = keyPrefs.getString("custom_map_" + kc, null);
@@ -1282,7 +1336,7 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
 
-        ScrollView rootScroll = new ScrollView(this);
+        rootScroll = new ScrollView(this);
         rootScroll.setFillViewport(true);
         rootScroll.setVerticalScrollBarEnabled(false);
         rootScroll.setClipChildren(false);
@@ -1378,7 +1432,7 @@ public class MainActivity extends Activity {
         brandMedallion.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                showSystemBenchmarkAndAutoOptimizerModal();
+                showLauncherSettingsModal();
             }
         });
 
@@ -5503,25 +5557,35 @@ public class MainActivity extends Activity {
 
     private void showLauncherSettingsModal() {
         if (settingsModalOverlay == null) return;
+        if (rootScroll != null) {
+            rootScroll.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        }
+        settingsModalOverlay.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
         settingsModalOverlay.removeAllViews();
         settingsModalOverlay.setVisibility(View.VISIBLE);
         settingsModalOverlay.setAlpha(0f);
-        settingsModalOverlay.animate().alpha(1f).setDuration(220L).start();
+        settingsModalOverlay.animate().alpha(1f).setDuration(180L).start();
 
         final String currentCity = Settings.Global.getString(getContentResolver(), "tvhome_city");
         final String apiKey = getAiApiKey();
+        final String activeTheme = (currentThemeMode != null) ? currentThemeMode.toLowerCase() : "glass";
 
-        LinearLayout card = new LinearLayout(this);
+        // Master 4-Column Widescreen Dashboard (Fits 1080p canvas with ZERO scrolling)
+        final LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setPadding(44, 30, 44, 34);
+        card.setPadding(26, 16, 26, 16);
 
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.RECTANGLE);
-        bg.setCornerRadius(26f);
-        bg.setColor(Color.argb(240, 11, 15, 25));
+        bg.setCornerRadius(24f);
+        bg.setColor(Color.argb(246, 10, 14, 23));
         bg.setStroke(2, Color.parseColor("#38BDF8"));
         card.setBackground(bg);
+
+        // Header Row
+        LinearLayout headerRow = new LinearLayout(this);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
 
         ImageView logoIcon = new ImageView(this);
         logoIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -5533,76 +5597,373 @@ public class MainActivity extends Activity {
             is.close();
             if (bm != null) logoIcon.setImageBitmap(bm);
         } catch (Throwable ignored) {}
-        LinearLayout.LayoutParams lilp = new LinearLayout.LayoutParams(52, 52);
-        lilp.setMargins(0, 0, 0, 8);
-        card.addView(logoIcon, lilp);
+        headerRow.addView(logoIcon, new LinearLayout.LayoutParams(36, 36));
+
+        LinearLayout titleCol = new LinearLayout(this);
+        titleCol.setOrientation(LinearLayout.VERTICAL);
+        titleCol.setPadding(12, 0, 0, 0);
 
         TextView title = new TextView(this);
-        title.setText("CİNETV SİSTEM AYARLARI");
+        title.setText("CİNETV KİŞİSELLEŞTİRME & SİSTEM KONTROLÜ");
         title.setTypeface(FontManager.getBold(this));
-        title.setTextSize(18f);
+        title.setTextSize(13.5f);
         title.setTextColor(Color.parseColor("#F8FAFC"));
-        title.setLetterSpacing(0.06f);
-        card.addView(title);
+        title.setLetterSpacing(0.04f);
+        titleCol.addView(title);
 
         TextView sub = new TextView(this);
-        sub.setText("Kişiselleştirme & Sistem Yönetimi • [Geri]: Kapat");
+        sub.setText("CleanYourTV Temaları • 3D Görsel Optik • Yapay Zekâ • TV Yönetimi");
         sub.setTypeface(FontManager.getMedium(this));
-        sub.setTextSize(12f);
-        sub.setTextColor(Color.parseColor("#64748B"));
-        sub.setPadding(0, 4, 0, 20);
-        card.addView(sub);
+        sub.setTextSize(9.5f);
+        sub.setTextColor(Color.parseColor("#94A3B8"));
+        titleCol.addView(sub);
 
-        // 1) Tema Ayarlama
-        View btnTheme = createModalMenuButton("Tema Modu", "Saf OLED, Otomatik Gece/Gündüz veya Aydınlık Cam", new View.OnClickListener() {
+        headerRow.addView(titleCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        final FrameLayout closeBtn = createCompactPillButton("✕ Kapat (Geri)", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                cycleThemeMode();
+                hideSettingsModal();
             }
         });
-        card.addView(btnTheme);
+        headerRow.addView(closeBtn, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, 32));
+        card.addView(headerRow, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // 2) Şehir Ayarlama
+        // Glass Divider Line
+        View divider = new View(this);
+        divider.setBackgroundColor(Color.argb(45, 56, 189, 248));
+        LinearLayout.LayoutParams divLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1);
+        divLp.setMargins(0, 10, 0, 10);
+        card.addView(divider, divLp);
+
+        // 4 Columns Layout
+        LinearLayout columnsRow = new LinearLayout(this);
+        columnsRow.setOrientation(LinearLayout.HORIZONTAL);
+        columnsRow.setGravity(Gravity.TOP);
+
+        View firstFocusTarget = null;
+
+        // ==========================================
+        // SÜTUN 1: CLEANYOURTV TEMALARI (8 Themes + Mod)
+        // ==========================================
+        LinearLayout col1 = new LinearLayout(this);
+        col1.setOrientation(LinearLayout.VERTICAL);
+        col1.addView(createColumnHeader("CLEANYOURTV TEMALARI"));
+
+        String[][] themes = new String[][]{
+                {"aurora", "Aurora Borealis"},
+                {"glass", "Liquid Glass"},
+                {"ruska", "Nordic Ruska"},
+                {"scenes", "Living Scenes"},
+                {"six-columns", "Six-Columns"},
+                {"sweden", "Sweden Nordic"},
+                {"dussehra", "Dussehra Royal"},
+                {"oled", "OLED Saf Siyah"}
+        };
+
+        for (int r = 0; r < 4; r++) {
+            LinearLayout pairRow = new LinearLayout(this);
+            pairRow.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout.LayoutParams pairLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            pairLp.setMargins(0, 0, 0, 4);
+
+            for (int c = 0; c < 2; c++) {
+                final int idx = r * 2 + c;
+                final String key = themes[idx][0];
+                final String name = themes[idx][1];
+                boolean isActive = key.equalsIgnoreCase(activeTheme);
+                View tile = createMiniThemeTile(key, name, isActive, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        applyCleanYourTvTheme(key);
+                        showLauncherSettingsModal();
+                    }
+                });
+                LinearLayout.LayoutParams tileLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                if (c == 0) tileLp.setMargins(0, 0, 4, 0);
+                pairRow.addView(tile, tileLp);
+                if (firstFocusTarget == null && idx == 0) firstFocusTarget = tile;
+            }
+            col1.addView(pairRow, pairLp);
+        }
+
+        // 5. Satır: Gece / Gündüz Modu
+        String curMode = Settings.Global.getString(getContentResolver(), "tvhome_theme_mode");
+        if (curMode == null) curMode = "Karanlık";
+        View tileThemeMode = createCompactControlTile(
+                "Gece / Gündüz Döngüsü",
+                "Aktif Görünüm: " + curMode.toUpperCase(Locale.getDefault()),
+                false,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        cycleThemeMode();
+                    }
+                }
+        );
+        col1.addView(tileThemeMode);
+
+        LinearLayout.LayoutParams col1Lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        col1Lp.setMargins(0, 0, 10, 0);
+        columnsRow.addView(col1, col1Lp);
+
+        // ==========================================
+        // SÜTUN 2: 3D GÖRSEL MOTOR & SAHNE (5 Items)
+        // ==========================================
+        LinearLayout col2 = new LinearLayout(this);
+        col2.setOrientation(LinearLayout.VERTICAL);
+        col2.addView(createColumnHeader("3D GÖRSEL OPTİK & SAHNE"));
+
+        boolean isBevelActive = DynamicChromaticBorderView.isAberrationEnabled();
+        View tileBevel = createCompactControlTile(
+                "3D Sıvı Cam Bevel",
+                isBevelActive ? "Durum: AKTİF (Elmas Kenarlık)" : "Durum: DEVRE DIŞI",
+                isBevelActive,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        boolean n = !DynamicChromaticBorderView.isAberrationEnabled();
+                        DynamicChromaticBorderView.setAberrationEnabled(n);
+                        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean(PREF_KEY_CHROMA_ABERRATION, n).apply();
+                        showLauncherSettingsModal();
+                    }
+                }
+        );
+        col2.addView(tileBevel);
+
+        View tileHud = createCompactControlTile(
+                "HUD Vizör & Parallax",
+                isHudVisorModeEnabled ? "Durum: AKTİF (3D Kavis)" : "Durum: DEVRE DIŞI",
+                isHudVisorModeEnabled,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        isHudVisorModeEnabled = !isHudVisorModeEnabled;
+                        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putBoolean(PREF_KEY_HUD_VISOR, isHudVisorModeEnabled).apply();
+                        applyHudVisorMode(isHudVisorModeEnabled);
+                        showLauncherSettingsModal();
+                    }
+                }
+        );
+        col2.addView(tileHud);
+
+        View tileBreathing = createCompactControlTile(
+                "Canlı Ambient Soluma",
+                "Arka plan atmosferik renk süzülmesi",
+                true,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (ambientBackdropView != null) {
+                            ambientBackdropView.invalidate();
+                        }
+                        Toast.makeText(MainActivity.this, "Canlı soluma yenilendi!", Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+        col2.addView(tileBreathing);
+
+        View tileSky = createCompactControlTile(
+                "Gökyüzü & Saat Sahnesi",
+                "CleanYourTV Sky & Güneş astronomisi",
+                false,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        cycleThemeMode();
+                        showLauncherSettingsModal();
+                    }
+                }
+        );
+        col2.addView(tileSky);
+
+        View tileWatermark = createCompactControlTile(
+                "3D Zemin Desen Filigranı",
+                "Alptuğ imza motifli derinlik dokusu",
+                true,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (ambientBackdropView != null) {
+                            ambientBackdropView.invalidate();
+                        }
+                        Toast.makeText(MainActivity.this, "Zemin deseni aktif", Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+        col2.addView(tileWatermark);
+
+        LinearLayout.LayoutParams col2Lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        col2Lp.setMargins(0, 0, 10, 0);
+        columnsRow.addView(col2, col2Lp);
+
+        // ==========================================
+        // SÜTUN 3: YAPAY ZEKÂ & MEDYA (5 Items)
+        // ==========================================
+        LinearLayout col3 = new LinearLayout(this);
+        col3.setOrientation(LinearLayout.VERTICAL);
+        col3.addView(createColumnHeader("YAPAY ZEKÂ & MEDYA"));
+
+        View tileAiEngine = createCompactControlTile(
+                "Yapay Zekâ Motoru",
+                "Gemini 3.8 Flash & Claude 5.5",
+                true,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        Toast.makeText(MainActivity.this, "Birincil: Gemini 3.8 Flash & Claude Sonnet 5.5", Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
+        col3.addView(tileAiEngine);
+
+        String aiProvider = (apiKey != null) ? getAiProvider(apiKey).toUpperCase() : null;
+        View tileAiKey = createCompactControlTile(
+                "API Anahtarı Yönetimi",
+                (aiProvider != null) ? ("Aktif: " + aiProvider) : "Tanımlanmadı (Giriş Yap)",
+                aiProvider != null,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showInlineApiKeyModal();
+                    }
+                }
+        );
+        col3.addView(tileAiKey);
+
+        String catName = (vitrinCategoryLabel != null) ? vitrinCategoryLabel.getText().toString() : "Başyapıtlar";
+        View tileVitrinCat = createCompactControlTile(
+                "Canlı Vitrin Seçkisi",
+                "Mevcut: " + catName,
+                false,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        cycleVitrinCategory();
+                        showLauncherSettingsModal();
+                    }
+                }
+        );
+        col3.addView(tileVitrinCat);
+
         String cityLabel = (currentCity != null && !currentCity.trim().isEmpty()) ? currentCity.trim() : "Ayarlanmadı";
-        View btnCity = createModalMenuButton("Hava Durumu Şehri", "Mevcut: " + cityLabel, new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showInlineCityInputModal();
-            }
-        });
-        card.addView(btnCity);
+        View tileCity = createCompactControlTile(
+                "Hava Durumu Şehri",
+                "Mevcut: " + cityLabel,
+                currentCity != null && !currentCity.trim().isEmpty(),
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showInlineCityInputModal();
+                    }
+                }
+        );
+        col3.addView(tileCity);
 
-        // 3) Televizyonu Yeniden Başlatma
-        View btnReboot = createModalMenuButton("Televizyonu Yeniden Başlat", "Cihazı güvenle kapatıp yeniden başlatır", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                confirmRebootTv();
-            }
-        });
-        card.addView(btnReboot);
+        View tileTmdbRefresh = createCompactControlTile(
+                "TMDB Canlı Afiş Yenile",
+                "Online film posterlerini tazele",
+                false,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        fetchLiveTmdbVitrinPosters();
+                        Toast.makeText(MainActivity.this, "Vitrin afişleri yenileniyor...", Toast.LENGTH_SHORT).show();
+                        hideSettingsModal();
+                    }
+                }
+        );
+        col3.addView(tileTmdbRefresh);
 
-        // 4) Yapay Zekâ & TMDB API Anahtarı
-        String keyLabel = (apiKey != null) ? "Aktif (" + getAiProvider(apiKey).toUpperCase() + ")" : "Tanımlanmadı";
-        View btnAiKey = createModalMenuButton("Yapay Zekâ ve TMDB API Anahtarı", "Gemini 3.8 Flash / Claude 5.5 / TMDB • Durum: " + keyLabel, new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showInlineApiKeyModal();
-            }
-        });
-        card.addView(btnAiKey);
+        LinearLayout.LayoutParams col3Lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        col3Lp.setMargins(0, 0, 10, 0);
+        columnsRow.addView(col3, col3Lp);
 
-        // 5) Özel TV Kumandası Tuşlarını Ata (Interactive Key Remapper)
-        View btnRemap = createModalMenuButton("Özel TV Kumandası Tuşlarını Ata", "Kumandanızdaki özel tuşları yakalayıp istediğiniz uygulamaya bağlar", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showKeyRemapperModal();
-            }
-        });
-        card.addView(btnRemap);
+        // ==========================================
+        // SÜTUN 4: TV & SİSTEM ARAÇLARI (5 Items)
+        // ==========================================
+        LinearLayout col4 = new LinearLayout(this);
+        col4.setOrientation(LinearLayout.VERTICAL);
+        col4.addView(createColumnHeader("TV & SİSTEM ARAÇLARI"));
 
-        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(600, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        View tileRemap = createCompactControlTile(
+                "Kumanda Tuş Ataması",
+                "Netflix/YouTube tuşlarını ata",
+                false,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showKeyRemapperModal();
+                    }
+                }
+        );
+        col4.addView(tileRemap);
+
+        View tileWebRemote = createCompactControlTile(
+                "Web Remote (Port 8080)",
+                "Tarayıcı kumandası devrede",
+                true,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        String ip = getTvIpAddress();
+                        Toast.makeText(MainActivity.this, "Kumanda Web Paneli: http://" + ip + ":8080", Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
+        col4.addView(tileWebRemote);
+
+        View tileRamClean = createCompactControlTile(
+                "Bellek & RAM Temizliği",
+                "CleanYourTV trim & hızlandır",
+                false,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        runMemoryCleanup();
+                        showLauncherSettingsModal();
+                    }
+                }
+        );
+        col4.addView(tileRamClean);
+
+        View tileBenchmark = createCompactControlTile(
+                "Donanım Tanılama & Test",
+                "Ekran, FPS ve RAM raporu",
+                false,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showSystemBenchmarkAndAutoOptimizerModal();
+                    }
+                }
+        );
+        col4.addView(tileBenchmark);
+
+        View tileReboot = createCompactControlTile(
+                "Televizyonu Yeniden Başlat",
+                "Cihazı güvenle kapatıp başlatır",
+                false,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        confirmRebootTv();
+                    }
+                }
+        );
+        col4.addView(tileReboot);
+
+        LinearLayout.LayoutParams col4Lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        columnsRow.addView(col4, col4Lp);
+
+        card.addView(columnsRow, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(1340, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
         settingsModalOverlay.addView(card, clp);
-        btnTheme.requestFocus();
+
+        if (firstFocusTarget != null) {
+            firstFocusTarget.requestFocus();
+        }
     }
 
     private void showKeyRemapperModal() {
@@ -5710,6 +6071,9 @@ public class MainActivity extends Activity {
 
     private void hideSettingsModal() {
         if (settingsModalOverlay == null || settingsModalOverlay.getVisibility() != View.VISIBLE) return;
+        if (rootScroll != null) {
+            rootScroll.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        }
         settingsModalOverlay.animate()
                 .alpha(0f)
                 .setDuration(180L)
@@ -5718,9 +6082,429 @@ public class MainActivity extends Activity {
                     public void run() {
                         settingsModalOverlay.setVisibility(View.GONE);
                         settingsModalOverlay.removeAllViews();
+                        if (brandMedallion != null) {
+                            brandMedallion.requestFocus();
+                        }
                     }
                 })
                 .start();
+    }
+
+    private View createColumnHeader(String title) {
+        TextView tv = new TextView(this);
+        tv.setText(title);
+        tv.setTypeface(FontManager.getBold(this));
+        tv.setTextSize(10f);
+        tv.setTextColor(Color.parseColor("#38BDF8"));
+        tv.setLetterSpacing(0.08f);
+        tv.setPadding(6, 0, 6, 8);
+        return tv;
+    }
+
+    private FrameLayout createCompactPillButton(String text, final View.OnClickListener onClick) {
+        final FrameLayout fl = new FrameLayout(this);
+        fl.setFocusable(true);
+        fl.setClickable(true);
+        fl.setPadding(14, 4, 14, 4);
+
+        final GradientDrawable normal = new GradientDrawable();
+        normal.setCornerRadius(16f);
+        normal.setColor(Color.argb(80, 255, 255, 255));
+        normal.setStroke(1, Color.argb(120, 255, 255, 255));
+
+        final GradientDrawable focused = new GradientDrawable();
+        focused.setCornerRadius(16f);
+        focused.setColor(Color.parseColor("#E11D48"));
+        focused.setStroke(2, Color.WHITE);
+
+        fl.setBackground(normal);
+
+        TextView tv = new TextView(this);
+        tv.setText(text);
+        tv.setTypeface(FontManager.getBold(this));
+        tv.setTextSize(10f);
+        tv.setTextColor(Color.WHITE);
+        fl.addView(tv, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+
+        fl.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                fl.setBackground(hasFocus ? focused : normal);
+                fl.animate().scaleX(hasFocus ? 1.08f : 1.0f).scaleY(hasFocus ? 1.08f : 1.0f).setDuration(120L).start();
+            }
+        });
+        fl.setOnClickListener(onClick);
+        return fl;
+    }
+
+    private View createMiniThemeTile(final String key, final String name, final boolean isActive, final View.OnClickListener onClick) {
+        final LinearLayout btn = new LinearLayout(this);
+        btn.setOrientation(LinearLayout.HORIZONTAL);
+        btn.setGravity(Gravity.CENTER_VERTICAL);
+        btn.setFocusable(true);
+        btn.setClickable(true);
+        btn.setPadding(8, 7, 8, 7);
+
+        final GradientDrawable normalBg = new GradientDrawable();
+        normalBg.setCornerRadius(8f);
+        if (isActive) {
+            normalBg.setColor(Color.argb(60, 14, 165, 233));
+            normalBg.setStroke(1, Color.parseColor("#38BDF8"));
+        } else {
+            normalBg.setColor(Color.argb(32, 255, 255, 255));
+            normalBg.setStroke(1, Color.argb(35, 255, 255, 255));
+        }
+
+        final GradientDrawable focusedBg = new GradientDrawable();
+        focusedBg.setCornerRadius(8f);
+        focusedBg.setColor(Color.argb(130, 14, 165, 233));
+        focusedBg.setStroke(2, Color.WHITE);
+
+        btn.setBackground(normalBg);
+
+        if (isActive) {
+            View dot = new View(this);
+            GradientDrawable dotBg = new GradientDrawable();
+            dotBg.setShape(GradientDrawable.OVAL);
+            dotBg.setColor(Color.parseColor("#38BDF8"));
+            dot.setBackground(dotBg);
+            LinearLayout.LayoutParams dotLp = new LinearLayout.LayoutParams(5, 5);
+            dotLp.setMargins(0, 0, 5, 0);
+            btn.addView(dot, dotLp);
+        }
+
+        TextView tv = new TextView(this);
+        tv.setText(name);
+        tv.setTypeface(FontManager.getBold(this));
+        tv.setTextSize(9.2f);
+        tv.setTextColor(isActive ? Color.parseColor("#38BDF8") : Color.parseColor("#F8FAFC"));
+        tv.setSingleLine(true);
+        tv.setEllipsize(TextUtils.TruncateAt.END);
+        btn.addView(tv, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        btn.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                btn.setBackground(hasFocus ? focusedBg : normalBg);
+                btn.animate().scaleX(hasFocus ? 1.05f : 1.0f).scaleY(hasFocus ? 1.05f : 1.0f).setDuration(110L).start();
+            }
+        });
+
+        btn.setOnClickListener(onClick);
+        return btn;
+    }
+
+    private View createCompactControlTile(final String title, final String desc, final boolean isActive, final View.OnClickListener onClick) {
+        final LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setFocusable(true);
+        row.setClickable(true);
+        row.setPadding(8, 5, 8, 5);
+
+        final GradientDrawable normalBg = new GradientDrawable();
+        normalBg.setCornerRadius(8f);
+        if (isActive) {
+            normalBg.setColor(Color.argb(55, 14, 165, 233));
+            normalBg.setStroke(1, Color.parseColor("#38BDF8"));
+        } else {
+            normalBg.setColor(Color.argb(32, 255, 255, 255));
+            normalBg.setStroke(1, Color.argb(35, 255, 255, 255));
+        }
+
+        final GradientDrawable focusedBg = new GradientDrawable();
+        focusedBg.setCornerRadius(8f);
+        focusedBg.setColor(Color.argb(120, 14, 165, 233));
+        focusedBg.setStroke(2, Color.WHITE);
+
+        row.setBackground(normalBg);
+
+        LinearLayout topRow = new LinearLayout(this);
+        topRow.setOrientation(LinearLayout.HORIZONTAL);
+        topRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        if (isActive) {
+            View activeDot = new View(this);
+            GradientDrawable dotBg = new GradientDrawable();
+            dotBg.setShape(GradientDrawable.OVAL);
+            dotBg.setColor(Color.parseColor("#38BDF8"));
+            activeDot.setBackground(dotBg);
+            LinearLayout.LayoutParams dotLp = new LinearLayout.LayoutParams(5, 5);
+            dotLp.setMargins(0, 0, 5, 0);
+            topRow.addView(activeDot, dotLp);
+        }
+
+        TextView tView = new TextView(this);
+        tView.setText(title);
+        tView.setTypeface(FontManager.getBold(this));
+        tView.setTextSize(9.8f);
+        tView.setTextColor(isActive ? Color.parseColor("#38BDF8") : Color.parseColor("#F8FAFC"));
+        tView.setSingleLine(true);
+        tView.setEllipsize(TextUtils.TruncateAt.END);
+        topRow.addView(tView, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        row.addView(topRow);
+
+        TextView dView = new TextView(this);
+        dView.setText(desc);
+        dView.setTypeface(FontManager.getMedium(this));
+        dView.setTextSize(7.8f);
+        dView.setTextColor(Color.parseColor("#94A3B8"));
+        dView.setSingleLine(true);
+        dView.setEllipsize(TextUtils.TruncateAt.END);
+        dView.setPadding(0, 1, 0, 0);
+        row.addView(dView);
+
+        row.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                row.setBackground(hasFocus ? focusedBg : normalBg);
+                row.animate().scaleX(hasFocus ? 1.04f : 1.0f).scaleY(hasFocus ? 1.04f : 1.0f).setDuration(120L).start();
+            }
+        });
+
+        row.setOnClickListener(onClick);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, 0, 4);
+        row.setLayoutParams(lp);
+        return row;
+    }
+
+    private int[] getThemePalette(String themeKey) {
+        if ("aurora".equalsIgnoreCase(themeKey)) {
+            return new int[]{
+                    Color.parseColor("#061A14"),
+                    Color.parseColor("#082F2C"),
+                    Color.parseColor("#0A192F"),
+                    Color.parseColor("#150D2A")
+            };
+        } else if ("ruska".equalsIgnoreCase(themeKey)) {
+            return new int[]{
+                    Color.parseColor("#1E0E06"),
+                    Color.parseColor("#261408"),
+                    Color.parseColor("#1C1309"),
+                    Color.parseColor("#10170D")
+            };
+        } else if ("scenes".equalsIgnoreCase(themeKey)) {
+            return new int[]{
+                    Color.parseColor("#1A0B2E"),
+                    Color.parseColor("#24142E"),
+                    Color.parseColor("#0F1E36"),
+                    Color.parseColor("#132A2A")
+            };
+        } else if ("six-columns".equalsIgnoreCase(themeKey)) {
+            return new int[]{
+                    Color.parseColor("#0B1120"),
+                    Color.parseColor("#0F172A"),
+                    Color.parseColor("#1E293B"),
+                    Color.parseColor("#0A192F")
+            };
+        } else if ("sweden".equalsIgnoreCase(themeKey)) {
+            return new int[]{
+                    Color.parseColor("#06152B"),
+                    Color.parseColor("#0A2244"),
+                    Color.parseColor("#0D2A4A"),
+                    Color.parseColor("#182A3A")
+            };
+        } else if ("dussehra".equalsIgnoreCase(themeKey)) {
+            return new int[]{
+                    Color.parseColor("#240F08"),
+                    Color.parseColor("#291500"),
+                    Color.parseColor("#1F0A10"),
+                    Color.parseColor("#1F1300")
+            };
+        } else if ("oled".equalsIgnoreCase(themeKey)) {
+            return new int[]{
+                    Color.parseColor("#000000"),
+                    Color.parseColor("#030303"),
+                    Color.parseColor("#050505"),
+                    Color.parseColor("#020202")
+            };
+        } else {
+            return new int[]{
+                    Color.parseColor("#0A111E"),
+                    Color.parseColor("#0E1A2C"),
+                    Color.parseColor("#111827"),
+                    Color.parseColor("#0D1B2A")
+            };
+        }
+    }
+
+    private String getThemeDisplayName(String themeKey) {
+        if ("aurora".equalsIgnoreCase(themeKey)) return "Aurora Borealis";
+        if ("ruska".equalsIgnoreCase(themeKey)) return "Nordic Ruska";
+        if ("scenes".equalsIgnoreCase(themeKey)) return "Living Scenes";
+        if ("six-columns".equalsIgnoreCase(themeKey)) return "Six-Columns Grid";
+        if ("sweden".equalsIgnoreCase(themeKey)) return "Sweden Nordic";
+        if ("dussehra".equalsIgnoreCase(themeKey)) return "Dussehra Royal";
+        if ("oled".equalsIgnoreCase(themeKey)) return "OLED Saf Siyah";
+        return "Liquid Glass";
+    }
+
+    private void applyCleanYourTvTheme(String themeKey) {
+        if (themeKey == null) themeKey = "glass";
+        currentThemeMode = themeKey.toLowerCase();
+        Settings.Global.putString(getContentResolver(), "tvhome_theme_mode", currentThemeMode);
+        getSharedPreferences("tvhome_prefs", MODE_PRIVATE).edit().putString("theme_mode", currentThemeMode).apply();
+
+        if (ambientBackdropView != null) {
+            ambientBackdropView.setAmbientPalette(getThemePalette(currentThemeMode));
+        }
+        applyThemeMode();
+        Toast.makeText(this, "CleanYourTV Teması: " + getThemeDisplayName(currentThemeMode), Toast.LENGTH_SHORT).show();
+    }
+
+    private void runMemoryCleanup() {
+        int cleaned = TvKeyInterceptorService.cleanAllBackgroundApps(this, getPackageName());
+        YouTubeDisguiseHelper.clearBloomCache();
+        System.gc();
+        Toast.makeText(this, "CleanYourTV: " + cleaned + " arka plan uygulaması kapatıldı & RAM temizlendi.", Toast.LENGTH_SHORT).show();
+    }
+
+    private String getTvIpAddress() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                NetworkInterface iface = interfaces.nextElement();
+                if (iface.isLoopback() || !iface.isUp()) continue;
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    if (!addr.isLoopbackAddress() && addr instanceof Inet4Address) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+        return "192.168.1.128";
+    }
+
+    private void cycleVitrinCategory() {
+        fetchLiveTheatricalPosters();
+        Toast.makeText(this, "Vitrin seçkisi güncelleniyor...", Toast.LENGTH_SHORT).show();
+    }
+
+    private void fetchLiveTmdbVitrinPosters() {
+        fetchLiveTheatricalPosters();
+    }
+
+    private boolean isDedicatedHardwareMediaKey(int kc, int sc) {
+        if (kc == 207 || kc == 188 || kc == 183 || kc == 265 || kc == 229 || kc == 289 || kc == 398 || kc == 96 || kc == KeyEvent.KEYCODE_BUTTON_1
+                || sc == 183 || sc == 191 || sc == 398 || sc == 412 || sc == 249) return true;
+        if (kc == 218 || kc == 184 || kc == 189 || kc == 190 || kc == 250 || kc == 284 || kc == 290 || kc == 399 || kc == 415 || kc == 97 || kc == KeyEvent.KEYCODE_BUTTON_2
+                || sc == 184 || sc == 190 || sc == 218 || sc == 250 || sc == 399 || sc == 413 || sc == 414 || sc == 415) return true;
+        if (kc == 185 || kc == 209 || kc == 228 || kc == 192 || kc == 291 || kc == 303 || kc == 400 || kc == 98 || kc == KeyEvent.KEYCODE_BUTTON_3
+                || sc == 185 || sc == 192 || sc == 251 || sc == 400 || sc == 416 || sc == 417) return true;
+        return false;
+    }
+
+    private boolean isViewDescendantOf(View child, ViewGroup parent) {
+        if (child == null || parent == null) return false;
+        ViewParent p = child.getParent();
+        while (p != null) {
+            if (p == parent) return true;
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    private View findFirstFocusableChild(ViewGroup root) {
+        if (root == null) return null;
+        for (int i = 0; i < root.getChildCount(); i++) {
+            View child = root.getChildAt(i);
+            if (child.isFocusable() && child.getVisibility() == View.VISIBLE) {
+                return child;
+            }
+            if (child instanceof ViewGroup) {
+                View nested = findFirstFocusableChild((ViewGroup) child);
+                if (nested != null) return nested;
+            }
+        }
+        return null;
+    }
+
+    private boolean handleModalDpadNavigation(View current, int dir) {
+        if (settingsModalOverlay == null || current == null) return true;
+        View next = FocusFinder.getInstance().findNextFocus(settingsModalOverlay, current, dir);
+        if (next != null && isViewDescendantOf(next, settingsModalOverlay)) {
+            next.requestFocus();
+            return true;
+        }
+
+        // Global coordinate-based fallback for seamless column and row hopping
+        Rect currentRect = new Rect();
+        current.getGlobalVisibleRect(currentRect);
+        int currentCenterX = (currentRect.left + currentRect.right) / 2;
+        int currentCenterY = (currentRect.top + currentRect.bottom) / 2;
+
+        List<View> candidates = new ArrayList<>();
+        collectFocusableChildren(settingsModalOverlay, candidates);
+
+        View best = null;
+        int bestPrimaryDist = Integer.MAX_VALUE;
+        int bestSecondaryDist = Integer.MAX_VALUE;
+
+        for (View v : candidates) {
+            if (v == current) continue;
+            Rect r = new Rect();
+            v.getGlobalVisibleRect(r);
+
+            boolean isCandidate = false;
+            int primaryDist = 0;
+            int secondaryDist = 0;
+
+            if (dir == View.FOCUS_RIGHT) {
+                if (r.left >= currentRect.right - 12) {
+                    isCandidate = true;
+                    primaryDist = r.left - currentRect.right;
+                    secondaryDist = Math.abs(((r.top + r.bottom) / 2) - currentCenterY);
+                }
+            } else if (dir == View.FOCUS_LEFT) {
+                if (r.right <= currentRect.left + 12) {
+                    isCandidate = true;
+                    primaryDist = currentRect.left - r.right;
+                    secondaryDist = Math.abs(((r.top + r.bottom) / 2) - currentCenterY);
+                }
+            } else if (dir == View.FOCUS_DOWN) {
+                if (r.top >= currentRect.bottom - 8) {
+                    isCandidate = true;
+                    primaryDist = r.top - currentRect.bottom;
+                    secondaryDist = Math.abs(((r.left + r.right) / 2) - currentCenterX);
+                }
+            } else if (dir == View.FOCUS_UP) {
+                if (r.bottom <= currentRect.top + 8) {
+                    isCandidate = true;
+                    primaryDist = currentRect.top - r.bottom;
+                    secondaryDist = Math.abs(((r.left + r.right) / 2) - currentCenterX);
+                }
+            }
+
+            if (isCandidate) {
+                if (primaryDist < bestPrimaryDist || (primaryDist == bestPrimaryDist && secondaryDist < bestSecondaryDist)) {
+                    bestPrimaryDist = primaryDist;
+                    bestSecondaryDist = secondaryDist;
+                    best = v;
+                }
+            }
+        }
+
+        if (best != null) {
+            best.requestFocus();
+        }
+        return true;
+    }
+
+    private void collectFocusableChildren(ViewGroup parent, List<View> out) {
+        if (parent == null) return;
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            View child = parent.getChildAt(i);
+            if (child.isFocusable() && child.getVisibility() == View.VISIBLE) {
+                out.add(child);
+            }
+            if (child instanceof ViewGroup) {
+                collectFocusableChildren((ViewGroup) child, out);
+            }
+        }
     }
 
     private View createModalMenuButton(String title, String desc, View.OnClickListener onClick) {

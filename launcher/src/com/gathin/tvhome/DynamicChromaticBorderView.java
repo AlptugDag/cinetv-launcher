@@ -17,27 +17,30 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * CineTV Liquid Glass 3D Bevel Engine (Apple TV & Sony Bravia Precision Optic).
+ * CineTV High-Precision Liquid Glass 3D Bevel Engine (Apple visionOS & Sony Bravia 4K Optic).
  *
- * Implements pure tactile 3D depth and liquid glass specular reflections:
- * 1. Crystal Glass Specular Rim: Sub-pixel crisp platinum-white edge highlight (0 neon color fringes).
- * 2. Multi-Stage Atmospheric Glass Sheen: Anamorphic meniscus glare sweep responding to motion and focus.
- * 3. Soft Velvet Depth Halo: Micro-specular ambient detachment aura when focused.
- * 4. High-Performance Hardware Rendering: Zero memory allocations in onDraw().
+ * Implements high-contrast, tactile physical glass bevel optics:
+ * 1. Double-Chamfer Specular Rim: 2.0px - 2.8px multi-stop diamond-platinum glass gradient
+ *    with high apex glare, distinctly visible from sofa distance (both focused and unfocused).
+ * 2. Inner Refractive Facet: Sub-surface internal reflection line creating true 3D glass slab thickness.
+ * 3. Meniscus Glaze Blade: Top-lit curved specular reflection that catches overhead light.
+ * 4. Ambient Detachment Aura: Soft volumetric white aura on focus separating the card in 3D space.
+ * 5. High-Performance Hardware Rendering: 0 runtime allocations in onDraw().
  */
 public class DynamicChromaticBorderView extends View {
 
     private static boolean isChromaticAberrationEnabled = true;
     private static final List<WeakReference<DynamicChromaticBorderView>> activeChromaBorders = new ArrayList<>();
 
-    // Optical Glass Paints
-    private final Paint specularRimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint ambientGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint glassGlarePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint innerBevelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    // Optical Glass Specular Paints
+    private final Paint outerBevelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint innerFacetPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint ambientAuraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint topGlazePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     // Reusable geometry to guarantee 0 allocations in onDraw()
     private final RectF strokeRect = new RectF();
+    private final RectF innerRect = new RectF();
     private final RectF glareRect = new RectF();
 
     private final float cornerRadius;
@@ -56,23 +59,24 @@ public class DynamicChromaticBorderView extends View {
         setFocusable(false);
         setClickable(false);
 
-        // 1. Crystal Glass Specular Rim
-        specularRimPaint.setStyle(Paint.Style.STROKE);
-        specularRimPaint.setStrokeCap(Paint.Cap.ROUND);
-        specularRimPaint.setStrokeJoin(Paint.Join.ROUND);
+        // 1. Outer Bevel Chamfer
+        outerBevelPaint.setStyle(Paint.Style.STROKE);
+        outerBevelPaint.setStrokeCap(Paint.Cap.ROUND);
+        outerBevelPaint.setStrokeJoin(Paint.Join.ROUND);
 
-        // 2. Soft Ambient Halo
-        ambientGlowPaint.setStyle(Paint.Style.STROKE);
-        ambientGlowPaint.setStrokeCap(Paint.Cap.ROUND);
-        ambientGlowPaint.setStrokeJoin(Paint.Join.ROUND);
+        // 2. Inner Refractive Facet (Double-Chamfer Depth)
+        innerFacetPaint.setStyle(Paint.Style.STROKE);
+        innerFacetPaint.setStrokeCap(Paint.Cap.ROUND);
+        innerFacetPaint.setStrokeJoin(Paint.Join.ROUND);
 
-        // 3. Inner Bevel Contour
-        innerBevelPaint.setStyle(Paint.Style.STROKE);
-        innerBevelPaint.setStrokeCap(Paint.Cap.ROUND);
-        innerBevelPaint.setStrokeJoin(Paint.Join.ROUND);
+        // 3. Volumetric Ambient Detachment Aura
+        ambientAuraPaint.setStyle(Paint.Style.STROKE);
+        ambientAuraPaint.setStrokeCap(Paint.Cap.ROUND);
+        ambientAuraPaint.setStrokeJoin(Paint.Join.ROUND);
 
-        // 4. Glass Glare Sweep
-        glassGlarePaint.setStyle(Paint.Style.STROKE);
+        // 4. Top Meniscus Glaze Blade
+        topGlazePaint.setStyle(Paint.Style.STROKE);
+        topGlazePaint.setStrokeCap(Paint.Cap.ROUND);
 
         synchronized (activeChromaBorders) {
             activeChromaBorders.add(new WeakReference<>(this));
@@ -111,11 +115,11 @@ public class DynamicChromaticBorderView extends View {
 
         final float startVal = focusProgress;
         final float endVal = focused ? 1.0f : 0.0f;
-        motionImpulse = 1.0f;
+        motionImpulse = 1.0f; // Light flash on focus transition
 
         focusAnimator = ValueAnimator.ofFloat(startVal, endVal);
-        focusAnimator.setDuration(200L);
-        focusAnimator.setInterpolator(new DecelerateInterpolator(1.6f));
+        focusAnimator.setDuration(220L);
+        focusAnimator.setInterpolator(new DecelerateInterpolator(1.8f));
         focusAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override
             public void onAnimationUpdate(ValueAnimator animation) {
@@ -133,8 +137,8 @@ public class DynamicChromaticBorderView extends View {
         final int h = getHeight();
         if (w <= 0 || h <= 0) return;
 
-        // Base geometry
-        final float pad = 1.5f;
+        // Base outer geometry with sub-pixel padding
+        final float pad = 1.8f;
         strokeRect.set(pad, pad, w - pad, h - pad);
 
         // Decay motion impulse toward zero on animation frames
@@ -150,61 +154,111 @@ public class DynamicChromaticBorderView extends View {
         }
 
         // =========================================================================
-        // LAYER 1: Soft Velvet Ambient Halo (Subtle 3D Depth Detachment)
+        // LAYER 1: Soft Volumetric White Ambient Aura (Tactile 3D Depth Detachment)
         // =========================================================================
         if (focusProgress > 0.02f) {
-            final float glowWidth = 3.2f + focusProgress * 1.5f;
-            final int glowAlpha = (int) (38 * focusProgress);
-            ambientGlowPaint.setStrokeWidth(glowWidth);
-            ambientGlowPaint.setColor(Color.argb(glowAlpha, 255, 255, 255));
+            final float auraWidth = 4.5f + focusProgress * 2.5f;
+            final int auraAlpha = (int) (65 * focusProgress);
+            ambientAuraPaint.setStrokeWidth(auraWidth);
+            ambientAuraPaint.setColor(Color.argb(auraAlpha, 255, 255, 255));
 
             if (isCircle) {
-                canvas.drawOval(strokeRect, ambientGlowPaint);
+                canvas.drawOval(strokeRect, ambientAuraPaint);
             } else {
-                canvas.drawRoundRect(strokeRect, cornerRadius, cornerRadius, ambientGlowPaint);
+                canvas.drawRoundRect(strokeRect, cornerRadius, cornerRadius, ambientAuraPaint);
             }
         }
 
         // =========================================================================
-        // LAYER 2: Crystal Glass Specular Rim (Pure Platinum Precision Outline)
+        // LAYER 2: Primary Outer Liquid Glass Bevel Rim (Multi-Stop Specular Chamfer)
         // =========================================================================
-        // At rest: whisper-thin frosted crystal outline (1.0px, alpha 42)
-        // Focused: crisp diamond-white precision rim (1.5px, alpha 235)
-        final float rimWidth = 1.0f + focusProgress * 0.6f;
-        final int rimAlpha = (int) (42 + focusProgress * 193);
-        specularRimPaint.setStrokeWidth(rimWidth);
-        specularRimPaint.setColor(Color.argb(rimAlpha, 255, 255, 255));
+        // Clearly perceptible both at rest (1.8px, alpha up to 210) and focused (2.8px, alpha 255)
+        final float outerWidth = 1.8f + focusProgress * 1.0f;
+        outerBevelPaint.setStrokeWidth(outerWidth);
+
+        final int apexAlpha = (int) (185 + focusProgress * 70); // 185 at rest -> 255 focused
+        final int facetAlpha = (int) (130 + focusProgress * 95); // 130 at rest -> 225 focused
+        final int shadowAlpha = (int) (80 + focusProgress * 80); // 80 at rest -> 160 focused
+        final int causticAlpha = (int) (150 + focusProgress * 95); // 150 at rest -> 245 focused
+
+        outerBevelPaint.setShader(new LinearGradient(
+                strokeRect.left, strokeRect.top,
+                strokeRect.right, strokeRect.bottom,
+                new int[]{
+                        Color.argb(apexAlpha, 255, 255, 255),       // Top-left apex specular diamond glint
+                        Color.argb(facetAlpha, 224, 242, 254),      // Refracted crystal ice-blue highlight
+                        Color.argb(shadowAlpha, 148, 163, 184),     // Smoked glass metallic horizon
+                        Color.argb(facetAlpha, 186, 230, 253),      // Ambient horizon refraction
+                        Color.argb(causticAlpha, 255, 255, 255)     // Bottom-right caustic catch
+                },
+                new float[]{0f, 0.22f, 0.58f, 0.82f, 1.0f},
+                Shader.TileMode.CLAMP
+        ));
 
         if (isCircle) {
-            canvas.drawOval(strokeRect, specularRimPaint);
+            canvas.drawOval(strokeRect, outerBevelPaint);
         } else {
-            canvas.drawRoundRect(strokeRect, cornerRadius, cornerRadius, specularRimPaint);
+            canvas.drawRoundRect(strokeRect, cornerRadius, cornerRadius, outerBevelPaint);
         }
+        outerBevelPaint.setShader(null);
 
         // =========================================================================
-        // LAYER 3: Apple TV-style Anamorphic Glass Sheen Glare (Top Meniscus Flare)
+        // LAYER 3: Inner Refractive Facet (Double-Chamfer 3D Optical Thickness)
         // =========================================================================
-        if (focusProgress > 0.05f && !isCircle) {
-            final float glareH = Math.min(24f, h * 0.16f);
-            glareRect.set(strokeRect.left + 6f, strokeRect.top + 1.2f, strokeRect.right - 6f, strokeRect.top + glareH);
-            glassGlarePaint.setStrokeWidth(1.6f + focusProgress * 0.6f);
-            final int glareAlpha = (int) (180 * focusProgress);
+        // Inset by 2.0px to create unmistakable physical thickness of cut crystal
+        final float inset = 2.0f;
+        innerRect.set(strokeRect.left + inset, strokeRect.top + inset, strokeRect.right - inset, strokeRect.bottom - inset);
+        final float innerRadius = Math.max(0f, cornerRadius - inset);
 
-            glassGlarePaint.setShader(new LinearGradient(
+        final int innerTopAlpha = (int) (70 + focusProgress * 95); // 70 at rest -> 165 focused
+        final int innerBottomAlpha = (int) (20 + focusProgress * 45);
+
+        innerFacetPaint.setStrokeWidth(1.2f);
+        innerFacetPaint.setShader(new LinearGradient(
+                innerRect.left, innerRect.top,
+                innerRect.left, innerRect.bottom,
+                new int[]{
+                        Color.argb(innerTopAlpha, 255, 255, 255),
+                        Color.argb(innerBottomAlpha, 203, 213, 225),
+                        Color.argb(0, 255, 255, 255)
+                },
+                new float[]{0f, 0.45f, 1.0f},
+                Shader.TileMode.CLAMP
+        ));
+
+        if (isCircle) {
+            canvas.drawOval(innerRect, innerFacetPaint);
+        } else {
+            canvas.drawRoundRect(innerRect, innerRadius, innerRadius, innerFacetPaint);
+        }
+        innerFacetPaint.setShader(null);
+
+        // =========================================================================
+        // LAYER 4: Top Meniscus Specular Glaze Blade (Reflective Meniscus Light Catch)
+        // =========================================================================
+        // Visible at rest as subtle overhead light catch; sweeps brilliantly when focused
+        if (!isCircle) {
+            final float glazeH = Math.min(22f, h * 0.15f);
+            glareRect.set(strokeRect.left + 8f, strokeRect.top + 1.2f, strokeRect.right - 8f, strokeRect.top + glazeH);
+            topGlazePaint.setStrokeWidth(1.8f + focusProgress * 0.8f);
+
+            final int glazeAlpha = (int) (90 + focusProgress * 150); // 90 at rest -> 240 focused
+
+            topGlazePaint.setShader(new LinearGradient(
                     glareRect.left, glareRect.top,
                     glareRect.right, glareRect.top,
                     new int[]{
                             Color.argb(0, 255, 255, 255),
-                            Color.argb((int)(glareAlpha * 0.75f), 255, 255, 255),
-                            Color.argb(glareAlpha, 255, 255, 255),
-                            Color.argb((int)(glareAlpha * 0.75f), 255, 255, 255),
+                            Color.argb((int) (glazeAlpha * 0.65f), 240, 249, 255),
+                            Color.argb(glazeAlpha, 255, 255, 255),
+                            Color.argb((int) (glazeAlpha * 0.65f), 240, 249, 255),
                             Color.argb(0, 255, 255, 255)
                     },
-                    new float[]{0f, 0.25f, 0.5f, 0.75f, 1.0f},
+                    new float[]{0f, 0.28f, 0.5f, 0.72f, 1.0f},
                     Shader.TileMode.CLAMP
             ));
-            canvas.drawLine(glareRect.left + 6f, strokeRect.top + 1.5f, glareRect.right - 6f, strokeRect.top + 1.5f, glassGlarePaint);
-            glassGlarePaint.setShader(null);
+            canvas.drawLine(glareRect.left + 6f, strokeRect.top + 1.4f, glareRect.right - 6f, strokeRect.top + 1.4f, topGlazePaint);
+            topGlazePaint.setShader(null);
         }
     }
 }

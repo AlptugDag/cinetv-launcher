@@ -1,2 +1,2 @@
-40637284f64c8cf023a5dbe9c3f20bf9417a921ace39162fbfc1036723fb7799  cinetv-launcher-v1.0.0.apk
-40637284f64c8cf023a5dbe9c3f20bf9417a921ace39162fbfc1036723fb7799  tv-master-launcher-v1.0.0.apk
+d8d76b2ba2188f26f76582406936202f0f97a666effd25dfa551b83dcffdb9bd  cinetv-launcher-v1.0.0.apk
+d8d76b2ba2188f26f76582406936202f0f97a666effd25dfa551b83dcffdb9bd  tv-master-launcher-v1.0.0.apk
