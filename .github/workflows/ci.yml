@@ -42,12 +42,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android Build-Tools & Platforms
+      - name: Verify Pre-installed Android SDK
         run: |
-          sdkmanager --install "build-tools;34.0.0" "platforms;android-34"
+          echo "Using Android SDK at: ${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          ls -la "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools"
+          ls -la "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/platforms"
 
       - name: Compile and Package CineTV Launcher
         env:
@@ -61,7 +60,11 @@ jobs:
       - name: Generate Reproducible Cryptographic Checksums
         run: |
           cd release
-          sha256sum cinetv-launcher-v1.0.0.apk tv-master-launcher-v1.0.0.apk > SHA256SUMS.txt
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum cinetv-launcher-v1.0.0.apk tv-master-launcher-v1.0.0.apk > SHA256SUMS.txt
+          elif command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 cinetv-launcher-v1.0.0.apk tv-master-launcher-v1.0.0.apk > SHA256SUMS.txt
+          fi
           cat SHA256SUMS.txt
 
       - name: Upload Release Artifacts
