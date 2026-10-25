@@ -99,8 +99,10 @@ public final class DvdCase {
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         float corner = w * 0.03f;
 
-        // Black plastic shell; the paper insert sits slightly inside it.
-        p.setShader(new LinearGradient(0, 0, w, h, Color.parseColor("#1A1A1F"), Color.parseColor("#08080A"), Shader.TileMode.CLAMP));
+        // Plastic shell (black, or white in the light room); the paper insert sits slightly inside it.
+        boolean light = UiKit.isLight();
+        p.setShader(new LinearGradient(0, 0, w, h, Color.parseColor(light ? "#F2F3F6" : "#1A1A1F"),
+                Color.parseColor(light ? "#D3D6DD" : "#08080A"), Shader.TileMode.CLAMP));
         c.drawRoundRect(new RectF(0, 0, w, h), corner, corner, p);
         p.setShader(null);
 
@@ -183,9 +185,10 @@ public final class DvdCase {
         float[] hsv = new float[3];
         Color.colorToHSV(accent, hsv);
         hsv[1] = Math.min(hsv[1], 0.7f);
-        hsv[2] = 0.30f;
+        boolean lightRoom = UiKit.isLight();
+        hsv[2] = lightRoom ? 0.58f : 0.30f;
         int base = Color.HSVToColor(hsv);
-        hsv[2] = 0.14f;
+        hsv[2] = lightRoom ? 0.40f : 0.14f;
         int deep = Color.HSVToColor(hsv);
 
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -201,7 +204,7 @@ public final class DvdCase {
         c.drawRect(0, 0, Math.max(1, w * 0.06f), h, p);
         c.drawRect(w - Math.max(1, w * 0.06f), 0, w, h, p);
         float lip = h * 0.012f;
-        p.setColor(Color.parseColor("#0C0C0F"));
+        p.setColor(Color.parseColor(lightRoom ? "#C9CCD3" : "#0C0C0F"));
         c.drawRect(0, 0, w, lip, p);
         c.drawRect(0, h - lip, w, h, p);
 
@@ -232,20 +235,23 @@ public final class DvdCase {
         return out;
     }
 
-    private static Bitmap edge, wrap;
+    private static Bitmap edge, edgeLight, wrap;
 
-    /** Black polystyrene for the top, bottom and opening edges (lit per face by the view). */
-    public static synchronized Bitmap edge() {
-        if (edge == null) {
-            edge = Bitmap.createBitmap(16, 64, Bitmap.Config.ARGB_8888);
-            Canvas c = new Canvas(edge);
+    /** Polystyrene for the top, bottom and opening edges: black, or white keep-case plastic in the light room. */
+    public static synchronized Bitmap edge(boolean light) {
+        if (light ? edgeLight == null : edge == null) {
+            Bitmap b = Bitmap.createBitmap(16, 64, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(b);
             Paint p = new Paint();
-            p.setShader(new LinearGradient(0, 0, 16, 0,
-                    new int[]{Color.parseColor("#1C1C21"), Color.parseColor("#2E2E35"), Color.parseColor("#141418")},
+            p.setShader(new LinearGradient(0, 0, 16, 0, light
+                    ? new int[]{Color.parseColor("#D9DBE1"), Color.parseColor("#F4F5F8"), Color.parseColor("#CDD0D7")}
+                    : new int[]{Color.parseColor("#1C1C21"), Color.parseColor("#2E2E35"), Color.parseColor("#141418")},
                     new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
             c.drawRect(0, 0, 16, 64, p);
+            if (light) edgeLight = b;
+            else edge = b;
         }
-        return edge;
+        return light ? edgeLight : edge;
     }
 
     /**

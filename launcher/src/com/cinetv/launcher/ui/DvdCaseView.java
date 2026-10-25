@@ -139,13 +139,28 @@ public class DvdCaseView extends View {
         }
         // Faces as corner indexes, seen from outside: front, left, right, top, bottom.
         drawFace(canvas, 0, 1, 2, 3, dvd.cover, dvd.coverSoft, 0f, 0f, -1f, true);
-        drawFace(canvas, 4, 0, 3, 7, spineRight ? DvdCase.edge() : dvd.spine, spineRight ? null : dvd.spineSoft, -1f, 0f, 0f, !spineRight);
-        drawFace(canvas, 1, 5, 6, 2, spineRight ? dvd.spine : DvdCase.edge(), spineRight ? dvd.spineSoft : null, 1f, 0f, 0f, spineRight);
-        drawFace(canvas, 4, 5, 1, 0, DvdCase.edge(), null, 0f, -1f, 0f, false);
-        drawFace(canvas, 3, 2, 6, 7, DvdCase.edge(), null, 0f, 1f, 0f, false);
+        drawFace(canvas, 4, 0, 3, 7, spineRight ? DvdCase.edge(UiKit.isLight()) : dvd.spine, spineRight ? null : dvd.spineSoft, -1f, 0f, 0f, !spineRight);
+        drawFace(canvas, 1, 5, 6, 2, spineRight ? dvd.spine : DvdCase.edge(UiKit.isLight()), spineRight ? dvd.spineSoft : null, 1f, 0f, 0f, spineRight);
+        drawFace(canvas, 4, 5, 1, 0, DvdCase.edge(UiKit.isLight()), null, 0f, -1f, 0f, false);
+        drawFace(canvas, 3, 2, 6, 7, DvdCase.edge(UiKit.isLight()), null, 0f, 1f, 0f, false);
     }
 
     private static final LightingColorFilter[] LIGHTING = new LightingColorFilter[256];
+
+    private static final java.util.HashMap<Integer, LightingColorFilter> FOG = new java.util.HashMap<>();
+
+    /** Multiply by m, then add a: shading plus a wash of the light room's colour (cached, no per-frame allocation). */
+    private static LightingColorFilter fogLighting(int m, int a) {
+        m = Math.max(0, Math.min(255, m)) & ~3;
+        a = Math.max(0, Math.min(255, a)) & ~3;
+        int key = (m << 8) | a;
+        LightingColorFilter f = FOG.get(key);
+        if (f == null) {
+            f = new LightingColorFilter(Color.rgb(m, m, m), Color.rgb(a, a, a));
+            FOG.put(key, f);
+        }
+        return f;
+    }
 
     private static LightingColorFilter lighting(int l) {
         LightingColorFilter f = LIGHTING[l];
@@ -231,12 +246,18 @@ public class DvdCaseView extends View {
         float lambert = Math.max(0f, x1 * LX + y2 * LY + z2 * LZ);
         float light = Math.min(1f, 0.38f + 0.62f * lambert / 0.76f);
         int l = Math.min(255, (int) (255 * light * dim));
+        LightingColorFilter filter = l >= 250 ? null : lighting(l);
+        if (UiKit.isLight()) {
+            // A light room: softer shading, and distance fades towards the room's colour, not black.
+            float shade = 0.62f + 0.38f * light, fog = Math.max(0f, Math.min(0.75f, (1f - dim) * 0.9f));
+            filter = fogLighting(Math.round(255 * shade * (1f - fog)), Math.round(232 * fog));
+        }
 
         for (int k = 0; k < 4; k++) {
             dst[k * 2] = proj[idx[k] * 2];
             dst[k * 2 + 1] = proj[idx[k] * 2 + 1];
         }
-        bmpPaint.setColorFilter(l >= 250 ? null : lighting(l));
+        bmpPaint.setColorFilter(filter);
         if (soft == null || blur < 0.98f) {
             mapTo(tex, 0, tex.getWidth());
             bmpPaint.setAlpha(255);
