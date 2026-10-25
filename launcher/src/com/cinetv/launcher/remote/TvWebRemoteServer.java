@@ -53,6 +53,10 @@ public final class TvWebRemoteServer {
         void onPhoneConnected();
         /** An unpaired phone asks to connect; call exactly one of allow / deny on the main thread. */
         void askPairing(String device, Runnable allow, Runnable deny);
+        /** The phone is typing a search: mirror it in the TV's search bar. */
+        void mirrorSearch(String text);
+        /** A new backdrop arrived from the phone. */
+        void onWallpaperChanged();
     }
 
     /** One pending "may this phone connect?" request at a time. */
@@ -68,6 +72,11 @@ public final class TvWebRemoteServer {
     private static final String TAG = "CineTvRemote";
     private static final int[] PORTS = {8080, 8081, 8765};
     private static final int MAX_HEADER_LINES = 64;
+    /** 8443 is taken by the TV's own Cast receiver on many TVs. */
+    private static final int[] SECURE_PORTS = {9443, 7443, 10443};
+    private static volatile int securePort = SECURE_PORTS[0];
+    private static final int MAX_UPLOAD = 12 * 1024 * 1024;
+    private static volatile boolean secureUp;
 
     private static final Handler main = new Handler(Looper.getMainLooper());
     private static final ExecutorService clients = Executors.newFixedThreadPool(4);
@@ -92,6 +101,50 @@ public final class TvWebRemoteServer {
         Thread t = new Thread(TvWebRemoteServer::acceptLoop, "cinetv-remote");
         t.setDaemon(true);
         t.start();
+        Thread tls = new Thread(TvWebRemoteServer::secureLoop, "cinetv-remote-tls");
+        tls.setDaemon(true);
+        tls.start();
+        PeerDiscovery.start(app);
+    }
+
+    /** True once the secure page (no "not secure" warning) is being served. */
+    public static boolean secureAvailable() {
+        return secureUp;
+    }
+
+    private static void secureLoop() {
+        javax.net.ssl.SSLServerSocketFactory f = TlsCert.factory(app);
+        if (f == null) return;
+        ServerSocket bound = null;
+        for (int p : SECURE_PORTS) {
+            try {
+                ServerSocket candidate = f.createServerSocket();
+                candidate.setReuseAddress(true);
+                candidate.bind(new InetSocketAddress(p));
+                bound = candidate;
+                securePort = p;
+                break;
+            } catch (Throwable ignored) {
+            }
+        }
+        if (bound == null) return;
+        try (ServerSocket s = bound) {
+            secureUp = true;
+            Log.i(TAG, "Phone remote (HTTPS) on port " + securePort);
+            while (!s.isClosed()) {
+                try {
+                    final Socket client = s.accept();
+                    client.setSoTimeout(15000);
+                    clients.execute(() -> handle(client, true));
+                } catch (Throwable e) {
+                    if (s.isClosed()) break;
+                }
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "HTTPS server stopped: " + t);
+        } finally {
+            secureUp = false;
+        }
     }
 
     public static synchronized void stop() {
@@ -127,30 +180,46 @@ public final class TvWebRemoteServer {
             try {
                 final Socket client = s.accept();
                 client.setSoTimeout(8000);
-                clients.execute(() -> handle(client));
+                clients.execute(() -> handle(client, false));
             } catch (Throwable e) {
                 if (s.isClosed()) break;
             }
         }
     }
 
-    private static void handle(Socket socket) {
+    /** Reads one header line from the raw stream (bytes, so a request body can follow). */
+    private static String readLine(java.io.InputStream in) throws java.io.IOException {
+        java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+        int c;
+        while ((c = in.read()) != -1) {
+            if (c == '\n') break;
+            if (c != '\r') b.write(c);
+            if (b.size() > 8192) break;
+        }
+        if (c == -1 && b.size() == 0) return null;
+        return b.toString("UTF-8");
+    }
+
+    private static void handle(Socket socket, boolean secure) {
         try (Socket sock = socket) {
-            BufferedReader in = new BufferedReader(new InputStreamReader(sock.getInputStream(), StandardCharsets.UTF_8));
-            String request = in.readLine();
+            java.io.InputStream in = new java.io.BufferedInputStream(sock.getInputStream());
+            String request = readLine(in);
             if (request == null) return;
             String[] parts = request.split(" ");
             if (parts.length < 2) return;
             String method = parts[0];
             String uri = parts[1];
-            String host = null, tokenHeader = null, agent = "";
+            String host = null, tokenHeader = null, agent = "", origin = null;
+            int length = 0;
             String line;
             int lines = 0;
-            while ((line = in.readLine()) != null && !line.isEmpty() && lines++ < MAX_HEADER_LINES) {
+            while ((line = readLine(in)) != null && !line.isEmpty() && lines++ < MAX_HEADER_LINES) {
                 String lower = line.toLowerCase();
                 if (lower.startsWith("host:")) host = line.substring(5).trim();
                 else if (lower.startsWith("x-cinetv-token:")) tokenHeader = line.substring(15).trim();
                 else if (lower.startsWith("user-agent:")) agent = line.substring(11).trim();
+                else if (lower.startsWith("origin:")) origin = line.substring(7).trim();
+                else if (lower.startsWith("content-length:")) length = parseInt(line.substring(15));
             }
             OutputStream out = sock.getOutputStream();
             if (!"GET".equals(method) && !"POST".equals(method)) {
@@ -166,6 +235,15 @@ public final class TvWebRemoteServer {
 
             if (path.equals("/") || path.equals("/index.html")) {
                 asset(out, "remote/index.html", "text/html; charset=utf-8");
+                return;
+            }
+            if (path.equals("/sw.js")) {
+                asset(out, "remote/sw.js", "application/javascript; charset=utf-8");
+                return;
+            }
+            if (path.equals("/api/ping")) {
+                // The plain page asks whether the secure one is reachable from this phone; only that is shared.
+                sendCors(out, "{\"ok\":true}", origin);
                 return;
             }
             if (path.startsWith("/static/")) {
@@ -191,10 +269,49 @@ public final class TvWebRemoteServer {
                 send(out, 401, "application/json", "{\"error\":\"pair\"}".getBytes(StandardCharsets.UTF_8));
                 return;
             }
+            if ("POST".equals(method) && "/api/wallpaper".equals(path)) {
+                json(out, saveWallpaper(in, length));
+                return;
+            }
             json(out, api(path, q));
         } catch (Throwable t) {
             Log.d(TAG, "Request failed: " + t.getClass().getSimpleName());
         }
+    }
+
+    /** A JPEG from the phone becomes the backdrop of Home. */
+    private static JSONObject saveWallpaper(java.io.InputStream in, int length) throws Exception {
+        if (length <= 0 || length > MAX_UPLOAD) return new JSONObject().put("ok", false).put("error", "size");
+        byte[] body = new byte[length];
+        int read = 0;
+        while (read < length) {
+            int n = in.read(body, read, length - read);
+            if (n < 0) break;
+            read += n;
+        }
+        if (read != length) return new JSONObject().put("ok", false).put("error", "short");
+        android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+        o.inJustDecodeBounds = true;
+        android.graphics.BitmapFactory.decodeByteArray(body, 0, body.length, o);
+        if (o.outWidth <= 0) return new JSONObject().put("ok", false).put("error", "image");
+        java.io.File f = com.cinetv.launcher.service.ThemeManager.customWallpaper(app);
+        java.nio.file.Files.write(f.toPath(), body);
+        com.cinetv.launcher.service.ThemeManager.useCustomWallpaper(app, true);
+        post(() -> {
+            Controller c = controller;
+            if (c != null) c.onWallpaperChanged();
+        });
+        return new JSONObject().put("ok", true);
+    }
+
+    private static void sendCors(OutputStream out, String body, String origin) throws Exception {
+        byte[] b = body.getBytes(StandardCharsets.UTF_8);
+        String allow = origin != null && origin.startsWith("http://") ? origin : "null";
+        String head = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + b.length
+                + "\r\nAccess-Control-Allow-Origin: " + allow + "\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n";
+        out.write(head.getBytes(StandardCharsets.UTF_8));
+        out.write(b);
+        out.flush();
     }
 
     /** Calls that work before pairing: asking to pair, and the About page. Null for everything else. */
@@ -229,6 +346,12 @@ public final class TvWebRemoteServer {
                     return new JSONObject().put("ok", true).put("state", "allowed").put("k", RemotePairing.token(app));
                 }
                 return new JSONObject().put("ok", true).put("state", p.state < 0 ? "denied" : "pending");
+            }
+            case "/api/info": {
+                String ip = RemotePairing.localIp();
+                return new JSONObject().put("ok", true).put("name", RemotePairing.tvName(app))
+                        .put("secure", secureUp ? TlsCert.secureBase(ip, securePort) : JSONObject.NULL)
+                        .put("peers", PeerDiscovery.peers());
             }
             case "/api/about":
                 synchronized (TvWebRemoteServer.class) {
@@ -318,6 +441,14 @@ public final class TvWebRemoteServer {
                 post(() -> CastResolver.play(app, u));
                 return ok;
             }
+            case "/api/tv/typing": {
+                final String text = clip(q.get("q"), 200);
+                post(() -> {
+                    Controller c = controller;
+                    if (c != null) c.mirrorSearch(text);
+                });
+                return ok;
+            }
             case "/api/key":
                 sendKey(parseInt(q.get("code")));
                 return ok;
@@ -401,7 +532,8 @@ public final class TvWebRemoteServer {
     private static boolean isAllowedHost(String host) {
         if (host == null) return true;
         String h = host.contains(":") ? host.substring(0, host.lastIndexOf(':')) : host;
-        return "localhost".equals(h) || "127.0.0.1".equals(h) || h.equals(RemotePairing.localIp());
+        String ip = RemotePairing.localIp();
+        return "localhost".equals(h) || "127.0.0.1".equals(h) || h.equals(ip) || TlsCert.isSecureHost(h, ip);
     }
 
     private static boolean constantTimeEquals(String a, String b) {

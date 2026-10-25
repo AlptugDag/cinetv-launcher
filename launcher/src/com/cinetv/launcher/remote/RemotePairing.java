@@ -48,6 +48,16 @@ public final class RemotePairing {
         return t;
     }
 
+    /** The TV's own name (Settings › Device name), e.g. "Alptuğ TV". */
+    public static String tvName(Context ctx) {
+        String n = null;
+        try {
+            n = android.provider.Settings.Global.getString(ctx.getContentResolver(), "device_name");
+        } catch (Throwable ignored) {
+        }
+        return n == null || n.trim().isEmpty() ? android.os.Build.MODEL : n.trim();
+    }
+
     public static String baseUrl() {
         String ip = localIp();
         return ip == null ? null : "http://" + ip + ":" + TvWebRemoteServer.port();

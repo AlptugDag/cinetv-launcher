@@ -884,6 +884,19 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     @Override
+    public void mirrorSearch(String text) {
+        if (home.keyboard.isShowing()) return;
+        home.search.setText(text);
+        home.search.setSelection(text.length());
+    }
+
+    @Override
+    public void onWallpaperChanged() {
+        home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this));
+        if (home.modal.isShowing()) home.modal.close();
+    }
+
+    @Override
     public void askPairing(String device, Runnable allow, Runnable deny) {
         hideScreensaver();
         final boolean[] answered = {false};

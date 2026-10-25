@@ -16,7 +16,7 @@
     <string name="voice_prompt">Bir film, bir kişi söyle ya da bir şey sor</string>
     <string name="voice_unavailable">Bu televizyonda sesli arama yok</string>
     <string name="pair_ask_title">%s bağlanmak istiyor</string>
-    <string name="pair_ask_body">Bu televizyonda film arayıp açmasına ve kumanda olarak kullanılmasına izin verilsin mi?</string>
+    <string name="pair_ask_body">Bu televizyonda film arayıp açmasına ve kumanda olarak kullanılmasına izin verilsin mi? Telefon hatırlanır: bu ağda bir dahaki sefere kendiliğinden bağlanır.</string>
     <string name="pair_allow">İzin ver</string>
     <string name="pair_deny">Şimdi değil</string>
     <string name="about_title">Hakkında</string>
