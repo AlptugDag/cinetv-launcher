@@ -45,6 +45,7 @@ public final class Panels {
         void refreshWeather();
         void onKeysChanged();
         void reboot();
+        void search(String query);
     }
 
     private Panels() {}
@@ -192,6 +193,8 @@ public final class Panels {
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.optimize), ctx.getString(R.string.optimize_hint), false,
                 v -> host.push(() -> buildBenchmark(ctx, host))));
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.reboot), null, false, v -> a.reboot()));
+        c4.addView(Controls.tile(ctx, ctx.getString(R.string.about_title), ctx.getString(R.string.about_hint), false,
+                v -> host.push(() -> buildAbout(ctx, host, a))));
         return root;
     }
 
@@ -237,6 +240,92 @@ public final class Panels {
         }
     }
 
+    // ---- About ------------------------------------------------------------------------------------
+
+    /** CineTV's author: photo and bio from TMDB, and QR codes to follow him from a phone. */
+    private static View buildAbout(final Context ctx, final ModalHost host, final Actions a) {
+        LinearLayout root = new LinearLayout(ctx);
+        root.setGravity(Gravity.CENTER_VERTICAL);
+
+        LinearLayout left = new LinearLayout(ctx);
+        left.setOrientation(LinearLayout.VERTICAL);
+        final ImageView photo = new ImageView(ctx);
+        photo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        photo.setClipToOutline(true);
+        photo.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override
+            public void getOutline(View v, android.graphics.Outline o) {
+                o.setOval(0, 0, v.getWidth(), v.getHeight());
+            }
+        });
+        photo.setBackground(new Glass(photo, UiKit.pxf(90), Glass.Style.CONTROL));
+        left.addView(photo, new LinearLayout.LayoutParams(UiKit.px(180), UiKit.px(180)));
+        TextView name = UiKit.bold(ctx, 40, UiKit.INK);
+        name.setText(com.cinetv.launcher.service.Creator.NAME);
+        name.setPadding(0, UiKit.px(22), 0, 0);
+        left.addView(name);
+        TextView role = UiKit.bold(ctx, 17, Color.parseColor("#C4B5FD"));
+        role.setLetterSpacing(0.12f);
+        role.setText(ctx.getString(R.string.about_role).toUpperCase(Locale.getDefault()));
+        left.addView(role);
+        final TextView bio = UiKit.label(ctx, 20, UiKit.INK_DIM);
+        bio.setLineSpacing(UiKit.pxf(7), 1f);
+        bio.setPadding(0, UiKit.px(18), 0, UiKit.px(24));
+        bio.setMaxWidth(UiKit.px(560));
+        left.addView(bio);
+        LinearLayout buttons = new LinearLayout(ctx);
+        buttons.addView(Controls.button(ctx, ctx.getString(R.string.his_films), v -> {
+            host.close();
+            a.search(com.cinetv.launcher.service.Creator.NAME + " filmleri");
+        }));
+        View sp = new View(ctx);
+        buttons.addView(sp, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+        buttons.addView(Controls.button(ctx, ctx.getString(R.string.done), v -> host.back()));
+        left.addView(buttons);
+        root.addView(left, new LinearLayout.LayoutParams(UiKit.px(600), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        root.addView(followCode(ctx, com.cinetv.launcher.service.Creator.INSTAGRAM_URL, R.string.follow_ig, "@" + com.cinetv.launcher.service.Creator.INSTAGRAM));
+        root.addView(followCode(ctx, com.cinetv.launcher.service.Creator.YOUTUBE_URL + "?sub_confirmation=1", R.string.follow_yt, com.cinetv.launcher.service.Creator.YOUTUBE));
+
+        final Context app = ctx.getApplicationContext();
+        new Thread(() -> {
+            String text = MovieCatalog.personBio(app, com.cinetv.launcher.service.Creator.TMDB_PERSON, 3);
+            String url = MovieCatalog.personPhoto(app, com.cinetv.launcher.service.Creator.TMDB_PERSON);
+            Bitmap img = url.isEmpty() ? null : com.cinetv.launcher.service.PosterCache.load(app, url, UiKit.px(180), UiKit.px(180));
+            bio.post(() -> {
+                bio.setText(text);
+                if (img != null) photo.setImageBitmap(img);
+            });
+        }, "cinetv-about").start();
+        return root;
+    }
+
+    private static View followCode(Context ctx, String url, int labelRes, String handle) {
+        LinearLayout col = new LinearLayout(ctx);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER_HORIZONTAL);
+        FrameLayout plate = new FrameLayout(ctx);
+        plate.setBackground(new Glass(plate, UiKit.pxf(26), Glass.Style.FOCUSED));
+        int size = UiKit.px(220);
+        ImageView qr = new ImageView(ctx);
+        Bitmap code = RemotePairing.qr(url, size, Color.parseColor("#0B1220"), Color.WHITE);
+        if (code != null) qr.setImageBitmap(code);
+        plate.addView(qr, new FrameLayout.LayoutParams(size, size, Gravity.CENTER));
+        plate.setPadding(UiKit.px(16), UiKit.px(16), UiKit.px(16), UiKit.px(16));
+        col.addView(plate);
+        TextView label = UiKit.bold(ctx, 21, UiKit.INK);
+        label.setText(labelRes);
+        label.setPadding(0, UiKit.px(16), 0, 0);
+        col.addView(label);
+        TextView h = UiKit.label(ctx, 17, UiKit.INK_DIM);
+        h.setText(handle);
+        col.addView(h);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(UiKit.px(40), 0, 0, 0);
+        col.setLayoutParams(lp);
+        return col;
+    }
+
     // ---- Pairing (QR) -----------------------------------------------------------------------------
 
     private static View buildPairing(final Context ctx, final ModalHost host, final String section) {
@@ -258,10 +347,10 @@ public final class Panels {
         text.setOrientation(LinearLayout.VERTICAL);
         text.setPadding(UiKit.px(48), 0, 0, 0);
         TextView title = UiKit.bold(ctx, 36, UiKit.INK);
-        title.setText("cal".equals(section) ? R.string.calibration : R.string.connect_phone);
+        title.setText("cal".equals(section) ? R.string.calibration : "cast".equals(section) ? R.string.cast_from_phone : R.string.connect_phone);
         text.addView(title);
         TextView body = UiKit.label(ctx, 22, UiKit.INK_DIM);
-        body.setText("cal".equals(section) ? R.string.pair_body_cal : R.string.pair_body);
+        body.setText("cal".equals(section) ? R.string.pair_body_cal : "cast".equals(section) ? R.string.pair_body_cast : R.string.pair_body);
         body.setLineSpacing(UiKit.pxf(8), 1f);
         body.setPadding(0, UiKit.px(16), 0, UiKit.px(16));
         body.setMaxWidth(UiKit.px(620));
@@ -397,7 +486,7 @@ public final class Panels {
             final int kc = keyCode, sc = e.getScanCode();
             body.setText(ctx.getString(R.string.remote_keys_captured, kc, sc));
             String[][] actions = {
-                    {HardwareKeys.NUVIO, "Nuvio"}, {HardwareKeys.YOUTUBE, "YouTube"}, {HardwareKeys.WEB_VIDEO, "Web Video Caster"},
+                    {HardwareKeys.NUVIO, "Nuvio"}, {HardwareKeys.YOUTUBE, "YouTube"}, {HardwareKeys.WEB_VIDEO, ctx.getString(R.string.cast_from_phone)},
                     {HardwareKeys.TV_PLUS, "TV+"}, {HardwareKeys.CLEAN_RAM, ctx.getString(R.string.optimize)},
                     {HardwareKeys.ALL_APPS, ctx.getString(R.string.all_apps)}};
             for (final String[] act : actions) {

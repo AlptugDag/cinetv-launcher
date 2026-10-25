@@ -63,6 +63,7 @@ public final class TvWebRemoteServer {
     }
 
     private static volatile PairRequest pending;
+    private static String aboutBio, aboutPhoto;
 
     private static final String TAG = "CineTvRemote";
     private static final int[] PORTS = {8080, 8081, 8765};
@@ -230,7 +231,14 @@ public final class TvWebRemoteServer {
                 return new JSONObject().put("ok", true).put("state", p.state < 0 ? "denied" : "pending");
             }
             case "/api/about":
-                return new JSONObject().put("ok", true)
+                synchronized (TvWebRemoteServer.class) {
+                    // TMDB is asked once per run; the page shows the rest instantly meanwhile.
+                    if (aboutBio == null) {
+                        aboutBio = MovieCatalog.personBio(app, com.cinetv.launcher.service.Creator.TMDB_PERSON, 4);
+                        aboutPhoto = MovieCatalog.personPhoto(app, com.cinetv.launcher.service.Creator.TMDB_PERSON);
+                    }
+                }
+                return new JSONObject().put("ok", true).put("bio", aboutBio).put("photo", aboutPhoto)
                         .put("name", com.cinetv.launcher.service.Creator.NAME)
                         .put("instagram", com.cinetv.launcher.service.Creator.INSTAGRAM)
                         .put("youtube", com.cinetv.launcher.service.Creator.YOUTUBE)
@@ -294,6 +302,20 @@ public final class TvWebRemoteServer {
                     Controller c = controller;
                     if (c != null) c.searchOnTv(text);
                 });
+                return ok;
+            }
+            case "/api/cast/find": {
+                String u = clip(q.get("url"), 2000);
+                JSONArray videos = new JSONArray();
+                if (isPublicHttpUrl(u)) {
+                    for (CastResolver.Video v : CastResolver.find(u)) videos.put(new JSONObject().put("url", v.url).put("label", v.label));
+                }
+                return ok.put("videos", videos);
+            }
+            case "/api/cast/play": {
+                final String u = clip(q.get("url"), 2000);
+                if (!u.startsWith("http://") && !u.startsWith("https://")) return new JSONObject().put("ok", false);
+                post(() -> CastResolver.play(app, u));
                 return ok;
             }
             case "/api/key":
@@ -363,6 +385,17 @@ public final class TvWebRemoteServer {
             new Instrumentation().sendKeyDownUpSync(code);
         } catch (Throwable ignored) {
         }
+    }
+
+    /** Pages the TV may fetch for the phone: the internet, not this TV or other devices at home. */
+    private static boolean isPublicHttpUrl(String u) {
+        if (!u.startsWith("http://") && !u.startsWith("https://")) return false;
+        String host = android.net.Uri.parse(u).getHost();
+        if (host == null) return false;
+        host = host.toLowerCase(java.util.Locale.ROOT);
+        return !(host.equals("localhost") || host.endsWith(".local") || host.startsWith("127.") || host.startsWith("10.")
+                || host.startsWith("192.168.") || host.matches("172\\.(1[6-9]|2[0-9]|3[01])\\..*") || host.startsWith("169.254.")
+                || host.equals("0.0.0.0") || host.startsWith("["));
     }
 
     private static boolean isAllowedHost(String host) {

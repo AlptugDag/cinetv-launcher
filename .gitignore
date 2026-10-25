@@ -37,3 +37,6 @@ private-assets/
 *.env
 .env*
 google-services.json
+
+# Local tooling
+.claude/

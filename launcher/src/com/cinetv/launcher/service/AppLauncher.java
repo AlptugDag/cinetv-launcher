@@ -19,9 +19,12 @@ public final class AppLauncher {
     public static final String[] YOUTUBE_PACKAGES = {
             "io.gh.reisxd.tizentube.cobalt", "com.reisxd.tizentube", "com.teamsmart.videomanager.tv",
             "com.liskovsoft.smarttubetv.beta", "com.liskovsoft.smarttubetv"};
-    public static final String[] WEB_VIDEO_CASTER_PACKAGES = {"com.instantbits.cast.receiver", "com.instantbits.cast.webvideo"};
-    public static final String[] PRIME_FALLBACK_PACKAGES = {
-            "com.instantbits.cast.receiver", "com.instantbits.cast.webvideo", "com.amazon.amazonvideo.livingroom", NUVIO};
+
+    /** Opens CineTV's "send a video from your phone" screen (casting is built in). */
+    public static void openPhoneCast(Context ctx) {
+        start(ctx, new Intent(ctx, com.cinetv.launcher.MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra("action", "phone_cast"));
+    }
     public static final String[] TV_PLUS_PACKAGES = {"com.turkcell.ott", "com.turkcell.tvplus"};
 
     private static final String TAG = "CineTvLaunch";

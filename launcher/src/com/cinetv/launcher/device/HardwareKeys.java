@@ -90,7 +90,7 @@ public final class HardwareKeys {
         switch (action) {
             case NUVIO: ok = AppLauncher.launchFirst(ctx, AppLauncher.NUVIO_PACKAGES); break;
             case YOUTUBE: ok = AppLauncher.launchFirst(ctx, AppLauncher.YOUTUBE_PACKAGES); break;
-            case WEB_VIDEO: ok = AppLauncher.launchFirst(ctx, AppLauncher.PRIME_FALLBACK_PACKAGES); break;
+            case WEB_VIDEO: AppLauncher.openPhoneCast(ctx); ok = true; break;
             case TV_PLUS: ok = AppLauncher.launchFirst(ctx, AppLauncher.TV_PLUS_PACKAGES); break;
             case CLEAN_RAM:
                 int n = MemoryOptimizer.cleanBackground(ctx, ctx.getPackageName());

@@ -80,9 +80,7 @@ public final class AppCatalog {
         }
 
         String youtube = installedTizenTube(snap.packages);
-        String caster = snap.packages.contains("com.instantbits.cast.receiver")
-                ? "com.instantbits.cast.receiver" : "com.instantbits.cast.webvideo";
-        for (String essential : new String[]{AppLauncher.NUVIO, youtube, caster, "com.turkcell.ott"}) {
+        for (String essential : new String[]{AppLauncher.NUVIO, youtube, "com.turkcell.ott"}) {
             if (!found.containsKey(essential) && !userHidden.contains(essential) && AppLauncher.isLaunchable(pm, essential)) {
                 AppTileItem item = new AppTileItem();
                 item.packageName = essential;
@@ -93,7 +91,7 @@ public final class AppCatalog {
 
         String dockCsv = prefs.getString(Prefs.DOCK_ORDER, "");
         List<String> dockOrder = dockCsv.isEmpty()
-                ? Arrays.asList(AppLauncher.NUVIO, youtube, caster, "com.turkcell.ott")
+                ? Arrays.asList(AppLauncher.NUVIO, youtube, "com.turkcell.ott")
                 : Arrays.asList(dockCsv.split(","));
         for (String pkg : dockOrder) {
             AppTileItem item = found.remove(pkg);

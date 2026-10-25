@@ -273,6 +273,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (action == null) action = intent.getAction();
         if (action == null) return;
         if ("setup".equals(action)) handler.postDelayed(() -> Panels.setup(this, home.modal, true), 1500);
+        else if ("phone_cast".equals(action)) handler.postDelayed(() -> Panels.pairing(this, home.modal, "cast"), 300);
         else if (action.endsWith("SHOW_SCREENSAVER") || "show_screensaver".equals(action)) handler.postDelayed(this::showScreensaver, 300);
         else if (action.endsWith("SHOW_ALL_APPS") || "show_all_apps".equals(action)) handler.postDelayed(this::onAllApps, 300);
         else if (action.endsWith("SEARCH") || "search".equals(action)) {
@@ -791,6 +792,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void onKeysChanged() {
+    }
+
+    @Override
+    public void search(String query) {
+        onSearch(query);
     }
 
     @Override

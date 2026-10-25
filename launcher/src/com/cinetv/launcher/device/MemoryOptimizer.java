@@ -30,7 +30,7 @@ public final class MemoryOptimizer {
             "com.google.android.tts", "com.google.android.apps.mediashell", "com.google.android.tv.remote.service",
             "com.android.bluetooth", "com.waxrain.airplaydmr", "com.waxrain.airplaydmr2", "io.github.jqssun.airplay",
             "com.github.jqssun.airplay", "com.ionitech.airscreen", "com.apowersoft.mirror.tv",
-            "com.nuvio.tv", "com.instantbits.cast.receiver"));
+            "com.nuvio.tv"));
 
     private static final String[] AIRPLAY_RECEIVERS = {
             "com.github.jqssun.airplay", "com.waxrain.airplaydmr", "com.waxrain.airplaydmr2", "com.ionitech.airscreen"};

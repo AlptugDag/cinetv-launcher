@@ -298,6 +298,17 @@ public final class MovieCatalog {
         }
     }
 
+    /** A person's photo (TMDB profile, w342) or "" . */
+    public static String personPhoto(Context ctx, int personId) {
+        if (!hasTmdb(ctx)) return "";
+        try {
+            String path = tmdb(ctx, "person/" + personId + "?").optString("profile_path", "");
+            return path.isEmpty() || "null".equals(path) ? "" : TMDB_IMG + "w342" + path;
+        } catch (Throwable t) {
+            return "";
+        }
+    }
+
     /** Fills a missing IMDb id (needed to open the title in Nuvio). */
     public static void ensureImdb(Context ctx, Movie m) {
         if (m != null && m.imdbId.isEmpty() && m.tmdbId > 0) m.imdbId = imdbFor(ctx, m.tmdbId, m.type);

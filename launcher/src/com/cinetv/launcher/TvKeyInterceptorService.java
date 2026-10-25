@@ -109,7 +109,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 AppLauncher.launchFirst(this, AppLauncher.YOUTUBE_PACKAGES);
                 return;
             case "com.amazon.amazonvideo.livingroom":
-                AppLauncher.launchFirst(this, AppLauncher.WEB_VIDEO_CASTER_PACKAGES);
+                // The Prime button: send a video from the phone (built-in casting).
+                AppLauncher.openPhoneCast(this);
                 return;
             default:
                 break;
