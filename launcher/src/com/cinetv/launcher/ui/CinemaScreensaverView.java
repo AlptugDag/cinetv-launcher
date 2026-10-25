@@ -32,50 +32,67 @@ import java.util.Locale;
 import java.util.Random;
 
 /**
- * The CineTV screensaver, shared by the home screen and the system Dream: every 14 seconds a still
- * from a film fades in with one of its lines (in the viewer's language), the film's name and year,
- * and its official tagline (from TMDB, in the viewer's language when available). The clock floats
- * at the centre under the mark, breathing in a slowly changing hue over drifting stars.
+ * The CineTV screensaver, shared by the home screen and the system Dream. Every 14 seconds a new film
+ * moment arrives: a still, one of its lines (in the viewer's language), its title in its own logo
+ * lettering (TMDB title treatment) and its official tagline. Moments change like frames on a 35 mm
+ * strip pulled sideways through the gate - perforations running along the edges, a little gate
+ * weave and flicker - and a new frame only moves in once its still has loaded, so the previous film
+ * never flashes back. The clock floats at the centre under the signature, over drifting stars.
  */
 public class CinemaScreensaverView extends View {
 
     private static final long MOMENT_MS = 14_000L;
-    private static final long FADE_MS = 1_400L;
+    private static final long ROLL_MS = 1_500L;
     private static final int STARS = 55;
+
+    /** Everything one moment shows; built off the main thread, swapped in when complete. */
+    private static final class Frame {
+        CinemaMoments.Moment moment;
+        Bitmap still, logo;
+        String tagline;
+        StaticLayout quote;
+        int quoteWidth;
+        /** When it became the frame on screen (its own slow push-in keeps going while it rolls out). */
+        long since;
+    }
 
     private final Paint scene = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Paint veil = new Paint();
     private final Paint star = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint aura = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint logo = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Paint mark = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Paint logoPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Paint film = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint hole = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint clock = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint date = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint quote = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-    private final TextPaint film = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+    private final TextPaint title = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint tagline = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final Rect src = new Rect();
     private final RectF dst = new RectF();
     private final Random random = new Random();
     private final DateFormat timeFmt;
     private final DateFormat dateFmt;
-    private final boolean light;
+    private final boolean low;
 
     private final float[] sx = new float[STARS], sy = new float[STARS], sv = new float[STARS], sr = new float[STARS], sa = new float[STARS];
     private final List<CinemaMoments.Moment> moments;
     private int momentIndex;
-    private long momentStart;
-    private volatile Bitmap backdrop;
-    private volatile String currentTagline;
-    private StaticLayout quoteLayout;
-    private int quoteLayoutFor = -1;
+    private Frame current, previous;
+    private volatile Frame incoming;
+    private long shownAt, rollStart = -1;
+    private boolean loading;
     private boolean running;
-    private final Bitmap mark;
+    private final Bitmap signature;
+    private LinearGradient veilShader;
+    private int veilFor;
 
     public CinemaScreensaverView(Context ctx) {
         super(ctx);
-        light = PerformanceProfile.tier(ctx) == PerformanceProfile.Tier.LOW;
+        low = PerformanceProfile.tier(ctx) == PerformanceProfile.Tier.LOW;
         moments = CinemaMoments.load(ctx);
-        mark = Brand.mark(ctx);
+        signature = Brand.mark(ctx);
         timeFmt = android.text.format.DateFormat.getTimeFormat(ctx);
         dateFmt = new SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEEdMMMM"), Locale.getDefault());
 
@@ -89,13 +106,15 @@ public class CinemaScreensaverView extends View {
         date.setLetterSpacing(0.12f);
         quote.setTypeface(FontManager.getBold(ctx));
         quote.setColor(Color.WHITE);
-        film.setTypeface(FontManager.getBold(ctx));
-        film.setTextAlign(Paint.Align.CENTER);
-        film.setLetterSpacing(0.10f);
+        title.setTypeface(FontManager.getBold(ctx));
+        title.setTextAlign(Paint.Align.CENTER);
+        title.setLetterSpacing(0.10f);
         tagline.setTypeface(FontManager.getMedium(ctx));
         tagline.setTextAlign(Paint.Align.CENTER);
         tagline.setTextSkewX(-0.12f);
-        logo.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SCREEN));
+        mark.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SCREEN));
+        film.setColor(Color.parseColor("#0A0907"));
+        hole.setColor(Color.parseColor("#E9E2D0"));
 
         for (int i = 0; i < STARS; i++) {
             sx[i] = random.nextFloat();
@@ -109,8 +128,10 @@ public class CinemaScreensaverView extends View {
     public void start() {
         running = true;
         momentIndex = random.nextInt(Math.max(1, moments.size()));
-        momentStart = SystemClock.uptimeMillis();
-        loadMoment();
+        current = previous = null;
+        incoming = null;
+        rollStart = -1;
+        prepare(momentIndex);
         invalidate();
     }
 
@@ -118,19 +139,27 @@ public class CinemaScreensaverView extends View {
         running = false;
     }
 
-    private void loadMoment() {
-        if (moments.isEmpty()) return;
-        final CinemaMoments.Moment m = moments.get(momentIndex);
+    /** Loads still, logo and tagline for a moment in the background; it rolls in once all are ready. */
+    private void prepare(final int index) {
+        if (moments.isEmpty() || loading) return;
+        loading = true;
+        final CinemaMoments.Moment m = moments.get(index);
         final Context ctx = getContext();
-        currentTagline = null;
         new Thread(() -> {
-            int tmdb = MovieCatalog.tmdbIdFromImdb(ctx, m.imdbId);
-            String tag = MovieCatalog.taglineFor(ctx, tmdb);
-            if (tag == null && "en".equals(Locale.getDefault().getLanguage()) && !m.fallbackTagline.isEmpty()) tag = m.fallbackTagline;
-            currentTagline = tag;
-            String url = MovieCatalog.backdropFor(ctx, m.imdbId, tmdb, random.nextInt(5));
-            Bitmap bmp = PosterCache.load(ctx, url, 1280, 720);
-            if (bmp != null) backdrop = bmp;
+            Frame f = new Frame();
+            f.moment = m;
+            try {
+                int tmdb = MovieCatalog.tmdbIdFromImdb(ctx, m.imdbId);
+                String tag = MovieCatalog.taglineFor(ctx, tmdb);
+                if (tag == null && "en".equals(Locale.getDefault().getLanguage()) && !m.fallbackTagline.isEmpty()) tag = m.fallbackTagline;
+                f.tagline = tag;
+                String logoUrl = MovieCatalog.logoFor(ctx, tmdb);
+                if (logoUrl != null) f.logo = PosterCache.load(ctx, logoUrl, 900, 360);
+                f.still = PosterCache.load(ctx, MovieCatalog.backdropFor(ctx, m.imdbId, tmdb, random.nextInt(5)), 1280, 720);
+            } catch (Throwable ignored) {
+            }
+            incoming = f;
+            loading = false;
             postInvalidate();
         }, "cinetv-saver").start();
     }
@@ -141,53 +170,176 @@ public class CinemaScreensaverView extends View {
         c.drawColor(Color.parseColor("#030407"));
         if (moments.isEmpty()) return;
         long now = SystemClock.uptimeMillis();
-        long elapsed = now - momentStart;
-        if (elapsed >= MOMENT_MS) {
-            momentIndex = (momentIndex + 1 + random.nextInt(Math.max(1, moments.size() - 1))) % moments.size();
-            momentStart = now;
-            elapsed = 0;
-            loadMoment();
-        }
-        float fade = elapsed < FADE_MS ? elapsed / (float) FADE_MS
-                : elapsed > MOMENT_MS - FADE_MS ? (MOMENT_MS - elapsed) / (float) FADE_MS : 1f;
 
-        Bitmap b = backdrop;
+        // A loaded frame waits until the current one has had its time, then the strip moves.
+        Frame next = incoming;
+        if (next != null && rollStart < 0 && (current == null || now - shownAt >= MOMENT_MS)) {
+            incoming = null;
+            previous = current;
+            current = next;
+            current.since = now;
+            shownAt = now;
+            rollStart = previous == null ? -1 : now;
+        }
+        if (current != null && incoming == null && !loading && now - shownAt >= MOMENT_MS - 5_000L) {
+            momentIndex = (momentIndex + 1 + random.nextInt(Math.max(1, moments.size() - 1))) % moments.size();
+            prepare(momentIndex);
+        }
+        if (current == null && !loading && incoming == null) prepare(momentIndex);
+
+        float roll = rollStart < 0 ? 1f : Math.min(1f, (now - rollStart) / (float) ROLL_MS);
+        if (roll >= 1f) {
+            rollStart = -1;
+            previous = null;
+        }
+        float t = easeInOut(roll);
+
+        if (previous != null && roll < 1f) {
+            // The strip: both frames shrink a little into the film, slide one frame-width left.
+            float gap = h * 0.06f;
+            float pull = (w + gap) * t;
+            float shrink = 1f - 0.10f * (float) Math.sin(Math.PI * roll);
+            float weave = (float) Math.sin(now * 0.05) * h * 0.002f;
+            c.save();
+            c.translate(w / 2f, h / 2f + weave);
+            c.scale(shrink, shrink);
+            c.translate(-w / 2f, -h / 2f);
+            drawFrame(c, previous, -pull, w, h, 1f);
+            drawFrame(c, current, w + gap - pull, w, h, 1f);
+            // Frame line between the two pictures.
+            c.drawRect(w - pull, -h, w + gap - pull, h * 2, film);
+            c.restore();
+            drawPerforations(c, w, h, pull * shrink, (float) Math.sin(Math.PI * roll));
+            // Projector flicker.
+            int flicker = (int) (18 * Math.sin(Math.PI * roll) * (0.6 + 0.4 * random.nextFloat()));
+            c.drawColor(Color.argb(flicker, 255, 246, 225));
+        } else if (current != null) {
+            float fadeIn = shownAt > 0 && previous == null && now - shownAt < 900 ? (now - shownAt) / 900f : 1f;
+            drawFrame(c, current, 0, w, h, fadeIn);
+        }
+
+        if (!low) drawStars(c, w, h, now);
+        drawClock(c, w, h, now);
+
+        if (running) {
+            if (low && roll >= 1f) postInvalidateDelayed(100);
+            else postInvalidateOnAnimation();
+        }
+    }
+
+    /** One moment, drawn as a full-screen frame shifted by {@code dx}. */
+    private void drawFrame(Canvas c, Frame f, float dx, int w, int h, float alpha) {
+        if (f == null) return;
+        c.save();
+        c.translate(dx, 0);
+        Bitmap b = f.still;
+        long age = SystemClock.uptimeMillis() - f.since;
         if (b != null) {
             // Slow Ken Burns push-in over the moment.
-            float zoom = 1.04f + 0.04f * (elapsed / (float) MOMENT_MS);
+            float zoom = 1.04f + 0.04f * Math.min(1f, age / (float) MOMENT_MS);
             float s = Math.max(w / (float) b.getWidth(), h / (float) b.getHeight()) * zoom;
             float bw = b.getWidth() * s, bh = b.getHeight() * s;
             src.set(0, 0, b.getWidth(), b.getHeight());
             dst.set((w - bw) / 2f, (h - bh) / 2f, (w + bw) / 2f, (h + bh) / 2f);
-            scene.setAlpha((int) (fade * 150));
+            scene.setAlpha((int) (alpha * 150));
             c.drawBitmap(b, src, dst, scene);
-            veil.setShader(new LinearGradient(0, h * 0.35f, 0, h, Color.TRANSPARENT, Color.argb(235, 0, 0, 0), Shader.TileMode.CLAMP));
-            c.drawRect(0, 0, w, h, veil);
         }
+        if (veilShader == null || veilFor != h) {
+            veilShader = new LinearGradient(0, h * 0.35f, 0, h, Color.TRANSPARENT, Color.argb(235, 0, 0, 0), Shader.TileMode.CLAMP);
+            veilFor = h;
+        }
+        veil.setShader(veilShader);
+        c.drawRect(0, 0, w, h, veil);
 
-        if (!light) {
-            for (int i = 0; i < STARS; i++) {
-                sy[i] -= sv[i];
-                if (sy[i] < 0) {
-                    sy[i] = 1f;
-                    sx[i] = random.nextFloat();
-                }
-                float tw = (float) (Math.sin(now * 0.002 + i) * 0.3 + 0.7);
-                star.setColor(Color.argb((int) (sa[i] * tw * 255), 210, 230, 255));
-                c.drawCircle(sx[i] * w, sy[i] * h, sr[i], star);
+        int a = (int) (alpha * 245);
+        int qw = (int) (w * 0.78f);
+        if (f.quote == null || f.quoteWidth != qw) {
+            quote.setTextSize(h * 0.040f);
+            quote.setShadowLayer(22f, 0, 4f, Color.argb(240, 0, 0, 0));
+            String q = "“" + f.moment.quote + "”";
+            f.quote = StaticLayout.Builder.obtain(q, 0, q.length(), quote, qw)
+                    .setAlignment(Layout.Alignment.ALIGN_CENTER).setLineSpacing(h * 0.006f, 1f).setMaxLines(3).build();
+            f.quoteWidth = qw;
+        }
+        float cx = w / 2f, bottom = h * 0.90f;
+        float tagH = f.tagline != null ? h * 0.045f : 0f;
+        float titleH = f.logo != null ? h * 0.085f : h * 0.035f;
+        float qTop = bottom - tagH - titleH - h * 0.03f - f.quote.getHeight();
+        quote.setAlpha(a);
+        c.save();
+        c.translate(w * 0.11f, qTop);
+        f.quote.draw(c);
+        c.restore();
+
+        float titleTop = qTop + f.quote.getHeight() + h * 0.022f;
+        if (f.logo != null) {
+            // The film's own title lettering.
+            float lh = titleH, lw = lh * f.logo.getWidth() / (float) f.logo.getHeight();
+            if (lw > w * 0.34f) {
+                lw = w * 0.34f;
+                lh = lw * f.logo.getHeight() / (float) f.logo.getWidth();
             }
+            dst.set(cx - lw / 2f, titleTop + (titleH - lh) / 2f, cx + lw / 2f, titleTop + (titleH + lh) / 2f);
+            logoPaint.setAlpha(a);
+            c.drawBitmap(f.logo, null, dst, logoPaint);
+        } else {
+            title.setTextSize(h * 0.021f);
+            title.setColor(Color.argb(a * 225 / 245, 125, 211, 252));
+            title.setShadowLayer(18f, 0, 3f, Color.argb(238, 0, 0, 0));
+            c.drawText(f.moment.film.toUpperCase(Locale.getDefault()) + "  ·  " + f.moment.year, cx, titleTop + titleH * 0.75f, title);
         }
+        if (f.tagline != null) {
+            tagline.setTextSize(h * 0.022f);
+            tagline.setColor(Color.argb(a * 200 / 245, 226, 232, 240));
+            tagline.setShadowLayer(14f, 0, 2f, Color.argb(230, 0, 0, 0));
+            c.drawText(f.tagline, cx, titleTop + titleH + h * 0.034f, tagline);
+        }
+        c.restore();
+    }
 
-        float cx = w / 2f, cy = h * 0.36f;
+    /** Film edges with sprocket holes, running with the strip; they appear only while it moves. */
+    private void drawPerforations(Canvas c, int w, int h, float travel, float presence) {
+        if (presence <= 0.01f) return;
+        float band = h * 0.075f * presence;
+        film.setAlpha(255);
+        c.drawRect(0, 0, w, band, film);
+        c.drawRect(0, h - band, w, h, film);
+        float holeW = h * 0.022f, holeH = band * 0.46f, pitch = h * 0.045f;
+        float start = -((travel % pitch) + pitch);
+        hole.setAlpha((int) (200 * presence));
+        for (float x = start; x < w + pitch; x += pitch) {
+            float top = (band - holeH) / 2f;
+            dst.set(x, top, x + holeW, top + holeH);
+            c.drawRoundRect(dst, holeW * 0.22f, holeW * 0.22f, hole);
+            dst.set(x, h - band + top, x + holeW, h - band + top + holeH);
+            c.drawRoundRect(dst, holeW * 0.22f, holeW * 0.22f, hole);
+        }
+    }
+
+    private void drawStars(Canvas c, int w, int h, long now) {
+        for (int i = 0; i < STARS; i++) {
+            sy[i] -= sv[i];
+            if (sy[i] < 0) {
+                sy[i] = 1f;
+                sx[i] = random.nextFloat();
+            }
+            float tw = (float) (Math.sin(now * 0.002 + i) * 0.3 + 0.7);
+            star.setColor(Color.argb((int) (sa[i] * tw * 255), 210, 230, 255));
+            c.drawCircle(sx[i] * w, sy[i] * h, sr[i], star);
+        }
+    }
+
+    private void drawClock(Canvas c, int w, int h, long now) {
+        float cx = w / 2f, cy = h * 0.30f;
         float logoSize = Math.min(w, h) * 0.15f;
         int hue = Color.HSVToColor(new float[]{(now % 48_000L) / 48_000f * 360f, 0.6f, 0.9f});
         aura.setShader(new RadialGradient(cx, cy, logoSize * 1.4f,
                 new int[]{UiKit.withAlpha(hue, 0x30), UiKit.withAlpha(hue, 0x10), Color.TRANSPARENT},
                 new float[]{0f, 0.6f, 1f}, Shader.TileMode.CLAMP));
         c.drawCircle(cx, cy, logoSize * 1.4f, aura);
-        logo.setAlpha((int) ((Math.sin(now * 0.001) * 0.08 + 0.52) * 255));
+        mark.setAlpha((int) ((Math.sin(now * 0.001) * 0.08 + 0.52) * 255));
         dst.set(cx - logoSize / 2f, cy - logoSize / 2f, cx + logoSize / 2f, cy + logoSize / 2f);
-        c.drawBitmap(mark, null, dst, logo);
+        c.drawBitmap(signature, null, dst, mark);
 
         Date d = new Date();
         clock.setTextSize(h * 0.075f);
@@ -196,41 +348,9 @@ public class CinemaScreensaverView extends View {
         c.drawText(timeFmt.format(d), cx, clockY, clock);
         date.setTextSize(h * 0.019f);
         c.drawText(dateFmt.format(d).toUpperCase(Locale.getDefault()), cx, clockY + h * 0.04f, date);
+    }
 
-        CinemaMoments.Moment m = moments.get(momentIndex);
-        int alpha = (int) (fade * 245);
-        if (quoteLayoutFor != momentIndex || quoteLayout == null || quoteLayout.getWidth() != (int) (w * 0.78f)) {
-            quote.setTextSize(h * 0.040f);
-            quote.setShadowLayer(22f, 0, 4f, Color.argb(240, 0, 0, 0));
-            String q = "“" + m.quote + "”";
-            quoteLayout = StaticLayout.Builder.obtain(q, 0, q.length(), quote, (int) (w * 0.78f))
-                    .setAlignment(Layout.Alignment.ALIGN_CENTER).setLineSpacing(h * 0.006f, 1f).setMaxLines(3).build();
-            quoteLayoutFor = momentIndex;
-        }
-        quote.setAlpha(alpha);
-        float bottom = h * 0.86f;
-        String tag = currentTagline;
-        float tagH = tag != null ? h * 0.05f : 0f;
-        float qTop = bottom - quoteLayout.getHeight() - h * 0.055f - tagH;
-        c.save();
-        c.translate(w * 0.11f, qTop);
-        quoteLayout.draw(c);
-        c.restore();
-
-        film.setTextSize(h * 0.021f);
-        film.setColor(Color.argb((int) (fade * 225), 125, 211, 252));
-        film.setShadowLayer(18f, 0, 3f, Color.argb(238, 0, 0, 0));
-        c.drawText("— " + m.film.toUpperCase(Locale.getDefault()) + "  ·  " + m.year, cx, bottom - tagH, film);
-        if (tag != null) {
-            tagline.setTextSize(h * 0.022f);
-            tagline.setColor(Color.argb((int) (fade * 200), 226, 232, 240));
-            tagline.setShadowLayer(14f, 0, 2f, Color.argb(230, 0, 0, 0));
-            c.drawText(tag, cx, bottom + h * 0.012f, tagline);
-        }
-
-        if (running) {
-            if (light) postInvalidateDelayed(100);
-            else postInvalidateOnAnimation();
-        }
+    private static float easeInOut(float x) {
+        return x < 0.5f ? 4 * x * x * x : 1 - (float) Math.pow(-2 * x + 2, 3) / 2;
     }
 }

@@ -390,6 +390,35 @@ public final class MovieCatalog {
         return out;
     }
 
+    /**
+     * The film's own title treatment (its logo, in its original lettering) from TMDB: the viewer's
+     * language first, then English, then any. PNG only; null when there is none.
+     */
+    public static String logoFor(Context ctx, int tmdbId) {
+        if (tmdbId <= 0 || !hasTmdb(ctx)) return null;
+        try {
+            String lang = Locale.getDefault().getLanguage();
+            JSONArray logos = tmdb(ctx, "movie/" + tmdbId + "/images?include_image_language=" + lang + ",en,null").optJSONArray("logos");
+            if (logos == null) return null;
+            String best = null;
+            int bestRank = 9;
+            for (int i = 0; i < logos.length(); i++) {
+                JSONObject l = logos.getJSONObject(i);
+                String path = l.optString("file_path", "");
+                if (!path.endsWith(".png")) continue;
+                String iso = l.optString("iso_639_1", "");
+                int rank = lang.equals(iso) ? 0 : "en".equals(iso) ? 1 : 2;
+                if (rank < bestRank) {
+                    bestRank = rank;
+                    best = path;
+                }
+            }
+            return best == null ? null : TMDB_IMG + "w500" + best;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     /** A wide still for the screensaver: a random TMDB backdrop when possible, Metahub otherwise. */
     public static String backdropFor(Context ctx, String imdbId, int tmdbId, int variant) {
         if (hasTmdb(ctx) && tmdbId > 0) {
