@@ -239,6 +239,11 @@ public final class TvWebRemoteServer {
                 asset(out, "remote/index.html", "text/html; charset=utf-8");
                 return;
             }
+            if (path.equals("/me")) {
+                // The author's link page, opened by the single QR code on the TV's About page; public.
+                asset(out, "remote/me.html", "text/html; charset=utf-8");
+                return;
+            }
             if (path.equals("/sw.js")) {
                 asset(out, "remote/sw.js", "application/javascript; charset=utf-8");
                 return;

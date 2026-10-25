@@ -332,14 +332,11 @@ public final class Panels {
         left.addView(buttons);
         root.addView(left, new LinearLayout.LayoutParams(UiKit.px(540), ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // Scan with a phone to follow: one code per profile.
-        String[][] profiles = {
-                {com.cinetv.launcher.service.Creator.INSTAGRAM_URL, "Instagram", "@" + com.cinetv.launcher.service.Creator.INSTAGRAM},
-                {com.cinetv.launcher.service.Creator.YOUTUBE_URL + "?sub_confirmation=1", "YouTube", com.cinetv.launcher.service.Creator.YOUTUBE},
-                {com.cinetv.launcher.service.Creator.LETTERBOXD_URL, "Letterboxd", "AlptugDag"},
-                {com.cinetv.launcher.service.Creator.LINKEDIN_URL, "LinkedIn", "AlptugDag"},
-                {com.cinetv.launcher.service.Creator.GITHUB_URL, "GitHub", "AlptugDag"}};
-        for (String[] p : profiles) root.addView(followCode(ctx, p[0], p[1], p[2]));
+        // Scan with a phone: one code opens a page on this TV with every profile.
+        String base = RemotePairing.baseUrl();
+        String page = base == null ? com.cinetv.launcher.service.Creator.GITHUB_URL : base + "/me";
+        root.addView(followCode(ctx, page, ctx.getString(R.string.about_scan),
+                "Instagram · YouTube · Letterboxd · LinkedIn · GitHub"));
 
         final Context app = ctx.getApplicationContext();
         new Thread(() -> {
@@ -358,22 +355,25 @@ public final class Panels {
         col.setGravity(Gravity.CENTER_HORIZONTAL);
         FrameLayout plate = new FrameLayout(ctx);
         plate.setBackground(new Glass(plate, UiKit.pxf(26), Glass.Style.FOCUSED));
-        int size = UiKit.px(150);
+        int size = UiKit.px(300);
         ImageView qr = new ImageView(ctx);
         Bitmap code = RemotePairing.qr(url, size, Color.parseColor("#0B1220"), Color.WHITE);
         if (code != null) qr.setImageBitmap(code);
         plate.addView(qr, new FrameLayout.LayoutParams(size, size, Gravity.CENTER));
         plate.setPadding(UiKit.px(16), UiKit.px(16), UiKit.px(16), UiKit.px(16));
-        col.addView(plate);
+        col.addView(plate, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         TextView label = UiKit.bold(ctx, 21, UiKit.INK);
         label.setText(site);
+        label.setGravity(Gravity.CENTER_HORIZONTAL);
         label.setPadding(0, UiKit.px(16), 0, 0);
         col.addView(label);
         TextView h = UiKit.label(ctx, 17, UiKit.INK_DIM);
         h.setText(handle);
+        h.setGravity(Gravity.CENTER_HORIZONTAL);
+        h.setMaxWidth(size + UiKit.px(32));
         col.addView(h);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(UiKit.px(26), 0, 0, 0);
+        lp.setMargins(UiKit.px(60), 0, 0, 0);
         col.setLayoutParams(lp);
         return col;
     }
