@@ -351,7 +351,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 home.hideAiCard();
         } else if (!home.shelf.hasFocus()) {
             home.shelf.requestFocus();
-            home.scroll.smoothScrollTo(0, 0);
+            home.scroll.glideHome();
         }
     }
 

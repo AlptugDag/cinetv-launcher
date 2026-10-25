@@ -231,23 +231,24 @@ public class DvdOpeningView extends View {
         float ch = from.height() + (caseH - from.height()) * fly;
         float left = cx - cw / 2f, top = cy - ch / 2f;
 
+        // The disc lies in the tray, under the front cover, until it is played; then it rises above all.
+        float d = cw * 0.88f;
+        float dcx = left + cw / 2f, dcy = top + ch / 2f;
+        float x = dcx + (w / 2f - dcx) * approach;
+        float y = dcy - rise * d * 0.03f + (h / 2f - dcy) * approach;
+        float size = d * (1f + 0.06f * rise) * (1f + approach * 2.6f);
         // While the disc comes forward the case falls back into the dark.
         int caseAlpha = (int) (255 * (1f - clamp(approach * 1.6f)));
         if (caseAlpha > 0) {
             int save = caseAlpha < 255 ? canvas.saveLayerAlpha(0, 0, w, h, caseAlpha) : -1;
-            if (open > 0.01f) drawTray(canvas, left, top, cw, ch);
+            if (open > 0.01f) {
+                drawTray(canvas, left, top, cw, ch);
+                if (play < 0 && disc != null) drawDisc(canvas, x, y, size, rise);
+            }
             drawCover(canvas, left, top, cw, ch, open * OPEN_ANGLE);
             if (save >= 0) canvas.restoreToCount(save);
         }
-        if (open > 0.01f && disc != null) {
-            float d = cw * 0.88f;
-            float dcx = left + cw / 2f, dcy = top + ch / 2f;
-            // Towards the viewer: to the centre of the screen, growing until it fills it.
-            float x = dcx + (w / 2f - dcx) * approach;
-            float y = dcy - rise * d * 0.03f + (h / 2f - dcy) * approach;
-            float size = d * (1f + 0.06f * rise) * (1f + approach * 2.6f);
-            drawDisc(canvas, x, y, size, rise);
-        }
+        if (play >= 0 && disc != null) drawDisc(canvas, x, y, size, rise);
         if (play < 0 && t >= OPEN_END) drawHint(canvas, w, h);
         if (approach > 0.7f) canvas.drawColor(Color.argb((int) (255 * clamp((approach - 0.7f) / 0.3f)), 0, 0, 0));
     }
@@ -399,13 +400,16 @@ public class DvdOpeningView extends View {
             c.rotate(-1.6f, w / 2f, h / 2f);
             float y = paper.top + pad * 0.9f;
 
-            // Title, underlined with one quick stroke.
+            // Title and signature in the film's own colour (as its glow), deep enough to read on paper.
+            int filmInk = filmInk(cover);
+            int blackInk = ink.getColor();
+            ink.setColor(filmInk);
             ink.setTextSize(w * 0.092f);
             StaticLayout title = layout(movie.title, ink, (int) textW, 1.0f);
             drawInk(c, title, paper.left + pad, y, ink);
             y += title.getHeight();
             Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
-            stroke.setColor(Color.argb(220, 18, 18, 22));
+            stroke.setColor(filmInk);
             stroke.setStrokeWidth(Math.max(2f, w * 0.008f));
             stroke.setStrokeCap(Paint.Cap.ROUND);
             stroke.setStyle(Paint.Style.STROKE);
@@ -422,12 +426,14 @@ public class DvdOpeningView extends View {
             float bottom = paper.bottom - pad * 0.8f;
             if (!by.isEmpty()) {
                 ink.setTextSize(w * 0.064f);
+                ink.setColor(filmInk);
                 String sig = "— " + by;
                 float sw = ink.measureText(sig);
                 c.drawText(sig, paper.right - pad - Math.min(sw, textW), bottom, ink);
                 bottom -= w * 0.11f;
             }
 
+            ink.setColor(blackInk);
             // The story: as large as fits, never smaller than legible.
             String story = movie.overview == null ? "" : movie.overview.trim();
             if (!story.isEmpty()) {
@@ -460,6 +466,17 @@ public class DvdOpeningView extends View {
         c.drawRoundRect(new RectF(w - clipW - lip * 0.4f, h * 0.10f, w - lip * 0.4f, h * 0.10f + clipH), clipW * 0.3f, clipW * 0.3f, p);
         c.drawRoundRect(new RectF(w - clipW - lip * 0.4f, h * 0.85f, w - lip * 0.4f, h * 0.85f + clipH), clipW * 0.3f, clipW * 0.3f, p);
         return out;
+    }
+
+    /** The poster's standout colour, darkened to a felt-tip shade that stays readable on pale paper. */
+    private static int filmInk(Bitmap cover) {
+        if (cover == null) return Color.argb(240, 18, 18, 22);
+        int c = AppArtwork.sampleDistinctPosterColor(cover, 0, 0);
+        float[] hsv = new float[3];
+        Color.colorToHSV(c, hsv);
+        hsv[1] = Math.max(0.65f, hsv[1]);
+        hsv[2] = Math.min(hsv[2], 0.48f);
+        return Color.HSVToColor(240, hsv);
     }
 
     @SuppressWarnings("deprecation")

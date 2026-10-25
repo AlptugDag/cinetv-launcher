@@ -135,7 +135,14 @@ public class TvKeyInterceptorService extends AccessibilityService {
         armIdleSaver();
         if (signature == null) signature = new com.cinetv.launcher.ui.SignatureOverlay(this);
         if (AppLauncher.NUVIO.equals(pkg)) signature.show();
-        else signature.hide();
+        else if (isAppSwitch(pkg)) signature.hide();
+    }
+
+    /** A real change of app (not a keyboard, toast or pop-up drawn over Nuvio). */
+    private boolean isAppSwitch(String pkg) {
+        if (pkg.equals(getPackageName()) || pkg.startsWith("com.mediatek.wwtv")) return true;
+        if (pkg.contains("inputmethod") || pkg.contains("katniss")) return false;
+        return AppLauncher.isLaunchable(getPackageManager(), pkg);
     }
 
     private void armIdleSaver() {

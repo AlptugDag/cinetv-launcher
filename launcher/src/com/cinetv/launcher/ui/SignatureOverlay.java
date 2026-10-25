@@ -18,7 +18,7 @@ import com.cinetv.launcher.device.DeviceTweaks;
  */
 public final class SignatureOverlay {
 
-    private static final float BROWSING_ALPHA = 0.55f, PLAYING_ALPHA = 0.20f;
+    private static final float BROWSING_ALPHA = 0.75f, PLAYING_ALPHA = 0.35f;
 
     private final AccessibilityService service;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -43,7 +43,7 @@ public final class SignatureOverlay {
         try {
             UiKit.init(service);
             view = new ImageView(service);
-            view.setImageBitmap(Brand.tinted(service, Color.WHITE, UiKit.px(150)));
+            view.setImageBitmap(withShadow(Brand.tinted(service, Color.WHITE, UiKit.px(150))));
             view.setAlpha(0f);
             WindowManager.LayoutParams lp = new WindowManager.LayoutParams(UiKit.px(104), UiKit.px(104),
                     WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
@@ -60,6 +60,23 @@ public final class SignatureOverlay {
             android.util.Log.w("CineTvSignature", "overlay failed: " + t);
             view = null;
         }
+    }
+
+    /** A soft dark halo under the white signature, so it reads over bright scenes too. */
+    private static android.graphics.Bitmap withShadow(android.graphics.Bitmap sig) {
+        int pad = Math.max(4, sig.getWidth() / 14);
+        android.graphics.Bitmap out = android.graphics.Bitmap.createBitmap(sig.getWidth() + pad * 2, sig.getHeight() + pad * 2,
+                android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas c = new android.graphics.Canvas(out);
+        android.graphics.Paint blur = new android.graphics.Paint();
+        blur.setMaskFilter(new android.graphics.BlurMaskFilter(pad * 0.8f, android.graphics.BlurMaskFilter.Blur.NORMAL));
+        int[] off = new int[2];
+        android.graphics.Bitmap halo = sig.extractAlpha(blur, off);
+        android.graphics.Paint dark = new android.graphics.Paint();
+        dark.setColor(Color.argb(170, 0, 0, 0));
+        c.drawBitmap(halo, pad + off[0], pad + off[1], dark);
+        c.drawBitmap(sig, pad, pad, null);
+        return out;
     }
 
     public void hide() {

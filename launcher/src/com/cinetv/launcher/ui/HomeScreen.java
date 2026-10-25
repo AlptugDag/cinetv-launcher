@@ -50,7 +50,7 @@ public class HomeScreen {
 
     public final FrameLayout root;
     public final SpatialEnvironment environment;
-    public final ScrollView scroll;
+    public final GlideScrollView scroll;
     public final PosterShelf shelf;
     public final AppGrid apps;
     public final ModalHost modal;
@@ -81,7 +81,7 @@ public class HomeScreen {
         environment = new SpatialEnvironment(ctx);
         root.addView(environment, match());
 
-        scroll = new ScrollView(ctx);
+        scroll = new GlideScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setClipChildren(false);
         scroll.setClipToPadding(false);
@@ -149,7 +149,7 @@ public class HomeScreen {
         searchBox.setBackground(searchGlass);
         LinearLayout searchRow = new LinearLayout(ctx);
         searchRow.setGravity(Gravity.CENTER_VERTICAL);
-        searchRow.setPadding(UiKit.px(26), 0, UiKit.px(26), 0);
+        searchRow.setPadding(UiKit.px(26), 0, UiKit.px(12), 0);
         ImageView glass = new ImageView(ctx);
         android.graphics.drawable.Drawable sd = ctx.getDrawable(R.drawable.ic_search).mutate();
         sd.setTint(UiKit.INK_DIM);
@@ -173,22 +173,25 @@ public class HomeScreen {
         micButton.setFocusable(true);
         micButton.setClickable(true);
         micButton.setContentDescription(ctx.getString(R.string.voice_search));
-        final Glass micGlass = new Glass(micButton, UiKit.pxf(24), Glass.Style.CONTROL);
-        micButton.setBackground(micGlass);
+        // A plain circle, not sampled glass: inside the tilted visor the glass sample would sit off-centre.
+        final android.graphics.drawable.GradientDrawable micDisc = new android.graphics.drawable.GradientDrawable();
+        micDisc.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        micDisc.setColor(Color.TRANSPARENT);
+        micButton.setBackground(micDisc);
         final ImageView micIcon = new ImageView(ctx);
         final android.graphics.drawable.Drawable md = ctx.getDrawable(R.drawable.ic_mic).mutate();
         md.setTint(UiKit.INK_DIM);
         micIcon.setImageDrawable(md);
         micButton.addView(micIcon, new FrameLayout.LayoutParams(UiKit.px(26), UiKit.px(26), Gravity.CENTER));
         micButton.setOnFocusChangeListener((v, has) -> {
-            micGlass.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
+            micDisc.setColor(has ? Color.WHITE : Color.TRANSPARENT);
             md.setTint(has ? UiKit.INK_DARK : UiKit.INK_DIM);
-            UiKit.lift(v, has, 1.12f, 140);
+            v.animate().scaleX(has ? 1.12f : 1f).scaleY(has ? 1.12f : 1f).setDuration(140).start();
             if (has) listener.onFocusLight(v, Color.parseColor("#A78BFA"));
         });
         micButton.setOnClickListener(v -> listener.onVoice());
         LinearLayout.LayoutParams mlp0 = new LinearLayout.LayoutParams(UiKit.px(48), UiKit.px(48));
-        mlp0.setMargins(UiKit.px(10), 0, -UiKit.px(12), 0);
+        mlp0.setMargins(UiKit.px(10), 0, 0, 0);
         searchRow.addView(micButton, mlp0);
         searchBox.addView(searchRow, match());
         final GlassBevelView searchBevel = new GlassBevelView(ctx, UiKit.pxf(34), false);
