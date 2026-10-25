@@ -73,6 +73,15 @@ public final class MovieAssistant {
 
     private MovieAssistant() {}
 
+    /** A question to answer (rather than films to find), judged from the words alone. */
+    public static boolean isQuestion(String query) {
+        String q = query.toLowerCase(Locale.getDefault());
+        for (String w : SHELF_WORDS) if (q.contains(w)) return false;
+        for (String w : GENRE_WORDS) if (q.contains(w)) return false;
+        for (String w : QUESTION_WORDS) if (q.contains(w)) return true;
+        return false;
+    }
+
     /** Understands the request and fetches its shelf or answer. */
     public static Reply ask(Context ctx, String query, int max) {
         String q = query.trim();

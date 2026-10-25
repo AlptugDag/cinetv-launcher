@@ -433,7 +433,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.keyboard.hide();
         home.search.setText(query);
         final int gen = ++searchGen;
-        home.showThinking();
+        // Questions get the answer bubble; film, people and theme searches only change the shelf.
+        final boolean question = MovieAssistant.isQuestion(query);
+        if (question) home.showThinking();
+        else {
+            home.hideAiCard();
+            home.shelfLabel.setText(getString(R.string.shelf_building, MovieAssistant.cleanShelfName(query)).toUpperCase(Locale.getDefault()));
+        }
         final Context app = getApplicationContext();
         background(() -> {
             MovieAssistant.Reply r = MovieAssistant.ask(app, query, PerformanceProfile.shelfSize(app));
@@ -452,8 +458,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     // Stays long enough to read, then leaves by itself.
                     home.showBubble(r.answer, false, Math.max(6000, 2500 + 60L * r.answer.length()));
                 } else if (r.movies.isEmpty()) {
-                    home.showBubble(getString(LlmClient.isConfigured(this) || MovieCatalog.hasTmdb(this)
-                            ? R.string.nothing_found : R.string.ai_err_no_key), false, 6000);
+                    if (question) {
+                        home.showBubble(getString(LlmClient.isConfigured(this) || MovieCatalog.hasTmdb(this)
+                                ? R.string.nothing_found : R.string.ai_err_no_key), false, 6000);
+                    } else {
+                        home.shelfLabel.setText(getString(R.string.shelf_nothing, MovieAssistant.cleanShelfName(query)).toUpperCase(Locale.getDefault()));
+                        handler.postDelayed(() -> { if (gen == searchGen) restoreShelfLabel(); }, 4000);
+                    }
                 } else {
                     home.hideAiCard();
                 }

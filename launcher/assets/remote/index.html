@@ -215,7 +215,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <script>
 (() => {
   const T = {
-    en: {waiting:"Allow this phone on your TV with the remote",denied:"Not allowed on the TV. Tap to ask again.",busy:"Another phone is asking. Retrying…",
+    en: {onTv:"On your TV now",waiting:"Allow this phone on your TV with the remote",denied:"Not allowed on the TV. Tap to ask again.",busy:"Another phone is asking. Retrying…",
       tabCast:"Cast",tabAbout:"About",castTitle:"Play a video on the TV",castPh:"Paste a video link or any page with a video",paste:"Paste",castPlay:"Play on TV",
       castNote:"Works with direct links (mp4, m3u8…) and most pages that contain a video; the TV finds the stream itself.",castFinding:"Looking for the video…",castNone:"No playable video found on that page.",castPlaying:"Playing on your TV",
       aboutRole:"Filmmaker · Storyteller",followIg:"Follow on Instagram",followYt:"Subscribe on YouTube",hisFilms:"Show his films on the TV",
@@ -229,7 +229,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       p_natural:"Natural",p_cinema:"Cinema",p_night:"Dark room",p_vivid:"Vivid",
       t_off:"Off",t_gray:"Gray ramp",t_bars:"Colour bars",t_black:"Black level",t_white:"White level",t_skin:"Skin tones",
       backlight:"Backlight",brightness:"Brightness",contrast:"Contrast",saturation:"Colour",hue:"Tint",sharpness:"Sharpness",red:"Red gain",green:"Green gain",blue:"Blue gain",done:"Saved"},
-    tr: {waiting:"Bu telefona TV'den kumandayla izin verin",denied:"TV'de izin verilmedi. Tekrar sormak için dokunun.",busy:"Başka bir telefon soruyor. Tekrar deneniyor…",
+    tr: {onTv:"TV'de vitrine geldi",waiting:"Bu telefona TV'den kumandayla izin verin",denied:"TV'de izin verilmedi. Tekrar sormak için dokunun.",busy:"Başka bir telefon soruyor. Tekrar deneniyor…",
       tabCast:"Yayınla",tabAbout:"Hakkımda",castTitle:"TV'de video oynat",castPh:"Bir video bağlantısı ya da videolu herhangi bir sayfa yapıştırın",paste:"Yapıştır",castPlay:"TV'de oynat",
       castNote:"Doğrudan bağlantılarla (mp4, m3u8…) ve video içeren çoğu sayfayla çalışır; yayını TV kendisi bulur.",castFinding:"Video aranıyor…",castNone:"Bu sayfada oynatılabilir video bulunamadı.",castPlaying:"TV'de oynatılıyor",
       aboutRole:"Sinemacı · Hikâye anlatıcı",followIg:"Instagram'da takip et",followYt:"YouTube'da abone ol",hisFilms:"Filmlerini TV'de göster",
@@ -314,6 +314,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const skeleton = () => $("results").innerHTML = Array.from({length: 9}, () => '<div class="card skeleton"></div>').join("");
   const trending = async () => { if (!token) return; skeleton(); try { render((await api("catalog/trending")).results || [], t("trending")); } catch (e) {} };
   let searchTimer, seq = 0;
+  // Enter: the TV's own assistant fills its shelf with the same search at once.
+  $("q").addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    const q = e.target.value.trim(); if (!q) return;
+    e.target.blur();
+    api("tv/search", {q}).then(() => toast(t("onTv"))).catch(() => {});
+  });
   $("q").addEventListener("input", e => {
     clearTimeout(searchTimer);
     const q = e.target.value.trim();

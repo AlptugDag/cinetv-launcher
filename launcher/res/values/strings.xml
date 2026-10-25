@@ -29,6 +29,7 @@
     <string name="his_films">Show his films</string>
     <string name="cast_from_phone">Cast from phone</string>
     <string name="pair_body_cast">Scan with your phone, open Cast and paste any video link or a page with a video. The TV finds the stream and plays it full screen; your phone is free again right away.</string>
+    <string name="shelf_nothing">Nothing found for %s</string>
     <string name="dvd_play_hint">OK  Play the film     ·     Back  Close the case</string>
     <string name="add_nothing">Every installed app is already on Home. New apps you install appear here automatically.</string>
     <string name="add_to_home">Add to home</string>
