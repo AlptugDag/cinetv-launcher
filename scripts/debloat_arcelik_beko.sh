@@ -65,7 +65,7 @@ done
 echo "==> Preserving essential services:"
 echo "    [+] MediaTek TV core (com.mediatek.wwtv.tvcenter) — required for HDMI / picture / HDR"
 echo "    [+] TV+ (com.turkcell.ott)"
-echo "    [+] Web Video Caster (com.instantbits.cast.receiver)"
+echo "    [+] Nova Video Player (org.courville.nova) — CineTV casting and Nuvio external player"
 echo "    [+] YouTube TizenTube / Cobalt (io.gh.reisxd.tizentube.cobalt)"
 echo "    [+] Cinema Hub / Nuvio TV (com.nuvio.tv)"
 echo "    [+] Native AirPlay Receiver (io.github.jqssun.airplay)"

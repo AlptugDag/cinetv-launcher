@@ -29,6 +29,7 @@ set -euo pipefail
 
 REPO="AlptugDag/cinetv-launcher"
 PKG="com.cinetv.launcher"
+# Package id of CineTV builds before 2.0; replaced on install so two Homes never compete.
 LEGACY_PKG="com.gathin.tvhome"
 HOME_ACTIVITY="$PKG/.MainActivity"
 KEY_SERVICE="$PKG/$PKG.TvKeyInterceptorService"

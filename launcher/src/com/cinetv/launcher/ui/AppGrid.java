@@ -23,7 +23,7 @@ import java.util.List;
 
 /**
  * The favourite apps (dock) and every other app (grid) as glass platters. Focus lifts a tile with the
- * app-coloured bloom; at rest the rows keep the JARVIS cylinder curvature when Spatial HUD is on.
+ * app-coloured bloom; at rest the rows keep a gentle cylinder curvature when Spatial HUD is on.
  * Long-press OK opens Move / Hide / Uninstall / Info; in move mode the arrows carry the tile.
  */
 public class AppGrid {

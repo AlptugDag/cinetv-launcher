@@ -24,7 +24,7 @@ import java.util.concurrent.Executors;
  * The film shelf: a row of DVD cases in a cover-flow. The focused case comes forward (1.30x),
  * turns to face the viewer and lights the room in its colour; its neighbours step back
  * (0.94 / 0.80 / 0.68) and turn their spines towards you like a real collection. With Spatial HUD
- * on, the resting shelf bends along the original JARVIS cylinder.
+ * on, the resting shelf bends along a gentle cylinder.
  *
  * The shelf is a single focusable view that handles left/right itself, so moving along it is one
  * animated value rather than a chain of focus changes. Off-screen cases are not drawn.
