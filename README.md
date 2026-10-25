@@ -276,29 +276,30 @@ kaynakları, seçtiği kanal türleri). Paralı kanalları taşıyan eklentileri
 TV*, *Anthology Sinema Kanalları*) kurulumda kapalı kalır; bunlar yalnızca elle, *Nuvio › Ayarlar › Eklentiler*
 bölümünden açılabilir.
 
-Ayrıca:
-filmleriniz gerçek 3D DVD kutularından oluşan bir rafta; ne izlemek istediğinizi anlayan bir yapay zekâ
-araması; kumanda ve yayın aracı olarak telefonunuz; ve filmi çekildiği gibi gösterecek şekilde ayarlanmış bir
-televizyon.
+**DVD Rafı**: Ana ekranda, gün içinde farklı farklı filmlerin -konum, saat hava durumu gibi ögelere göre- önerildiği dvd kutusunda listelendiği, bir kez basınca kutunun açılıp iç kapağındaki Türkçe film özetinin okunduğu, bir kez daha basınca cdnin dönüp ilgili filmin nuvio'da açıldığı bir tasarım benimsedim.
 
-- **Raf**: odaktaki kutu öne çıkar, uzaktakiler kararır ve hafifçe bulanıklaşır, bir kutuda beklerseniz ışığa
-  döner. Arka planı odaktaki filmin rengi aydınlatır. Televizyon her açıldığında saate, güne, şehre ve hava
-  durumuna göre yeni bir seçki gelir.
-- **DVD**: ilk OK kutuyu açar ve iç kapakta keçeli kalemle yazılmış konuyu gösterir; ikinci OK diski
-  döndürüp yaklaştırır ve film başlar.
-- **Arama**: "Takeshi Kitano filmleri", "araba temalı filmler", "kızı kaçırılan baba filmleri", dizi
-  aramaları ve sorular. Gemini, Claude, Grok, OpenAI ya da OpenRouter anahtarıyla çalışır; mikrofon ve cam
-  klavye dahil.
-- **Ekran koruyucu**: filmlerin kendi logolarıyla, 35 mm film şeridi geçişiyle.
-- **Görüntü, ses ve ağ**: sinema için en doğru ayarlar, reklam engelleyici DNS, hız testi.
-- **Telefon**: güvenli (HTTPS) sayfa, ana ekrana eklenebilir; arama, her uygulamada çalışan tam bir kumanda
-  (kanal, ses, rakamlar, renk tuşları, telefon klavyesiyle televizyona yazma), video yayınlama, arka plan gönderme.
-- **Televizyonun kendi ayarları**: ana ekranda dişliye basılı tut (odaklanınca yazar), *Ayarlar › TV ayarları* ya da kumandanın Ayarlar tuşu.
-- **Canlı TV**: tuneri olan televizyonlarda ana ekrandaki *Canlı TV* kutucuğu televizyonun kendi kanallarını açar; *Ayarlar › Ana ekranda TV kanalları* ile kapatılır.
-- **Kaynaklar adıyla**: Kaynak tuşu, HDMI'ye takılı cihazın adıyla ("PlayStation 5", "Digiturk") girişleri listeler.
-- **Uyku zamanlayıcı ve sessiz saatler**: *Ayarlar › Uyku ve sessiz saatler*; 15-120 dakika sonra uyku (bir dakika önce uyarı), 22:00-08:00 arası ses en fazla yüzde 30. Telefondaki kumandada da uyku tuşu var.
-- **Güvenli sadeleştirme**, **AirPods otomatik bağlanma**, **CineTV'yi yok et!** ile her şeyi geri alma.
+**Arama**: "Takeshi Kitano filmleri", "araba temalı filmler", "kızı kaçırılan baba filmleri", dizi aramaları yaptığınızda vitrini doğrudan bunlarla dolduracak ve "Türkiye'nin yüz ölçümü kaçtır?" gibi dilediğiniz soruları cevaplayabilecek; Gemini, Claude, Grok, OpenAI anahtarıyla çalışan, sesli aramayı da destekleyen bir search bar ekledim.
 
+**Ekran koruyucu**: filmlerin sahneleri ve repliklerinden oluşan dinamik bir ekran koruyucu, 35 mm film şeridi geçişiyle.
+
+**Görüntü, ses ve ağ**: Ağ hızınızı ve donanımınızı tespit edip hem nuvio yayın ayarlarınızı hem televizyonunuzun ağ, ses ve görüntü ayarlarını; televizyonunuzun sunabileceği (Dolby, hdr, 4k...) en kusursuz sinema deneyimine göre optimize edecek, var olan youtube uygulamanızı reklamsıza çevirip cihaz çapında reklam engelleyecek düzenlemeler yaptım.
+
+**Telefondan kontrol**: Sadece basit bir qr kod kullanarak, tvniz ile aynı ağa bağlı telefonunuzu kumanda olarak kullanabilir, nuvio aramalarınızı onun içerisinden gerçekleştirip tvde anında oynatabilir, tv arka planınızı değiştirebilir veya web adresleri girerek video cast edebilirsiniz. (Ayrıca airplay ve airpods desteği de var)
+
+**Canlı TV**: Tuneri olan televizyonlarda ana ekrandaki Canlı TV kutucuğu televizyonun kendi kanallarını açar; Ayarlar › Ana ekranda TV kanalları ile kapatılır.
+
+**Kaynaklar İsimli**: Kaynak tuşu, HDMI'ye takılı cihazın adıyla ("PlayStation 5", "Digiturk") girişleri listeler.
+
+**Güvenli sadeleştirme** özelliği olduğundan, televizyonunuzla birlikte gelen gereksiz tüm servislerden, izleyicilerden, kısacası yavaşlatan her şeyden kurtulabilirsiniz ve buna ek olarak, uygun cihazlarda sanal ram oluşturup daha da ferahlatır.
+
+Beğenmediğiniz takdirde, ayar menüsündeki **CineTV'yi yok et!** tuşu ile her şeyi geri almanız da mümkün tabii.
+
+Tüm bunların kurulumu sırasında, eğer bir yapay zekaya kurdurursanız size çeşitli sorular sorup tarzınızı analiz edecek ve tüm ayarlarınızı, eklenti ve uzantılarınızı ona göre düzenleyecek.
+Örneğin sadece anime izlemek, sadece spor kanalları izlemek ya da asla film görmemek gibi şeyler istiyorsanız, tamamen size göre bir kurulum yapacak (Ben en başından kendime göre kurduğum için bu kısmı tam test etme şansım olmadı)
+
+Film, dizi, canlı tv içeriklerine ek olarak canlı spor kanallarını da otomatik olarak ekliyor çeşitli eklentiler sayesinde ama deaktif bırakıyor etik dışı olduğunu düşündüğünden, onları nuvio ayarlarından manuel olarak etkinleştirebilirsiniz.
+
+***Projede hatalar çıkması muhtemeldir (benim ve ailemin televizyonunda yok) eğer çıkarsa, kullandığınız yapay zeka aracından (antigravity (ÜCRETSİZDİR) veya claude desktop tavsiye ederim) ilgili sorunu çözmesini talep edebilirsiniz.
 Kurulum: `./install.sh --tv <TV_IP>` — ya da bir yapay zekâ ajanına "CineTV'yi televizyonuma kur" deyin
 ([AGENTS.md](AGENTS.md)).
 
