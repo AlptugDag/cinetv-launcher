@@ -109,7 +109,7 @@ public class HomeScreen {
         logoButton.setFocusable(true);
         logoButton.setClickable(true);
         ImageView mark = new ImageView(ctx);
-        mark.setImageBitmap(Brand.mark(ctx));
+        mark.setImageBitmap(UiKit.isLight() ? Brand.tinted(ctx, Color.BLACK, UiKit.px(160)) : Brand.mark(ctx));
         logoButton.addView(mark, match());
         logoButton.setOnFocusChangeListener((v, has) -> {
             UiKit.lift(v, has, 1.15f, 160);

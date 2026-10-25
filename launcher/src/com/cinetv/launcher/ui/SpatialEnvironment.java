@@ -53,6 +53,7 @@ public class SpatialEnvironment extends View {
     private LinearGradient roomGradient;
     private Paint toneVeil;
     private int toneVeilHeight;
+    private boolean toneVeilLight;
 
     private float glowX = 960, glowY = 540;
     private int glowColor = Color.parseColor("#38BDF8");
@@ -83,9 +84,13 @@ public class SpatialEnvironment extends View {
         this.theme = theme;
         this.light = light;
         composited = PerformanceProfile.tier(getContext()) != PerformanceProfile.Tier.HIGH;
-        focusLight = PerformanceProfile.focusLight(getContext());
-        String wp = ThemeManager.wallpaperNow(theme);
-        wallpaper = wp == null ? null : PosterCache.decodeAsset(getContext(), wp, 1280, 720);
+        focusLight = PerformanceProfile.focusLight(getContext()) && theme.wash && !theme.pureBlack;
+        if (ThemeManager.usesCustomWallpaper(getContext())) {
+            wallpaper = android.graphics.BitmapFactory.decodeFile(ThemeManager.customWallpaper(getContext()).getPath());
+        } else {
+            String wp = ThemeManager.wallpaperNow(theme);
+            wallpaper = wp == null ? null : PosterCache.decodeAsset(getContext(), wp, 1280, 720);
+        }
         pattern = null;
         roomGradient = null;
         if (getWidth() > 0) rebuild(getWidth(), getHeight());
@@ -99,7 +104,7 @@ public class SpatialEnvironment extends View {
     }
 
     private void rebuild(int w, int h) {
-        if (theme.signaturePattern && pattern == null) pattern = buildPattern(w, h);
+        if (theme.signaturePattern && !theme.pureBlack && pattern == null) pattern = buildPattern(w, h);
         int down = PerformanceProfile.blurDownscale(getContext());
         Bitmap small = Bitmap.createBitmap(Math.max(8, w / down), Math.max(8, h / down), Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(small);
@@ -109,7 +114,8 @@ public class SpatialEnvironment extends View {
         if (composited) {
             // Half resolution is plenty for a soft backdrop and quarters the memory and fill cost.
             int cw = Math.round(w * OVERSIZE / 2f), ch = Math.round(h * OVERSIZE / 2f);
-            Bitmap cache = Bitmap.createBitmap(cw, ch, Bitmap.Config.RGB_565);
+            // Full colour: 16-bit caches turn the soft gradients into visible bands.
+            Bitmap cache = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888);
             Canvas cc = new Canvas(cache);
             cc.scale(cw / (float) w, ch / (float) h);
             drawBase(cc, w, h, false);
@@ -186,7 +192,10 @@ public class SpatialEnvironment extends View {
     private void drawBase(Canvas canvas, int w, int h, boolean withParallax) {
         float px = withParallax ? (glowX - w / 2f) * -0.035f : 0f;
         float py = withParallax ? (glowY - h / 2f) * -0.025f : 0f;
-        if (light) {
+        if (theme.pureBlack && !light) {
+            canvas.drawColor(Color.BLACK);
+            return;
+        } else if (light && wallpaper == null) {
             canvas.drawColor(Color.parseColor("#E8ECF2"));
         } else if (wallpaper != null) {
             // Cover-fit, slightly oversized so the parallax shift never shows an edge.
@@ -197,9 +206,13 @@ public class SpatialEnvironment extends View {
             paint.setShader(null);
             paint.setAlpha(255);
             canvas.drawBitmap(wallpaper, src, dst, paint);
-            if (toneVeil == null || toneVeilHeight != h) {
+            if (toneVeil == null || toneVeilHeight != h || toneVeilLight != light) {
+                toneVeilLight = light;
                 toneVeil = new Paint();
-                toneVeil.setShader(new LinearGradient(0, 0, 0, h, Color.argb(70, 0, 0, 0), Color.argb(150, 0, 0, 0), Shader.TileMode.CLAMP));
+                // Dark ink needs a pale veil over the picture, light ink a dark one.
+                toneVeil.setShader(light
+                        ? new LinearGradient(0, 0, 0, h, Color.argb(150, 240, 243, 248), Color.argb(190, 240, 243, 248), Shader.TileMode.CLAMP)
+                        : new LinearGradient(0, 0, 0, h, Color.argb(70, 0, 0, 0), Color.argb(150, 0, 0, 0), Shader.TileMode.CLAMP));
                 toneVeilHeight = h;
             }
             canvas.drawRect(0, 0, w, h, toneVeil);
@@ -277,14 +290,21 @@ public class SpatialEnvironment extends View {
         }
     }
 
+    /** The light's falloff, with a fine random dither so the wide, faint glow never shows steps. */
     private static Bitmap radialSprite(int size) {
         Bitmap b = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setShader(new RadialGradient(size / 2f, size / 2f, size / 2f,
-                new int[]{Color.WHITE, Color.argb(160, 255, 255, 255), Color.argb(70, 255, 255, 255),
-                        Color.argb(20, 255, 255, 255), Color.TRANSPARENT},
-                new float[]{0f, 0.28f, 0.56f, 0.8f, 1f}, Shader.TileMode.CLAMP));
-        new Canvas(b).drawCircle(size / 2f, size / 2f, size / 2f, p);
+        int[] px = new int[size * size];
+        java.util.Random rnd = new java.util.Random(3);
+        float c = (size - 1) / 2f;
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                float d = (float) Math.hypot(x - c, y - c) / c;
+                float a = d >= 1f ? 0f : (float) Math.pow(1f - d, 1.8f);
+                int alpha = Math.max(0, Math.min(255, Math.round(a * 255f + (rnd.nextFloat() - 0.5f) * 3f)));
+                px[y * size + x] = Color.argb(alpha, 255, 255, 255);
+            }
+        }
+        b.setPixels(px, 0, size, 0, 0, size, size);
         return b;
     }
 }

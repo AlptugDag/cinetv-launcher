@@ -803,8 +803,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void applyAppearance() {
-        home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this));
         DeviceTweaks.syncNightMode(this);
+        // Light and dark use different ink everywhere: rebuild the screen when it flips.
+        if (ThemeManager.isLight(this) != UiKit.isLight()) {
+            recreate();
+            return;
+        }
+        home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this));
     }
 
     @Override

@@ -11,7 +11,7 @@
 #   --apk FILE            Install this APK instead of downloading the latest release.
 #   --version vX.Y.Z      Download this release instead of the latest.
 #   --city NAME           City for the weather next to the clock.
-#   --theme ID            cinetv | glass | aurora | ruska | scenes | sweden | dussehra | six-columns | oled
+#   --theme ID            cinetv (Alptug Default) | glass | aurora | scenes | dussehra (Royal Gold) | six-columns (Cinema Wall) | oled
 #   --debloat             Disable the TV's bloatware (reversible, never touches TV core).
 #   --youtube             Install ad-free YouTube (TizenTube) and retire the stock app (reversible).
 #   --keep-old-launcher   Leave the stock home screen enabled (CineTV is still set as Home).
@@ -151,7 +151,7 @@ fi
 
 # --- 3. questions ----------------------------------------------------------------------------------
 [ -n "$CITY" ] || CITY=$(ask "City for the weather (empty = automatic)" "")
-[ -n "$THEME" ] || THEME=$(ask "Theme: cinetv, glass, aurora, ruska, scenes, sweden, dussehra, six-columns, oled" "cinetv")
+[ -n "$THEME" ] || THEME=$(ask "Theme: cinetv, glass, aurora, scenes, dussehra, six-columns, oled" "cinetv")
 if [ "$YOUTUBE" = 0 ] && [ "$(ask "Install ad-free YouTube (TizenTube)? y/n" "y")" = "y" ] && [ "$YES" = 0 ]; then YOUTUBE=1; fi
 if [ "$DEBLOAT" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Disable bloatware (reversible)? y/n" "n")" = "y" ]; then DEBLOAT=1; fi
 AI_KEY="${CINETV_AI_KEY:-}"; TMDB_KEY="${CINETV_TMDB_KEY:-}"; TMDB_TOKEN="${CINETV_TMDB_TOKEN:-}"; MDBLIST_KEY="${CINETV_MDBLIST_KEY:-}"

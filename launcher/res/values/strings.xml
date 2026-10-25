@@ -90,8 +90,8 @@
     <string name="col_ai">AI &amp; films</string>
     <string name="col_tv">TV &amp; phone</string>
     <string name="theme_cinetv">Alptug Default</string>
+    <string name="theme_six_columns">Cinema Wall</string>
     <string name="theme_oled">OLED Black</string>
-    <string name="theme_six_columns">Six Columns</string>
     <string name="appearance">Appearance</string>
     <string name="appearance_dark">Dark</string>
     <string name="appearance_light">Light</string>

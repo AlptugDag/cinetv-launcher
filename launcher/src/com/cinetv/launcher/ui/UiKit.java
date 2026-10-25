@@ -16,10 +16,12 @@ import com.cinetv.launcher.FontManager;
  */
 public final class UiKit {
 
-    public static final int INK = Color.parseColor("#F5F5F7");
-    public static final int INK_DIM = Color.argb(160, 235, 235, 245);
-    public static final int INK_FAINT = Color.argb(96, 235, 235, 245);
+    /** Text colours: light ink on the dark room, black ink in the light appearance (set by {@link #init}). */
+    public static int INK = Color.parseColor("#F5F5F7");
+    public static int INK_DIM = Color.argb(160, 235, 235, 245);
+    public static int INK_FAINT = Color.argb(96, 235, 235, 245);
     public static final int INK_DARK = Color.parseColor("#0B1220");
+    private static boolean light;
 
     private static float scale = 1f;
 
@@ -28,6 +30,14 @@ public final class UiKit {
     public static void init(Context ctx) {
         int w = Math.max(ctx.getResources().getDisplayMetrics().widthPixels, ctx.getResources().getDisplayMetrics().heightPixels);
         scale = w / 1920f;
+        light = com.cinetv.launcher.service.ThemeManager.isLight(ctx);
+        INK = light ? Color.parseColor("#0B0F19") : Color.parseColor("#F5F5F7");
+        INK_DIM = light ? Color.argb(175, 18, 22, 34) : Color.argb(160, 235, 235, 245);
+        INK_FAINT = light ? Color.argb(115, 18, 22, 34) : Color.argb(96, 235, 235, 245);
+    }
+
+    public static boolean isLight() {
+        return light;
     }
 
     /** Design pixels (1920-wide canvas) to real pixels. */

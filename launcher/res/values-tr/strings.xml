@@ -86,8 +86,8 @@
     <string name="col_ai">Yapay zekâ ve filmler</string>
     <string name="col_tv">TV ve telefon</string>
     <string name="theme_cinetv">Alptug Default</string>
+    <string name="theme_six_columns">Sinema Duvarı</string>
     <string name="theme_oled">OLED Siyah</string>
-    <string name="theme_six_columns">Altı Sütun</string>
     <string name="appearance">Görünüm modu</string>
     <string name="appearance_dark">Koyu</string>
     <string name="appearance_light">Açık</string>
