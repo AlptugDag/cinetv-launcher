@@ -71,10 +71,29 @@ put_setting_if_exists() {
     fi
 }
 
-# Safe removal: refuses protected packages, prefers the reversible path.
-#   uninstall -k --user 0  (keeps data; undo: adb shell cmd package install-existing <pkg>)
-#   disable-user --user 0  (undo: adb shell pm enable <pkg>)
-# Returns 0 if removed/disabled, 1 if skipped.
+# Was the app opened in the last 30 days? (usage stats; unknown counts as "not used")
+used_recently() {
+    local pkg="$1" last cutoff
+    command -v python3 >/dev/null 2>&1 || return 1
+    last="$(adb shell "dumpsys usagestats" 2>/dev/null | tr -d '\r' \
+        | grep -E "package=$pkg[ ]" | grep -oE 'lastTimeUsed="[0-9-]+ [0-9:]+"' | sed 's/lastTimeUsed="\(.*\)"/\1/' | sort | tail -1)"
+    [ -n "$last" ] || return 1
+    cutoff="$(python3 -c 'import datetime;print((datetime.datetime.now()-datetime.timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S"))')"
+    [[ "$last" > "$cutoff" ]]
+}
+
+# Every change is written here (on this computer and on the TV) so it can be undone exactly.
+DEBLOAT_JOURNAL="${DEBLOAT_JOURNAL:-debloat-journal.txt}"
+journal() {
+    printf '%s %s\n' "$1" "$2" >> "$DEBLOAT_JOURNAL"
+    adb shell "echo '$1 $2' >> /sdcard/cinetv-debloat.txt" >/dev/null 2>&1 || true
+}
+
+# Safe removal: refuses protected packages and apps the viewer actually uses, and takes the most
+# reversible path - disabling for this user (re-enable in Settings › Apps, or `pm enable <pkg>`;
+# a factory reset also restores it, so the warranty is untouched). Only if the firmware refuses to
+# disable it is it uninstalled for this user with its data kept (undo: cmd package install-existing).
+# Set CINETV_DEBLOAT_FORCE=1 to include recently used apps. Returns 0 if removed/disabled.
 safe_remove_pkg() {
     local pkg="$1"
     if is_protected_pkg "$pkg"; then
@@ -84,6 +103,17 @@ safe_remove_pkg() {
     if ! pkg_installed "$pkg"; then
         return 1
     fi
-    adb shell "pm uninstall -k --user 0 $pkg 2>/dev/null || pm disable-user --user 0 $pkg 2>/dev/null || true" >/dev/null 2>&1 || true
-    return 0
+    if [ "${CINETV_DEBLOAT_FORCE:-0}" != 1 ] && used_recently "$pkg"; then
+        echo "[~] Kept (used in the last 30 days): $pkg"
+        return 1
+    fi
+    if adb shell "pm disable-user --user 0 $pkg" 2>/dev/null | grep -q "disabled"; then
+        journal disabled "$pkg"
+        return 0
+    fi
+    if adb shell "pm uninstall -k --user 0 $pkg" 2>/dev/null | grep -q "Success"; then
+        journal uninstalled "$pkg"
+        return 0
+    fi
+    return 1
 }

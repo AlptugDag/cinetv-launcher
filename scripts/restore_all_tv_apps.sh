@@ -19,6 +19,20 @@ if [ -z "$DEVICE" ]; then
 fi
 echo "[+] Target Television: $DEVICE"
 
+# First undo exactly what the CineTV debloater recorded on this TV (newest first).
+JOURNAL="$(adb shell cat /sdcard/cinetv-debloat.txt 2>/dev/null | tr -d '\r' || true)"
+if [ -n "$JOURNAL" ]; then
+    echo "[+] Undoing the debloat journal"
+    reverse() { if command -v tac >/dev/null 2>&1; then tac; else tail -r; fi; }
+    printf '%s\n' "$JOURNAL" | reverse | while read -r action pkg; do
+        case "$action" in
+            disabled) adb shell "pm enable $pkg" >/dev/null 2>&1 && echo "    enabled $pkg" ;;
+            uninstalled) adb shell "cmd package install-existing $pkg" >/dev/null 2>&1 && echo "    restored $pkg" ;;
+        esac
+    done
+    adb shell rm -f /sdcard/cinetv-debloat.txt >/dev/null 2>&1 || true
+fi
+
 RESTORE_CANDIDATES=(
     # Google Stock TV Launchers & Storefront
     "com.google.android.tvlauncher"

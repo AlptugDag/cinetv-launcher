@@ -14,6 +14,8 @@
 #   --theme ID            cinetv (Alptug Default) | glass | aurora | scenes | dussehra (Royal Gold) | six-columns (Cinema Wall) | oled
 #   --debloat             Disable the TV's bloatware (reversible, never touches TV core).
 #   --youtube             Install ad-free YouTube (TizenTube) and retire the stock app (reversible).
+#   --apps                Also install Nuvio, Nova Video Player and the AirPlay receiver (official releases).
+#   --nuvio               Set Nuvio up: a few questions, then its addons are installed (scripts/setup_nuvio.sh).
 #   --keep-old-launcher   Leave the stock home screen enabled (CineTV is still set as Home).
 #   --yes                 Never ask; use defaults for anything not given.
 #   --verify              Check the installation and print PASS / FAIL lines, change nothing.
@@ -33,7 +35,7 @@ KEY_SERVICE="$PKG/$PKG.TvKeyInterceptorService"
 DREAM="$PKG/$PKG.ClockDream"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-TV="" APK="" VERSION="" CITY="" THEME="" DEBLOAT=0 YOUTUBE=0 KEEP_OLD=0 YES=0 VERIFY_ONLY=0
+TV="" APK="" VERSION="" CITY="" THEME="" DEBLOAT=0 YOUTUBE=0 APPS=0 NUVIO=0 KEEP_OLD=0 YES=0 VERIFY_ONLY=0
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$*"; }
@@ -54,6 +56,8 @@ while [ $# -gt 0 ]; do
         --theme) THEME="$2"; shift 2 ;;
         --debloat) DEBLOAT=1; shift ;;
         --youtube) YOUTUBE=1; shift ;;
+        --apps) APPS=1; shift ;;
+        --nuvio) NUVIO=1; shift ;;
         --keep-old-launcher) KEEP_OLD=1; shift ;;
         --yes|-y) YES=1; shift ;;
         --verify) VERIFY_ONLY=1; shift ;;
@@ -119,7 +123,10 @@ verify() {
     local ip
     ip=$(tv "ip -4 addr show wlan0 2>/dev/null; ip -4 addr show eth0 2>/dev/null" | awk '/inet /{print $2}' | cut -d/ -f1 | head -1)
     if [ -n "$ip" ] && command -v curl >/dev/null 2>&1 && curl -s -m 4 -o /dev/null "http://$ip:8080/"; then
-        ok "Phone companion reachable at http://$ip:8080 (pair with the QR code in Settings › Connect phone)"
+        ok "Phone companion reachable at http://$ip:8080 (open it on a phone and allow it on the TV)"
+        if curl -s -m 6 -o /dev/null "https://$(echo "$ip" | tr . -).local-ip.sh:9443/api/ping"; then
+            ok "Secure phone page at https://$(echo "$ip" | tr . -).local-ip.sh:9443 (no \"not secure\" warning)"
+        fi
     else warn "Phone companion not reachable from this computer yet (it starts with the home screen)"; fi
     return $failed
 }
@@ -153,6 +160,8 @@ fi
 [ -n "$CITY" ] || CITY=$(ask "City for the weather (empty = automatic)" "")
 [ -n "$THEME" ] || THEME=$(ask "Theme: cinetv, glass, aurora, scenes, dussehra, six-columns, oled" "cinetv")
 if [ "$YOUTUBE" = 0 ] && [ "$(ask "Install ad-free YouTube (TizenTube)? y/n" "y")" = "y" ] && [ "$YES" = 0 ]; then YOUTUBE=1; fi
+if [ "$APPS" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Install Nuvio, Nova Video Player and the AirPlay receiver? y/n" "y")" = "y" ]; then APPS=1; fi
+if [ "$NUVIO" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Set Nuvio up now (languages, quality, addons)? y/n" "y")" = "y" ]; then NUVIO=1; fi
 if [ "$DEBLOAT" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Disable bloatware (reversible)? y/n" "n")" = "y" ]; then DEBLOAT=1; fi
 AI_KEY="${CINETV_AI_KEY:-}"; TMDB_KEY="${CINETV_TMDB_KEY:-}"; TMDB_TOKEN="${CINETV_TMDB_TOKEN:-}"; MDBLIST_KEY="${CINETV_MDBLIST_KEY:-}"
 if [ "$YES" = 0 ] && [ -t 0 ]; then
@@ -177,6 +186,8 @@ ok "App installed"
 
 tv pm grant $PKG android.permission.WRITE_SECURE_SETTINGS && ok "Settings permission granted" || warn "Could not grant WRITE_SECURE_SETTINGS"
 tv appops set $PKG SYSTEM_ALERT_WINDOW allow >/dev/null || true
+# AirPods and other paired headphones reconnect by themselves (Android 12+ asks for this at runtime).
+tv pm grant $PKG android.permission.BLUETOOTH_CONNECT >/dev/null 2>&1 || true
 tv cmd package set-home-activity "$HOME_ACTIVITY" >/dev/null && ok "Set as Home" || warn "Choose CineTV when the TV asks for a Home app"
 
 CURRENT=$(tv settings get secure enabled_accessibility_services)
@@ -206,7 +217,11 @@ if [ "$DEBLOAT" = 1 ]; then
     case "$BRAND" in arcelik|beko|grundig) bash "$DIR/scripts/debloat_arcelik_beko.sh" ;; *) bash "$DIR/scripts/debloat_universal.sh" ;; esac
 fi
 
-[ "$YOUTUBE" = 0 ] || bash "$DIR/scripts/setup_youtube.sh"
+if [ "$APPS" = 1 ]; then bash "$DIR/scripts/setup_apps.sh"
+elif [ "$YOUTUBE" = 1 ]; then bash "$DIR/scripts/setup_youtube.sh"; fi
+if [ "$NUVIO" = 1 ]; then
+    if [ "$YES" = 1 ]; then bash "$DIR/scripts/setup_nuvio.sh" --defaults tr; else bash "$DIR/scripts/setup_nuvio.sh"; fi
+fi
 
 # --- 5. start ---------------------------------------------------------------------------------------
 # Restart so the launcher picks up the handed-over keys (it moves them into its keystore on start).
