@@ -21,6 +21,13 @@ public class CineTvApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        // The phone remote works whatever is on screen: its server and key bridge live with the process
+        // (kept alive by the remote-button service), not with the home screen.
+        // An update that changes the remote-button service's capabilities makes Android switch it off:
+        // switch it back on (CineTV holds WRITE_SECURE_SETTINGS).
+        DeviceTweaks.ensureKeyService(this);
+        com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
+        new Thread(() -> com.cinetv.launcher.remote.KeyBridge.warmUp(this), "cinetv-keys").start();
         if (SystemClock.elapsedRealtime() > DeviceTweaks.BOOT_GUARD_MS) return;
         Handler h = new Handler(Looper.getMainLooper());
         for (long delay : BOOT_RESCUES_MS) {

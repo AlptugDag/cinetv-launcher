@@ -8,3 +8,6 @@
 
 # MediaTek's picture API and other vendor classes are reached by reflection and may be absent.
 -dontwarn com.mediatek.**
+
+# The phone remote's key bridge runs from the APK under app_process (see KeyInjector).
+-keep class com.cinetv.launcher.remote.KeyInjector { public static void main(java.lang.String[]); }

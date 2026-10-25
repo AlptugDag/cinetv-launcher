@@ -127,6 +127,21 @@ public final class DeviceTweaks {
     private static long lastUserIntent;
 
     /** Call when the user deliberately opens live TV or an input, so it is never sent away. */
+    /** Keeps CineTV's remote-button service in the enabled accessibility services. */
+    public static void ensureKeyService(Context ctx) {
+        if (!canWriteSecureSettings(ctx)) return;
+        try {
+            ContentResolver cr = ctx.getContentResolver();
+            final String me = ctx.getPackageName() + "/" + com.cinetv.launcher.TvKeyInterceptorService.class.getName();
+            String list = Settings.Secure.getString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            if (list != null && list.contains(me)) return;
+            Settings.Secure.putString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                    list == null || list.isEmpty() || "null".equals(list) ? me : list + ":" + me);
+            Settings.Secure.putInt(cr, Settings.Secure.ACCESSIBILITY_ENABLED, 1);
+        } catch (Throwable ignored) {
+        }
+    }
+
     public static void markUserOpenedTv() {
         lastUserIntent = android.os.SystemClock.elapsedRealtime();
     }

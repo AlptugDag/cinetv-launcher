@@ -97,8 +97,11 @@ public final class TvWebRemoteServer {
         controller = c;
     }
 
+    private static boolean started;
+
     public static synchronized void start(Context ctx) {
-        if (server != null && !server.isClosed()) return;
+        if (started || (server != null && !server.isClosed())) return;
+        started = true;
         app = ctx.getApplicationContext();
         Thread t = new Thread(TvWebRemoteServer::acceptLoop, "cinetv-remote");
         t.setDaemon(true);
@@ -467,8 +470,14 @@ public final class TvWebRemoteServer {
                 return ok;
             }
             case "/api/key":
-                sendKey(parseInt(q.get("code")));
+                sendKey(parseInt(q.get("code")), "1".equals(q.get("long")));
                 return ok;
+            case "/api/type": {
+                // the phone's keyboard: the whole field each time, into whatever field the TV has focused
+                final String text = clip(q.get("q"), 300);
+                if (!TvKeyInterceptorService.typeIntoFocused(text)) KeyBridge.text(app, text);
+                return ok;
+            }
             case "/api/launch": {
                 final String pkg = q.get("pkg");
                 if (pkg != null && pkg.matches("[a-zA-Z0-9_.]{3,128}")) post(() -> AppLauncher.launch(app, pkg));
@@ -514,8 +523,10 @@ public final class TvWebRemoteServer {
         }
     }
 
-    private static void sendKey(final int code) {
+    private static void sendKey(final int code, final boolean longPress) {
         if (code <= 0 || code > 400) return;
+        // A real key press, in whatever app is in front (Nuvio, live TV, the TV's own menus)
+        if (KeyBridge.key(app, code, longPress)) return;
         AudioManager am = (AudioManager) app.getSystemService(Context.AUDIO_SERVICE);
         if (am != null && (code == 24 || code == 25 || code == 164)) {
             int dir = code == 24 ? AudioManager.ADJUST_RAISE : code == 25 ? AudioManager.ADJUST_LOWER : AudioManager.ADJUST_TOGGLE_MUTE;

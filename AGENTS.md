@@ -152,7 +152,9 @@ Tell the person before you run it, in one sentence, and run it only if they agre
 Once installed, the phone button at the top of Home shows an address and a QR code. The person opens it on their phone
 (same Wi-Fi), presses **Allow** on the TV once, and the phone is remembered. The page is HTTPS
 (`https://<ip-with-dashes>.local-ip.sh:9443`) and can be added to the home screen. It has search (Enter shows the
-results on the TV too), a remote, casting of any video link, and a background-photo upload.
+results on the TV too), a full remote that works in every app (keys reach any app through a small bridge
+CineTV starts on the TV: the TV asks once to allow it; tell the person to tick "Always allow" and press
+Allow), typing from the phone's keyboard, casting of any video link, and a background-photo upload.
 
 ## 7. On the TV itself
 

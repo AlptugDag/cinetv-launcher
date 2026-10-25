@@ -63,6 +63,21 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
     };
 
+    /** Puts text into the input field that has focus on screen, in any app; false when there is none. */
+    public static boolean typeIntoFocused(String text) {
+        TvKeyInterceptorService s = instance;
+        if (s == null) return false;
+        try {
+            android.view.accessibility.AccessibilityNodeInfo node = s.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT);
+            if (node == null || !node.isEditable()) return false;
+            android.os.Bundle args = new android.os.Bundle();
+            args.putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
+            return node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public static TvKeyInterceptorService getInstance() {
         return instance;
     }

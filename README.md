@@ -156,7 +156,10 @@ TV. From then on it connects by itself.
   `<ip-with-dashes>.local-ip.sh`), and the plain address forwards there by itself.
 - **Installable**: an *Add to Home Screen* prompt turns it into an app icon.
 - **Discover**: trending titles; type to search, press Enter and the TV's shelf shows the same.
-- **Remote**: D-pad, back, home, volume, search on the TV.
+- **A full TV remote that works in every app** (Nuvio, live TV, the TV's own menus): power, input, guide,
+  settings, D-pad, volume and channel rockers, number pad, media and colour keys, and **typing from the
+  phone's keyboard** into whatever field is selected on the TV, Turkish letters included. Keys reach any app
+  through a small bridge CineTV starts on the TV itself; the TV asks once to allow it ("Always allow").
 - **Cast**: paste any video link or a page with a video; the TV finds the stream and plays it full screen.
 - **Background**: pick a photo and it becomes the backdrop of Home.
 - **Several CineTV TVs** on one network show up in a switcher.
@@ -281,8 +284,8 @@ televizyon.
   klavye dahil.
 - **Ekran koruyucu**: filmlerin kendi logolarıyla, 35 mm film şeridi geçişiyle.
 - **Görüntü, ses ve ağ**: sinema için en doğru ayarlar, reklam engelleyici DNS, hız testi.
-- **Telefon**: güvenli (HTTPS) sayfa, ana ekrana eklenebilir; arama, kumanda, video yayınlama, arka plan
-  gönderme.
+- **Telefon**: güvenli (HTTPS) sayfa, ana ekrana eklenebilir; arama, her uygulamada çalışan tam bir kumanda
+  (kanal, ses, rakamlar, renk tuşları, telefon klavyesiyle televizyona yazma), video yayınlama, arka plan gönderme.
 - **Televizyonun kendi ayarları**: ana ekranda dişliye basılı tut (odaklanınca yazar), *Ayarlar › TV ayarları* ya da kumandanın Ayarlar tuşu.
 - **Canlı TV**: tuneri olan televizyonlarda ana ekrandaki *Canlı TV* kutucuğu televizyonun kendi kanallarını açar; *Ayarlar › Ana ekranda TV kanalları* ile kapatılır.
 - **Güvenli sadeleştirme**, **AirPods otomatik bağlanma**, **CineTV'yi yok et!** ile her şeyi geri alma.

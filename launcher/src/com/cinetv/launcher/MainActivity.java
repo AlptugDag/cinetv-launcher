@@ -127,6 +127,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             SecretStore.migrateLegacy(app);
             DeviceTweaks.applyLauncherDefaults(app);
             PosterCache.trimDisk(app);
+            // the phone remote's key bridge (the TV may ask once to allow CineTV)
+            com.cinetv.launcher.remote.KeyBridge.warmUp(app);
         }, "cinetv-init").start();
 
         home = new HomeScreen(this, this, this);

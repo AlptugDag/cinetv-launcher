@@ -25,6 +25,13 @@ is_protected_pkg() {
         com.mediatek.*tvapi*|com.mediatek.*display*|com.mediatek.*hdmi*|com.mstar.android.tv.*|\
         com.mstar.tv.*|com.mstar.*display*|com.mstar.*hdmi*)
             return 0 ;;
+        # --- Arçelik / Beko / Grundig: remote keys, Input key, pairing, backlight, the TV's own settings
+        #     (verified on these sets by the CleanYourTV community lists) ---
+        fusion.android.tv.demo|com.arcelik.smartremoteservice|com.mediatek.autopair|com.arcelik.tv.arcelikbacklight|\
+        com.arcelik.ChannelEditor|com.arcelik.ecomode|com.arcelik.picturecustomizer|com.arcelik.ToneMaster|\
+        com.arcelik.easy_installation|com.seraphic.openinet.pre|*partnercustomizer*|com.google.android.tungsten.setupwraith|\
+        arcelik.factory.*|arcelik.factorymenu.*|mediatek.factorymenu.*|com.arcelik.tv.rctest)
+            return 0 ;;
         # --- Other OEM TV managers / input / source / picture services ---
         com.tcl.tvmanager|com.tcl.sourcemanager|com.tcl.cyberui|com.tcl.partnercustomizer|\
         com.sony.dtv.networkservice|com.sony.dtv.tvinput*|com.sony.dtv.*picture*|\

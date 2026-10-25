@@ -20,33 +20,39 @@ if [ -z "$DEVICE" ]; then
     exit 1
 fi
 
+# Only what is bloat on every Arçelik-built set (Arçelik, Beko, Grundig; Android TV 11 and 14), from
+# the verified CleanYourTV lists (examples/grundig-kunyang, examples/beko-b43b880b). The TV's own
+# feature apps (voice assistant, Chromecast, AirScreen, YouTube Kids, Play Movies, the phone remotes)
+# and every app the viewer installed stay.
 PACKAGES_TO_REMOVE=(
-    # Deprecated / legacy movie players
-    "com.lagradost.cloudstream3"
-    "com.stremio.one"
+    # Telemetry, analytics and install attribution
+    "com.google.android.feedback"
+    "com.android.tv.feedbackconsent"
+    "com.google.android.partnersetup"
+    "android.autoinstalls.config.arcelik.gx"
+    "android.autoinstalls.config.arcelik.an"
+    "com.android.adservices.api"
+    "com.android.ondevicepersonalization.services"
+    "com.android.federatedcompute.services"
+    "tv.anoki.acr.controller"
 
-    # Stock launcher clutter and telemetry (replaced by CineTV)
+    # Manufacturer ads and promo: ad-tile channels, hotel mode, help videos, first-setup leftovers
+    "com.grundig.tv.channel"
+    "com.beko.tv.channel"
+    "com.cltv.fast"
+    "com.arcelik.arserviceapp"
+    "com.arcelik.tvcarehub"
+    "com.google.android.syncadapters.calendar"
+    "com.google.android.onetimeinitializer"
+    "com.google.android.apps.nbu.smartconnect.tv"
+    "com.android.printspooler"
+
+    # The stock home and its feeds (only once CineTV is Home; the installer sets that first)
     "com.google.android.tvlauncher"
     "com.google.android.apps.tv.launcherx"
-    "com.google.android.tungsten.setupwraith"
-    "com.google.android.feedback"
-    "com.google.android.play.games"
-
-    # Operator / Manufacturer bloatware
-    "tr.com.bein.connect.tv"
-    "io.freemytv"
-    "com.cybercat.adbappcontrol.tv"
-    "com.arcelik.ChannelEditor"
-    "com.arcelik.tv.rctest"
+    "com.google.android.tvrecommendations"
+    "com.google.android.backdrop"
 )
-
-# NOTE (deliberately kept — do NOT add back):
-#   com.mediatek.wwtv.tvcenter / .tvcenter.rro  -> core MediaTek TV app + overlay
-#   com.mediatek.tv.factory                     -> persistent factory command service
-#   com.mediatek.wwtv.webview / .mediaplayer    -> vendor WebView & stock USB media player
-#   mediatek.factorymenu.ui / arcelik.factorymenu.hatone
-#                                               -> already hidden by the firmware
-#                                                  (/vendor/etc/hidden-applications-configs.xml)
 
 refresh_pkg_cache
 
@@ -64,6 +70,8 @@ done
 
 echo "==> Preserving essential services:"
 echo "    [+] MediaTek TV core (com.mediatek.wwtv.tvcenter) — required for HDMI / picture / HDR"
+echo "    [+] Remote keys, Input key, pairing, backlight and TV settings (Arçelik services)"
+echo "    [+] The TV's own feature apps: voice assistant, Chromecast, AirScreen, Kids, Play Movies"
 echo "    [+] TV+ (com.turkcell.ott)"
 echo "    [+] Nova Video Player (org.courville.nova) — CineTV casting and Nuvio external player"
 echo "    [+] YouTube TizenTube / Cobalt (io.gh.reisxd.tizentube.cobalt)"

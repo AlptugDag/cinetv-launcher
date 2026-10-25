@@ -258,6 +258,7 @@ fi
 # Restart so the launcher picks up the handed-over keys (it moves them into its keystore on start).
 tv am force-stop $PKG
 tv am start -n "$HOME_ACTIVITY" ${THEME:+--es theme "$THEME"} >/dev/null
+warn "The TV asks once to \"allow USB debugging\" for CineTV (the phone remote's key bridge): tick \"Always allow\" and press Allow."
 ok "On first start CineTV tunes picture & sound, switches on ad-blocking DNS and measures the network (Settings › Picture, sound & network tuning to repeat)."
 if [ -n "$THEME" ] && [ "$THEME" != "cinetv" ]; then
     warn "Pick the \"$THEME\" theme in CineTV › Settings › Themes (themes are chosen on the TV)."
