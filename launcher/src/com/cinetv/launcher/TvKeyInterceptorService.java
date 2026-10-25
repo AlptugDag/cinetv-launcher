@@ -37,6 +37,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String lastPackage;
     private com.cinetv.launcher.ui.SignatureOverlay signature;
+    private com.cinetv.launcher.device.AirPodsLink airPods;
 
     /** Idle over another app (Nuvio, YouTube menus...) with nothing playing: show our screensaver. */
     private final Runnable idleSaver = new Runnable() {
@@ -75,11 +76,15 @@ public class TvKeyInterceptorService extends AccessibilityService {
         registerReceiver(timeTick, f);
         DeviceTweaks.syncNightMode(this);
         MemoryOptimizer.ensureAirPlayReceiver(this);
+        airPods = new com.cinetv.launcher.device.AirPodsLink(this);
+        airPods.start();
     }
 
     @Override
     public void onDestroy() {
         instance = null;
+        if (airPods != null) airPods.stop();
+        if (signature != null) signature.hide();
         try {
             unregisterReceiver(timeTick);
         } catch (Throwable ignored) {

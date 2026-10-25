@@ -32,6 +32,7 @@
     <string name="shelf_nothing">Nothing found for %s</string>
     <string name="unofficial_short">unofficial build</string>
     <string name="unofficial">Unofficial build: changed or repackaged by someone else. The official CineTV by Alptuğ Dağ is free at github.com/AlptugDag/cinetv-launcher</string>
+    <string name="airpods_connected">%s connected</string>
     <string name="dvd_play_hint">OK  Play the film     ·     Back  Close the case</string>
     <string name="add_nothing">Every installed app is already on Home. New apps you install appear here automatically.</string>
     <string name="add_to_home">Add to home</string>
