@@ -104,6 +104,8 @@ public final class Panels {
         boolean customBg = ThemeManager.usesCustomWallpaper(ctx);
         c1.addView(Controls.tile(ctx, ctx.getString(R.string.background), ctx.getString(customBg ? R.string.background_custom : R.string.background_hint), customBg,
                 v -> host.push(() -> buildPairing(ctx, host, "background"))));
+        c1.addView(Controls.tile(ctx, ctx.getString(R.string.night_title), nightState(ctx), com.cinetv.launcher.device.NightCare.sleepMinutesLeft(ctx) > 0,
+                v -> host.push(() -> buildNight(ctx, host, a))));
 
         // 2. Look & feel
         LinearLayout c2 = column(ctx, cols, R.string.col_visual, 390);
@@ -257,6 +259,61 @@ public final class Panels {
                 a.onPerformanceChanged();
             }));
         }
+        root.setLayoutParams(new LinearLayout.LayoutParams(UiKit.px(640), ViewGroup.LayoutParams.WRAP_CONTENT));
+        return root;
+    }
+
+    // ---- Inputs ------------------------------------------------------------------------------------
+
+    /** The TV's inputs by the names devices give themselves, then the TV's own input menu. */
+    public static void inputs(final Context ctx, final ModalHost host) {
+        host.push(() -> {
+            LinearLayout root = new LinearLayout(ctx);
+            root.setOrientation(LinearLayout.VERTICAL);
+            root.addView(Controls.header(ctx, ctx.getString(R.string.inputs)));
+            for (final com.cinetv.launcher.device.TvSources.Source s : com.cinetv.launcher.device.TvSources.list(ctx)) {
+                String state = s.detail != null ? s.detail : null;
+                if (s.connected && s.inputId != null) state = (state != null ? state + " · " : "") + ctx.getString(R.string.input_connected);
+                root.addView(Controls.tile(ctx, s.name, state, s.connected, v -> {
+                    host.close();
+                    com.cinetv.launcher.device.TvSources.open(ctx, s);
+                }));
+            }
+            root.addView(Controls.tile(ctx, ctx.getString(R.string.input_menu), null, false, v -> {
+                host.close();
+                AppLauncher.openTvInputs(ctx);
+            }));
+            root.setLayoutParams(new LinearLayout.LayoutParams(UiKit.px(640), ViewGroup.LayoutParams.WRAP_CONTENT));
+            return root;
+        });
+    }
+
+    // ---- Sleep timer and quiet hours ----------------------------------------------------------
+
+    private static String nightState(Context ctx) {
+        int left = com.cinetv.launcher.device.NightCare.sleepMinutesLeft(ctx);
+        String sleep = left > 0 ? ctx.getString(R.string.sleep_in, left) : ctx.getString(R.string.sleep_off);
+        return com.cinetv.launcher.device.NightCare.quietHours(ctx) ? sleep + " · " + ctx.getString(R.string.quiet_on_short) : sleep;
+    }
+
+    private static View buildNight(final Context ctx, final ModalHost host, final Actions a) {
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.addView(Controls.header(ctx, ctx.getString(R.string.sleep_timer)));
+        final int left = com.cinetv.launcher.device.NightCare.sleepMinutesLeft(ctx);
+        for (final int m : com.cinetv.launcher.device.NightCare.SLEEP_CHOICES) {
+            final String name = m == 0 ? ctx.getString(R.string.sleep_off) : ctx.getString(R.string.sleep_minutes, m);
+            final boolean on = m == 0 ? left == 0 : left > 0 && Math.abs(left - m) < 1;
+            root.addView(Controls.tile(ctx, name, null, on, v -> {
+                com.cinetv.launcher.device.NightCare.setSleep(ctx, m);
+                host.replace(() -> buildNight(ctx, host, a));
+            }));
+        }
+        final boolean quiet = com.cinetv.launcher.device.NightCare.quietHours(ctx);
+        root.addView(Controls.tile(ctx, ctx.getString(R.string.quiet_hours), ctx.getString(quiet ? R.string.quiet_hours_on : R.string.state_off), quiet, v -> {
+            com.cinetv.launcher.device.NightCare.setQuietHours(ctx, !com.cinetv.launcher.device.NightCare.quietHours(ctx));
+            host.replace(() -> buildNight(ctx, host, a));
+        }));
         root.setLayoutParams(new LinearLayout.LayoutParams(UiKit.px(640), ViewGroup.LayoutParams.WRAP_CONTENT));
         return root;
     }
@@ -593,6 +650,7 @@ public final class Panels {
         root.addView(buttons);
         final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
         new Thread(() -> {
+          try {
             final com.cinetv.launcher.device.AvOptimizer.Report av = applyAv
                     ? com.cinetv.launcher.device.AvOptimizer.optimize(ctx) : com.cinetv.launcher.device.AvOptimizer.detect(ctx);
             String dns = com.cinetv.launcher.device.NetworkOptimizer.choice(ctx);
@@ -643,6 +701,18 @@ public final class Panels {
                 buttons.setVisibility(View.VISIBLE);
                 buttons.getChildAt(0).requestFocus();
             });
+          } catch (Throwable t) {
+            // A TV that hides a setting must never crash Home in a loop: finish the setup without that step.
+            android.util.Log.w("CineTvSetup", "tuning stopped", t);
+            Prefs.get(ctx).edit().putBoolean(Prefs.FIRST_SETUP_DONE, true).apply();
+            main.post(() -> {
+                body.setText(R.string.setup_partial);
+                buttons.removeAllViews();
+                buttons.addView(Controls.button(ctx, ctx.getString(R.string.done), v -> host.back()));
+                buttons.setVisibility(View.VISIBLE);
+                buttons.getChildAt(0).requestFocus();
+            });
+          }
         }, "cinetv-setup").start();
         return root;
     }
@@ -667,6 +737,7 @@ public final class Panels {
         root.addView(row);
         final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
         new Thread(() -> {
+          try {
             final int tuned = MemoryOptimizer.tuneSystem(ctx);
             com.cinetv.launcher.service.PosterCache.trimDisk(ctx);
             final MemoryOptimizer.Benchmark b = MemoryOptimizer.runBenchmark(ctx);
@@ -679,6 +750,13 @@ public final class Panels {
                 done.setVisibility(View.VISIBLE);
                 done.requestFocus();
             });
+          } catch (Throwable t) {
+            android.util.Log.w("CineTvBench", "benchmark stopped", t);
+            main.post(() -> {
+                done.setVisibility(View.VISIBLE);
+                done.requestFocus();
+            });
+          }
         }, "cinetv-bench").start();
         return root;
     }

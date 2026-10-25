@@ -127,6 +127,11 @@ On first start, and from *Settings › Picture, sound & network tuning*:
   focused), open *Settings › TV settings*, or press the remote's own Settings button.
 - **Live TV tile**: on TVs with a tuner, a *Live TV* tile opens the TV's own channels (antenna, cable,
   satellite), whatever the brand. Turn it off in *Settings › TV channels on Home*, or hide it like any app.
+- **Inputs by name**: the Input key opens a glass list of the TV's sources named after what is plugged in
+  ("PlayStation 5", "Digiturk" over HDMI-CEC, or the label you gave the port), with Live TV first and the
+  connected ones marked.
+- **Sleep timer and quiet hours**: *Settings › Sleep & quiet hours* puts the TV to sleep in 15 to 120 minutes
+  (a minute's warning first), and quiet hours keep the volume at 30 percent or less from 22:00 to 08:00.
 - **Long press** (or Menu) on an app: a glass bar under the tile to move, hide, uninstall or open its info.
 - **All apps** drawer in the same tiles, without system services.
 - **Themes**: Alptug Default, Liquid Glass, Aurora, Living Scenes, Royal Gold, Cinema Wall, OLED Black (true
@@ -157,7 +162,7 @@ TV. From then on it connects by itself.
 - **Installable**: an *Add to Home Screen* prompt turns it into an app icon.
 - **Discover**: trending titles; type to search, press Enter and the TV's shelf shows the same.
 - **A full TV remote that works in every app** (Nuvio, live TV, the TV's own menus): power, input, guide,
-  settings, D-pad, volume and channel rockers, number pad, media and colour keys, and **typing from the
+  settings, D-pad, volume and channel rockers, number pad, media and colour keys, a sleep-timer button, and **typing from the
   phone's keyboard** into whatever field is selected on the TV, Turkish letters included. Keys reach any app
   through a small bridge CineTV starts on the TV itself; the TV asks once to allow it ("Always allow").
 - **Cast**: paste any video link or a page with a video; the TV finds the stream and plays it full screen.
@@ -225,7 +230,9 @@ Nuvio's screens.
 
 Android TV / Google TV 8.0 and newer: TVs (Arçelik, Beko, Grundig, TCL, Sony, Philips, Xiaomi, Hisense,
 Toshiba…), sticks and boxes (Chromecast with Google TV, Mi Box, Nvidia Shield…), and Android
-projectors. Weak hardware is detected and served a lighter profile: 1 GB TVs keep the 3D shelf.
+projectors. Weak hardware is detected and served a lighter profile: 1 GB TVs keep the 3D shelf. Tested on
+Android 11 (Arçelik) and Android 14 Google TV (Grundig), including the phone remote's key bridge and each
+brand's own live TV app.
 
 ---
 
@@ -288,6 +295,8 @@ televizyon.
   (kanal, ses, rakamlar, renk tuşları, telefon klavyesiyle televizyona yazma), video yayınlama, arka plan gönderme.
 - **Televizyonun kendi ayarları**: ana ekranda dişliye basılı tut (odaklanınca yazar), *Ayarlar › TV ayarları* ya da kumandanın Ayarlar tuşu.
 - **Canlı TV**: tuneri olan televizyonlarda ana ekrandaki *Canlı TV* kutucuğu televizyonun kendi kanallarını açar; *Ayarlar › Ana ekranda TV kanalları* ile kapatılır.
+- **Kaynaklar adıyla**: Kaynak tuşu, HDMI'ye takılı cihazın adıyla ("PlayStation 5", "Digiturk") girişleri listeler.
+- **Uyku zamanlayıcı ve sessiz saatler**: *Ayarlar › Uyku ve sessiz saatler*; 15-120 dakika sonra uyku (bir dakika önce uyarı), 22:00-08:00 arası ses en fazla yüzde 30. Telefondaki kumandada da uyku tuşu var.
 - **Güvenli sadeleştirme**, **AirPods otomatik bağlanma**, **CineTV'yi yok et!** ile her şeyi geri alma.
 
 Kurulum: `./install.sh --tv <TV_IP>` — ya da bir yapay zekâ ajanına "CineTV'yi televizyonuma kur" deyin

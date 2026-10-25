@@ -480,6 +480,26 @@
    ]
   },
   {
+   "id": "dub_only",
+   "type": "yesno",
+   "section": "language",
+   "when": {
+    "q": "audio",
+    "in": [
+     "dubbed"
+    ]
+   },
+   "text": {
+    "en": "Only titles that are dubbed in your language? (what your country's big platforms carry, and its own productions)",
+    "tr": "Sadece Türkçe dublajı olan yapımlar mı gelsin? (ülkendeki büyük platformlarda olanlar ve yerli yapımlar)",
+    "pt": "Só títulos dublados no seu idioma? (o que as grandes plataformas do seu país têm e as produções nacionais)",
+    "es": "¿Solo títulos doblados a tu idioma? (lo que tienen las grandes plataformas de tu país y sus producciones)",
+    "de": "Nur Titel, die in deiner Sprache synchronisiert sind? (was die großen Plattformen deines Landes haben, und eigene Produktionen)",
+    "fr": "Seulement des titres doublés dans ta langue ? (ce que proposent les grandes plateformes de ton pays et ses productions)"
+   },
+   "default": "n"
+  },
+  {
    "id": "more_audio",
    "type": "multi",
    "section": "language",

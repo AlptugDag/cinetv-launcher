@@ -34,7 +34,8 @@ public final class AppLauncher {
     public static final String LIVE_TV = "cinetv.livetv";
     /** Tuner apps by brand, for TVs whose system does not answer a channel link. */
     private static final String[] LIVE_TV_PACKAGES = {
-            "com.google.android.tv", "com.android.tv", "com.mediatek.wwtv.tvcenter", "com.sony.dtv.tvx",
+            "com.google.android.tv", "com.android.tv", "com.mediatek.wwtv.tvcenter", "com.mediatek.tv.oneworld.tvcenter",
+            "com.sony.dtv.tvx",
             "com.xiaomi.mitv.tvplayer"};
 
     private AppLauncher() {}
@@ -65,7 +66,12 @@ public final class AppLauncher {
     /** The app that shows the TV's channels: the system's handler for channel links, else a known tuner app; null without a tuner. */
     public static String liveTvPackage(PackageManager pm) {
         try {
+            // with the channel type too: some tuner apps (Grundig's) only answer typed links
             ResolveInfo ri = pm.resolveActivity(new Intent(Intent.ACTION_VIEW, TvContract.Channels.CONTENT_URI), 0);
+            if (ri == null || ri.activityInfo == null || "android".equals(ri.activityInfo.packageName)) {
+                ri = pm.resolveActivity(new Intent(Intent.ACTION_VIEW).setDataAndType(TvContract.Channels.CONTENT_URI,
+                        TvContract.Channels.CONTENT_TYPE), 0);
+            }
             if (ri != null && ri.activityInfo != null && !"android".equals(ri.activityInfo.packageName)) return ri.activityInfo.packageName;
         } catch (Throwable ignored) {
         }
@@ -104,14 +110,22 @@ public final class AppLauncher {
                 }
             }
             if (pick == null) pick = ports.get(0);
-            com.cinetv.launcher.device.DeviceTweaks.markUserOpenedTv();
-            Intent view = new Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(pick.getId()));
-            String tvApp = liveTvPackage(ctx.getPackageManager());
-            if (tvApp != null && start(ctx, new Intent(view).setPackage(tvApp))) return true;
-            return start(ctx, view);
+            return openInput(ctx, pick.getId());
         } catch (Throwable t) {
             return false;
         }
+    }
+
+    /** Switches the TV to one input (an HDMI port, AV, ...), through the TV's own app. */
+    public static boolean openInput(Context ctx, String inputId) {
+        com.cinetv.launcher.device.DeviceTweaks.markUserOpenedTv();
+        Intent view = new Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(inputId));
+        String tvApp = liveTvPackage(ctx.getPackageManager());
+        if (tvApp != null && start(ctx, new Intent(view).setPackage(tvApp))) return true;
+        if (start(ctx, view)) return true;
+        // the TV's app takes no input links (Grundig): its own input list instead
+        openTvInputs(ctx);
+        return true;
     }
 
     public static boolean openLiveTv(Context ctx) {
@@ -196,6 +210,7 @@ public final class AppLauncher {
         String[][] targets = {
                 {"com.android.tv.settings", "com.android.tv.settings.inputs.InputsActivity"},
                 {"com.mediatek.wwtv.tvcenter", "com.mediatek.wwtv.tvcenter.nav.TurnkeyUiMainActivity"},
+                {"com.mediatek.tv.oneworld.tvcenter", "com.mediatek.tv.oneworld.tvcenter.nav.TurnkeyUiMainActivity"},
                 {"com.google.android.tv.frameworkpackagestubs", "com.google.android.tv.frameworkpackagestubs.InputActivity"},
         };
         for (String[] t : targets) {

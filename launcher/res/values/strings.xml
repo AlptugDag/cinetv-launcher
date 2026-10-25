@@ -41,6 +41,17 @@
     <string name="live_tv_tile">TV channels on Home</string>
     <string name="live_tv_tile_on">On · the TV\'s own channels</string>
     <string name="settings_hold_hint">Settings · hold for the TV\'s own settings</string>
+    <string name="input_connected">connected</string>
+    <string name="input_menu">The TV\'s own input menu</string>
+    <string name="night_title">Sleep &amp; quiet hours</string>
+    <string name="sleep_timer">Sleep timer</string>
+    <string name="sleep_off">Sleep timer off</string>
+    <string name="sleep_in">Sleeps in %1$d min</string>
+    <string name="sleep_minutes">In %1$d minutes</string>
+    <string name="sleep_warning">The TV goes to sleep in a minute</string>
+    <string name="quiet_hours">Quiet hours</string>
+    <string name="quiet_hours_on">On · volume capped at 30 percent, 22:00–08:00</string>
+    <string name="quiet_on_short">quiet hours</string>
     <string name="tv_settings">TV settings</string>
     <string name="tv_settings_hint">The TV\'s own settings (or hold the gear button)</string>
     <string name="destroy">Remove CineTV!</string>
@@ -168,6 +179,7 @@
     <string name="setup_tv_speakers">TV speakers</string>
     <string name="setup_network">Network (Cloudflare): %1$d Mbps download · %2$d ms latency · %3$d ms jitter</string>
     <string name="setup_network_failed">Network test could not reach Cloudflare.</string>
+    <string name="setup_partial">Tuning finished. This TV keeps some settings to itself, so those were skipped.</string>
     <string name="setup_applied">Switched on: %s</string>
     <string name="setup_recommend">Recommended Nuvio stream quality: %s</string>
     <string name="setup_ui_note">This TV draws its menus at 1080p and plays video at 4K on a separate plane; apps may report \"HD\" for the screen even though films play in 4K HDR.</string>

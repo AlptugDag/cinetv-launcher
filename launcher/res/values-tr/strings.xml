@@ -39,6 +39,17 @@
     <string name="live_tv_tile">Ana ekranda TV kanalları</string>
     <string name="live_tv_tile_on">Açık · televizyonun kendi kanalları</string>
     <string name="settings_hold_hint">Ayarlar · TV\'nin kendi ayarları için basılı tut</string>
+    <string name="input_connected">bağlı</string>
+    <string name="input_menu">Televizyonun kendi kaynak menüsü</string>
+    <string name="night_title">Uyku ve sessiz saatler</string>
+    <string name="sleep_timer">Uyku zamanlayıcı</string>
+    <string name="sleep_off">Uyku zamanlayıcı kapalı</string>
+    <string name="sleep_in">%1$d dk sonra kapanır</string>
+    <string name="sleep_minutes">%1$d dakika sonra</string>
+    <string name="sleep_warning">Televizyon bir dakika sonra kapanıyor</string>
+    <string name="quiet_hours">Sessiz saatler</string>
+    <string name="quiet_hours_on">Açık · 22:00–08:00 arası ses en fazla yüzde 30</string>
+    <string name="quiet_on_short">sessiz saatler</string>
     <string name="tv_settings">TV ayarları</string>
     <string name="tv_settings_hint">Televizyonun kendi ayarları (ya da dişli tuşuna basılı tut)</string>
     <string name="destroy">CineTV\'yi yok et!</string>
@@ -164,6 +175,7 @@
     <string name="setup_tv_speakers">TV hoparlörleri</string>
     <string name="setup_network">Ağ (Cloudflare): %1$d Mbps indirme · %2$d ms gecikme · %3$d ms dalgalanma</string>
     <string name="setup_network_failed">Ağ testi Cloudflare\'e ulaşamadı.</string>
+    <string name="setup_partial">Ayar tamamlandı. Bu televizyon bazı ayarlarını kendine saklıyor, onlar atlandı.</string>
     <string name="setup_applied">Açılanlar: %s</string>
     <string name="setup_recommend">Önerilen Nuvio yayın kalitesi: %s</string>
     <string name="setup_ui_note">Bu TV menüleri 1080p çizer, videoyu ise ayrı bir katmanda 4K oynatır; uygulamalar ekranı \"HD\" gösterse de filmler 4K HDR oynar.</string>

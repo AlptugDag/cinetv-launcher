@@ -202,6 +202,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       <button data-key="185" style="background:#f4c430" aria-label="Yellow"></button>
       <button data-key="186" style="background:#2f7de1" aria-label="Blue"></button>
     </div>
+    <button class="btn ghost" id="sleepBtn" style="margin-bottom:12px" data-i="sleepOff"></button>
     <div class="field glass">
       <input id="typer" data-ph="typePh" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false">
       <button id="typerGo">↵</button>
@@ -282,7 +283,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       homeHint:"Tip: Share › Add to Home Screen keeps CineTV one tap away, full screen.",
       connecting:"Connecting…",connected:"Connected",offline:"TV not reachable",searchPh:"Films, series, people…",trending:"Trending",
       results:"Results",noResults:"Nothing found",openTv:"Open on TV",opening:"Opening on your TV…",movie:"Film",series:"Series",
-      back:"Back",home:"Home",menu:"Menu",send:"Send",input:"Input",guide:"Guide",info:"Info",subs:"Subtitles",audio:"Audio",last:"Last",typePh:"Type on the TV…",typeNote:"Letters appear in the field that is selected on the TV, in any app; ↵ confirms.",tvSearchPh:"Search or ask on the TV",screensaver:"Start screensaver",
+      back:"Back",home:"Home",menu:"Menu",send:"Send",input:"Input",guide:"Guide",info:"Info",subs:"Subtitles",audio:"Audio",last:"Last",typePh:"Type on the TV…",sleepOff:"💤 Sleep timer: off",sleepIn:"💤 Sleeps in {n} min",typeNote:"Letters appear in the field that is selected on the TV, in any app; ↵ confirms.",tvSearchPh:"Search or ask on the TV",screensaver:"Start screensaver",
       tabSearch:"Discover",tabRemote:"Remote",tabCal:"Picture",presets:"Presets",patterns:"Test patterns",picture:"Picture engine",
       warmth:"Colour temperature",reset:"Restore my original settings",patternNote:"Choose a pattern, adjust until it looks right, then tap Off.",
       noPanel:"This TV takes picture changes only from its own menu. Show a pattern here, then adjust Picture settings with the TV remote until the pattern looks right.",
@@ -298,7 +299,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       homeHint:"İpucu: Paylaş › Ana Ekrana Ekle ile CineTV tam ekran, tek dokunuşla açılır.",
       connecting:"Bağlanıyor…",connected:"Bağlı",offline:"TV'ye ulaşılamıyor",searchPh:"Film, dizi, oyuncu…",trending:"Trend",
       results:"Sonuçlar",noResults:"Bir şey bulunamadı",openTv:"TV'de aç",opening:"TV'de açılıyor…",movie:"Film",series:"Dizi",
-      back:"Geri",home:"Ana sayfa",menu:"Menü",send:"Gönder",input:"Kaynak",guide:"Rehber",info:"Bilgi",subs:"Altyazı",audio:"Ses dili",last:"Önceki",typePh:"Televizyona yaz…",typeNote:"Yazdıkların televizyonda seçili alana gelir, hangi uygulama olursa olsun; ↵ onaylar.",tvSearchPh:"TV'de ara veya sor",screensaver:"Ekran koruyucuyu başlat",
+      back:"Geri",home:"Ana sayfa",menu:"Menü",send:"Gönder",input:"Kaynak",guide:"Rehber",info:"Bilgi",subs:"Altyazı",audio:"Ses dili",last:"Önceki",typePh:"Televizyona yaz…",sleepOff:"💤 Uyku zamanlayıcı: kapalı",sleepIn:"💤 {n} dk sonra kapanır",typeNote:"Yazdıkların televizyonda seçili alana gelir, hangi uygulama olursa olsun; ↵ onaylar.",tvSearchPh:"TV'de ara veya sor",screensaver:"Ekran koruyucuyu başlat",
       tabSearch:"Keşfet",tabRemote:"Kumanda",tabCal:"Görüntü",presets:"Hazır ayarlar",patterns:"Test desenleri",picture:"Görüntü motoru",
       warmth:"Renk sıcaklığı",reset:"Orijinal ayarlarıma dön",patternNote:"Bir desen seçin, doğru görünene kadar ayarlayın, sonra Kapat'a dokunun.",
       noPanel:"Bu TV görüntü değişikliklerini yalnızca kendi menüsünden kabul ediyor. Buradan bir desen gösterin, sonra TV kumandasıyla Görüntü ayarlarını desen doğru görünene kadar değiştirin.",
@@ -467,6 +468,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     b.addEventListener("pointerleave", () => { clearTimeout(timer); clearInterval(rep); timer = rep = null; });
     b.addEventListener("contextmenu", e => e.preventDefault());
   });
+  // Sleep timer: each press moves to the next choice (off, 15, 30 ... 120 minutes)
+  $("sleepBtn").onclick = async () => {
+    try {
+      const r = await api("sleep");
+      $("sleepBtn").textContent = r.minutes > 0 ? t("sleepIn").replace("{n}", r.minutes) : t("sleepOff");
+    } catch (e) {}
+  };
   // The phone's keyboard types into the TV's selected field, live
   let typeTimer = null;
   $("typer").addEventListener("input", () => {

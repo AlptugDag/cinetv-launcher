@@ -34,7 +34,13 @@ public final class KeyInjector {
         final int port = args.length > 0 ? Integer.parseInt(args[0]) : PORT;
         final String key = args.length > 1 ? args[1] : "";
         if (key.length() < 16) return;
-        Class<?> im = Class.forName("android.hardware.input.InputManager");
+        Class<?> im;
+        try {
+            // Android 14+: InputManager.getInstance() needs an app context; the global one does not
+            im = Class.forName("android.hardware.input.InputManagerGlobal");
+        } catch (ClassNotFoundException older) {
+            im = Class.forName("android.hardware.input.InputManager");
+        }
         inputManager = im.getMethod("getInstance").invoke(null);
         inject = im.getMethod("injectInputEvent", android.view.InputEvent.class, int.class);
         ServerSocket server;

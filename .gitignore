@@ -40,3 +40,9 @@ google-services.json
 
 # Local tooling
 .claude/
+
+# Written by install.sh / personalize.py for the TV being set up (personal, regenerated each run)
+debloat-journal.txt
+nuvio-collections.json
+nuvio-preferences.json
+cinetv-profile.json

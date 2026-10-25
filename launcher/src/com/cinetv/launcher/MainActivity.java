@@ -412,7 +412,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void onInputs() {
-        AppLauncher.openTvInputs(this);
+        Panels.inputs(this, home.modal);
     }
 
     @Override

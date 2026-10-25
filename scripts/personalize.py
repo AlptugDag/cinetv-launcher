@@ -349,7 +349,8 @@ def plan_for(p, data):
             parts.append("language=" + ",".join(langs))
         if qf:
             parts.append("qualityfilter=" + ",".join(dict.fromkeys(qf)))
-        addons.append(("torrentio", ADDONS["torrentio"].format(config="|".join(parts) + "/")))
+        if p.get("torrentio", "y") != "n":  # an option for setups that stream only through Nuvio's plugins
+            addons.append(("torrentio", ADDONS["torrentio"].format(config="|".join(parts) + "/")))
         addons.append(("opensubtitles", ADDONS["opensubtitles"]))
     subs = as_list(p.get("subs")) or [lang]
     if video and any(s.startswith("tr") for s in subs):
@@ -388,7 +389,10 @@ def plan_for(p, data):
     # Turkish titles get its official archives
     anthology_all = False
     origins = [country if o == "@home" else o for o in as_list(p.get("series_origins")) + as_list(p.get("film_origins"))]
-    if lang == "tr":
+    if lang == "tr" and p.get("anthology") == "all":
+        fitting = anthology_plugins(["films", "series", "anime", "channels"], [k for ks in ANTHOLOGY_CHANNELS.values() for k in ks])
+        plugins = fitting if fitting is not None else plugins
+    elif lang == "tr":
         fitting = anthology_plugins(loves, as_list(p.get("channel_kinds")))
         plugins = fitting if fitting is not None else plugins
     elif "TR" in origins:
@@ -429,14 +433,26 @@ def plan_for(p, data):
             "apps": apps, "skipped": skipped, "paid": paid, "live": live, "dock": list(dict.fromkeys(dock)), "notes": p.get("notes") or ""}
 
 
+# The big platforms in a country, which carry its dubbing: the closest TMDB gets to "dubbed in my language"
+DUB_PROVIDERS = "8|9|119|337|1899|384|350|341"
+DUB = {}
+
+
 def source(media, title, sort="popularity.desc", **filters):
     f = {k: v for k, v in filters.items() if v not in (None, "", [])}
+    # dubbed only: what the country's platforms carry, plus the country's own productions
+    if DUB.get("region") and "watchRegion" not in f and f.get("withOriginCountry") != DUB["region"]:
+        f["watchRegion"] = DUB["region"]
+        f["withWatchProviders"] = DUB_PROVIDERS
     return {"provider": "tmdb", "tmdbSourceType": "DISCOVER", "title": title, "mediaType": media, "sortBy": sort,
             "filters": f}
 
 
 def build_collections(p, data, texts, country, main):
     loves = as_list(p.get("loves"))
+    DUB.clear()
+    if p.get("dub_only") == "y" and country:
+        DUB["region"] = country
     areas = {}
     origin_name = lambda o: texts.option("origins", o) if o != "@home" else (
         texts.option("origins", country) if country else texts.option("origins", o))

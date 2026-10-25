@@ -44,7 +44,8 @@ public final class MemoryOptimizer {
         String l = pkg.toLowerCase(Locale.ROOT);
         return l.contains("airplay") || l.contains("airscreen") || l.contains("airpin") || l.contains("mediashell")
                 || l.contains("chromecast") || l.contains("bluetooth") || l.contains("inputmethod")
-                || l.contains("katniss") || l.contains("tv.settings") || l.startsWith("com.mediatek.wwtv");
+                || l.contains("katniss") || l.contains("tv.settings") || l.startsWith("com.mediatek.wwtv")
+                || l.startsWith("com.mediatek.tv.oneworld");
     }
 
     public static void kill(Context ctx, String pkg) {

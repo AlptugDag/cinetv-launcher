@@ -472,6 +472,13 @@ public final class TvWebRemoteServer {
             case "/api/key":
                 sendKey(parseInt(q.get("code")), "1".equals(q.get("long")));
                 return ok;
+            case "/api/sleep": {
+                // the next sleep-timer choice (off, 15, 30 ... 120 minutes), or the minutes given
+                final String m = q.get("min");
+                final int minutes = m != null ? parseInt(m) : com.cinetv.launcher.device.NightCare.nextSleepChoice(app);
+                post(() -> com.cinetv.launcher.device.NightCare.setSleep(app, Math.max(0, Math.min(240, minutes))));
+                return new JSONObject().put("ok", true).put("minutes", Math.max(0, Math.min(240, minutes)));
+            }
             case "/api/type": {
                 // the phone's keyboard: the whole field each time, into whatever field the TV has focused
                 final String text = clip(q.get("q"), 300);

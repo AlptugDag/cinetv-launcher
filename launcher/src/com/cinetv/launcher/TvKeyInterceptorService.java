@@ -46,7 +46,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
             String top = lastPackage;
             android.util.Log.i("CineTvSaver", "idle over " + top + ", playing=" + DeviceTweaks.isMediaPlaying(TvKeyInterceptorService.this));
             // Never over live TV / HDMI (the tuner's audio is not "music"), nor while anything plays.
-            if (top == null || top.equals(getPackageName()) || top.startsWith("com.mediatek.wwtv")
+            if (top == null || top.equals(getPackageName()) || isTvCore(top)
                     || DeviceTweaks.isMediaPlaying(TvKeyInterceptorService.this)) {
                 handler.postDelayed(this, 60_000L);
                 return;
@@ -117,6 +117,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
         switch (pkg) {
             case "com.mediatek.wwtv.tvcenter":
+            case "com.mediatek.tv.oneworld.tvcenter": // Grundig
                 // The "scan channels" tuner screen MediaTek TVs push right after power-on: go home.
                 // Later (Inputs, HDMI, live TV opened by the user) it is left alone.
                 if (DeviceTweaks.isUnwantedBootTuner()) {
@@ -153,9 +154,14 @@ public class TvKeyInterceptorService extends AccessibilityService {
         else if (isAppSwitch(pkg)) signature.hide();
     }
 
+    /** The TV's own live TV / inputs app (Arçelik/Beko: wwtv, Grundig: oneworld). */
+    private static boolean isTvCore(String pkg) {
+        return pkg.startsWith("com.mediatek.wwtv") || pkg.startsWith("com.mediatek.tv.oneworld.tvcenter");
+    }
+
     /** A real change of app (not a keyboard, toast or pop-up drawn over Nuvio). */
     private boolean isAppSwitch(String pkg) {
-        if (pkg.equals(getPackageName()) || pkg.startsWith("com.mediatek.wwtv")) return true;
+        if (pkg.equals(getPackageName()) || isTvCore(pkg)) return true;
         if (pkg.contains("inputmethod") || pkg.contains("katniss")) return false;
         return AppLauncher.isLaunchable(getPackageManager(), pkg);
     }

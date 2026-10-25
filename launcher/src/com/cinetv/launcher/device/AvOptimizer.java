@@ -160,7 +160,7 @@ public final class AvOptimizer {
         snapshot(ctx);
         ContentResolver cr = ctx.getContentResolver();
         for (String[] row : FILMMAKER) {
-            String current = Settings.Global.getString(cr, row[1]);
+            String current = read(cr, false, row[1]);
             if (current == null || current.equals(row[2])) continue;
             if (putGlobal(cr, row[1], Integer.parseInt(row[2]))) r.applied.add(row[1]);
         }
@@ -172,10 +172,10 @@ public final class AvOptimizer {
                 if (putGlobal(cr, "encoded_surround_output", 0)) r.applied.add("encoded_surround_output");
             }
             for (String k : new String[]{"sound_advanced_surround_virtualizer", "sound_surround_virtualizer", "virtual_surround", "sound_dts_virtual_x"}) {
-                String v = Settings.Global.getString(cr, k);
+                String v = read(cr, false, k);
                 if (v != null && !"0".equals(v) && putGlobal(cr, k, 0)) r.applied.add(k);
             }
-        } else if (Settings.Global.getString(cr, "sound_advanced_surround_virtualizer") != null) {
+        } else if (read(cr, false, "sound_advanced_surround_virtualizer") != null) {
             // Built-in speakers only: Dolby's spatial processing is what gives a film its width.
             if (putGlobal(cr, "sound_advanced_surround_virtualizer", 1)) r.applied.add("sound_advanced_surround_virtualizer");
         }
@@ -200,7 +200,7 @@ public final class AvOptimizer {
         JSONObject o = new JSONObject();
         ContentResolver cr = ctx.getContentResolver();
         for (String[] k : snapshotKeys()) {
-            String v = "secure".equals(k[0]) ? Settings.Secure.getString(cr, k[1]) : Settings.Global.getString(cr, k[1]);
+            String v = read(cr, "secure".equals(k[0]), k[1]);
             try {
                 if (v != null) o.put(k[0] + "/" + k[1], v);
             } catch (Throwable ignored) {
@@ -255,11 +255,24 @@ public final class AvOptimizer {
     }
 
     private static boolean existsGlobal(ContentResolver cr, String key) {
-        return Settings.Global.getString(cr, key) != null;
+        return read(cr, false, key) != null;
     }
 
     private static int globalInt(Context ctx, String key, int def) {
-        return Settings.Global.getInt(ctx.getContentResolver(), key, def);
+        try {
+            return Settings.Global.getInt(ctx.getContentResolver(), key, def);
+        } catch (Throwable t) {
+            return def;
+        }
+    }
+
+    /** Null when unset or, from Android 12, when the key is hidden from apps (match_content_frame_rate). */
+    private static String read(ContentResolver cr, boolean secure, String key) {
+        try {
+            return secure ? Settings.Secure.getString(cr, key) : Settings.Global.getString(cr, key);
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     private static String systemProperty(String key) {
