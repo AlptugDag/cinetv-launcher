@@ -14,7 +14,7 @@ does the command line:
 ./install.sh --apk launcher/build/outputs/apk/debug/launcher-debug.apk --tv 192.168.1.50
 ```
 
-Release builds need your own signing key; see [docs/RELEASE.md](docs/RELEASE.md).
+Release builds need your own signing key; create one with `scripts/release/create_keystore.sh` and check builds with `scripts/release/verify_apk.sh`.
 
 ## Where things live
 

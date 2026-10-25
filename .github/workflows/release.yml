@@ -14,7 +14,31 @@ permissions:
   contents: write
 
 jobs:
+  # Without the signing secrets the release is built and signed locally instead
+  # (scripts/release/), so the job below is skipped rather than failed.
+  check:
+    runs-on: ubuntu-latest
+    environment: release
+    outputs:
+      ready: ${{ steps.secrets.outputs.ready }}
+    steps:
+      - name: Check signing secrets
+        id: secrets
+        env:
+          KS: ${{ secrets.CINETV_RELEASE_KEYSTORE_BASE64 }}
+          PW: ${{ secrets.CINETV_RELEASE_KEYSTORE_PASSWORD }}
+          AL: ${{ secrets.CINETV_RELEASE_KEY_ALIAS }}
+        run: |
+          if [ -n "$KS" ] && [ -n "$PW" ] && [ -n "$AL" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No release signing secrets; skipping. Sign locally with scripts/release/ and upload the APK by hand."
+          fi
+
   release:
+    needs: check
+    if: needs.check.outputs.ready == 'true'
     runs-on: ubuntu-latest
     environment: release
     env:
@@ -28,15 +52,6 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
-
-      - name: Check signing secrets
-        env:
-          KS: ${{ secrets.CINETV_RELEASE_KEYSTORE_BASE64 }}
-          PW: ${{ secrets.CINETV_RELEASE_KEYSTORE_PASSWORD }}
-          AL: ${{ secrets.CINETV_RELEASE_KEY_ALIAS }}
-        run: |
-          [ -n "$KS" ] && [ -n "$PW" ] && [ -n "$AL" ] || {
-            echo "::error::Release signing secrets are missing. See docs/RELEASE.md."; exit 1; }
 
       - name: Restore keystore (temporary, deleted after the job)
         env:
