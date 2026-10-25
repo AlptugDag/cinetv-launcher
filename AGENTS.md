@@ -1,17 +1,20 @@
 # AGENTS.md — installing CineTV for someone, as an AI agent
 
-You are helping a person turn their Android TV / Google TV into CineTV, exactly as the author runs it.
-Everything here works from a computer on the same network as the TV, over `adb`. Nothing needs root.
+You are helping a person turn their Android TV / Google TV into CineTV. CineTV is set up **for the person
+who watches it**: you get to know them first, then install only what they will use. Someone who never
+watches films gets no film rows; someone who only watches Turkish series gets Turkish series; a football
+fan gets football. Nothing they would never watch is installed. Everything works from a computer on the
+same network as the TV, over `adb`. Nothing needs root.
 
-Ask the person only what you cannot find out yourself: the TV's IP address (if discovery fails), their city,
-and their API keys. Never print keys, never pass them as command-line arguments, never write them to a file in
-this repository.
+Never print API keys, never pass them as command-line arguments, never write them to a file in this
+repository.
 
 ---
 
 ## 0. Before you start
 
-- Tools on the computer: `adb` (Android platform-tools), `curl`, `bash`. On macOS: `brew install android-platform-tools`.
+- Tools on the computer: `adb` (Android platform-tools), `curl`, `bash`, `python3`. On macOS:
+  `brew install android-platform-tools`.
 - On the TV (the person does this with the remote; tell them step by step):
   1. *Settings › Device preferences › About*: press **Build** 7 times ("You are now a developer").
   2. *Settings › Device preferences › Developer options*: turn on **USB debugging** and, if present,
@@ -21,28 +24,60 @@ this repository.
   and presses **OK**. `adb devices` must then show the TV as `device`, not `unauthorized` or `offline`.
   If it goes `offline` later: `adb kill-server && adb connect <TV_IP>:5555`.
 
-## 1. The identical setup (one command)
+## 1. Get to know the person (the most important step)
+
+The questions are in [`scripts/personalize/questions.json`](scripts/personalize/questions.json): 34 of them,
+in six languages, each with its option values and a `when` rule (a question is asked only if an earlier
+answer matches). Ask them **in conversation, in the person's language**, starting with the language
+question. Rules:
+
+- Ask every question whose `when` matches; skip the others. Do not invent questions, and do not drop any:
+  each answer changes the setup (see the table below).
+- Offer the options in plain words; store their `v` values. Multi-choice answers are lists. Text answers
+  stay text (`teams` is a comma-separated list, `country` is two letters).
+- Where the TV already knows something, propose it: `adb shell getprop persist.sys.locale` gives the TV's
+  language and country.
+- When everything is answered, write `cinetv-profile.json` as `{ "<question id>": <value>, ... }`, then show
+  the person the plan and ask them to confirm it:
+
+```bash
+python3 scripts/personalize.py --profile cinetv-profile.json --plan
+```
+
+A person can also answer in the terminal: `python3 scripts/personalize.py --interview-only` asks the same
+questions and writes the same file.
+
+What the answers change:
+
+| Answer | Effect on this TV |
+| :--- | :--- |
+| `lang` | the TV's language (its language screen opens if it differs), Nuvio's titles and plots, stream audio order, subtitle default |
+| `country`, `city` | weather and the shelf of the moment; which services' catalogues and free channels match; Netflix Top 10 of that country |
+| `household`, `kids_ages` | kids' series and family films rows (animated for under-9s) |
+| `loves`, `main` | which rows, addons and apps exist at all; `main` comes first and is pinned |
+| `audio`, `more_audio`, `anime_audio` | Torrentio's language priority (dubbed, original, Japanese for anime) |
+| `subs` | OpenSubtitles (and TR Altyazı for Turkish); Nuvio's subtitle languages |
+| `film_*` | film rows by genre, era, style (popular / acclaimed / hidden gems) and country of origin; avoided genres are removed everywhere |
+| `series_*` | series rows by genre and origin; `series_only_origins` = nothing from anywhere else, service rows included |
+| `anime_kind` | anime series / films / genre rows (Japanese originals) and Anime Kitsu |
+| `sports`, `sports_what`, `teams` | sports films, series and documentaries; highlights through Nuvio's YouTube, with the teams' official channels to follow |
+| `doc_topics` | documentary rows by topic |
+| `channel_kinds`, `channel_countries` | free live channels (iptv-org's public index) of those kinds and countries |
+| `services` | "On Netflix (in your country)"-style rows; `top10` adds Netflix Top 10 of the country |
+| `quality`, `hide`, `autoplay` | Torrentio's quality filter; Nuvio's autoplay |
+| `phone`, `cast` | AirPlay receiver only for iPhone/Mac homes; Nova Video Player only if they cast from the phone |
+| `notes` | kept in `nuvio-preferences.json` for you to act on |
+
+## 2. Install
 
 ```bash
 git clone https://github.com/AlptugDag/cinetv-launcher && cd cinetv-launcher
 CINETV_TMDB_KEY=... CINETV_AI_KEY=... CINETV_MDBLIST_KEY=... \
-  ./install.sh --tv <TV_IP> --city "<City>" --theme cinetv --apps --youtube --nuvio --debloat --yes
+  ./install.sh --tv <TV_IP> --profile cinetv-profile.json --theme cinetv --yes
 ```
 
-This is the author's own configuration. What each flag does:
-
-| Flag | Effect |
-| :--- | :--- |
-| `--tv HOST[:PORT]` | the TV (Wi-Fi adb) |
-| `--city NAME` | weather next to the clock and the mood shelf ("Pazar gecesi için suç filmleri") |
-| `--theme ID` | `cinetv` (Alptug Default) · `glass` · `aurora` · `scenes` · `dussehra` (Royal Gold) · `six-columns` (Cinema Wall) · `oled` |
-| `--apps` | Nuvio, Nova Video Player, AirPlay receiver, from their official GitHub releases |
-| `--youtube` | ad-free YouTube (TizenTube); the stock app is switched off, reversibly |
-| `--nuvio` | Nuvio questionnaire and addons (see §3) |
-| `--debloat` | safe debloat (see §4) |
-| `--yes` | no questions; defaults for anything not given |
-
-Leave out a flag the person does not want. Without `--yes` the installer asks.
+Add `--debloat` only if the person agreed (§5). Themes: `cinetv` (Alptug Default) · `glass` · `aurora` ·
+`scenes` · `dussehra` (Royal Gold) · `six-columns` (Cinema Wall) · `oled`.
 
 **API keys**, all optional and all also enterable later on the TV in *Settings › AI & films*:
 
@@ -54,27 +89,14 @@ Leave out a flag the person does not want. Without `--yes` the installer asks.
 
 Keys are handed to the TV once and moved into its hardware-backed encrypted store; they cannot be read back.
 
-## 2. Check it
+The installer then sets up exactly what the plan said: the apps the person needs (and no others), Nuvio's
+addons through its install links, and the person's rows as `/sdcard/Download/nuvio-collections.json`.
+It writes `nuvio-preferences.json` with what is left to do in Nuvio's own screens.
 
-```bash
-./install.sh --tv <TV_IP> --verify
-```
+## 3. Finish in Nuvio
 
-Every line must say PASS (WARN lines are optional features). Then press **Home** on the remote: CineTV appears.
-If the TV's own launcher comes back after a reboot, run the install again; it re-applies Home.
-
-## 3. Nuvio (films and series)
-
-`--nuvio` runs `scripts/setup_nuvio.sh`. It asks: content language, title/plot language, subtitle languages,
-autoplay, best quality, qualities to hide, favourite and hidden genres and countries. With `--yes` it uses
-Turkish defaults (`--defaults tr`). It then installs addons straight into Nuvio through its install links:
-
-- **Torrentio**, configured from the answers (languages first, quality ceiling, hidden qualities);
-- **TR Altyazı** (Turkish subtitles);
-- **AIOMetadata**, **Xperience**, **Kaptain's Collection** when the person pastes their manifest URLs.
-
-The answers are saved to `nuvio-preferences.json`. Some of Nuvio's screens have no link or command, so you finish
-them on the TV by remote keys. Take a screenshot after each step and read it before the next key:
+Some of Nuvio's screens have no link or command; finish them by remote keys. Take a screenshot after each
+step and read it before the next key:
 
 ```bash
 adb exec-out screencap -p > shot.png          # look at the screen
@@ -84,16 +106,31 @@ adb shell input keyevent 4                    # back
 adb shell input text 'https://...'            # type into the focused field
 ```
 
-1. Open Nuvio: `adb shell monkey -p com.nuvio.tv 1`.
-2. **Plugin repositories**: *Settings › Plugins › Add repository*, paste each URL from
-   `plugin_repositories` in `nuvio-preferences.json` and confirm:
-   - `https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json`
-   - `https://raw.githubusercontent.com/Wiojelt/TurkSinema/main/repo.json`
-3. **Playback**: subtitle language and second subtitle language, autoplay first source, as saved.
-4. **Appearance / Language**: `metadata_language`.
-5. **External player**: Nova Video Player (if `--apps` installed it), so casting and Nuvio use the same player.
+Read `nuvio-preferences.json`, open Nuvio (`adb shell monkey -p com.nuvio.tv 1`) and:
 
-## 4. Safe debloat (what `--debloat` will and will not do)
+1. **Rows** (`collections_file`): *Addons › Collections › Import › From file*. Nuvio reads
+   `nuvio-collections.json` from Downloads. The person's rows appear on Nuvio's home, the main interest
+   pinned first.
+2. **Plugins** (`plugin_repository`, `plugins_to_enable`): *Settings › Plugins › Add repository*, paste the
+   URL, then switch on **only** the plugins listed. Leave every other plugin off; never switch on paid
+   channels' restreams (for example "Anthology Canlı Spor").
+3. **Playback**: subtitle languages from `subtitles`, in that order; *autoplay the best source* from
+   `autoplay_best_source`.
+4. **YouTube** (`youtube_follow`): in Nuvio's YouTube, search each name, open its official channel and add
+   it to the library, so highlights and new videos show up.
+5. If the installer said the TV is in another language, the TV's language screen is open: pick the
+   person's language there.
+
+## 4. Check it
+
+```bash
+./install.sh --tv <TV_IP> --verify
+```
+
+Every line must say PASS (WARN lines are optional features). Then press **Home** on the remote: CineTV appears.
+If the TV's own launcher comes back after a reboot, run the install again; it re-applies Home.
+
+## 5. Safe debloat (what `--debloat` will and will not do)
 
 - Only advertising, telemetry and promo apps the maker pre-installed, chosen by brand
   (`scripts/debloat_universal.sh`: Arçelik/Beko/Grundig, TCL, Sony, Philips, Xiaomi, Hisense…).
@@ -105,35 +142,39 @@ adb shell input text 'https://...'            # type into the focused field
 
 Tell the person before you run it, in one sentence, and run it only if they agree.
 
-## 5. The phone
+## 6. The phone
 
 Once installed, the phone button at the top of Home shows an address and a QR code. The person opens it on their phone
 (same Wi-Fi), presses **Allow** on the TV once, and the phone is remembered. The page is HTTPS
 (`https://<ip-with-dashes>.local-ip.sh:9443`) and can be added to the home screen. It has search (Enter shows the
 results on the TV too), a remote, casting of any video link, and a background-photo upload.
 
-## 6. On the TV itself
+## 7. On the TV itself
 
+- **The TV's own settings**: hold the gear on Home (its label says so), *Settings › TV settings*, or the
+  remote's own Settings button. Tell the person.
+- **Live TV**: on TVs with a tuner, the *Live TV* tile opens the TV's own channels; *Settings › TV channels on
+  Home* turns it off.
 - **Optimize & test** (in Settings): freezes cached apps, shortens animations, frees memory. Safe to run any time.
 - **Performance**: a picker; *Auto* detects weak hardware and lightens the 3D shelf.
-- **TV settings**: the tile in Settings, or long-press the gear.
 - **Remove CineTV** (*CineTV'yi yok et!*, red, at the end of Settings): restores every setting CineTV changed
   and gives Home back to the TV's launcher. Prefer it over `adb uninstall`, which leaves those settings as
   they are.
 
-## 7. Clean up after yourself
+## 8. Clean up after yourself
 
 ```bash
 adb shell rm -f /data/local/tmp/*.apk /sdcard/Download/cinetv*.apk
-rm -f nuvio-preferences.json     # only if the person does not want to keep their answers
 adb disconnect
 ```
 
-Suggest the person turn **USB / network debugging off** again when everything works.
+Keep `cinetv-profile.json` if the person may want to set up another TV the same way. Suggest the person turn
+**USB / network debugging off** again when everything works.
 
 ## Rules for agents
 
 - Never commit or print API keys, keystores, `keystore.properties` or the phone pairing token.
+- Install nothing the plan does not list; the point is a TV with only what this person watches.
 - Never uninstall TV system packages; switch them off, and only through the scripts above.
 - Never factory-reset, change the TV's network, or sign in to accounts on the person's behalf.
 - CineTV is © Alptuğ Dağ (see LICENSE and NOTICE). Keep his name and signature where they appear; a modified

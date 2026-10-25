@@ -1,0 +1,2675 @@
+{
+ "version": 1,
+ "about": "CineTV's interview. The installer (scripts/personalize.py) asks these in the terminal; an AI agent asks them in conversation (AGENTS.md). Texts: en, tr, pt, es, de, fr; any other language falls back to en. 'when' shows a question only if an earlier answer matches. Answers are saved as {id: value} (multi = list) in cinetv-profile.json.",
+ "questions": [
+  {
+   "id": "lang",
+   "type": "single",
+   "section": "you",
+   "text": {
+    "en": "Which language should the TV speak? Menus, titles, plots and audio follow it.",
+    "tr": "Televizyon hangi dilde konuşsun? Menüler, isimler, özetler ve ses bu dilde olur.",
+    "pt": "Em que idioma a TV deve falar? Menus, títulos, sinopses e áudio seguem esse idioma.",
+    "es": "¿En qué idioma debe hablar la TV? Menús, títulos, sinopsis y audio lo seguirán.",
+    "de": "Welche Sprache soll der Fernseher sprechen? Menüs, Titel, Inhalte und Ton folgen ihr.",
+    "fr": "Quelle langue la TV doit-elle parler ? Menus, titres, résumés et audio la suivront."
+   },
+   "options": [
+    {
+     "v": "en",
+     "t": "English"
+    },
+    {
+     "v": "tr",
+     "t": "Türkçe"
+    },
+    {
+     "v": "pt-BR",
+     "t": "Português (Brasil)"
+    },
+    {
+     "v": "pt-PT",
+     "t": "Português (Portugal)"
+    },
+    {
+     "v": "es-ES",
+     "t": "Español (España)"
+    },
+    {
+     "v": "es-419",
+     "t": "Español (Latinoamérica)"
+    },
+    {
+     "v": "de",
+     "t": "Deutsch"
+    },
+    {
+     "v": "fr",
+     "t": "Français"
+    },
+    {
+     "v": "it",
+     "t": "Italiano"
+    },
+    {
+     "v": "nl",
+     "t": "Nederlands"
+    },
+    {
+     "v": "pl",
+     "t": "Polski"
+    },
+    {
+     "v": "ru",
+     "t": "Русский"
+    },
+    {
+     "v": "uk",
+     "t": "Українська"
+    },
+    {
+     "v": "ar",
+     "t": "العربية"
+    },
+    {
+     "v": "fa",
+     "t": "فارسی"
+    },
+    {
+     "v": "he",
+     "t": "עברית"
+    },
+    {
+     "v": "hi",
+     "t": "हिन्दी"
+    },
+    {
+     "v": "ja",
+     "t": "日本語"
+    },
+    {
+     "v": "ko",
+     "t": "한국어"
+    },
+    {
+     "v": "zh",
+     "t": "中文"
+    },
+    {
+     "v": "id",
+     "t": "Bahasa Indonesia"
+    },
+    {
+     "v": "vi",
+     "t": "Tiếng Việt"
+    },
+    {
+     "v": "th",
+     "t": "ไทย"
+    },
+    {
+     "v": "sv",
+     "t": "Svenska"
+    },
+    {
+     "v": "da",
+     "t": "Dansk"
+    },
+    {
+     "v": "no",
+     "t": "Norsk"
+    },
+    {
+     "v": "fi",
+     "t": "Suomi"
+    },
+    {
+     "v": "el",
+     "t": "Ελληνικά"
+    },
+    {
+     "v": "cs",
+     "t": "Čeština"
+    },
+    {
+     "v": "ro",
+     "t": "Română"
+    },
+    {
+     "v": "hu",
+     "t": "Magyar"
+    },
+    {
+     "v": "bg",
+     "t": "Български"
+    },
+    {
+     "v": "sr",
+     "t": "Srpski"
+    },
+    {
+     "v": "hr",
+     "t": "Hrvatski"
+    }
+   ]
+  },
+  {
+   "id": "name",
+   "type": "text",
+   "section": "you",
+   "optional": true,
+   "text": {
+    "en": "What should CineTV call you? (your rows will say \"For …\"; Enter to skip)",
+    "tr": "CineTV sana nasıl hitap etsin? (raflarında \"… için\" yazar; geçmek için Enter)",
+    "pt": "Como a CineTV deve te chamar? (suas fileiras dirão \"Para …\"; Enter para pular)",
+    "es": "¿Cómo te llama CineTV? (tus filas dirán \"Para …\"; Enter para omitir)",
+    "de": "Wie soll CineTV dich nennen? (deine Reihen heißen \"Für …\"; Enter zum Überspringen)",
+    "fr": "Comment CineTV doit-elle t'appeler ? (tes rangées diront « Pour … » ; Entrée pour passer)"
+   }
+  },
+  {
+   "id": "country",
+   "type": "text",
+   "section": "you",
+   "text": {
+    "en": "Which country do you live in? Two letters, e.g. TR, BR, DE, US.",
+    "tr": "Hangi ülkede yaşıyorsun? İki harf, ör. TR, BR, DE, US.",
+    "pt": "Em que país você mora? Duas letras, ex.: BR, PT, US.",
+    "es": "¿En qué país vives? Dos letras, p. ej. ES, MX, AR, US.",
+    "de": "In welchem Land lebst du? Zwei Buchstaben, z. B. DE, AT, CH.",
+    "fr": "Dans quel pays vis-tu ? Deux lettres, p. ex. FR, BE, CH, CA."
+   },
+   "pattern": "^[A-Za-z]{2}$"
+  },
+  {
+   "id": "city",
+   "type": "text",
+   "section": "you",
+   "optional": true,
+   "text": {
+    "en": "Your city (for the weather and the shelf of the moment; Enter to skip)",
+    "tr": "Şehrin (hava durumu ve anın rafı için; geçmek için Enter)",
+    "pt": "Sua cidade (para o clima e a estante do momento; Enter para pular)",
+    "es": "Tu ciudad (para el tiempo y el estante del momento; Enter para omitir)",
+    "de": "Deine Stadt (für das Wetter und das Regal des Moments; Enter zum Überspringen)",
+    "fr": "Ta ville (pour la météo et l'étagère du moment ; Entrée pour passer)"
+   }
+  },
+  {
+   "id": "household",
+   "type": "single",
+   "section": "you",
+   "text": {
+    "en": "Who watches this TV?",
+    "tr": "Bu televizyonu kim izliyor?",
+    "pt": "Quem assiste a esta TV?",
+    "es": "¿Quién ve esta TV?",
+    "de": "Wer schaut auf diesem Fernseher?",
+    "fr": "Qui regarde cette TV ?"
+   },
+   "options": [
+    {
+     "v": "alone",
+     "t": {
+      "en": "Just me",
+      "tr": "Sadece ben",
+      "pt": "Só eu",
+      "es": "Solo yo",
+      "de": "Nur ich",
+      "fr": "Moi seul(e)"
+     }
+    },
+    {
+     "v": "couple",
+     "t": {
+      "en": "Me and my partner",
+      "tr": "Ben ve partnerim",
+      "pt": "Eu e meu parceiro(a)",
+      "es": "Yo y mi pareja",
+      "de": "Ich und mein Partner",
+      "fr": "Moi et mon/ma partenaire"
+     }
+    },
+    {
+     "v": "kids",
+     "t": {
+      "en": "A family with children",
+      "tr": "Çocuklu bir aile",
+      "pt": "Uma família com crianças",
+      "es": "Una familia con niños",
+      "de": "Eine Familie mit Kindern",
+      "fr": "Une famille avec enfants"
+     }
+    },
+    {
+     "v": "shared",
+     "t": {
+      "en": "Friends or flatmates",
+      "tr": "Arkadaşlar ya da ev arkadaşları",
+      "pt": "Amigos ou colegas de casa",
+      "es": "Amigos o compañeros de piso",
+      "de": "Freunde oder Mitbewohner",
+      "fr": "Amis ou colocataires"
+     }
+    }
+   ]
+  },
+  {
+   "id": "kids_ages",
+   "type": "multi",
+   "section": "you",
+   "when": {
+    "q": "household",
+    "in": [
+     "kids"
+    ]
+   },
+   "text": {
+    "en": "How old are the children?",
+    "tr": "Çocuklar kaç yaşında?",
+    "pt": "Quantos anos têm as crianças?",
+    "es": "¿Qué edad tienen los niños?",
+    "de": "Wie alt sind die Kinder?",
+    "fr": "Quel âge ont les enfants ?"
+   },
+   "options": [
+    {
+     "v": "0-4",
+     "t": "0–4"
+    },
+    {
+     "v": "5-8",
+     "t": "5–8"
+    },
+    {
+     "v": "9-12",
+     "t": "9–12"
+    },
+    {
+     "v": "13-17",
+     "t": "13–17"
+    }
+   ]
+  },
+  {
+   "id": "loves",
+   "type": "multi",
+   "section": "watch",
+   "text": {
+    "en": "What do you love to watch? Pick everything that applies.",
+    "tr": "Neler izlemeyi seversin? Uyanların hepsini seç.",
+    "pt": "O que você adora assistir? Escolha tudo o que se aplica.",
+    "es": "¿Qué te encanta ver? Elige todo lo que aplique.",
+    "de": "Was schaust du gern? Wähle alles Passende.",
+    "fr": "Qu'aimes-tu regarder ? Choisis tout ce qui s'applique."
+   },
+   "options": [
+    {
+     "v": "films",
+     "t": {
+      "en": "Films",
+      "tr": "Filmler",
+      "pt": "Filmes",
+      "es": "Películas",
+      "de": "Filme",
+      "fr": "Films"
+     }
+    },
+    {
+     "v": "series",
+     "t": {
+      "en": "Series",
+      "tr": "Diziler",
+      "pt": "Séries",
+      "es": "Series",
+      "de": "Serien",
+      "fr": "Séries"
+     }
+    },
+    {
+     "v": "anime",
+     "t": "Anime"
+    },
+    {
+     "v": "sports",
+     "t": {
+      "en": "Sports",
+      "tr": "Spor",
+      "pt": "Esportes",
+      "es": "Deportes",
+      "de": "Sport",
+      "fr": "Sport"
+     }
+    },
+    {
+     "v": "docs",
+     "t": {
+      "en": "Documentaries",
+      "tr": "Belgeseller",
+      "pt": "Documentários",
+      "es": "Documentales",
+      "de": "Dokumentationen",
+      "fr": "Documentaires"
+     }
+    },
+    {
+     "v": "kids",
+     "t": {
+      "en": "Cartoons and kids' shows",
+      "tr": "Çizgi film ve çocuk programları",
+      "pt": "Desenhos e programas infantis",
+      "es": "Dibujos y programas infantiles",
+      "de": "Zeichentrick und Kindersendungen",
+      "fr": "Dessins animés et émissions jeunesse"
+     }
+    },
+    {
+     "v": "reality",
+     "t": {
+      "en": "Reality and talk shows",
+      "tr": "Reality ve talk show",
+      "pt": "Reality e talk shows",
+      "es": "Realities y talk shows",
+      "de": "Reality- und Talkshows",
+      "fr": "Téléréalité et talk-shows"
+     }
+    },
+    {
+     "v": "channels",
+     "t": {
+      "en": "Live TV channels",
+      "tr": "Canlı TV kanalları",
+      "pt": "Canais de TV ao vivo",
+      "es": "Canales de TV en vivo",
+      "de": "Live-TV-Sender",
+      "fr": "Chaînes TV en direct"
+     }
+    },
+    {
+     "v": "youtube",
+     "t": "YouTube"
+    },
+    {
+     "v": "music",
+     "t": {
+      "en": "Music and concerts",
+      "tr": "Müzik ve konserler",
+      "pt": "Música e shows",
+      "es": "Música y conciertos",
+      "de": "Musik und Konzerte",
+      "fr": "Musique et concerts"
+     }
+    }
+   ]
+  },
+  {
+   "id": "main",
+   "type": "single",
+   "section": "watch",
+   "from": "loves",
+   "when": {
+    "q": "loves",
+    "min": 2
+   },
+   "text": {
+    "en": "And which one do you watch the most? It comes first everywhere.",
+    "tr": "Peki en çok hangisini izlersin? Her yerde en başta o olur.",
+    "pt": "E qual você assiste mais? Ele vem primeiro em todo lugar.",
+    "es": "¿Y cuál ves más? Irá primero en todas partes.",
+    "de": "Und was schaust du am meisten? Das kommt überall zuerst.",
+    "fr": "Et lequel regardes-tu le plus ? Il passera en premier partout."
+   }
+  },
+  {
+   "id": "audio",
+   "type": "single",
+   "section": "language",
+   "when": {
+    "q": "loves",
+    "any": [
+     "films",
+     "series",
+     "anime",
+     "docs",
+     "kids",
+     "reality"
+    ]
+   },
+   "text": {
+    "en": "How do you like foreign titles?",
+    "tr": "Yabancı yapımları nasıl izlemeyi seversin?",
+    "pt": "Como você prefere títulos estrangeiros?",
+    "es": "¿Cómo prefieres los títulos extranjeros?",
+    "de": "Wie schaust du ausländische Titel am liebsten?",
+    "fr": "Comment préfères-tu les titres étrangers ?"
+   },
+   "options": [
+    {
+     "v": "dubbed",
+     "t": {
+      "en": "Dubbed in my language",
+      "tr": "Kendi dilimde dublajlı",
+      "pt": "Dublados no meu idioma",
+      "es": "Doblados a mi idioma",
+      "de": "In meiner Sprache synchronisiert",
+      "fr": "Doublés dans ma langue"
+     }
+    },
+    {
+     "v": "original",
+     "t": {
+      "en": "Original audio with subtitles",
+      "tr": "Orijinal ses, altyazılı",
+      "pt": "Áudio original com legendas",
+      "es": "Audio original con subtítulos",
+      "de": "Originalton mit Untertiteln",
+      "fr": "Version originale sous-titrée"
+     }
+    },
+    {
+     "v": "either",
+     "t": {
+      "en": "Either is fine",
+      "tr": "Fark etmez",
+      "pt": "Tanto faz",
+      "es": "Me da igual",
+      "de": "Beides ist okay",
+      "fr": "Peu importe"
+     }
+    }
+   ]
+  },
+  {
+   "id": "more_audio",
+   "type": "multi",
+   "section": "language",
+   "optional": true,
+   "when": {
+    "q": "loves",
+    "any": [
+     "films",
+     "series",
+     "anime",
+     "docs",
+     "kids",
+     "reality"
+    ]
+   },
+   "text": {
+    "en": "Other audio languages you understand (Enter for none)",
+    "tr": "Anladığın başka ses dilleri (yoksa Enter)",
+    "pt": "Outros idiomas de áudio que você entende (Enter para nenhum)",
+    "es": "Otros idiomas de audio que entiendes (Enter si ninguno)",
+    "de": "Weitere Tonsprachen, die du verstehst (Enter für keine)",
+    "fr": "Autres langues audio que tu comprends (Entrée si aucune)"
+   },
+   "options_from": "lang"
+  },
+  {
+   "id": "subs",
+   "type": "multi",
+   "section": "language",
+   "optional": true,
+   "when": {
+    "q": "loves",
+    "any": [
+     "films",
+     "series",
+     "anime",
+     "docs",
+     "kids",
+     "reality"
+    ]
+   },
+   "text": {
+    "en": "Subtitle languages, most wanted first (Enter for your TV language)",
+    "tr": "Altyazı dilleri, en çok istediğin önce (TV dilin için Enter)",
+    "pt": "Idiomas de legenda, o preferido primeiro (Enter para o idioma da TV)",
+    "es": "Idiomas de subtítulos, el preferido primero (Enter para el idioma de la TV)",
+    "de": "Untertitelsprachen, die liebste zuerst (Enter für die TV-Sprache)",
+    "fr": "Langues de sous-titres, la préférée d'abord (Entrée pour la langue de la TV)"
+   },
+   "options_from": "lang"
+  },
+  {
+   "id": "film_genres",
+   "type": "multi",
+   "section": "films",
+   "when": {
+    "q": "loves",
+    "any": [
+     "films"
+    ]
+   },
+   "text": {
+    "en": "Which film genres do you love?",
+    "tr": "Hangi film türlerini seversin?",
+    "pt": "Quais gêneros de filme você adora?",
+    "es": "¿Qué géneros de cine te encantan?",
+    "de": "Welche Filmgenres liebst du?",
+    "fr": "Quels genres de films adores-tu ?"
+   },
+   "options_from": "genres"
+  },
+  {
+   "id": "film_avoid",
+   "type": "multi",
+   "section": "films",
+   "optional": true,
+   "when": {
+    "q": "loves",
+    "any": [
+     "films"
+    ]
+   },
+   "text": {
+    "en": "Genres you never want to see (Enter for none)",
+    "tr": "Asla görmek istemediğin türler (yoksa Enter)",
+    "pt": "Gêneros que você nunca quer ver (Enter para nenhum)",
+    "es": "Géneros que nunca quieres ver (Enter si ninguno)",
+    "de": "Genres, die du nie sehen willst (Enter für keine)",
+    "fr": "Genres que tu ne veux jamais voir (Entrée si aucun)"
+   },
+   "options_from": "genres"
+  },
+  {
+   "id": "film_style",
+   "type": "single",
+   "section": "films",
+   "when": {
+    "q": "loves",
+    "any": [
+     "films"
+    ]
+   },
+   "text": {
+    "en": "What kind of films?",
+    "tr": "Nasıl filmler?",
+    "pt": "Que tipo de filmes?",
+    "es": "¿Qué tipo de películas?",
+    "de": "Welche Art von Filmen?",
+    "fr": "Quel genre de films ?"
+   },
+   "options": [
+    {
+     "v": "popular",
+     "t": {
+      "en": "Big, popular films",
+      "tr": "Büyük, popüler filmler",
+      "pt": "Filmes grandes e populares",
+      "es": "Películas grandes y populares",
+      "de": "Große, populäre Filme",
+      "fr": "Grands films populaires"
+     }
+    },
+    {
+     "v": "acclaimed",
+     "t": {
+      "en": "Acclaimed and festival films",
+      "tr": "Ödüllü ve festival filmleri",
+      "pt": "Filmes premiados e de festival",
+      "es": "Cine premiado y de festival",
+      "de": "Preisgekrönte und Festivalfilme",
+      "fr": "Films primés et de festival"
+     }
+    },
+    {
+     "v": "gems",
+     "t": {
+      "en": "Hidden gems",
+      "tr": "Az bilinen cevherler",
+      "pt": "Joias escondidas",
+      "es": "Joyas ocultas",
+      "de": "Versteckte Perlen",
+      "fr": "Pépites méconnues"
+     }
+    },
+    {
+     "v": "mix",
+     "t": {
+      "en": "A bit of everything",
+      "tr": "Her şeyden biraz",
+      "pt": "Um pouco de tudo",
+      "es": "Un poco de todo",
+      "de": "Von allem etwas",
+      "fr": "Un peu de tout"
+     }
+    }
+   ]
+  },
+  {
+   "id": "film_eras",
+   "type": "multi",
+   "section": "films",
+   "optional": true,
+   "when": {
+    "q": "loves",
+    "any": [
+     "films"
+    ]
+   },
+   "text": {
+    "en": "Favourite eras (Enter for all)",
+    "tr": "Sevdiğin dönemler (hepsi için Enter)",
+    "pt": "Épocas favoritas (Enter para todas)",
+    "es": "Épocas favoritas (Enter para todas)",
+    "de": "Lieblingsepochen (Enter für alle)",
+    "fr": "Époques préférées (Entrée pour toutes)"
+   },
+   "options": [
+    {
+     "v": "classic",
+     "t": {
+      "en": "Classics (before 1970)",
+      "tr": "Klasikler (1970 öncesi)",
+      "pt": "Clássicos (antes de 1970)",
+      "es": "Clásicos (antes de 1970)",
+      "de": "Klassiker (vor 1970)",
+      "fr": "Classiques (avant 1970)"
+     }
+    },
+    {
+     "v": "70s90s",
+     "t": "1970–1999"
+    },
+    {
+     "v": "00s",
+     "t": "2000–2014"
+    },
+    {
+     "v": "recent",
+     "t": {
+      "en": "Recent (2015 on)",
+      "tr": "Yeni (2015 sonrası)",
+      "pt": "Recentes (2015 em diante)",
+      "es": "Recientes (desde 2015)",
+      "de": "Neu (ab 2015)",
+      "fr": "Récents (depuis 2015)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "film_origins",
+   "type": "multi",
+   "section": "films",
+   "optional": true,
+   "when": {
+    "q": "loves",
+    "any": [
+     "films"
+    ]
+   },
+   "text": {
+    "en": "Cinema from which countries? (Enter for anywhere)",
+    "tr": "Hangi ülkelerin sineması? (her yer için Enter)",
+    "pt": "Cinema de quais países? (Enter para qualquer um)",
+    "es": "¿Cine de qué países? (Enter para cualquiera)",
+    "de": "Kino aus welchen Ländern? (Enter für überall)",
+    "fr": "Cinéma de quels pays ? (Entrée pour partout)"
+   },
+   "options_from": "origins"
+  },
+  {
+   "id": "series_genres",
+   "type": "multi",
+   "section": "series",
+   "when": {
+    "q": "loves",
+    "any": [
+     "series"
+    ]
+   },
+   "text": {
+    "en": "Which kinds of series do you love?",
+    "tr": "Ne tür dizileri seversin?",
+    "pt": "Que tipos de série você adora?",
+    "es": "¿Qué tipo de series te encantan?",
+    "de": "Welche Serien magst du?",
+    "fr": "Quels types de séries adores-tu ?"
+   },
+   "options_from": "tv_genres"
+  },
+  {
+   "id": "series_origins",
+   "type": "multi",
+   "section": "series",
+   "optional": true,
+   "when": {
+    "q": "loves",
+    "any": [
+     "series"
+    ]
+   },
+   "text": {
+    "en": "Series from which countries? (Enter for anywhere)",
+    "tr": "Hangi ülkelerin dizileri? (her yer için Enter)",
+    "pt": "Séries de quais países? (Enter para qualquer um)",
+    "es": "¿Series de qué países? (Enter para cualquiera)",
+    "de": "Serien aus welchen Ländern? (Enter für überall)",
+    "fr": "Séries de quels pays ? (Entrée pour partout)"
+   },
+   "options_from": "origins"
+  },
+  {
+   "id": "series_only_origins",
+   "type": "yesno",
+   "section": "series",
+   "when": {
+    "q": "series_origins",
+    "min": 1
+   },
+   "text": {
+    "en": "Only those countries? (no series from anywhere else)",
+    "tr": "Sadece o ülkeler mi? (başka yerden dizi olmasın)",
+    "pt": "Só desses países? (nenhuma série de outros lugares)",
+    "es": "¿Solo de esos países? (ninguna serie de otros sitios)",
+    "de": "Nur aus diesen Ländern? (keine Serien von anderswo)",
+    "fr": "Seulement ces pays ? (aucune série d'ailleurs)"
+   },
+   "default": "n"
+  },
+  {
+   "id": "anime_kind",
+   "type": "multi",
+   "section": "anime",
+   "when": {
+    "q": "loves",
+    "any": [
+     "anime"
+    ]
+   },
+   "text": {
+    "en": "What anime do you watch?",
+    "tr": "Ne tür anime izlersin?",
+    "pt": "Que animes você assiste?",
+    "es": "¿Qué anime ves?",
+    "de": "Welche Anime schaust du?",
+    "fr": "Quels animes regardes-tu ?"
+   },
+   "options": [
+    {
+     "v": "series",
+     "t": {
+      "en": "Anime series",
+      "tr": "Anime dizileri",
+      "pt": "Séries de anime",
+      "es": "Series de anime",
+      "de": "Anime-Serien",
+      "fr": "Séries animées japonaises"
+     }
+    },
+    {
+     "v": "films",
+     "t": {
+      "en": "Anime films",
+      "tr": "Anime filmleri",
+      "pt": "Filmes de anime",
+      "es": "Películas de anime",
+      "de": "Anime-Filme",
+      "fr": "Films d'animation japonais"
+     }
+    },
+    {
+     "v": "action",
+     "t": {
+      "en": "Action and shōnen",
+      "tr": "Aksiyon ve shōnen",
+      "pt": "Ação e shōnen",
+      "es": "Acción y shōnen",
+      "de": "Action und Shōnen",
+      "fr": "Action et shōnen"
+     }
+    },
+    {
+     "v": "fantasy",
+     "t": {
+      "en": "Fantasy and isekai",
+      "tr": "Fantastik ve isekai",
+      "pt": "Fantasia e isekai",
+      "es": "Fantasía e isekai",
+      "de": "Fantasy und Isekai",
+      "fr": "Fantasy et isekai"
+     }
+    },
+    {
+     "v": "romance",
+     "t": {
+      "en": "Romance and slice of life",
+      "tr": "Romantik ve gündelik hayat",
+      "pt": "Romance e slice of life",
+      "es": "Romance y recuentos de la vida",
+      "de": "Romanze und Slice of Life",
+      "fr": "Romance et tranche de vie"
+     }
+    },
+    {
+     "v": "scifi",
+     "t": {
+      "en": "Sci-fi and mecha",
+      "tr": "Bilimkurgu ve mecha",
+      "pt": "Ficção científica e mecha",
+      "es": "Ciencia ficción y mecha",
+      "de": "Science-Fiction und Mecha",
+      "fr": "Science-fiction et mecha"
+     }
+    },
+    {
+     "v": "mystery",
+     "t": {
+      "en": "Mystery and horror",
+      "tr": "Gizem ve korku",
+      "pt": "Mistério e terror",
+      "es": "Misterio y terror",
+      "de": "Mystery und Horror",
+      "fr": "Mystère et horreur"
+     }
+    }
+   ]
+  },
+  {
+   "id": "anime_audio",
+   "type": "single",
+   "section": "anime",
+   "when": {
+    "q": "loves",
+    "any": [
+     "anime"
+    ]
+   },
+   "text": {
+    "en": "Anime in Japanese with subtitles, or dubbed?",
+    "tr": "Animeyi Japonca altyazılı mı, dublajlı mı izlersin?",
+    "pt": "Anime em japonês legendado ou dublado?",
+    "es": "¿Anime en japonés subtitulado o doblado?",
+    "de": "Anime auf Japanisch mit Untertiteln oder synchronisiert?",
+    "fr": "Anime en japonais sous-titré ou doublé ?"
+   },
+   "options": [
+    {
+     "v": "sub",
+     "t": {
+      "en": "Japanese with subtitles",
+      "tr": "Japonca, altyazılı",
+      "pt": "Japonês legendado",
+      "es": "Japonés subtitulado",
+      "de": "Japanisch mit Untertiteln",
+      "fr": "Japonais sous-titré"
+     }
+    },
+    {
+     "v": "dub",
+     "t": {
+      "en": "Dubbed",
+      "tr": "Dublajlı",
+      "pt": "Dublado",
+      "es": "Doblado",
+      "de": "Synchronisiert",
+      "fr": "Doublé"
+     }
+    },
+    {
+     "v": "either",
+     "t": {
+      "en": "Either",
+      "tr": "Fark etmez",
+      "pt": "Tanto faz",
+      "es": "Me da igual",
+      "de": "Egal",
+      "fr": "Peu importe"
+     }
+    }
+   ]
+  },
+  {
+   "id": "sports",
+   "type": "multi",
+   "section": "sports",
+   "when": {
+    "q": "loves",
+    "any": [
+     "sports"
+    ]
+   },
+   "text": {
+    "en": "Which sports?",
+    "tr": "Hangi sporlar?",
+    "pt": "Quais esportes?",
+    "es": "¿Qué deportes?",
+    "de": "Welche Sportarten?",
+    "fr": "Quels sports ?"
+   },
+   "options_from": "sports"
+  },
+  {
+   "id": "teams",
+   "type": "text",
+   "section": "sports",
+   "optional": true,
+   "when": {
+    "q": "loves",
+    "any": [
+     "sports"
+    ]
+   },
+   "text": {
+    "en": "Teams, clubs or athletes you follow, comma separated (Enter to skip)",
+    "tr": "Takip ettiğin takımlar, kulüpler ya da sporcular, virgülle (geçmek için Enter)",
+    "pt": "Times, clubes ou atletas que você acompanha, separados por vírgula (Enter para pular)",
+    "es": "Equipos, clubes o deportistas que sigues, separados por comas (Enter para omitir)",
+    "de": "Teams, Vereine oder Sportler, denen du folgst, mit Kommas (Enter zum Überspringen)",
+    "fr": "Équipes, clubs ou athlètes que tu suis, séparés par des virgules (Entrée pour passer)"
+   }
+  },
+  {
+   "id": "sports_what",
+   "type": "multi",
+   "section": "sports",
+   "when": {
+    "q": "loves",
+    "any": [
+     "sports"
+    ]
+   },
+   "text": {
+    "en": "What about sports do you want on the TV?",
+    "tr": "Televizyonda spora dair neler olsun?",
+    "pt": "O que de esporte você quer na TV?",
+    "es": "¿Qué de deportes quieres en la TV?",
+    "de": "Was vom Sport willst du auf dem Fernseher?",
+    "fr": "Que veux-tu du sport sur la TV ?"
+   },
+   "options": [
+    {
+     "v": "highlights",
+     "t": {
+      "en": "Highlights and goals from official channels",
+      "tr": "Resmi kanallardan maç özetleri ve goller",
+      "pt": "Melhores momentos e gols dos canais oficiais",
+      "es": "Resúmenes y goles de los canales oficiales",
+      "de": "Highlights und Tore aus offiziellen Kanälen",
+      "fr": "Résumés et buts des chaînes officielles"
+     }
+    },
+    {
+     "v": "docs",
+     "t": {
+      "en": "Sports documentaries",
+      "tr": "Spor belgeselleri",
+      "pt": "Documentários esportivos",
+      "es": "Documentales deportivos",
+      "de": "Sport-Dokus",
+      "fr": "Documentaires sportifs"
+     }
+    },
+    {
+     "v": "films",
+     "t": {
+      "en": "Films and series about sports",
+      "tr": "Spor üzerine film ve diziler",
+      "pt": "Filmes e séries sobre esporte",
+      "es": "Películas y series sobre deporte",
+      "de": "Filme und Serien über Sport",
+      "fr": "Films et séries sur le sport"
+     }
+    }
+   ]
+  },
+  {
+   "id": "doc_topics",
+   "type": "multi",
+   "section": "docs",
+   "when": {
+    "q": "loves",
+    "any": [
+     "docs"
+    ]
+   },
+   "text": {
+    "en": "Documentaries about what?",
+    "tr": "Ne hakkında belgeseller?",
+    "pt": "Documentários sobre o quê?",
+    "es": "¿Documentales sobre qué?",
+    "de": "Dokus worüber?",
+    "fr": "Des documentaires sur quoi ?"
+   },
+   "options_from": "doc_topics"
+  },
+  {
+   "id": "channel_kinds",
+   "type": "multi",
+   "section": "channels",
+   "when": {
+    "q": "loves",
+    "any": [
+     "channels"
+    ]
+   },
+   "text": {
+    "en": "Which free live channels?",
+    "tr": "Hangi ücretsiz canlı kanallar?",
+    "pt": "Quais canais ao vivo gratuitos?",
+    "es": "¿Qué canales gratuitos en vivo?",
+    "de": "Welche kostenlosen Live-Sender?",
+    "fr": "Quelles chaînes gratuites en direct ?"
+   },
+   "options_from": "channel_kinds"
+  },
+  {
+   "id": "channel_countries",
+   "type": "text",
+   "section": "channels",
+   "optional": true,
+   "when": {
+    "q": "loves",
+    "any": [
+     "channels"
+    ]
+   },
+   "text": {
+    "en": "Channels from which countries? Two-letter codes, comma separated (Enter for your country)",
+    "tr": "Hangi ülkelerin kanalları? İki harfli kodlar, virgülle (kendi ülken için Enter)",
+    "pt": "Canais de quais países? Códigos de duas letras, separados por vírgula (Enter para o seu país)",
+    "es": "¿Canales de qué países? Códigos de dos letras, separados por comas (Enter para tu país)",
+    "de": "Sender aus welchen Ländern? Zwei-Buchstaben-Codes mit Kommas (Enter für dein Land)",
+    "fr": "Chaînes de quels pays ? Codes à deux lettres, séparés par des virgules (Entrée pour ton pays)"
+   }
+  },
+  {
+   "id": "services",
+   "type": "multi",
+   "section": "services",
+   "optional": true,
+   "when": {
+    "q": "loves",
+    "any": [
+     "films",
+     "series",
+     "anime",
+     "docs",
+     "kids",
+     "reality"
+    ]
+   },
+   "text": {
+    "en": "Which services' catalogues would you like as rows? (\"What's on Netflix in your country\"; Enter for none)",
+    "tr": "Hangi servislerin kataloğu raf olarak gelsin? (\"Ülkende Netflix'te neler var\"; yoksa Enter)",
+    "pt": "Quais catálogos de serviços você quer como fileiras? (\"O que tem na Netflix no seu país\"; Enter para nenhum)",
+    "es": "¿Qué catálogos de servicios quieres como filas? (\"Qué hay en Netflix en tu país\"; Enter si ninguno)",
+    "de": "Welche Dienste-Kataloge möchtest du als Reihen? (\"Was läuft auf Netflix in deinem Land\"; Enter für keine)",
+    "fr": "Quels catalogues de services veux-tu en rangées ? (« Ce qu'il y a sur Netflix dans ton pays » ; Entrée si aucun)"
+   },
+   "options_from": "services"
+  },
+  {
+   "id": "quality",
+   "type": "single",
+   "section": "playback",
+   "when": {
+    "q": "loves",
+    "any": [
+     "films",
+     "series",
+     "anime",
+     "docs",
+     "kids",
+     "reality"
+    ]
+   },
+   "text": {
+    "en": "Best picture quality to aim for",
+    "tr": "Hedeflenecek en iyi görüntü kalitesi",
+    "pt": "Melhor qualidade de imagem desejada",
+    "es": "Mejor calidad de imagen deseada",
+    "de": "Beste angestrebte Bildqualität",
+    "fr": "Meilleure qualité d'image visée"
+   },
+   "options": [
+    {
+     "v": "4k",
+     "t": {
+      "en": "4K (fast internet, 4K TV)",
+      "tr": "4K (hızlı internet, 4K TV)",
+      "pt": "4K (internet rápida, TV 4K)",
+      "es": "4K (internet rápido, TV 4K)",
+      "de": "4K (schnelles Internet, 4K-TV)",
+      "fr": "4K (internet rapide, TV 4K)"
+     }
+    },
+    {
+     "v": "1080p",
+     "t": "1080p"
+    },
+    {
+     "v": "720p",
+     "t": {
+      "en": "720p (slow internet)",
+      "tr": "720p (yavaş internet)",
+      "pt": "720p (internet lenta)",
+      "es": "720p (internet lento)",
+      "de": "720p (langsames Internet)",
+      "fr": "720p (internet lent)"
+     }
+    }
+   ]
+  },
+  {
+   "id": "hide",
+   "type": "multi",
+   "section": "playback",
+   "optional": true,
+   "when": {
+    "q": "loves",
+    "any": [
+     "films",
+     "series",
+     "anime",
+     "docs",
+     "kids",
+     "reality"
+    ]
+   },
+   "text": {
+    "en": "Never show sources of this kind (Enter for the usual: camera copies and low quality)",
+    "tr": "Bu tür kaynakları hiç gösterme (her zamanki için Enter: kamera kayıtları ve düşük kalite)",
+    "pt": "Nunca mostrar fontes deste tipo (Enter para o padrão: cópias de câmera e baixa qualidade)",
+    "es": "Nunca mostrar fuentes de este tipo (Enter para lo habitual: copias de cámara y baja calidad)",
+    "de": "Solche Quellen nie zeigen (Enter für üblich: Kamerakopien und niedrige Qualität)",
+    "fr": "Ne jamais montrer ces sources (Entrée pour l'habituel : copies caméra et basse qualité)"
+   },
+   "options": [
+    {
+     "v": "cam",
+     "t": "CAM"
+    },
+    {
+     "v": "scr",
+     "t": "SCR"
+    },
+    {
+     "v": "480p",
+     "t": "480p"
+    },
+    {
+     "v": "3d",
+     "t": "3D"
+    },
+    {
+     "v": "hdrall",
+     "t": "HDR"
+    },
+    {
+     "v": "dolbyvision",
+     "t": "Dolby Vision"
+    }
+   ],
+   "default": [
+    "cam",
+    "scr",
+    "480p"
+   ]
+  },
+  {
+   "id": "autoplay",
+   "type": "yesno",
+   "section": "playback",
+   "when": {
+    "q": "loves",
+    "any": [
+     "films",
+     "series",
+     "anime",
+     "docs",
+     "kids",
+     "reality"
+    ]
+   },
+   "text": {
+    "en": "Start the best source by itself, without a list?",
+    "tr": "En iyi kaynak liste göstermeden kendiliğinden başlasın mı?",
+    "pt": "Começar a melhor fonte sozinha, sem lista?",
+    "es": "¿Empezar la mejor fuente sola, sin lista?",
+    "de": "Die beste Quelle von selbst starten, ohne Liste?",
+    "fr": "Lancer la meilleure source toute seule, sans liste ?"
+   },
+   "default": "y"
+  },
+  {
+   "id": "phone",
+   "type": "single",
+   "section": "devices",
+   "text": {
+    "en": "Which phones are in the house?",
+    "tr": "Evde hangi telefonlar var?",
+    "pt": "Quais celulares há em casa?",
+    "es": "¿Qué móviles hay en casa?",
+    "de": "Welche Handys gibt es im Haushalt?",
+    "fr": "Quels téléphones y a-t-il à la maison ?"
+   },
+   "options": [
+    {
+     "v": "iphone",
+     "t": {
+      "en": "iPhone (and maybe a Mac)",
+      "tr": "iPhone (belki bir de Mac)",
+      "pt": "iPhone (e talvez um Mac)",
+      "es": "iPhone (y quizá un Mac)",
+      "de": "iPhone (und vielleicht ein Mac)",
+      "fr": "iPhone (et peut-être un Mac)"
+     }
+    },
+    {
+     "v": "android",
+     "t": "Android"
+    },
+    {
+     "v": "both",
+     "t": {
+      "en": "Both",
+      "tr": "İkisi de",
+      "pt": "Os dois",
+      "es": "Ambos",
+      "de": "Beides",
+      "fr": "Les deux"
+     }
+    }
+   ]
+  },
+  {
+   "id": "cast",
+   "type": "yesno",
+   "section": "devices",
+   "text": {
+    "en": "Will you send videos from your phone to the TV?",
+    "tr": "Telefondan televizyona video gönderecek misin?",
+    "pt": "Você vai enviar vídeos do celular para a TV?",
+    "es": "¿Vas a enviar vídeos del móvil a la TV?",
+    "de": "Wirst du Videos vom Handy an den Fernseher senden?",
+    "fr": "Vas-tu envoyer des vidéos du téléphone vers la TV ?"
+   },
+   "default": "y"
+  },
+  {
+   "id": "notes",
+   "type": "text",
+   "section": "end",
+   "optional": true,
+   "text": {
+    "en": "Anything else CineTV should know about what you like? (Enter to finish)",
+    "tr": "Sevdiklerin hakkında CineTV'nin bilmesi gereken başka bir şey var mı? (bitirmek için Enter)",
+    "pt": "Mais alguma coisa que a CineTV deve saber sobre o que você gosta? (Enter para terminar)",
+    "es": "¿Algo más que CineTV deba saber de tus gustos? (Enter para terminar)",
+    "de": "Noch etwas, das CineTV über deinen Geschmack wissen sollte? (Enter zum Beenden)",
+    "fr": "Autre chose que CineTV devrait savoir sur tes goûts ? (Entrée pour terminer)"
+   }
+  }
+ ],
+ "lists": {
+  "genres": [
+   {
+    "v": "28",
+    "t": {
+     "en": "Action",
+     "tr": "Aksiyon",
+     "pt": "Ação",
+     "es": "Acción",
+     "de": "Action",
+     "fr": "Action"
+    }
+   },
+   {
+    "v": "12",
+    "t": {
+     "en": "Adventure",
+     "tr": "Macera",
+     "pt": "Aventura",
+     "es": "Aventura",
+     "de": "Abenteuer",
+     "fr": "Aventure"
+    }
+   },
+   {
+    "v": "16",
+    "t": {
+     "en": "Animation",
+     "tr": "Animasyon",
+     "pt": "Animação",
+     "es": "Animación",
+     "de": "Animation",
+     "fr": "Animation"
+    }
+   },
+   {
+    "v": "35",
+    "t": {
+     "en": "Comedy",
+     "tr": "Komedi",
+     "pt": "Comédia",
+     "es": "Comedia",
+     "de": "Komödie",
+     "fr": "Comédie"
+    }
+   },
+   {
+    "v": "80",
+    "t": {
+     "en": "Crime",
+     "tr": "Suç",
+     "pt": "Crime",
+     "es": "Crimen",
+     "de": "Krimi",
+     "fr": "Policier"
+    }
+   },
+   {
+    "v": "99",
+    "t": {
+     "en": "Documentary",
+     "tr": "Belgesel",
+     "pt": "Documentário",
+     "es": "Documental",
+     "de": "Dokumentarfilm",
+     "fr": "Documentaire"
+    }
+   },
+   {
+    "v": "18",
+    "t": {
+     "en": "Drama",
+     "tr": "Dram",
+     "pt": "Drama",
+     "es": "Drama",
+     "de": "Drama",
+     "fr": "Drame"
+    }
+   },
+   {
+    "v": "10751",
+    "t": {
+     "en": "Family",
+     "tr": "Aile",
+     "pt": "Família",
+     "es": "Familia",
+     "de": "Familie",
+     "fr": "Familial"
+    }
+   },
+   {
+    "v": "14",
+    "t": {
+     "en": "Fantasy",
+     "tr": "Fantastik",
+     "pt": "Fantasia",
+     "es": "Fantasía",
+     "de": "Fantasy",
+     "fr": "Fantastique"
+    }
+   },
+   {
+    "v": "36",
+    "t": {
+     "en": "History",
+     "tr": "Tarih",
+     "pt": "História",
+     "es": "Historia",
+     "de": "Historie",
+     "fr": "Histoire"
+    }
+   },
+   {
+    "v": "27",
+    "t": {
+     "en": "Horror",
+     "tr": "Korku",
+     "pt": "Terror",
+     "es": "Terror",
+     "de": "Horror",
+     "fr": "Horreur"
+    }
+   },
+   {
+    "v": "10402",
+    "t": {
+     "en": "Music",
+     "tr": "Müzik",
+     "pt": "Música",
+     "es": "Música",
+     "de": "Musik",
+     "fr": "Musique"
+    }
+   },
+   {
+    "v": "9648",
+    "t": {
+     "en": "Mystery",
+     "tr": "Gizem",
+     "pt": "Mistério",
+     "es": "Misterio",
+     "de": "Mystery",
+     "fr": "Mystère"
+    }
+   },
+   {
+    "v": "10749",
+    "t": {
+     "en": "Romance",
+     "tr": "Romantik",
+     "pt": "Romance",
+     "es": "Romance",
+     "de": "Liebesfilm",
+     "fr": "Romance"
+    }
+   },
+   {
+    "v": "878",
+    "t": {
+     "en": "Science fiction",
+     "tr": "Bilimkurgu",
+     "pt": "Ficção científica",
+     "es": "Ciencia ficción",
+     "de": "Science-Fiction",
+     "fr": "Science-fiction"
+    }
+   },
+   {
+    "v": "53",
+    "t": {
+     "en": "Thriller",
+     "tr": "Gerilim",
+     "pt": "Suspense",
+     "es": "Suspense",
+     "de": "Thriller",
+     "fr": "Thriller"
+    }
+   },
+   {
+    "v": "10752",
+    "t": {
+     "en": "War",
+     "tr": "Savaş",
+     "pt": "Guerra",
+     "es": "Bélica",
+     "de": "Kriegsfilm",
+     "fr": "Guerre"
+    }
+   },
+   {
+    "v": "37",
+    "t": {
+     "en": "Western",
+     "tr": "Western",
+     "pt": "Faroeste",
+     "es": "Western",
+     "de": "Western",
+     "fr": "Western"
+    }
+   }
+  ],
+  "tv_genres": [
+   {
+    "v": "18",
+    "t": {
+     "en": "Drama",
+     "tr": "Dram",
+     "pt": "Drama",
+     "es": "Drama",
+     "de": "Drama",
+     "fr": "Drame"
+    }
+   },
+   {
+    "v": "80",
+    "t": {
+     "en": "Crime",
+     "tr": "Suç",
+     "pt": "Crime",
+     "es": "Crimen",
+     "de": "Krimi",
+     "fr": "Policier"
+    }
+   },
+   {
+    "v": "35",
+    "t": {
+     "en": "Comedy",
+     "tr": "Komedi",
+     "pt": "Comédia",
+     "es": "Comedia",
+     "de": "Komödie",
+     "fr": "Comédie"
+    }
+   },
+   {
+    "v": "10759",
+    "t": {
+     "en": "Action and adventure",
+     "tr": "Aksiyon ve macera",
+     "pt": "Ação e aventura",
+     "es": "Acción y aventura",
+     "de": "Action und Abenteuer",
+     "fr": "Action et aventure"
+    }
+   },
+   {
+    "v": "10765",
+    "t": {
+     "en": "Sci-fi and fantasy",
+     "tr": "Bilimkurgu ve fantastik",
+     "pt": "Ficção científica e fantasia",
+     "es": "Ciencia ficción y fantasía",
+     "de": "Sci-Fi und Fantasy",
+     "fr": "Science-fiction et fantastique"
+    }
+   },
+   {
+    "v": "9648",
+    "t": {
+     "en": "Mystery",
+     "tr": "Gizem",
+     "pt": "Mistério",
+     "es": "Misterio",
+     "de": "Mystery",
+     "fr": "Mystère"
+    }
+   },
+   {
+    "v": "10768",
+    "t": {
+     "en": "War and politics",
+     "tr": "Savaş ve siyaset",
+     "pt": "Guerra e política",
+     "es": "Guerra y política",
+     "de": "Krieg und Politik",
+     "fr": "Guerre et politique"
+    }
+   },
+   {
+    "v": "10766",
+    "t": {
+     "en": "Soaps and telenovelas",
+     "tr": "Pembe diziler",
+     "pt": "Novelas",
+     "es": "Telenovelas",
+     "de": "Seifenopern und Telenovelas",
+     "fr": "Feuilletons et télénovelas"
+    }
+   },
+   {
+    "v": "10751",
+    "t": {
+     "en": "Family",
+     "tr": "Aile",
+     "pt": "Família",
+     "es": "Familia",
+     "de": "Familie",
+     "fr": "Familial"
+    }
+   },
+   {
+    "v": "99",
+    "t": {
+     "en": "Docuseries",
+     "tr": "Belgesel diziler",
+     "pt": "Séries documentais",
+     "es": "Series documentales",
+     "de": "Dokuserien",
+     "fr": "Séries documentaires"
+    }
+   },
+   {
+    "v": "37",
+    "t": {
+     "en": "Western",
+     "tr": "Western",
+     "pt": "Faroeste",
+     "es": "Western",
+     "de": "Western",
+     "fr": "Western"
+    }
+   }
+  ],
+  "origins": [
+   {
+    "v": "@home",
+    "t": {
+     "en": "My own country",
+     "tr": "Kendi ülkem",
+     "pt": "Meu próprio país",
+     "es": "Mi propio país",
+     "de": "Mein eigenes Land",
+     "fr": "Mon propre pays"
+    }
+   },
+   {
+    "v": "US",
+    "t": {
+     "en": "United States",
+     "tr": "ABD",
+     "pt": "Estados Unidos",
+     "es": "Estados Unidos",
+     "de": "USA",
+     "fr": "États-Unis"
+    }
+   },
+   {
+    "v": "GB",
+    "t": {
+     "en": "United Kingdom",
+     "tr": "Birleşik Krallık",
+     "pt": "Reino Unido",
+     "es": "Reino Unido",
+     "de": "Großbritannien",
+     "fr": "Royaume-Uni"
+    }
+   },
+   {
+    "v": "TR",
+    "t": {
+     "en": "Turkey",
+     "tr": "Türkiye",
+     "pt": "Turquia",
+     "es": "Turquía",
+     "de": "Türkei",
+     "fr": "Turquie"
+    }
+   },
+   {
+    "v": "KR",
+    "t": {
+     "en": "South Korea",
+     "tr": "Güney Kore",
+     "pt": "Coreia do Sul",
+     "es": "Corea del Sur",
+     "de": "Südkorea",
+     "fr": "Corée du Sud"
+    }
+   },
+   {
+    "v": "JP",
+    "t": {
+     "en": "Japan",
+     "tr": "Japonya",
+     "pt": "Japão",
+     "es": "Japón",
+     "de": "Japan",
+     "fr": "Japon"
+    }
+   },
+   {
+    "v": "IN",
+    "t": {
+     "en": "India",
+     "tr": "Hindistan",
+     "pt": "Índia",
+     "es": "India",
+     "de": "Indien",
+     "fr": "Inde"
+    }
+   },
+   {
+    "v": "FR",
+    "t": {
+     "en": "France",
+     "tr": "Fransa",
+     "pt": "França",
+     "es": "Francia",
+     "de": "Frankreich",
+     "fr": "France"
+    }
+   },
+   {
+    "v": "IT",
+    "t": {
+     "en": "Italy",
+     "tr": "İtalya",
+     "pt": "Itália",
+     "es": "Italia",
+     "de": "Italien",
+     "fr": "Italie"
+    }
+   },
+   {
+    "v": "ES",
+    "t": {
+     "en": "Spain",
+     "tr": "İspanya",
+     "pt": "Espanha",
+     "es": "España",
+     "de": "Spanien",
+     "fr": "Espagne"
+    }
+   },
+   {
+    "v": "DE",
+    "t": {
+     "en": "Germany",
+     "tr": "Almanya",
+     "pt": "Alemanha",
+     "es": "Alemania",
+     "de": "Deutschland",
+     "fr": "Allemagne"
+    }
+   },
+   {
+    "v": "BR",
+    "t": {
+     "en": "Brazil",
+     "tr": "Brezilya",
+     "pt": "Brasil",
+     "es": "Brasil",
+     "de": "Brasilien",
+     "fr": "Brésil"
+    }
+   },
+   {
+    "v": "MX",
+    "t": {
+     "en": "Mexico",
+     "tr": "Meksika",
+     "pt": "México",
+     "es": "México",
+     "de": "Mexiko",
+     "fr": "Mexique"
+    }
+   },
+   {
+    "v": "AR",
+    "t": {
+     "en": "Argentina",
+     "tr": "Arjantin",
+     "pt": "Argentina",
+     "es": "Argentina",
+     "de": "Argentinien",
+     "fr": "Argentine"
+    }
+   },
+   {
+    "v": "CN",
+    "t": {
+     "en": "China",
+     "tr": "Çin",
+     "pt": "China",
+     "es": "China",
+     "de": "China",
+     "fr": "Chine"
+    }
+   },
+   {
+    "v": "IR",
+    "t": {
+     "en": "Iran",
+     "tr": "İran",
+     "pt": "Irã",
+     "es": "Irán",
+     "de": "Iran",
+     "fr": "Iran"
+    }
+   },
+   {
+    "v": "SE,DK,NO,FI,IS",
+    "t": {
+     "en": "The Nordic countries",
+     "tr": "İskandinav ülkeleri",
+     "pt": "Países nórdicos",
+     "es": "Países nórdicos",
+     "de": "Skandinavien",
+     "fr": "Pays nordiques"
+    }
+   }
+  ],
+  "sports": [
+   {
+    "v": "13042",
+    "t": {
+     "en": "Football (soccer)",
+     "tr": "Futbol",
+     "pt": "Futebol",
+     "es": "Fútbol",
+     "de": "Fußball",
+     "fr": "Football"
+    }
+   },
+   {
+    "v": "6496",
+    "t": {
+     "en": "Basketball",
+     "tr": "Basketbol",
+     "pt": "Basquete",
+     "es": "Baloncesto",
+     "de": "Basketball",
+     "fr": "Basket-ball"
+    }
+   },
+   {
+    "v": "233981,242128",
+    "t": {
+     "en": "Formula 1 and motorsport",
+     "tr": "Formula 1 ve motor sporları",
+     "pt": "Fórmula 1 e automobilismo",
+     "es": "Fórmula 1 y motor",
+     "de": "Formel 1 und Motorsport",
+     "fr": "Formule 1 et sport auto"
+    }
+   },
+   {
+    "v": "1488",
+    "t": {
+     "en": "Tennis",
+     "tr": "Tenis",
+     "pt": "Tênis",
+     "es": "Tenis",
+     "de": "Tennis",
+     "fr": "Tennis"
+    }
+   },
+   {
+    "v": "9917,209476",
+    "t": {
+     "en": "MMA and boxing",
+     "tr": "MMA ve boks",
+     "pt": "MMA e boxe",
+     "es": "MMA y boxeo",
+     "de": "MMA und Boxen",
+     "fr": "MMA et boxe"
+    }
+   },
+   {
+    "v": "579",
+    "t": {
+     "en": "American football",
+     "tr": "Amerikan futbolu",
+     "pt": "Futebol americano",
+     "es": "Fútbol americano",
+     "de": "American Football",
+     "fr": "Football américain"
+    }
+   },
+   {
+    "v": "1480",
+    "t": {
+     "en": "Baseball",
+     "tr": "Beyzbol",
+     "pt": "Beisebol",
+     "es": "Béisbol",
+     "de": "Baseball",
+     "fr": "Baseball"
+    }
+   },
+   {
+    "v": "5605",
+    "t": {
+     "en": "Volleyball",
+     "tr": "Voleybol",
+     "pt": "Vôlei",
+     "es": "Voleibol",
+     "de": "Volleyball",
+     "fr": "Volley-ball"
+    }
+   },
+   {
+    "v": "180491",
+    "t": {
+     "en": "Cycling",
+     "tr": "Bisiklet",
+     "pt": "Ciclismo",
+     "es": "Ciclismo",
+     "de": "Radsport",
+     "fr": "Cyclisme"
+    }
+   },
+   {
+    "v": "5970",
+    "t": {
+     "en": "Wrestling",
+     "tr": "Güreş",
+     "pt": "Luta livre",
+     "es": "Lucha libre",
+     "de": "Wrestling",
+     "fr": "Catch et lutte"
+    }
+   },
+   {
+    "v": "5719",
+    "t": {
+     "en": "Cricket",
+     "tr": "Kriket",
+     "pt": "Críquete",
+     "es": "Críquet",
+     "de": "Cricket",
+     "fr": "Cricket"
+    }
+   },
+   {
+    "v": "2702",
+    "t": {
+     "en": "Golf",
+     "tr": "Golf",
+     "pt": "Golfe",
+     "es": "Golf",
+     "de": "Golf",
+     "fr": "Golf"
+    }
+   },
+   {
+    "v": "166939",
+    "t": {
+     "en": "Esports",
+     "tr": "E-spor",
+     "pt": "eSports",
+     "es": "eSports",
+     "de": "E-Sport",
+     "fr": "E-sport"
+    }
+   },
+   {
+    "v": "316",
+    "t": {
+     "en": "Chess",
+     "tr": "Satranç",
+     "pt": "Xadrez",
+     "es": "Ajedrez",
+     "de": "Schach",
+     "fr": "Échecs"
+    }
+   },
+   {
+    "v": "2070",
+    "t": {
+     "en": "The Olympics",
+     "tr": "Olimpiyatlar",
+     "pt": "Olimpíadas",
+     "es": "Juegos Olímpicos",
+     "de": "Olympische Spiele",
+     "fr": "Jeux olympiques"
+    }
+   },
+   {
+    "v": "5349,8624",
+    "t": {
+     "en": "Surfing and climbing",
+     "tr": "Sörf ve tırmanış",
+     "pt": "Surfe e escalada",
+     "es": "Surf y escalada",
+     "de": "Surfen und Klettern",
+     "fr": "Surf et escalade"
+    }
+   }
+  ],
+  "doc_topics": [
+   {
+    "v": "221355,9902",
+    "t": {
+     "en": "Nature and wildlife",
+     "tr": "Doğa ve vahşi yaşam",
+     "pt": "Natureza e vida selvagem",
+     "es": "Naturaleza y vida salvaje",
+     "de": "Natur und Tierwelt",
+     "fr": "Nature et animaux"
+    }
+   },
+   {
+    "v": "282633",
+    "t": {
+     "en": "History",
+     "tr": "Tarih",
+     "pt": "História",
+     "es": "Historia",
+     "de": "Geschichte",
+     "fr": "Histoire"
+    }
+   },
+   {
+    "v": "33722",
+    "t": {
+     "en": "True crime",
+     "tr": "Gerçek suç",
+     "pt": "Crimes reais",
+     "es": "Crímenes reales",
+     "de": "True Crime",
+     "fr": "Faits divers criminels"
+    }
+   },
+   {
+    "v": "287067,9882",
+    "t": {
+     "en": "Science and space",
+     "tr": "Bilim ve uzay",
+     "pt": "Ciência e espaço",
+     "es": "Ciencia y espacio",
+     "de": "Wissenschaft und Weltall",
+     "fr": "Science et espace"
+    }
+   },
+   {
+    "v": "159290",
+    "t": {
+     "en": "Sports",
+     "tr": "Spor",
+     "pt": "Esporte",
+     "es": "Deporte",
+     "de": "Sport",
+     "fr": "Sport"
+    }
+   },
+   {
+    "v": "246377",
+    "t": {
+     "en": "Music",
+     "tr": "Müzik",
+     "pt": "Música",
+     "es": "Música",
+     "de": "Musik",
+     "fr": "Musique"
+    }
+   },
+   {
+    "v": "9935,1918",
+    "t": {
+     "en": "Travel and food",
+     "tr": "Seyahat ve yemek",
+     "pt": "Viagem e comida",
+     "es": "Viajes y comida",
+     "de": "Reisen und Essen",
+     "fr": "Voyage et cuisine"
+    }
+   },
+   {
+    "v": "6078,294205",
+    "t": {
+     "en": "Politics and war",
+     "tr": "Siyaset ve savaş",
+     "pt": "Política e guerra",
+     "es": "Política y guerra",
+     "de": "Politik und Krieg",
+     "fr": "Politique et guerre"
+    }
+   },
+   {
+    "v": "1576",
+    "t": {
+     "en": "Technology",
+     "tr": "Teknoloji",
+     "pt": "Tecnologia",
+     "es": "Tecnología",
+     "de": "Technik",
+     "fr": "Technologie"
+    }
+   },
+   {
+    "v": "14893,12436",
+    "t": {
+     "en": "Art and architecture",
+     "tr": "Sanat ve mimari",
+     "pt": "Arte e arquitetura",
+     "es": "Arte y arquitectura",
+     "de": "Kunst und Architektur",
+     "fr": "Art et architecture"
+    }
+   }
+  ],
+  "channel_kinds": [
+   {
+    "v": "general",
+    "t": {
+     "en": "General national channels",
+     "tr": "Ulusal genel kanallar",
+     "pt": "Canais nacionais abertos",
+     "es": "Canales nacionales generales",
+     "de": "Allgemeine Vollprogramme",
+     "fr": "Chaînes nationales généralistes"
+    }
+   },
+   {
+    "v": "news",
+    "t": {
+     "en": "News",
+     "tr": "Haber",
+     "pt": "Notícias",
+     "es": "Noticias",
+     "de": "Nachrichten",
+     "fr": "Information"
+    }
+   },
+   {
+    "v": "kids,animation",
+    "t": {
+     "en": "Kids",
+     "tr": "Çocuk",
+     "pt": "Infantil",
+     "es": "Infantil",
+     "de": "Kinder",
+     "fr": "Jeunesse"
+    }
+   },
+   {
+    "v": "music",
+    "t": {
+     "en": "Music",
+     "tr": "Müzik",
+     "pt": "Música",
+     "es": "Música",
+     "de": "Musik",
+     "fr": "Musique"
+    }
+   },
+   {
+    "v": "documentary,science",
+    "t": {
+     "en": "Documentary and science",
+     "tr": "Belgesel ve bilim",
+     "pt": "Documentário e ciência",
+     "es": "Documental y ciencia",
+     "de": "Doku und Wissen",
+     "fr": "Documentaire et science"
+    }
+   },
+   {
+    "v": "entertainment,comedy",
+    "t": {
+     "en": "Entertainment",
+     "tr": "Eğlence",
+     "pt": "Entretenimento",
+     "es": "Entretenimiento",
+     "de": "Unterhaltung",
+     "fr": "Divertissement"
+    }
+   },
+   {
+    "v": "movies,series",
+    "t": {
+     "en": "Film and series channels",
+     "tr": "Film ve dizi kanalları",
+     "pt": "Canais de filmes e séries",
+     "es": "Canales de cine y series",
+     "de": "Film- und Serienkanäle",
+     "fr": "Chaînes de films et séries"
+    }
+   },
+   {
+    "v": "culture,travel,cooking",
+    "t": {
+     "en": "Culture, travel and cooking",
+     "tr": "Kültür, gezi ve yemek",
+     "pt": "Cultura, viagem e culinária",
+     "es": "Cultura, viajes y cocina",
+     "de": "Kultur, Reisen und Kochen",
+     "fr": "Culture, voyage et cuisine"
+    }
+   },
+   {
+    "v": "religious",
+    "t": {
+     "en": "Religious",
+     "tr": "Dini",
+     "pt": "Religiosos",
+     "es": "Religiosos",
+     "de": "Religiös",
+     "fr": "Religieuses"
+    }
+   }
+  ],
+  "services": [
+   {
+    "v": "netflix",
+    "t": "Netflix"
+   },
+   {
+    "v": "prime",
+    "t": "Prime Video"
+   },
+   {
+    "v": "disney",
+    "t": "Disney+"
+   },
+   {
+    "v": "max",
+    "t": "HBO Max"
+   },
+   {
+    "v": "apple",
+    "t": "Apple TV+"
+   },
+   {
+    "v": "paramount",
+    "t": "Paramount+"
+   },
+   {
+    "v": "hulu",
+    "t": "Hulu"
+   },
+   {
+    "v": "peacock",
+    "t": "Peacock"
+   },
+   {
+    "v": "crunchyroll",
+    "t": "Crunchyroll"
+   },
+   {
+    "v": "mubi",
+    "t": "MUBI"
+   },
+   {
+    "v": "globoplay",
+    "t": "Globoplay"
+   },
+   {
+    "v": "clarovideo",
+    "t": "Claro video"
+   },
+   {
+    "v": "canalplus",
+    "t": "Canal+"
+   },
+   {
+    "v": "skyshowtime",
+    "t": "SkyShowtime"
+   },
+   {
+    "v": "videoland",
+    "t": "Videoland"
+   },
+   {
+    "v": "hotstar",
+    "t": "JioHotstar"
+   },
+   {
+    "v": "zee5",
+    "t": "ZEE5"
+   },
+   {
+    "v": "blutv",
+    "t": "BluTV"
+   },
+   {
+    "v": "discovery",
+    "t": "discovery+"
+   },
+   {
+    "v": "curiosity",
+    "t": "CuriosityStream"
+   },
+   {
+    "v": "top10",
+    "t": {
+     "en": "Netflix Top 10 of my country",
+     "tr": "Ülkemin Netflix Top 10'u",
+     "pt": "Top 10 da Netflix no meu país",
+     "es": "Top 10 de Netflix de mi país",
+     "de": "Netflix Top 10 meines Landes",
+     "fr": "Top 10 Netflix de mon pays"
+    }
+   }
+  ]
+ },
+ "strings": {
+  "intro": {
+   "en": "Let's get to know you, so this TV shows what you love and nothing you don't. About 25 questions; most have an answer ready, so Enter is enough.",
+   "tr": "Seni tanıyalım: bu televizyon sevdiklerini göstersin, sevmediklerini hiç kurmasın. Yaklaşık 25 soru; çoğunun cevabı hazır, Enter yeter.",
+   "pt": "Vamos te conhecer, para esta TV mostrar o que você ama e nada do que não ama. Umas 25 perguntas; a maioria já tem resposta, basta Enter.",
+   "es": "Vamos a conocerte, para que esta TV muestre lo que te encanta y nada de lo que no. Unas 25 preguntas; casi todas tienen respuesta lista, basta Enter.",
+   "de": "Lernen wir dich kennen, damit dieser Fernseher zeigt, was du liebst, und nichts anderes. Etwa 25 Fragen; die meisten sind vorbelegt, Enter genügt.",
+   "fr": "Faisons connaissance, pour que cette TV montre ce que tu aimes et rien d'autre. Environ 25 questions ; la plupart ont déjà une réponse, Entrée suffit."
+  },
+  "pick_one": {
+   "en": "number",
+   "tr": "numara",
+   "pt": "número",
+   "es": "número",
+   "de": "Nummer",
+   "fr": "numéro"
+  },
+  "pick_many": {
+   "en": "numbers, comma separated",
+   "tr": "numaralar, virgülle",
+   "pt": "números, separados por vírgula",
+   "es": "números, separados por comas",
+   "de": "Nummern, mit Kommas",
+   "fr": "numéros, séparés par des virgules"
+  },
+  "yes": {
+   "en": "y",
+   "tr": "e",
+   "pt": "s",
+   "es": "s",
+   "de": "j",
+   "fr": "o"
+  },
+  "no": {
+   "en": "n",
+   "tr": "h",
+   "pt": "n",
+   "es": "n",
+   "de": "n",
+   "fr": "n"
+  },
+  "again": {
+   "en": "Please answer with the numbers shown.",
+   "tr": "Lütfen gösterilen numaralarla cevap ver.",
+   "pt": "Responda com os números mostrados.",
+   "es": "Responde con los números que se muestran.",
+   "de": "Bitte mit den angezeigten Nummern antworten.",
+   "fr": "Réponds avec les numéros affichés."
+  },
+  "summary": {
+   "en": "Here is your TV:",
+   "tr": "Senin televizyonun:",
+   "pt": "Esta é a sua TV:",
+   "es": "Esta es tu TV:",
+   "de": "Das ist dein Fernseher:",
+   "fr": "Voici ta TV :"
+  },
+  "saved": {
+   "en": "Saved your answers to",
+   "tr": "Cevapların kaydedildi:",
+   "pt": "Respostas salvas em",
+   "es": "Respuestas guardadas en",
+   "de": "Antworten gespeichert in",
+   "fr": "Réponses enregistrées dans"
+  },
+  "for_you": {
+   "en": "For you",
+   "tr": "Sana özel",
+   "pt": "Para você",
+   "es": "Para ti",
+   "de": "Für dich",
+   "fr": "Pour toi"
+  },
+  "for_name": {
+   "en": "For {name}",
+   "tr": "{name} için",
+   "pt": "Para {name}",
+   "es": "Para {name}",
+   "de": "Für {name}",
+   "fr": "Pour {name}"
+  },
+  "row_films": {
+   "en": "{genre} films",
+   "tr": "{genre} filmleri",
+   "pt": "Filmes de {genre}",
+   "es": "Películas de {genre}",
+   "de": "Filme: {genre}",
+   "fr": "Films : {genre}"
+  },
+  "row_series": {
+   "en": "{genre} series",
+   "tr": "{genre} dizileri",
+   "pt": "Séries de {genre}",
+   "es": "Series de {genre}",
+   "de": "Serien: {genre}",
+   "fr": "Séries : {genre}"
+  },
+  "row_films_from": {
+   "en": "Films from {country}",
+   "tr": "{country} sineması",
+   "pt": "Cinema de {country}",
+   "es": "Cine de {country}",
+   "de": "Kino aus {country}",
+   "fr": "Cinéma : {country}"
+  },
+  "row_series_from": {
+   "en": "Series from {country}",
+   "tr": "{country} dizileri",
+   "pt": "Séries de {country}",
+   "es": "Series de {country}",
+   "de": "Serien aus {country}",
+   "fr": "Séries : {country}"
+  },
+  "row_on": {
+   "en": "On {service}",
+   "tr": "{service} kataloğu",
+   "pt": "Na {service}",
+   "es": "En {service}",
+   "de": "Auf {service}",
+   "fr": "Sur {service}"
+  },
+  "row_acclaimed": {
+   "en": "Acclaimed films",
+   "tr": "Ödüllü filmler",
+   "pt": "Filmes premiados",
+   "es": "Cine premiado",
+   "de": "Preisgekrönte Filme",
+   "fr": "Films primés"
+  },
+  "row_gems": {
+   "en": "Hidden gems",
+   "tr": "Az bilinen cevherler",
+   "pt": "Joias escondidas",
+   "es": "Joyas ocultas",
+   "de": "Versteckte Perlen",
+   "fr": "Pépites méconnues"
+  },
+  "row_popular_films": {
+   "en": "Popular films",
+   "tr": "Popüler filmler",
+   "pt": "Filmes populares",
+   "es": "Películas populares",
+   "de": "Beliebte Filme",
+   "fr": "Films populaires"
+  },
+  "row_popular_series": {
+   "en": "Popular series",
+   "tr": "Popüler diziler",
+   "pt": "Séries populares",
+   "es": "Series populares",
+   "de": "Beliebte Serien",
+   "fr": "Séries populaires"
+  },
+  "row_anime_series": {
+   "en": "Anime series",
+   "tr": "Anime dizileri",
+   "pt": "Séries de anime",
+   "es": "Series de anime",
+   "de": "Anime-Serien",
+   "fr": "Séries anime"
+  },
+  "row_anime_films": {
+   "en": "Anime films",
+   "tr": "Anime filmleri",
+   "pt": "Filmes de anime",
+   "es": "Películas de anime",
+   "de": "Anime-Filme",
+   "fr": "Films anime"
+  },
+  "row_anime_kind": {
+   "en": "Anime: {kind}",
+   "tr": "Anime: {kind}",
+   "pt": "Anime: {kind}",
+   "es": "Anime: {kind}",
+   "de": "Anime: {kind}",
+   "fr": "Anime : {kind}"
+  },
+  "row_sport": {
+   "en": "{sport}: films, series and documentaries",
+   "tr": "{sport}: film, dizi ve belgeseller",
+   "pt": "{sport}: filmes, séries e documentários",
+   "es": "{sport}: películas, series y documentales",
+   "de": "{sport}: Filme, Serien und Dokus",
+   "fr": "{sport} : films, séries et documentaires"
+  },
+  "row_sport_docs": {
+   "en": "Sports documentaries",
+   "tr": "Spor belgeselleri",
+   "pt": "Documentários esportivos",
+   "es": "Documentales deportivos",
+   "de": "Sport-Dokus",
+   "fr": "Documentaires sportifs"
+  },
+  "row_doc": {
+   "en": "Documentaries: {topic}",
+   "tr": "Belgesel: {topic}",
+   "pt": "Documentários: {topic}",
+   "es": "Documentales: {topic}",
+   "de": "Dokus: {topic}",
+   "fr": "Documentaires : {topic}"
+  },
+  "row_kids_series": {
+   "en": "Kids' series",
+   "tr": "Çocuk dizileri",
+   "pt": "Séries infantis",
+   "es": "Series infantiles",
+   "de": "Kinderserien",
+   "fr": "Séries jeunesse"
+  },
+  "row_kids_films": {
+   "en": "Family and animated films",
+   "tr": "Aile ve animasyon filmleri",
+   "pt": "Filmes de família e animação",
+   "es": "Películas familiares y de animación",
+   "de": "Familien- und Animationsfilme",
+   "fr": "Films familiaux et d'animation"
+  },
+  "row_reality": {
+   "en": "Reality shows",
+   "tr": "Reality şovlar",
+   "pt": "Reality shows",
+   "es": "Realities",
+   "de": "Reality-Shows",
+   "fr": "Téléréalité"
+  },
+  "row_talk": {
+   "en": "Talk shows",
+   "tr": "Talk şovlar",
+   "pt": "Talk shows",
+   "es": "Talk shows",
+   "de": "Talkshows",
+   "fr": "Talk-shows"
+  },
+  "row_music": {
+   "en": "Concerts and music films",
+   "tr": "Konser ve müzik filmleri",
+   "pt": "Shows e filmes musicais",
+   "es": "Conciertos y películas musicales",
+   "de": "Konzerte und Musikfilme",
+   "fr": "Concerts et films musicaux"
+  },
+  "plan_language": {
+   "en": "Language: {lang} (TV, Nuvio, titles, subtitles {subs})",
+   "tr": "Dil: {lang} (TV, Nuvio, isimler, altyazı {subs})",
+   "pt": "Idioma: {lang} (TV, Nuvio, títulos, legendas {subs})",
+   "es": "Idioma: {lang} (TV, Nuvio, títulos, subtítulos {subs})",
+   "de": "Sprache: {lang} (TV, Nuvio, Titel, Untertitel {subs})",
+   "fr": "Langue : {lang} (TV, Nuvio, titres, sous-titres {subs})"
+  },
+  "plan_rows": {
+   "en": "Nuvio home rows ({n}), starting with \"{title}\"",
+   "tr": "Nuvio ana ekran rafları ({n}), ilki \"{title}\"",
+   "pt": "Fileiras no início do Nuvio ({n}), começando por \"{title}\"",
+   "es": "Filas en el inicio de Nuvio ({n}), empezando por \"{title}\"",
+   "de": "Reihen auf Nuvios Startseite ({n}), zuerst \"{title}\"",
+   "fr": "Rangées de l'accueil Nuvio ({n}), d'abord « {title} »"
+  },
+  "plan_addons": {
+   "en": "Nuvio addons: {list}",
+   "tr": "Nuvio eklentileri: {list}",
+   "pt": "Complementos do Nuvio: {list}",
+   "es": "Complementos de Nuvio: {list}",
+   "de": "Nuvio-Add-ons: {list}",
+   "fr": "Modules Nuvio : {list}"
+  },
+  "plan_plugins": {
+   "en": "Nuvio plugins to switch on: {list}",
+   "tr": "Açılacak Nuvio eklentileri: {list}",
+   "pt": "Plugins do Nuvio a ativar: {list}",
+   "es": "Plugins de Nuvio a activar: {list}",
+   "de": "Zu aktivierende Nuvio-Plugins: {list}",
+   "fr": "Plugins Nuvio à activer : {list}"
+  },
+  "plan_apps": {
+   "en": "Apps on the TV: {list}",
+   "tr": "Televizyondaki uygulamalar: {list}",
+   "pt": "Apps na TV: {list}",
+   "es": "Apps en la TV: {list}",
+   "de": "Apps auf dem Fernseher: {list}",
+   "fr": "Applis sur la TV : {list}"
+  },
+  "plan_skipped": {
+   "en": "Not installed, you won't need them: {list}",
+   "tr": "Kurulmadı, ihtiyacın olmayacak: {list}",
+   "pt": "Não instalados, você não vai precisar: {list}",
+   "es": "No instalados, no los necesitarás: {list}",
+   "de": "Nicht installiert, brauchst du nicht: {list}",
+   "fr": "Non installés, tu n'en auras pas besoin : {list}"
+  },
+  "plan_youtube": {
+   "en": "Follow in Nuvio's YouTube: {list}",
+   "tr": "Nuvio'nun YouTube'unda takip et: {list}",
+   "pt": "Seguir no YouTube do Nuvio: {list}",
+   "es": "Seguir en el YouTube de Nuvio: {list}",
+   "de": "In Nuvios YouTube folgen: {list}",
+   "fr": "Suivre dans le YouTube de Nuvio : {list}"
+  },
+  "tv_language": {
+   "en": "The TV itself is set to another language. The language screen is open on the TV: pick {lang} there.",
+   "tr": "Televizyonun kendisi başka bir dilde. Dil ekranı televizyonda açık: oradan {lang} seç.",
+   "pt": "A própria TV está em outro idioma. A tela de idioma está aberta na TV: escolha {lang}.",
+   "es": "La TV está en otro idioma. La pantalla de idioma está abierta en la TV: elige {lang}.",
+   "de": "Der Fernseher selbst ist auf eine andere Sprache gestellt. Der Sprachbildschirm ist offen: wähle dort {lang}.",
+   "fr": "La TV elle-même est dans une autre langue. L'écran de langue est ouvert sur la TV : choisis {lang}."
+  },
+  "import_rows": {
+   "en": "Last step in Nuvio: Addons › Collections › Import › From file. Your rows are already in the TV's Downloads.",
+   "tr": "Nuvio'da son adım: Eklentiler › Koleksiyonlar › İçe aktar › Dosyadan. Rafların televizyonun İndirilenler klasöründe hazır.",
+   "pt": "Último passo no Nuvio: Complementos › Coleções › Importar › Do arquivo. Suas fileiras já estão nos Downloads da TV.",
+   "es": "Último paso en Nuvio: Complementos › Colecciones › Importar › Desde archivo. Tus filas ya están en Descargas de la TV.",
+   "de": "Letzter Schritt in Nuvio: Add-ons › Sammlungen › Importieren › Aus Datei. Deine Reihen liegen schon im Download-Ordner des Fernsehers.",
+   "fr": "Dernière étape dans Nuvio : Modules › Collections › Importer › Depuis un fichier. Tes rangées sont déjà dans les Téléchargements de la TV."
+  },
+  "area_services": {
+   "en": "Your services",
+   "tr": "Servislerin",
+   "pt": "Seus serviços",
+   "es": "Tus servicios",
+   "de": "Deine Dienste",
+   "fr": "Tes services"
+  },
+  "steps": {
+   "en": "Finish in Nuvio (or let an AI agent do it, see AGENTS.md):",
+   "tr": "Nuvio'da bitir (ya da bir yapay zekâ ajanına yaptır, AGENTS.md):",
+   "pt": "Termine no Nuvio (ou deixe um agente de IA fazer, veja AGENTS.md):",
+   "es": "Termina en Nuvio (o deja que lo haga un agente de IA, ver AGENTS.md):",
+   "de": "In Nuvio abschließen (oder einen KI-Agenten machen lassen, siehe AGENTS.md):",
+   "fr": "Termine dans Nuvio (ou laisse un agent IA le faire, voir AGENTS.md) :"
+  },
+  "step_repo": {
+   "en": "Settings › Plugins › Add repository: {url}, then switch on: {list}",
+   "tr": "Ayarlar › Eklentiler › Depo ekle: {url}, sonra şunları aç: {list}",
+   "pt": "Configurações › Plugins › Adicionar repositório: {url}, depois ative: {list}",
+   "es": "Ajustes › Plugins › Añadir repositorio: {url}, luego activa: {list}",
+   "de": "Einstellungen › Plugins › Repository hinzufügen: {url}, dann einschalten: {list}",
+   "fr": "Paramètres › Plugins › Ajouter un dépôt : {url}, puis active : {list}"
+  },
+  "step_subs": {
+   "en": "Settings › Playback › Subtitles: {list}; autoplay the best source: {auto}",
+   "tr": "Ayarlar › Oynatma › Altyazı: {list}; en iyi kaynağı otomatik başlat: {auto}",
+   "pt": "Configurações › Reprodução › Legendas: {list}; iniciar a melhor fonte sozinha: {auto}",
+   "es": "Ajustes › Reproducción › Subtítulos: {list}; iniciar sola la mejor fuente: {auto}",
+   "de": "Einstellungen › Wiedergabe › Untertitel: {list}; beste Quelle automatisch starten: {auto}",
+   "fr": "Paramètres › Lecture › Sous-titres : {list} ; lancer la meilleure source : {auto}"
+  },
+  "step_youtube": {
+   "en": "In Nuvio's YouTube, search and add to your library: {list}",
+   "tr": "Nuvio'nun YouTube'unda ara ve kitaplığına ekle: {list}",
+   "pt": "No YouTube do Nuvio, pesquise e adicione à biblioteca: {list}",
+   "es": "En el YouTube de Nuvio, busca y añade a tu biblioteca: {list}",
+   "de": "In Nuvios YouTube suchen und zur Bibliothek hinzufügen: {list}",
+   "fr": "Dans le YouTube de Nuvio, cherche et ajoute à ta bibliothèque : {list}"
+  },
+  "done": {
+   "en": "Done. Enjoy your TV.",
+   "tr": "Bitti. Televizyonunun tadını çıkar.",
+   "pt": "Pronto. Aproveite sua TV.",
+   "es": "Listo. Disfruta de tu TV.",
+   "de": "Fertig. Viel Spaß mit deinem Fernseher.",
+   "fr": "Terminé. Profite de ta TV."
+  },
+  "none": {
+   "en": "none",
+   "tr": "yok",
+   "pt": "nenhum",
+   "es": "ninguno",
+   "de": "keine",
+   "fr": "aucun"
+  }
+ }
+}

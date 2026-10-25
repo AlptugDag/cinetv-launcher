@@ -2,15 +2,45 @@
 
 <img src="docs/media/wordmark.png" alt="CineTV by Alptuğ Dağ" width="560">
 
-**A cinema-first home screen for any Android TV, Google TV stick or Android projector.**
+**A cinema-first home screen for any Android TV, Google TV stick or Android projector, set up for whoever
+watches it.** The installer gets to know you first, then installs only what you will watch, in your language.
 Your films on a shelf of real 3D DVD cases, an AI that understands what you want to watch, your phone as
 remote and caster, and a TV tuned the way the film was mastered. One command to install, free.
 
-[Install](#install-in-one-command) · [Features](#what-it-does) · [Phone](#your-phone-is-the-remote) · [For AI agents](AGENTS.md) · [Türkçe](#türkçe)
+[Made for you](#made-for-whoever-watches-it) · [Install](#install-in-one-command) · [Features](#what-it-does) · [Phone](#your-phone-is-the-remote) · [For AI agents](AGENTS.md) · [Türkçe](#türkçe)
 
 ![CineTV home, dark room](docs/media/home-dark.jpg)
 
 </div>
+
+---
+
+## Made for whoever watches it
+
+No two TVs end up the same. Before installing anything, CineTV gets to know the person who watches,
+in their own language (English, Türkçe, Português, Español, Deutsch, Français; more fall back to English):
+around 25 questions, most with an answer ready, asked in the terminal or by an AI agent in conversation.
+
+- **Language and country**: the TV, Nuvio, titles, plots, audio order and subtitles all follow your
+  language; catalogues and free channels follow your country.
+- **What you love, and what you never watch**: films, series, anime, sports, documentaries, kids, reality,
+  live channels, YouTube, music. What you don't pick is not installed at all: no film rows for someone who
+  doesn't watch films.
+- **Your own rows in Nuvio**, built from your answers: film genres, eras and countries of origin
+  (acclaimed, popular or hidden gems), series by genre and origin (Turkish series only? Korean dramas?),
+  anime by kind, documentaries by topic, kids' rows by age, and "On Netflix in your country" for the
+  services you use.
+- **Sports fans**: films, series and documentaries about their sports, and highlights and goals from the
+  teams' official channels inside Nuvio.
+- **Live channels**: free public channels of the kinds and countries you choose.
+- **Only the apps you need**: AirPlay only in iPhone homes, Nova only if you cast from your phone, YouTube
+  only if you watch it.
+
+```bash
+python3 scripts/personalize.py --profile cinetv-profile.json --plan   # see what a TV would get
+```
+
+The questions and what each answer changes are in [AGENTS.md](AGENTS.md#1-get-to-know-the-person-the-most-important-step).
 
 ---
 
@@ -26,7 +56,7 @@ remote and caster, and a TV tuned the way the film was mastered. One command to 
 - **The room is lit by the film**: the focused film's own colour washes softly over the background, and
   nothing else colours the room.
 - **A new shelf every time you switch the TV on**: the AI picks one for the moment, from the hour, weekday,
-  your city and the weather ("Ilık Ekim pazarına hüznü yakışan dramlar"). It changes again when you come
+  your city and the weather ("Dramas for a mild October Sunday"). It changes again when you come
   back after a while.
 - Prefer flat posters? *Settings › DVD cases* switches to glowing posters.
 
@@ -47,12 +77,14 @@ Type, speak (microphone in the bar or the remote's voice key) or send from your 
 
 | You ask | CineTV shows |
 | :--- | :--- |
-| `Takeshi Kitano filmleri` | his films and series |
-| `Araba temalı filmler` | car films (TMDB keywords + the AI's own picks) |
-| `kızı kaçırılan baba filmleri` | films with that plot (*Taken*, *Prisoners*, *Man on Fire*…) |
-| `Breaking Bad gibi diziler` | series like it |
+| `Takeshi Kitano films` | his films and series |
+| `films about cars` | car films (TMDB keywords + the AI's own picks) |
+| `films where a father's daughter is kidnapped` | films with that plot (*Taken*, *Prisoners*, *Man on Fire*…) |
+| `series like Breaking Bad` | series like it |
 | `Inception` | every title with that name |
-| `Türkiye'nin yüzölçümü kaç?` | a short answer in a bubble under the bar |
+| `How big is Turkey?` | a short answer in a bubble under the bar |
+
+It understands any language: the screenshots below are from a Turkish TV.
 
 Works with **any AI key**: Gemini, Claude, Grok, OpenAI or OpenRouter, recognised from the key itself.
 Without a key, people, titles and genres still work through TMDB. The on-screen keyboard is CineTV's own,
@@ -126,7 +158,8 @@ TV. From then on it connects by itself.
 
 ## Install in one command
 
-On a computer on the same network as the TV (macOS, Linux, or Windows with WSL), with `adb` installed:
+On a computer on the same network as the TV (macOS, Linux, or Windows with WSL), with `adb` and `python3`
+installed:
 
 1. On the TV: *Settings › Device preferences › About*, press *Build* 7 times, then *Developer options ›
    Network debugging* on. Note the TV's IP address.
@@ -136,20 +169,23 @@ On a computer on the same network as the TV (macOS, Linux, or Windows with WSL),
 git clone https://github.com/AlptugDag/cinetv-launcher && cd cinetv-launcher && ./install.sh --tv 192.168.1.50
 ```
 
-The installer finds the TV, downloads the latest signed release (checksum verified), asks a few questions and
-sets everything up: CineTV as Home, the remote-button service, the screensaver, optionally **Nuvio,
-ad-free YouTube (TizenTube), Nova Video Player and the AirPlay receiver**, **Nuvio's addons** from a short
-questionnaire (languages, quality, subtitles), and a **safe debloat**. API keys are optional:
+The installer finds the TV, downloads the latest signed release (checksum verified), **gets to know you**
+([above](#made-for-whoever-watches-it)) and sets the TV up around your answers: CineTV as Home, the
+remote-button service, the screensaver, your language, only the apps you need (**Nuvio**, ad-free
+**YouTube**, **Nova Video Player**, the **AirPlay** receiver), Nuvio's addons and your own rows, and, if you
+want it, a **safe debloat**. Answers are saved in `cinetv-profile.json`, so a second TV can be set up the
+same way with `--profile`. API keys are optional:
 
 ```bash
-CINETV_TMDB_KEY=... CINETV_AI_KEY=... CINETV_MDBLIST_KEY=... ./install.sh --tv 192.168.1.50 --apps --nuvio
+CINETV_TMDB_KEY=... CINETV_AI_KEY=... CINETV_MDBLIST_KEY=... ./install.sh --tv 192.168.1.50
 ```
 
 Keys go to the TV once and are moved into its encrypted keystore; they are never shown again or sent anywhere
 but their own service. You can also type them on the TV in *Settings › AI & films*.
 
 **With an AI agent** (Claude Code, Cursor, Codex…): point it at this repository and say *"install CineTV on my
-TV at 192.168.1.50"*. [AGENTS.md](AGENTS.md) tells it exactly what to run and how to finish Nuvio's screens.
+TV at 192.168.1.50"*. [AGENTS.md](AGENTS.md) tells it how to interview you, what to run and how to finish
+Nuvio's screens.
 
 ### Safe debloat
 `--debloat` switches off advertising, telemetry and promo apps the TV maker pre-installed, and only those:
@@ -163,8 +199,9 @@ TV at 192.168.1.50"*. [AGENTS.md](AGENTS.md) tells it exactly what to run and ho
 | Script | What it does |
 | :--- | :--- |
 | `install.sh` | everything above; `--verify` checks an installation |
+| `scripts/personalize.py` | the interview and the setup it leads to; `--plan` shows it without changing anything |
 | `scripts/setup_apps.sh` | Nuvio, TizenTube, Nova, AirPlay from their official releases |
-| `scripts/setup_nuvio.sh` | Nuvio questionnaire and addons (Torrentio, TR Altyazı, AIOMetadata…) |
+| `scripts/setup_nuvio.sh` | the short Nuvio questionnaire, for installs without the interview |
 | `scripts/debloat_universal.sh` | brand-aware safe debloat (Arçelik/Beko/Grundig, TCL, Sony, Philips, Xiaomi, Hisense…) |
 | `scripts/restore_all_tv_apps.sh` | undoes the debloat and re-enables stock apps |
 | `scripts/restore_tv_core.sh` | emergency: re-enables the TV's own core packages |
@@ -208,7 +245,13 @@ server, casting and HTTPS, `device/` keys, picture and sound, network, memory, A
 
 ## Türkçe
 
-**CineTV**, her Android TV, Google TV çubuğu ve Android projeksiyon için sinema odaklı bir ana ekran:
+**CineTV**, her Android TV, Google TV çubuğu ve Android projeksiyon için sinema odaklı bir ana ekran; ve
+**izleyen kişiye göre kurulur**. Kurulum önce seni tanır (dil, ülke, sevdiklerin, hiç izlemediklerin, spor,
+dizi kökenleri, anime, servisler, kalite, cihazlar), sonra sadece izleyeceklerini kurar: televizyonun dili,
+Nuvio eklentileri ve sana özel raflar (ör. sadece Türk dizileri, futbol belgeselleri, Kore dizileri), istersen
+ücretsiz canlı kanallar ve sadece ihtiyacın olan uygulamalar. Hiç izlemeyeceğin bir şey boşuna kurulmaz.
+
+Ayrıca:
 filmleriniz gerçek 3D DVD kutularından oluşan bir rafta; ne izlemek istediğinizi anlayan bir yapay zekâ
 araması; kumanda ve yayın aracı olarak telefonunuz; ve filmi çekildiği gibi gösterecek şekilde ayarlanmış bir
 televizyon.

@@ -2,7 +2,7 @@
 # =================================================================================================
 # CineTV installer — turns an Android TV / Google TV into CineTV over adb, in one command.
 #
-#   ./install.sh                         # interactive: finds the TV, asks a few questions
+#   ./install.sh                         # interactive: finds the TV, gets to know you, sets it up for you
 #   ./install.sh --tv 192.168.1.50 --yes # unattended, latest release from GitHub
 #   ./install.sh --verify                # only checks an existing installation
 #
@@ -14,8 +14,15 @@
 #   --theme ID            cinetv (Alptug Default) | glass | aurora | scenes | dussehra (Royal Gold) | six-columns (Cinema Wall) | oled
 #   --debloat             Disable the TV's bloatware (reversible, never touches TV core).
 #   --youtube             Install ad-free YouTube (TizenTube) and retire the stock app (reversible).
-#   --apps                Also install Nuvio, Nova Video Player and the AirPlay receiver (official releases).
-#   --nuvio               Set Nuvio up: a few questions, then its addons are installed (scripts/setup_nuvio.sh).
+#   --profile FILE        Set the TV up from saved interview answers (cinetv-profile.json, see AGENTS.md).
+#   --no-personalize      Skip the interview; use --apps / --nuvio below instead.
+#   --apps                Install Nuvio, Nova Video Player and the AirPlay receiver (without the interview).
+#   --nuvio               Set Nuvio up with the short questionnaire (without the interview).
+#
+# By default the installer first gets to know the viewer (scripts/personalize.py: language, country, what
+# they love and never watch, sports, series origins, anime, services, quality, devices) and then installs
+# only what they will use: the TV's language, Nuvio's addons and "For you" rows, free live channels if
+# wanted, and only the apps they need.
 #   --keep-old-launcher   Leave the stock home screen enabled (CineTV is still set as Home).
 #   --yes                 Never ask; use defaults for anything not given.
 #   --verify              Check the installation and print PASS / FAIL lines, change nothing.
@@ -37,6 +44,7 @@ DREAM="$PKG/$PKG.ClockDream"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 TV="" APK="" VERSION="" CITY="" THEME="" DEBLOAT=0 YOUTUBE=0 APPS=0 NUVIO=0 KEEP_OLD=0 YES=0 VERIFY_ONLY=0
+PROFILE="" PERSONALIZE=1
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$*"; }
@@ -57,8 +65,10 @@ while [ $# -gt 0 ]; do
         --theme) THEME="$2"; shift 2 ;;
         --debloat) DEBLOAT=1; shift ;;
         --youtube) YOUTUBE=1; shift ;;
-        --apps) APPS=1; shift ;;
-        --nuvio) NUVIO=1; shift ;;
+        --profile) PROFILE="$2"; shift 2 ;;
+        --no-personalize) PERSONALIZE=0; shift ;;
+        --apps) APPS=1; PERSONALIZE=0; shift ;;
+        --nuvio) NUVIO=1; PERSONALIZE=0; shift ;;
         --keep-old-launcher) KEEP_OLD=1; shift ;;
         --yes|-y) YES=1; shift ;;
         --verify) VERIFY_ONLY=1; shift ;;
@@ -157,12 +167,29 @@ if [ -z "$APK" ]; then
 fi
 [ -f "$APK" ] || die "APK not found: $APK"
 
-# --- 3. questions ----------------------------------------------------------------------------------
+# --- 3. who watches: the interview decides what this TV gets (scripts/personalize.py) --------------
+if [ "$PERSONALIZE" = 1 ] && [ -z "$PROFILE" ] && [ "$YES" = 0 ] && [ -t 0 ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        bold "Getting to know you"
+        python3 "$DIR/scripts/personalize.py" --interview-only --out . && PROFILE="cinetv-profile.json"
+    else
+        warn "python3 not found: skipping the interview (install python3 for a TV set up around you)."
+    fi
+fi
+if [ -n "$PROFILE" ]; then
+    [ -f "$PROFILE" ] || die "Profile not found: $PROFILE"
+    command -v python3 >/dev/null 2>&1 || die "python3 is needed to use --profile"
+    [ -n "$CITY" ] || CITY=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("city", ""))' "$PROFILE")
+fi
+
+# --- 4. questions ----------------------------------------------------------------------------------
 [ -n "$CITY" ] || CITY=$(ask "City for the weather (empty = automatic)" "")
 [ -n "$THEME" ] || THEME=$(ask "Theme: cinetv, glass, aurora, scenes, dussehra, six-columns, oled" "cinetv")
-if [ "$YOUTUBE" = 0 ] && [ "$(ask "Install ad-free YouTube (TizenTube)? y/n" "y")" = "y" ] && [ "$YES" = 0 ]; then YOUTUBE=1; fi
-if [ "$APPS" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Install Nuvio, Nova Video Player and the AirPlay receiver? y/n" "y")" = "y" ]; then APPS=1; fi
-if [ "$NUVIO" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Set Nuvio up now (languages, quality, addons)? y/n" "y")" = "y" ]; then NUVIO=1; fi
+if [ -z "$PROFILE" ]; then
+    if [ "$YOUTUBE" = 0 ] && [ "$(ask "Install ad-free YouTube (TizenTube)? y/n" "y")" = "y" ] && [ "$YES" = 0 ]; then YOUTUBE=1; fi
+    if [ "$APPS" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Install Nuvio, Nova Video Player and the AirPlay receiver? y/n" "y")" = "y" ]; then APPS=1; fi
+    if [ "$NUVIO" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Set Nuvio up now (languages, quality, addons)? y/n" "y")" = "y" ]; then NUVIO=1; fi
+fi
 if [ "$DEBLOAT" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Disable bloatware (reversible)? y/n" "n")" = "y" ]; then DEBLOAT=1; fi
 AI_KEY="${CINETV_AI_KEY:-}"; TMDB_KEY="${CINETV_TMDB_KEY:-}"; TMDB_TOKEN="${CINETV_TMDB_TOKEN:-}"; MDBLIST_KEY="${CINETV_MDBLIST_KEY:-}"
 if [ "$YES" = 0 ] && [ -t 0 ]; then
@@ -170,7 +197,7 @@ if [ "$YES" = 0 ] && [ -t 0 ]; then
     [ -n "$AI_KEY" ] || { read -r -s -p "  Gemini or Claude API key (optional, AI search & curation; Enter to skip): " AI_KEY; echo; }
 fi
 
-# --- 4. install -------------------------------------------------------------------------------------
+# --- 5. install -------------------------------------------------------------------------------------
 bold "Installing"
 if tv pm list packages | grep -qx "package:$LEGACY_PKG"; then
     warn "An older CineTV build ($LEGACY_PKG) is installed; replacing it."
@@ -218,13 +245,16 @@ if [ "$DEBLOAT" = 1 ]; then
     case "$BRAND" in arcelik|beko|grundig) bash "$DIR/scripts/debloat_arcelik_beko.sh" ;; *) bash "$DIR/scripts/debloat_universal.sh" ;; esac
 fi
 
-if [ "$APPS" = 1 ]; then bash "$DIR/scripts/setup_apps.sh"
+if [ -n "$PROFILE" ]; then
+    bold "Setting the TV up for you"
+    python3 "$DIR/scripts/personalize.py" --profile "$PROFILE" --out .
+elif [ "$APPS" = 1 ]; then bash "$DIR/scripts/setup_apps.sh"
 elif [ "$YOUTUBE" = 1 ]; then bash "$DIR/scripts/setup_youtube.sh"; fi
-if [ "$NUVIO" = 1 ]; then
+if [ -z "$PROFILE" ] && [ "$NUVIO" = 1 ]; then
     if [ "$YES" = 1 ]; then bash "$DIR/scripts/setup_nuvio.sh" --defaults tr; else bash "$DIR/scripts/setup_nuvio.sh"; fi
 fi
 
-# --- 5. start ---------------------------------------------------------------------------------------
+# --- 6. start ---------------------------------------------------------------------------------------
 # Restart so the launcher picks up the handed-over keys (it moves them into its keystore on start).
 tv am force-stop $PKG
 tv am start -n "$HOME_ACTIVITY" ${THEME:+--es theme "$THEME"} >/dev/null
