@@ -1080,26 +1080,134 @@
    "type": "multi",
    "section": "services",
    "optional": true,
+   "text": {
+    "en": "Which streaming services do you pay for? Their apps go on Home, and Nuvio shows what's on them in your country (Enter for none)",
+    "tr": "Hangi yayın servislerine abonesin? Uygulamaları ana ekrana gelir, Nuvio da ülkende onlarda neler olduğunu gösterir (yoksa Enter)",
+    "pt": "Quais serviços de streaming você assina? Os apps vão para a tela inicial e o Nuvio mostra o que há neles no seu país (Enter para nenhum)",
+    "es": "¿Qué servicios de streaming pagas? Sus apps van a la pantalla de inicio y Nuvio muestra qué hay en ellos en tu país (Enter si ninguno)",
+    "de": "Welche Streamingdienste bezahlst du? Ihre Apps kommen auf den Startbildschirm, und Nuvio zeigt, was dort in deinem Land läuft (Enter für keine)",
+    "fr": "Quels services de streaming paies-tu ? Leurs applis vont sur l'accueil et Nuvio montre ce qu'ils proposent dans ton pays (Entrée si aucun)"
+   },
+   "options_from": "services"
+  },
+  {
+   "id": "tv_sources",
+   "type": "multi",
+   "section": "devices",
+   "text": {
+    "en": "What brings TV channels into this TV?",
+    "tr": "Bu televizyona kanallar nereden geliyor?",
+    "pt": "De onde vêm os canais desta TV?",
+    "es": "¿De dónde le llegan los canales a esta TV?",
+    "de": "Woher bekommt dieser Fernseher seine Sender?",
+    "fr": "D'où viennent les chaînes de cette TV ?"
+   },
+   "options": [
+    {
+     "v": "antenna",
+     "t": {
+      "en": "An antenna",
+      "tr": "Anten",
+      "pt": "Antena",
+      "es": "Antena",
+      "de": "Antenne",
+      "fr": "Une antenne"
+     }
+    },
+    {
+     "v": "satellite",
+     "t": {
+      "en": "A satellite dish into the TV",
+      "tr": "Televizyona bağlı çanak anten",
+      "pt": "Antena parabólica direto na TV",
+      "es": "Una parabólica conectada a la TV",
+      "de": "Satellitenschüssel direkt am Fernseher",
+      "fr": "Une parabole branchée sur la TV"
+     }
+    },
+    {
+     "v": "cable",
+     "t": {
+      "en": "Cable into the TV",
+      "tr": "Televizyona bağlı kablo TV",
+      "pt": "TV a cabo direto na TV",
+      "es": "Cable conectado a la TV",
+      "de": "Kabelanschluss am Fernseher",
+      "fr": "Le câble branché sur la TV"
+     }
+    },
+    {
+     "v": "box",
+     "t": {
+      "en": "A receiver or box on HDMI (satellite, cable, IPTV)",
+      "tr": "HDMI'ye bağlı bir uydu alıcısı ya da kutu (Digiturk, D-Smart, Tivibu, kablo…)",
+      "pt": "Um receptor ou box no HDMI (satélite, cabo, IPTV)",
+      "es": "Un receptor o deco por HDMI (satélite, cable, IPTV)",
+      "de": "Ein Receiver oder eine Box am HDMI (Sat, Kabel, IPTV)",
+      "fr": "Un décodeur ou une box en HDMI (satellite, câble, IPTV)"
+     }
+    },
+    {
+     "v": "none",
+     "t": {
+      "en": "Nothing, no TV channels",
+      "tr": "Hiçbiri, TV kanalı izlemiyorum",
+      "pt": "Nada, sem canais de TV",
+      "es": "Nada, sin canales de TV",
+      "de": "Nichts, keine Fernsehsender",
+      "fr": "Rien, pas de chaînes TV"
+     }
+    }
+   ]
+  },
+  {
+   "id": "hdmi_port",
+   "type": "single",
+   "section": "devices",
    "when": {
-    "q": "loves",
-    "any": [
-     "films",
-     "series",
-     "anime",
-     "docs",
-     "kids",
-     "reality"
+    "q": "tv_sources",
+    "in": [
+     "box"
     ]
    },
    "text": {
-    "en": "Which services' catalogues would you like as rows? (\"What's on Netflix in your country\"; Enter for none)",
-    "tr": "Hangi servislerin kataloğu raf olarak gelsin? (\"Ülkende Netflix'te neler var\"; yoksa Enter)",
-    "pt": "Quais catálogos de serviços você quer como fileiras? (\"O que tem na Netflix no seu país\"; Enter para nenhum)",
-    "es": "¿Qué catálogos de servicios quieres como filas? (\"Qué hay en Netflix en tu país\"; Enter si ninguno)",
-    "de": "Welche Dienste-Kataloge möchtest du als Reihen? (\"Was läuft auf Netflix in deinem Land\"; Enter für keine)",
-    "fr": "Quels catalogues de services veux-tu en rangées ? (« Ce qu'il y a sur Netflix dans ton pays » ; Entrée si aucun)"
+    "en": "Which HDMI input is the box on?",
+    "tr": "Kutu hangi HDMI girişine bağlı?",
+    "pt": "Em qual entrada HDMI está o box?",
+    "es": "¿En qué entrada HDMI está el deco?",
+    "de": "An welchem HDMI-Eingang hängt die Box?",
+    "fr": "Sur quelle entrée HDMI est la box ?"
    },
-   "options_from": "services"
+   "options": [
+    {
+     "v": "auto",
+     "t": {
+      "en": "Not sure (use the one that's on)",
+      "tr": "Bilmiyorum (açık olanı kullan)",
+      "pt": "Não sei (usar a que está ligada)",
+      "es": "No lo sé (usar la que esté encendida)",
+      "de": "Weiß nicht (die eingeschaltete nehmen)",
+      "fr": "Je ne sais pas (prendre celle qui est allumée)"
+     }
+    },
+    {
+     "v": "1",
+     "t": "HDMI 1"
+    },
+    {
+     "v": "2",
+     "t": "HDMI 2"
+    },
+    {
+     "v": "3",
+     "t": "HDMI 3"
+    },
+    {
+     "v": "4",
+     "t": "HDMI 4"
+    }
+   ],
+   "default": "auto"
   },
   {
    "id": "quality",
@@ -2235,11 +2343,17 @@
    },
    {
     "v": "hulu",
-    "t": "Hulu"
+    "t": "Hulu",
+    "only": [
+     "US"
+    ]
    },
    {
     "v": "peacock",
-    "t": "Peacock"
+    "t": "Peacock",
+    "only": [
+     "US"
+    ]
    },
    {
     "v": "crunchyroll",
@@ -2251,35 +2365,99 @@
    },
    {
     "v": "globoplay",
-    "t": "Globoplay"
+    "t": "Globoplay",
+    "only": [
+     "BR"
+    ]
    },
    {
     "v": "clarovideo",
-    "t": "Claro video"
+    "t": "Claro video",
+    "only": [
+     "BR",
+     "MX",
+     "AR",
+     "CO",
+     "CL",
+     "PE",
+     "EC",
+     "UY",
+     "PY",
+     "GT",
+     "CR",
+     "DO",
+     "PA",
+     "SV",
+     "HN",
+     "NI"
+    ]
    },
    {
     "v": "canalplus",
-    "t": "Canal+"
+    "t": "Canal+",
+    "only": [
+     "FR",
+     "PL",
+     "BE",
+     "CH",
+     "AT",
+     "CZ",
+     "SK"
+    ]
    },
    {
     "v": "skyshowtime",
-    "t": "SkyShowtime"
+    "t": "SkyShowtime",
+    "only": [
+     "ES",
+     "PT",
+     "NL",
+     "PL",
+     "SE",
+     "DK",
+     "NO",
+     "FI",
+     "HU",
+     "CZ",
+     "SK",
+     "RO",
+     "BG",
+     "HR",
+     "SI",
+     "RS",
+     "BA",
+     "ME",
+     "MK",
+     "AL"
+    ]
    },
    {
     "v": "videoland",
-    "t": "Videoland"
+    "t": "Videoland",
+    "only": [
+     "NL"
+    ]
    },
    {
     "v": "hotstar",
-    "t": "JioHotstar"
+    "t": "JioHotstar",
+    "only": [
+     "IN"
+    ]
    },
    {
     "v": "zee5",
-    "t": "ZEE5"
+    "t": "ZEE5",
+    "only": [
+     "IN"
+    ]
    },
    {
     "v": "blutv",
-    "t": "BluTV"
+    "t": "BluTV",
+    "only": [
+     "TR"
+    ]
    },
    {
     "v": "discovery",
@@ -2288,6 +2466,52 @@
    {
     "v": "curiosity",
     "t": "CuriosityStream"
+   },
+   {
+    "v": "dazn",
+    "t": "DAZN"
+   },
+   {
+    "v": "bein",
+    "t": "beIN CONNECT / TOD",
+    "only": [
+     "TR"
+    ]
+   },
+   {
+    "v": "exxen",
+    "t": "Exxen",
+    "only": [
+     "TR"
+    ]
+   },
+   {
+    "v": "ssport",
+    "t": "S Sport Plus",
+    "only": [
+     "TR"
+    ]
+   },
+   {
+    "v": "tabii",
+    "t": "tabii (TRT)",
+    "only": [
+     "TR"
+    ]
+   },
+   {
+    "v": "tvplus",
+    "t": "TV+",
+    "only": [
+     "TR"
+    ]
+   },
+   {
+    "v": "gain",
+    "t": "Gain",
+    "only": [
+     "TR"
+    ]
    },
    {
     "v": "top10",
@@ -2686,6 +2910,62 @@
    "es": "Ajustes › Plugins › Añadir repositorio: {url}, luego activa todos los plugins salvo {skip}",
    "de": "Einstellungen › Plugins › Repository hinzufügen: {url}, dann alle Plugins einschalten außer {skip}",
    "fr": "Paramètres › Plugins › Ajouter un dépôt : {url}, puis active tous les plugins sauf {skip}"
+  },
+  "plan_live": {
+   "en": "Live TV tile: {how}",
+   "tr": "Canlı TV kutucuğu: {how}",
+   "pt": "Bloco TV ao vivo: {how}",
+   "es": "Mosaico TV en directo: {how}",
+   "de": "Live-TV-Kachel: {how}",
+   "fr": "Tuile TV en direct : {how}"
+  },
+  "live_tuner": {
+   "en": "the TV's own channels",
+   "tr": "televizyonun kendi kanalları",
+   "pt": "os canais da própria TV",
+   "es": "los canales de la propia TV",
+   "de": "die Sender des Fernsehers",
+   "fr": "les chaînes de la TV"
+  },
+  "live_hdmi": {
+   "en": "your box on {port}",
+   "tr": "{port} girişindeki kutun",
+   "pt": "seu box em {port}",
+   "es": "tu deco en {port}",
+   "de": "deine Box an {port}",
+   "fr": "ta box sur {port}"
+  },
+  "live_hdmi_auto": {
+   "en": "the HDMI input that is on",
+   "tr": "açık olan HDMI girişi",
+   "pt": "a entrada HDMI ligada",
+   "es": "la entrada HDMI encendida",
+   "de": "der eingeschaltete HDMI-Eingang",
+   "fr": "l'entrée HDMI allumée"
+  },
+  "live_off": {
+   "en": "not shown",
+   "tr": "gösterilmez",
+   "pt": "não aparece",
+   "es": "no se muestra",
+   "de": "nicht angezeigt",
+   "fr": "non affichée"
+  },
+  "plan_paid": {
+   "en": "Your services' apps on Home: {list}",
+   "tr": "Abone olduğun servislerin uygulamaları ana ekranda: {list}",
+   "pt": "Apps dos seus serviços na tela inicial: {list}",
+   "es": "Apps de tus servicios en el inicio: {list}",
+   "de": "Apps deiner Dienste auf dem Startbildschirm: {list}",
+   "fr": "Applis de tes services sur l'accueil : {list}"
+  },
+  "install_app": {
+   "en": "Install {app} on the TV (its Play Store page is open), then press Enter; s to skip",
+   "tr": "{app} uygulamasını televizyona kur (Play Store sayfası açık), sonra Enter'a bas; geçmek için s",
+   "pt": "Instale {app} na TV (a página da Play Store está aberta) e aperte Enter; s para pular",
+   "es": "Instala {app} en la TV (su página de Play Store está abierta) y pulsa Enter; s para omitir",
+   "de": "Installiere {app} auf dem Fernseher (die Play-Store-Seite ist offen), dann Enter; s zum Überspringen",
+   "fr": "Installe {app} sur la TV (sa page Play Store est ouverte), puis Entrée ; s pour passer"
   }
  }
 }

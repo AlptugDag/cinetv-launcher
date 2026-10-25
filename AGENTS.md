@@ -26,7 +26,7 @@ repository.
 
 ## 1. Get to know the person (the most important step)
 
-The questions are in [`scripts/personalize/questions.json`](scripts/personalize/questions.json): 34 of them,
+The questions are in [`scripts/personalize/questions.json`](scripts/personalize/questions.json): 36 of them,
 in six languages, each with its option values and a `when` rule (a question is asked only if an earlier
 answer matches). Ask them **in conversation, in the person's language**, starting with the language
 question. Rules:
@@ -63,7 +63,8 @@ What the answers change:
 | `sports`, `sports_what`, `teams` | sports films, series and documentaries; highlights through Nuvio's YouTube, with the teams' official channels to follow |
 | `doc_topics` | documentary rows by topic |
 | `channel_kinds`, `channel_countries` | free live channels (iptv-org's public index) of those kinds and countries |
-| `services` | "On Netflix (in your country)"-style rows; `top10` adds Netflix Top 10 of the country |
+| `services` | the services they pay for: their official apps on Home (Play Store page opened for each one missing) and "On Netflix (in your country)"-style rows; `top10` adds Netflix Top 10 of the country |
+| `tv_sources`, `hdmi_port` | the Live TV tile: the TV's tuner (antenna, satellite, cable), the HDMI input of their satellite/cable/IPTV box, or no tile at all |
 | `quality`, `hide`, `autoplay` | Torrentio's quality filter; Nuvio's autoplay |
 | `phone`, `cast` | AirPlay receiver only for iPhone/Mac homes; Nova Video Player only if they cast from the phone |
 | `notes` | kept in `nuvio-preferences.json` for you to act on |
@@ -89,8 +90,11 @@ Add `--debloat` only if the person agreed (§5). Themes: `cinetv` (Alptug Defaul
 
 Keys are handed to the TV once and moved into its hardware-backed encrypted store; they cannot be read back.
 
-The installer then sets up exactly what the plan said: the apps the person needs (and no others), Nuvio's
-addons through its install links, and the person's rows as `/sdcard/Download/nuvio-collections.json`.
+The installer then sets up exactly what the plan said: the apps the person needs (and no others), the apps
+of the services they pay for (it opens each missing one's Play Store page: press **Install** there), Home's
+first row, the Live TV tile's source, Nuvio's addons through its install links, and the person's rows as
+`/sdcard/Download/nuvio-collections.json`. Apps it could not install are listed in `nuvio-preferences.json`
+under `apps_to_install`: install them from the Play Store page the same way.
 It writes `nuvio-preferences.json` with what is left to do in Nuvio's own screens.
 
 ## 3. Finish in Nuvio

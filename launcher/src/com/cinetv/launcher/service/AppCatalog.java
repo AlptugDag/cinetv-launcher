@@ -59,7 +59,33 @@ public final class AppCatalog {
 
     private AppCatalog() {}
 
+    /**
+     * The installer's choices for this viewer, handed over once through Settings.Global:
+     * {@code cinetv_live_source} (tuner, hdmi, hdmi:N or off) and {@code cinetv_dock} (Home's first row).
+     */
+    private static void applyHandoff(Context ctx) {
+        android.content.ContentResolver cr = ctx.getContentResolver();
+        try {
+            String source = android.provider.Settings.Global.getString(cr, "cinetv_live_source");
+            if (source != null && !source.isEmpty()) {
+                if ("off".equals(source)) hide(ctx, AppLauncher.LIVE_TV);
+                else {
+                    Prefs.get(ctx).edit().putString(Prefs.LIVE_SOURCE, source).apply();
+                    addToHome(ctx, AppLauncher.LIVE_TV);
+                }
+                android.provider.Settings.Global.putString(cr, "cinetv_live_source", null);
+            }
+            String dock = android.provider.Settings.Global.getString(cr, "cinetv_dock");
+            if (dock != null && !dock.isEmpty()) {
+                Prefs.get(ctx).edit().putString(Prefs.DOCK_ORDER, dock).apply();
+                android.provider.Settings.Global.putString(cr, "cinetv_dock", null);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     public static Snapshot load(Context ctx) {
+        applyHandoff(ctx);
         PackageManager pm = ctx.getPackageManager();
         SharedPreferences prefs = Prefs.get(ctx);
         Set<String> userHidden = csvSet(prefs.getString(Prefs.HIDDEN_APPS, ""));
@@ -90,7 +116,7 @@ public final class AppCatalog {
         }
 
         // The TV's own channels, on TVs that have a tuner; hidden from Home (or Settings) like any app.
-        if (!userHidden.contains(AppLauncher.LIVE_TV) && AppLauncher.liveTvPackage(pm) != null) {
+        if (!userHidden.contains(AppLauncher.LIVE_TV) && (AppLauncher.liveTvPackage(pm) != null || AppLauncher.hasHdmiSource(ctx))) {
             AppTileItem tv = new AppTileItem();
             tv.packageName = AppLauncher.LIVE_TV;
             tv.label = ctx.getString(com.cinetv.launcher.R.string.live_tv);

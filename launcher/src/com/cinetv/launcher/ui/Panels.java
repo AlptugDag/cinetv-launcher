@@ -175,7 +175,7 @@ public final class Panels {
         LinearLayout c4 = column(ctx, cols, R.string.col_tv, 390);
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.tv_settings), ctx.getString(R.string.tv_settings_hint), false,
                 v -> AppLauncher.openSystemSettings(ctx)));
-        if (AppLauncher.liveTvPackage(ctx.getPackageManager()) != null) {
+        if (AppLauncher.liveTvPackage(ctx.getPackageManager()) != null || AppLauncher.hasHdmiSource(ctx)) {
             boolean liveTv = AppCatalog.liveTvShown(ctx);
             c4.addView(Controls.tile(ctx, ctx.getString(R.string.live_tv_tile), ctx.getString(liveTv ? R.string.live_tv_tile_on : R.string.state_off), liveTv, v -> {
                 if (AppCatalog.liveTvShown(ctx)) AppCatalog.hide(ctx, AppLauncher.LIVE_TV);

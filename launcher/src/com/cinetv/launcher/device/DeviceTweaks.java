@@ -92,6 +92,8 @@ public final class DeviceTweaks {
             if (dream != null && dream.contains("com.cinetv.launcher")) Settings.Secure.putString(cr, "screensaver_components", stripCineTv(dream));
             Settings.Global.putString(cr, "cinetv_city", null);
             Settings.Global.putString(cr, "cinetv_appearance", null);
+            Settings.Global.putString(cr, "cinetv_live_source", null);
+            Settings.Global.putString(cr, "cinetv_dock", null);
         } catch (Throwable ignored) {
         }
     }

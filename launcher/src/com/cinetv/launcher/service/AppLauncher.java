@@ -73,7 +73,59 @@ public final class AppLauncher {
         return null;
     }
 
+    /** A satellite, cable or IPTV box on HDMI chosen as this viewer's live TV. */
+    public static boolean hasHdmiSource(Context ctx) {
+        return Prefs.get(ctx).getString(Prefs.LIVE_SOURCE, "tuner").startsWith("hdmi");
+    }
+
+    /** Switches the TV to the HDMI input of the viewer's box: port N if given, else the connected one. */
+    private static boolean openHdmi(Context ctx, int port) {
+        try {
+            android.media.tv.TvInputManager tim = (android.media.tv.TvInputManager) ctx.getSystemService(Context.TV_INPUT_SERVICE);
+            if (tim == null) return false;
+            List<android.media.tv.TvInputInfo> ports = new java.util.ArrayList<>();
+            for (android.media.tv.TvInputInfo info : tim.getTvInputList()) {
+                if (info.getType() == android.media.tv.TvInputInfo.TYPE_HDMI && info.getParentId() == null) ports.add(info);
+            }
+            if (ports.isEmpty()) return false;
+            java.util.Collections.sort(ports, (a, b) -> a.getId().compareTo(b.getId()));
+            android.media.tv.TvInputInfo pick = null;
+            for (android.media.tv.TvInputInfo info : ports) {
+                CharSequence label = info.loadLabel(ctx);
+                if (port > 0 && label != null && label.toString().replaceAll("\\D+", "").equals(String.valueOf(port))) pick = info;
+            }
+            if (pick == null && port > 0 && port <= ports.size()) pick = ports.get(port - 1);
+            if (pick == null) {
+                for (android.media.tv.TvInputInfo info : ports) {
+                    if (tim.getInputState(info.getId()) == android.media.tv.TvInputManager.INPUT_STATE_CONNECTED) {
+                        pick = info;
+                        break;
+                    }
+                }
+            }
+            if (pick == null) pick = ports.get(0);
+            com.cinetv.launcher.device.DeviceTweaks.markUserOpenedTv();
+            Intent view = new Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(pick.getId()));
+            String tvApp = liveTvPackage(ctx.getPackageManager());
+            if (tvApp != null && start(ctx, new Intent(view).setPackage(tvApp))) return true;
+            return start(ctx, view);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public static boolean openLiveTv(Context ctx) {
+        String source = Prefs.get(ctx).getString(Prefs.LIVE_SOURCE, "tuner");
+        if (source.startsWith("hdmi")) {
+            int port = 0;
+            try {
+                port = Integer.parseInt(source.substring(source.indexOf(':') + 1));
+            } catch (Throwable ignored) {
+            }
+            if (openHdmi(ctx, port)) return true;
+            openTvInputs(ctx);
+            return true;
+        }
         String pkg = liveTvPackage(ctx.getPackageManager());
         if (pkg == null) return false;
         // Asked for: the boot guard must not send the tuner back to Home.

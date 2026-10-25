@@ -46,6 +46,22 @@ PROVIDERS = {
     "discovery": "510", "curiosity": "190",
 }
 
+# The official app of each paid service: verified Android TV package, else a Play Store search by name
+SERVICE_APPS = {
+    "netflix": ("com.netflix.ninja", "Netflix"), "prime": ("com.amazon.amazonvideo.livingroom", "Prime Video"),
+    "disney": ("com.disney.disneyplus", "Disney+"), "max": ("com.wbd.stream", "HBO Max"),
+    "apple": ("com.apple.atve.androidtv.appletv", "Apple TV"), "paramount": ("com.cbs.ott", "Paramount+"),
+    "hulu": ("com.hulu.livingroomplus", "Hulu"), "peacock": ("com.peacocktv.peacockandroid", "Peacock"),
+    "crunchyroll": ("com.crunchyroll.crunchyroid", "Crunchyroll"), "mubi": ("com.mubi", "MUBI"),
+    "globoplay": ("com.globo.globotv", "Globoplay"), "dazn": ("com.dazn", "DAZN"), "exxen": ("com.exxen.android", "Exxen"),
+    "tabii": ("com.trt.tabii.android", "tabii"), "tvplus": ("com.turkcell.ott", "TV+"), "blutv": ("com.wbd.stream", "HBO Max"),
+    "clarovideo": (None, "Claro video"), "canalplus": (None, "Canal+"), "skyshowtime": (None, "SkyShowtime"),
+    "videoland": (None, "Videoland"), "hotstar": (None, "JioHotstar"), "zee5": (None, "ZEE5"),
+    "discovery": (None, "discovery+"), "curiosity": (None, "CuriosityStream"), "bein": (None, "TOD"),
+    "ssport": (None, "S Sport Plus"), "gain": (None, "Gain"),
+}
+TIZENTUBE = "io.gh.reisxd.tizentube.cobalt"
+
 # TMDB keyword ids for anime moods; TV genres where a TMDB genre fits better
 ANIME_KINDS = {"action": ("10759", None), "fantasy": ("10765", "237451"), "romance": (None, "9840|9914"),
                "scifi": ("10765", "384065|10046"), "mystery": ("9648", None)}
@@ -130,6 +146,9 @@ def options_for(q, data, answers):
         return q["options"]
     if q.get("options_from") == "lang":
         return next(x for x in data["questions"] if x["id"] == "lang")["options"]
+    if q.get("options_from") == "services":
+        here = (answers.get("country") or "").upper()
+        return [o for o in data["lists"]["services"] if not o.get("only") or here in o["only"]]
     if q.get("from"):
         src = next(x for x in data["questions"] if x["id"] == q["from"])
         chosen = answers.get(q["from"]) or []
@@ -353,8 +372,20 @@ def plan_for(p, data):
 
     collections = build_collections(p, data, texts, country, main)
 
-    # Only the apps this person will open
+    # Only the apps this person will open, and the apps of the services they pay for
     apps = ["nuvio"] if addons or collections or plugins or anthology_all else []
+    paid = []
+    for svc in services:
+        if svc in SERVICE_APPS and SERVICE_APPS[svc] not in paid:
+            paid.append(SERVICE_APPS[svc])
+    sources = as_list(p.get("tv_sources"))
+    if "box" in sources:
+        port = p.get("hdmi_port", "auto")
+        live = "hdmi" if port in ("", "auto") else "hdmi:" + port
+    elif any(x in sources for x in ("antenna", "satellite", "cable")):
+        live = "tuner"
+    else:
+        live = "off"
     if "youtube" in loves:
         apps.append("youtube")
     if p.get("cast", "y") == "y":
@@ -362,10 +393,15 @@ def plan_for(p, data):
     if p.get("phone") in ("iphone", "both"):
         apps.append("airplay")
     skipped = [a for a in ("nuvio", "youtube", "nova", "airplay") if a not in apps]
+    dock = (["com.nuvio.tv"] if "nuvio" in apps else []) + [pkg for pkg, _ in paid if pkg]
+    if "youtube" in apps:
+        dock.append(TIZENTUBE)
+    if live != "off":
+        dock.append("cinetv.livetv")
     return {"lang": lang, "ui": texts.ui, "iso": iso, "country": country, "city": p.get("city") or "",
             "main": main, "addons": addons, "channels": channels, "plugins": plugins, "follow": follow,
             "anthology_all": anthology_all, "subs": subs, "autoplay": p.get("autoplay", "y") == "y", "collections": collections,
-            "apps": apps, "skipped": skipped, "notes": p.get("notes") or ""}
+            "apps": apps, "skipped": skipped, "paid": paid, "live": live, "dock": list(dict.fromkeys(dock)), "notes": p.get("notes") or ""}
 
 
 def source(media, title, sort="popularity.desc", **filters):
@@ -508,6 +544,12 @@ def describe(plan, data):
         lines.append("  • " + texts("plan_plugins", list=", ".join(plan["plugins"])))
     if plan["follow"]:
         lines.append("  • " + texts("plan_youtube", list=", ".join(plan["follow"])))
+    if plan["paid"]:
+        lines.append("  • " + texts("plan_paid", list=", ".join(name for _, name in plan["paid"])))
+    live = plan["live"]
+    how = texts("live_off") if live == "off" else texts("live_tuner") if live == "tuner" else (
+        texts("live_hdmi_auto") if live == "hdmi" else texts("live_hdmi", port="HDMI " + live.split(":")[1]))
+    lines.append("  • " + texts("plan_live", how=how))
     names = {"nuvio": "Nuvio", "youtube": "YouTube (TizenTube)", "nova": "Nova Video Player", "airplay": "AirPlay"}
     lines.append("  • " + texts("plan_apps", list=", ".join(names[a] for a in plan["apps"]) or texts("none")))
     if plan["skipped"]:
@@ -543,6 +585,34 @@ def apply(plan, data, out_dir):
     if plan["apps"]:
         subprocess.run(["bash", os.path.join(HERE, "setup_apps.sh"), "--only", ",".join(plan["apps"])])
 
+    # Apps of the services this person pays for: the Play Store page, one by one
+    def packages():
+        return set(l.replace("package:", "") for l in tv("pm", "list", "packages").splitlines())
+    dock = list(plan["dock"])
+    still = []
+    for pkg, name in plan["paid"]:
+        if pkg and pkg in packages():
+            continue
+        before = packages()
+        url = f"market://details?id={pkg}" if pkg else "market://search?q=" + name.replace(" ", "%20") + "&c=apps"
+        tv("am", "start", "-a", "android.intent.action.VIEW", "-d", url)
+        if not sys.stdin.isatty():
+            still.append(name)
+            continue
+        try:
+            answer = input("  › " + texts("install_app", app=name) + ": ").strip().lower()
+        except EOFError:
+            answer = "s"
+        new = sorted(packages() - before)
+        if answer.startswith("s") or not new:
+            still.append(name)
+        elif not pkg:
+            dock.insert(1 if dock and dock[0] == "com.nuvio.tv" else 0, new[0])
+    tv("settings", "put", "global", "cinetv_live_source", plan["live"])
+    if dock:
+        tv("settings", "put", "global", "cinetv_dock", ",".join(dict.fromkeys(dock)))
+    tv("input", "keyevent", "3")
+
     if "nuvio" in plan["apps"]:
         for name, path in plan["addons"]:
             if name == "channels":
@@ -565,7 +635,7 @@ def apply(plan, data, out_dir):
              "plugins_to_enable": "all except plugins_to_leave_off" if plan["anthology_all"] and not plan["plugins"] else plan["plugins"],
              "plugins_to_leave_off": list(ANTHOLOGY_SKIP) if plan["plugins"] or plan["anthology_all"] else [],
              "youtube_follow": plan["follow"], "collections_file": "/sdcard/Download/nuvio-collections.json" if plan["collections"] else None,
-             "notes": plan["notes"]}
+             "apps_to_install": still, "notes": plan["notes"]}
     with open(os.path.join(out_dir, "nuvio-preferences.json"), "w", encoding="utf-8") as f:
         json.dump(prefs, f, ensure_ascii=False, indent=2)
 

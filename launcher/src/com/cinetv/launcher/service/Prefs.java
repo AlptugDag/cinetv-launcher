@@ -14,6 +14,8 @@ public final class Prefs {
 
     public static final String APP_ORDER = "custom_app_order_csv";
     public static final String DOCK_ORDER = "custom_dock_order_csv";
+    /** What the Live TV tile opens: "tuner", "hdmi" (the connected box) or "hdmi:N". */
+    public static final String LIVE_SOURCE = "live_tv_source";
     public static final String HIDDEN_APPS = "user_hidden_apps_csv";
     /** Apps the user added to Home that CineTV would hide by default (players, AirPlay...). */
     public static final String CUSTOM_WALLPAPER = "custom_wallpaper_on";

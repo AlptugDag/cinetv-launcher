@@ -19,7 +19,7 @@ remote and caster, and a TV tuned the way the film was mastered. One command to 
 
 No two TVs end up the same. Before installing anything, CineTV gets to know the person who watches,
 in their own language (English, Türkçe, Português, Español, Deutsch, Français; more fall back to English):
-around 25 questions, most with an answer ready, asked in the terminal or by an AI agent in conversation.
+around 25 questions (36 in all, asked only when they apply), most with an answer ready, asked in the terminal or by an AI agent in conversation.
 
 - **Language and country**: the TV, Nuvio, titles, plots, audio order and subtitles all follow your
   language; catalogues and free channels follow your country.
@@ -37,6 +37,10 @@ around 25 questions, most with an answer ready, asked in the terminal or by an A
   films, series, anime, national, news, documentary, kids' and music channels, and official archives.
   Its two plugins that carry paid channels (*Anthology Canlı Spor*, *Anthology Sinema Kanalları*) are left
   off by the installer; they can only be switched on by hand, in *Nuvio › Settings › Plugins*.
+- **The services you already pay for** (Netflix, Disney+, HBO Max, DAZN, TOD, Exxen, Globoplay…): their
+  apps go on Home, and Nuvio shows what's on them in your country.
+- **Your antenna, satellite, cable or box**: the Live TV tile opens the TV's own channels, switches straight
+  to the HDMI input of your satellite / cable / IPTV box, or isn't there if you don't watch TV channels.
 - **Only the apps you need**: AirPlay only in iPhone homes, Nova only if you cast from your phone, YouTube
   only if you watch it.
 
@@ -254,6 +258,8 @@ server, casting and HTTPS, `device/` keys, picture and sound, network, memory, A
 dizi kökenleri, anime, servisler, kalite, cihazlar), sonra sadece izleyeceklerini kurar: televizyonun dili,
 Nuvio eklentileri ve sana özel raflar (ör. sadece Türk dizileri, futbol belgeselleri, Kore dizileri), istersen
 ücretsiz canlı kanallar ve sadece ihtiyacın olan uygulamalar. Hiç izlemeyeceğin bir şey boşuna kurulmaz.
+Abone olduğun servislerin (Netflix, Disney+, TOD, Exxen…) uygulamaları ana ekrana gelir; anten, uydu, kablo
+ya da HDMI'deki alıcına göre Canlı TV kutucuğu doğru yeri açar (ya da hiç görünmez).
 Türkçe her profile Nuvio'da Anthology'nin tamamı gelir (film, dizi, anime, kanallar, resmi arşivler).
 Paralı kanalları taşıyan iki eklentisi (*Anthology Canlı Spor*, *Anthology Sinema Kanalları*) kurulumda kapalı
 kalır; bunlar yalnızca elle, *Nuvio › Ayarlar › Eklentiler* bölümünden açılabilir.
