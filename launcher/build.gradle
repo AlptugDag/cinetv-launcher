@@ -44,7 +44,7 @@ android {
         minSdk 26
         targetSdk 34
         // Release builds take the version from the git tag (CI passes -PcineTvVersion=2.1.0).
-        def ver = (project.findProperty('cineTvVersion') ?: '2.0.0').toString().replaceFirst('^v', '')
+        def ver = (project.findProperty('cineTvVersion') ?: '3.0.0').toString().replaceFirst('^v', '')
         def parts = ver.tokenize('.').collect { it.replaceAll('[^0-9]', '') as int }
         versionName ver
         versionCode parts[0] * 10000 + (parts.size() > 1 ? parts[1] : 0) * 100 + (parts.size() > 2 ? parts[2] : 0)
@@ -58,8 +58,8 @@ android {
             manifest.srcFile 'AndroidManifest.xml'
             java.srcDirs = ['src']
             res.srcDirs = ['res']
-            // Personal branding (e.g. signature_logo.png) is merged from outside the repo when present,
-            // so public builds ship the neutral CineTV mark. Override with CINETV_PRIVATE_ASSETS.
+            // Optional extra assets for a personal build, merged from outside the repo when present
+            // (~/.cinetv/private/assets, or CINETV_PRIVATE_ASSETS). Public builds need none.
             def privateAssets = file(System.getenv('CINETV_PRIVATE_ASSETS') ?: "${System.getProperty('user.home')}/.cinetv/private/assets")
             assets.srcDirs = privateAssets.isDirectory() ? ['assets', privateAssets] : ['assets']
         }

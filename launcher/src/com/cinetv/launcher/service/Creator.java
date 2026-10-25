@@ -13,6 +13,9 @@ public final class Creator {
     public static final String YOUTUBE = "@AlptugDag";
     public static final String INSTAGRAM_URL = "https://instagram.com/" + INSTAGRAM;
     public static final String YOUTUBE_URL = "https://youtube.com/" + YOUTUBE;
+    public static final String LINKEDIN_URL = "https://www.linkedin.com/in/AlptugDag/";
+    public static final String LETTERBOXD_URL = "https://letterboxd.com/AlptugDag/";
+    public static final String GITHUB_URL = "https://github.com/AlptugDag";
 
     private Creator() {}
 

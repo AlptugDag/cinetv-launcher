@@ -87,7 +87,7 @@ if [ "$PLAYBACK_TEST" = "1" ]; then
         printf '%s\n' "$INST_PKGS" | grep -qxF "package:$pkg" && PLAYER="$cand" && break
     done
     if [ -z "$PLAYER" ]; then
-        warn "No supported test player installed (Nova Video Player). Run scripts/setup_nova_player.sh first."
+        warn "No supported test player installed (Nova Video Player). Run scripts/setup_apps.sh --only nova first."
     else
         adb shell "am start -a android.intent.action.VIEW -d '$URL' -t video/mp4 -n $PLAYER" >/dev/null 2>&1
         sleep 25
