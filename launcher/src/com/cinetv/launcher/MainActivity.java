@@ -182,7 +182,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         loadApps(true);
         showCachedShelf();
-        handler.postDelayed(this::refreshShelf, 1500);
+        // A new process (power-on) or a long absence brings a new shelf; a rebuild (theme, appearance) does not.
+        if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > SHELF_EVERY_MS) handler.postDelayed(this::refreshShelf, 1500);
 
         TvWebRemoteServer.setController(this);
         TvWebRemoteServer.start(this);

@@ -99,7 +99,7 @@ public final class Panels {
             ThemeManager.setAppearance(ctx, ThemeManager.nextAppearance(ThemeManager.appearance(ctx)));
             a.applyAppearance();
         }));
-        boolean customBg = ThemeManager.hasCustomWallpaper(ctx);
+        boolean customBg = ThemeManager.usesCustomWallpaper(ctx);
         c1.addView(Controls.tile(ctx, ctx.getString(R.string.background), ctx.getString(customBg ? R.string.background_custom : R.string.background_hint), customBg,
                 v -> host.push(() -> buildPairing(ctx, host, "background"))));
 
