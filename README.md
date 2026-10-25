@@ -33,10 +33,11 @@ around 25 questions (36 in all, asked only when they apply), most with an answer
 - **Sports fans**: films, series and documentaries about their sports, and highlights and goals from the
   teams' official channels inside Nuvio.
 - **Live channels**: free public channels of the kinds and countries you choose.
-- **Turkish-speaking viewers** get all of [Anthology](https://github.com/falsisdev/anthology) in Nuvio:
-  films, series, anime, national, news, documentary, kids' and music channels, and official archives.
-  Its two plugins that carry paid channels (*Anthology Canlı Spor*, *Anthology Sinema Kanalları*) are left
-  off by the installer; they can only be switched on by hand, in *Nuvio › Settings › Plugins*.
+- **Turkish-speaking viewers** get the [Anthology](https://github.com/falsisdev/anthology) plugins that fit
+  what they watch: film and series sources for film and series fans, anime sources for anime fans, and the
+  national, news, documentary, kids' and music channels they chose. Its plugins that carry paid channels
+  (*Anthology Canlı Spor*, *Anthology Canlı TV*, *Anthology Sinema Kanalları*) are left off by the
+  installer; they can only be switched on by hand, in *Nuvio › Settings › Plugins*.
 - **The services you already pay for** (Netflix, Disney+, HBO Max, DAZN, TOD, Exxen, Globoplay…): their
   apps go on Home, and Nuvio shows what's on them in your country.
 - **Your antenna, satellite, cable or box**: the Live TV tile opens the TV's own channels, switches straight
@@ -260,9 +261,10 @@ Nuvio eklentileri ve sana özel raflar (ör. sadece Türk dizileri, futbol belge
 ücretsiz canlı kanallar ve sadece ihtiyacın olan uygulamalar. Hiç izlemeyeceğin bir şey boşuna kurulmaz.
 Abone olduğun servislerin (Netflix, Disney+, TOD, Exxen…) uygulamaları ana ekrana gelir; anten, uydu, kablo
 ya da HDMI'deki alıcına göre Canlı TV kutucuğu doğru yeri açar (ya da hiç görünmez).
-Türkçe her profile Nuvio'da Anthology'nin tamamı gelir (film, dizi, anime, kanallar, resmi arşivler).
-Paralı kanalları taşıyan iki eklentisi (*Anthology Canlı Spor*, *Anthology Sinema Kanalları*) kurulumda kapalı
-kalır; bunlar yalnızca elle, *Nuvio › Ayarlar › Eklentiler* bölümünden açılabilir.
+Türkçe profillere Nuvio'da Anthology'nin izlediklerine uyan eklentileri gelir (film ve dizi kaynakları, anime
+kaynakları, seçtiği kanal türleri). Paralı kanalları taşıyan eklentileri (*Anthology Canlı Spor*, *Anthology Canlı
+TV*, *Anthology Sinema Kanalları*) kurulumda kapalı kalır; bunlar yalnızca elle, *Nuvio › Ayarlar › Eklentiler*
+bölümünden açılabilir.
 
 Ayrıca:
 filmleriniz gerçek 3D DVD kutularından oluşan bir rafta; ne izlemek istediğinizi anlayan bir yapay zekâ

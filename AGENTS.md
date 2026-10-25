@@ -51,7 +51,7 @@ What the answers change:
 
 | Answer | Effect on this TV |
 | :--- | :--- |
-| `lang` | for Turkish: all of Anthology in Nuvio; the TV's language (its language screen opens if it differs), Nuvio's titles and plots, stream audio order, subtitle default |
+| `lang` | for Turkish: the Anthology plugins that fit what they watch; the TV's language (its language screen opens if it differs), Nuvio's titles and plots, stream audio order, subtitle default |
 | `country`, `city` | weather and the shelf of the moment; which services' catalogues and free channels match; Netflix Top 10 of that country |
 | `household`, `kids_ages` | kids' series and family films rows (animated for under-9s) |
 | `loves`, `main` | which rows, addons and apps exist at all; `main` comes first and is pinned |
@@ -116,9 +116,9 @@ Read `nuvio-preferences.json`, open Nuvio (`adb shell monkey -p com.nuvio.tv 1`)
    `nuvio-collections.json` from Downloads. The person's rows appear on Nuvio's home, the main interest
    pinned first.
 2. **Plugins** (`plugin_repository`, `plugins_to_enable`): *Settings › Plugins › Add repository*, paste the
-   URL, then switch on the plugins listed (for Turkish-speaking profiles: every Anthology plugin). Leave
-   `plugins_to_leave_off` off ("Anthology Canlı Spor", "Anthology Sinema Kanalları": they carry paid
-   channels); only the person may switch those on, by hand.
+   URL, then switch on only the plugins listed (chosen from what the person watches). Leave
+   `plugins_to_leave_off` off ("Anthology Canlı Spor", "Anthology Canlı TV", "Anthology Sinema
+   Kanalları": they carry paid channels); only the person may switch those on, by hand.
 3. **Playback**: subtitle languages from `subtitles`, in that order; *autoplay the best source* from
    `autoplay_best_source`.
 4. **YouTube** (`youtube_follow`): in Nuvio's YouTube, search each name, open its official channel and add

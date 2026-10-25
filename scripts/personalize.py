@@ -84,7 +84,12 @@ ADDON_NAMES = {"torrentio": "Torrentio", "opensubtitles": "OpenSubtitles", "tr_a
 NEXOTV = "https://263f84288ddb-nexotv.baby-beamup.club"
 ANTHOLOGY = "https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json"
 # Paid channels restreamed without the broadcaster's permission: never switched on
-ANTHOLOGY_SKIP = ("Anthology Canlı Spor", "Anthology Sinema Kanalları")
+ANTHOLOGY_SKIP = ("Anthology Canlı Spor", "Anthology Sinema Kanalları", "Anthology Canlı TV")
+# Anthology's channel plugins by the channel kinds of the interview
+ANTHOLOGY_CHANNELS = {"Anthology Ulusal Kanallar": ("general", "entertainment,comedy", "movies,series"),
+                      "Anthology Canlı Haber": ("news",),
+                      "Anthology Belgesel & Çocuk": ("kids,animation", "documentary,science"),
+                      "Anthology Müzik & Eğlence": ("music", "entertainment,comedy")}
 
 
 def fetch_json(url, body=None):
@@ -98,13 +103,32 @@ def fetch_json(url, body=None):
     return json.loads(out.stdout)
 
 
-def anthology_plugins():
-    """Every plugin in Anthology's repository today (so new ones come along), without ANTHOLOGY_SKIP."""
+def anthology_plugins(loves, channel_kinds):
+    """Anthology's plugins (read from its repository, so new ones come along) that fit what this person
+    watches: film and series sources, anime sources, and the channel plugins of the kinds they chose."""
     try:
-        names = [x.get("name", "") for x in fetch_json(ANTHOLOGY).get("scrapers", [])]
-        return [n for n in names if n and n not in ANTHOLOGY_SKIP]
+        scrapers = fetch_json(ANTHOLOGY).get("scrapers", [])
     except Exception:
         return None
+    films, series, anime = "films" in loves, "series" in loves, "anime" in loves
+    picked = []
+    for x in scrapers:
+        name, types = x.get("name", ""), x.get("supportedTypes") or []
+        text = (name + " " + (x.get("description") or "")).lower()
+        if not name or name in ANTHOLOGY_SKIP:
+            continue
+        if "channel" in types:
+            if "channels" in loves and any(k in channel_kinds for k in ANTHOLOGY_CHANNELS.get(name, ())):
+                picked.append(name)
+        elif "anime" in types or "anime" in text or "donghua" in text:
+            if anime:
+                picked.append(name)
+        else:
+            film_only = "film" in text and "dizi" not in text
+            series_only = "dizi" in text and "film" not in text
+            if (films and not series_only) or (series and not film_only):
+                picked.append(name)
+    return picked
 
 
 def load_questions():
@@ -360,12 +384,13 @@ def plan_for(p, data):
                 free.append("Anthology Müzik & Eğlence")
             plugins += free
 
-    # Every Turkish-speaking profile gets all of Anthology (films, series, anime, channels, archives);
-    # others who watch Turkish titles get its official archives
-    anthology_all = lang == "tr"
+    # Turkish-speaking profiles get the Anthology plugins that fit what they watch; others who watch
+    # Turkish titles get its official archives
+    anthology_all = False
     origins = [country if o == "@home" else o for o in as_list(p.get("series_origins")) + as_list(p.get("film_origins"))]
-    if anthology_all:
-        plugins = anthology_plugins() or plugins
+    if lang == "tr":
+        fitting = anthology_plugins(loves, as_list(p.get("channel_kinds")))
+        plugins = fitting if fitting is not None else plugins
     elif "TR" in origins:
         plugins += ["Anthology Dizi", "YouTube Dizi & Film", "PuhuTV"]
     plugins = list(dict.fromkeys(plugins))
