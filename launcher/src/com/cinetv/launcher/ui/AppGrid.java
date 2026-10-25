@@ -113,14 +113,14 @@ public class AppGrid {
     public void render() {
         if (dock == null) return;
         columns = columnsFor(dock.size() + grid.size() + 1);
-        // Every tile has the same size: the dock fills as many slots as the grid has columns.
+        // Every tile has the same size; a row with fewer apps than columns is centred, never left with a gap.
         int slots = Math.max(columns, dock.size());
         dockRow.removeAllViews();
         dockRow.setWeightSum(slots);
+        dockRow.setGravity(Gravity.CENTER_HORIZONTAL);
         for (int i = 0; i < dock.size(); i++) {
-            dockRow.addView(tile(dock.get(i), true, i, slots), tileParams(1f));
+            dockRow.addView(tile(dock.get(i), true, i, dock.size()), tileParams(1f));
         }
-        for (int i = dock.size(); i < slots; i++) dockRow.addView(new View(ctx), tileParams(1f));
 
         // The grid always ends with the "Add" tile, right after the last app.
         gridBox.removeAllViews();
@@ -129,14 +129,13 @@ public class AppGrid {
         for (int i = 0; i < cells; i++) {
             if (i % columns == 0) {
                 row = new LinearLayout(ctx);
+                row.setWeightSum(columns);
+                row.setGravity(Gravity.CENTER_HORIZONTAL);
                 row.setClipChildren(false);
                 row.setClipToPadding(false);
                 gridBox.addView(row);
             }
             row.addView(i < grid.size() ? tile(grid.get(i), false, i, columns) : addTile(i), tileParams(1f));
-        }
-        if (row != null) {
-            for (int r = cells % columns; r != 0 && r < columns; r++) row.addView(new View(ctx), tileParams(1f));
         }
     }
 
