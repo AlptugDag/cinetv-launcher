@@ -316,6 +316,7 @@ public final class Panels {
         role.setText(ctx.getString(R.string.about_role).toUpperCase(Locale.getDefault()));
         left.addView(role);
         final TextView bio = UiKit.label(ctx, 20, UiKit.INK_DIM);
+        bio.setText(R.string.about_bio);
         bio.setLineSpacing(UiKit.pxf(7), 1f);
         bio.setPadding(0, UiKit.px(18), 0, UiKit.px(24));
         bio.setMaxWidth(UiKit.px(560));
@@ -336,11 +337,9 @@ public final class Panels {
 
         final Context app = ctx.getApplicationContext();
         new Thread(() -> {
-            String text = MovieCatalog.personBio(app, com.cinetv.launcher.service.Creator.TMDB_PERSON, 3);
             String url = MovieCatalog.personPhoto(app, com.cinetv.launcher.service.Creator.TMDB_PERSON);
             Bitmap img = url.isEmpty() ? null : com.cinetv.launcher.service.PosterCache.load(app, url, UiKit.px(180), UiKit.px(180));
             bio.post(() -> {
-                bio.setText(text);
                 if (img != null) photo.setImageBitmap(img);
             });
         }, "cinetv-about").start();
