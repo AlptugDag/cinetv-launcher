@@ -23,6 +23,7 @@ import com.cinetv.launcher.device.MemoryOptimizer;
 import com.cinetv.launcher.device.PerformanceProfile;
 import com.cinetv.launcher.device.PictureCalibration;
 import com.cinetv.launcher.remote.RemotePairing;
+import com.cinetv.launcher.service.AppCatalog;
 import com.cinetv.launcher.service.AppLauncher;
 import com.cinetv.launcher.service.MovieCatalog;
 import com.cinetv.launcher.service.Prefs;
@@ -47,6 +48,7 @@ public final class Panels {
         void onKeysChanged();
         void reboot();
         void search(String query);
+        void onAppsChanged();
     }
 
     private Panels() {}
@@ -173,6 +175,15 @@ public final class Panels {
         LinearLayout c4 = column(ctx, cols, R.string.col_tv, 390);
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.tv_settings), ctx.getString(R.string.tv_settings_hint), false,
                 v -> AppLauncher.openSystemSettings(ctx)));
+        if (AppLauncher.liveTvPackage(ctx.getPackageManager()) != null) {
+            boolean liveTv = AppCatalog.liveTvShown(ctx);
+            c4.addView(Controls.tile(ctx, ctx.getString(R.string.live_tv_tile), ctx.getString(liveTv ? R.string.live_tv_tile_on : R.string.state_off), liveTv, v -> {
+                if (AppCatalog.liveTvShown(ctx)) AppCatalog.hide(ctx, AppLauncher.LIVE_TV);
+                else AppCatalog.addToHome(ctx, AppLauncher.LIVE_TV);
+                a.onAppsChanged();
+                host.replace(() -> buildSettings(ctx, host, a));
+            }));
+        }
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.setup_tune), ctx.getString(R.string.setup_tune_hint), false,
                 v -> setup(ctx, host, false)));
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.optimize), ctx.getString(R.string.optimize_hint), false,

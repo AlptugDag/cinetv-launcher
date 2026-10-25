@@ -89,9 +89,17 @@ public final class AppCatalog {
             }
         }
 
+        // The TV's own channels, on TVs that have a tuner; hidden from Home (or Settings) like any app.
+        if (!userHidden.contains(AppLauncher.LIVE_TV) && AppLauncher.liveTvPackage(pm) != null) {
+            AppTileItem tv = new AppTileItem();
+            tv.packageName = AppLauncher.LIVE_TV;
+            tv.label = ctx.getString(com.cinetv.launcher.R.string.live_tv);
+            found.put(AppLauncher.LIVE_TV, tv);
+        }
+
         String dockCsv = prefs.getString(Prefs.DOCK_ORDER, "");
         List<String> dockOrder = dockCsv.isEmpty()
-                ? Arrays.asList(AppLauncher.NUVIO, youtube, "com.turkcell.ott")
+                ? Arrays.asList(AppLauncher.NUVIO, youtube, "com.turkcell.ott", AppLauncher.LIVE_TV)
                 : Arrays.asList(dockCsv.split(","));
         for (String pkg : dockOrder) {
             AppTileItem item = found.remove(pkg);
@@ -173,6 +181,11 @@ public final class AppCatalog {
         pinned.remove(pkg);
         prefs.edit().putString(Prefs.HIDDEN_APPS, String.join(",", hidden))
                 .putString(Prefs.PINNED_APPS, String.join(",", pinned)).apply();
+    }
+
+    /** Whether Home shows the TV-channels tile (Settings switch). */
+    public static boolean liveTvShown(Context ctx) {
+        return !csvSet(Prefs.get(ctx).getString(Prefs.HIDDEN_APPS, "")).contains(AppLauncher.LIVE_TV);
     }
 
     public static boolean isTizenTube(String pkg) {

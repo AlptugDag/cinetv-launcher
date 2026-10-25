@@ -82,6 +82,8 @@ On first start, and from *Settings › Picture, sound & network tuning*:
 ### Home, apps and the rest
 - App tiles in metallic glass with each app's own colour; all tiles one size, columns grow with the number of
   apps, the focused tile pushes its neighbours aside. **Add** is always after the last app.
+- **Live TV tile**: on TVs with a tuner, a *Live TV* tile opens the TV's own channels (antenna, cable,
+  satellite), whatever the brand. Turn it off in *Settings › TV channels on Home*, or hide it like any app.
 - **Long press** (or Menu) on an app: a glass bar under the tile to move, hide, uninstall or open its info.
 - **All apps** drawer in the same tiles, without system services.
 - **Themes**: Alptug Default, Liquid Glass, Aurora, Living Scenes, Royal Gold, Cinema Wall, OLED Black (true
@@ -221,6 +223,7 @@ televizyon.
 - **Görüntü, ses ve ağ**: sinema için en doğru ayarlar, reklam engelleyici DNS, hız testi.
 - **Telefon**: güvenli (HTTPS) sayfa, ana ekrana eklenebilir; arama, kumanda, video yayınlama, arka plan
   gönderme.
+- **Canlı TV**: tuneri olan televizyonlarda ana ekrandaki *Canlı TV* kutucuğu televizyonun kendi kanallarını açar; *Ayarlar › Ana ekranda TV kanalları* ile kapatılır.
 - **Güvenli sadeleştirme**, **AirPods otomatik bağlanma**, **CineTV'yi yok et!** ile her şeyi geri alma.
 
 Kurulum: `./install.sh --tv <TV_IP>` — ya da bir yapay zekâ ajanına "CineTV'yi televizyonuma kur" deyin

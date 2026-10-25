@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.media.tv.TvContract;
 import android.net.Uri;
 import android.provider.Settings;
 import android.util.Log;
@@ -28,6 +29,13 @@ public final class AppLauncher {
     public static final String[] TV_PLUS_PACKAGES = {"com.turkcell.ott", "com.turkcell.tvplus"};
 
     private static final String TAG = "CineTvLaunch";
+
+    /** Home's TV tile. Not a package: it opens the TV's own channels (tuner), whatever the brand. */
+    public static final String LIVE_TV = "cinetv.livetv";
+    /** Tuner apps by brand, for TVs whose system does not answer a channel link. */
+    private static final String[] LIVE_TV_PACKAGES = {
+            "com.google.android.tv", "com.android.tv", "com.mediatek.wwtv.tvcenter", "com.sony.dtv.tvx",
+            "com.xiaomi.mitv.tvplayer"};
 
     private AppLauncher() {}
 
@@ -54,7 +62,29 @@ public final class AppLauncher {
         return intent;
     }
 
+    /** The app that shows the TV's channels: the system's handler for channel links, else a known tuner app; null without a tuner. */
+    public static String liveTvPackage(PackageManager pm) {
+        try {
+            ResolveInfo ri = pm.resolveActivity(new Intent(Intent.ACTION_VIEW, TvContract.Channels.CONTENT_URI), 0);
+            if (ri != null && ri.activityInfo != null && !"android".equals(ri.activityInfo.packageName)) return ri.activityInfo.packageName;
+        } catch (Throwable ignored) {
+        }
+        for (String p : LIVE_TV_PACKAGES) if (launchIntent(pm, p) != null) return p;
+        return null;
+    }
+
+    public static boolean openLiveTv(Context ctx) {
+        String pkg = liveTvPackage(ctx.getPackageManager());
+        if (pkg == null) return false;
+        // Asked for: the boot guard must not send the tuner back to Home.
+        com.cinetv.launcher.device.DeviceTweaks.markUserOpenedTv();
+        Intent intent = launchIntent(ctx.getPackageManager(), pkg);
+        if (intent != null && start(ctx, intent)) return true;
+        return start(ctx, new Intent(Intent.ACTION_VIEW, TvContract.Channels.CONTENT_URI).setPackage(pkg));
+    }
+
     public static boolean isLaunchable(PackageManager pm, String pkg) {
+        if (LIVE_TV.equals(pkg)) return liveTvPackage(pm) != null;
         try {
             return pm.getLeanbackLaunchIntentForPackage(pkg) != null || pm.getLaunchIntentForPackage(pkg) != null;
         } catch (Throwable t) {
@@ -63,6 +93,7 @@ public final class AppLauncher {
     }
 
     public static boolean launch(Context ctx, String pkg) {
+        if (LIVE_TV.equals(pkg)) return openLiveTv(ctx);
         Intent intent = launchIntent(ctx.getPackageManager(), pkg);
         if (intent == null) return false;
         return start(ctx, intent);

@@ -846,6 +846,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     @Override
+    public void onAppsChanged() {
+        loadApps(true);
+    }
+
+    @Override
     public void reboot() {
         toast(R.string.rebooting);
         handler.postDelayed(() -> DeviceTweaks.reboot(this), 800);

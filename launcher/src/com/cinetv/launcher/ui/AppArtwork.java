@@ -3,6 +3,7 @@ package com.cinetv.launcher.ui;
 import com.cinetv.launcher.FontManager;
 import com.cinetv.launcher.R;
 import com.cinetv.launcher.service.AppCatalog;
+import com.cinetv.launcher.service.AppLauncher;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -42,6 +43,7 @@ public final class AppArtwork {
     public static String getCleanLabel(String pkg, String originalLabel) {
         if (pkg == null) return "";
         String lower = pkg.toLowerCase();
+        if (AppLauncher.LIVE_TV.equals(pkg)) return originalLabel;
         if (AppCatalog.isTizenTube(pkg)) return "YouTube";
         if (lower.contains("turkcell.ott") || lower.contains("tvplus")) return "TV+";
         if (lower.contains("instantbits.cast")) return "Web Video Caster";
@@ -64,6 +66,9 @@ public final class AppArtwork {
     public static int getAppNeonColor(String pkg) {
         if (pkg == null) return Color.parseColor("#E0AAFF");
         String lower = pkg.toLowerCase();
+        if (AppLauncher.LIVE_TV.equals(pkg)) {
+            return Color.parseColor("#38BDF8"); // Broadcast Sky (Hue 199°)
+        }
         if (lower.contains("turkcell.ott") || lower.contains("tvplus")) {
             return Color.parseColor("#FFD60A"); // Pure Solar Gold (Hue 50°)
         }
@@ -337,6 +342,9 @@ public final class AppArtwork {
                                                   Drawable rawBanner, Drawable rawIcon, boolean darkMode) {
         String lower = pkg != null ? pkg.toLowerCase() : "";
 
+        if (AppLauncher.LIVE_TV.equals(pkg)) {
+            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createLiveTvCard(ctx, rawLabel)));
+        }
         if (AppCatalog.isTizenTube(pkg)) {
             return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createYouTubeCard(ctx)));
         }
@@ -878,6 +886,40 @@ public final class AppArtwork {
         Paint.FontMetrics fm = text.getFontMetrics();
         float ty = (CARD_H / 2f) - ((fm.ascent + fm.descent) / 2f);
         canvas.drawText("USB Medya", 240f, ty, text);
+        return bmp;
+    }
+
+    /** The TV's own channels: a sky-blue screen with its antenna, and the label. */
+    private static Bitmap createLiveTvCard(Context ctx, String label) {
+        Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
+        int neon = Color.parseColor("#38BDF8");
+        drawLiquidGlassCardBase(canvas, neon, 180f, CARD_H / 2f);
+
+        float cy = CARD_H / 2f + 8f;
+        RectF screen = new RectF(128f, cy - 34f, 228f, cy + 38f);
+        Paint badge = createSubtleMetallicBrandPaint(
+                screen.left, screen.top, screen.right, screen.bottom,
+                Color.parseColor("#BAE6FD"),
+                Color.parseColor("#0EA5E9"),
+                Color.parseColor("#0369A1")
+        );
+        drawMetallicBadge(canvas, screen, 14f, badge, neon);
+        Paint antenna = new Paint(Paint.ANTI_ALIAS_FLAG);
+        antenna.setColor(Color.parseColor("#E0F2FE"));
+        antenna.setStrokeWidth(7f);
+        antenna.setStrokeCap(Paint.Cap.ROUND);
+        antenna.setShadowLayer(14f, 0f, 0f, neon);
+        canvas.drawLine(178f, screen.top - 4f, 152f, screen.top - 34f, antenna);
+        canvas.drawLine(178f, screen.top - 4f, 204f, screen.top - 34f, antenna);
+        Paint glass = new Paint(Paint.ANTI_ALIAS_FLAG);
+        glass.setColor(Color.argb(150, 255, 255, 255));
+        canvas.drawRoundRect(new RectF(screen.left + 14f, screen.top + 12f, screen.right - 14f, screen.bottom - 12f), 8f, 8f, glass);
+
+        Paint text = createCrispTextPaint(ctx, label.length() > 9 ? 48f : 56f, neon);
+        Paint.FontMetrics fm = text.getFontMetrics();
+        float ty = (CARD_H / 2f) - ((fm.ascent + fm.descent) / 2f);
+        canvas.drawText(label, 252f, ty, text);
         return bmp;
     }
 

@@ -37,6 +37,9 @@
     <string name="background">Background</string>
     <string name="background_hint">Send a picture from your phone</string>
     <string name="background_custom">Your picture · send another from your phone</string>
+    <string name="live_tv">Live TV</string>
+    <string name="live_tv_tile">TV channels on Home</string>
+    <string name="live_tv_tile_on">On · the TV\'s own channels</string>
     <string name="tv_settings">TV settings</string>
     <string name="tv_settings_hint">The TV\'s own settings (or hold the gear button)</string>
     <string name="destroy">Remove CineTV!</string>
