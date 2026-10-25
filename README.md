@@ -33,6 +33,10 @@ around 25 questions, most with an answer ready, asked in the terminal or by an A
 - **Sports fans**: films, series and documentaries about their sports, and highlights and goals from the
   teams' official channels inside Nuvio.
 - **Live channels**: free public channels of the kinds and countries you choose.
+- **Turkish-speaking viewers** get all of [Anthology](https://github.com/falsisdev/anthology) in Nuvio:
+  films, series, anime, national, news, documentary, kids' and music channels, and official archives.
+  Its two plugins that carry paid channels (*Anthology Canlı Spor*, *Anthology Sinema Kanalları*) are left
+  off by the installer; they can only be switched on by hand, in *Nuvio › Settings › Plugins*.
 - **Only the apps you need**: AirPlay only in iPhone homes, Nova only if you cast from your phone, YouTube
   only if you watch it.
 
@@ -250,6 +254,9 @@ server, casting and HTTPS, `device/` keys, picture and sound, network, memory, A
 dizi kökenleri, anime, servisler, kalite, cihazlar), sonra sadece izleyeceklerini kurar: televizyonun dili,
 Nuvio eklentileri ve sana özel raflar (ör. sadece Türk dizileri, futbol belgeselleri, Kore dizileri), istersen
 ücretsiz canlı kanallar ve sadece ihtiyacın olan uygulamalar. Hiç izlemeyeceğin bir şey boşuna kurulmaz.
+Türkçe her profile Nuvio'da Anthology'nin tamamı gelir (film, dizi, anime, kanallar, resmi arşivler).
+Paralı kanalları taşıyan iki eklentisi (*Anthology Canlı Spor*, *Anthology Sinema Kanalları*) kurulumda kapalı
+kalır; bunlar yalnızca elle, *Nuvio › Ayarlar › Eklentiler* bölümünden açılabilir.
 
 Ayrıca:
 filmleriniz gerçek 3D DVD kutularından oluşan bir rafta; ne izlemek istediğinizi anlayan bir yapay zekâ

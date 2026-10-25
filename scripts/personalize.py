@@ -20,7 +20,6 @@ import re
 import subprocess
 import sys
 import time
-import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 QUESTIONS = os.path.join(HERE, "personalize", "questions.json")
@@ -68,6 +67,28 @@ ADDON_NAMES = {"torrentio": "Torrentio", "opensubtitles": "OpenSubtitles", "tr_a
                "anime_kitsu": "Anime Kitsu", "youtube": "YouTube", "top10": "Netflix Top 10", "channels": "NexoTV"}
 NEXOTV = "https://263f84288ddb-nexotv.baby-beamup.club"
 ANTHOLOGY = "https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json"
+# Paid channels restreamed without the broadcaster's permission: never switched on
+ANTHOLOGY_SKIP = ("Anthology Canlı Spor", "Anthology Sinema Kanalları")
+
+
+def fetch_json(url, body=None):
+    """JSON over HTTPS through curl: python.org's macOS Python often has no root certificates."""
+    cmd = ["curl", "-fsSL", "-m", "30", url]
+    if body is not None:
+        cmd[1:1] = ["-X", "POST", "-H", "Content-Type: application/json", "--data-binary", json.dumps(body)]
+    out = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
+    if out.returncode != 0:
+        raise RuntimeError(out.stderr.strip() or "curl failed")
+    return json.loads(out.stdout)
+
+
+def anthology_plugins():
+    """Every plugin in Anthology's repository today (so new ones come along), without ANTHOLOGY_SKIP."""
+    try:
+        names = [x.get("name", "") for x in fetch_json(ANTHOLOGY).get("scrapers", [])]
+        return [n for n in names if n and n not in ANTHOLOGY_SKIP]
+    except Exception:
+        return None
 
 
 def load_questions():
@@ -320,17 +341,20 @@ def plan_for(p, data):
                 free.append("Anthology Müzik & Eğlence")
             plugins += free
 
-    # Turkish series and films from official archives (channel archives, official YouTube, puhutv)
+    # Every Turkish-speaking profile gets all of Anthology (films, series, anime, channels, archives);
+    # others who watch Turkish titles get its official archives
+    anthology_all = lang == "tr"
     origins = [country if o == "@home" else o for o in as_list(p.get("series_origins")) + as_list(p.get("film_origins"))]
-    turkish = "TR" in origins
-    if turkish or (lang == "tr" and any(x in loves for x in ("series", "films"))):
+    if anthology_all:
+        plugins = anthology_plugins() or plugins
+    elif "TR" in origins:
         plugins += ["Anthology Dizi", "YouTube Dizi & Film", "PuhuTV"]
     plugins = list(dict.fromkeys(plugins))
 
     collections = build_collections(p, data, texts, country, main)
 
     # Only the apps this person will open
-    apps = ["nuvio"] if addons or collections else []
+    apps = ["nuvio"] if addons or collections or plugins or anthology_all else []
     if "youtube" in loves:
         apps.append("youtube")
     if p.get("cast", "y") == "y":
@@ -340,7 +364,7 @@ def plan_for(p, data):
     skipped = [a for a in ("nuvio", "youtube", "nova", "airplay") if a not in apps]
     return {"lang": lang, "ui": texts.ui, "iso": iso, "country": country, "city": p.get("city") or "",
             "main": main, "addons": addons, "channels": channels, "plugins": plugins, "follow": follow,
-            "subs": subs, "autoplay": p.get("autoplay", "y") == "y", "collections": collections,
+            "anthology_all": anthology_all, "subs": subs, "autoplay": p.get("autoplay", "y") == "y", "collections": collections,
             "apps": apps, "skipped": skipped, "notes": p.get("notes") or ""}
 
 
@@ -478,7 +502,9 @@ def describe(plan, data):
             lines.append("      " + c["title"] + ": " + ", ".join(f["title"] for f in c["folders"]))
     if plan["addons"]:
         lines.append("  • " + texts("plan_addons", list=", ".join(ADDON_NAMES[a] for a, _ in plan["addons"])))
-    if plan["plugins"]:
+    if plan["anthology_all"]:
+        lines.append("  • " + texts("plan_anthology", n=len(plan["plugins"]) or "", skip=", ".join(ANTHOLOGY_SKIP)))
+    elif plan["plugins"]:
         lines.append("  • " + texts("plan_plugins", list=", ".join(plan["plugins"])))
     if plan["follow"]:
         lines.append("  • " + texts("plan_youtube", list=", ".join(plan["follow"])))
@@ -492,9 +518,7 @@ def describe(plan, data):
 # ---- applying it to the TV -----------------------------------------------------------------------
 
 def channels_url(config):
-    req = urllib.request.Request(NEXOTV + "/encrypt", data=json.dumps(config).encode(), headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        token = json.load(r)["token"]
+    token = fetch_json(NEXOTV + "/encrypt", config)["token"]
     return ADDONS["channels"].format(config=token)
 
 
@@ -537,7 +561,9 @@ def apply(plan, data, out_dir):
             tv("am", "broadcast", "-a", "android.intent.action.MEDIA_SCANNER_SCAN_FILE", "-d", "file:///sdcard/Download/nuvio-collections.json")
 
     prefs = {"language": plan["lang"], "subtitles": plan["subs"], "autoplay_best_source": plan["autoplay"],
-             "plugin_repository": ANTHOLOGY if plan["plugins"] else None, "plugins_to_enable": plan["plugins"],
+             "plugin_repository": ANTHOLOGY if plan["plugins"] or plan["anthology_all"] else None,
+             "plugins_to_enable": "all except plugins_to_leave_off" if plan["anthology_all"] and not plan["plugins"] else plan["plugins"],
+             "plugins_to_leave_off": list(ANTHOLOGY_SKIP) if plan["plugins"] or plan["anthology_all"] else [],
              "youtube_follow": plan["follow"], "collections_file": "/sdcard/Download/nuvio-collections.json" if plan["collections"] else None,
              "notes": plan["notes"]}
     with open(os.path.join(out_dir, "nuvio-preferences.json"), "w", encoding="utf-8") as f:
@@ -547,7 +573,9 @@ def apply(plan, data, out_dir):
         print("\n" + texts("steps"))
         if plan["collections"]:
             print("  1. " + texts("import_rows"))
-        if plan["plugins"]:
+        if plan["anthology_all"]:
+            print("  2. " + texts("step_repo_all", url=ANTHOLOGY, skip=", ".join(ANTHOLOGY_SKIP)))
+        elif plan["plugins"]:
             print("  2. " + texts("step_repo", url=ANTHOLOGY, list=", ".join(plan["plugins"])))
         print("  3. " + texts("step_subs", list=", ".join(plan["subs"]), auto=texts("yes") if plan["autoplay"] else texts("no")))
         if plan["follow"]:

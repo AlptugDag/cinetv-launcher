@@ -2670,6 +2670,22 @@
    "es": "ninguno",
    "de": "keine",
    "fr": "aucun"
+  },
+  "plan_anthology": {
+   "en": "Anthology in Nuvio: all {n} plugins (films, series, anime, channels), except {skip}",
+   "tr": "Nuvio'da Anthology: {n} eklentinin hepsi (film, dizi, anime, kanallar), {skip} hariç",
+   "pt": "Anthology no Nuvio: todos os {n} plugins (filmes, séries, anime, canais), exceto {skip}",
+   "es": "Anthology en Nuvio: los {n} plugins (películas, series, anime, canales), salvo {skip}",
+   "de": "Anthology in Nuvio: alle {n} Plugins (Filme, Serien, Anime, Sender), außer {skip}",
+   "fr": "Anthology dans Nuvio : les {n} plugins (films, séries, anime, chaînes), sauf {skip}"
+  },
+  "step_repo_all": {
+   "en": "Settings › Plugins › Add repository: {url}, then switch on every plugin except {skip}",
+   "tr": "Ayarlar › Eklentiler › Depo ekle: {url}, sonra {skip} hariç bütün eklentileri aç",
+   "pt": "Configurações › Plugins › Adicionar repositório: {url}, depois ative todos os plugins exceto {skip}",
+   "es": "Ajustes › Plugins › Añadir repositorio: {url}, luego activa todos los plugins salvo {skip}",
+   "de": "Einstellungen › Plugins › Repository hinzufügen: {url}, dann alle Plugins einschalten außer {skip}",
+   "fr": "Paramètres › Plugins › Ajouter un dépôt : {url}, puis active tous les plugins sauf {skip}"
   }
  }
 }
