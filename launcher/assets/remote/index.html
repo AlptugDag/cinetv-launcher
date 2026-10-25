@@ -53,6 +53,7 @@ h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
   background:linear-gradient(transparent,rgba(0,0,0,.85))}
 .card .badge{position:absolute;top:6px;left:6px;font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(0,0,0,.55)}
 .empty{color:var(--dim);text-align:center;padding:40px 10px}
+.answer{padding:14px 16px;font-size:15px;line-height:1.45;border-left:3px solid var(--accent2)}
 nav{position:fixed;left:12px;right:12px;bottom:calc(10px + var(--safe-b));z-index:9;display:flex;padding:6px}
 nav button{flex:1;background:none;border:0;color:var(--dim);font-size:11px;padding:8px 0;border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:3px}
 nav button.on{color:var(--ink);background:var(--glass-hi)}
@@ -343,6 +344,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     const q = $("q").value.trim(); if (!q) return;
     $("q").blur();
     api("tv/search", {q}).then(() => toast(t("onTv"))).catch(() => {});
+    // The phone shows the assistant's answer too.
+    const my = ++seq; skeleton();
+    api("catalog/search", {q, ai: 1}).then(r => {
+      if (my !== seq) return;
+      render(r.results || [], r.title || t("results"));
+      if (r.answer) {
+        if (!(r.results || []).length) $("results").innerHTML = "";
+        $("results").insertAdjacentHTML("afterbegin", `<div class="answer glass" style="grid-column:1/-1">${esc(r.answer)}</div>`);
+      }
+    }).catch(() => {});
   });
   $("q").addEventListener("input", e => {
     clearTimeout(searchTimer);
@@ -350,8 +361,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     searchTimer = setTimeout(async () => {
       if (!q) return trending();
       const my = ++seq; skeleton();
-      try { const r = await api("catalog/search", {q}); if (my === seq) render(r.results || [], t("results")); } catch (e) {}
-    }, 350);
+      try {
+        const r = await api("catalog/search", {q});
+        if (my !== seq) return;
+        render(r.results || [], t("results"));
+      } catch (e) {}
+    }, 400);
   });
 
   const sheet = $("sheet"), bg = $("sheetBg");

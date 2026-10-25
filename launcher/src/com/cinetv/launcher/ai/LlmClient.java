@@ -42,7 +42,7 @@ public final class LlmClient {
     static final String DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
     /** Search and spoken answers: about a second, which a remote in hand needs. */
     static final String FAST_GEMINI_MODEL = "gemini-3.5-flash-lite";
-    static final String FALLBACK_GEMINI_MODEL = "gemini-2.5-flash-lite";
+    static final String FALLBACK_GEMINI_MODEL = "gemini-2.5-flash";
 
     private static final String TAG = "CineTvLlm";
 
@@ -114,21 +114,20 @@ public final class LlmClient {
             return r;
         }
         boolean claude = PROVIDER_CLAUDE.equals(provider);
-        String model = fast ? (claude ? FAST_CLAUDE_MODEL : FAST_GEMINI_MODEL)
+        String first = fast ? (claude ? FAST_CLAUDE_MODEL : FAST_GEMINI_MODEL)
                 : Prefs.get(ctx).getString(claude ? "ai_claude_model" : "ai_gemini_model", claude ? DEFAULT_CLAUDE_MODEL : DEFAULT_GEMINI_MODEL);
-        Result r = call(ctx, claude, model, key, system, user, maxTokens);
-        int st = r.status;
-        if (!r.success && (st == 400 || st == 404 || st == 408 || st == 429 || st >= 500 || st == -1)) {
-            String fallback = claude ? FALLBACK_CLAUDE_MODEL : FALLBACK_GEMINI_MODEL;
-            if (!fallback.equals(model)) {
-                Log.w(TAG, "Model " + model + " failed (" + st + "), retrying with " + fallback);
-                Result f = call(ctx, claude, fallback, key, system, user, maxTokens);
-                if (f.success && st == 404 && !fast) {
-                    // This key cannot use the model at all: go straight to the fallback from now on.
-                    Prefs.get(ctx).edit().putString(claude ? "ai_claude_model" : "ai_gemini_model", fallback).apply();
-                }
-                if (f.success) return f;
-            }
+        // Busy (429/5xx), missing for this key (404) or slow: walk down a short chain of models.
+        String[] chain = claude ? new String[]{first, FALLBACK_CLAUDE_MODEL}
+                : fast ? new String[]{first, "gemini-flash-lite-latest", "gemini-3.5-flash", "gemini-2.5-flash"}
+                : new String[]{first, "gemini-flash-latest", "gemini-3.5-flash-lite", "gemini-2.5-flash"};
+        Result r = null;
+        java.util.Set<String> tried = new java.util.HashSet<>();
+        for (String model : chain) {
+            if (!tried.add(model)) continue;
+            r = call(ctx, claude, model, key, system, user, maxTokens);
+            int st = r.status;
+            if (r.success || !(st == 400 || st == 404 || st == 408 || st == 429 || st >= 500 || st == -1)) return r;
+            Log.w(TAG, "Model " + model + " failed (" + st + "), trying the next one");
         }
         return r;
     }

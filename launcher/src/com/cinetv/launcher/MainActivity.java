@@ -892,6 +892,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     @Override
+    public void onPhoneActivity() {
+        resetIdle();
+        hideScreensaver();
+    }
+
+    @Override
     public void onWallpaperChanged() {
         home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this));
         if (home.modal.isShowing()) home.modal.close();

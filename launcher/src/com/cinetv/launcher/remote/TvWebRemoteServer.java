@@ -57,6 +57,8 @@ public final class TvWebRemoteServer {
         void mirrorSearch(String text);
         /** A new backdrop arrived from the phone. */
         void onWallpaperChanged();
+        /** Someone is using the phone page: the TV is not idle. */
+        void onPhoneActivity();
     }
 
     /** One pending "may this phone connect?" request at a time. */
@@ -79,7 +81,7 @@ public final class TvWebRemoteServer {
     private static volatile boolean secureUp;
 
     private static final Handler main = new Handler(Looper.getMainLooper());
-    private static final ExecutorService clients = Executors.newFixedThreadPool(4);
+    private static final ExecutorService clients = Executors.newFixedThreadPool(8);
     private static volatile ServerSocket server;
     private static volatile int port = PORTS[0];
     private static volatile Controller controller;
@@ -273,6 +275,10 @@ public final class TvWebRemoteServer {
                 json(out, saveWallpaper(in, length));
                 return;
             }
+            post(() -> {
+                Controller c = controller;
+                if (c != null) c.onPhoneActivity();
+            });
             json(out, api(path, q));
         } catch (Throwable t) {
             Log.d(TAG, "Request failed: " + t.getClass().getSimpleName());
@@ -400,8 +406,14 @@ public final class TvWebRemoteServer {
             case "/api/catalog/trending":
                 return ok.put("results", toJson(MovieCatalog.trending(app, 24)));
             case "/api/catalog/search": {
-                String text = clip(q.get("q"), 100);
-                return ok.put("results", text.isEmpty() ? new JSONArray() : toJson(MovieCatalog.search(app, text, 30)));
+                // The same assistant as the TV: people, themes, plots, series, or an answer.
+                String text = clip(q.get("q"), 200);
+                if (text.isEmpty()) return ok.put("results", new JSONArray());
+                // While typing: a quick title search. On Enter (ai=1): the assistant, once.
+                if (!"1".equals(q.get("ai"))) return ok.put("results", toJson(MovieCatalog.search(app, text, 30)));
+                com.cinetv.launcher.ai.MovieAssistant.Reply r = com.cinetv.launcher.ai.MovieAssistant.ask(app, text, 30);
+                if (r.movies.isEmpty() && r.answer.isEmpty()) r.movies = MovieCatalog.search(app, text, 30);
+                return ok.put("results", toJson(r.movies)).put("title", r.title).put("answer", r.answer);
             }
             case "/api/open": {
                 final MovieCatalog.Movie m = new MovieCatalog.Movie();
