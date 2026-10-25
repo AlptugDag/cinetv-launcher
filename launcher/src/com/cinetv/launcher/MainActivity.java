@@ -387,7 +387,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void onLogo() {
-        onSettings();
+        // The signature opens its author's page; the gear opens Settings.
+        Panels.about(this, home.modal, this);
+    }
+
+    @Override
+    public void onSystemSettings() {
+        AppLauncher.openSystemSettings(this);
     }
 
     @Override

@@ -31,6 +31,7 @@ public final class DeviceTweaks {
     public static void applyLauncherDefaults(Context ctx) {
         if (!canWriteSecureSettings(ctx)) return;
         ContentResolver cr = ctx.getContentResolver();
+        snapshotOriginals(ctx);
         try {
             Settings.System.putInt(cr, Settings.System.SCREEN_OFF_TIMEOUT, 900_000);
             Settings.Secure.putInt(cr, "sleep_timeout", 900_000);
@@ -40,6 +41,69 @@ public final class DeviceTweaks {
         } catch (Throwable ignored) {
         }
         enableKeyService(ctx);
+    }
+
+    // ---- the TV's own values, kept so "Remove CineTV" can put everything back -------------------------
+
+    private static final String ORIGINALS = "tv_originals_v1";
+    private static final String[][] TRACKED = {
+            {"system", Settings.System.SCREEN_OFF_TIMEOUT}, {"secure", "sleep_timeout"}, {"secure", "screensaver_timeout"},
+            {"secure", "screensaver_enabled"}, {"secure", "screensaver_components"},
+            {"secure", Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES}, {"secure", Settings.Secure.ACCESSIBILITY_ENABLED}};
+
+    /** First time only: remembers the values CineTV is about to change. */
+    static void snapshotOriginals(Context ctx) {
+        android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(ctx);
+        if (p.contains(ORIGINALS)) return;
+        try {
+            org.json.JSONObject o = new org.json.JSONObject();
+            ContentResolver cr = ctx.getContentResolver();
+            for (String[] t : TRACKED) {
+                String v = "system".equals(t[0]) ? Settings.System.getString(cr, t[1]) : Settings.Secure.getString(cr, t[1]);
+                o.put(t[0] + ":" + t[1], v == null ? org.json.JSONObject.NULL : v);
+            }
+            p.edit().putString(ORIGINALS, o.toString()).apply();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** Puts back what CineTV changed (timeouts, screensaver, accessibility) and drops its own keys. */
+    public static void restoreOriginals(Context ctx) {
+        ContentResolver cr = ctx.getContentResolver();
+        try {
+            org.json.JSONObject o = new org.json.JSONObject(com.cinetv.launcher.service.Prefs.get(ctx).getString(ORIGINALS, "{}"));
+            for (String[] t : TRACKED) {
+                String key = t[0] + ":" + t[1];
+                String v = o.isNull(key) ? null : o.optString(key, null);
+                // Values that still point at CineTV were not the TV's own: clear them.
+                if (v != null && v.contains("com.cinetv.launcher")) v = stripCineTv(v);
+                if ("system".equals(t[0])) {
+                    if (v != null) Settings.System.putString(cr, t[1], v);
+                } else {
+                    Settings.Secure.putString(cr, t[1], v);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            String a11y = Settings.Secure.getString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            if (a11y != null && a11y.contains("com.cinetv.launcher")) Settings.Secure.putString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, stripCineTv(a11y));
+            String dream = Settings.Secure.getString(cr, "screensaver_components");
+            if (dream != null && dream.contains("com.cinetv.launcher")) Settings.Secure.putString(cr, "screensaver_components", stripCineTv(dream));
+            Settings.Global.putString(cr, "cinetv_city", null);
+            Settings.Global.putString(cr, "cinetv_appearance", null);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static String stripCineTv(String list) {
+        StringBuilder sb = new StringBuilder();
+        for (String part : list.split("[:,]")) {
+            if (part.trim().isEmpty() || part.contains("com.cinetv.launcher")) continue;
+            if (sb.length() > 0) sb.append(':');
+            sb.append(part.trim());
+        }
+        return sb.toString();
     }
 
     public static void enableKeyService(Context ctx) {

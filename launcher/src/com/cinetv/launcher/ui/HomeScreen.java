@@ -43,6 +43,8 @@ public class HomeScreen {
         void onInputs();
         void onAllApps();
         void onSettings();
+        /** Long press on the gear: the TV's own settings. */
+        void onSystemSettings();
         void onFocusLight(View v, int color);
     }
 
@@ -220,6 +222,10 @@ public class HomeScreen {
                 headerButton(R.drawable.ic_all_apps, R.string.all_apps, v -> listener.onAllApps()),
                 headerButton(R.drawable.ic_settings_gear, R.string.settings_title, v -> listener.onSettings()),
         };
+        headerButtons[headerButtons.length - 1].setOnLongClickListener(v -> {
+            listener.onSystemSettings();
+            return true;
+        });
         for (View b : headerButtons) {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiKit.px(68), UiKit.px(68));
             lp.setMargins(UiKit.px(12), 0, 0, 0);

@@ -85,6 +85,15 @@ public final class ThemeManager {
 
     private ThemeManager() {}
 
+    /** A picture the viewer sent from the phone (Settings › Background). */
+    public static java.io.File customWallpaper(Context ctx) {
+        return new java.io.File(ctx.getFilesDir(), "custom_wallpaper.jpg");
+    }
+
+    public static boolean hasCustomWallpaper(Context ctx) {
+        return customWallpaper(ctx).isFile();
+    }
+
     public static Theme current(Context ctx) {
         return byId(Prefs.get(ctx).getString(Prefs.THEME, DEFAULT_THEME));
     }

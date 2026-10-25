@@ -23,6 +23,7 @@ import com.cinetv.launcher.device.MemoryOptimizer;
 import com.cinetv.launcher.device.PerformanceProfile;
 import com.cinetv.launcher.device.PictureCalibration;
 import com.cinetv.launcher.remote.RemotePairing;
+import com.cinetv.launcher.service.AppLauncher;
 import com.cinetv.launcher.service.MovieCatalog;
 import com.cinetv.launcher.service.Prefs;
 import com.cinetv.launcher.service.SecretStore;
@@ -97,8 +98,10 @@ public final class Panels {
         c1.addView(Controls.tile(ctx, ctx.getString(R.string.appearance), appearanceName(ctx, mode), false, v -> {
             ThemeManager.setAppearance(ctx, ThemeManager.nextAppearance(ThemeManager.appearance(ctx)));
             a.applyAppearance();
-            host.replace(() -> buildSettings(ctx, host, a));
         }));
+        boolean customBg = ThemeManager.hasCustomWallpaper(ctx);
+        c1.addView(Controls.tile(ctx, ctx.getString(R.string.background), ctx.getString(customBg ? R.string.background_custom : R.string.background_hint), customBg,
+                v -> host.push(() -> buildPairing(ctx, host, "background"))));
 
         // 2. Look & feel
         LinearLayout c2 = column(ctx, cols, R.string.col_visual, 390);
@@ -131,14 +134,7 @@ public final class Panels {
         String perfMode = PerformanceProfile.mode(ctx);
         String tierName = ctx.getString(tierRes(PerformanceProfile.tier(ctx)));
         c2.addView(Controls.tile(ctx, ctx.getString(R.string.performance),
-                ctx.getString(perfModeRes(perfMode)) + " · " + tierName, false, v -> {
-                    String m = PerformanceProfile.mode(ctx);
-                    String next = PerformanceProfile.MODE_AUTO.equals(m) ? PerformanceProfile.MODE_ECO
-                            : PerformanceProfile.MODE_ECO.equals(m) ? PerformanceProfile.MODE_MAX : PerformanceProfile.MODE_AUTO;
-                    PerformanceProfile.setMode(ctx, next);
-                    a.onPerformanceChanged();
-                    host.replace(() -> buildSettings(ctx, host, a));
-                }));
+                ctx.getString(perfModeRes(perfMode)) + " · " + tierName, false, v -> host.push(() -> buildPerformancePicker(ctx, host, a))));
         c2.addView(Controls.tile(ctx, ctx.getString(R.string.screensaver), ctx.getString(R.string.screensaver_preview), false, v -> {
             host.close();
             a.previewScreensaver();
@@ -155,13 +151,6 @@ public final class Panels {
         boolean mdb = SecretStore.has(ctx, SecretStore.MDBLIST_KEY);
         c3.addView(Controls.tile(ctx, ctx.getString(R.string.mdblist_key), ctx.getString(mdb ? R.string.state_on : R.string.not_set), mdb,
                 v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.MDBLIST_KEY, R.string.mdblist_key, R.string.mdblist_key_hint))));
-        c3.addView(Controls.tile(ctx, ctx.getString(R.string.ai_curate), ctx.getString(R.string.ai_curate_hint), false, v -> {
-            if (!LlmClient.isConfigured(ctx)) {
-                Toast.makeText(ctx, R.string.ai_err_no_key, Toast.LENGTH_LONG).show();
-                return;
-            }
-            host.push(() -> buildMoodPicker(ctx, host, a));
-        }));
         String city = Prefs.city(ctx);
         final String dnsChoice = com.cinetv.launcher.device.NetworkOptimizer.choice(ctx);
         c3.addView(Controls.tile(ctx, ctx.getString(R.string.dns_title), ctx.getString(dnsRes(dnsChoice)),
@@ -182,19 +171,16 @@ public final class Panels {
 
         // 4. TV & phone
         LinearLayout c4 = column(ctx, cols, R.string.col_tv, 390);
-        c4.addView(Controls.tile(ctx, ctx.getString(R.string.connect_phone), ctx.getString(R.string.connect_phone_hint), false,
-                v -> host.push(() -> buildPairing(ctx, host, "search"))));
-        c4.addView(Controls.tile(ctx, ctx.getString(R.string.calibration), ctx.getString(PictureCalibration.hasPanelEngine()
-                ? R.string.calibration_hint : R.string.calibration_hint_basic), false, v -> host.push(() -> buildPairing(ctx, host, "cal"))));
+        c4.addView(Controls.tile(ctx, ctx.getString(R.string.tv_settings), ctx.getString(R.string.tv_settings_hint), false,
+                v -> AppLauncher.openSystemSettings(ctx)));
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.setup_tune), ctx.getString(R.string.setup_tune_hint), false,
                 v -> setup(ctx, host, false)));
-        c4.addView(Controls.tile(ctx, ctx.getString(R.string.remote_keys), ctx.getString(R.string.remote_keys_hint), false,
-                v -> host.push(() -> buildKeyCapture(ctx, host, a))));
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.optimize), ctx.getString(R.string.optimize_hint), false,
                 v -> host.push(() -> buildBenchmark(ctx, host))));
+        c4.addView(Controls.tile(ctx, ctx.getString(R.string.remote_keys), ctx.getString(R.string.remote_keys_hint), false,
+                v -> host.push(() -> buildKeyCapture(ctx, host, a))));
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.reboot), null, false, v -> a.reboot()));
-        c4.addView(Controls.tile(ctx, ctx.getString(R.string.about_title), ctx.getString(R.string.about_hint), false,
-                v -> host.push(() -> buildAbout(ctx, host, a))));
+        c4.addView(Controls.alarm(ctx, ctx.getString(R.string.destroy), v -> host.push(() -> buildDestroy(ctx, host))));
         return root;
     }
 
@@ -238,6 +224,67 @@ public final class Panels {
             case HIGH: return R.string.tier_high;
             default: return R.string.tier_mid;
         }
+    }
+
+    // ---- Performance --------------------------------------------------------------------------------
+
+    /** A deliberate choice, never a cycling tap: Maximum on a weak TV would hurt. */
+    private static View buildPerformancePicker(final Context ctx, final ModalHost host, final Actions a) {
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.addView(Controls.header(ctx, ctx.getString(R.string.performance)));
+        String current = PerformanceProfile.mode(ctx);
+        String[][] modes = {
+                {PerformanceProfile.MODE_AUTO, ctx.getString(R.string.perf_auto), ctx.getString(R.string.perf_auto_hint, ctx.getString(tierRes(PerformanceProfile.detectedTier(ctx))))},
+                {PerformanceProfile.MODE_ECO, ctx.getString(R.string.perf_eco), ctx.getString(R.string.perf_eco_hint)},
+                {PerformanceProfile.MODE_MAX, ctx.getString(R.string.perf_max), ctx.getString(R.string.perf_max_hint)}};
+        for (final String[] m : modes) {
+            root.addView(Controls.tile(ctx, m[1], m[2], m[0].equals(current), v -> {
+                host.back();
+                if (m[0].equals(PerformanceProfile.mode(ctx))) return;
+                PerformanceProfile.setMode(ctx, m[0]);
+                a.onPerformanceChanged();
+            }));
+        }
+        root.setLayoutParams(new LinearLayout.LayoutParams(UiKit.px(640), ViewGroup.LayoutParams.WRAP_CONTENT));
+        return root;
+    }
+
+    // ---- Remove CineTV ------------------------------------------------------------------------------
+
+    private static View buildDestroy(final Context ctx, final ModalHost host) {
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        TextView title = UiKit.bold(ctx, 34, Brand.TV_RED);
+        title.setText(R.string.destroy_title);
+        root.addView(title);
+        TextView body = UiKit.label(ctx, 21, UiKit.INK_DIM);
+        body.setText(R.string.destroy_body);
+        body.setLineSpacing(UiKit.pxf(7), 1f);
+        body.setPadding(0, UiKit.px(14), 0, UiKit.px(26));
+        body.setMaxWidth(UiKit.px(760));
+        root.addView(body);
+        LinearLayout row = new LinearLayout(ctx);
+        row.addView(Controls.button(ctx, ctx.getString(R.string.destroy_cancel), v -> host.back()));
+        View sp = new View(ctx);
+        row.addView(sp, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+        row.addView(Controls.alarmButton(ctx, ctx.getString(R.string.destroy_confirm), v -> {
+            final Context app = ctx.getApplicationContext();
+            new Thread(() -> {
+                String problem = com.cinetv.launcher.device.Uninstaller.run(app);
+                v.post(() -> {
+                    if (problem != null) Toast.makeText(ctx, problem, Toast.LENGTH_LONG).show();
+                    else host.close();
+                });
+            }, "cinetv-remove").start();
+        }));
+        root.addView(row);
+        return root;
+    }
+
+    /** CineTV's author; opened from the signature at the top left of Home. */
+    public static void about(Context ctx, ModalHost host, Actions a) {
+        host.push(() -> buildAbout(ctx, host, a));
     }
 
     // ---- About ------------------------------------------------------------------------------------
@@ -347,10 +394,12 @@ public final class Panels {
         text.setOrientation(LinearLayout.VERTICAL);
         text.setPadding(UiKit.px(48), 0, 0, 0);
         TextView title = UiKit.bold(ctx, 36, UiKit.INK);
-        title.setText("cal".equals(section) ? R.string.calibration : "cast".equals(section) ? R.string.cast_from_phone : R.string.connect_phone);
+        title.setText("cal".equals(section) ? R.string.calibration : "cast".equals(section) ? R.string.cast_from_phone
+                : "background".equals(section) ? R.string.background : R.string.connect_phone);
         text.addView(title);
         TextView body = UiKit.label(ctx, 22, UiKit.INK_DIM);
-        body.setText("cal".equals(section) ? R.string.pair_body_cal : "cast".equals(section) ? R.string.pair_body_cast : R.string.pair_body);
+        body.setText("cal".equals(section) ? R.string.pair_body_cal : "cast".equals(section) ? R.string.pair_body_cast
+                : "background".equals(section) ? R.string.pair_body_background : R.string.pair_body);
         body.setLineSpacing(UiKit.pxf(8), 1f);
         body.setPadding(0, UiKit.px(16), 0, UiKit.px(16));
         body.setMaxWidth(UiKit.px(620));

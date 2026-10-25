@@ -58,6 +58,11 @@ public final class PerformanceProfile {
         cached = null;
     }
 
+    /** What this TV's hardware suggests, whatever mode is chosen. */
+    public static Tier detectedTier(Context ctx) {
+        return detect(ctx);
+    }
+
     /** Heuristic from hardware facts; deliberately conservative because TV SoCs throttle. */
     static Tier detect(Context ctx) {
         ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);

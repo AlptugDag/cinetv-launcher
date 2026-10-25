@@ -83,6 +83,31 @@ public final class Controls {
         return box;
     }
 
+    /** The red alarm tile at the end of Settings ("Remove CineTV"). */
+    public static LinearLayout alarm(Context ctx, CharSequence title, View.OnClickListener onClick) {
+        final LinearLayout box = tile(ctx, title, null, false, onClick);
+        final TextView t = (TextView) ((LinearLayout) box.getChildAt(0)).getChildAt(1);
+        t.setTextColor(Brand.TV_RED);
+        final View.OnFocusChangeListener inner = box.getOnFocusChangeListener();
+        box.setOnFocusChangeListener((v, has) -> {
+            inner.onFocusChange(v, has);
+            t.setTextColor(has ? android.graphics.Color.parseColor("#B91C1C") : Brand.TV_RED);
+        });
+        return box;
+    }
+
+    /** A capsule button in alarm red, for irreversible actions. */
+    public static TextView alarmButton(Context ctx, CharSequence text, View.OnClickListener onClick) {
+        final TextView b = button(ctx, text, onClick);
+        b.setTextColor(Brand.TV_RED);
+        final View.OnFocusChangeListener inner = b.getOnFocusChangeListener();
+        b.setOnFocusChangeListener((v, has) -> {
+            inner.onFocusChange(v, has);
+            b.setTextColor(has ? android.graphics.Color.parseColor("#B91C1C") : Brand.TV_RED);
+        });
+        return b;
+    }
+
     /** A round icon button for the header. */
     public static FrameLayout iconButton(Context ctx, Drawable icon, CharSequence description, View.OnClickListener onClick) {
         final FrameLayout f = new FrameLayout(ctx);
