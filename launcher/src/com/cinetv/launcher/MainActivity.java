@@ -117,6 +117,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         super.onCreate(savedInstanceState);
         getWindow().setBackgroundDrawable(null);
         UiKit.init(this);
+
         com.cinetv.launcher.ui.GlassBevelView.setAberrationEnabled(Prefs.glassBevel(this));
         timeFmt = android.text.format.DateFormat.getTimeFormat(this);
         dateFmt = new SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEEdMMMM"), Locale.getDefault());
@@ -130,6 +131,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         home = new HomeScreen(this, this, this);
         setContentView(home.root);
+        if (!splashShown) {
+            splashShown = true;
+            home.showSplash();
+        }
         applyTheme(ThemeManager.current(this).id, false);
         home.applySpatial(Prefs.spatial3d(this));
         home.modal.setOnClosed(() -> {
@@ -210,12 +215,14 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (home == null) return;
         handleIntent(intent);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        if (home == null) return;
         inFront = true;
         home.opening.dismiss();
         home.environment.resume();
@@ -230,6 +237,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     private static boolean inFront;
+    /** The opening plays once per start of CineTV, not on every return to Home. */
+    private static boolean splashShown;
 
     public static boolean isInFront() {
         return inFront;
@@ -238,6 +247,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     protected void onPause() {
         inFront = false;
+        if (home == null) {
+            super.onPause();
+            return;
+        }
         home.environment.pause();
         handler.removeCallbacks(clockTick);
         handler.removeCallbacks(idle);
@@ -251,7 +264,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         handler.removeCallbacksAndMessages(null);
         TvWebRemoteServer.setController(null);
         try {
-            unregisterReceiver(packageReceiver);
+            if (packageReceiver != null) unregisterReceiver(packageReceiver);
         } catch (Throwable ignored) {
         }
         super.onDestroy();
@@ -287,6 +300,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
+        if (home == null) return super.dispatchKeyEvent(e);
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         if (down) {
             resetIdle();
@@ -332,6 +346,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void onBackPressed() {
+        if (home == null) return;
         if (home.isAiCardShowing()) {
                 home.hideAiCard();
         } else if (!home.shelf.hasFocus()) {

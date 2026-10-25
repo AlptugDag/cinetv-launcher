@@ -520,7 +520,15 @@ public class DvdOpeningView extends View {
         tp.setColor(Color.argb(210, 255, 255, 255));
         Path top = new Path();
         top.addArc(new RectF(r - ar, r - ar, r + ar, r + ar), 205, 130);
-        c.drawTextOnPath("DVD  VIDEO", top, 0, size * 0.03f, tp);
+        c.drawTextOnPath("CINETV  ·  DVD VIDEO", top, 0, size * 0.03f, tp);
+
+        // Printed on every disc: Alptuğ Dağ's signature, white with a soft dark under-print.
+        // It sits in the ring between the hub (0.36 r) and the top lettering (0.8 r).
+        Bitmap sig = Brand.tinted(ctx, Color.WHITE, Math.round(size * 0.16f));
+        Bitmap shade = Brand.tinted(ctx, Color.argb(150, 0, 0, 0), Math.round(size * 0.16f));
+        float sx = r - sig.getWidth() / 2f, sy = r - r * 0.54f - sig.getHeight() / 2f;
+        c.drawBitmap(shade, sx + size * 0.004f, sy + size * 0.006f, null);
+        c.drawBitmap(sig, sx, sy, null);
 
         // Clear hub, mirror band and centre hole.
         Paint hub = new Paint(Paint.ANTI_ALIAS_FLAG);

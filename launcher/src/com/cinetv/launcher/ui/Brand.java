@@ -14,9 +14,8 @@ import android.graphics.Shader;
 import java.io.InputStream;
 
 /**
- * The launcher's mark. A personal logo can be dropped in as {@code signature_logo.png} through the
- * private assets folder (~/.cinetv/private/assets, never committed); public builds draw the neutral
- * CineTV mark: a play glyph inside a film-frame ring.
+ * CineTV's identity: Alptuğ Dağ's signature (assets/brand/signature.png) as the mark, and the
+ * wordmark "CineTV" with "TV" always in signal red, followed by "by Alptuğ Dağ".
  */
 public final class Brand {
 
@@ -27,10 +26,13 @@ public final class Brand {
 
     public static synchronized Bitmap mark(Context ctx) {
         if (mark != null) return mark;
-        try (InputStream in = ctx.getAssets().open("signature_logo.png")) {
-            mark = BitmapFactory.decodeStream(in);
-            personal = mark != null;
-        } catch (Throwable ignored) {
+        for (String path : new String[]{"brand/signature.png", "signature_logo.png"}) {
+            if (mark != null) break;
+            try (InputStream in = ctx.getAssets().open(path)) {
+                mark = BitmapFactory.decodeStream(in);
+                personal = mark != null;
+            } catch (Throwable ignored) {
+            }
         }
         if (mark == null) mark = drawDefault(256);
         return mark;
@@ -40,6 +42,37 @@ public final class Brand {
     public static boolean isPersonal(Context ctx) {
         mark(ctx);
         return personal;
+    }
+
+    /** Signal red of the "TV" in the wordmark, wherever CineTV is written. */
+    public static final int TV_RED = Color.parseColor("#FF1E1E");
+    public static final String AUTHOR = "Alptuğ Dağ";
+
+    /** "CineTV" with a red "TV". */
+    public static CharSequence wordmark() {
+        android.text.SpannableString s = new android.text.SpannableString("CineTV");
+        s.setSpan(new android.text.style.ForegroundColorSpan(TV_RED), 4, 6, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return s;
+    }
+
+    /** "CineTV by Alptuğ Dağ", the red "TV" included; {@code byColor} for "by Alptuğ Dağ". */
+    public static CharSequence signedWordmark(int byColor) {
+        android.text.SpannableStringBuilder b = new android.text.SpannableStringBuilder(wordmark());
+        int start = b.length();
+        b.append(" by ").append(AUTHOR);
+        b.setSpan(new android.text.style.ForegroundColorSpan(byColor), start, b.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return b;
+    }
+
+    /** The signature tinted (white on dark screens), for small marks on discs and overlays. */
+    public static Bitmap tinted(Context ctx, int color, int maxWidth) {
+        Bitmap src = mark(ctx);
+        float s = Math.min(1f, maxWidth / (float) src.getWidth());
+        Bitmap out = Bitmap.createBitmap(Math.max(1, Math.round(src.getWidth() * s)), Math.max(1, Math.round(src.getHeight() * s)), Bitmap.Config.ARGB_8888);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        p.setColorFilter(new android.graphics.PorterDuffColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN));
+        new Canvas(out).drawBitmap(src, null, new RectF(0, 0, out.getWidth(), out.getHeight()), p);
+        return out;
     }
 
     private static Bitmap drawDefault(int size) {

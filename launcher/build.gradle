@@ -98,7 +98,10 @@ android {
             if (releaseSigning != null) {
                 signingConfig signingConfigs.release
             }
-            minifyEnabled false
+            // Obfuscated and shrunk: the shipped app is hard to read back or alter (see Integrity.java).
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             debuggable false
         }
     }

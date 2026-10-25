@@ -28,6 +28,8 @@
     <string name="cast_from_phone">Telefondan yayınla</string>
     <string name="pair_body_cast">Telefonla okutun, Yayınla\'yı açın ve herhangi bir video bağlantısını ya da videolu bir sayfayı yapıştırın. TV yayını kendisi bulup tam ekran oynatır; telefonunuz hemen serbest kalır.</string>
     <string name="shelf_nothing">%s için sonuç yok</string>
+    <string name="unofficial_short">resmî olmayan sürüm</string>
+    <string name="unofficial">Resmî olmayan sürüm: başkası tarafından değiştirilmiş ya da yeniden paketlenmiş. Alptuğ Dağ\'ın resmî CineTV\'si ücretsiz: github.com/AlptugDag/cinetv-launcher</string>
     <string name="dvd_play_hint">OK  Filmi oynat     ·     Geri  Kutuyu kapat</string>
     <string name="add_nothing">Yüklü tüm uygulamalar zaten ana ekranda. Yeni yüklediğin uygulamalar buraya kendiliğinden gelir.</string>
     <string name="add_to_home">Ana ekrana ekle</string>

@@ -445,6 +445,7 @@ public final class TvWebRemoteServer {
         if (name.endsWith(".css")) return "text/css; charset=utf-8";
         if (name.endsWith(".svg")) return "image/svg+xml";
         if (name.endsWith(".png")) return "image/png";
+        if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
         if (name.endsWith(".webmanifest") || name.endsWith(".json")) return "application/manifest+json";
         return "application/octet-stream";
     }

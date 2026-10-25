@@ -55,6 +55,7 @@ public class HomeScreen {
     public final DvdOpeningView opening;
     public final CalibrationPatternView pattern;
     public final FrameLayout screensaver;
+    private final FrameLayout splash;
     public final CinemaScreensaverView screensaverView;
     public final TextView clock, date, weather, shelfLabel, caption, moveHint;
     public final EditText search;
@@ -130,6 +131,14 @@ public class HomeScreen {
         sub.addView(date);
         sub.addView(weather);
         timeCol.addView(sub);
+        TextView signed = UiKit.bold(ctx, 15, UiKit.INK_DIM);
+        signed.setLetterSpacing(0.04f);
+        CharSequence credit = Brand.signedWordmark(UiKit.INK_FAINT);
+        if (!com.cinetv.launcher.service.Integrity.isGenuine(ctx)) {
+            credit = new android.text.SpannableStringBuilder(credit).append(" · ").append(ctx.getString(R.string.unofficial_short));
+        }
+        signed.setText(credit);
+        timeCol.addView(signed);
         leftGroup.addView(timeCol);
         header.addView(leftGroup);
 
@@ -269,6 +278,8 @@ public class HomeScreen {
         root.addView(opening, match());
         pattern = new CalibrationPatternView(ctx);
         root.addView(pattern, match());
+        splash = buildSplash(ctx);
+        root.addView(splash, match());
         screensaver = new FrameLayout(ctx);
         screensaver.setVisibility(View.GONE);
         screensaverView = new CinemaScreensaverView(ctx);
@@ -344,6 +355,50 @@ public class HomeScreen {
             }
             return toShelf.onKey(v, keyCode, e);
         });
+    }
+
+    /** The opening: the signature, then "CineTV" (red TV) and "by Alptuğ Dağ", fading into Home. */
+    private static FrameLayout buildSplash(Context ctx) {
+        FrameLayout f = new FrameLayout(ctx);
+        f.setBackgroundColor(Color.parseColor("#050507"));
+        f.setVisibility(View.GONE);
+        f.setClickable(true);
+        LinearLayout col = new LinearLayout(ctx);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER_HORIZONTAL);
+        ImageView mark = new ImageView(ctx);
+        mark.setImageBitmap(Brand.tinted(ctx, Color.WHITE, UiKit.px(260)));
+        col.addView(mark, new LinearLayout.LayoutParams(UiKit.px(200), UiKit.px(200)));
+        TextView word = UiKit.text(ctx, 104, UiKit.INK, FontManager.getBlack(ctx));
+        word.setText(Brand.wordmark());
+        word.setLetterSpacing(-0.02f);
+        col.addView(word);
+        TextView by = UiKit.label(ctx, 30, UiKit.INK_DIM);
+        by.setText("by " + Brand.AUTHOR);
+        by.setLetterSpacing(0.08f);
+        col.addView(by);
+        if (!com.cinetv.launcher.service.Integrity.isGenuine(ctx)) {
+            TextView note = UiKit.label(ctx, 22, Brand.TV_RED);
+            note.setText(R.string.unofficial);
+            note.setGravity(Gravity.CENTER);
+            note.setPadding(0, UiKit.px(30), 0, 0);
+            note.setMaxWidth(UiKit.px(1100));
+            col.addView(note);
+        }
+        f.addView(col, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+        return f;
+    }
+
+    public void showSplash() {
+        splash.setVisibility(View.VISIBLE);
+        splash.setAlpha(1f);
+        View content = splash.getChildAt(0);
+        content.setAlpha(0f);
+        content.setScaleX(0.94f);
+        content.setScaleY(0.94f);
+        content.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(520).start();
+        splash.animate().alpha(0f).setStartDelay(1700).setDuration(520)
+                .withEndAction(() -> splash.setVisibility(View.GONE)).start();
     }
 
     public void focusHeader() {

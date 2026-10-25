@@ -36,6 +36,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String lastPackage;
+    private com.cinetv.launcher.ui.SignatureOverlay signature;
 
     /** Idle over another app (Nuvio, YouTube menus...) with nothing playing: show our screensaver. */
     private final Runnable idleSaver = new Runnable() {
@@ -89,6 +90,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        if (instance == null) return;
         if (event == null || event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || event.getPackageName() == null) return;
         String pkg = event.getPackageName().toString();
         if ("com.android.systemui".equals(pkg) || "android".equals(pkg)) return;
@@ -126,6 +128,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
         lastPackage = pkg;
         armIdleSaver();
+        if (signature == null) signature = new com.cinetv.launcher.ui.SignatureOverlay(this);
+        if (AppLauncher.NUVIO.equals(pkg)) signature.show();
+        else signature.hide();
     }
 
     private void armIdleSaver() {
@@ -135,6 +140,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
+        if (instance == null) return false;
         armIdleSaver();
         int source = event.getSource();
         boolean gamepad = (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
