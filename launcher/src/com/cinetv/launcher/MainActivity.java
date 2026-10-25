@@ -233,7 +233,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         loadApps(false);
         MemoryOptimizer.sweepAsync(this);
         resetIdle();
-        if (isNewDay()) refreshShelf();
+        // Back on Home after a while: a fresh selection for the moment.
+        if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > SHELF_EVERY_MS) refreshShelf();
     }
 
     private static boolean inFront;
@@ -525,6 +526,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             MovieAssistant.Shelf s = MovieAssistant.curate(this, mood, moment, PerformanceProfile.shelfSize(this));
             ui(() -> {
                 if (s != null && !s.movies.isEmpty()) setShelf(s.title, s.movies, true);
+                else if (mood == null) categoryShelf();
                 else restoreShelfLabel();
             });
         });
@@ -575,32 +577,32 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         Prefs.get(this).edit().putString(SHELF_CACHE, arr.toString()).putString(SHELF_TITLE, title).apply();
     }
 
-    private boolean isNewDay() {
-        int today = Calendar.getInstance().get(Calendar.DAY_OF_YEAR);
-        return Prefs.get(this).getInt(Prefs.VITRIN_DAY, -1) != today;
-    }
 
-    private int cachedShelfSize() {
-        try {
-            return new JSONArray(Prefs.get(this).getString(SHELF_CACHE, "[]")).length();
-        } catch (Throwable t) {
-            return 0;
-        }
-    }
 
-    /** A new selection every day (and an AI-curated one every few hours when a key is set). */
+    /** A new shelf at every power-on and whenever Home is reopened after this long. */
+    private static final long SHELF_EVERY_MS = 45 * 60 * 1000L;
+    /** Process-wide, so a power-on (new process) always refreshes and a quick return does not. */
+    private static long lastShelfAt = -SHELF_EVERY_MS;
+
+    /**
+     * The moment's shelf: with an AI key, one picked for this hour, weekday, city and weather
+     * ("Pazar gecesi için suç filmleri"); without one, or if the AI fails, a different category.
+     */
     private void refreshShelf() {
+        lastShelfAt = android.os.SystemClock.elapsedRealtime();
+        if (LlmClient.isConfigured(this)) curate(null);
+        else categoryShelf();
+    }
+
+    private void categoryShelf() {
         final Context app = getApplicationContext();
-        int today = Calendar.getInstance().get(Calendar.DAY_OF_YEAR);
-        long lastAi = Prefs.get(this).getLong(Prefs.AI_VITRIN_AT, 0);
-        if (LlmClient.isConfigured(this) && System.currentTimeMillis() - lastAi > AI_SHELF_EVERY_MS) {
-            Prefs.get(this).edit().putLong(Prefs.AI_VITRIN_AT, System.currentTimeMillis()).putInt(Prefs.VITRIN_DAY, today).apply();
-            curate(null);
-            return;
+        String current = Prefs.get(this).getString(SHELF_TITLE, "");
+        MovieCatalog.Category pick = null;
+        for (int i = 0; i < 6 && pick == null; i++) {
+            MovieCatalog.Category c = MovieCatalog.CATEGORIES[new java.util.Random().nextInt(MovieCatalog.CATEGORIES.length)];
+            if (!getString(c.nameRes).equals(current)) pick = c;
         }
-        if (!isNewDay() && cachedShelfSize() >= PerformanceProfile.shelfSize(this)) return;
-        Prefs.get(this).edit().putInt(Prefs.VITRIN_DAY, today).apply();
-        final MovieCatalog.Category cat = MovieCatalog.CATEGORIES[today % MovieCatalog.CATEGORIES.length];
+        final MovieCatalog.Category cat = pick != null ? pick : MovieCatalog.CATEGORIES[0];
         background(() -> {
             List<Movie> list = MovieCatalog.category(app, cat, PerformanceProfile.shelfSize(app));
             if (!list.isEmpty()) ui(() -> setShelf(getString(cat.nameRes), list, true));

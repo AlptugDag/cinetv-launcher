@@ -117,7 +117,7 @@ public final class MovieAssistant {
                 + "chit-chat): intent answer, answer = 1-2 short, correct sentences (under 30 words) in " + lang + " that read "
                 + "well on a TV screen, no markdown, no lists. If you cannot know a live value (stock prices, today's rates), say so briefly.\n"
                 + "- title: always fill, in " + lang + ", at most 5 words, e.g. \"TAKESHI KITANO\", \"Araba tutkusu\".";
-        LlmClient.Result r = LlmClient.generate(ctx, system, query, 900, true);
+        LlmClient.Result r = LlmClient.generate(ctx, system, query, 1800, true);
         if (!r.success) return null;
         JSONObject plan;
         try {
@@ -226,11 +226,12 @@ public final class MovieAssistant {
         String request = mood != null && !mood.trim().isEmpty() ? mood.trim()
                 : "Right now it is " + context + ". Pick " + max + " outstanding films or series that fit this exact moment "
                 + "(time of day, day of week, season, the weather, the place) around ONE sharp, specific theme. "
-                + "Never mix comedy and drama. Prefer quality, vary decades and countries.";
+                + "Never mix comedy and drama. Prefer quality, vary decades and countries. The title names the moment "
+                + "and the theme, e.g. \"Pazar gecesi için suç filmleri\" or \"Yağmurlu akşama sıcak dramlar\".";
         String system = "You are a world-class film curator. Reply ONLY with JSON, no markdown: "
-                + "{\"category_title\": \"SHORT EVOCATIVE TITLE IN " + language().toUpperCase(Locale.ROOT) + "\", "
+                + "{\"category_title\": \"SHORT EVOCATIVE TITLE IN " + language().toUpperCase(Locale.ROOT) + " (max 6 words)\", "
                 + "\"movies\": [{\"title\": \"original or international title\", \"year\": 1999, \"tv\": false}]}";
-        LlmClient.Result r = LlmClient.generate(ctx, system, request, 900);
+        LlmClient.Result r = LlmClient.generate(ctx, system, request, 2400);
         if (!r.success) return null;
         try {
             JSONObject o = LlmClient.extractJsonObject(r.text);
@@ -255,7 +256,7 @@ public final class MovieAssistant {
     public static String chat(Context ctx, String question) {
         String system = "You are a warm, cultured assistant on a living-room TV. Answer in " + language()
                 + ", in 1-2 short sentences (under 30 words) that read well on a TV screen. No markdown.";
-        LlmClient.Result r = LlmClient.generate(ctx, system, question, 300, true);
+        LlmClient.Result r = LlmClient.generate(ctx, system, question, 800, true);
         return r.text;
     }
 
