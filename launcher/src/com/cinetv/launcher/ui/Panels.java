@@ -651,13 +651,15 @@ public final class Panels {
         root.addView(row);
         final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
         new Thread(() -> {
+            final int tuned = MemoryOptimizer.tuneSystem(ctx);
+            com.cinetv.launcher.service.PosterCache.trimDisk(ctx);
             final MemoryOptimizer.Benchmark b = MemoryOptimizer.runBenchmark(ctx);
             com.cinetv.launcher.service.PosterCache.trimMemory();
             Glow.clear();
             main.post(() -> {
                 body.setText(ctx.getString(R.string.optimize_result, b.freeRamMb, b.totalRamMb, b.freedRamMb, b.killed,
                         String.format(Locale.US, "%.1f", b.cpuMs), String.format(Locale.US, "%.0f", b.diskMBs),
-                        ctx.getString(tierRes(PerformanceProfile.tier(ctx)))));
+                        ctx.getString(tierRes(PerformanceProfile.tier(ctx)))) + "\n\n" + ctx.getString(R.string.optimize_system, tuned));
                 done.setVisibility(View.VISIBLE);
                 done.requestFocus();
             });

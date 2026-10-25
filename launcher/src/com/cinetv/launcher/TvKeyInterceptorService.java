@@ -123,13 +123,13 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 break;
         }
 
-        if (lastPackage != null && !lastPackage.equals(pkg)) {
+        if (lastPackage != null && !lastPackage.equals(pkg) && isAppSwitch(pkg)) {
+            // The app just left is closed completely a minute later, unless the viewer went back to it.
             final String left = lastPackage;
-            final boolean home = getPackageName().equals(pkg);
             handler.postDelayed(() -> {
-                MemoryOptimizer.kill(this, left);
-                if (home) MemoryOptimizer.sweepAsync(this);
-            }, 900);
+                if (!left.equals(lastPackage)) MemoryOptimizer.kill(this, left);
+            }, 60_000L);
+            if (getPackageName().equals(pkg)) handler.postDelayed(() -> MemoryOptimizer.sweepAsync(this), 2000);
         }
         lastPackage = pkg;
         armIdleSaver();

@@ -18,13 +18,23 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Claude or Gemini, chosen by the stored key's prefix (sk-ant- / AIza). Keys travel only in request
- * headers, never in URLs, and are read from the encrypted {@link SecretStore}.
+ * Any AI provider, recognised from the key itself: Claude (sk-ant-), Gemini (AIza), Grok (xai-),
+ * OpenRouter (sk-or-) or OpenAI (sk-). Keys travel only in request headers, never in URLs, and are
+ * read from the encrypted {@link SecretStore}.
  */
 public final class LlmClient {
 
     public static final String PROVIDER_CLAUDE = "claude";
     public static final String PROVIDER_GEMINI = "gemini";
+    public static final String PROVIDER_OPENAI = "openai";
+    public static final String PROVIDER_GROK = "grok";
+    public static final String PROVIDER_OPENROUTER = "openrouter";
+
+    /** OpenAI-compatible providers: endpoint, balanced model, fast model, fallback model. */
+    private static final String[][] COMPATIBLE = {
+            {PROVIDER_OPENAI, "https://api.openai.com/v1/chat/completions", "gpt-5-mini", "gpt-5-nano", "gpt-4o-mini"},
+            {PROVIDER_GROK, "https://api.x.ai/v1/chat/completions", "grok-4-fast", "grok-4-fast", "grok-3-mini"},
+            {PROVIDER_OPENROUTER, "https://openrouter.ai/api/v1/chat/completions", "google/gemini-2.5-flash", "google/gemini-2.5-flash-lite", "openai/gpt-4o-mini"}};
 
     static final String DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
     static final String FAST_CLAUDE_MODEL = "claude-haiku-5-5";
@@ -55,13 +65,29 @@ public final class LlmClient {
     }
 
     public static String providerFor(String key) {
-        return key != null && key.startsWith("sk-ant-") ? PROVIDER_CLAUDE : PROVIDER_GEMINI;
+        if (key == null) return PROVIDER_GEMINI;
+        if (key.startsWith("sk-ant-")) return PROVIDER_CLAUDE;
+        if (key.startsWith("xai-")) return PROVIDER_GROK;
+        if (key.startsWith("sk-or-")) return PROVIDER_OPENROUTER;
+        if (key.startsWith("sk-")) return PROVIDER_OPENAI;
+        return PROVIDER_GEMINI;
     }
 
     public static String providerName(Context ctx) {
         String key = SecretStore.get(ctx, SecretStore.AI_KEY);
         if (key == null) return null;
-        return PROVIDER_CLAUDE.equals(providerFor(key)) ? "Claude" : "Gemini";
+        switch (providerFor(key)) {
+            case PROVIDER_CLAUDE: return "Claude";
+            case PROVIDER_GROK: return "Grok";
+            case PROVIDER_OPENAI: return "ChatGPT";
+            case PROVIDER_OPENROUTER: return "OpenRouter";
+            default: return "Gemini";
+        }
+    }
+
+    private static String[] compatible(String provider) {
+        for (String[] c : COMPATIBLE) if (c[0].equals(provider)) return c;
+        return null;
     }
 
     /** Blocking call with the provider's balanced model. */
@@ -76,7 +102,18 @@ public final class LlmClient {
     public static Result generate(Context ctx, String system, String user, int maxTokens, boolean fast) {
         String key = SecretStore.get(ctx, SecretStore.AI_KEY);
         if (key == null || key.isEmpty()) return new Result(false, ctx.getString(R.string.ai_err_no_key), 401);
-        boolean claude = PROVIDER_CLAUDE.equals(providerFor(key));
+        String provider = providerFor(key);
+        String[] compat = compatible(provider);
+        if (compat != null) {
+            Result r = callCompatible(ctx, compat[1], fast ? compat[3] : compat[2], key, system, user, maxTokens);
+            int st = r.status;
+            if (!r.success && (st == 400 || st == 404 || st == 408 || st == 429 || st >= 500 || st == -1)) {
+                Result f = callCompatible(ctx, compat[1], compat[4], key, system, user, maxTokens);
+                if (f.success) return f;
+            }
+            return r;
+        }
+        boolean claude = PROVIDER_CLAUDE.equals(provider);
         String model = fast ? (claude ? FAST_CLAUDE_MODEL : FAST_GEMINI_MODEL)
                 : Prefs.get(ctx).getString(claude ? "ai_claude_model" : "ai_gemini_model", claude ? DEFAULT_CLAUDE_MODEL : DEFAULT_GEMINI_MODEL);
         Result r = call(ctx, claude, model, key, system, user, maxTokens);
@@ -151,6 +188,46 @@ public final class LlmClient {
                     if (parts != null && parts.length() > 0) text = parts.getJSONObject(0).optString("text").trim();
                 }
             }
+            return text.isEmpty() ? new Result(false, ctx.getString(R.string.ai_err_empty), 204) : new Result(true, text, 200);
+        } catch (SocketTimeoutException e) {
+            return new Result(false, ctx.getString(R.string.ai_err_timeout), 408);
+        } catch (Throwable t) {
+            Log.w(TAG, "LLM call failed: " + t.getClass().getSimpleName());
+            return new Result(false, ctx.getString(R.string.ai_err_network), -1);
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    /** OpenAI-style chat completions (OpenAI, Grok, OpenRouter). */
+    private static Result callCompatible(Context ctx, String endpoint, String model, String key, String system, String user, int maxTokens) {
+        HttpURLConnection conn = null;
+        try {
+            JSONArray messages = new JSONArray();
+            if (system != null) messages.put(new JSONObject().put("role", "system").put("content", system));
+            messages.put(new JSONObject().put("role", "user").put("content", user));
+            JSONObject body = new JSONObject().put("model", model).put("messages", messages);
+            // Newer OpenAI models count reasoning in max_completion_tokens; the others take max_tokens.
+            body.put(endpoint.contains("api.openai.com") ? "max_completion_tokens" : "max_tokens", maxTokens);
+            conn = (HttpURLConnection) new URL(endpoint).openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Authorization", "Bearer " + key);
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(25000);
+            conn.setDoOutput(true);
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+            }
+            int status = conn.getResponseCode();
+            if (status != 200) {
+                Log.w(TAG, "LLM HTTP " + status + " for " + model);
+                return new Result(false, errorText(ctx, status), status);
+            }
+            JSONObject resp = new JSONObject(read(conn.getInputStream()));
+            JSONArray choices = resp.optJSONArray("choices");
+            String text = choices != null && choices.length() > 0
+                    ? choices.getJSONObject(0).optJSONObject("message").optString("content", "").trim() : "";
             return text.isEmpty() ? new Result(false, ctx.getString(R.string.ai_err_empty), 204) : new Result(true, text, 200);
         } catch (SocketTimeoutException e) {
             return new Result(false, ctx.getString(R.string.ai_err_timeout), 408);

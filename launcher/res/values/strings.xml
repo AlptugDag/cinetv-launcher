@@ -48,6 +48,7 @@
     <string name="perf_eco_hint">Lightest: fewer films, simpler effects. For slow or very busy TVs</string>
     <string name="perf_max_hint">Every effect at full quality. Only for fast TVs</string>
     <string name="pair_body_background">Scan with your phone and open Background: pick a photo and it becomes the backdrop of Home right away. Choose a theme to go back to the built-in scenery.</string>
+    <string name="optimize_system">System: %d settings tuned (frozen background apps after the next restart, quicker window animations). Apps close fully a minute after you leave them. Virtual memory (zram) cannot be changed without root.</string>
     <string name="dvd_play_hint">OK  Play the film     ·     Back  Close the case</string>
     <string name="add_nothing">Every installed app is already on Home. New apps you install appear here automatically.</string>
     <string name="add_to_home">Add to home</string>

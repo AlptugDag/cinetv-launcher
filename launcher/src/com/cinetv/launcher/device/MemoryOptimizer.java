@@ -104,6 +104,30 @@ public final class MemoryOptimizer {
     }
 
     /** Measures RAM, a CPU micro-benchmark and cache I/O, then frees memory. Blocking. */
+    /**
+     * System-level tuning a launcher may do without root: Android's cached-app freezer (background
+     * apps stop using the CPU; active after a restart) and shorter window/transition animations
+     * (apps' own animations are untouched). Returns how many settings changed.
+     */
+    public static int tuneSystem(Context ctx) {
+        int changed = 0;
+        android.content.ContentResolver cr = ctx.getContentResolver();
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 30 && !"enabled".equals(android.provider.Settings.Global.getString(cr, "cached_apps_freezer"))) {
+                android.provider.Settings.Global.putString(cr, "cached_apps_freezer", "enabled");
+                changed++;
+            }
+            for (String key : new String[]{android.provider.Settings.Global.WINDOW_ANIMATION_SCALE, android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE}) {
+                if (android.provider.Settings.Global.getFloat(cr, key, 1f) > 0.5f) {
+                    android.provider.Settings.Global.putFloat(cr, key, 0.5f);
+                    changed++;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return changed;
+    }
+
     public static Benchmark runBenchmark(Context ctx) {
         Benchmark b = new Benchmark();
         ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
