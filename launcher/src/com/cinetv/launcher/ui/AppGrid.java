@@ -69,7 +69,17 @@ public class AppGrid {
     public View dockView() { return dockRow; }
     public View gridView() { return gridBox; }
 
-    public void setColumns(int columns) { this.columns = columns; }
+    /** The theme's density; more apps raise it so tiles stay one size on every row. */
+    public void setColumns(int columns) { this.baseColumns = columns; }
+
+    private int baseColumns = 4;
+
+    private int columnsFor(int apps) {
+        int c = baseColumns;
+        if (apps > 13) c = Math.max(c, 5);
+        if (apps > 19) c = Math.max(c, 6);
+        return c;
+    }
     public void setSpatial(boolean on) { spatial = on; }
 
     public void setApps(List<AppTileItem> dock, List<AppTileItem> grid) {
@@ -102,10 +112,15 @@ public class AppGrid {
 
     public void render() {
         if (dock == null) return;
+        columns = columnsFor(dock.size() + grid.size() + 1);
+        // Every tile has the same size: the dock fills as many slots as the grid has columns.
+        int slots = Math.max(columns, dock.size());
         dockRow.removeAllViews();
+        dockRow.setWeightSum(slots);
         for (int i = 0; i < dock.size(); i++) {
-            dockRow.addView(tile(dock.get(i), true, i, dock.size()), tileParams(1f));
+            dockRow.addView(tile(dock.get(i), true, i, slots), tileParams(1f));
         }
+        for (int i = dock.size(); i < slots; i++) dockRow.addView(new View(ctx), tileParams(1f));
 
         // The grid always ends with the "Add" tile, right after the last app.
         gridBox.removeAllViews();
@@ -131,7 +146,9 @@ public class AppGrid {
     }
 
     private LinearLayout.LayoutParams tileParams(float weight) {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, UiKit.px(columns > 4 ? TILE_H * 0.75f : TILE_H), weight);
+        // 16:9 tiles sized from the column count (1792 design px of row width).
+        float w = 1792f / columns - 24f;
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, UiKit.px(w * TILE_H / TILE_W), weight);
         lp.setMargins(UiKit.px(12), UiKit.px(8), UiKit.px(12), UiKit.px(8));
         return lp;
     }
@@ -226,15 +243,30 @@ public class AppGrid {
         int ms = PerformanceProfile.animationMs(ctx, 170);
         if (has) {
             bloom.setImageBitmap(Glow.bloom(UiKit.px(TILE_W), UiKit.px(TILE_H), UiKit.px(BLOOM_PAD), UiKit.pxf(36), item.neonColor));
-            bloom.animate().alpha(1f).setDuration(ms).start();
+            // On light rooms a full neon bloom looks smeared: keep it as a faint tint.
+            bloom.animate().alpha(UiKit.isLight() ? 0.35f : 1f).setDuration(ms).start();
         } else {
             bloom.animate().alpha(0f).setDuration(ms).withEndAction(() -> bloom.setImageDrawable(null)).start();
         }
         art.animate().alpha(has ? 1f : 0.92f).setDuration(ms).start();
+        pushNeighbours(frame, has, ms);
         frame.animate().scaleX(has ? 1.10f : 1f).scaleY(has ? 1.10f : 1f)
                 .rotationY(has ? 0f : rest[0]).rotationX(has ? 0f : rest[1])
                 .translationY(has ? -UiKit.pxf(12) : 0f).translationZ(has ? UiKit.pxf(55) : rest[2])
                 .setDuration(ms).start();
+    }
+
+    /** The focused tile grows; its row-mates move aside by half the growth so nothing overlaps. */
+    private void pushNeighbours(View tile, boolean has, int ms) {
+        if (!(tile.getParent() instanceof ViewGroup)) return;
+        ViewGroup row = (ViewGroup) tile.getParent();
+        int at = row.indexOfChild(tile);
+        float shift = tile.getWidth() * 0.05f + UiKit.pxf(6);
+        for (int i = 0; i < row.getChildCount(); i++) {
+            View n = row.getChildAt(i);
+            if (n == tile) continue;
+            n.animate().translationX(has ? (i < at ? -shift : shift) : 0f).setDuration(ms).start();
+        }
     }
 
     private View addTile(final int index) {
@@ -263,6 +295,7 @@ public class AppGrid {
             bevel.setFocusedState(has);
             plus.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
             label.setTextColor(has ? UiKit.INK_DARK : UiKit.INK_DIM);
+            pushNeighbours(v, has, PerformanceProfile.animationMs(ctx, 170));
             v.animate().scaleX(has ? 1.10f : 1f).scaleY(has ? 1.10f : 1f).rotationY(has ? 0 : rest[0]).rotationX(has ? 0 : rest[1])
                     .setDuration(PerformanceProfile.animationMs(ctx, 170)).start();
             if (has) host.onTileFocused(v, UiKit.INK);
