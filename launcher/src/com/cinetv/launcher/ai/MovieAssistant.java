@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
  *   "Araba temalı filmler"             themes: TMDB keywords + the AI's own sure picks
  *   "kızı kaçırılan baba filmleri"     plots: the AI's picks, checked against TMDB
  *   "Inception"                        every title with that name
- *   "Türkiye'nin yüzölçümü?"           anything else: a short spoken answer
+ *   "Türkiye'nin yüzölçümü?"           anything else: a short answer
  *
  * Without a key the same requests work from keywords alone (person, title, genre). Queries about
  * CineTV's author always lead to his own work. All methods block.
@@ -37,7 +37,7 @@ public final class MovieAssistant {
 
     public enum Kind { PLAY, SHELF, ANSWER }
 
-    /** What the search produced: a shelf, an answer to show and say, or both. */
+    /** What the search produced: a shelf, an answer to show, or both. */
     public static final class Reply {
         public Kind kind = Kind.SHELF;
         public String title = "";
@@ -105,8 +105,8 @@ public final class MovieAssistant {
                 + "- Series requested (dizi, series, show): type tv. Genres from: action, adventure, animation, comedy, crime, "
                 + "documentary, drama, family, fantasy, history, horror, music, mystery, romance, science fiction, thriller, war, western.\n"
                 + "- Anything that is not a request for films or series (facts, numbers, markets, people, places, the weather, "
-                + "chit-chat): intent answer, answer = 1-3 short, correct sentences in " + lang + " that sound natural read "
-                + "aloud, no markdown, no lists. If you cannot know a live value (stock prices, today's rates), say so briefly.\n"
+                + "chit-chat): intent answer, answer = 1-2 short, correct sentences (under 30 words) in " + lang + " that read "
+                + "well on a TV screen, no markdown, no lists. If you cannot know a live value (stock prices, today's rates), say so briefly.\n"
                 + "- title: always fill, in " + lang + ", at most 5 words, e.g. \"TAKESHI KITANO\", \"Araba tutkusu\".";
         LlmClient.Result r = LlmClient.generate(ctx, system, query, 900, true);
         if (!r.success) return null;
@@ -202,7 +202,7 @@ public final class MovieAssistant {
         for (String w : QUESTION_WORDS) if (q.contains(w)) question = true;
         if (question || out.movies.isEmpty()) {
             out.kind = out.movies.isEmpty() ? Kind.ANSWER : Kind.SHELF;
-            out.answer = MovieCatalog.personBio(ctx, Creator.TMDB_PERSON, 3);
+            out.answer = MovieCatalog.personBio(ctx, Creator.TMDB_PERSON, 2);
         }
         return out;
     }
@@ -245,7 +245,7 @@ public final class MovieAssistant {
 
     public static String chat(Context ctx, String question) {
         String system = "You are a warm, cultured assistant on a living-room TV. Answer in " + language()
-                + ", in 1-3 short sentences that sound natural read aloud. No markdown.";
+                + ", in 1-2 short sentences (under 30 words) that read well on a TV screen. No markdown.";
         LlmClient.Result r = LlmClient.generate(ctx, system, question, 300, true);
         return r.text;
     }

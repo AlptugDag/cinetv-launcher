@@ -17,6 +17,10 @@
     <string name="keyboard_search">Search</string>
     <string name="voice_prompt">Say a film, a person, or ask anything</string>
     <string name="voice_unavailable">Voice search is not available on this TV</string>
+    <string name="pair_ask_title">%s wants to connect</string>
+    <string name="pair_ask_body">Allow it to search, open films and act as a remote on this TV?</string>
+    <string name="pair_allow">Allow</string>
+    <string name="pair_deny">Not now</string>
     <string name="dvd_play_hint">OK  Play the film     ·     Back  Close the case</string>
     <string name="add_nothing">Every installed app is already on Home. New apps you install appear here automatically.</string>
     <string name="add_to_home">Add to home</string>

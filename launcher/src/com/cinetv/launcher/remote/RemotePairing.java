@@ -20,12 +20,20 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * Pairing a phone with the TV: a random token that only travels inside the QR code shown on the TV
- * screen. Anyone who can see the screen can pair; nobody on the network can guess the token.
+ * Pairing a phone with the TV: a random token that travels only inside the QR code on the TV screen,
+ * or to a phone the viewer allowed on the TV. Nobody on the network can guess it.
  */
 public final class RemotePairing {
 
     private RemotePairing() {}
+
+    static String randomHex(int bytes) {
+        byte[] b = new byte[bytes];
+        new SecureRandom().nextBytes(b);
+        StringBuilder sb = new StringBuilder();
+        for (byte x : b) sb.append(String.format("%02x", x));
+        return sb.toString();
+    }
 
     public static synchronized String token(Context ctx) {
         String t = Prefs.get(ctx).getString(Prefs.REMOTE_TOKEN, null);
@@ -35,11 +43,7 @@ public final class RemotePairing {
 
     /** Invalidates every paired phone. */
     public static synchronized String rotate(Context ctx) {
-        byte[] b = new byte[12];
-        new SecureRandom().nextBytes(b);
-        StringBuilder sb = new StringBuilder();
-        for (byte x : b) sb.append(String.format("%02x", x));
-        String t = sb.toString();
+        String t = randomHex(12);
         Prefs.get(ctx).edit().putString(Prefs.REMOTE_TOKEN, t).apply();
         return t;
     }

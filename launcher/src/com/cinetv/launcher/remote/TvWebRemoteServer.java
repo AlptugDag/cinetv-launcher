@@ -37,8 +37,10 @@ import java.util.concurrent.Executors;
 
 /**
  * The phone companion: a tiny HTTP server on the LAN that serves the web app in assets/remote and its
- * JSON API. Every /api call must carry the pairing token from the TV's QR code; requests whose Host is
- * not the TV itself are refused (DNS-rebinding guard).
+ * JSON API. Every /api call must carry the pairing token; requests whose Host is not the TV itself are
+ * refused (DNS-rebinding guard). A phone gets the token either from the TV's QR code or by asking:
+ * the TV then shows "this phone wants to connect" and the viewer allows it with the remote, so the
+ * page can always open straight to its home screen.
  */
 public final class TvWebRemoteServer {
 
@@ -49,7 +51,18 @@ public final class TvWebRemoteServer {
         void showScreensaver();
         void showCalibrationPattern(String pattern);
         void onPhoneConnected();
+        /** An unpaired phone asks to connect; call exactly one of allow / deny on the main thread. */
+        void askPairing(String device, Runnable allow, Runnable deny);
     }
+
+    /** One pending "may this phone connect?" request at a time. */
+    private static final class PairRequest {
+        final String id = RemotePairing.randomHex(16);
+        final long at = System.currentTimeMillis();
+        volatile int state; // 0 pending, 1 allowed, -1 denied
+    }
+
+    private static volatile PairRequest pending;
 
     private static final String TAG = "CineTvRemote";
     private static final int[] PORTS = {8080, 8081, 8765};
@@ -129,13 +142,14 @@ public final class TvWebRemoteServer {
             if (parts.length < 2) return;
             String method = parts[0];
             String uri = parts[1];
-            String host = null, tokenHeader = null;
+            String host = null, tokenHeader = null, agent = "";
             String line;
             int lines = 0;
             while ((line = in.readLine()) != null && !line.isEmpty() && lines++ < MAX_HEADER_LINES) {
                 String lower = line.toLowerCase();
                 if (lower.startsWith("host:")) host = line.substring(5).trim();
                 else if (lower.startsWith("x-cinetv-token:")) tokenHeader = line.substring(15).trim();
+                else if (lower.startsWith("user-agent:")) agent = line.substring(11).trim();
             }
             OutputStream out = sock.getOutputStream();
             if (!"GET".equals(method) && !"POST".equals(method)) {
@@ -166,6 +180,11 @@ public final class TvWebRemoteServer {
                 send(out, 404, "text/plain", new byte[0]);
                 return;
             }
+            JSONObject open = publicApi(path, q, agent);
+            if (open != null) {
+                json(out, open);
+                return;
+            }
             String token = q.containsKey("k") ? q.get("k") : tokenHeader;
             if (!constantTimeEquals(token, RemotePairing.token(app))) {
                 send(out, 401, "application/json", "{\"error\":\"pair\"}".getBytes(StandardCharsets.UTF_8));
@@ -175,6 +194,67 @@ public final class TvWebRemoteServer {
         } catch (Throwable t) {
             Log.d(TAG, "Request failed: " + t.getClass().getSimpleName());
         }
+    }
+
+    /** Calls that work before pairing: asking to pair, and the About page. Null for everything else. */
+    private static JSONObject publicApi(String path, Map<String, String> q, String agent) throws Exception {
+        switch (path) {
+            case "/api/pair/request": {
+                PairRequest p = pending;
+                if (p != null && p.state == 0 && System.currentTimeMillis() - p.at < 60_000L) {
+                    return new JSONObject().put("ok", false).put("error", "busy");
+                }
+                final PairRequest req = new PairRequest();
+                pending = req;
+                final String device = deviceName(agent);
+                post(() -> {
+                    Controller c = controller;
+                    if (c == null) {
+                        req.state = -1;
+                        return;
+                    }
+                    c.askPairing(device, () -> req.state = 1, () -> req.state = -1);
+                });
+                return new JSONObject().put("ok", true).put("id", req.id);
+            }
+            case "/api/pair/claim": {
+                PairRequest p = pending;
+                String id = clip(q.get("id"), 40);
+                if (p == null || !constantTimeEquals(id, p.id) || System.currentTimeMillis() - p.at > 180_000L) {
+                    return new JSONObject().put("ok", false).put("state", "expired");
+                }
+                if (p.state == 1) {
+                    pending = null;
+                    return new JSONObject().put("ok", true).put("state", "allowed").put("k", RemotePairing.token(app));
+                }
+                return new JSONObject().put("ok", true).put("state", p.state < 0 ? "denied" : "pending");
+            }
+            case "/api/about":
+                return new JSONObject().put("ok", true)
+                        .put("name", com.cinetv.launcher.service.Creator.NAME)
+                        .put("instagram", com.cinetv.launcher.service.Creator.INSTAGRAM)
+                        .put("youtube", com.cinetv.launcher.service.Creator.YOUTUBE)
+                        .put("imdb", com.cinetv.launcher.service.Creator.IMDB)
+                        .put("tmdb", com.cinetv.launcher.service.Creator.TMDB_PERSON);
+            default:
+                return null;
+        }
+    }
+
+    /** "iPhone", "Pixel 8", "Android phone"... from the browser's User-Agent. */
+    static String deviceName(String agent) {
+        if (agent == null) return "Phone";
+        if (agent.contains("iPhone")) return "iPhone";
+        if (agent.contains("iPad")) return "iPad";
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("Android [0-9.]+; ([^;)]+?)( Build|\\))").matcher(agent);
+        if (m.find()) {
+            String model = m.group(1).trim();
+            if (!model.isEmpty() && !"K".equals(model)) return model;
+        }
+        if (agent.contains("Android")) return "Android";
+        if (agent.contains("Macintosh")) return "Mac";
+        if (agent.contains("Windows")) return "PC";
+        return "Phone";
     }
 
     private static JSONObject api(String path, Map<String, String> q) throws Exception {

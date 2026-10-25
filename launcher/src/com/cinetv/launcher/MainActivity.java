@@ -16,7 +16,6 @@ import android.widget.Toast;
 
 import com.cinetv.launcher.ai.LlmClient;
 import com.cinetv.launcher.ai.MovieAssistant;
-import com.cinetv.launcher.ai.Speaker;
 import com.cinetv.launcher.device.DeviceTweaks;
 import com.cinetv.launcher.device.HardwareKeys;
 import com.cinetv.launcher.device.MemoryOptimizer;
@@ -332,8 +331,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void onBackPressed() {
         if (home.isAiCardShowing()) {
-            Speaker.stop();
-            home.hideAiCard();
+                home.hideAiCard();
         } else if (!home.shelf.hasFocus()) {
             home.shelf.requestFocus();
             home.scroll.smoothScrollTo(0, 0);
@@ -433,7 +431,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (query == null || query.trim().isEmpty()) return;
         home.keyboard.hide();
         home.search.setText(query);
-        Speaker.stop();
         final int gen = ++searchGen;
         home.showThinking();
         final Context app = getApplicationContext();
@@ -451,8 +448,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     home.shelf.requestFocus();
                 }
                 if (!r.answer.isEmpty()) {
-                    home.showBubble(r.answer, false, 60000);
-                    Speaker.say(this, r.answer, () -> home.hideAiCardSoon(3500));
+                    // Stays long enough to read, then leaves by itself.
+                    home.showBubble(r.answer, false, Math.max(6000, 2500 + 60L * r.answer.length()));
                 } else if (r.movies.isEmpty()) {
                     home.showBubble(getString(LlmClient.isConfigured(this) || MovieCatalog.hasTmdb(this)
                             ? R.string.nothing_found : R.string.ai_err_no_key), false, 6000);
@@ -833,6 +830,44 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     public void onPhoneConnected() {
         if (home.modal.isShowing()) home.modal.close();
         toast(R.string.phone_connected);
+    }
+
+    @Override
+    public void askPairing(String device, Runnable allow, Runnable deny) {
+        hideScreensaver();
+        final boolean[] answered = {false};
+        home.modal.push(() -> {
+            android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+            box.setOrientation(android.widget.LinearLayout.VERTICAL);
+            android.widget.TextView title = UiKit.bold(this, 30, UiKit.INK);
+            title.setText(getString(R.string.pair_ask_title, device));
+            box.addView(title);
+            android.widget.TextView body = UiKit.label(this, 20, UiKit.INK_DIM);
+            body.setText(R.string.pair_ask_body);
+            body.setPadding(0, UiKit.px(10), 0, UiKit.px(26));
+            box.addView(body, new android.widget.LinearLayout.LayoutParams(UiKit.px(640), android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+            android.widget.LinearLayout row = new android.widget.LinearLayout(this);
+            row.addView(spaced(Controls.button(this, getString(R.string.pair_allow), v -> {
+                answered[0] = true;
+                allow.run();
+                home.modal.close();
+                toast(R.string.phone_connected);
+            })));
+            row.addView(spaced(Controls.button(this, getString(R.string.pair_deny), v -> {
+                answered[0] = true;
+                deny.run();
+                home.modal.close();
+            })));
+            box.addView(row);
+            return box;
+        });
+        // Unanswered requests lapse quietly.
+        handler.postDelayed(() -> {
+            if (!answered[0]) {
+                deny.run();
+                if (home.modal.isShowing()) home.modal.close();
+            }
+        }, 60_000L);
     }
 
     @Override
