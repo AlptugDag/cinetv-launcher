@@ -38,6 +38,7 @@
     <string name="live_tv">Canlı TV</string>
     <string name="live_tv_tile">Ana ekranda TV kanalları</string>
     <string name="live_tv_tile_on">Açık · televizyonun kendi kanalları</string>
+    <string name="settings_hold_hint">Ayarlar · TV\'nin kendi ayarları için basılı tut</string>
     <string name="tv_settings">TV ayarları</string>
     <string name="tv_settings_hint">Televizyonun kendi ayarları (ya da dişli tuşuna basılı tut)</string>
     <string name="destroy">CineTV\'yi yok et!</string>

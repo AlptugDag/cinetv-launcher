@@ -49,6 +49,8 @@ public class HomeScreen {
     }
 
     public final FrameLayout root;
+    /** Names the focused header icon; for the gear it also says how to reach the TV's own settings. */
+    private TextView buttonHint;
     public final SpatialEnvironment environment;
     public final GlideScrollView scroll;
     public final PosterShelf shelf;
@@ -219,11 +221,11 @@ public class HomeScreen {
         rightGroup.setGravity(Gravity.CENTER_VERTICAL);
         rightGroup.setClipChildren(false);
         headerButtons = new View[]{
-                headerButton(R.drawable.ic_phone, R.string.connect_phone, v -> listener.onPhone()),
-                headerButton(R.drawable.ic_network, R.string.network, v -> listener.onNetwork()),
-                headerButton(R.drawable.ic_inputs, R.string.inputs, v -> listener.onInputs()),
-                headerButton(R.drawable.ic_all_apps, R.string.all_apps, v -> listener.onAllApps()),
-                headerButton(R.drawable.ic_settings_gear, R.string.settings_title, v -> listener.onSettings()),
+                headerButton(R.drawable.ic_phone, R.string.connect_phone, R.string.connect_phone, v -> listener.onPhone()),
+                headerButton(R.drawable.ic_network, R.string.network, R.string.network, v -> listener.onNetwork()),
+                headerButton(R.drawable.ic_inputs, R.string.inputs, R.string.inputs, v -> listener.onInputs()),
+                headerButton(R.drawable.ic_all_apps, R.string.all_apps, R.string.all_apps, v -> listener.onAllApps()),
+                headerButton(R.drawable.ic_settings_gear, R.string.settings_title, R.string.settings_hold_hint, v -> listener.onSettings()),
         };
         headerButtons[headerButtons.length - 1].setOnLongClickListener(v -> {
             listener.onSystemSettings();
@@ -269,6 +271,13 @@ public class HomeScreen {
         alp.setMargins(0, UiKit.px(118), 0, 0);
         root.addView(aiCard, alp);
 
+        buttonHint = UiKit.label(ctx, 17, UiKit.INK);
+        buttonHint.setSingleLine(true);
+        buttonHint.setPadding(UiKit.px(20), UiKit.px(10), UiKit.px(20), UiKit.px(10));
+        buttonHint.setBackground(new Glass(buttonHint, UiKit.pxf(22), Glass.Style.PANEL));
+        buttonHint.setVisibility(View.GONE);
+        root.addView(buttonHint, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));
+
         keyboard = new GlassKeyboard(ctx);
         root.addView(keyboard, match());
 
@@ -298,14 +307,36 @@ public class HomeScreen {
         wireFocus();
     }
 
-    private View headerButton(int icon, int desc, View.OnClickListener click) {
+    private View headerButton(int icon, int desc, int hint, View.OnClickListener click) {
         final FrameLayout b = Controls.iconButton(ctx, ctx.getDrawable(icon), ctx.getString(desc), click);
         View.OnFocusChangeListener inner = b.getOnFocusChangeListener();
         b.setOnFocusChangeListener((v, has) -> {
             inner.onFocusChange(v, has);
-            if (has) listener.onFocusLight(v, Color.parseColor("#38BDF8"));
+            if (has) {
+                listener.onFocusLight(v, Color.parseColor("#38BDF8"));
+                showButtonHint(v, ctx.getString(hint));
+            } else if (buttonHint != null) {
+                buttonHint.setVisibility(View.GONE);
+            }
         });
         return b;
+    }
+
+    /** Shows the icon's name just under it, kept inside the screen. */
+    private void showButtonHint(View button, CharSequence text) {
+        if (buttonHint == null) return;
+        buttonHint.setText(text);
+        buttonHint.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int[] at = new int[2], origin = new int[2];
+        button.getLocationInWindow(at);
+        root.getLocationInWindow(origin);
+        float x = at[0] - origin[0] + button.getWidth() / 2f - buttonHint.getMeasuredWidth() / 2f;
+        x = Math.max(UiKit.px(24), Math.min(x, root.getWidth() - buttonHint.getMeasuredWidth() - UiKit.px(24)));
+        buttonHint.setTranslationX(x);
+        buttonHint.setTranslationY(at[1] - origin[1] + button.getHeight() + UiKit.px(14));
+        buttonHint.setAlpha(0f);
+        buttonHint.setVisibility(View.VISIBLE);
+        buttonHint.animate().alpha(1f).setStartDelay(250).setDuration(PerformanceProfile.animationMs(ctx, 180)).start();
     }
 
     /** Header → shelf → dock, with the search field reachable from both sides. */

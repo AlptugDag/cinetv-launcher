@@ -40,6 +40,7 @@
     <string name="live_tv">Live TV</string>
     <string name="live_tv_tile">TV channels on Home</string>
     <string name="live_tv_tile_on">On · the TV\'s own channels</string>
+    <string name="settings_hold_hint">Settings · hold for the TV\'s own settings</string>
     <string name="tv_settings">TV settings</string>
     <string name="tv_settings_hint">The TV\'s own settings (or hold the gear button)</string>
     <string name="destroy">Remove CineTV!</string>
