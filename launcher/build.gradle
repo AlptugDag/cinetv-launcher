@@ -122,7 +122,7 @@ tasks.configureEach { task ->
             if (releaseSigning == null) {
                 throw new GradleException(
                     "Release signing is not configured. Run scripts/release/create_keystore.sh once, " +
-                    "or set CINETV_RELEASE_KEYSTORE* environment variables. See scripts/release/create_keystore.sh.")
+                    "or set CINETV_RELEASE_KEYSTORE* environment variables.")
             }
         }
     }
