@@ -20,8 +20,8 @@ if [ -z "$DEVICE" ]; then
     exit 1
 fi
 
-# Only what is bloat on every Arçelik-built set (Arçelik, Beko, Grundig; Android TV 11 and 14), from
-# the verified CleanYourTV lists (examples/grundig-kunyang, examples/beko-b43b880b). The TV's own
+# Only what is bloat on every Arçelik-built set (Arçelik, Beko, Grundig; Android TV 11 and 14), as
+# verified on real Grundig and Beko sets. The TV's own
 # feature apps (voice assistant, Chromecast, AirScreen, YouTube Kids, Play Movies, the phone remotes)
 # and every app the viewer installed stay.
 PACKAGES_TO_REMOVE=(

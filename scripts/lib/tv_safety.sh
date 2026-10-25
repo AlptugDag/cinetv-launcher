@@ -26,7 +26,7 @@ is_protected_pkg() {
         com.mstar.tv.*|com.mstar.*display*|com.mstar.*hdmi*)
             return 0 ;;
         # --- Arçelik / Beko / Grundig: remote keys, Input key, pairing, backlight, the TV's own settings
-        #     (verified on these sets by the CleanYourTV community lists) ---
+        #     (verified on these sets) ---
         fusion.android.tv.demo|com.arcelik.smartremoteservice|com.mediatek.autopair|com.arcelik.tv.arcelikbacklight|\
         com.arcelik.ChannelEditor|com.arcelik.ecomode|com.arcelik.picturecustomizer|com.arcelik.ToneMaster|\
         com.arcelik.easy_installation|com.seraphic.openinet.pre|*partnercustomizer*|com.google.android.tungsten.setupwraith|\

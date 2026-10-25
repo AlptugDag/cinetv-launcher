@@ -43,11 +43,13 @@ android {
         applicationId "com.cinetv.launcher"
         minSdk 26
         targetSdk 34
-        // Release builds take the version from the git tag (CI passes -PcineTvVersion=2.1.0).
-        def ver = (project.findProperty('cineTvVersion') ?: '3.0.0').toString().replaceFirst('^v', '')
+        // Release builds take the version from the git tag (CI passes -PcineTvVersion=1.0.0).
+        def ver = (project.findProperty('cineTvVersion') ?: '1.0.0').toString().replaceFirst('^v', '')
         def parts = ver.tokenize('.').collect { it.replaceAll('[^0-9]', '') as int }
         versionName ver
-        versionCode parts[0] * 10000 + (parts.size() > 1 ? parts[1] : 0) * 100 + (parts.size() > 2 ? parts[2] : 0)
+        // Numbering restarted at 1.0.0 after 3.2.0: the 100000 base keeps codes above the old builds', so
+        // TVs that had them still take updates (Android refuses a lower code without wiping the app's data).
+        versionCode 100000 + parts[0] * 10000 + (parts.size() > 1 ? parts[1] : 0) * 100 + (parts.size() > 2 ? parts[2] : 0)
     }
 
     sourceSets {
