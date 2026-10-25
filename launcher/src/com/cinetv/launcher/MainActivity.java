@@ -40,6 +40,7 @@ import com.cinetv.launcher.ui.DvdCaseView;
 import com.cinetv.launcher.ui.DvdOpeningView;
 import com.cinetv.launcher.ui.Glow;
 import com.cinetv.launcher.ui.HomeScreen;
+import com.cinetv.launcher.ui.ModalHost;
 import com.cinetv.launcher.ui.Panels;
 import com.cinetv.launcher.ui.UiKit;
 
@@ -406,7 +407,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                             AppTileItem item = new AppTileItem();
                             item.packageName = pkg;
                             item.label = label;
-                            showActions(item, false, -1);
+                            showActions(item, false, -1, null);
                         }
                     }));
         });
@@ -688,15 +689,18 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.shelf.requestFocus();
     }
 
+    /** Long-press: Move / Hide / Uninstall / Info as a glass bar attached to the tile itself. */
     @Override
-    public void showActions(final AppTileItem item, final boolean inDock, final int index) {
-        home.modal.push(() -> {
+    public void showActions(final AppTileItem item, final boolean inDock, final int index, View tile) {
+        ModalHost.Builder bar = () -> {
             android.widget.LinearLayout row = new android.widget.LinearLayout(this);
             row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            android.widget.TextView name = UiKit.bold(this, 26, UiKit.INK);
-            name.setText(AppArtwork.getCleanLabel(item.packageName, item.label));
-            name.setPadding(0, 0, UiKit.px(28), 0);
-            row.addView(name);
+            if (tile == null) {
+                android.widget.TextView name = UiKit.bold(this, 26, UiKit.INK);
+                name.setText(AppArtwork.getCleanLabel(item.packageName, item.label));
+                name.setPadding(UiKit.px(8), 0, UiKit.px(20), 0);
+                row.addView(name);
+            }
             if (index >= 0) row.addView(spaced(Controls.button(this, getString(R.string.move), v -> {
                 home.modal.close();
                 home.moveHint.setVisibility(View.VISIBLE);
@@ -716,7 +720,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 AppLauncher.openAppInfo(this, item.packageName);
             })));
             return row;
-        });
+        };
+        if (tile != null) home.modal.pushAnchored(bar, tile);
+        else home.modal.push(bar);
     }
 
     private View spaced(View v) {

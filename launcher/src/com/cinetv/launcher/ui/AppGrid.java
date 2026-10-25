@@ -32,7 +32,7 @@ public class AppGrid {
         void onTileFocused(View tile, int color);
         void onLaunch(AppTileItem item);
         void onEdgeUp();
-        void showActions(AppTileItem item, boolean inDock, int index);
+        void showActions(AppTileItem item, boolean inDock, int index, View tile);
         void onAddToDock();
         void onOrderChanged();
     }
@@ -199,7 +199,7 @@ public class AppGrid {
         final boolean[] longPressed = {false};
         final Runnable longPress = () -> {
             longPressed[0] = true;
-            host.showActions(item, inDock, index);
+            host.showActions(item, inDock, index, frame);
         };
         frame.setOnKeyListener((v, keyCode, e) -> {
             if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
@@ -213,7 +213,7 @@ public class AppGrid {
                 return longPressed[0];
             }
             if (keyCode == KeyEvent.KEYCODE_MENU && e.getAction() == KeyEvent.ACTION_DOWN) {
-                host.showActions(item, inDock, index);
+                host.showActions(item, inDock, index, frame);
                 return true;
             }
             if (e.getAction() != KeyEvent.ACTION_DOWN || moving != null) return false;

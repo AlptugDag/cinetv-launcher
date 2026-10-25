@@ -26,6 +26,8 @@ public class ModalHost extends FrameLayout {
     }
 
     private final Deque<Builder> stack = new ArrayDeque<>();
+    /** When set, the top window is a small bar attached to this view instead of a centred window. */
+    private View anchor;
     private Runnable onClosed;
 
     public ModalHost(Context ctx) {
@@ -45,7 +47,15 @@ public class ModalHost extends FrameLayout {
 
     /** Opens a window on top of the current one. */
     public void push(Builder builder) {
+        anchor = null;
         stack.push(builder);
+        showTop();
+    }
+
+    /** A contextual bar right under (or above) {@code near}, e.g. the actions of a long-pressed tile. */
+    public void pushAnchored(Builder builder, View near) {
+        stack.push(builder);
+        anchor = near;
         showTop();
     }
 
@@ -63,6 +73,7 @@ public class ModalHost extends FrameLayout {
 
     public void close() {
         stack.clear();
+        anchor = null;
         animate().alpha(0f).setDuration(PerformanceProfile.animationMs(getContext(), 160)).withEndAction(() -> {
             setVisibility(GONE);
             removeAllViews();
@@ -75,13 +86,35 @@ public class ModalHost extends FrameLayout {
         View content = stack.peek().build();
         LinearLayout card = new LinearLayout(getContext());
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(UiKit.px(44), UiKit.px(36), UiKit.px(44), UiKit.px(36));
-        card.setBackground(Glass.panel(card, 44));
+        final View near = anchor;
+        if (near != null) card.setPadding(UiKit.px(14), UiKit.px(12), UiKit.px(14), UiKit.px(12));
+        else card.setPadding(UiKit.px(44), UiKit.px(36), UiKit.px(44), UiKit.px(36));
+        card.setBackground(Glass.panel(card, near != null ? 36 : 44));
+        setBackgroundColor(Color.argb(near != null ? 90 : 150, 0, 0, 0));
         card.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         card.setClipChildren(false);
         card.setClipToPadding(false);
-        LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                near != null ? Gravity.TOP | Gravity.START : Gravity.CENTER);
         addView(card, lp);
+        if (near != null) {
+            // Place it once measured: centred under the tile, above it when the screen ends.
+            card.setVisibility(INVISIBLE);
+            card.post(() -> {
+                int[] at = new int[2], me = new int[2];
+                near.getLocationOnScreen(at);
+                getLocationOnScreen(me);
+                float nw = near.getWidth() * near.getScaleX(), nh = near.getHeight() * near.getScaleY();
+                float cx = at[0] - me[0] + nw / 2f;
+                float below = at[1] - me[1] + nh + UiKit.pxf(18);
+                float y = below + card.getHeight() < getHeight() - UiKit.pxf(20) ? below : at[1] - me[1] - card.getHeight() - UiKit.pxf(18);
+                card.setX(Math.max(UiKit.pxf(24), Math.min(getWidth() - card.getWidth() - UiKit.pxf(24), cx - card.getWidth() / 2f)));
+                card.setY(Math.max(UiKit.pxf(24), y));
+                card.setPivotX(cx - card.getX());
+                card.setPivotY(y > at[1] - me[1] ? 0 : card.getHeight());
+                card.setVisibility(VISIBLE);
+            });
+        }
         if (getVisibility() != VISIBLE) {
             setAlpha(0f);
             setVisibility(VISIBLE);
