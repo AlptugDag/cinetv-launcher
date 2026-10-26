@@ -204,6 +204,7 @@
     <string name="weather_city_body">Saatin yanında sıcaklığı gösterilecek şehir. Boş bırakırsanız bağlantınızdan bulunur.</string>
     <string name="weather_auto">Otomatik</string>
     <string name="connect_phone">Telefonu bağla</string>
+    <string name="pair_trouble">Açılmıyor mu? Telefon televizyonla aynı Wi-Fi\'ye bağlı olmalı (mobil veri ya da misafir ağı değil). Ya da yukarıdaki adresi tarayıcıya elle yaz.</string>
     <string name="connect_phone_hint">Telefondan film ara ve aç</string>
     <string name="calibration">Görüntü kalibrasyonu</string>
     <string name="calibration_hint">Paneli telefondan ayarla</string>

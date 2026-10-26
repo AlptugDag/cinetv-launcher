@@ -105,6 +105,7 @@ public final class TvWebRemoteServer {
         if (started || (server != null && !server.isClosed())) return;
         started = true;
         app = ctx.getApplicationContext();
+        RemotePairing.init(app);
         Thread t = new Thread(TvWebRemoteServer::acceptLoop, "cinetv-remote");
         t.setDaemon(true);
         t.start();
@@ -306,6 +307,13 @@ public final class TvWebRemoteServer {
                 Controller c = controller;
                 if (c != null) c.onPhoneActivity();
             });
+            if ("/api/browse/frame".equals(path)) {
+                // the page the TV is browsing for the phone, as a picture
+                byte[] jpg = CastBrowser.frame();
+                if (jpg == null) send(out, 204, "image/jpeg", new byte[0]);
+                else send(out, 200, "image/jpeg", jpg);
+                return;
+            }
             json(out, api(path, q));
         } catch (Throwable t) {
             Log.d(TAG, "Request failed: " + t.getClass().getSimpleName());
@@ -476,6 +484,34 @@ public final class TvWebRemoteServer {
                 }
                 return ok.put("videos", videos);
             }
+            case "/api/browse/open": {
+                String u = clip(q.get("url"), 2000);
+                if (!u.startsWith("http")) u = "https://" + u;
+                if (!isPublicHttpUrl(u)) return new JSONObject().put("ok", false).put("error", "url");
+                String ref = clip(q.get("ref"), 2000);
+                CastBrowser.open(app, u, ref.startsWith("http") ? ref : null);
+                return ok;
+            }
+            case "/api/browse/tap":
+                CastBrowser.tap(parseFloat(q.get("x")), parseFloat(q.get("y")));
+                return ok;
+            case "/api/browse/scroll":
+                CastBrowser.scroll(parseFloat(q.get("dy")));
+                return ok;
+            case "/api/browse/back":
+                CastBrowser.back();
+                return ok;
+            case "/api/browse/reload":
+                CastBrowser.reload();
+                return ok;
+            case "/api/browse/type":
+                CastBrowser.type(clip(q.get("q"), 300), "1".equals(q.get("enter")));
+                return ok;
+            case "/api/browse/close":
+                CastBrowser.close();
+                return ok;
+            case "/api/browse/status":
+                return CastBrowser.status();
             case "/api/cast/play": {
                 final String u = clip(q.get("url"), 2000);
                 final String ref = clip(q.get("ref"), 2000);

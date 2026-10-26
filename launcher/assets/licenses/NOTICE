@@ -1,0 +1,31 @@
+CineTV
+Copyright 2026 Alptuğ Dağ and CineTV contributors
+
+Parts of the app launcher code, the theme wallpapers and the TV safety scripts were adapted from
+an MIT-licensed Android TV launcher project (https://github.com/Gathin23/cleanyourtv). The MIT
+licence asks that its copyright notice travel with those portions:
+
+  Copyright (c) Gathin23. Permission is hereby granted, free of charge, to any person obtaining a
+  copy of this software and associated documentation files, to deal in the Software without
+  restriction, subject to the condition that the above copyright notice and this permission
+  notice shall be included in all copies or substantial portions of the Software.
+
+The "Sweden Nordic" theme photographs are from Wikimedia Commons under their own licences
+(CC BY-SA 4.0, CC BY 4.0, CC BY-SA 2.0); see launcher/assets/themes/sweden/CREDITS.md. Their
+credits are shown on screen while the theme is active.
+
+The Poppins font (launcher/assets/fonts, Copyright 2020 The Poppins Project Authors,
+https://github.com/itfoundry/Poppins) is licensed under the SIL Open Font License 1.1: licenses/OFL-Poppins.txt.
+The Caveat Brush font (launcher/assets/fonts/CaveatBrush-Regular.ttf, Copyright 2015 Google Inc.) is licensed
+under the SIL Open Font License 1.1: licenses/OFL-CaveatBrush.txt.
+
+The app includes ZXing ("Zebra Crossing", com.google.zxing:core 3.5.3, https://github.com/zxing/zxing), used to
+draw the phone-pairing QR code. Copyright ZXing authors. Licensed under the Apache License, Version 2.0:
+licenses/Apache-2.0.txt.
+
+These notices and licence texts also ship inside the app (assets/licenses).
+
+The Cinema Hall theme's photograph (launcher/assets/themes/cinema.jpg, and the curtain texture velvet.jpg cut
+from it) is "Lichtburg-Essen-Kinosaal-2025" by Tuxyso, Wikimedia Commons, licensed under CC BY-SA 4.0
+(https://creativecommons.org/licenses/by-sa/4.0/); cropped and resized. The credit is shown on screen
+while the theme is active.

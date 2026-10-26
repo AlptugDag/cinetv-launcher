@@ -208,6 +208,7 @@
     <string name="weather_city_body">The city whose temperature appears next to the clock. Leave empty to detect it from your connection.</string>
     <string name="weather_auto">Automatic</string>
     <string name="connect_phone">Connect phone</string>
+    <string name="pair_trouble">Not opening? The phone must be on the same Wi-Fi as the TV (not mobile data or a guest network). Or type the address above into the browser.</string>
     <string name="connect_phone_hint">Search and open films from your phone</string>
     <string name="calibration">Picture calibration</string>
     <string name="calibration_hint">Tune the panel from your phone</string>

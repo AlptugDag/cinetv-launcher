@@ -73,7 +73,9 @@ Ayarlar › Ağ ve İnternet › bağlı olduğunuz Wi-Fi'nin ya da kablonun ad�
 7. Kumandada **Ana Sayfa** (ev) tuşuna basın. *"Hangi ana ekran?"* diye sorarsa **CineTV** › **Her zaman**.
 8. Downloader'a dönüp indirdiği dosyayı silebilirsiniz (*Files* › CineTV.apk › Sil).
 
-Bitti. Film özetleri, afişler ve yapay zekâ araması için [anahtarları girin](#kurulumdan-sonra) (isteğe bağlı).
+Bitti. Televizyonda Nuvio yoksa CineTV ilk açılışta onu ve temel eklentilerini (altyazılar, anime, YouTube) kendisi
+kurar; Nuvio zaten varsa hiç dokunmaz. Film özetleri, afişler ve yapay zekâ araması için
+[anahtarları girin](#kurulumdan-sonra) (isteğe bağlı).
 
 ---
 
@@ -149,7 +151,8 @@ cd cinetv-launcher
   televizyonda **İzin ver**. Telefon ana ekranına eklerseniz uygulama gibi açılır.
 - **YouTube'dan "TV'de izle"**: telefondaki YouTube uygulamasında yayınla (📺) simgesine basın ve
   **"<televizyonun adı> · YouTube"**'u seçin; video reklamsız TizenTube'da açılır.
-- **Film sitesinden yayınlama**: telefon sayfasında **Yayınla** › sayfanın bağlantısını yapıştırın › **TV'de oynat**.
+- **Film sitesinden yayınlama**: telefon sayfasında **Yayınla** › sayfanın adresini yapıştırın › **Aç**. Sayfa telefonda
+  açılır; reklamları geçip filmin oynat tuşuna basın, film televizyonda başlar.
 - **Anahtarlar** (isteğe bağlı, ücretsiz): CineTV › Ayarlar › **Yapay zekâ ve filmler**:
   - *TMDB*: Türkçe özetler ve afişler. themoviedb.org › hesap aç › Ayarlar › API › anahtar oluştur.
   - *Yapay zekâ*: "araba temalı filmler" gibi aramalar. En kolayı ücretsiz Gemini: aistudio.google.com › *Get API key*.

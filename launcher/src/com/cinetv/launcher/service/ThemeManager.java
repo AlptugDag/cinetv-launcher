@@ -163,12 +163,9 @@ public final class ThemeManager {
         return MODE_DARK;
     }
 
+    /** Every room is dark, as a cinema is: there is no light mode. */
     public static boolean isLight(Context ctx) {
-        String mode = appearance(ctx);
-        if (MODE_LIGHT.equals(mode)) return true;
-        if (MODE_DARK.equals(mode)) return false;
-        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        return hour >= 7 && hour < 19;
+        return false;
     }
 
     /** The wallpaper for this hour; multi-picture themes advance once an hour. */

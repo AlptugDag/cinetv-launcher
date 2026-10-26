@@ -24,7 +24,7 @@ import com.cinetv.launcher.service.AppLauncher;
  *    apps chosen here, and the tuner app that MediaTek TVs open on boot is sent back Home;
  *  - when an app is left, its background processes are trimmed (casting, voice and Bluetooth are
  *    protected);
- *  - the system night mode follows the launcher's dark / light / auto appearance.
+ *  - the system night mode stays dark, like the launcher.
  *
  * The component name is stable because the TV stores it in Settings.Secure.
  */
@@ -179,6 +179,15 @@ public class TvKeyInterceptorService extends AccessibilityService {
         boolean gamepad = (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
                 || (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
         if (gamepad || HardwareKeys.isNavigation(event.getKeyCode())) return false;
+        // the remote's microphone: CineTV's own voice search and commands, not the Google Assistant, in every app
+        int code = event.getKeyCode();
+        if (code == KeyEvent.KEYCODE_SEARCH || code == KeyEvent.KEYCODE_VOICE_ASSIST || code == KeyEvent.KEYCODE_ASSIST) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                        .putExtra("action", "voice"));
+            }
+            return true;
+        }
         // CineTV's own window handles its keys itself (settings, key capture...).
         if (getPackageName().equals(lastPackage)) return false;
         String action = HardwareKeys.actionFor(this, event.getKeyCode(), event.getScanCode());

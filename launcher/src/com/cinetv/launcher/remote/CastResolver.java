@@ -134,7 +134,9 @@ public final class CastResolver {
         if (isYouTube(url)) {
             return AppLauncher.start(ctx, new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         }
-        String type = url.toLowerCase(Locale.ROOT).contains(".m3u8") ? "application/x-mpegURL"
+        String low = url.toLowerCase(Locale.ROOT);
+        // HLS also comes as master.txt / playlist.txt or under /hls/ on film sites
+        String type = low.contains(".m3u8") || low.contains("master.txt") || low.contains("playlist.txt") || low.contains("/hls/") ? "application/x-mpegurl"
                 : url.toLowerCase(Locale.ROOT).contains(".mpd") ? "application/dash+xml" : "video/*";
         Intent i = new Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(url), type).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         if (referrer != null && referrer.startsWith("http")) {
@@ -147,7 +149,9 @@ public final class CastResolver {
         // Nova plays HLS, DASH and nearly every codec; any other player is the fallback.
         Intent nova = new Intent(i).setPackage("org.courville.nova");
         if (AppLauncher.start(ctx, nova)) return true;
-        return AppLauncher.start(ctx, i) || AppLauncher.start(ctx, new Intent(i).setType("video/*"));
+        // players match the type exactly (lowercase); "video/*" with the address, never without it
+        if (AppLauncher.start(ctx, new Intent(i).setDataAndType(Uri.parse(url), "video/*").setPackage("org.courville.nova"))) return true;
+        return AppLauncher.start(ctx, i) || AppLauncher.start(ctx, new Intent(i).setDataAndType(Uri.parse(url), "video/*"));
     }
 
     private static int rank(String url) {

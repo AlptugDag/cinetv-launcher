@@ -38,7 +38,11 @@ public final class HomeGuard {
             }
             if (system != null) system.uncaughtException(thread, error);
         });
-        new Thread(() -> ensureDefault(app), "cinetv-home").start();
+        new Thread(() -> {
+            ensureDefault(app);
+            // installed from the APK alone: Nuvio and its addons come too (never touched when already there)
+            com.cinetv.launcher.device.NuvioSetup.runOnce(app);
+        }, "cinetv-home").start();
     }
 
     /** True when the Home button opens CineTV without asking. */

@@ -98,11 +98,6 @@ public final class Panels {
             }
             c1.addView(pair);
         }
-        String mode = ThemeManager.appearance(ctx);
-        c1.addView(Controls.tile(ctx, ctx.getString(R.string.appearance), appearanceName(ctx, mode), false, v -> {
-            ThemeManager.setAppearance(ctx, ThemeManager.nextAppearance(ThemeManager.appearance(ctx)));
-            a.applyAppearance();
-        }));
         boolean customBg = ThemeManager.usesCustomWallpaper(ctx);
         c1.addView(Controls.tile(ctx, ctx.getString(R.string.background), ctx.getString(customBg ? R.string.background_custom : R.string.background_hint), customBg,
                 v -> host.push(() -> buildPairing(ctx, host, "background"))));
@@ -227,12 +222,6 @@ public final class Panels {
         if (com.cinetv.launcher.device.NetworkOptimizer.DNS_ADGUARD.equals(choice)) return R.string.dns_adguard;
         if (com.cinetv.launcher.device.NetworkOptimizer.DNS_CLOUDFLARE.equals(choice)) return R.string.dns_cloudflare;
         return R.string.dns_off;
-    }
-
-    private static String appearanceName(Context ctx, String mode) {
-        if (ThemeManager.MODE_LIGHT.equals(mode)) return ctx.getString(R.string.appearance_light);
-        if (ThemeManager.MODE_AUTO.equals(mode)) return ctx.getString(R.string.appearance_auto);
-        return ctx.getString(R.string.appearance_dark);
     }
 
     private static int perfModeRes(String m) {
@@ -509,6 +498,13 @@ public final class Panels {
         TextView link = UiKit.label(ctx, 18, UiKit.INK_FAINT);
         link.setText(url == null ? ctx.getString(R.string.no_network) : RemotePairing.baseUrl());
         text.addView(link);
+        if (url != null) {
+            TextView trouble = UiKit.label(ctx, 17, UiKit.INK_FAINT);
+            trouble.setText(R.string.pair_trouble);
+            trouble.setMaxWidth(UiKit.px(620));
+            trouble.setPadding(0, UiKit.px(10), 0, 0);
+            text.addView(trouble);
+        }
         LinearLayout buttons = new LinearLayout(ctx);
         buttons.setPadding(0, UiKit.px(26), 0, 0);
         buttons.addView(Controls.button(ctx, ctx.getString(R.string.done), v -> host.back()));

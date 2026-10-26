@@ -91,13 +91,41 @@ public final class RemotePairing {
     }
 
     /** The TV's LAN address: Wi-Fi or Ethernet first, then any other non-virtual interface. */
+    private static volatile android.content.Context appCtx;
+
+    /** Lets localIp() ask the system which network the TV is really on (set when the phone server starts). */
+    static void init(android.content.Context ctx) {
+        appCtx = ctx.getApplicationContext();
+    }
+
+    /**
+     * The TV's address on the home network: the active network's own IPv4 address first. TVs often also run
+     * a second Wi-Fi interface for Chromecast / Miracast (wlan1, p2p0, ap0) whose address no phone can reach;
+     * a QR code with that address is "site can't be reached".
+     */
     public static String localIp() {
+        try {
+            android.content.Context c = appCtx;
+            if (c != null) {
+                android.net.ConnectivityManager cm = (android.net.ConnectivityManager) c.getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+                android.net.Network n = cm == null ? null : cm.getActiveNetwork();
+                android.net.LinkProperties lp = n == null ? null : cm.getLinkProperties(n);
+                if (lp != null) {
+                    for (android.net.LinkAddress la : lp.getLinkAddresses()) {
+                        InetAddress a = la.getAddress();
+                        if (a instanceof Inet4Address && !a.isLoopbackAddress() && !a.isLinkLocalAddress()) return a.getHostAddress();
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
         try {
             String fallback = null;
             for (NetworkInterface nif : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 if (!nif.isUp() || nif.isLoopback()) continue;
                 String name = nif.getName().toLowerCase();
-                if (name.contains("tun") || name.contains("p2p") || name.contains("dummy")) continue;
+                if (name.contains("tun") || name.contains("p2p") || name.contains("dummy") || name.startsWith("ap")
+                        || name.equals("wlan1") || name.startsWith("swlan")) continue;
                 for (InetAddress a : Collections.list(nif.getInetAddresses())) {
                     if (!(a instanceof Inet4Address) || a.isLoopbackAddress() || a.isLinkLocalAddress()) continue;
                     if (name.startsWith("wlan") || name.startsWith("eth")) return a.getHostAddress();

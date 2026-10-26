@@ -470,16 +470,25 @@ public class DvdOpeningView extends View {
             ink.setTypeface(FontManager.getMarker(ctx));
             ink.setColor(Color.argb(240, 18, 18, 22));
             c.save();
-            c.rotate(-1.6f, w / 2f, h / 2f);
+            // nothing written ever leaves the paper, whatever the title, the names or the cover's shape
+            c.clipRect(paper);
+            // handwriting leans a little; less on a wide cover, where the far end would drift off the line
+            c.rotate(-1.6f * Math.min(1f, h / (float) w), w / 2f, h / 2f);
             float y = paper.top + pad * 0.9f;
 
             // Title and signature in the film's own colour (as its glow), deep enough to read on paper.
             int filmInk = filmInk(cover);
             int blackInk = ink.getColor();
             ink.setColor(filmInk);
-            ink.setTextSize(u * 0.092f);
-            // the title in the viewer's language, the film's own beside it: "Sonbahar (秋日和)"
+            // the title in the viewer's language, the film's own beside it: "Sonbahar (秋日和)"; two lines at most
+            float titleSize = u * 0.092f;
+            ink.setTextSize(titleSize);
             StaticLayout title = layout(movie.innerTitle(), ink, (int) textW, 1.0f);
+            while (title.getLineCount() > 2 && titleSize > u * 0.05f) {
+                titleSize -= u * 0.006f;
+                ink.setTextSize(titleSize);
+                title = layout(movie.innerTitle(), ink, (int) textW, 1.0f);
+            }
             drawInk(c, title, paper.left + pad, y, ink);
             y += title.getHeight();
             Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -499,28 +508,27 @@ public class DvdOpeningView extends View {
                     + (movie.year > 1900 ? (movie.director == null || movie.director.isEmpty() ? "" : ", ") + movie.year : "");
             float bottom = paper.bottom - pad * 0.8f;
             if (!by.isEmpty()) {
-                ink.setTextSize(u * 0.064f);
                 ink.setColor(filmInk);
-                String sig = "— " + by;
-                float sw = ink.measureText(sig);
-                c.drawText(sig, paper.right - pad - Math.min(sw, textW), bottom, ink);
+                String sig = fit(ink, "— " + by, textW, u * 0.064f, u * 0.04f);
+                c.drawText(sig, paper.right - pad - ink.measureText(sig), bottom, ink);
                 bottom -= u * 0.11f;
             }
             if (movie.ratings != null && !movie.ratings.isEmpty()) {
                 // the critics, small, above the signature line
-                ink.setTextSize(u * 0.05f);
                 ink.setColor(filmInk);
+                ink.setTextSize(u * 0.05f);
                 String r = movie.ratings;
                 while (ink.measureText(r) > textW && r.contains("  ·  ")) r = r.substring(0, r.lastIndexOf("  ·  "));
-                c.drawText(r, paper.right - pad - Math.min(ink.measureText(r), textW), bottom, ink);
+                r = fit(ink, r, textW, u * 0.05f, u * 0.036f);
+                c.drawText(r, paper.right - pad - ink.measureText(r), bottom, ink);
                 bottom -= u * 0.09f;
             }
 
             ink.setColor(blackInk);
             // The story: as large as fits, never smaller than legible.
             String story = movie.overview == null ? "" : movie.overview.trim();
-            if (!story.isEmpty()) {
-                float avail = bottom - y;
+            float avail = bottom - y;
+            if (!story.isEmpty() && avail > u * 0.12f) {
                 float size = u * 0.072f;
                 StaticLayout body = layout(story, ink, (int) textW, 1.02f);
                 while (size > u * 0.046f) {
@@ -549,6 +557,19 @@ public class DvdOpeningView extends View {
         c.drawRoundRect(new RectF(w - clipW - lip * 0.4f, h * 0.10f, w - lip * 0.4f, h * 0.10f + clipH), clipW * 0.3f, clipW * 0.3f, p);
         c.drawRoundRect(new RectF(w - clipW - lip * 0.4f, h * 0.85f, w - lip * 0.4f, h * 0.85f + clipH), clipW * 0.3f, clipW * 0.3f, p);
         return out;
+    }
+
+    /** Sets the paint's size so the text fits {@code maxW} (down to {@code minSize}); trims it with "…" if even that is too wide. */
+    private static String fit(TextPaint ink, String text, float maxW, float size, float minSize) {
+        ink.setTextSize(size);
+        while (ink.measureText(text) > maxW && size > minSize) {
+            size -= minSize * 0.06f;
+            ink.setTextSize(size);
+        }
+        if (ink.measureText(text) <= maxW) return text;
+        String t = text;
+        while (t.length() > 2 && ink.measureText(t + "…") > maxW) t = t.substring(0, t.length() - 1);
+        return t.trim() + "…";
     }
 
     /** The poster's standout colour, darkened to a felt-tip shade that stays readable on pale paper. */

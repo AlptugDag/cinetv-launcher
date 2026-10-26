@@ -296,6 +296,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (action == null) return;
         if ("setup".equals(action)) handler.postDelayed(() -> Panels.setup(this, home.modal, true), 1500);
         else if ("settings".equals(action)) handler.postDelayed(this::onSettings, 300);
+        else if ("voice".equals(action)) handler.postDelayed(this::onVoice, 250);
         else if ("tour".equals(action)) handler.postDelayed(this::startTour, 300);
         else if ("trailers_on".equals(action) || "trailers_off".equals(action)) {
             final boolean on = "trailers_on".equals(action);

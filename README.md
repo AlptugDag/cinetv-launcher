@@ -214,7 +214,7 @@ On first start, and from *Settings › Picture, sound & network tuning*:
   Metallic (brushed titanium, chrome edges); Cinema Hall (a real art-deco cinema, its velvet curtains in front of the
   shelf's ends, the cases in its warm light); Film Closet (a collector's closet of white shelves packed with films, the
   row of cases one of its shelves); Neon Night (synthwave sun and grid);
-  OLED Black (true black). Panels and buttons take the room's material. Drawn by the app, apart from the cinema photo. Or **your own background** sent from your phone. Dark, light or automatic by time of day.
+  OLED Black (true black). Panels and buttons take the room's material. Drawn by the app, apart from the cinema photo. Or **your own background** sent from your phone. Always dark, as a cinema is.
 - **Performance: Low, Medium, High, each adapting by itself** to what holds the TV back (graphics, memory,
   processor), measured again while it runs; *Determine automatically* runs a short benchmark and picks one.
 - **Remote buttons**: Netflix opens Nuvio, YouTube opens ad-free YouTube, Prime opens phone casting; any
@@ -249,8 +249,9 @@ TV. From then on it connects by itself.
   selected on the TV, Turkish letters included. Double taps never zoom the page. **Power** (tap twice)
   really switches the TV off; its own remote turns it on again. Keys reach any app through a small bridge
   CineTV starts on the TV itself; the TV asks once to allow it ("Always allow").
-- **Cast**: paste any video link or a film page. The TV opens the page itself, presses play, follows the
-  player into its embedded frame, skips the ads and plays the film full screen.
+- **Cast by browsing**: open a film page from the phone; the page appears on the phone, live, and you tap it
+  as you would any page: skip the site's ads, press the film's play. The film's stream (three minutes or
+  more, so ads are never sent) then plays on the TV. The page itself stays silent on the TV.
 - **Air mouse**: switch it on on the touchpad and point the phone (or slide a finger): a pointer moves over any
   app on the TV, a tap clicks, two fingers scroll.
 - **Voice from the phone**: the microphone key takes the same commands and searches as the TV's remote.
