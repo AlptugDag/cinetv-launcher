@@ -125,6 +125,19 @@ public class TvKeyInterceptorService extends AccessibilityService {
                     return;
                 }
                 break;
+            case "com.google.android.katniss":
+            case "com.google.android.googlequicksearchbox":
+            case "com.google.android.apps.googleassistant":
+                // The remote's microphone talks to Google's voice service directly (no key reaches any app):
+                // when its window opens and CineTV did not ask for it, it closes and CineTV's voice search
+                // and commands open instead. CineTV's own listening uses the same service, so that one stays.
+                if (android.os.SystemClock.elapsedRealtime() - MainActivity.ourVoiceAt > 20_000) {
+                    performGlobalAction(GLOBAL_ACTION_BACK);
+                    startActivity(new Intent(this, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT).putExtra("action", "voice"));
+                    return;
+                }
+                break;
             case "com.netflix.ninja":
                 AppLauncher.launchFirst(this, AppLauncher.NUVIO_PACKAGES);
                 return;

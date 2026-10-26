@@ -1,0 +1,39 @@
+<!doctype html>
+<html><head><meta charset="utf-8"></head><body>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+// CineTV's end of the phone link that does not depend on the home network: the phone page (served from
+// GitHub, https) and this page find each other through PeerJS's public broker, then talk directly over a
+// WebRTC data channel. Every message is a request to the TV's phone API; the answer goes back on it.
+(function () {
+  var conns = {}, seq = 0;
+  window.reply = function (id, body) {
+    var c = conns[id];
+    if (!c) return;
+    delete conns[id];
+    try { c.conn.send({i: c.i, r: body}); } catch (e) {}
+  };
+  function start() {
+    var peer = new Peer(Cine.peerId(), {debug: 0, config: {iceServers: [
+      {urls: "stun:stun.l.google.com:19302"}, {urls: "stun:stun1.l.google.com:19302"}]}});
+    peer.on("connection", function (conn) {
+      conn.on("data", function (d) {
+        if (!d || typeof d !== "object" || typeof d.p !== "string") return;
+        var id = "r" + (++seq);
+        conns[id] = {conn: conn, i: d.i};
+        Cine.request(id, d.p, JSON.stringify(d.q || {}), String(conn.peer || ""));
+      });
+    });
+    peer.on("disconnected", function () { try { peer.reconnect(); } catch (e) {} });
+    peer.on("error", function (e) {
+      // the id is held by an earlier, dying session, or the broker dropped: try again shortly
+      if (e && (e.type === "unavailable-id" || e.type === "network" || e.type === "server-error" || e.type === "socket-error")) {
+        try { peer.destroy(); } catch (x) {}
+        setTimeout(start, 8000);
+      }
+    });
+  }
+  if (window.Peer) start(); else setTimeout(function () { location.reload(); }, 15000);
+})();
+</script>
+</body></html>

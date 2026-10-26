@@ -511,9 +511,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         });
     }
 
+    /** When CineTV itself last started listening (the key service leaves Google's voice window open then). */
+    public static volatile long ourVoiceAt;
+
     @Override
     public void onVoice() {
         home.keyboard.hide();
+        ourVoiceAt = android.os.SystemClock.elapsedRealtime();
         try {
             Intent i = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                     .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)

@@ -469,7 +469,9 @@ public final class Panels {
     private static View buildPairing(final Context ctx, final ModalHost host, final String section) {
         LinearLayout root = new LinearLayout(ctx);
         root.setGravity(Gravity.CENTER_VERTICAL);
-        String url = RemotePairing.pairingUrl(ctx, section);
+        // the QR code opens the phone page on GitHub, linked to this TV directly (any network, any browser);
+        // the local address stays written below for phones on the same Wi-Fi
+        String url = RemotePairing.baseUrl() == null && !online(ctx) ? null : com.cinetv.launcher.remote.RelayHost.pairingUrl(ctx, section);
 
         FrameLayout qrPlate = new FrameLayout(ctx);
         qrPlate.setBackground(new Glass(qrPlate, UiKit.pxf(28), Glass.Style.FOCUSED));
@@ -517,6 +519,15 @@ public final class Panels {
         text.addView(buttons);
         root.addView(text);
         return root;
+    }
+
+    private static boolean online(Context ctx) {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
+            return cm != null && cm.getActiveNetwork() != null;
+        } catch (Throwable t) {
+            return true;
+        }
     }
 
     public static void pairing(Context ctx, ModalHost host, String section) {

@@ -113,6 +113,8 @@ public final class TvWebRemoteServer {
         tls.setDaemon(true);
         tls.start();
         PeerDiscovery.start(app);
+        // the phone link that does not depend on the home network (QR codes open it)
+        RelayHost.start(app);
         DialServer.start(app);
     }
 
@@ -318,6 +320,29 @@ public final class TvWebRemoteServer {
         } catch (Throwable t) {
             Log.d(TAG, "Request failed: " + t.getClass().getSimpleName());
         }
+    }
+
+    /**
+     * One request from the phone over the relay (RelayHost): the same answers as over HTTP, pairing token
+     * included; pictures (the cast page) come back as base64.
+     */
+    static JSONObject answer(String path, Map<String, String> q, String agent) throws Exception {
+        JSONObject open = publicApi(path, q, agent);
+        if (open != null) return open;
+        if (!constantTimeEquals(q.get("k"), RemotePairing.token(app))) return new JSONObject().put("ok", false).put("error", "pair");
+        post(() -> {
+            Controller c = controller;
+            if (c != null) c.onPhoneActivity();
+        });
+        if ("/api/browse/frame".equals(path)) {
+            byte[] jpg = CastBrowser.frame();
+            return new JSONObject().put("ok", jpg != null).put("img", jpg == null ? "" : android.util.Base64.encodeToString(jpg, android.util.Base64.NO_WRAP));
+        }
+        if ("/api/wallpaper64".equals(path)) {
+            byte[] body = android.util.Base64.decode(q.get("data") == null ? "" : q.get("data"), android.util.Base64.DEFAULT);
+            return saveWallpaper(new java.io.ByteArrayInputStream(body), body.length);
+        }
+        return api(path, q);
     }
 
     /** A JPEG from the phone becomes the backdrop of Home. */

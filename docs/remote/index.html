@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#07070c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>CineTV by Alptuğ Dağ</title>
+<link rel="manifest" href="static/manifest.webmanifest">
+<link rel="apple-touch-icon" href="static/icon.png">
+<style>
+:root{
+  --bg:#07070c;--ink:#f5f5f7;--dim:rgba(235,235,245,.6);--faint:rgba(235,235,245,.32);
+  --glass:rgba(255,255,255,.08);--glass-hi:rgba(255,255,255,.14);--edge:rgba(255,255,255,.16);
+  --accent:#8b5cf6;--accent2:#c4b5fd;--ok:#34d399;--radius:22px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font:15px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+body::before{content:"";position:fixed;inset:-20%;z-index:-1;
+  background:radial-gradient(40% 35% at 20% 10%,rgba(139,92,246,.35),transparent 70%),
+             radial-gradient(35% 30% at 85% 30%,rgba(56,189,248,.18),transparent 70%),
+             radial-gradient(45% 40% at 50% 100%,rgba(236,72,153,.16),transparent 70%);filter:blur(10px)}
+.glass{background:var(--glass);border:1px solid var(--edge);border-radius:var(--radius);
+  -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 10px 30px rgba(0,0,0,.35)}
+header{position:sticky;top:0;z-index:5;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 10px;
+  background:linear-gradient(var(--bg) 55%,transparent)}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.brand b{font-size:22px;letter-spacing:-.02em}
+.tv{color:#ff1e1e}
+.brand .sig{width:34px;height:34px;object-fit:contain;margin-right:-2px}
+.brand .st{font-size:12px;color:var(--dim);margin-left:auto;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0}
+.brand em{font-style:normal}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+.dot.on{background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.search{display:flex;align-items:center;gap:10px;padding:12px 16px}
+.search input{flex:1;background:none;border:0;outline:0;color:var(--ink);font-size:16px}
+.search svg{opacity:.7}
+main{padding:0 16px calc(96px + var(--safe-b))}
+section{display:none}section.on{display:block}
+h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:18px 2px 10px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(min-width:560px){.grid{grid-template-columns:repeat(5,1fr)}}
+.card{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:2/3;background:var(--glass);
+  box-shadow:0 8px 20px rgba(0,0,0,.45);transform:translateZ(0);transition:transform .25s}
+.card:active{transform:scale(.96)}
+.card img{width:100%;height:100%;object-fit:cover;display:block}
+.card .t{position:absolute;inset:auto 0 0 0;padding:22px 8px 7px;font-size:11.5px;font-weight:600;
+  background:linear-gradient(transparent,rgba(0,0,0,.85))}
+.card .badge{position:absolute;top:6px;left:6px;font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(0,0,0,.55)}
+.empty{color:var(--dim);text-align:center;padding:40px 10px}
+.answer{padding:14px 16px;font-size:15px;line-height:1.45;border-left:3px solid var(--accent2)}
+nav{position:fixed;left:12px;right:12px;bottom:calc(10px + var(--safe-b));z-index:9;display:flex;padding:6px}
+nav button{flex:1;background:none;border:0;color:var(--dim);font-size:11px;padding:8px 0;border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button.on{color:var(--ink);background:var(--glass-hi)}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.25s;z-index:20}
+.sheet-bg.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.9,.2,1);
+  border-radius:28px 28px 0 0;padding:18px 18px calc(22px + var(--safe-b));max-height:86vh;overflow:auto}
+.sheet.on{transform:none}
+.sheet .row{display:flex;gap:16px}
+.sheet img{width:110px;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.5)}
+.sheet h3{margin:4px 0 6px;font-size:20px;line-height:1.2}
+.meta{color:var(--dim);font-size:13px}
+.ov{color:var(--dim);font-size:14px;margin:14px 0}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:16px;padding:15px;font-size:16px;font-weight:600;color:#fff;
+  background:linear-gradient(180deg,#9b6cff,#7c3aed);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 10px 24px rgba(124,58,237,.45)}
+a.btn{text-decoration:none}
+label.btn{cursor:pointer}
+.install{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:10px;font-size:13px}
+.install span{flex:1}
+.install button{border:0;border-radius:12px;padding:8px 12px;background:var(--accent);color:#fff;font-weight:600}
+.install .x{background:none;color:var(--dim);padding:6px}
+.btn.ghost{background:var(--glass-hi);box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 16px);transform:translate(-50%,-140%);transition:.3s;z-index:40;padding:10px 18px;font-size:14px}
+.toast.on{transform:translate(-50%,0)}
+/* remote: one screen, no scrolling, no zoom; a touchpad like the TV makers' own apps, in liquid glass */
+html,body,button{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+input,textarea{-webkit-user-select:text;user-select:text}
+body.remote header .search{display:none}
+body.remote main{padding-bottom:0}
+#tab-remote.on{display:flex;flex-direction:column;gap:12px;height:calc(100dvh - var(--hdr,96px) - 84px - var(--safe-b));min-height:420px}
+.rbar{display:flex;align-items:center;justify-content:space-between}
+.ic{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:var(--ink);padding:0}
+.ic svg{width:24px;height:24px}
+.pwr{color:#4ade80;transition:background .2s,color .2s}
+.pwr.arm{background:rgba(255,59,48,.85);color:#fff;border-color:transparent}
+.rbar .hint{font-size:12px;color:var(--dim);text-align:center;flex:1;padding:0 8px}
+.deck{flex:1;min-height:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:28px}
+.deck::-webkit-scrollbar{display:none}
+.page{flex:0 0 100%;scroll-snap-align:center;min-height:0;position:relative}
+.touch{height:100%;border-radius:28px;touch-action:none;position:relative;overflow:hidden;
+  background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.04) 45%,rgba(255,255,255,.07))}
+.touch::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(120% 60% at 30% 0%,rgba(255,255,255,.16),transparent 55%)}
+.touch .ripple{position:absolute;width:90px;height:90px;margin:-45px 0 0 -45px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(rgba(255,255,255,.35),transparent 70%);animation:rip .45s ease-out forwards}
+@keyframes rip{from{transform:scale(.3);opacity:1}to{transform:scale(1.6);opacity:0}}
+.touch .arrow{position:absolute;inset:0;display:grid;place-items:center;font-size:54px;color:rgba(255,255,255,.55);pointer-events:none;opacity:0;transition:opacity .25s}
+.touch .arrow.on{opacity:1;transition:none}
+.touch .tip{position:absolute;left:0;right:0;bottom:16px;text-align:center;font-size:12px;color:var(--faint);pointer-events:none}
+.mchip{position:absolute;top:12px;right:12px;z-index:2;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:600;color:var(--ink)}
+.mchip.on{background:var(--accent);border-color:transparent}
+.touch.mouse{background:linear-gradient(160deg,rgba(139,92,246,.22),rgba(255,255,255,.04) 55%,rgba(56,189,248,.12))}
+.more{height:100%;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:10px;padding:2px}
+.more button{border-radius:20px;color:var(--ink);font-size:13px;font-weight:600;padding:0;min-height:0}
+.more .c{border:0;margin:18% 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.more .w2{grid-column:span 2}
+.nums{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:10px;height:100%}
+.nums button{border-radius:20px;color:var(--ink);font-size:22px;font-weight:600;padding:0}
+.dots{display:flex;justify-content:center;gap:8px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--faint);transition:background .2s}
+.dots i.on{background:var(--ink)}
+.ctl{display:grid;grid-template-columns:1fr 3fr 1fr;gap:12px;align-items:stretch}
+.rocker{display:flex;flex-direction:column;align-items:center;justify-content:space-between;border-radius:40px;padding:4px 0}
+.rocker button{background:none;border:0;color:var(--ink);font-size:28px;width:100%;padding:12px 0;line-height:1}
+.rocker span{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--dim)}
+.rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;place-items:center}
+.rgrid button{width:min(64px,100%);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;color:var(--ink);padding:0}
+.rgrid svg{width:26px;height:26px}
+.rgrid .on{background:var(--accent);border-color:transparent}
+[data-key]:active,.rgrid button:active,.ic:active{transform:scale(.93)}
+.kbd{position:fixed;left:12px;right:12px;bottom:calc(12px + var(--safe-b));z-index:30;display:flex;gap:8px;padding:6px 6px 6px 14px;align-items:center}
+.kbd input{flex:1;background:none;border:0;outline:0;color:var(--ink);font-size:16px}
+.kbd button{border:0;border-radius:14px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:600}
+/* cast: the TV browses, the phone sees and taps */
+#tab-cast.on{display:flex;flex-direction:column;gap:10px;height:calc(100dvh - var(--hdr,96px) - 84px - var(--safe-b));min-height:420px}
+.urlbar{display:flex;gap:6px;padding:6px 6px 6px 14px;align-items:center}
+.urlbar input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--ink);font-size:16px}
+.ub{border:0;border-radius:12px;padding:9px 11px;background:var(--glass-hi);color:var(--ink);font-weight:600}
+.ub.go{background:var(--accent);color:#fff}
+.bwrap{flex:1;min-height:0;display:flex;justify-content:center}
+.bview{position:relative;height:100%;aspect-ratio:9/16;max-width:100%;border-radius:18px;overflow:hidden;touch-action:none;background:#000}
+.bview img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block;user-select:none;-webkit-user-drag:none}
+.bhint{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--dim);font-size:14px}
+.bprog{position:absolute;left:0;top:0;height:3px;width:0;background:var(--accent2);transition:width .3s}
+.btools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.btools button{border-radius:14px;padding:10px 0;color:var(--ink);font-size:18px}
+.bstatus{font-size:12.5px;color:var(--dim);text-align:center;min-height:18px}
+.bstatus.ok{color:var(--ok);font-weight:600}
+/* calibration */
+.cal{padding:16px;margin-top:12px}
+.slider{margin:14px 0}
+.slider label{display:flex;justify-content:space-between;font-size:13px;color:var(--dim);margin-bottom:6px}
+.slider label b{color:var(--ink);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:30px;background:none}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(255,255,255,.12),rgba(255,255,255,.3))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-10px;border-radius:50%;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.5)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--edge);background:var(--glass);color:var(--ink);border-radius:999px;padding:9px 14px;font-size:13px}
+.chip.on{background:var(--accent);border-color:transparent}
+.note{font-size:12.5px;color:var(--dim);margin-top:8px}
+.brand small{font-size:12px;color:var(--dim);font-weight:500;letter-spacing:.01em;margin-left:-4px;align-self:flex-end;padding-bottom:3px}
+.wait{padding:14px 16px;margin-top:12px;display:flex;gap:12px;align-items:center;font-size:14px}
+.wait i{width:10px;height:10px;border-radius:50%;background:var(--accent2);box-shadow:0 0 12px var(--accent);animation:pulse 1.2s infinite alternate}
+@keyframes pulse{to{opacity:.3;transform:scale(.7)}}
+.about{padding:20px;margin-top:14px;text-align:center}
+.about .sig2{width:120px;height:56px;object-fit:contain;margin:4px auto 0;display:block;opacity:.9}
+.about img.photo{width:132px;height:132px;border-radius:50%;object-fit:cover;object-position:70% 30%;box-shadow:0 10px 30px rgba(139,92,246,.45);border:2px solid rgba(255,255,255,.2)}
+.about h3{margin:14px 0 2px;font-size:22px}
+.about .role{color:var(--accent2);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.about p{color:var(--dim);font-size:14px;text-align:left;margin:16px 0}
+.follow{display:grid;gap:10px;margin-top:6px}
+.btn.ig{background:linear-gradient(135deg,#f58529,#dd2a7b 45%,#8134af 75%,#515bd4);box-shadow:0 10px 24px rgba(221,42,123,.4)}
+.btn.lb{background:linear-gradient(90deg,#ff8000,#00e054 50%,#40bcf4);box-shadow:0 10px 24px rgba(0,224,84,.25)}
+.btn.li{background:linear-gradient(180deg,#0a66c2,#004182);box-shadow:0 10px 24px rgba(10,102,194,.35)}
+.btn.gh{background:linear-gradient(180deg,#2d333b,#161b22);box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+.btn.yt{background:linear-gradient(180deg,#ff3b3b,#d40000);box-shadow:0 10px 24px rgba(212,0,0,.4)}
+.cast{padding:16px;margin-top:12px}
+.cast textarea{width:100%;min-height:84px;background:rgba(0,0,0,.25);border:1px solid var(--edge);border-radius:14px;color:var(--ink);font:15px/1.4 inherit;padding:12px;resize:vertical;outline:0}
+.found{display:grid;gap:8px;margin-top:12px}
+.found button{text-align:left;border:1px solid var(--edge);background:var(--glass);color:var(--ink);border-radius:14px;padding:12px 14px;font-size:13px;word-break:break-all}
+.skeleton{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,.12),rgba(255,255,255,.05));background-size:200% 100%;animation:sk 1.2s infinite}
+@keyframes sk{to{background-position:-200% 0}}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="brand"><img class="sig" src="static/signature.png" alt="" onerror="this.remove()"><b>Cine<span class="tv">TV</span></b><small>by Alptuğ Dağ</small><span class="st" id="tvPick"><i id="dot" class="dot"></i><em id="status" data-i="connecting"></em></span></div>
+  <div class="install glass" id="install" hidden><span id="installText"></span><button id="installGo" hidden></button><button class="x" id="installX">✕</button></div>
+  <form class="search glass" id="searchBox" onsubmit="return false">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" enterkeyhint="search" autocomplete="off" data-ph="searchPh">
+  </form>
+</header>
+
+<main>
+  <section id="tab-search" class="on">
+    <div class="wait glass" id="waitBox" hidden><i></i><span id="waitText"></span></div>
+    <h2 id="listTitle" data-i="trending"></h2>
+    <div class="grid" id="results"></div>
+  </section>
+
+  <section id="tab-remote">
+    <div class="rbar">
+      <button class="glass ic" data-key="176" aria-label="Settings"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button>
+      <span class="hint" id="rHint" data-i="swipeHint"></span>
+      <button class="glass ic pwr" id="pwr" aria-label="Power"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg></button>
+    </div>
+    <div class="deck" id="deck">
+      <div class="page"><div class="touch glass" id="touch"><button class="mchip glass" id="mouseBtn" data-i="airMouse"></button><div class="arrow" id="arrow"></div><div class="tip" id="padTip" data-i="touchTip"></div></div></div>
+      <div class="page"><div class="more">
+        <button class="glass" data-key="178" data-i="input"></button><button class="glass" data-key="172" data-i="guide"></button>
+        <button class="glass" data-key="82" data-i="menu"></button><button class="glass" data-key="165" data-i="info"></button>
+        <button class="glass" data-key="89" data-repeat aria-label="Rewind">⏪︎</button><button class="glass" data-key="85" aria-label="Play/Pause">⏯︎</button>
+        <button class="glass" data-key="86" aria-label="Stop">⏹︎</button><button class="glass" data-key="90" data-repeat aria-label="Fast forward">⏩︎</button>
+        <button class="glass" data-key="175" data-i="subs"></button><button class="glass" data-key="222" data-i="audio"></button>
+        <button class="glass" data-key="229" data-i="last"></button><button class="glass" data-key="231" data-i="assistant"></button>
+        <button class="c" data-key="183" style="background:#e5383b" aria-label="Red"></button><button class="c" data-key="184" style="background:#2db84c" aria-label="Green"></button>
+        <button class="c" data-key="185" style="background:#f4c430" aria-label="Yellow"></button><button class="c" data-key="186" style="background:#2f7de1" aria-label="Blue"></button>
+        <button class="glass w2" id="sleepBtn" data-i="sleepOff"></button><button class="glass w2" id="saver" data-i="screensaver"></button>
+      </div></div>
+      <div class="page"><div class="nums">
+        <button class="glass" data-key="8">1</button><button class="glass" data-key="9">2</button><button class="glass" data-key="10">3</button>
+        <button class="glass" data-key="11">4</button><button class="glass" data-key="12">5</button><button class="glass" data-key="13">6</button>
+        <button class="glass" data-key="14">7</button><button class="glass" data-key="15">8</button><button class="glass" data-key="16">9</button>
+        <button class="glass" data-key="66" aria-label="Enter">↵</button><button class="glass" data-key="7">0</button><button class="glass" data-key="67" aria-label="Delete">⌫</button>
+      </div></div>
+    </div>
+    <div class="dots" id="dots"><i class="on"></i><i></i><i></i></div>
+    <div class="ctl">
+      <div class="rocker glass"><button data-key="24" data-repeat aria-label="Volume up">+</button><span>VOL</span><button data-key="25" data-repeat aria-label="Volume down">−</button></div>
+      <div class="rgrid">
+        <button class="glass" id="kbdBtn" aria-label="Keyboard"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm2 3v2h2V9zm3 0v2h2V9zm3 0v2h2V9zm3 0v2h2V9zm3 0v2h2V9zM5 12v2h2v-2zm3 0v2h2v-2zm3 0v2h2v-2zm3 0v2h2v-2zm3 0v2h2v-2zM7 15v1.5h10V15z"/></svg></button>
+        <button class="glass" data-key="3" aria-label="Home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M12 15v5"/></svg></button>
+        <button class="glass" id="numBtn" aria-label="Numbers"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="5" r="1.8"/><circle cx="12" cy="5" r="1.8"/><circle cx="18" cy="5" r="1.8"/><circle cx="6" cy="10.5" r="1.8"/><circle cx="12" cy="10.5" r="1.8"/><circle cx="18" cy="10.5" r="1.8"/><circle cx="6" cy="16" r="1.8"/><circle cx="12" cy="16" r="1.8"/><circle cx="18" cy="16" r="1.8"/><circle cx="12" cy="21.3" r="1.8"/></svg></button>
+        <button class="glass" data-key="164" aria-label="Mute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="m17 9 4 6m0-6-4 6"/></svg></button>
+        <button class="glass" id="micBtn" aria-label="Voice"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 17.5V21" stroke="currentColor" stroke-width="2"/></svg></button>
+        <button class="glass" data-key="4" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5 4 10l5 5"/><path d="M4 10h10a6 6 0 0 1 0 12h-3" transform="translate(0 -3)"/></svg></button>
+      </div>
+      <div class="rocker glass"><button data-key="166" data-repeat aria-label="Channel up">⌃</button><span>CH</span><button data-key="167" data-repeat aria-label="Channel down">⌄</button></div>
+    </div>
+  </section>
+
+  <section id="tab-cast">
+    <form class="urlbar glass" id="bForm" onsubmit="return false">
+      <input id="castUrl" type="url" inputmode="url" enterkeyhint="go" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" data-ph="castPh">
+      <button type="button" class="ub" id="castPaste" aria-label="Paste">📋</button>
+      <button type="submit" class="ub go" id="castGo" data-i="open"></button>
+    </form>
+    <div class="bwrap"><div class="bview glass" id="bView">
+      <img id="bImg" alt="" draggable="false">
+      <div class="bhint" id="bHint" data-i="browseHint"></div>
+      <div class="bprog" id="bProg"></div>
+    </div></div>
+    <div class="btools">
+      <button class="glass" id="bBack" aria-label="Back">‹</button>
+      <button class="glass" id="bReload" aria-label="Reload">⟳</button>
+      <button class="glass" id="bType" aria-label="Type">⌨</button>
+      <button class="glass" id="bClose" aria-label="Close">✕</button>
+    </div>
+    <div class="bstatus" id="bStatus" data-i="browseTip"></div>
+    <div class="found" id="castFound"></div>
+  </section>
+
+  <section id="tab-bg">
+    <div class="cast glass">
+      <h2 style="margin-top:0" data-i="bgTitle"></h2>
+      <p class="note" data-i="bgNote"></p>
+      <label class="btn" style="margin-top:12px"><input type="file" id="bgFile" accept="image/*" hidden><span data-i="bgPick"></span></label>
+      <img id="bgPreview" alt="" style="width:100%;border-radius:14px;margin-top:12px" hidden>
+    </div>
+  </section>
+
+  <section id="tab-about">
+    <div class="about glass">
+      <img class="photo" id="aboutPhoto" src="static/creator.jpg" alt="Alptuğ Dağ" onerror="this.hidden=true">
+      <h3>Alptuğ Dağ</h3>
+      <img class="sig2" src="static/signature.png" alt="" onerror="this.remove()">
+      <div class="role" data-i="aboutRole"></div>
+      <p id="aboutBio" data-i="aboutBio"></p>
+      <div class="follow">
+        <a class="btn ig" id="igBtn" target="_blank" rel="noopener" data-i="followIg"></a>
+        <a class="btn yt" id="ytBtn" target="_blank" rel="noopener" data-i="followYt"></a>
+        <a class="btn lb" href="https://letterboxd.com/AlptugDag/" target="_blank" rel="noopener">Letterboxd</a>
+        <a class="btn li" href="https://www.linkedin.com/in/AlptugDag/" target="_blank" rel="noopener">LinkedIn</a>
+        <a class="btn gh" href="https://github.com/AlptugDag" target="_blank" rel="noopener">GitHub</a>
+        <button class="btn ghost" id="hisFilms" data-i="hisFilms"></button>
+      </div>
+    </div>
+    <p class="note" style="text-align:center;margin-top:14px" data-i="homeHint"></p>
+  </section>
+
+</main>
+
+<nav class="glass">
+  <button class="on" data-tab="search"><span>🎬</span><span data-i="tabSearch"></span></button>
+  <button data-tab="remote"><span>🕹️</span><span data-i="tabRemote"></span></button>
+  <button data-tab="cast"><span>📡</span><span data-i="tabCast"></span></button>
+  <button data-tab="bg"><span>🖼️</span><span data-i="tabBg"></span></button>
+  <button data-tab="about"><span>✦</span><span data-i="tabAbout"></span></button>
+</nav>
+</div>
+
+<form class="kbd glass" id="kbd" hidden onsubmit="return false">
+  <input id="typer" data-ph="typePh" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="send">
+  <button id="typerGo" type="button">↵</button>
+</form>
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet glass" id="sheet"></div>
+<div class="toast glass" id="toast"></div>
+
+<script>
+(() => {
+  const T = {
+    en: {filmFound:"Film found: tap the video, or the button below",playOnTv:"Play on TV",open:"Open",browseHint:"Type or paste the film page’s address above and press Open. The page appears here; tap it as on a phone.",browseTip:"Skip the site’s ads, then press the film’s play button: the film starts on the TV.",airMouse:"🖱 Air mouse",mouseTip:"Move the phone or a finger · Tap = click · Two fingers = scroll",swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ is a filmmaker, storyteller and voice artist, born in Ankara in 2000. He is known for his short film Sessiz (2023). He designed and built CineTV.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgSent:"Now on your TV",bgFail:"Could not send the picture",
+      installAndroid:"Install CineTV on this phone for one-tap access.",installGo:"Install",installIos:"Tap Share, then “Add to Home Screen” to keep CineTV one tap away.",
+      otherTvs:"CineTV TVs here",onTv:"On your TV now",waiting:"Allow this phone on your TV with the remote",denied:"Not allowed on the TV. Tap to ask again.",busy:"Another phone is asking. Retrying…",
+      tabCast:"Cast",tabAbout:"About",castTitle:"Play a video on the TV",castPh:"Film page address",paste:"Paste",castPlay:"Play on TV",
+      castNote:"Works with direct links (mp4, m3u8…) and film pages: the TV opens the page, presses play itself and skips the ads.",castFinding:"Looking for the film… ads are skipped (up to 45 s)",castNone:"No film found on that page (videos under 3 minutes are skipped as ads).",castPlaying:"Playing on your TV",
+      aboutRole:"Filmmaker · Storyteller",followIg:"Follow on Instagram",followYt:"Subscribe on YouTube",hisFilms:"Show his films on the TV",
+      homeHint:"Tip: Share › Add to Home Screen keeps CineTV one tap away, full screen.",
+      connecting:"Connecting…",connected:"Connected",offline:"TV not reachable",searchPh:"Films, series, people…",trending:"Trending",
+      results:"Results",noResults:"Nothing found",openTv:"Open on TV",opening:"Opening on your TV…",movie:"Film",series:"Series",
+      back:"Back",home:"Home",menu:"Menu",send:"Send",input:"Input",guide:"Guide",info:"Info",subs:"Subtitles",audio:"Audio",last:"Last",typePh:"Type on the TV…",sleepOff:"💤 Sleep timer: off",sleepIn:"💤 Sleeps in {n} min",typeNote:"Letters appear in the field that is selected on the TV, in any app; ↵ confirms.",tvSearchPh:"Search or ask on the TV",screensaver:"Start screensaver",
+      tabSearch:"Discover",tabRemote:"Remote",tabCal:"Picture",presets:"Presets",patterns:"Test patterns",picture:"Picture engine",
+      warmth:"Colour temperature",reset:"Restore my original settings",patternNote:"Choose a pattern, adjust until it looks right, then tap Off.",
+      noPanel:"This TV takes picture changes only from its own menu. Show a pattern here, then adjust Picture settings with the TV remote until the pattern looks right.",
+      p_natural:"Natural",p_cinema:"Cinema",p_night:"Dark room",p_vivid:"Vivid",
+      t_off:"Off",t_gray:"Gray ramp",t_bars:"Colour bars",t_black:"Black level",t_white:"White level",t_skin:"Skin tones",
+      backlight:"Backlight",brightness:"Brightness",contrast:"Contrast",saturation:"Colour",hue:"Tint",sharpness:"Sharpness",red:"Red gain",green:"Green gain",blue:"Blue gain",done:"Saved"},
+    tr: {filmFound:"Film bulundu: videoya ya da aşağıdaki tuşa dokunun",playOnTv:"TV’de oynat",open:"Aç",browseHint:"Filmin sayfasının adresini yukarı yazın ya da yapıştırın, Aç’a basın. Sayfa burada açılır; telefondaki gibi dokunun.",browseTip:"Sitenin reklamlarını geçin, sonra filmin oynat tuşuna basın: film televizyonda başlar.",airMouse:"🖱 Hava faresi",mouseTip:"Telefonu ya da parmağını oynat · Dokun = tıkla · İki parmak = kaydır",swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ, 2000'de Ankara'da doğmuş bir sinemacı, hikâye anlatıcı ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. CineTV'yi tasarlayıp geliştirdi.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
+      installAndroid:"CineTV'yi bu telefona uygulama olarak ekleyin, tek dokunuşla açılsın.",installGo:"Ekle",installIos:"Paylaş'a, ardından “Ana Ekrana Ekle”ye dokunun; CineTV tek dokunuşla açılsın.",
+      otherTvs:"Bu ağdaki CineTV televizyonları",onTv:"TV'de vitrine geldi",waiting:"Bu telefona TV'den kumandayla izin verin",denied:"TV'de izin verilmedi. Tekrar sormak için dokunun.",busy:"Başka bir telefon soruyor. Tekrar deneniyor…",
+      tabCast:"Yayınla",tabAbout:"Hakkımda",castTitle:"TV'de video oynat",castPh:"Filmin sayfasının adresi",paste:"Yapıştır",castPlay:"TV'de oynat",
+      castNote:"Doğrudan bağlantılarla (mp4, m3u8…) ve film sayfalarıyla çalışır: TV sayfayı açar, oynat tuşuna kendisi basar, reklamları atlar.",castFinding:"Film aranıyor… reklam varsa geçiliyor (en fazla 45 sn)",castNone:"Bu sayfada film bulunamadı (3 dakikadan kısa videolar reklam sayılıp atlanır).",castPlaying:"TV'de oynatılıyor",
+      aboutRole:"Sinemacı · Hikâye anlatıcı",followIg:"Instagram'da takip et",followYt:"YouTube'da abone ol",hisFilms:"Filmlerini TV'de göster",
+      homeHint:"İpucu: Paylaş › Ana Ekrana Ekle ile CineTV tam ekran, tek dokunuşla açılır.",
+      connecting:"Bağlanıyor…",connected:"Bağlı",offline:"TV'ye ulaşılamıyor",searchPh:"Film, dizi, oyuncu…",trending:"Trend",
+      results:"Sonuçlar",noResults:"Bir şey bulunamadı",openTv:"TV'de aç",opening:"TV'de açılıyor…",movie:"Film",series:"Dizi",
+      back:"Geri",home:"Ana sayfa",menu:"Menü",send:"Gönder",input:"Kaynak",guide:"Rehber",info:"Bilgi",subs:"Altyazı",audio:"Ses dili",last:"Önceki",typePh:"Televizyona yaz…",sleepOff:"💤 Uyku zamanlayıcı: kapalı",sleepIn:"💤 {n} dk sonra kapanır",typeNote:"Yazdıkların televizyonda seçili alana gelir, hangi uygulama olursa olsun; ↵ onaylar.",tvSearchPh:"TV'de ara veya sor",screensaver:"Ekran koruyucuyu başlat",
+      tabSearch:"Keşfet",tabRemote:"Kumanda",tabCal:"Görüntü",presets:"Hazır ayarlar",patterns:"Test desenleri",picture:"Görüntü motoru",
+      warmth:"Renk sıcaklığı",reset:"Orijinal ayarlarıma dön",patternNote:"Bir desen seçin, doğru görünene kadar ayarlayın, sonra Kapat'a dokunun.",
+      noPanel:"Bu TV görüntü değişikliklerini yalnızca kendi menüsünden kabul ediyor. Buradan bir desen gösterin, sonra TV kumandasıyla Görüntü ayarlarını desen doğru görünene kadar değiştirin.",
+      p_natural:"Doğal",p_cinema:"Sinema",p_night:"Karanlık oda",p_vivid:"Canlı",
+      t_off:"Kapat",t_gray:"Gri geçiş",t_bars:"Renk çubukları",t_black:"Siyah seviyesi",t_white:"Beyaz seviyesi",t_skin:"Ten tonları",
+      backlight:"Arka ışık",brightness:"Parlaklık",contrast:"Kontrast",saturation:"Renk",hue:"Ton",sharpness:"Keskinlik",red:"Kırmızı kazanç",green:"Yeşil kazanç",blue:"Mavi kazanç",done:"Kaydedildi"}
+  };
+  const L = T[(navigator.language||"en").slice(0,2)] || T.en;
+  const t = k => L[k] || T.en[k] || k;
+  document.documentElement.lang = (navigator.language||"en").slice(0,2);
+  document.querySelectorAll("[data-i]").forEach(e => e.textContent = t(e.dataset.i));
+  document.querySelectorAll("[data-ph]").forEach(e => e.placeholder = t(e.dataset.ph));
+
+  const url = new URL(location.href);
+  // Opened from GitHub (the QR code): the page reaches the TV over a direct link (WebRTC, introduced by
+  // PeerJS's broker), whatever the home network does. #p= is the TV, #k= the pairing token, #s= a tab.
+  const hp = new URLSearchParams(location.hash.slice(1));
+  let PEER = hp.get("p");
+  try { if (PEER) localStorage.setItem("cinetv.p", PEER); else if (location.hostname.endsWith("github.io")) PEER = localStorage.getItem("cinetv.p"); } catch (e) {}
+  const RELAY = location.hostname.endsWith("github.io") && !!PEER;
+  // On the plain address, hop to the TV's secure one (no "not secure" warning) when this phone can reach it.
+  if (!RELAY && location.protocol === "http:") {
+    (async () => {
+      try {
+        const info = await (await fetch("/api/info", {cache: "no-store"})).json();
+        if (!info.secure) return;
+        const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
+        const ping = await fetch(info.secure + "/api/ping", {mode: "cors", signal: ctl.signal});
+        if (!ping.ok) return;
+        let k = url.searchParams.get("k"); try { k = k || localStorage.getItem("cinetv.k"); } catch (e) {}
+        location.replace(info.secure + "/" + (k ? "?k=" + encodeURIComponent(k) : "") + location.hash);
+      } catch (e) {}
+    })();
+  }
+  let token = url.searchParams.get("k") || hp.get("k");
+  try { if (token) localStorage.setItem("cinetv.k", token); else token = localStorage.getItem("cinetv.k"); } catch (e) {}
+  if (url.searchParams.has("k")) history.replaceState(null, "", "/" + location.hash);
+  // the token and the TV stay on this phone, out of the address bar
+  if (RELAY && hp.get("k")) history.replaceState(null, "", location.pathname + (hp.get("s") ? "#" + hp.get("s") : ""));
+
+  // the direct link to the TV: one connection, requests and answers matched by number
+  let conn = null, linking = null, rid = 0;
+  const waiting = {};
+  const loadPeer = () => window.Peer ? Promise.resolve() : new Promise((res, rej) => {
+    const sc = document.createElement("script"); sc.src = "https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js";
+    sc.onload = res; sc.onerror = rej; document.head.appendChild(sc);
+  });
+  const link = () => linking || (linking = new Promise(async (res, rej) => {
+    const fail = e => { linking = null; conn = null; rej(e); };
+    try { await loadPeer(); } catch (e) { return fail(e); }
+    const peer = new Peer({debug: 0, config: {iceServers: [{urls: "stun:stun.l.google.com:19302"}, {urls: "stun:stun1.l.google.com:19302"}]}});
+    const timer = setTimeout(() => fail("timeout"), 20000);
+    peer.on("error", fail);
+    peer.on("open", () => {
+      const c = peer.connect(PEER, {reliable: true});
+      c.on("open", () => { clearTimeout(timer); conn = c; res(c); });
+      c.on("data", d => { const f = d && waiting[d.i]; if (f) { delete waiting[d.i]; f(d.r); } });
+      c.on("close", () => { conn = null; linking = null; });
+      c.on("error", fail);
+    });
+  }));
+  const relay = async (path, q) => {
+    const c = conn || await link();
+    return new Promise((res, rej) => {
+      const i = ++rid; waiting[i] = res;
+      try { c.send({i, p: "/api/" + path, q}); } catch (e) { delete waiting[i]; conn = null; linking = null; return rej(e); }
+      setTimeout(() => { if (waiting[i]) { delete waiting[i]; rej("timeout"); } }, 30000);
+    });
+  };
+
+  const $ = id => document.getElementById(id);
+  const api = async (path, params = {}) => {
+    if (!token) { pair(); throw 0; }
+    if (RELAY) {
+      const r = await relay(path, Object.assign({k: token}, params));
+      if (r && r.error === "pair") { token = null; try { localStorage.removeItem("cinetv.k"); } catch (e) {} pair(); throw 0; }
+      return r;
+    }
+    const qs = new URLSearchParams(Object.assign({k: token}, params));
+    const r = await fetch("/api/" + path + "?" + qs, {cache: "no-store"});
+    if (r.status === 401) { token = null; try { localStorage.removeItem("cinetv.k"); } catch (e) {} pair(); throw 0; }
+    return r.json();
+  };
+  const open = async path => {
+    if (RELAY) { const [p, qs] = path.split("?"); return relay(p, Object.fromEntries(new URLSearchParams(qs || ""))); }
+    return (await fetch("/api/" + path, {cache: "no-store"})).json();
+  };
+
+  // Pairing without a QR code: the TV asks "may this phone connect?" and the viewer allows it.
+  let pairing = false;
+  const waitBox = $("waitBox"), waitText = $("waitText");
+  const pair = async () => {
+    if (pairing) return; pairing = true;
+    waitBox.hidden = false; waitBox.onclick = null; waitText.textContent = t("waiting");
+    $("status").textContent = t("connecting");
+    try {
+      let req = await open("pair/request");
+      while (!req.ok && req.error === "busy") { waitText.textContent = t("busy"); await new Promise(r => setTimeout(r, 3000)); req = await open("pair/request"); }
+      waitText.textContent = t("waiting");
+      for (let i = 0; i < 120; i++) {
+        await new Promise(r => setTimeout(r, 1500));
+        const c = await open("pair/claim?id=" + encodeURIComponent(req.id));
+        if (c.state === "allowed") { token = c.k; try { localStorage.setItem("cinetv.k", token); } catch (e) {} waitBox.hidden = true; pairing = false; connected(); return; }
+        if (c.state === "denied" || c.state === "expired") break;
+      }
+    } catch (e) {}
+    pairing = false;
+    waitText.textContent = t("denied");
+    waitBox.onclick = () => pair();
+  };
+
+  let toastTimer;
+  const toast = msg => { const el = $("toast"); el.textContent = msg; el.classList.add("on");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("on"), 2200); };
+  const esc = s => String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  // tabs
+  const show = name => {
+    document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === "tab-" + name));
+    document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+    $("searchBox").style.display = name === "search" ? "" : "none";
+    document.body.classList.toggle("remote", name === "remote" || name === "cast");
+    if (name === "cast") browseLoop(); else browsing = false;
+    if (name !== "remote") $("kbd").hidden = true;
+    requestAnimationFrame(() => document.documentElement.style.setProperty("--hdr", document.querySelector("header").offsetHeight + "px"));
+  };
+  document.querySelectorAll("nav button").forEach(b => b.onclick = () => { show(b.dataset.tab); location.hash = b.dataset.tab; });
+
+  // discover
+  const render = (list, title) => {
+    $("listTitle").textContent = title;
+    const box = $("results");
+    if (!list.length) { box.innerHTML = `<div class="empty" style="grid-column:1/-1">${t("noResults")}</div>`; return; }
+    box.innerHTML = list.map((m, i) => `<div class="card" data-i="${i}"><img loading="lazy" src="${esc(m.poster)}" alt="">
+      ${m.type === "series" ? `<span class="badge">${t("series")}</span>` : ""}<div class="t">${esc(m.title)}</div></div>`).join("");
+    box.querySelectorAll(".card").forEach(c => c.onclick = () => openSheet(list[+c.dataset.i]));
+  };
+  const skeleton = () => $("results").innerHTML = Array.from({length: 9}, () => '<div class="card skeleton"></div>').join("");
+  const trending = async () => { if (!token) return; skeleton(); try { render((await api("catalog/trending")).results || [], t("trending")); } catch (e) {} };
+  let searchTimer, seq = 0;
+  // Typing shows in the TV's search bar; Enter (or the keyboard's Search) fills the TV's shelf.
+  let mirrorTimer;
+  $("q").addEventListener("input", e => {
+    clearTimeout(mirrorTimer);
+    const q = e.target.value.trim();
+    mirrorTimer = setTimeout(() => api("tv/typing", {q}).catch(() => {}), 450);
+  });
+  $("searchBox").addEventListener("submit", e => {
+    e.preventDefault();
+    const q = $("q").value.trim(); if (!q) return;
+    $("q").blur();
+    api("tv/search", {q}).then(() => toast(t("onTv"))).catch(() => {});
+    // The phone shows the assistant's answer too.
+    const my = ++seq; skeleton();
+    api("catalog/search", {q, ai: 1}).then(r => {
+      if (my !== seq) return;
+      render(r.results || [], r.title || t("results"));
+      if (r.answer) {
+        if (!(r.results || []).length) $("results").innerHTML = "";
+        $("results").insertAdjacentHTML("afterbegin", `<div class="answer glass" style="grid-column:1/-1">${esc(r.answer)}</div>`);
+      }
+    }).catch(() => {});
+  });
+  $("q").addEventListener("input", e => {
+    clearTimeout(searchTimer);
+    const q = e.target.value.trim();
+    searchTimer = setTimeout(async () => {
+      if (!q) return trending();
+      const my = ++seq; skeleton();
+      try {
+        const r = await api("catalog/search", {q});
+        if (my !== seq) return;
+        render(r.results || [], t("results"));
+      } catch (e) {}
+    }, 400);
+  });
+
+  const sheet = $("sheet"), bg = $("sheetBg");
+  const closeSheet = () => { sheet.classList.remove("on"); bg.classList.remove("on"); };
+  bg.onclick = closeSheet;
+  const openSheet = m => {
+    sheet.innerHTML = `<div class="row"><img src="${esc(m.poster)}" alt=""><div>
+      <h3>${esc(m.title)}</h3><div class="meta">${m.year || ""} · ${m.type === "series" ? t("series") : t("movie")}${m.rating ? " · ★ " + (+m.rating).toFixed(1) : ""}</div></div></div>
+      <p class="ov">${esc(m.overview)}</p><button class="btn" id="go">▶︎ ${t("openTv")}</button>`;
+    sheet.classList.add("on"); bg.classList.add("on");
+    $("go").onclick = async () => {
+      $("go").disabled = true;
+      try { const r = await api("open", {imdb: m.imdb || "", tmdb: m.tmdb || 0, type: m.type, title: m.title, poster: m.poster});
+        toast(r.ok ? t("opening") : t("noResults")); } catch (e) { toast(t("offline")); }
+      closeSheet();
+    };
+  };
+
+  // remote
+  // Keys: a tap presses, holding presses longer (or repeats, for arrows, volume, channels and seeking)
+  const press = (code, long) => api("key", long ? {code, long: 1} : {code}).catch(() => {});
+  document.querySelectorAll("[data-key]").forEach(b => {
+    let timer = null, rep = null, held = false;
+    const start = e => {
+      e.preventDefault();
+      held = false;
+      navigator.vibrate && navigator.vibrate(8);
+      timer = setTimeout(() => {
+        held = true;
+        if (b.hasAttribute("data-repeat")) rep = setInterval(() => press(b.dataset.key), 140);
+        else press(b.dataset.key, true);
+      }, 450);
+    };
+    const end = () => {
+      clearTimeout(timer); clearInterval(rep);
+      if (!held && timer) press(b.dataset.key);
+      timer = rep = null;
+    };
+    b.addEventListener("pointerdown", start);
+    b.addEventListener("pointerup", end);
+    b.addEventListener("pointerleave", () => { clearTimeout(timer); clearInterval(rep); timer = rep = null; });
+    b.addEventListener("contextmenu", e => e.preventDefault());
+  });
+  // Sleep timer: each press moves to the next choice (off, 15, 30 ... 120 minutes)
+  $("sleepBtn").onclick = async () => {
+    try {
+      const r = await api("sleep");
+      $("sleepBtn").textContent = r.minutes > 0 ? t("sleepIn").replace("{n}", r.minutes) : t("sleepOff");
+    } catch (e) {}
+  };
+  // The keyboard key: the phone's keyboard types into the TV's selected field, live, in any app
+  let typeTimer = null;
+  const kbd = $("kbd"), typer = $("typer");
+  $("kbdBtn").onclick = () => {
+    if (!kbd.hidden) { kbd.hidden = true; typer.blur(); return; }
+    kbd.hidden = false; typer.value = ""; typer.focus();
+  };
+  typer.addEventListener("input", () => {
+    clearTimeout(typeTimer);
+    typeTimer = setTimeout(() => api("type", {q: typer.value}).catch(() => {}), 90);
+  });
+  const typeEnter = () => { clearTimeout(typeTimer); api("type", {q: typer.value}).then(() => press(66)).catch(() => {}); kbd.hidden = true; typer.blur(); };
+  $("typerGo").onclick = typeEnter;
+  typer.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); typeEnter(); } });
+  typer.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== typer) kbd.hidden = true; }, 150));
+  $("saver").onclick = () => api("screensaver");
+
+  // Pages of the remote: touchpad, more keys, numbers
+  const deck = $("deck"), dots = [...$("dots").children];
+  const page = () => Math.round(deck.scrollLeft / Math.max(1, deck.clientWidth));
+  deck.addEventListener("scroll", () => dots.forEach((d, i) => d.classList.toggle("on", i === page())), {passive: true});
+  const goPage = i => deck.scrollTo({left: i * deck.clientWidth, behavior: "smooth"});
+  dots.forEach((d, i) => d.onclick = () => goPage(i));
+  $("numBtn").onclick = () => goPage(page() === 2 ? 0 : 2);
+
+  // Touchpad: swipe moves (keep sliding to keep moving), tap is OK, hold is a long OK
+  const pad = $("touch"), arrow = $("arrow"), STEP = 34;
+  let ox = 0, oy = 0, moved = false, downAt = 0, holdT = null, arrowT = null;
+  const showArrow = s => { arrow.textContent = s; arrow.classList.add("on"); clearTimeout(arrowT); arrowT = setTimeout(() => arrow.classList.remove("on"), 160); };
+  const ripple = (x, y) => { const r = document.createElement("i"); r.className = "ripple";
+    const b = pad.getBoundingClientRect(); r.style.left = (x - b.left) + "px"; r.style.top = (y - b.top) + "px"; pad.appendChild(r); setTimeout(() => r.remove(), 500); };
+  // Air mouse: the phone's motion (or a finger) moves a pointer on the TV; tap clicks, two fingers scroll
+  let mouse = false, mx = 0, my = 0, sy = 0, lastX = 0, lastY = 0, fingers = 0, mDown = 0, mMoved = 0;
+  const flush = () => {
+    if (!mouse) return;
+    if (Math.abs(mx) >= 1 || Math.abs(my) >= 1) { const dx = Math.round(mx), dy = Math.round(my); mx -= dx; my -= dy; api("mouse", {dx, dy}).catch(() => {}); }
+    if (Math.abs(sy) >= 6) { const d = Math.round(sy); sy = 0; api("mouse/scroll", {dy: d}).catch(() => {}); }
+  };
+  setInterval(flush, 40);
+  const onMotion = ev => {
+    if (!mouse || !ev.rotationRate) return;
+    const dt = (ev.interval || 16) / (ev.interval > 1 ? 1000 : 1); // seconds (iOS gives s, Android ms)
+    const k = 22; // TV pixels per degree turned
+    mx += -(ev.rotationRate.alpha || 0) * dt * k;
+    my += -(ev.rotationRate.beta || 0) * dt * k;
+  };
+  $("mouseBtn").addEventListener("pointerdown", e => e.stopPropagation());
+  $("mouseBtn").onclick = async e => {
+    e.stopPropagation();
+    mouse = !mouse;
+    $("mouseBtn").classList.toggle("on", mouse); pad.classList.toggle("mouse", mouse);
+    $("padTip").textContent = t(mouse ? "mouseTip" : "touchTip");
+    if (mouse) {
+      try { if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) await DeviceMotionEvent.requestPermission(); } catch (err) {}
+      addEventListener("devicemotion", onMotion);
+      api("mouse", {dx: 0, dy: 0}).catch(() => {});
+    } else { removeEventListener("devicemotion", onMotion); api("mouse/off").catch(() => {}); }
+  };
+  pad.addEventListener("touchstart", e => { fingers = e.touches.length; }, {passive: true});
+  pad.addEventListener("pointerdown", e => {
+    if (!mouse) return;
+    e.preventDefault(); pad.setPointerCapture(e.pointerId);
+    lastX = e.clientX; lastY = e.clientY; mDown = Date.now(); mMoved = 0;
+  });
+  pad.addEventListener("pointermove", e => {
+    if (!mouse || !mDown) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+    mMoved += Math.abs(dx) + Math.abs(dy);
+    if (fingers >= 2) sy += dy * 2; else { mx += dx * 2.6; my += dy * 2.6; }
+  });
+  pad.addEventListener("pointerup", e => {
+    if (!mouse) return;
+    if (mDown && mMoved < 10 && Date.now() - mDown < 350) { flush(); api("mouse/click").catch(() => {}); ripple(e.clientX, e.clientY); navigator.vibrate && navigator.vibrate(10); }
+    mDown = 0; fingers = 0;
+  });
+  pad.addEventListener("pointerdown", e => {
+    if (mouse) return;
+    e.preventDefault(); pad.setPointerCapture(e.pointerId);
+    ox = e.clientX; oy = e.clientY; moved = false; downAt = Date.now();
+    clearTimeout(holdT);
+    holdT = setTimeout(() => { if (!moved) { moved = true; navigator.vibrate && navigator.vibrate(20); press(23, true); ripple(ox, oy); } }, 600);
+  });
+  pad.addEventListener("pointermove", e => {
+    if (mouse || !downAt) return;
+    const dx = e.clientX - ox, dy = e.clientY - oy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < STEP) return;
+    moved = true; clearTimeout(holdT);
+    const h = Math.abs(dx) > Math.abs(dy);
+    press(h ? (dx > 0 ? 22 : 21) : (dy > 0 ? 20 : 19));
+    showArrow(h ? (dx > 0 ? "›" : "‹") : (dy > 0 ? "⌄" : "⌃"));
+    navigator.vibrate && navigator.vibrate(6);
+    ox = e.clientX; oy = e.clientY;
+  });
+  const padUp = e => {
+    if (mouse) return;
+    clearTimeout(holdT);
+    if (downAt && !moved && Date.now() - downAt < 600) { press(23); ripple(e.clientX, e.clientY); navigator.vibrate && navigator.vibrate(10); }
+    downAt = 0;
+  };
+  pad.addEventListener("pointerup", padUp);
+  pad.addEventListener("pointercancel", () => { clearTimeout(holdT); downAt = 0; });
+
+  // Power: a second tap within 3 s really switches the TV off (only its own remote turns it on again)
+  let pwrT = null;
+  $("pwr").onclick = () => {
+    const b = $("pwr");
+    if (!b.classList.contains("arm")) { b.classList.add("arm"); $("rHint").textContent = t("powerAgain"); navigator.vibrate && navigator.vibrate(30);
+      pwrT = setTimeout(() => { b.classList.remove("arm"); $("rHint").textContent = t("swipeHint"); }, 3000); return; }
+    clearTimeout(pwrT); b.classList.remove("arm"); $("rHint").textContent = t("swipeHint");
+    api("power/off").then(() => toast(t("powerOff"))).catch(() => {});
+  };
+
+  // Microphone: the phone listens and CineTV's assistant answers on the TV; hold for the TV's own assistant
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let micHold = null, micLong = false;
+  $("micBtn").addEventListener("pointerdown", () => { micLong = false; micHold = setTimeout(() => { micLong = true; press(231); }, 500); });
+  $("micBtn").addEventListener("pointerup", () => {
+    clearTimeout(micHold); if (micLong) return;
+    if (!SR) { press(231); return; }
+    const rec = new SR(); rec.lang = navigator.language || "tr-TR"; rec.interimResults = false;
+    $("micBtn").classList.add("on"); toast(t("listening"));
+    rec.onresult = ev => { const q = ev.results[0][0].transcript.trim(); if (q) { api("tv/voice", {q}); toast("“" + q + "”"); } };
+    rec.onend = () => $("micBtn").classList.remove("on");
+    rec.onerror = () => { $("micBtn").classList.remove("on"); press(231); };
+    try { rec.start(); } catch (e) { press(231); }
+  });
+
+  // Double taps must never zoom the page
+  document.addEventListener("dblclick", e => e.preventDefault(), {passive: false});
+  document.addEventListener("gesturestart", e => e.preventDefault(), {passive: false});
+  const fitHeader = () => document.documentElement.style.setProperty("--hdr", document.querySelector("header").offsetHeight + "px");
+  addEventListener("resize", fitHeader);
+
+
+  // cast: the TV opens the page in a browser nobody sees; the phone shows it and taps it. The viewer skips
+  // the ads and presses the film's play; the film's stream (3 minutes or more) then plays on the TV.
+  let browsing = false, opened = false, frameT = null;
+  const bImg = $("bImg"), bView = $("bView");
+  const direct = u => /\.(m3u8|mp4|m4v|webm|mkv|mpd)(\?|#|$)/i.test(u) || /youtube\.com\/|youtu\.be\//i.test(u);
+  $("castPaste").onclick = async () => { try { $("castUrl").value = await navigator.clipboard.readText(); } catch (e) { $("castUrl").focus(); } };
+  const castPlay = async (u, ref) => {
+    try { const r = await api("cast/play", {url: u, ref: ref || ""}); toast(r.ok ? t("castPlaying") : t("castNone")); } catch (e) {}
+  };
+  $("bForm").addEventListener("submit", async () => {
+    let u = $("castUrl").value.trim(); if (!u) return;
+    $("castUrl").blur();
+    if (direct(u)) return castPlay(/^https?:/i.test(u) ? u : "https://" + u);
+    try {
+      const r = await api("browse/open", {url: u});
+      if (!r.ok) return toast(t("castNone"));
+      opened = true; $("bHint").hidden = true; $("castFound").innerHTML = ""; $("bStatus").className = "bstatus";
+      $("bStatus").textContent = t("browseTip"); browseLoop();
+    } catch (e) { toast(t("offline")); }
+  });
+  const browseLoop = () => {
+    if (browsing || !opened) return; browsing = true;
+    const next = () => {
+      if (!browsing) return;
+      if (RELAY) {
+        api("browse/frame").then(r => { if (r.ok && r.img) bImg.src = "data:image/jpeg;base64," + r.img; frameT = setTimeout(next, 150); })
+          .catch(() => { frameT = setTimeout(next, 900); });
+        return;
+      }
+      const img = new Image();
+      img.onload = () => { bImg.src = img.src; frameT = setTimeout(next, 150); };
+      img.onerror = () => { frameT = setTimeout(next, 900); };
+      img.src = "/api/browse/frame?k=" + encodeURIComponent(token) + "&t=" + Date.now();
+    };
+    next();
+    const poll = async () => {
+      if (!browsing) return;
+      try {
+        const st = await api("browse/status");
+        $("bProg").style.width = st.loading ? Math.max(8, st.progress) + "%" : "0";
+        if (st.title) document.querySelector("#bForm input").placeholder = st.title;
+        const films = st.found || [];
+        if (st.sent) { $("bStatus").className = "bstatus ok"; $("bStatus").textContent = "▶ " + t("castPlaying"); }
+        if (!st.sent && films.length) { $("bStatus").className = "bstatus ok"; $("bStatus").textContent = t("filmFound"); }
+        $("castFound").innerHTML = films.map((v, i) => `<button data-v="${i}">▶︎ ${t("playOnTv")} · ${esc(v.label || v.url)}</button>`).join("");
+        $("castFound").querySelectorAll("button").forEach(b => b.onclick = () => { const v = films[+b.dataset.v]; castPlay(v.url, v.ref); });
+      } catch (e) {}
+      setTimeout(poll, 1000);
+    };
+    poll();
+  };
+  // taps and swipes on the picture reach the page on the TV
+  let bx = 0, by = 0, bt = 0;
+  bView.addEventListener("pointerdown", e => { if (!opened) return; e.preventDefault(); bView.setPointerCapture(e.pointerId); bx = e.clientX; by = e.clientY; bt = Date.now(); });
+  bView.addEventListener("pointerup", e => {
+    if (!opened || !bt) return;
+    const r = bView.getBoundingClientRect(), dx = e.clientX - bx, dy = e.clientY - by; bt = 0;
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+      api("browse/tap", {x: ((e.clientX - r.left) / r.width).toFixed(4), y: ((e.clientY - r.top) / r.height).toFixed(4)}).catch(() => {});
+      navigator.vibrate && navigator.vibrate(8);
+    } else api("browse/scroll", {dy: (-dy / r.height).toFixed(4)}).catch(() => {});
+  });
+  $("bBack").onclick = () => api("browse/back").catch(() => {});
+  $("bReload").onclick = () => api("browse/reload").catch(() => {});
+  $("bClose").onclick = () => { api("browse/close").catch(() => {}); opened = false; browsing = false; bImg.removeAttribute("src"); $("bHint").hidden = false; $("castFound").innerHTML = ""; };
+  $("bType").onclick = () => { const q = prompt(t("typePh")); if (q) api("browse/type", {q, enter: 1}).catch(() => {}); };
+
+  // about
+  $("igBtn").href = "https://instagram.com/alptugdag";
+  $("ytBtn").href = "https://www.youtube.com/@AlptugDag?sub_confirmation=1";
+  $("hisFilms").onclick = () => api("tv/search", {q: "Alptuğ Dağ filmleri"}).then(() => toast(t("done"))).catch(() => {});
+  open("about").then(a => {
+    // Builds without the author's photo file fall back to his TMDB portrait.
+    const ph = $("aboutPhoto"); if (a.photo && ph && (ph.hidden || !ph.naturalWidth)) { ph.src = a.photo; ph.hidden = false; }
+  }).catch(() => {});
+
+  // background from the phone: resized here (max 1920 px), sent as JPEG
+  $("bgFile").onchange = async e => {
+    const file = e.target.files && e.target.files[0]; if (!file || !token) return;
+    try {
+      const img = await createImageBitmap(file);
+      // over the direct link one message carries it: a smaller picture
+      const s = Math.min(1, (RELAY ? 1024 : 1920) / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas"); cv.width = Math.round(img.width * s); cv.height = Math.round(img.height * s);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", RELAY ? 0.74 : 0.86));
+      $("bgPreview").src = URL.createObjectURL(blob); $("bgPreview").hidden = false;
+      if (RELAY) {
+        const data = cv.toDataURL("image/jpeg", 0.74).split(",")[1];
+        toast((await api("wallpaper64", {data})).ok ? t("bgSent") : t("bgFail"));
+        return;
+      }
+      const r = await fetch("/api/wallpaper?k=" + encodeURIComponent(token), {method: "POST", body: blob, headers: {"Content-Type": "image/jpeg"}});
+      toast((await r.json()).ok ? t("bgSent") : t("bgFail"));
+    } catch (err) { toast(t("bgFail")); }
+  };
+
+  // "Add to Home Screen": a real prompt on Android, a hint on iPhone; never once it is installed
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  let dismissed = false; try { dismissed = localStorage.getItem("cinetv.installX") === "1"; } catch (e) {}
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register(RELAY ? "sw.js" : "/sw.js").catch(() => {});
+  const showInstall = (text, go) => {
+    if (standalone || dismissed) return;
+    $("installText").textContent = text; $("install").hidden = false;
+    if (go) { $("installGo").textContent = t("installGo"); $("installGo").hidden = false; $("installGo").onclick = go; }
+  };
+  $("installX").onclick = () => { $("install").hidden = true; try { localStorage.setItem("cinetv.installX", "1"); } catch (e) {} };
+  window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); showInstall(t("installAndroid"), () => { e.prompt(); $("install").hidden = true; }); });
+  if (/iPhone|iPad/.test(navigator.userAgent) && !standalone) showInstall(t("installIos"));
+
+  // several CineTV TVs on this network: tap the status to switch
+  open("info").then(info => {
+    if (info.name) $("status").dataset.tv = info.name;
+    const peers = info.peers || [];
+    if (!peers.length) return;
+    $("tvPick").style.cursor = "pointer";
+    $("tvPick").onclick = () => {
+      sheet.innerHTML = `<h3>${t("otherTvs")}</h3>` + [{name: info.name, url: ""}].concat(peers).map(p =>
+        `<button class="btn ${p.url ? "ghost" : ""}" style="margin-top:10px" data-u="${esc(p.url)}">📺 ${esc(p.name)}</button>`).join("");
+      sheet.classList.add("on"); bg.classList.add("on");
+      sheet.querySelectorAll("[data-u]").forEach(b => b.onclick = () => { if (b.dataset.u) location.href = b.dataset.u; else closeSheet(); });
+    };
+  }).catch(() => {});
+
+  // connect
+  const connected = () => {
+    api("hello").then(() => { $("dot").classList.add("on"); $("status").textContent = $("status").dataset.tv || t("connected"); })
+      .catch(() => { if (token) $("status").textContent = t("offline"); });
+    trending();
+  };
+  if (token) connected(); else pair();
+  const start = RELAY ? (hp.get("s") || location.hash.replace("#", "")) : location.hash.replace("#", "");
+  if (["remote", "search", "cast", "about", "bg", "background"].includes(start)) show(start === "background" ? "bg" : start);
+})();
+</script>
+</body>
+</html>
