@@ -102,6 +102,14 @@ public class PosterShelf extends FrameLayout {
         return index < movies.size() ? movies.get(index) : null;
     }
 
+    public int focusedIndex() {
+        return index;
+    }
+
+    public int count() {
+        return movies.size();
+    }
+
     public DvdCaseView focusedCase() {
         return index < cases.size() ? cases.get(index) : null;
     }

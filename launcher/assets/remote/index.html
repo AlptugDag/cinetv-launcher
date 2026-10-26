@@ -103,6 +103,9 @@ body.remote main{padding-bottom:0}
 .touch .arrow{position:absolute;inset:0;display:grid;place-items:center;font-size:54px;color:rgba(255,255,255,.55);pointer-events:none;opacity:0;transition:opacity .25s}
 .touch .arrow.on{opacity:1;transition:none}
 .touch .tip{position:absolute;left:0;right:0;bottom:16px;text-align:center;font-size:12px;color:var(--faint);pointer-events:none}
+.mchip{position:absolute;top:12px;right:12px;z-index:2;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:600;color:var(--ink)}
+.mchip.on{background:var(--accent);border-color:transparent}
+.touch.mouse{background:linear-gradient(160deg,rgba(139,92,246,.22),rgba(255,255,255,.04) 55%,rgba(56,189,248,.12))}
 .more{height:100%;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:10px;padding:2px}
 .more button{border-radius:20px;color:var(--ink);font-size:13px;font-weight:600;padding:0;min-height:0}
 .more .c{border:0;margin:18% 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
@@ -185,7 +188,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       <button class="glass ic pwr" id="pwr" aria-label="Power"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg></button>
     </div>
     <div class="deck" id="deck">
-      <div class="page"><div class="touch glass" id="touch"><div class="arrow" id="arrow"></div><div class="tip" data-i="touchTip"></div></div></div>
+      <div class="page"><div class="touch glass" id="touch"><button class="mchip glass" id="mouseBtn" data-i="airMouse"></button><div class="arrow" id="arrow"></div><div class="tip" id="padTip" data-i="touchTip"></div></div></div>
       <div class="page"><div class="more">
         <button class="glass" data-key="178" data-i="input"></button><button class="glass" data-key="172" data-i="guide"></button>
         <button class="glass" data-key="82" data-i="menu"></button><button class="glass" data-key="165" data-i="info"></button>
@@ -282,7 +285,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <script>
 (() => {
   const T = {
-    en: {swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ is a filmmaker, storyteller and voice artist, born in Ankara in 2000. He is known for his short film Sessiz (2023). He designed and built CineTV.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgSent:"Now on your TV",bgFail:"Could not send the picture",
+    en: {airMouse:"🖱 Air mouse",mouseTip:"Move the phone or a finger · Tap = click · Two fingers = scroll",swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ is a filmmaker, storyteller and voice artist, born in Ankara in 2000. He is known for his short film Sessiz (2023). He designed and built CineTV.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgSent:"Now on your TV",bgFail:"Could not send the picture",
       installAndroid:"Install CineTV on this phone for one-tap access.",installGo:"Install",installIos:"Tap Share, then “Add to Home Screen” to keep CineTV one tap away.",
       otherTvs:"CineTV TVs here",onTv:"On your TV now",waiting:"Allow this phone on your TV with the remote",denied:"Not allowed on the TV. Tap to ask again.",busy:"Another phone is asking. Retrying…",
       tabCast:"Cast",tabAbout:"About",castTitle:"Play a video on the TV",castPh:"Paste a video link or any page with a video",paste:"Paste",castPlay:"Play on TV",
@@ -298,7 +301,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       p_natural:"Natural",p_cinema:"Cinema",p_night:"Dark room",p_vivid:"Vivid",
       t_off:"Off",t_gray:"Gray ramp",t_bars:"Colour bars",t_black:"Black level",t_white:"White level",t_skin:"Skin tones",
       backlight:"Backlight",brightness:"Brightness",contrast:"Contrast",saturation:"Colour",hue:"Tint",sharpness:"Sharpness",red:"Red gain",green:"Green gain",blue:"Blue gain",done:"Saved"},
-    tr: {swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ, 2000'de Ankara'da doğmuş bir sinemacı, hikâye anlatıcı ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. CineTV'yi tasarlayıp geliştirdi.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
+    tr: {airMouse:"🖱 Hava faresi",mouseTip:"Telefonu ya da parmağını oynat · Dokun = tıkla · İki parmak = kaydır",swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ, 2000'de Ankara'da doğmuş bir sinemacı, hikâye anlatıcı ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. CineTV'yi tasarlayıp geliştirdi.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
       installAndroid:"CineTV'yi bu telefona uygulama olarak ekleyin, tek dokunuşla açılsın.",installGo:"Ekle",installIos:"Paylaş'a, ardından “Ana Ekrana Ekle”ye dokunun; CineTV tek dokunuşla açılsın.",
       otherTvs:"Bu ağdaki CineTV televizyonları",onTv:"TV'de vitrine geldi",waiting:"Bu telefona TV'den kumandayla izin verin",denied:"TV'de izin verilmedi. Tekrar sormak için dokunun.",busy:"Başka bir telefon soruyor. Tekrar deneniyor…",
       tabCast:"Yayınla",tabAbout:"Hakkımda",castTitle:"TV'de video oynat",castPh:"Bir video bağlantısı ya da videolu herhangi bir sayfa yapıştırın",paste:"Yapıştır",castPlay:"TV'de oynat",
@@ -517,14 +520,59 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const showArrow = s => { arrow.textContent = s; arrow.classList.add("on"); clearTimeout(arrowT); arrowT = setTimeout(() => arrow.classList.remove("on"), 160); };
   const ripple = (x, y) => { const r = document.createElement("i"); r.className = "ripple";
     const b = pad.getBoundingClientRect(); r.style.left = (x - b.left) + "px"; r.style.top = (y - b.top) + "px"; pad.appendChild(r); setTimeout(() => r.remove(), 500); };
+  // Air mouse: the phone's motion (or a finger) moves a pointer on the TV; tap clicks, two fingers scroll
+  let mouse = false, mx = 0, my = 0, sy = 0, lastX = 0, lastY = 0, fingers = 0, mDown = 0, mMoved = 0;
+  const flush = () => {
+    if (!mouse) return;
+    if (Math.abs(mx) >= 1 || Math.abs(my) >= 1) { const dx = Math.round(mx), dy = Math.round(my); mx -= dx; my -= dy; api("mouse", {dx, dy}).catch(() => {}); }
+    if (Math.abs(sy) >= 6) { const d = Math.round(sy); sy = 0; api("mouse/scroll", {dy: d}).catch(() => {}); }
+  };
+  setInterval(flush, 40);
+  const onMotion = ev => {
+    if (!mouse || !ev.rotationRate) return;
+    const dt = (ev.interval || 16) / (ev.interval > 1 ? 1000 : 1); // seconds (iOS gives s, Android ms)
+    const k = 22; // TV pixels per degree turned
+    mx += -(ev.rotationRate.alpha || 0) * dt * k;
+    my += -(ev.rotationRate.beta || 0) * dt * k;
+  };
+  $("mouseBtn").addEventListener("pointerdown", e => e.stopPropagation());
+  $("mouseBtn").onclick = async e => {
+    e.stopPropagation();
+    mouse = !mouse;
+    $("mouseBtn").classList.toggle("on", mouse); pad.classList.toggle("mouse", mouse);
+    $("padTip").textContent = t(mouse ? "mouseTip" : "touchTip");
+    if (mouse) {
+      try { if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) await DeviceMotionEvent.requestPermission(); } catch (err) {}
+      addEventListener("devicemotion", onMotion);
+      api("mouse", {dx: 0, dy: 0}).catch(() => {});
+    } else { removeEventListener("devicemotion", onMotion); api("mouse/off").catch(() => {}); }
+  };
+  pad.addEventListener("touchstart", e => { fingers = e.touches.length; }, {passive: true});
   pad.addEventListener("pointerdown", e => {
+    if (!mouse) return;
+    e.preventDefault(); pad.setPointerCapture(e.pointerId);
+    lastX = e.clientX; lastY = e.clientY; mDown = Date.now(); mMoved = 0;
+  });
+  pad.addEventListener("pointermove", e => {
+    if (!mouse || !mDown) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+    mMoved += Math.abs(dx) + Math.abs(dy);
+    if (fingers >= 2) sy += dy * 2; else { mx += dx * 2.6; my += dy * 2.6; }
+  });
+  pad.addEventListener("pointerup", e => {
+    if (!mouse) return;
+    if (mDown && mMoved < 10 && Date.now() - mDown < 350) { flush(); api("mouse/click").catch(() => {}); ripple(e.clientX, e.clientY); navigator.vibrate && navigator.vibrate(10); }
+    mDown = 0; fingers = 0;
+  });
+  pad.addEventListener("pointerdown", e => {
+    if (mouse) return;
     e.preventDefault(); pad.setPointerCapture(e.pointerId);
     ox = e.clientX; oy = e.clientY; moved = false; downAt = Date.now();
     clearTimeout(holdT);
     holdT = setTimeout(() => { if (!moved) { moved = true; navigator.vibrate && navigator.vibrate(20); press(23, true); ripple(ox, oy); } }, 600);
   });
   pad.addEventListener("pointermove", e => {
-    if (!downAt) return;
+    if (mouse || !downAt) return;
     const dx = e.clientX - ox, dy = e.clientY - oy;
     if (Math.max(Math.abs(dx), Math.abs(dy)) < STEP) return;
     moved = true; clearTimeout(holdT);
@@ -535,6 +583,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     ox = e.clientX; oy = e.clientY;
   });
   const padUp = e => {
+    if (mouse) return;
     clearTimeout(holdT);
     if (downAt && !moved && Date.now() - downAt < 600) { press(23); ripple(e.clientX, e.clientY); navigator.vibrate && navigator.vibrate(10); }
     downAt = 0;
@@ -561,7 +610,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     if (!SR) { press(231); return; }
     const rec = new SR(); rec.lang = navigator.language || "tr-TR"; rec.interimResults = false;
     $("micBtn").classList.add("on"); toast(t("listening"));
-    rec.onresult = ev => { const q = ev.results[0][0].transcript.trim(); if (q) { api("tv/search", {q}); toast("“" + q + "”"); } };
+    rec.onresult = ev => { const q = ev.results[0][0].transcript.trim(); if (q) { api("tv/voice", {q}); toast("“" + q + "”"); } };
     rec.onend = () => $("micBtn").classList.remove("on");
     rec.onerror = () => { $("micBtn").classList.remove("on"); press(231); };
     try { rec.start(); } catch (e) { press(231); }

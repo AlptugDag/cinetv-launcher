@@ -58,16 +58,20 @@ public final class MovieAssistant {
     private static final String[] SHELF_WORDS = {
             "filmleri", "filmografi", "filmler", "dizileri", "diziler", "sineması", "yönettiği", "oynadığı", "seçkisi",
             "koleksiyonu", "temalı", "konulu", "films", "movies", "series", "shows", "filmography", "directed by",
-            "starring", "collection", "best of", "about"};
+            "starring", "collection", "best of", "about", "listele", "list "};
     private static final String[] GENRE_WORDS = {
             "gerilim", "korku", "bilimkurgu", "bilim kurgu", "anime", "komedi", "dram", "belgesel",
             "thriller", "horror", "sci-fi", "science fiction", "comedy", "drama", "documentary", "noir"};
     private static final String[] QUESTION_WORDS = {
             "?", "nedir", "kimdir", "nasıl", "neden", "kaç", "ne zaman", "nerede", "hangi", "anlat",
             "what", "who", "how", "why", "when", "where", "which"};
-    private static final String STRIP_PLAY = "(?iu)\\b(filmini|filmi|film|aç|oynat|başlat|izle|play|watch|open)\\b";
+    private static final String STRIP_PLAY = "(?iu)\\b(filmini|filmi|film|dizisini|dizisi|dizi|aç|oynat|başlat|izle|izleyelim|play|watch|open|the movie|the series)\\b";
+    private static final java.util.regex.Pattern PLAY_VERB = java.util.regex.Pattern.compile("(?iu)(\\b(aç|oynat|başlat|izle|izleyelim|play|watch|put on|open)\\s*$|^(play|watch|open|put on)\\b)");
+    private static final java.util.regex.Pattern PLAY_SERIES = java.util.regex.Pattern.compile("(?iu)\\b(dizi\\w*|series|show)\\b");
     private static final String STRIP_SHELF = "(?iu)\\b(başyapıtları|filmleri|filmografisi|filmler|dizileri|diziler|sineması|yönettiği|oynadığı"
-            + "|seçkisi|koleksiyonu|en iyi|tüm|bütün|films|movies|series|filmography|directed by|starring|collection|best of)\\b";
+            + "|seçkisi|koleksiyonu|en iyi|tüm|bütün|films|movies|series|filmography|directed by|starring|collection|best of"
+            // spoken: "Nolan'ın filmlerini listele", "show me Kubrick films"
+            + "|filmlerini|dizilerini|listele|göster|getir|bul|aç|show me|show|list|find)\\b";
 
     private static final ExecutorService pool = Executors.newFixedThreadPool(6);
 
@@ -196,6 +200,18 @@ public final class MovieAssistant {
             out.movies = MovieCatalog.personWork(ctx, name, "any", max);
             if (out.movies.isEmpty()) out.movies = MovieCatalog.filmography(ctx, name, max);
         }
+        // "Inception'ı aç", "Kuruluş Osman dizisini izle", "play Dune": that one title, started right away
+        if (!shelf && PLAY_VERB.matcher(q).find()) {
+            String title = query.replaceAll(STRIP_PLAY, "").replaceAll("'\\p{L}*", "").replaceAll("\\s+", " ").trim();
+            if (!title.isEmpty()) {
+                List<Movie> one = MovieCatalog.titled(ctx, title, PLAY_SERIES.matcher(q).find() ? "series" : "any", 1);
+                if (!one.isEmpty()) {
+                    out.kind = Kind.PLAY;
+                    out.movies = one;
+                    return out;
+                }
+            }
+        }
         if (out.movies.isEmpty()) out.movies = MovieCatalog.titled(ctx, query.replaceAll(STRIP_PLAY, "").trim(), "any", max);
         return out;
     }
@@ -261,7 +277,8 @@ public final class MovieAssistant {
     }
 
     public static String cleanShelfName(String query) {
-        String clean = query.replaceAll(STRIP_SHELF, "").replaceAll("\\s+", " ").trim();
+        // Turkish possessives off the name too: "Nolan'ın" -> "Nolan"
+        String clean = query.replaceAll(STRIP_SHELF, "").replaceAll("['’]\\p{L}*", "").replaceAll("\\s+", " ").trim();
         return clean.isEmpty() ? query.trim() : clean;
     }
 

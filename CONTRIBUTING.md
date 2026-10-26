@@ -45,6 +45,10 @@ The app is split into layers; [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) has t
 
 ## Pull requests
 
+CineTV is source-available ([LICENSE](LICENSE)), not open for forks: suggestions and fixes are welcome as
+issues or pull requests to this repository, and a merged change becomes part of CineTV under its terms. Do not
+publish changed copies or forks.
+
 1. One topic per pull request, with a short description of what changed and why.
 2. Include a screenshot or a short screen recording for anything visual, taken on a real TV
    (`adb exec-out screencap -p > shot.png`).

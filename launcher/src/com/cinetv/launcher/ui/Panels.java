@@ -41,6 +41,8 @@ public final class Panels {
         void applyAppearance();
         void setSpatial(boolean on);
         void setDvdCases(boolean on);
+        void setTrailerMoments(boolean on);
+        void startTour();
         void onPerformanceChanged();
         void previewScreensaver();
         void curate(String mood);
@@ -130,6 +132,13 @@ public final class Panels {
             a.setDvdCases(next);
             host.replace(() -> buildSettings(ctx, host, a));
         }));
+        boolean trailers = Prefs.trailerMoments(ctx);
+        c2.addView(Controls.tile(ctx, ctx.getString(R.string.trailer_moments), ctx.getString(trailers ? R.string.trailer_moments_on : R.string.state_off), trailers, v -> {
+            boolean next = !Prefs.trailerMoments(ctx);
+            Prefs.setFlag(ctx, Prefs.TRAILER_MOMENTS, next);
+            a.setTrailerMoments(next);
+            host.replace(() -> buildSettings(ctx, host, a));
+        }));
         boolean dvd = Prefs.dvdAnimation(ctx);
         c2.addView(Controls.tile(ctx, ctx.getString(R.string.dvd_animation), ctx.getString(dvd ? R.string.state_on : R.string.state_off), dvd, v -> {
             Prefs.setFlag(ctx, Prefs.DVD_ANIMATION, !Prefs.dvdAnimation(ctx));
@@ -139,6 +148,7 @@ public final class Panels {
         String tierName = ctx.getString(tierRes(PerformanceProfile.tier(ctx)));
         c2.addView(Controls.tile(ctx, ctx.getString(R.string.performance),
                 ctx.getString(perfModeRes(perfMode)) + " · " + tierName, false, v -> host.push(() -> buildPerformancePicker(ctx, host, a))));
+        c2.addView(Controls.tile(ctx, ctx.getString(R.string.tour_title), ctx.getString(R.string.tour_hint), false, v -> a.startTour()));
         c2.addView(Controls.tile(ctx, ctx.getString(R.string.screensaver), ctx.getString(R.string.screensaver_preview), false, v -> {
             host.close();
             a.previewScreensaver();

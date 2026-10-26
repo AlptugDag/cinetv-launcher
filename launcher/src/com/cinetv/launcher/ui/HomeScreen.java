@@ -54,6 +54,9 @@ public class HomeScreen {
     public final SpatialEnvironment environment;
     public final GlideScrollView scroll;
     public final PosterShelf shelf;
+    /** Trailer moments in place of the cases (Settings); the shelf stays, invisible, for the keys. */
+    public final TrailerStage trailer;
+    public final TourView tour;
     public final AppGrid apps;
     public final ModalHost modal;
     public final DvdOpeningView opening;
@@ -82,6 +85,8 @@ public class HomeScreen {
 
         environment = new SpatialEnvironment(ctx);
         root.addView(environment, match());
+        trailer = new TrailerStage(ctx);
+        root.addView(trailer, match());
 
         scroll = new GlideScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
@@ -296,6 +301,20 @@ public class HomeScreen {
         root.addView(opening, match());
         pattern = new CalibrationPatternView(ctx);
         root.addView(pattern, match());
+        if (!com.cinetv.launcher.service.Integrity.isGenuine(ctx)) {
+            // a changed copy always says whose work it is and where the original is, on every screen of Home
+            TextView badge = UiKit.label(ctx, 18, Color.WHITE);
+            badge.setText(R.string.unofficial);
+            badge.setMaxWidth(UiKit.px(760));
+            badge.setPadding(UiKit.px(20), UiKit.px(12), UiKit.px(20), UiKit.px(12));
+            badge.setBackgroundColor(Color.argb(200, 160, 20, 20));
+            FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                    Gravity.BOTTOM | Gravity.END);
+            blp.setMargins(0, 0, UiKit.px(24), UiKit.px(24));
+            root.addView(badge, blp);
+        }
+        tour = new TourView(ctx);
+        root.addView(tour, match());
         splash = buildSplash(ctx);
         root.addView(splash, match());
         screensaver = new FrameLayout(ctx);
@@ -431,6 +450,31 @@ public class HomeScreen {
     }
 
     /** The signature is written left to right, "CineTV" types itself in, then "by Alptuğ Dağ" rises. */
+    /** The first-run tour: CineTV's best parts, each card pointing at its place on Home. */
+    public TourView.Step[] tourSteps() {
+        View phone = headerButtons[0], gear = headerButtons[headerButtons.length - 1], inputs = headerButtons[2];
+        return new TourView.Step[]{
+                new TourView.Step(null, R.string.tour_welcome_t, R.string.tour_welcome),
+                new TourView.Step(shelf, R.string.tour_shelf_t, R.string.tour_shelf),
+                new TourView.Step(shelf, R.string.tour_dvd_t, R.string.tour_dvd),
+                new TourView.Step(gear, R.string.tour_trailers_t, R.string.tour_trailers),
+                new TourView.Step(search, R.string.tour_search_t, R.string.tour_search),
+                new TourView.Step(micButton, R.string.tour_voice_t, R.string.tour_voice),
+                new TourView.Step(phone, R.string.tour_phone_t, R.string.tour_phone),
+                new TourView.Step(phone, R.string.tour_cast_t, R.string.tour_cast),
+                new TourView.Step(inputs, R.string.tour_inputs_t, R.string.tour_inputs),
+                new TourView.Step(apps.dockView(), R.string.tour_apps_t, R.string.tour_apps),
+                new TourView.Step(gear, R.string.tour_settings_t, R.string.tour_settings),
+                new TourView.Step(null, R.string.tour_saver_t, R.string.tour_saver),
+                new TourView.Step(logoButton, R.string.tour_done_t, R.string.tour_done)};
+    }
+
+    public void setTrailerMode(boolean on) {
+        trailer.setOn(on);
+        shelf.setAlpha(on ? 0f : 1f);
+        if (on) trailer.show(shelf.focusedMovie(), shelf.focusedIndex(), shelf.count());
+    }
+
     public void showSplash() {
         splash.setVisibility(View.VISIBLE);
         splash.setAlpha(1f);

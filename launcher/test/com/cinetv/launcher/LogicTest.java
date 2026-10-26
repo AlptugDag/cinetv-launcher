@@ -92,5 +92,25 @@ public class LogicTest {
         assertEquals("Nuri Bilge Ceylan", MovieAssistant.cleanShelfName("Nuri Bilge Ceylan filmleri"));
         assertEquals("Denis Villeneuve", MovieAssistant.cleanShelfName("best of Denis Villeneuve movies"));
         assertEquals("filmleri", MovieAssistant.cleanShelfName("filmleri"));
+        assertEquals("Nolan", MovieAssistant.cleanShelfName("Nolan'ın filmlerini listele"));
+    }
+
+    @Test
+    public void spokenCommandsAreUnderstood() {
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.APP, com.cinetv.launcher.ai.VoiceCommands.parse("Nuvio'yu aç").kind);
+        assertEquals("nuvio", com.cinetv.launcher.ai.VoiceCommands.parse("Nuvio'yu aç").arg);
+        assertEquals("youtube", com.cinetv.launcher.ai.VoiceCommands.parse("open YouTube").arg);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.VOL_DOWN, com.cinetv.launcher.ai.VoiceCommands.parse("sesi kıs").kind);
+        assertEquals("15", com.cinetv.launcher.ai.VoiceCommands.parse("sesi 15 yap").arg);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.CHANNEL, com.cinetv.launcher.ai.VoiceCommands.parse("kanal beş").kind);
+        assertEquals("5", com.cinetv.launcher.ai.VoiceCommands.parse("kanal beş").arg);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.HDMI, com.cinetv.launcher.ai.VoiceCommands.parse("HDMI 2").kind);
+        assertEquals("30", com.cinetv.launcher.ai.VoiceCommands.parse("30 dakika sonra kapan").arg);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.POWER_OFF, com.cinetv.launcher.ai.VoiceCommands.parse("televizyonu kapat").kind);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.MUTE, com.cinetv.launcher.ai.VoiceCommands.parse("sessiz").kind);
+        // searches stay searches
+        assertNull(com.cinetv.launcher.ai.VoiceCommands.parse("Nolan'ın filmlerini listele"));
+        assertNull(com.cinetv.launcher.ai.VoiceCommands.parse("araba temalı filmler"));
+        assertNull(com.cinetv.launcher.ai.VoiceCommands.parse("Türkiye'nin yüz ölçümü kaç"));
     }
 }

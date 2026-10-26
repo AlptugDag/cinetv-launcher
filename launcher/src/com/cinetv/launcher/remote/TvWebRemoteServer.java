@@ -48,6 +48,8 @@ public final class TvWebRemoteServer {
     public interface Controller {
         void openTitle(MovieCatalog.Movie movie);
         void searchOnTv(String query);
+        /** Spoken on the phone: a TV command, or a voice search. */
+        void voiceOnTv(String said);
         void showScreensaver();
         void showCalibrationPattern(String pattern);
         void onPhoneConnected();
@@ -481,6 +483,14 @@ public final class TvWebRemoteServer {
                 post(() -> CastResolver.play(app, u, ref.isEmpty() ? null : ref));
                 return ok;
             }
+            case "/api/tv/voice": {
+                final String said = clip(q.get("q"), 200);
+                if (!said.isEmpty()) post(() -> {
+                    Controller c = controller;
+                    if (c != null) c.voiceOnTv(said);
+                });
+                return ok;
+            }
             case "/api/tv/typing": {
                 final String text = clip(q.get("q"), 200);
                 post(() -> {
@@ -489,6 +499,21 @@ public final class TvWebRemoteServer {
                 });
                 return ok;
             }
+            case "/api/mouse": {
+                // the air mouse: many small moves a second, applied on the main thread in order
+                final float dx = parseFloat(q.get("dx")), dy = parseFloat(q.get("dy"));
+                post(() -> AirMouse.move(app, dx, dy));
+                return ok;
+            }
+            case "/api/mouse/click":
+                AirMouse.click(app);
+                return ok;
+            case "/api/mouse/scroll":
+                AirMouse.scroll(app, parseFloat(q.get("dy")));
+                return ok;
+            case "/api/mouse/off":
+                AirMouse.off(app);
+                return ok;
             case "/api/power/off":
                 // the bridge shuts down for real; without it, the adb the TV itself offers does
                 if (!KeyBridge.powerOff(app)) LocalAdb.shell(app, "svc power shutdown || reboot -p", 10_000);
@@ -665,6 +690,15 @@ public final class TvWebRemoteServer {
     private static String safeUrl(String s) {
         s = clip(s, 400);
         return s.startsWith("https://") ? s : "";
+    }
+
+    private static float parseFloat(String s) {
+        try {
+            float f = Float.parseFloat(s.trim());
+            return Float.isNaN(f) ? 0 : Math.max(-2000, Math.min(2000, f));
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 
     private static int parseInt(String s) {

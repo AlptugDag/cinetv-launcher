@@ -21,7 +21,7 @@ import java.security.MessageDigest;
  * random key CineTV started it with.
  *
  * Lines it understands: {@code k <keycode>} press, {@code l <keycode>} long press, {@code t <text>} type,
- * {@code o -} power off.
+ * {@code o -} power off, {@code c x y} tap, {@code w x1 y1 x2 y2 ms} swipe (the phone's air mouse).
  */
 public final class KeyInjector {
     public static final int PORT = 47815;
@@ -77,6 +77,7 @@ public final class KeyInjector {
                 if (cmd == 'k') press(Integer.parseInt(arg.trim()), false);
                 else if (cmd == 'l') press(Integer.parseInt(arg.trim()), true);
                 else if (cmd == 't') type(arg);
+                else if (cmd == 'c' || cmd == 'w') touch(arg.trim().split(" "));
                 client.getOutputStream().write('.');
                 if (cmd == 'o') {
                     // a real power-off, not the panel-off standby the power key gives; the remote turns it on again
@@ -107,6 +108,29 @@ public final class KeyInjector {
         }
         send(new KeyEvent(now, SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, code, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0,
                 InputDevice.SOURCE_KEYBOARD));
+    }
+
+    /** A tap ({@code x y}) or a swipe ({@code x1 y1 x2 y2 ms}) on the screen, as a finger would. */
+    private static void touch(String[] a) throws Exception {
+        float x1 = Float.parseFloat(a[0]), y1 = Float.parseFloat(a[1]);
+        float x2 = a.length >= 4 ? Float.parseFloat(a[2]) : x1, y2 = a.length >= 4 ? Float.parseFloat(a[3]) : y1;
+        long ms = a.length >= 5 ? Math.max(40, Math.min(1500, Long.parseLong(a[4]))) : 60;
+        long down = SystemClock.uptimeMillis();
+        sendTouch(down, down, android.view.MotionEvent.ACTION_DOWN, x1, y1);
+        int steps = a.length >= 4 ? 8 : 1;
+        for (int i = 1; i <= steps; i++) {
+            Thread.sleep(ms / steps);
+            float f = i / (float) steps;
+            sendTouch(down, SystemClock.uptimeMillis(), android.view.MotionEvent.ACTION_MOVE, x1 + (x2 - x1) * f, y1 + (y2 - y1) * f);
+        }
+        sendTouch(down, SystemClock.uptimeMillis(), android.view.MotionEvent.ACTION_UP, x2, y2);
+    }
+
+    private static void sendTouch(long down, long at, int action, float x, float y) throws Exception {
+        android.view.MotionEvent e = android.view.MotionEvent.obtain(down, at, action, x, y, 0);
+        e.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+        inject.invoke(inputManager, e, 0);
+        e.recycle();
     }
 
     /** Types text the virtual keyboard can spell (letters outside it are sent by the app instead). */

@@ -28,6 +28,8 @@ public final class Prefs {
     public static final String DVD_CASES = "pref_dvd_cases";
     public static final String GLASS_BEVEL = "pref_chroma_aberration";
     public static final String FIRST_SETUP_DONE = "first_setup_done";
+    public static final String TRAILER_MOMENTS = "pref_trailer_moments";
+    public static final String TOUR_DONE = "tour_done";
     public static final String REMOTE_TOKEN = "remote_auth_token";
     public static final String VITRIN_CATEGORY = "vitrin_category_idx";
     public static final String VITRIN_DAY = "vitrin_day";
@@ -52,6 +54,11 @@ public final class Prefs {
 
     public static boolean glassBevel(Context ctx) {
         return get(ctx).getBoolean(GLASS_BEVEL, true);
+    }
+
+    /** Home shows looping trailer moments instead of DVD cases; off unless chosen. */
+    public static boolean trailerMoments(Context ctx) {
+        return get(ctx).getBoolean(TRAILER_MOMENTS, false);
     }
 
     public static boolean dvdAnimation(Context ctx) {

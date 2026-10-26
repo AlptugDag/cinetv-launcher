@@ -200,6 +200,12 @@ On first start, and from *Settings › Picture, sound & network tuning*:
   (a minute's warning first), and quiet hours keep the volume at 30 percent or less from 22:00 to 08:00.
 - **Long press** (or Menu) on an app: a glass bar under the tile to move, hide, uninstall or open its info.
 - **All apps** drawer in the same tiles, without system services.
+- **Voice commands and voice search** (on TVs with speech recognition, from the remote's microphone or the
+  phone's): "open Inception", "list Nolan's films", a question, or a command: "volume down", "set the volume
+  to 15", "channel 5", "HDMI 2", "open YouTube", "sleep in 30 minutes", "turn the TV off", in Turkish or English.
+- **Trailer moments** (*Settings*, off by default): instead of DVD cases, scenes from the focused film's trailer
+  loop full screen, muted, a few seconds at a time; OK opens the film.
+- **A tour on first start** shows every highlight where it lives on Home; *Settings › Tour of CineTV* repeats it.
 - **Themes, each a different room**: Alptug Default; Liquid Glass (clear glass drops over a cool scene);
   Metallic (brushed titanium, chrome edges); Cinema Hall (velvet curtains, the lit screen, rows of seats);
   DVD Store (wooden shelves of DVD spines, warm lamps, a neon sign); Neon Night (synthwave sun and grid);
@@ -241,6 +247,9 @@ TV. From then on it connects by itself.
   CineTV starts on the TV itself; the TV asks once to allow it ("Always allow").
 - **Cast**: paste any video link or a film page. The TV opens the page itself, presses play, follows the
   player into its embedded frame, skips the ads and plays the film full screen.
+- **Air mouse**: switch it on on the touchpad and point the phone (or slide a finger): a pointer moves over any
+  app on the TV, a tap clicks, two fingers scroll.
+- **Voice from the phone**: the microphone key takes the same commands and searches as the TV's remote.
 - **YouTube's "Send to TV"**: in the YouTube app on any phone on the same Wi-Fi, tap Cast and pick
   *"<your TV> · YouTube"*: the video opens in ad-free TizenTube, and the phone controls it as usual.
 - **Background**: pick a photo and it becomes the backdrop of Home.
@@ -348,6 +357,9 @@ Made by **Alptuğ Dağ** — filmmaker, storyteller ·
 [Letterboxd](https://letterboxd.com/AlptugDag/) · [LinkedIn](https://www.linkedin.com/in/AlptugDag/) · [GitHub](https://github.com/AlptugDag) ·
 [TMDB](https://www.themoviedb.org/person/6564105) · [IMDb](https://www.imdb.com/name/nm14913967)
 
-Licensed under the [Apache License 2.0](LICENSE). Third-party credits are in [NOTICE](NOTICE).
+Source-available under the [PolyForm Strict License 1.0.0](LICENSE): read it, build it for yourself and use it
+for free, but do not publish changed copies, forks or launchers based on it, or remove its author's name and
+signature. *Kaynak kod açık ve incelenebilir; değiştirilip yeniden yayımlanamaz, başka bir uygulamaya
+dönüştürülemez.* Third-party credits are in [NOTICE](NOTICE).
 
 </div>

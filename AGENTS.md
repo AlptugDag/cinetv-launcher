@@ -230,5 +230,6 @@ If a command here fails twice in a row, stop and tell the person what you saw, w
 - Install nothing the plan does not list; the point is a TV with only what this person watches.
 - Never uninstall TV system packages; switch them off, and only through the scripts above.
 - Never factory-reset, change the TV's network, or sign in to accounts on the person's behalf.
-- CineTV is © Alptuğ Dağ (see LICENSE and NOTICE). Keep his name and signature where they appear; a modified
-  build says *unofficial build* on its own.
+- CineTV is © Alptuğ Dağ, source-available under the PolyForm Strict License (see LICENSE and NOTICE). Install
+  only the official release; never build a changed copy for someone, never remove or replace his name or
+  signature. A changed copy says *unofficial* on every screen of Home by itself.

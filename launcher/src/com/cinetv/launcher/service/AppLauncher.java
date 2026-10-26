@@ -84,6 +84,11 @@ public final class AppLauncher {
         return Prefs.get(ctx).getString(Prefs.LIVE_SOURCE, "tuner").startsWith("hdmi");
     }
 
+    /** HDMI port N (0: the connected one), e.g. for "HDMI 2" said to the TV. */
+    public static boolean openHdmiPort(Context ctx, int port) {
+        return openHdmi(ctx, port);
+    }
+
     /** Switches the TV to the HDMI input of the viewer's box: port N if given, else the connected one. */
     private static boolean openHdmi(Context ctx, int port) {
         try {

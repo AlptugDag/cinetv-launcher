@@ -172,6 +172,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             @Override
             public void onFocusCase(DvdCaseView view, int accent) {
                 home.environment.focusOn(view, accent);
+                if (home.trailer.isOn()) home.trailer.show(home.shelf.focusedMovie(), home.shelf.focusedIndex(), home.shelf.count());
             }
 
             @Override
@@ -184,6 +185,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         loadApps(true);
         showCachedShelf();
+        if (Prefs.trailerMoments(this)) home.shelf.post(() -> home.setTrailerMode(true));
         // A new process (power-on) or a long absence brings a new shelf; a rebuild (theme, appearance) does not.
         if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > SHELF_EVERY_MS) handler.postDelayed(this::refreshShelf, 1500);
 
@@ -210,6 +212,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             PerformanceProfile.watchFrames(this, 6000, () -> home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this)));
         });
         handleIntent(getIntent());
+        handler.postDelayed(tourCheck, 6000);
         if (!Prefs.get(this).getBoolean(Prefs.FIRST_SETUP_DONE, false)) {
             // First start only: tune picture & sound and measure the network once.
             handler.postDelayed(() -> Panels.setup(this, home.modal, true), 4000);
@@ -230,6 +233,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         inFront = true;
         home.opening.dismiss();
         home.environment.resume();
+        if (home.trailer.isOn()) home.shelf.post(() -> home.trailer.show(home.shelf.focusedMovie(), home.shelf.focusedIndex(), home.shelf.count()));
         DeviceTweaks.syncNightMode(this);
         handler.removeCallbacks(clockTick);
         handler.post(clockTick);
@@ -258,6 +262,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             return;
         }
         home.environment.pause();
+        home.trailer.pause();
         handler.removeCallbacks(clockTick);
         handler.removeCallbacks(idle);
         handler.removeCallbacks(sleepPanel);
@@ -315,6 +320,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             if (down) hideScreensaver();
             return true;
         }
+        if (home.tour.isShowing()) return home.tour.handleKey(e);
         if (home.pattern.isShowing()) {
             if (down && (e.getKeyCode() == KeyEvent.KEYCODE_BACK || e.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER)) home.pattern.show("off");
             return true;
@@ -519,8 +525,44 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != REQ_VOICE || resultCode != RESULT_OK || data == null) return;
         ArrayList<String> said = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
-        if (said != null && !said.isEmpty()) handler.postDelayed(() -> onSearch(said.get(0)), 200);
+        if (said != null && !said.isEmpty()) handler.postDelayed(() -> onSpoken(said.get(0)), 200);
     }
+
+    /**
+     * Something said to the TV (its remote's microphone, or the phone's): a TV command ("sesi kıs", "HDMI 2",
+     * "Nuvio'yu aç", "30 dakika sonra kapan") runs; anything else is a voice search ("Inception'ı aç",
+     * "Nolan'ın filmlerini listele", a question).
+     */
+    public void onSpoken(String said) {
+        com.cinetv.launcher.ai.VoiceCommands.Command c = com.cinetv.launcher.ai.VoiceCommands.parse(said);
+        if (c != null && com.cinetv.launcher.ai.VoiceCommands.run(this, c, voiceHost)) {
+            home.showBubble("“" + said + "”", false, 2500);
+            return;
+        }
+        onSearch(said);
+    }
+
+    private final com.cinetv.launcher.ai.VoiceCommands.Host voiceHost = new com.cinetv.launcher.ai.VoiceCommands.Host() {
+        @Override
+        public void showScreensaver() {
+            MainActivity.this.showScreensaver();
+        }
+
+        @Override
+        public void openSettings() {
+            onSettings();
+        }
+
+        @Override
+        public void openInputs() {
+            onInputs();
+        }
+
+        @Override
+        public void say(String text) {
+            home.showBubble(text, false, 4000);
+        }
+    };
 
     @Override
     public void curate(final String mood) {
@@ -630,7 +672,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 ui(() -> AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl));
             });
         };
-        boolean animate = Prefs.dvdAnimation(this);
+        // trailer moments have no cases to open: straight to the film
+        boolean animate = Prefs.dvdAnimation(this) && !home.trailer.isOn();
         if (!animate) {
             launch.run();
             return;
@@ -830,6 +873,32 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.shelf.setCaseMode(on);
     }
 
+    /** Once the first tuning is done and its dialog closed, the tour starts (once). */
+    private final Runnable tourCheck = new Runnable() {
+        @Override
+        public void run() {
+            if (home == null || Prefs.get(MainActivity.this).getBoolean(Prefs.TOUR_DONE, false)) return;
+            boolean ready = Prefs.get(MainActivity.this).getBoolean(Prefs.FIRST_SETUP_DONE, false)
+                    && !home.modal.isShowing() && !home.opening.isPlaying() && inFront
+                    && home.screensaver.getVisibility() != View.VISIBLE && home.shelf.count() > 0;
+            if (ready) startTour();
+            else handler.postDelayed(this, 2500);
+        }
+    };
+
+    @Override
+    public void startTour() {
+        home.modal.close();
+        home.shelf.requestFocus();
+        home.shelf.post(() -> home.tour.start(home.tourSteps(),
+                () -> Prefs.setFlag(this, Prefs.TOUR_DONE, true)));
+    }
+
+    @Override
+    public void setTrailerMoments(boolean on) {
+        home.setTrailerMode(on);
+    }
+
     @Override
     public void onPerformanceChanged() {
         // in place: rebuilding the activity is what let the TV's old launcher step in on some TVs
@@ -870,6 +939,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void searchOnTv(String query) {
         onSearch(query);
+    }
+
+    @Override
+    public void voiceOnTv(String said) {
+        if (!inFront) AppLauncher.start(this, new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+        onSpoken(said);
     }
 
     @Override

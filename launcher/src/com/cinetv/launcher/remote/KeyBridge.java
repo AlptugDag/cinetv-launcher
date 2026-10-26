@@ -35,6 +35,16 @@ public final class KeyBridge {
         return send(ctx, "t " + text.replace('\n', ' '));
     }
 
+    /** A tap on the screen at (x, y), for the air mouse. */
+    public static synchronized boolean tap(Context ctx, int x, int y) {
+        return send(ctx, "c " + x + " " + y);
+    }
+
+    /** A finger swipe, for the air mouse's scrolling. */
+    public static synchronized boolean swipe(Context ctx, int x1, int y1, int x2, int y2, int ms) {
+        return send(ctx, "w " + x1 + " " + y1 + " " + x2 + " " + y2 + " " + ms);
+    }
+
     /** Shuts the TV down for real (the power key only puts the panel to sleep on many TVs). */
     public static synchronized boolean powerOff(Context ctx) {
         return send(ctx, "o -");

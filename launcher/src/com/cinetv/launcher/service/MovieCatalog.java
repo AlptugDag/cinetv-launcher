@@ -514,6 +514,43 @@ public final class MovieCatalog {
         }
     }
 
+    private static final java.util.Map<String, String> trailers = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** The YouTube id of the film's trailer (official, in the TV's language first, then English); null if none. Blocks. */
+    public static String trailerKey(Context ctx, Movie m) {
+        if (!hasTmdb(ctx)) return null;
+        String cacheKey = m.type + ":" + (m.tmdbId > 0 ? m.tmdbId : m.imdbId);
+        String cached = trailers.get(cacheKey);
+        if (cached != null) return cached.isEmpty() ? null : cached;
+        String best = null;
+        try {
+            if (m.tmdbId <= 0) details(ctx, m);
+            if (m.tmdbId > 0) {
+                String kind = "series".equals(m.type) ? "tv" : "movie";
+                String lang = Locale.getDefault().getLanguage();
+                JSONArray r = tmdb(ctx, kind + "/" + m.tmdbId + "/videos?include_video_language=" + lang + ",en,null").optJSONArray("results");
+                int bestScore = -1;
+                for (int i = 0; r != null && i < r.length(); i++) {
+                    JSONObject v = r.getJSONObject(i);
+                    if (!"YouTube".equals(v.optString("site"))) continue;
+                    String type = v.optString("type");
+                    int score = ("Trailer".equals(type) ? 40 : "Teaser".equals(type) ? 20 : "Clip".equals(type) ? 10 : -1);
+                    if (score < 0) continue;
+                    if (v.optBoolean("official")) score += 8;
+                    if ("en".equals(v.optString("iso_639_1"))) score += 4; // fewer burnt-in captions than dubbed cuts
+                    if (score > bestScore) {
+                        bestScore = score;
+                        best = v.optString("key", null);
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Trailer lookup failed: " + t.getMessage());
+        }
+        trailers.put(cacheKey, best == null ? "" : best);
+        return best;
+    }
+
     /** The film's official tagline in the device language, or null when TMDB has none. */
     public static String taglineFor(Context ctx, int tmdbId) {
         if (tmdbId <= 0 || !hasTmdb(ctx)) return null;
