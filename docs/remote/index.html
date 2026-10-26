@@ -133,8 +133,8 @@ body.remote main{padding-bottom:0}
 .urlbar input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--ink);font-size:16px}
 .ub{border:0;border-radius:12px;padding:9px 11px;background:var(--glass-hi);color:var(--ink);font-weight:600}
 .ub.go{background:var(--accent);color:#fff}
-.bwrap{flex:1;min-height:0;display:flex;justify-content:center}
-.bview{position:relative;height:100%;aspect-ratio:9/16;max-width:100%;border-radius:18px;overflow:hidden;touch-action:none;background:#000}
+.bwrap{flex:1;min-height:0;display:flex;margin:0 -10px}
+.bview{position:relative;flex:1;height:100%;border-radius:18px;overflow:hidden;touch-action:none;background:#000}
 .bview img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block;user-select:none;-webkit-user-drag:none}
 .bhint{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--dim);font-size:14px}
 .bprog{position:absolute;left:0;top:0;height:3px;width:0;background:var(--accent2);transition:width .3s}
@@ -707,7 +707,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     $("castUrl").blur();
     if (direct(u)) return castPlay(/^https?:/i.test(u) ? u : "https://" + u);
     try {
-      const r = await api("browse/open", {url: u});
+      const vr = bView.getBoundingClientRect();
+      const r = await api("browse/open", {url: u, ar: (vr.height / Math.max(1, vr.width)).toFixed(3)});
       if (!r.ok) return toast(t("castNone"));
       opened = true; $("bHint").hidden = true; $("castFound").innerHTML = ""; $("bStatus").className = "bstatus";
       $("bStatus").textContent = t("browseTip"); browseLoop();

@@ -514,6 +514,10 @@ public final class TvWebRemoteServer {
                 if (!u.startsWith("http")) u = "https://" + u;
                 if (!isPublicHttpUrl(u)) return new JSONObject().put("ok", false).put("error", "url");
                 String ref = clip(q.get("ref"), 2000);
+                try {
+                    CastBrowser.shape(Float.parseFloat(clip(q.get("ar"), 8)));
+                } catch (Throwable ignored) {
+                }
                 CastBrowser.open(app, u, ref.startsWith("http") ? ref : null);
                 return ok;
             }

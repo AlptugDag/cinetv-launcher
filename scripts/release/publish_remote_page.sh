@@ -10,7 +10,7 @@ rm -rf "$OUT"
 mkdir -p "$OUT/static"
 sed -e 's#"/static/#"static/#g' -e "s#'/static/#'static/#g" "$SRC/index.html" > "$OUT/index.html"
 cp "$SRC/sw.js" "$OUT/sw.js"
-sed -e 's#"/static/#"static/#g' -e 's#"start_url": "/"#"start_url": "./"#' "$SRC/manifest.webmanifest" > "$OUT/static/manifest.webmanifest"
+sed -e 's#"/static/#"#g' -e 's#"start_url": "/"#"start_url": "../", "scope": "../"#' "$SRC/manifest.webmanifest" > "$OUT/static/manifest.webmanifest"
 for f in icon.png icon-192.png signature.png creator.jpg; do [ -f "$SRC/$f" ] && cp "$SRC/$f" "$OUT/static/$f"; done
 touch "$DIR/docs/.nojekyll"
 echo "docs/remote ready"

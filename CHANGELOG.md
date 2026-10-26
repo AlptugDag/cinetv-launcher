@@ -1,5 +1,18 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.3
+
+### Yenilikler
+- **Oynatıcı hazır gelir**: televizyonda video oynatıcı uygulaması yoksa CineTV ilk açılışta Nova Video Player'ı (resmî sürüm, işlemciye uygun) kendisi kurar. Nova uygulama listesinde görünmez; yalnızca telefondan bir video gönderildiğinde açılır. Bir oynatıcı zaten varsa hiçbir şey kurulmaz.
+- **Daha geniş yayın görünümü**: *Yayınla* sekmesindeki site görünümü artık telefonun bütün genişliğini kaplıyor; televizyondaki sayfa telefonun ekran oranında açıldığı için görüntü uzamıyor, dokunuşlar tam yerine gidiyor.
+
+### Çözülenler
+- Telefon sayfasını ana ekrana eklerken "File not found" hatası çıkıyordu (ana ekran kısayolu yanlış adrese gidiyordu). Artık kısayol doğru sayfayı açar ve televizyonu hatırlar; QR'ı yeniden okutmak gerekmez.
+
+### Bilinen hatalar
+- Nova'nın otomatik kurulumu ve geniş yayın görünümü gerçek kullanımda denenmedi.
+- 1.0.0.2'deki bilinen hatalar sürüyor.
+
 ## 1.0.0.2
 
 ### Yenilikler

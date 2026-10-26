@@ -42,6 +42,7 @@ public final class HomeGuard {
             ensureDefault(app);
             // installed from the APK alone: Nuvio and its addons come too (never touched when already there)
             com.cinetv.launcher.device.NuvioSetup.runOnce(app);
+            com.cinetv.launcher.device.NuvioSetup.playerOnce(app);
         }, "cinetv-home").start();
     }
 

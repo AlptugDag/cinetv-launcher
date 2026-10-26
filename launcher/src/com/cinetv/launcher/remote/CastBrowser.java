@@ -44,7 +44,9 @@ import java.util.regex.Pattern;
  */
 public final class CastBrowser {
     /** The phone's view of the page: a phone-shaped window, so sites send their mobile layout. */
-    static final int W = 720, H = 1280;
+    static final int W = 720;
+    /** The window's height: shaped like the phone's picture of it, so the picture fills the phone. */
+    static volatile int H = 1280;
     private static final String UA = "Mozilla/5.0 (Linux; Android 14; SM-N986B) AppleWebKit/537.36 (KHTML, like Gecko) "
             + "Chrome/126.0 Mobile Safari/537.36";
     private static final Pattern MEDIA = Pattern.compile("(?i)\\.(m3u8|mpd|mp4|m4v|webm|mkv|mov)(\\?|#|$)|/(hls|dash)/|master\\.txt|playlist\\.txt");
@@ -82,6 +84,14 @@ public final class CastBrowser {
         main.post(() -> {
             ensure();
             if (web == null) return;
+            WindowManager.LayoutParams lp = (WindowManager.LayoutParams) web.getLayoutParams();
+            if (lp != null && lp.height != H) {
+                lp.height = H;
+                try {
+                    ((WindowManager) app.getSystemService(Context.WINDOW_SERVICE)).updateViewLayout(web, lp);
+                } catch (Throwable ignored) {
+                }
+            }
             if (referrer != null && referrer.startsWith("http")) {
                 java.util.Map<String, String> h = new java.util.HashMap<>();
                 h.put("Referer", referrer);
@@ -90,6 +100,11 @@ public final class CastBrowser {
                 web.loadUrl(url);
             }
         });
+    }
+
+    /** The phone's picture shape (height / width); the next page opens in a window of that shape. */
+    public static void shape(float aspect) {
+        if (aspect >= 1f && aspect <= 2.4f) H = Math.round(W * aspect);
     }
 
     public static void close() {
