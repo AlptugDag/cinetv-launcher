@@ -47,7 +47,8 @@ public final class TrailerPlayer extends FrameLayout {
             + "function onYouTubeIframeAPIReady(){p=new YT.Player('p',{videoId:'%KEY%',playerVars:{autoplay:1,mute:1,controls:0,"
             + "disablekb:1,fs:0,iv_load_policy:3,cc_load_policy:0,modestbranding:1,playsinline:1,rel:0,showinfo:0},events:{onReady:function(e){"
             + "show(false);e.target.mute();try{e.target.unloadModule('captions');e.target.unloadModule('cc')}catch(x){}e.target.playVideo();},"
-            + "onStateChange:function(e){if(e.data==1){try{p.unloadModule('captions')}catch(x){}"
+            // locked: a pause (or the end) is never shown, the trailer just goes on
+            + "onStateChange:function(e){if(e.data==2||e.data==0){p.playVideo();return;}if(e.data==1){try{p.unloadModule('captions')}catch(x){}"
             + "if(!moments.length){var d=p.getDuration()||120;moments=[.2,.36,.52,.66,.8].map(function(f){return Math.max(12,Math.floor(d*f))});"
             + "p.seekTo(moments[0],true);Cine.ready();}else{setTimeout(function(){show(true)},350);}}},onError:function(){Cine.failed();}}});}"
             // between two moments the picture fades out, so the seek's spinner is never seen
@@ -59,6 +60,29 @@ public final class TrailerPlayer extends FrameLayout {
         super(ctx);
         setVisibility(GONE);
         setFocusable(false);
+        // the trailer only plays: no focus, no keys and no touches ever reach the player inside
+        setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS);
+    }
+
+    @Override
+    public boolean onInterceptTouchEvent(android.view.MotionEvent ev) {
+        return true;
+    }
+
+    @Override
+    @SuppressLint("ClickableViewAccessibility")
+    public boolean onTouchEvent(android.view.MotionEvent ev) {
+        return true;
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        return false;
+    }
+
+    @Override
+    public boolean dispatchGenericMotionEvent(android.view.MotionEvent event) {
+        return true; // no mouse hover either: it would bring up the player's controls
     }
 
     /** Whether trailers can play on this TV at all (key and performance). */
@@ -103,6 +127,10 @@ public final class TrailerPlayer extends FrameLayout {
             w.setWebChromeClient(new WebChromeClient());
             w.setBackgroundColor(Color.BLACK);
             w.setFocusable(false);
+            w.setFocusableInTouchMode(false);
+            w.setClickable(false);
+            w.setLongClickable(false);
+            w.setHapticFeedbackEnabled(false);
             w.addJavascriptInterface(new Object() {
                 @android.webkit.JavascriptInterface
                 public void ready() {
