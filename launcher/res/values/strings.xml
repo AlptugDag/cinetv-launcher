@@ -111,7 +111,7 @@
     <string name="theme_glass">Liquid Glass</string>
     <string name="theme_metal">Metallic</string>
     <string name="theme_cinema">Cinema Hall</string>
-    <string name="theme_dvdstore">DVD Store</string>
+    <string name="theme_closet">Film Closet</string>
     <string name="theme_neon">Neon Night</string>
     <string name="theme_oled">OLED Black</string>
     <string name="appearance">Appearance</string>
@@ -121,7 +121,7 @@
     <string name="spatial_hud">Spatial HUD</string>
     <string name="glass_bevel">3D liquid glass bevel</string>
     <string name="trailer_moments">Trailer moments</string>
-    <string name="trailer_moments_on">Looping trailer scenes instead of cases</string>
+    <string name="trailer_moments_on">The opened DVD plays the trailer</string>
     <string name="trailer_hint">%1$d / %2$d  ·  ‹ › another film  ·  OK to watch</string>
     <string name="trailer_series">Series</string>
     <string name="tour_title">Tour of CineTV</string>
@@ -135,7 +135,7 @@
     <string name="tour_dvd_t">Open a DVD</string>
     <string name="tour_dvd">OK on a case: it comes off the shelf and opens, with the story handwritten inside the cover. OK again: the disc spins up and the film starts in Nuvio.</string>
     <string name="tour_trailers_t">Trailer moments</string>
-    <string name="tour_trailers">Prefer moving pictures? Settings › Trailer moments: instead of cases, scenes from each film\'s trailer loop full screen, muted.</string>
+    <string name="tour_trailers">Settings › Trailer moments: an opened DVD turns sideways and plays the film\'s trailer in its tray, muted, with the story across the other side. Off, the DVD opens as usual.</string>
     <string name="tour_search_t">Search the way you talk</string>
     <string name="tour_search">“car films”, “Nolan films”, “a father whose daughter is kidnapped”, or any question. The shelf fills with the answer.</string>
     <string name="tour_voice_t">Just say it</string>
@@ -149,7 +149,7 @@
     <string name="tour_apps_t">Your apps</string>
     <string name="tour_apps">Hold OK (or Menu) on an app to move, hide or uninstall it. The last tile shows every app.</string>
     <string name="tour_settings_t">Make it yours</string>
-    <string name="tour_settings">Settings: themes (Cinema Hall, DVD Store, Metallic, Neon Night…), performance with “Determine automatically”, sleep timer and quiet hours, picture and sound tuning. Hold the gear for the TV\'s own settings.</string>
+    <string name="tour_settings">Settings: themes (Cinema Hall, Film Closet, Metallic, Neon Night…), performance with “Determine automatically”, sleep timer and quiet hours, picture and sound tuning. Hold the gear for the TV\'s own settings.</string>
     <string name="tour_saver_t">A cinema when you rest</string>
     <string name="tour_saver">After 5 idle minutes, scenes and lines from films fill the screen like a 35 mm reel. The TV sleeps by itself later.</string>
     <string name="tour_done_t">That\'s it. Enjoy the film</string>

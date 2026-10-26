@@ -41,6 +41,8 @@ public final class ThemeManager {
         public String scene;
         /** What panels and buttons are made of in this room. */
         public String material = MAT_GLASS;
+        /** Furniture around the DVD row (ShelfSet): "cinema" curtains, the "closet" shelf; null for none. */
+        public String furniture;
 
         Theme(String id, String name, int[] palette, String[] wallpapers, int columns, boolean signaturePattern, int accent,
               boolean wash, boolean pureBlack) {
@@ -58,6 +60,11 @@ public final class ThemeManager {
         Theme drawn(String scene, String material) {
             this.scene = scene;
             this.material = material;
+            return this;
+        }
+
+        Theme furnished(String furniture) {
+            this.furniture = furniture;
             return this;
         }
     }
@@ -79,12 +86,15 @@ public final class ThemeManager {
             new Theme("metal", "Metallic",
                     colors("#1C1F24", "#24282E", "#16181C", "#202429"),
                     new String[0], 5, false, Color.parseColor("#CBD5E1"), false, false).drawn("metal", MAT_METAL),
+            // a real hall (Lichtburg, Essen): the cases take its warm light, the curtains stand in front of them
             new Theme("cinema", "Cinema Hall",
                     colors("#1A0406", "#240608", "#120304", "#1C0507"),
-                    new String[0], 4, false, Color.parseColor("#F5C26B"), true, false).drawn("cinema", MAT_VELVET),
-            new Theme("dvdstore", "DVD Store",
-                    colors("#1E120A", "#24160C", "#140C06", "#1A1008"),
-                    new String[0], 6, false, Color.parseColor("#FBBF24"), true, false).drawn("dvdstore", MAT_WOOD),
+                    new String[]{"themes/cinema.jpg"}, 4, false, Color.parseColor("#F5C26B"), true, false)
+                    .drawn(null, MAT_VELVET).furnished("cinema"),
+            // a film closet: floor-to-ceiling white shelves of films; Home's cases are one of its shelves
+            new Theme("closet", "Film Closet",
+                    colors("#14161A", "#1A1C20", "#101114", "#16181C"),
+                    new String[0], 5, false, Color.parseColor("#F5F5F4"), false, false).drawn("closet", MAT_CLEAR).furnished("closet"),
             new Theme("neon", "Neon Night",
                     colors("#12042A", "#1E0838", "#0A0220", "#2A0A40"),
                     new String[0], 5, false, Color.parseColor("#F472B6"), true, false).drawn("neon", MAT_NEON),
@@ -94,7 +104,7 @@ public final class ThemeManager {
     };
 
     /** Ids of earlier builds' themes, kept so a TV that had one opens in its successor. */
-    private static final String[][] FORMER = {{"aurora", "metal"}, {"six-columns", "cinema"}, {"scenes", "dvdstore"}, {"dussehra", "neon"}};
+    private static final String[][] FORMER = {{"aurora", "metal"}, {"six-columns", "cinema"}, {"scenes", "closet"}, {"dvdstore", "closet"}, {"dussehra", "neon"}};
 
     public static final String MODE_DARK = "dark";
     public static final String MODE_LIGHT = "light";

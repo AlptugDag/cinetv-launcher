@@ -54,8 +54,8 @@ public class HomeScreen {
     public final SpatialEnvironment environment;
     public final GlideScrollView scroll;
     public final PosterShelf shelf;
-    /** Trailer moments in place of the cases (Settings); the shelf stays, invisible, for the keys. */
-    public final TrailerStage trailer;
+    /** Trailer moments (Settings): the trailer in the opened DVD's tray. */
+    public final TrailerPlayer trailer;
     public final TourView tour;
     public final AppGrid apps;
     public final ModalHost modal;
@@ -85,8 +85,6 @@ public class HomeScreen {
 
         environment = new SpatialEnvironment(ctx);
         root.addView(environment, match());
-        trailer = new TrailerStage(ctx);
-        root.addView(trailer, match());
 
         scroll = new GlideScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
@@ -259,7 +257,8 @@ public class HomeScreen {
         // ---- apps
         apps = new AppGrid(ctx, appHost);
         LinearLayout.LayoutParams dockLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        dockLp.setMargins(0, UiKit.px(6), 0, UiKit.px(10));
+        // one list of apps: the first row sits as close to the next as any two rows
+        dockLp.setMargins(0, UiKit.px(6), 0, 0);
         content.addView(apps.dockView(), dockLp);
         content.addView(apps.gridView(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
@@ -299,6 +298,19 @@ public class HomeScreen {
         root.addView(modal, match());
         opening = new DvdOpeningView(ctx);
         root.addView(opening, match());
+        trailer = new TrailerPlayer(ctx);
+        root.addView(trailer, new FrameLayout.LayoutParams(1, 1));
+        opening.setTrailerSlot(new DvdOpeningView.TrailerSlot() {
+            @Override
+            public void show(com.cinetv.launcher.service.MovieCatalog.Movie movie, android.graphics.RectF screen, float corner) {
+                trailer.show(movie, screen, corner);
+            }
+
+            @Override
+            public void hide() {
+                trailer.stop();
+            }
+        });
         pattern = new CalibrationPatternView(ctx);
         root.addView(pattern, match());
         if (!com.cinetv.launcher.service.Integrity.isGenuine(ctx)) {
@@ -483,10 +495,9 @@ public class HomeScreen {
         return s;
     }
 
+    /** Trailer moments are switched in Settings; a trailer playing now stops when they are switched off. */
     public void setTrailerMode(boolean on) {
-        trailer.setOn(on);
-        shelf.setAlpha(on ? 0f : 1f);
-        if (on) trailer.show(shelf.focusedMovie(), shelf.focusedIndex(), shelf.count());
+        if (!on) trailer.stop();
     }
 
     public void showSplash() {

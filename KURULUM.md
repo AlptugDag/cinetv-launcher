@@ -155,7 +155,7 @@ cd cinetv-launcher
   - *Yapay zekâ*: "araba temalı filmler" gibi aramalar. En kolayı ücretsiz Gemini: aistudio.google.com › *Get API key*.
   - *MDBList*: IMDb / Rotten Tomatoes puanları. mdblist.com › Preferences › API.
 - **Performans**: Ayarlar › Performans › **Otomatik Belirle** (bir kez basın, televizyona en uygun modu seçer).
-- **Tema**: Ayarlar › Tema: Alptug Default, Sıvı Cam, Metalik, Sinema Salonu, DVD Dükkânı, Neon Gece, OLED Siyah.
+- **Tema**: Ayarlar › Tema: Alptug Default, Sıvı Cam, Metalik, Sinema Salonu, Film Dolabı, Neon Gece, OLED Siyah.
 
 ---
 

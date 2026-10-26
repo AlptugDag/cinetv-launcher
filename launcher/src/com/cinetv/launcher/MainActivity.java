@@ -172,7 +172,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             @Override
             public void onFocusCase(DvdCaseView view, int accent) {
                 home.environment.focusOn(view, accent);
-                if (home.trailer.isOn()) home.trailer.show(home.shelf.focusedMovie(), home.shelf.focusedIndex(), home.shelf.count());
             }
 
             @Override
@@ -185,7 +184,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         loadApps(true);
         showCachedShelf();
-        if (Prefs.trailerMoments(this)) home.shelf.post(() -> home.setTrailerMode(true));
         // A new process (power-on) or a long absence brings a new shelf; a rebuild (theme, appearance) does not.
         if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > SHELF_EVERY_MS) handler.postDelayed(this::refreshShelf, 1500);
 
@@ -233,7 +231,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         inFront = true;
         home.opening.dismiss();
         home.environment.resume();
-        if (home.trailer.isOn()) home.shelf.post(() -> home.trailer.show(home.shelf.focusedMovie(), home.shelf.focusedIndex(), home.shelf.count()));
         DeviceTweaks.syncNightMode(this);
         handler.removeCallbacks(clockTick);
         handler.post(clockTick);
@@ -262,7 +259,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             return;
         }
         home.environment.pause();
-        home.trailer.pause();
+        home.trailer.stop();
         handler.removeCallbacks(clockTick);
         handler.removeCallbacks(idle);
         handler.removeCallbacks(sleepPanel);
@@ -298,6 +295,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (action == null) action = intent.getAction();
         if (action == null) return;
         if ("setup".equals(action)) handler.postDelayed(() -> Panels.setup(this, home.modal, true), 1500);
+        else if ("settings".equals(action)) handler.postDelayed(this::onSettings, 300);
+        else if ("tour".equals(action)) handler.postDelayed(this::startTour, 300);
+        else if ("trailers_on".equals(action) || "trailers_off".equals(action)) {
+            final boolean on = "trailers_on".equals(action);
+            Prefs.setFlag(this, Prefs.TRAILER_MOMENTS, on);
+            handler.postDelayed(() -> home.setTrailerMode(on), 300);
+        }
         else if ("phone_cast".equals(action)) handler.postDelayed(() -> Panels.pairing(this, home.modal, "cast"), 300);
         else if (action.endsWith("SHOW_SCREENSAVER") || "show_screensaver".equals(action)) handler.postDelayed(this::showScreensaver, 300);
         else if (action.endsWith("SHOW_ALL_APPS") || "show_all_apps".equals(action)) handler.postDelayed(this::onAllApps, 300);
@@ -589,6 +593,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 JSONObject o = arr.getJSONObject(i);
                 Movie m = new Movie();
                 m.title = o.optString("title");
+                m.originalTitle = o.optString("original");
                 m.year = o.optInt("year");
                 m.imdbId = o.optString("imdb");
                 m.type = o.optString("type", "movie");
@@ -672,8 +677,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 ui(() -> AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl));
             });
         };
-        // trailer moments have no cases to open: straight to the film
-        boolean animate = Prefs.dvdAnimation(this) && !home.trailer.isOn();
+        // trailer moments play inside the opened case, so they open it even with the animation off
+        boolean animate = Prefs.dvdAnimation(this) || Prefs.trailerMoments(this);
         if (!animate) {
             launch.run();
             return;
@@ -707,7 +712,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 ui(launch);
                 return;
             }
-            DvdCase dvd = DvdCase.bake(app, poster, m.title, m.year, AppArtwork.sampleDistinctPosterColor(poster, 0, 0), cw, ch, 0);
+            DvdCase dvd = DvdCase.bake(app, poster, m.coverTitle(), m.year, AppArtwork.sampleDistinctPosterColor(poster, 0, 0), cw, ch, 0);
             ui(() -> {
                 float cx = home.root.getWidth() / 2f, cy = home.root.getHeight() / 2f;
                 home.opening.play(dvd, m, new RectF(cx - cw / 2f, cy + ch * 0.4f, cx + cw / 2f, cy + ch * 1.4f), 3200, cb);
@@ -845,10 +850,22 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (persist) ThemeManager.setTheme(this, id);
         ThemeManager.Theme t = ThemeManager.byId(id);
         home.environment.apply(t, ThemeManager.isLight(this));
+        home.shelf.setScene(ThemeManager.usesCustomWallpaper(this) ? null : t.furniture);
+        // every glass panel and button takes the new room's material at once
+        redraw(getWindow().getDecorView());
         String wp = ThemeManager.wallpaperNow(t);
         String caption = ThemeManager.caption(this, wp);
         home.caption.setText(caption == null ? "" : caption);
         if (persist) loadApps(true);
+    }
+
+    private static void redraw(View v) {
+        v.invalidate();
+        if (v.getBackground() != null) v.getBackground().invalidateSelf();
+        if (v instanceof android.view.ViewGroup) {
+            android.view.ViewGroup g = (android.view.ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) redraw(g.getChildAt(i));
+        }
     }
 
     @Override
@@ -989,6 +1006,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void onWallpaperChanged() {
         home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this));
+        home.shelf.setScene(null); // the phone's picture has no curtains or shelf of its own
         if (home.modal.isShowing()) home.modal.close();
     }
 

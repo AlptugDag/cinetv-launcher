@@ -27,7 +27,10 @@ import java.util.concurrent.TimeUnit;
 public final class MovieCatalog {
 
     public static final class Movie {
+        /** In the TV's language (English when it has none there). */
         public String title = "";
+        /** As the film was released (秋日和, Сталкер); empty when unknown. */
+        public String originalTitle = "";
         public int year;
         public String imdbId = "";
         public int tmdbId;
@@ -40,10 +43,21 @@ public final class MovieCatalog {
         public String ratings = "";
         public double rating;
 
+        /** The cover, spine and disc: the film's own title, as on a real DVD. */
+        public String coverTitle() {
+            return originalTitle == null || originalTitle.isEmpty() ? title : originalTitle;
+        }
+
+        /** Inside the case: "Late Autumn (秋日和)", or just the title when the two are the same. */
+        public String innerTitle() {
+            if (originalTitle == null || originalTitle.isEmpty() || originalTitle.equalsIgnoreCase(title)) return title;
+            return title + " (" + originalTitle + ")";
+        }
+
         public JSONObject toJson() {
             JSONObject o = new JSONObject();
             try {
-                o.put("title", title).put("year", year).put("imdb", imdbId).put("tmdb", tmdbId)
+                o.put("title", title).put("original", originalTitle).put("year", year).put("imdb", imdbId).put("tmdb", tmdbId)
                         .put("type", type).put("poster", posterUrl).put("backdrop", backdropUrl)
                         .put("overview", overview).put("rating", rating);
             } catch (Throwable ignored) {
@@ -466,13 +480,17 @@ public final class MovieCatalog {
             if (crew != null) {
                 for (int i = 0; i < crew.length(); i++) {
                     JSONObject c = crew.getJSONObject(i);
-                    if ("Director".equals(c.optString("job"))) { m.director = c.optString("name"); break; }
+                    if ("Director".equals(c.optString("job"))) { m.director = readablePerson(ctx, c); break; }
                 }
             }
             if (m.director.isEmpty()) {
                 JSONArray by = d.optJSONArray("created_by");
-                if (by != null && by.length() > 0) m.director = by.getJSONObject(0).optString("name");
+                if (by != null && by.length() > 0) m.director = readablePerson(ctx, by.getJSONObject(0));
             }
+            // the shelf may hold an original-script title from an older cache
+            String original = d.optString("movie".equals(kind) ? "original_title" : "original_name", "").trim();
+            if (!original.isEmpty()) m.originalTitle = original;
+            if (nonLatin(m.title)) m.title = readable(m.title, m.type, m.tmdbId);
             if (!m.imdbId.startsWith("tt")) {
                 JSONObject ext = d.optJSONObject("external_ids");
                 String imdb = d.optString("imdb_id", ext != null ? ext.optString("imdb_id", "") : "");
@@ -612,6 +630,7 @@ public final class MovieCatalog {
     }
 
     private static JSONObject tmdb(Context ctx, String pathAndQuery) throws Exception {
+        if (appCtx == null) appCtx = ctx.getApplicationContext();
         String key = SecretStore.get(ctx, SecretStore.TMDB_KEY);
         Map<String, String> headers = null;
         String url = TMDB + pathAndQuery;
@@ -622,6 +641,59 @@ public final class MovieCatalog {
             headers.put("Authorization", "Bearer " + SecretStore.get(ctx, SecretStore.TMDB_READ_TOKEN));
         }
         return Http.getJson(url, headers, TIMEOUT);
+    }
+
+    private static volatile Context appCtx;
+    private static final Map<String, String> latinTitles = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** True when the text has letters outside the Latin script (Japanese, Korean, Cyrillic, Arabic...). */
+    public static boolean nonLatin(String s) {
+        if (s == null) return false;
+        for (int i = 0; i < s.length(); ) {
+            int cp = s.codePointAt(i);
+            i += Character.charCount(cp);
+            if (!Character.isLetter(cp)) continue;
+            Character.UnicodeScript sc = Character.UnicodeScript.of(cp);
+            if (sc != Character.UnicodeScript.LATIN && sc != Character.UnicodeScript.COMMON && sc != Character.UnicodeScript.INHERITED) return true;
+        }
+        return false;
+    }
+
+    /**
+     * A title the viewer can read. TMDB gives the original (秋日和) when a film has no title in the TV's
+     * language: then the English one ("Late Autumn"); the original is kept in originalTitle. Titles already
+     * in the TV's language, or a TV set to a non-Latin language, stay as they are.
+     */
+    static String readable(String title, String media, int tmdbId) {
+        if (!nonLatin(title) || tmdbId <= 0 || appCtx == null || nonLatin(Locale.getDefault().getDisplayLanguage(Locale.getDefault()))) return title;
+        String key = media + tmdbId;
+        String done = latinTitles.get(key);
+        if (done != null) return done;
+        String out = title;
+        try {
+            String kind = "series".equals(media) ? "tv" : "movie";
+            JSONObject en = tmdb(appCtx, kind + "/" + tmdbId + "?language=en-US");
+            String english = en.optString("series".equals(media) ? "name" : "title", "").trim();
+            if (!english.isEmpty() && !nonLatin(english)) out = english;
+        } catch (Throwable ignored) {
+        }
+        latinTitles.put(key, out);
+        return out;
+    }
+
+    /** A person's name in Latin letters: their TMDB name, or the first Latin "also known as". Blocks. */
+    private static String readablePerson(Context ctx, JSONObject credit) {
+        String name = credit.optString("name");
+        if (!nonLatin(name) || nonLatin(Locale.getDefault().getDisplayLanguage(Locale.getDefault()))) return name;
+        try {
+            JSONArray aka = tmdb(ctx, "person/" + credit.optInt("id")).optJSONArray("also_known_as");
+            for (int i = 0; aka != null && i < aka.length(); i++) {
+                String a = aka.optString(i).trim();
+                if (!a.isEmpty() && !nonLatin(a)) return a;
+            }
+        } catch (Throwable ignored) {
+        }
+        return name;
     }
 
     private static List<Movie> parseTmdbResults(JSONObject root, String forcedType, int max) {
@@ -639,7 +711,8 @@ public final class MovieCatalog {
             Movie m = new Movie();
             m.type = media;
             m.tmdbId = r.optInt("id");
-            m.title = r.optString("movie".equals(media) ? "title" : "name", r.optString("title", r.optString("name")));
+            m.originalTitle = r.optString("movie".equals(media) ? "original_title" : "original_name", "").trim();
+            m.title = readable(r.optString("movie".equals(media) ? "title" : "name", r.optString("title", r.optString("name"))), media, m.tmdbId);
             String date = r.optString("movie".equals(media) ? "release_date" : "first_air_date", "");
             m.year = date.length() >= 4 ? parseInt(date.substring(0, 4)) : 0;
             m.posterUrl = TMDB_IMG + "w500" + poster;

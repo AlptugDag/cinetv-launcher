@@ -81,10 +81,11 @@ public class LogicTest {
     public void themesResolveSafely() {
         assertEquals("cinetv", ThemeManager.byId("does-not-exist").id);
         assertEquals("metal", ThemeManager.byId("AURORA").id);
-        assertEquals("dvdstore", ThemeManager.byId("scenes").id);
+        assertEquals("closet", ThemeManager.byId("scenes").id);
+        assertEquals("closet", ThemeManager.byId("dvdstore").id);
         assertEquals(ThemeManager.MODE_AUTO, ThemeManager.nextAppearance(ThemeManager.MODE_DARK));
         assertNull("the signature theme is procedural", ThemeManager.wallpaperNow(ThemeManager.byId("cinetv")));
-        assertEquals("cinema", ThemeManager.byId("cinema").scene);
+        assertEquals("themes/cinema.jpg", ThemeManager.wallpaperNow(ThemeManager.byId("cinema")));
     }
 
     @Test
@@ -93,6 +94,14 @@ public class LogicTest {
         assertEquals("Denis Villeneuve", MovieAssistant.cleanShelfName("best of Denis Villeneuve movies"));
         assertEquals("filmleri", MovieAssistant.cleanShelfName("filmleri"));
         assertEquals("Nolan", MovieAssistant.cleanShelfName("Nolan'ın filmlerini listele"));
+    }
+
+    @Test
+    public void foreignScriptsAreDetected() {
+        assertTrue(com.cinetv.launcher.service.MovieCatalog.nonLatin("秋日和"));
+        assertTrue(com.cinetv.launcher.service.MovieCatalog.nonLatin("Сталкер"));
+        assertFalse(com.cinetv.launcher.service.MovieCatalog.nonLatin("Kış Uykusu"));
+        assertFalse(com.cinetv.launcher.service.MovieCatalog.nonLatin("Amélie: 2001"));
     }
 
     @Test

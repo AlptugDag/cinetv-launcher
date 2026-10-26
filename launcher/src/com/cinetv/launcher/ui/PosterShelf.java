@@ -79,6 +79,31 @@ public class PosterShelf extends FrameLayout {
         setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS);
     }
 
+    private View setBack, setFront;
+    private String scene;
+
+    /** The theme's furniture around the row (curtains, a wooden shelf); null for none. See ShelfSet. */
+    public void setScene(String scene) {
+        if (scene == null ? this.scene == null : scene.equals(this.scene)) return;
+        this.scene = scene;
+        if (setBack != null) removeView(setBack);
+        if (setFront != null) removeView(setFront);
+        float caseH = caseW / DvdCase.ASPECT;
+        setBack = ShelfSet.back(getContext(), scene, caseW, caseH);
+        setFront = ShelfSet.front(getContext(), scene, caseW, caseH);
+        if (setBack != null) addView(setBack, 0, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        if (setFront != null) addView(setFront, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        // the cases take the room's light: warm stage light in the hall, cool ceiling light in the closet
+        android.graphics.ColorMatrix grade = ShelfSet.grade(scene);
+        if (grade != null && com.cinetv.launcher.device.PerformanceProfile.tier(getContext()) != com.cinetv.launcher.device.PerformanceProfile.Tier.LOW) {
+            android.graphics.Paint p = new android.graphics.Paint();
+            p.setColorFilter(new android.graphics.ColorMatrixColorFilter(grade));
+            setLayerType(LAYER_TYPE_HARDWARE, p);
+        } else {
+            setLayerType(LAYER_TYPE_NONE, null);
+        }
+    }
+
     public void setListener(Listener l) {
         listener = l;
     }
@@ -140,7 +165,7 @@ public class PosterShelf extends FrameLayout {
                         : PosterCache.load(getContext(), m.posterUrl, caseW, Math.round(caseW / DvdCase.ASPECT));
                 if (gen != generation) return;
                 int accent = AppArtwork.sampleDistinctPosterColor(poster, 0, slot);
-                final DvdCase dvd = DvdCase.bake(getContext(), poster, m.title, m.year, accent, caseW, Math.round(caseW / DvdCase.ASPECT), glowPad, asCases);
+                final DvdCase dvd = DvdCase.bake(getContext(), poster, m.coverTitle(), m.year, accent, caseW, Math.round(caseW / DvdCase.ASPECT), glowPad, asCases);
                 main.post(() -> {
                     if (gen != generation) return;
                     v.setCase(dvd);

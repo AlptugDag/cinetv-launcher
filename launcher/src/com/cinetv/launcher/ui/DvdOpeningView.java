@@ -37,12 +37,22 @@ import com.cinetv.launcher.service.MovieCatalog.Movie;
  *      screen, then the film starts. Back closes the case at any time.
  *
  * Opened from the phone or from search, step 2 follows by itself after a short pause.
+ *
+ * With trailer moments on (Settings), the case turns sideways as it leaves the shelf and opens wide: the
+ * story is written across the inside of the cover and the film's trailer plays in the tray, where the
+ * disc would rest (a TrailerSlot lays the player over it). OK then takes the disc out as before.
  */
 public class DvdOpeningView extends View {
 
     public interface Callback {
         void onLaunch();
         void onCancelled();
+    }
+
+    /** Where the trailer plays: told the tray's screen once the case is open, and when to stop. */
+    public interface TrailerSlot {
+        void show(Movie movie, RectF screen, float corner);
+        void hide();
     }
 
     private static final long FLY_END = 380, OPEN_END = 1150;
@@ -70,6 +80,14 @@ public class DvdOpeningView extends View {
     private float discGlowR;
     private int caseW, caseH;
     private final Runnable autoPlay = this::startPlay;
+    private boolean landscape, trailerShown;
+    private Bitmap coverL;
+    private Movie movie;
+    private TrailerSlot slot;
+
+    public void setTrailerSlot(TrailerSlot s) {
+        slot = s;
+    }
 
     public DvdOpeningView(Context ctx) {
         super(ctx);
@@ -87,11 +105,11 @@ public class DvdOpeningView extends View {
 
     /** Size of the inner insert texture for the current screen (bake it with {@link #bakeInner}). */
     public int innerWidth() {
-        return Math.max(2, Math.round(getHeight() * 0.62f * DvdCase.ASPECT));
+        return landscape ? Math.max(2, Math.round(getHeight() * 0.5f / DvdCase.ASPECT)) : Math.max(2, Math.round(getHeight() * 0.62f * DvdCase.ASPECT));
     }
 
     public int innerHeight() {
-        return Math.max(2, Math.round(getHeight() * 0.62f));
+        return landscape ? Math.max(2, Math.round(getHeight() * 0.5f)) : Math.max(2, Math.round(getHeight() * 0.62f));
     }
 
     /**
@@ -107,15 +125,29 @@ public class DvdOpeningView extends View {
         this.from = fromScreen;
         this.callback = cb;
         this.accent = dvd.accent;
-        caseH = Math.round(getHeight() * 0.62f);
-        caseW = Math.round(caseH * DvdCase.ASPECT);
+        this.movie = movie;
+        // trailer moments: the case lies sideways and opens wide, the trailer in its tray
+        landscape = slot != null && com.cinetv.launcher.service.Prefs.trailerMoments(getContext()) && TrailerPlayer.available(getContext());
+        trailerShown = false;
+        if (landscape) {
+            caseH = Math.round(getHeight() * 0.5f);
+            caseW = Math.round(caseH / DvdCase.ASPECT);
+            Matrix rot = new Matrix();
+            rot.postRotate(90);
+            coverL = Bitmap.createBitmap(dvd.cover, 0, 0, dvd.cover.getWidth(), dvd.cover.getHeight(), rot, true);
+        } else {
+            caseH = Math.round(getHeight() * 0.62f);
+            caseW = Math.round(caseH * DvdCase.ASPECT);
+            coverL = null;
+        }
         inner = bakeInner(getContext(), caseW, caseH, dvd.cover, null, movie);
-        disc = bakeDisc(getContext(), dvd.cover, movie.title, Math.round(caseW * 0.88f));
+        int discSize = Math.round(Math.min(caseW, caseH) * 0.88f);
+        disc = bakeDisc(getContext(), dvd.cover, movie.coverTitle(), discSize);
         int w = getWidth(), h = getHeight();
         roomGlow = new RadialGradient(w / 2f, h / 2f, h * 0.75f,
                 new int[]{UiKit.withAlpha(accent, 90), UiKit.withAlpha(accent, 24), Color.TRANSPARENT},
                 new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP);
-        discGlowR = caseW * 0.88f * 1.06f * 0.62f;
+        discGlowR = discSize * 1.06f * 0.62f;
         discGlow = new RadialGradient(0, 0, discGlowR, new int[]{UiKit.withAlpha(accent, 120), Color.TRANSPARENT}, null, Shader.TileMode.CLAMP);
         sheen = new SweepGradient(0, 0,
                 new int[]{0x00FFFFFF, 0x30FF6EC7, 0x3060A5FA, 0x3034D399, 0x30FDE047, 0x00FFFFFF, 0x26FFFFFF, 0x00FFFFFF}, null);
@@ -150,6 +182,7 @@ public class DvdOpeningView extends View {
     private void startPlay() {
         if (play >= 0 || dvd == null) return;
         removeCallbacks(autoPlay);
+        if (slot != null) slot.hide();
         if (anim != null) anim.cancel();
         t = OPEN_END;
         play = 0;
@@ -167,6 +200,7 @@ public class DvdOpeningView extends View {
     }
 
     public void dismiss() {
+        if (slot != null) slot.hide();
         if (anim != null) anim.cancel();
         removeCallbacks(autoPlay);
         setVisibility(INVISIBLE);
@@ -223,16 +257,18 @@ public class DvdOpeningView extends View {
             fill.setAlpha(255);
         }
 
-        float caseH = h * 0.62f, caseW = caseH * DvdCase.ASPECT;
+        float caseH = this.caseH, caseW = this.caseW;
         float tx = w / 2f + caseW / 2f * open;          // keep the open case centred
         float cx = from.centerX() + (tx - from.centerX()) * fly;
         float cy = from.centerY() + (h / 2f - from.centerY()) * fly;
-        float cw = from.width() + (caseW - from.width()) * fly;
-        float ch = from.height() + (caseH - from.height()) * fly;
+        // sideways (trailer moments): the case starts as it stood on the shelf and turns as it flies
+        float fromW = landscape ? from.height() : from.width(), fromH = landscape ? from.width() : from.height();
+        float cw = fromW + (caseW - fromW) * fly;
+        float ch = fromH + (caseH - fromH) * fly;
         float left = cx - cw / 2f, top = cy - ch / 2f;
 
         // The disc lies in the tray, under the front cover, until it is played; then it rises above all.
-        float d = cw * 0.88f;
+        float d = Math.min(cw, ch) * 0.88f;
         float dcx = left + cw / 2f, dcy = top + ch / 2f;
         float x = dcx + (w / 2f - dcx) * approach;
         float y = dcy - rise * d * 0.03f + (h / 2f - dcy) * approach;
@@ -241,12 +277,24 @@ public class DvdOpeningView extends View {
         int caseAlpha = (int) (255 * (1f - clamp(approach * 1.6f)));
         if (caseAlpha > 0) {
             int save = caseAlpha < 255 ? canvas.saveLayerAlpha(0, 0, w, h, caseAlpha) : -1;
+            int turned = -1;
+            if (landscape && fly < 1f) {
+                turned = canvas.save();
+                canvas.rotate(-90f * (1f - fly), cx, cy);
+            }
             if (open > 0.01f) {
                 drawTray(canvas, left, top, cw, ch);
-                if (play < 0 && disc != null) drawDisc(canvas, x, y, size, rise);
+                if (play < 0 && disc != null && !landscape) drawDisc(canvas, x, y, size, rise);
             }
             drawCover(canvas, left, top, cw, ch, open * OPEN_ANGLE);
+            if (turned >= 0) canvas.restoreToCount(turned);
             if (save >= 0) canvas.restoreToCount(save);
+        }
+        if (landscape && play < 0 && t >= OPEN_END && !trailerShown && slot != null) {
+            trailerShown = true;
+            final RectF screen = trayScreen(left, top, cw, ch);
+            final float corner = cw * 0.012f;
+            post(() -> slot.show(movie, screen, corner));
         }
         if (play >= 0 && disc != null) drawDisc(canvas, x, y, size, rise);
         if (play < 0 && t >= OPEN_END) drawHint(canvas, w, h);
@@ -277,6 +325,18 @@ public class DvdOpeningView extends View {
         c.drawRoundRect(r, caseW * 0.03f, caseW * 0.03f, fill);
         fill.setShader(null);
         c.restore();
+        if (landscape) {
+            // the tray's screen, where the trailer plays: a dark recess with a lit rim
+            RectF sc = trayScreen(l, t, w, h);
+            fill.setColor(Color.parseColor("#050507"));
+            c.drawRoundRect(sc, w * 0.012f, w * 0.012f, fill);
+            fill.setStyle(Paint.Style.STROKE);
+            fill.setStrokeWidth(Math.max(1f, w * 0.003f));
+            fill.setColor(Color.argb(70, 255, 255, 255));
+            c.drawRoundRect(sc, w * 0.012f, w * 0.012f, fill);
+            fill.setStyle(Paint.Style.FILL);
+            return;
+        }
         float cx = l + w / 2f, cy = t + h / 2f, rr = w * 0.45f;
         fill.setColor(Color.argb(140, 0, 0, 0));
         c.drawCircle(cx, cy, rr, fill);
@@ -292,9 +352,20 @@ public class DvdOpeningView extends View {
         c.drawCircle(cx, cy, w * 0.035f, fill);
     }
 
+    /** The 16:9 screen inside the sideways tray. */
+    private static RectF trayScreen(float l, float t, float w, float h) {
+        float sw = w * 0.86f, sh = sw * 9f / 16f;
+        if (sh > h * 0.82f) {
+            sh = h * 0.82f;
+            sw = sh * 16f / 9f;
+        }
+        float cx = l + w / 2f, cy = t + h / 2f;
+        return new RectF(cx - sw / 2f, cy - sh / 2f, cx + sw / 2f, cy + sh / 2f);
+    }
+
     private void drawDisc(Canvas c, float cx, float cy, float dd, float rise) {
         if (rise > 0) {
-            float g = dd / (caseW * 0.88f);
+            float g = dd / (Math.min(caseW, caseH) * 0.88f);
             c.save();
             c.translate(cx, cy);
             c.scale(g, g);
@@ -332,7 +403,7 @@ public class DvdOpeningView extends View {
         float freeX = hingeX + fx * f;
         float freeTop = cy - h / 2f * f, freeBottom = cy + h / 2f * f;
         boolean front = angle < 90f;
-        Bitmap tex = front ? dvd.cover : inner;
+        Bitmap tex = front ? (landscape && coverL != null ? coverL : dvd.cover) : inner;
         if (tex == null) return;
         src[0] = 0; src[1] = 0; src[2] = tex.getWidth(); src[3] = 0;
         src[4] = tex.getWidth(); src[5] = tex.getHeight(); src[6] = 0; src[7] = tex.getHeight();
@@ -391,7 +462,9 @@ public class DvdOpeningView extends View {
         }
 
         if (movie != null) {
-            float pad = w * 0.075f;
+            // letters sized from the cover's narrow side: a wide (sideways) cover gets longer lines, not bigger letters
+            float u = Math.min(w, h * DvdCase.ASPECT);
+            float pad = u * 0.075f;
             float textW = paper.width() - pad * 2;
             TextPaint ink = new TextPaint(Paint.ANTI_ALIAS_FLAG);
             ink.setTypeface(FontManager.getMarker(ctx));
@@ -404,42 +477,43 @@ public class DvdOpeningView extends View {
             int filmInk = filmInk(cover);
             int blackInk = ink.getColor();
             ink.setColor(filmInk);
-            ink.setTextSize(w * 0.092f);
-            StaticLayout title = layout(movie.title, ink, (int) textW, 1.0f);
+            ink.setTextSize(u * 0.092f);
+            // the title in the viewer's language, the film's own beside it: "Sonbahar (秋日和)"
+            StaticLayout title = layout(movie.innerTitle(), ink, (int) textW, 1.0f);
             drawInk(c, title, paper.left + pad, y, ink);
             y += title.getHeight();
             Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
             stroke.setColor(filmInk);
-            stroke.setStrokeWidth(Math.max(2f, w * 0.008f));
+            stroke.setStrokeWidth(Math.max(2f, u * 0.008f));
             stroke.setStrokeCap(Paint.Cap.ROUND);
             stroke.setStyle(Paint.Style.STROKE);
             Path line = new Path();
             float lw = Math.min(textW, title.getLineWidth(title.getLineCount() - 1) * 1.05f);
-            line.moveTo(paper.left + pad, y + w * 0.012f);
-            line.quadTo(paper.left + pad + lw * 0.5f, y + w * 0.004f, paper.left + pad + lw, y + w * 0.016f);
+            line.moveTo(paper.left + pad, y + u * 0.012f);
+            line.quadTo(paper.left + pad + lw * 0.5f, y + u * 0.004f, paper.left + pad + lw, y + u * 0.016f);
             c.drawPath(line, stroke);
-            y += w * 0.05f;
+            y += u * 0.05f;
 
             // Signature line at the bottom: director and year.
             String by = (movie.director == null || movie.director.isEmpty() ? "" : movie.director)
                     + (movie.year > 1900 ? (movie.director == null || movie.director.isEmpty() ? "" : ", ") + movie.year : "");
             float bottom = paper.bottom - pad * 0.8f;
             if (!by.isEmpty()) {
-                ink.setTextSize(w * 0.064f);
+                ink.setTextSize(u * 0.064f);
                 ink.setColor(filmInk);
                 String sig = "— " + by;
                 float sw = ink.measureText(sig);
                 c.drawText(sig, paper.right - pad - Math.min(sw, textW), bottom, ink);
-                bottom -= w * 0.11f;
+                bottom -= u * 0.11f;
             }
             if (movie.ratings != null && !movie.ratings.isEmpty()) {
                 // the critics, small, above the signature line
-                ink.setTextSize(w * 0.05f);
+                ink.setTextSize(u * 0.05f);
                 ink.setColor(filmInk);
                 String r = movie.ratings;
                 while (ink.measureText(r) > textW && r.contains("  ·  ")) r = r.substring(0, r.lastIndexOf("  ·  "));
                 c.drawText(r, paper.right - pad - Math.min(ink.measureText(r), textW), bottom, ink);
-                bottom -= w * 0.09f;
+                bottom -= u * 0.09f;
             }
 
             ink.setColor(blackInk);
@@ -447,13 +521,13 @@ public class DvdOpeningView extends View {
             String story = movie.overview == null ? "" : movie.overview.trim();
             if (!story.isEmpty()) {
                 float avail = bottom - y;
-                float size = w * 0.072f;
+                float size = u * 0.072f;
                 StaticLayout body = layout(story, ink, (int) textW, 1.02f);
-                while (size > w * 0.046f) {
+                while (size > u * 0.046f) {
                     ink.setTextSize(size);
                     body = layout(story, ink, (int) textW, 1.02f);
                     if (body.getHeight() <= avail) break;
-                    size -= w * 0.003f;
+                    size -= u * 0.003f;
                 }
                 if (body.getHeight() > avail) {
                     // Still too long: cut at a sentence and end with an ellipsis, as one would by hand.

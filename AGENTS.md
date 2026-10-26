@@ -98,7 +98,7 @@ CINETV_TMDB_KEY=... CINETV_AI_KEY=... CINETV_MDBLIST_KEY=... \
 ```
 
 Add `--debloat` only if the person agreed (§5). Themes: `cinetv` (Alptug Default) · `glass` (Liquid
-Glass) · `metal` (Metallic) · `cinema` (Cinema Hall) · `dvdstore` (DVD Store) · `neon` (Neon Night) · `oled`.
+Glass) · `metal` (Metallic) · `cinema` (Cinema Hall) · `closet` (Film Closet) · `neon` (Neon Night) · `oled`.
 
 **API keys**, all optional and all also enterable later on the TV in *Settings › AI & films*:
 

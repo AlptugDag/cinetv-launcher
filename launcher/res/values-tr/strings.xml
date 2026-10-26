@@ -107,7 +107,7 @@
     <string name="theme_glass">Sıvı Cam</string>
     <string name="theme_metal">Metalik</string>
     <string name="theme_cinema">Sinema Salonu</string>
-    <string name="theme_dvdstore">DVD Dükkânı</string>
+    <string name="theme_closet">Film Dolabı</string>
     <string name="theme_neon">Neon Gece</string>
     <string name="theme_oled">OLED Siyah</string>
     <string name="appearance">Görünüm modu</string>
@@ -117,7 +117,7 @@
     <string name="spatial_hud">Uzamsal HUD</string>
     <string name="glass_bevel">3D sıvı cam bevel</string>
     <string name="trailer_moments">Fragman anları</string>
-    <string name="trailer_moments_on">Kutular yerine fragmandan dönen sahneler</string>
+    <string name="trailer_moments_on">Açılan DVD fragmanı oynatır</string>
     <string name="trailer_hint">%1$d / %2$d  ·  ‹ › başka film  ·  OK ile izle</string>
     <string name="trailer_series">Dizi</string>
     <string name="tour_title">CineTV turu</string>
@@ -131,7 +131,7 @@
     <string name="tour_dvd_t">Bir DVD aç</string>
     <string name="tour_dvd">Bir kutuda OK: raftan çıkar ve açılır, iç kapağında konusu el yazısıyla yazar. Bir daha OK: disk döner ve film Nuvio\'da başlar.</string>
     <string name="tour_trailers_t">Fragman anları</string>
-    <string name="tour_trailers">Hareketli görüntü mü seversin? Ayarlar › Fragman anları: kutular yerine her filmin fragmanından sahneler tam ekran, sessizce döner.</string>
+    <string name="tour_trailers">Ayarlar › Fragman anları: açılan DVD yan yatar, filmin fragmanı diskin yerinde sessizce oynar, konusu diğer iç kapakta yazar. Kapalıyken DVD her zamanki gibi açılır.</string>
     <string name="tour_search_t">Konuşur gibi ara</string>
     <string name="tour_search">“araba temalı filmler”, “Nolan filmleri”, “kızı kaçırılan baba filmleri” ya da herhangi bir soru. Raf cevapla dolar.</string>
     <string name="tour_voice_t">Söylemen yeter</string>
@@ -145,7 +145,7 @@
     <string name="tour_apps_t">Uygulamaların</string>
     <string name="tour_apps">Bir uygulamada OK\'a basılı tut (ya da Menü): taşı, gizle, kaldır. Son kutucuk bütün uygulamaları gösterir.</string>
     <string name="tour_settings_t">Kendine göre ayarla</string>
-    <string name="tour_settings">Ayarlar: temalar (Sinema Salonu, DVD Dükkânı, Metalik, Neon Gece…), “Otomatik Belirle” ile performans, uyku zamanlayıcı ve sessiz saatler, görüntü ve ses ayarı. Dişliye basılı tutarsan televizyonun kendi ayarları açılır.</string>
+    <string name="tour_settings">Ayarlar: temalar (Sinema Salonu, Film Dolabı, Metalik, Neon Gece…), “Otomatik Belirle” ile performans, uyku zamanlayıcı ve sessiz saatler, görüntü ve ses ayarı. Dişliye basılı tutarsan televizyonun kendi ayarları açılır.</string>
     <string name="tour_saver_t">Dinlenirken bir sinema</string>
     <string name="tour_saver">5 dakika boşta kalınca filmlerin sahneleri ve replikleri 35 mm film şeridi gibi ekranı doldurur. Bir süre sonra televizyon kendiliğinden uyur.</string>
     <string name="tour_done_t">Bu kadar. İyi seyirler</string>

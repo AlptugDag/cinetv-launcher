@@ -22,7 +22,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * The favourite apps (dock) and every other app (grid) as glass platters. Focus lifts a tile with the
+ * Every app as glass platters in one list, row after row: the first row is simply the first apps of the
+ * list, so a free place in a row is always filled by the next app (nothing waits below a half-empty row). Focus lifts a tile with the
  * app-coloured bloom; at rest the rows keep a gentle cylinder curvature when Spatial HUD is on.
  * Long-press OK opens Move / Hide / Uninstall / Info; in move mode the arrows carry the tile.
  */
@@ -110,17 +111,32 @@ public class AppGrid {
 
     public boolean isMoving() { return moving != null; }
 
+    /** One list: the first row takes the first {@code columns} apps, the rows below the rest, in order. */
+    private void rebalance() {
+        java.util.ArrayList<AppTileItem> all = new java.util.ArrayList<>(dock);
+        all.addAll(grid);
+        columns = columnsFor(all.size() + 1);
+        dock = new java.util.ArrayList<>(all.subList(0, Math.min(columns, all.size())));
+        grid = new java.util.ArrayList<>(all.subList(Math.min(columns, all.size()), all.size()));
+    }
+
+    private int total() {
+        return dock.size() + grid.size();
+    }
+
     public void render() {
         if (dock == null) return;
-        columns = columnsFor(dock.size() + grid.size() + 1);
+        rebalance();
         // Every tile has the same size; a row with fewer apps than columns is centred, never left with a gap.
         int slots = Math.max(columns, dock.size());
         dockRow.removeAllViews();
         dockRow.setWeightSum(slots);
         dockRow.setGravity(Gravity.CENTER_HORIZONTAL);
         for (int i = 0; i < dock.size(); i++) {
-            dockRow.addView(tile(dock.get(i), true, i, dock.size()), tileParams(1f));
+            dockRow.addView(tile(dock.get(i), true, i, columns), tileParams(1f));
         }
+        // a short list: "Add" sits right after the last app in the first row
+        if (grid.isEmpty() && dock.size() < columns) dockRow.addView(addTile(dock.size(), true), tileParams(1f));
 
         // The grid always ends with the "Add" tile, right after the last app.
         gridBox.removeAllViews();
@@ -135,13 +151,13 @@ public class AppGrid {
                 row.setClipToPadding(false);
                 gridBox.addView(row);
             }
-            row.addView(i < grid.size() ? tile(grid.get(i), false, i, columns) : addTile(i), tileParams(1f));
+            row.addView(i < grid.size() ? tile(grid.get(i), false, i, columns) : addTile(i, false), tileParams(1f));
         }
     }
 
-    /** Grid apps plus the trailing "Add" tile. */
+    /** Grid apps plus the trailing "Add" tile (which is in the first row while the list fits there). */
     private int gridCells() {
-        return grid.size() + 1;
+        return grid.isEmpty() && dock.size() < columns ? 0 : grid.size() + 1;
     }
 
     private LinearLayout.LayoutParams tileParams(float weight) {
@@ -155,14 +171,15 @@ public class AppGrid {
     /** Resting pose on the cylinder: the outer tiles turn in towards the viewer. */
     private float[] restPose(boolean inDock, int index, int count) {
         if (!spatial) return new float[]{0, 0, 0};
+        // the first row is the grid's row 0: the same curve everywhere
         int col = inDock ? index : index % columns;
-        int n = inDock ? count : columns;
-        int row = inDock ? 0 : index / columns;
+        int n = columns;
+        int row = inDock ? 0 : index / columns + 1;
         float mid = (n - 1) / 2f;
         float norm = n <= 1 ? 0 : (col - mid) / mid;
-        float rotY = -norm * (inDock ? 27f : 24f);
+        float rotY = -norm * 24f;
         float rotX = -11f - row * 2.5f;
-        float z = (1f - norm * norm) * (inDock ? 16f : 14f) - (inDock ? 10f : 12f);
+        float z = (1f - norm * norm) * 14f - 12f;
         return new float[]{rotY, Math.max(-18f, rotX), z};
     }
 
@@ -268,7 +285,7 @@ public class AppGrid {
         }
     }
 
-    private View addTile(final int index) {
+    private View addTile(final int index, final boolean inDock) {
         final FrameLayout card = new FrameLayout(ctx);
         card.setFocusable(true);
         final Glass material = Glass.panel(card, 36f);
@@ -285,7 +302,7 @@ public class AppGrid {
         card.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         final GlassBevelView bevel = new GlassBevelView(ctx, UiKit.pxf(36), false);
         card.addView(bevel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        final float[] rest = restPose(false, index, columns);
+        final float[] rest = restPose(inDock, index, columns);
         card.setCameraDistance(ctx.getResources().getDisplayMetrics().density * 2800f);
         card.setRotationY(rest[0]);
         card.setRotationX(rest[1]);
@@ -300,7 +317,7 @@ public class AppGrid {
             if (has) host.onTileFocused(v, UiKit.INK);
         });
         card.setOnClickListener(v -> host.onAddToDock());
-        card.setOnKeyListener((v, keyCode, e) -> e.getAction() == KeyEvent.ACTION_DOWN && moving == null && navigate(keyCode, false, index));
+        card.setOnKeyListener((v, keyCode, e) -> e.getAction() == KeyEvent.ACTION_DOWN && moving == null && navigate(keyCode, inDock, index));
         return card;
     }
 
@@ -311,7 +328,10 @@ public class AppGrid {
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && index == 0) { dockRow.getChildAt(n - 1).requestFocus(); return true; }
             if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && index == n - 1) { dockRow.getChildAt(0).requestFocus(); return true; }
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) { host.onEdgeUp(); return true; }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) { focusGrid(Math.min(index, Math.min(columns, gridCells()) - 1)); return true; }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                if (gridCells() > 0) focusGrid(Math.min(index, Math.min(columns, gridCells()) - 1));
+                return true;
+            }
             return false;
         }
         int col = index % columns, cells = gridCells();
@@ -355,40 +375,18 @@ public class AppGrid {
         host.onOrderChanged();
     }
 
-    /** Arrow keys while carrying a tile. Returns true when consumed. */
+    /** Arrow keys while carrying a tile, through the one list. Returns true when consumed. */
     public boolean handleMoveKey(int keyCode) {
         if (moving == null) return false;
-        List<AppTileItem> list = movingInDock ? dock : grid;
+        java.util.ArrayList<AppTileItem> all = new java.util.ArrayList<>(dock);
+        all.addAll(grid);
+        int at = movingInDock ? movingIndex : dock.size() + movingIndex;
+        int target = at;
         switch (keyCode) {
-            case KeyEvent.KEYCODE_DPAD_LEFT:
-            case KeyEvent.KEYCODE_DPAD_RIGHT: {
-                int target = movingIndex + (keyCode == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
-                if (target >= 0 && target < list.size()) {
-                    Collections.swap(list, movingIndex, target);
-                    movingIndex = target;
-                }
-                break;
-            }
-            case KeyEvent.KEYCODE_DPAD_DOWN:
-                if (movingInDock) {
-                    grid.add(0, dock.remove(movingIndex));
-                    movingInDock = false;
-                    movingIndex = 0;
-                } else if (movingIndex + columns < grid.size()) {
-                    Collections.swap(grid, movingIndex, movingIndex + columns);
-                    movingIndex += columns;
-                }
-                break;
-            case KeyEvent.KEYCODE_DPAD_UP:
-                if (!movingInDock && movingIndex < columns) {
-                    dock.add(grid.remove(movingIndex));
-                    movingInDock = true;
-                    movingIndex = dock.size() - 1;
-                } else if (!movingInDock) {
-                    Collections.swap(grid, movingIndex, movingIndex - columns);
-                    movingIndex -= columns;
-                }
-                break;
+            case KeyEvent.KEYCODE_DPAD_LEFT: target = at - 1; break;
+            case KeyEvent.KEYCODE_DPAD_RIGHT: target = at + 1; break;
+            case KeyEvent.KEYCODE_DPAD_UP: target = at - columns; break;
+            case KeyEvent.KEYCODE_DPAD_DOWN: target = Math.min(all.size() - 1, at + columns); break;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_BACK:
@@ -397,6 +395,16 @@ public class AppGrid {
             default:
                 return true;
         }
+        if (target >= 0 && target < all.size() && target != at) {
+            AppTileItem item = all.remove(at);
+            all.add(target, item);
+            at = target;
+        }
+        dock = new java.util.ArrayList<>(all);
+        grid = new java.util.ArrayList<>();
+        rebalance();
+        movingInDock = at < dock.size();
+        movingIndex = movingInDock ? at : at - dock.size();
         render();
         refocusMoving();
         return true;
@@ -409,9 +417,12 @@ public class AppGrid {
         });
     }
 
+    /** An app added to Home goes to the end of the list, in the first free place. */
     public void addToDock(AppTileItem item) {
+        dock.remove(item);
         grid.remove(item);
-        dock.add(item);
+        grid.add(item);
+        rebalance();
         AppCatalog.saveOrder(ctx, dock, grid);
         render();
     }

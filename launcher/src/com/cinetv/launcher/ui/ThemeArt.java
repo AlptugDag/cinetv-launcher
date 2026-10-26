@@ -25,14 +25,13 @@ final class ThemeArt {
     private ThemeArt() {}
 
     static Bitmap render(Context ctx, String scene) {
+        if ("closet".equals(scene)) return Closet.render(ctx);
         try {
             Bitmap b = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
             Canvas c = new Canvas(b);
             switch (scene) {
                 case "glass": glass(ctx, c); break;
                 case "metal": metal(c); break;
-                case "cinema": cinema(c); break;
-                case "dvdstore": dvdStore(c); break;
                 case "neon": neon(c); break;
                 default: return null;
             }
@@ -109,97 +108,6 @@ final class ThemeArt {
                 c.drawCircle(x, y, 6, bolt);
             }
         }
-    }
-
-    /** A cinema hall: red velvet curtains, the lit screen, a projector beam and the rows of seats. */
-    private static void cinema(Canvas c) {
-        c.drawColor(Color.parseColor("#0A0506"));
-        RectF screen = new RectF(W * 0.2f, H * 0.12f, W * 0.8f, H * 0.52f);
-        glow(c, W / 2f, H * 0.32f, W * 0.55f, Color.argb(90, 200, 190, 255));
-        Paint scr = p();
-        scr.setShader(new LinearGradient(0, screen.top, 0, screen.bottom, Color.parseColor("#3A3E58"), Color.parseColor("#1C1E2C"), Shader.TileMode.CLAMP));
-        c.drawRect(screen, scr);
-        Paint beam = p();
-        Path bp = new Path();
-        bp.moveTo(W * 0.5f - 8, H * 0.02f);
-        bp.lineTo(screen.left + 30, screen.top + 20);
-        bp.lineTo(screen.right - 30, screen.bottom - 20);
-        bp.close();
-        beam.setShader(new LinearGradient(W / 2f, 0, W / 2f, screen.bottom, Color.argb(50, 255, 250, 230), Color.TRANSPARENT, Shader.TileMode.CLAMP));
-        c.drawPath(bp, beam);
-        // curtains, folded
-        for (int side = 0; side < 2; side++) {
-            float x0 = side == 0 ? 0 : W * 0.82f, x1 = side == 0 ? W * 0.18f : W;
-            int folds = 7;
-            float fw = (x1 - x0) / folds;
-            for (int i = 0; i < folds; i++) {
-                Paint f = p();
-                f.setShader(new LinearGradient(x0 + i * fw, 0, x0 + (i + 1) * fw, 0,
-                        new int[]{Color.parseColor("#3A0508"), Color.parseColor("#8E1018"), Color.parseColor("#3A0508")}, null, Shader.TileMode.CLAMP));
-                c.drawRect(x0 + i * fw, 0, x0 + (i + 1) * fw + 1, H, f);
-            }
-        }
-        Paint valance = p();
-        valance.setShader(new LinearGradient(0, 0, 0, H * 0.08f, Color.parseColor("#7A0C14"), Color.parseColor("#2A0306"), Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, W, H * 0.08f, valance);
-        Paint gold = p();
-        gold.setColor(Color.parseColor("#C8963E"));
-        c.drawRect(0, H * 0.08f, W, H * 0.08f + 3, gold);
-        // seats: rows of rounded backs, darker towards the viewer
-        for (int row = 0; row < 4; row++) {
-            float y = H * (0.66f + row * 0.09f);
-            float sw = 46 + row * 10, gap = 8 + row * 2;
-            Paint seat = p();
-            int shade = 40 - row * 8;
-            seat.setShader(new LinearGradient(0, y, 0, y + sw, Color.rgb(shade + 40, 8, 12), Color.rgb(shade / 2, 2, 4), Shader.TileMode.CLAMP));
-            float start = (row % 2) * (sw + gap) / 2f - sw;
-            for (float x = start; x < W + sw; x += sw + gap) c.drawRoundRect(new RectF(x, y, x + sw, y + sw * 1.3f), sw * 0.3f, sw * 0.3f, seat);
-        }
-        Paint floor = p();
-        floor.setShader(new LinearGradient(0, H * 0.6f, 0, H, Color.TRANSPARENT, Color.argb(200, 0, 0, 0), Shader.TileMode.CLAMP));
-        c.drawRect(0, H * 0.6f, W, H, floor);
-    }
-
-    /** A video store at night: wooden shelves full of DVD spines, warm lamps and a neon sign. */
-    private static void dvdStore(Canvas c) {
-        Paint wall = p();
-        wall.setShader(new LinearGradient(0, 0, 0, H, Color.parseColor("#2A1A10"), Color.parseColor("#120A06"), Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, W, H, wall);
-        Random r = new Random(7);
-        int[] spines = {0xFFB91C1C, 0xFF1D4ED8, 0xFFF59E0B, 0xFF047857, 0xFF7C3AED, 0xFFE5E7EB, 0xFF111827, 0xFFDB2777, 0xFF0E7490, 0xFF78350F};
-        float shelfH = H / 4.2f;
-        for (int s = 0; s < 4; s++) {
-            float top = 20 + s * shelfH, bottom = top + shelfH - 18;
-            float x = 14;
-            Paint spine = p();
-            while (x < W - 14) {
-                float w = 12 + r.nextInt(9);
-                float h = (bottom - top) * (0.82f + r.nextFloat() * 0.14f);
-                spine.setColor(spines[r.nextInt(spines.length)]);
-                c.drawRect(x, bottom - h, x + w, bottom, spine);
-                Paint label = p();
-                label.setColor(Color.argb(110, 255, 255, 255));
-                c.drawRect(x + 3, bottom - h + 8, x + w - 3, bottom - h + 14, label);
-                Paint shadow = p();
-                shadow.setColor(Color.argb(70, 0, 0, 0));
-                c.drawRect(x + w - 2, bottom - h, x + w, bottom, shadow);
-                x += w + 1 + (r.nextInt(14) == 0 ? 18 : 0);
-            }
-            Paint board = p();
-            board.setShader(new LinearGradient(0, bottom, 0, bottom + 16, Color.parseColor("#8B5A2B"), Color.parseColor("#3B230F"), Shader.TileMode.CLAMP));
-            c.drawRect(0, bottom, W, bottom + 16, board);
-        }
-        Paint veil = p();
-        veil.setColor(Color.argb(120, 10, 5, 2));
-        c.drawRect(0, 0, W, H, veil);
-        for (float x : new float[]{W * 0.18f, W * 0.5f, W * 0.82f}) glow(c, x, 0, 260, Color.argb(110, 255, 190, 110));
-        // neon "OPEN" glow, top right
-        glow(c, W * 0.86f, H * 0.14f, 120, Color.argb(120, 255, 40, 120));
-        Paint neon = p();
-        neon.setStyle(Paint.Style.STROKE);
-        neon.setStrokeWidth(4f);
-        neon.setColor(Color.parseColor("#FF4FA0"));
-        c.drawRoundRect(new RectF(W * 0.79f, H * 0.09f, W * 0.93f, H * 0.19f), 14, 14, neon);
     }
 
     /** Neon night: a synthwave sky, a striped sun and a glowing grid running to the horizon. */

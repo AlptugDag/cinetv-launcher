@@ -11,7 +11,7 @@ remote and caster, and a TV tuned the way the film was mastered. One command to 
 
 [Türkçe](#türkçe) · [Made for you](#made-for-whoever-watches-it) · [Install](#install-in-one-command) · [Features](#what-it-does) · [Phone](#your-phone-is-the-remote) · [For AI agents](AGENTS.md)
 
-![CineTV home, dark room](docs/media/home-dark.jpg)
+<img src="docs/media/home-dark.jpg" alt="CineTV home" width="760">
 
 </div>
 
@@ -135,7 +135,8 @@ The questions and what each answer changes are in [AGENTS.md](AGENTS.md#1-get-to
   back after a while.
 - Prefer flat posters? *Settings › DVD cases* switches to glowing posters.
 
-![Light room](docs/media/home-light.jpg)
+<p align="center"><img src="docs/media/themes.jpg" alt="Themes" width="760"><br>
+<sub>Liquid Glass · Metallic · Cinema Hall<br>Film Closet · Neon Night · OLED Black</sub></p>
 
 ### Opening a film, in two steps
 1. **OK** on a case: it flies off the shelf and opens. Inside the cover, the story is handwritten in felt-tip
@@ -143,9 +144,9 @@ The questions and what each answer changes are in [AGENTS.md](AGENTS.md#1-get-to
 2. **OK** again: the disc, printed with the film and the CineTV signature, lifts from the hub, spins up
    and comes towards you until it fills the screen, then the film starts in Nuvio.
 
-| Inside the case | The disc |
-| :---: | :---: |
-| ![Handwritten synopsis](docs/media/dvd-note.jpg) | ![Disc with signature](docs/media/disc.jpg) |
+| Inside the case | With trailer moments | The disc |
+| :---: | :---: | :---: |
+| <img src="docs/media/dvd-note.jpg" alt="Handwritten synopsis" width="250"> | <img src="docs/media/dvd-trailer.jpg" alt="Trailer in the tray" width="250"> | <img src="docs/media/disc.jpg" alt="Disc" width="250"> |
 
 ### Search that understands you
 Type, speak (microphone in the bar or the remote's voice key) or send from your phone:
@@ -165,9 +166,9 @@ Works with **any AI key**: Gemini, Claude, Grok, OpenAI or OpenRouter, recognise
 Without a key, people, titles and genres still work through TMDB. The on-screen keyboard is CineTV's own,
 in glass, with the Turkish Q layout on Turkish TVs.
 
-| Answers | The author, featured | Glass keyboard |
-| :---: | :---: | :---: |
-| ![Answer bubble](docs/media/answer.jpg) | ![Search for the author](docs/media/search-author.jpg) | ![Keyboard](docs/media/keyboard.jpg) |
+| Answers | Glass keyboard |
+| :---: | :---: |
+| <img src="docs/media/answer.jpg" alt="Answer bubble" width="380"> | <img src="docs/media/keyboard.jpg" alt="Keyboard" width="380"> |
 
 ### A screensaver made of cinema
 Film stills with a line from the film in your language, its official tagline and its **title in the film's
@@ -175,7 +176,7 @@ own logo lettering**. Moments change like frames on a **35 mm strip** pulled thr
 running along the edges, a little gate weave and flicker. It also takes over when an app such as Nuvio sits
 idle with nothing playing, and puts the panel to sleep after a while.
 
-![Screensaver film strip](docs/media/screensaver-film-strip.gif)
+<p align="center"><img src="docs/media/screensaver-film-strip.gif" alt="Screensaver" width="560"></p>
 
 ### A TV tuned for films
 On first start, and from *Settings › Picture, sound & network tuning*:
@@ -203,14 +204,14 @@ On first start, and from *Settings › Picture, sound & network tuning*:
 - **Voice commands and voice search** (on TVs with speech recognition, from the remote's microphone or the
   phone's): "open Inception", "list Nolan's films", a question, or a command: "volume down", "set the volume
   to 15", "channel 5", "HDMI 2", "open YouTube", "sleep in 30 minutes", "turn the TV off", in Turkish or English.
-- **Trailer moments** (*Settings*, off by default): instead of DVD cases, scenes from the focused film's trailer
-  loop full screen, muted, a few seconds at a time; OK opens the film.
+- **Trailer moments** (*Settings*, off by default): an opened DVD turns sideways and plays the film's trailer
+  in its tray, muted, a few seconds at a time from several points, with the story across the other side.
 - **A tour on first start** shows every highlight where it lives on Home; *Settings › Tour of CineTV* repeats it.
 - **Themes, each a different room**: Alptug Default; Liquid Glass (clear glass drops over a cool scene);
-  Metallic (brushed titanium, chrome edges); Cinema Hall (velvet curtains, the lit screen, rows of seats);
-  DVD Store (wooden shelves of DVD spines, warm lamps, a neon sign); Neon Night (synthwave sun and grid);
-  OLED Black (true black). Panels and buttons take the room's material. All drawn by the app, so they cost
-  no download. Or **your own background** sent from your phone. Dark, light or automatic by time of day.
+  Metallic (brushed titanium, chrome edges); Cinema Hall (a real art-deco cinema, its velvet curtains in front of the
+  shelf's ends, the cases in its warm light); Film Closet (a collector's closet of white shelves packed with films, the
+  row of cases one of its shelves); Neon Night (synthwave sun and grid);
+  OLED Black (true black). Panels and buttons take the room's material. Drawn by the app, apart from the cinema photo. Or **your own background** sent from your phone. Dark, light or automatic by time of day.
 - **Performance: Low, Medium, High, each adapting by itself** to what holds the TV back (graphics, memory,
   processor), measured again while it runs; *Determine automatically* runs a short benchmark and picks one.
 - **Remote buttons**: Netflix opens Nuvio, YouTube opens ad-free YouTube, Prime opens phone casting; any
@@ -223,9 +224,9 @@ On first start, and from *Settings › Picture, sound & network tuning*:
 - **Your signature everywhere**: the CineTV mark is Alptuğ Dağ's signature; it opens the About page.
 - **CineTV'yi yok et!** at the end of Settings puts back every setting CineTV changed and removes it.
 
-| Settings | Long press | About |
+| Settings | First-run tour | Long press |
 | :---: | :---: | :---: |
-| ![Settings](docs/media/settings.jpg) | ![Long-press bar](docs/media/long-press.jpg) | ![About](docs/media/about.jpg) |
+| <img src="docs/media/settings.jpg" alt="Settings" width="250"> | <img src="docs/media/tour.jpg" alt="Tour" width="250"> | <img src="docs/media/long-press.jpg" alt="Long-press bar" width="250"> |
 
 ---
 
@@ -255,7 +256,7 @@ TV. From then on it connects by itself.
 - **Background**: pick a photo and it becomes the backdrop of Home.
 - **Several CineTV TVs** on one network show up in a switcher.
 
-![Phone page](docs/media/phone-strip.jpg)
+<p align="center"><img src="docs/media/phone-strip.jpg" alt="Phone remote, more keys, air mouse, casting" width="720"></p>
 
 ---
 
