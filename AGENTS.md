@@ -11,6 +11,26 @@ repository.
 
 ---
 
+## Quick path: follow these steps exactly, in order
+
+Do one step at a time. After each step, check its **Expect** line before going on. If it does not match,
+look the problem up in [§9 When something goes wrong](#9-when-something-goes-wrong) and do what it says. Never
+skip a step, never invent a command that is not written here, and talk to the person in their language.
+
+| # | Do | Expect |
+| :--- | :--- | :--- |
+| 1 | Ask the person for the TV's IP address. If they do not know it, read them [KURULUM.md, Adım 1](KURULUM.md#adım-1-televizyonda-geliştirici-seçeneklerini-açın-hepsi-için-gerekli) (developer options, network debugging, IP). | An address like `192.168.1.50` |
+| 2 | `adb version` | A version line. If "command not found": macOS `brew install android-platform-tools`; Linux `sudo apt install adb`; Windows: tell the person to run [CineTV-Kur.bat](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.bat) instead and stop here |
+| 3 | `git clone https://github.com/AlptugDag/cinetv-launcher && cd cinetv-launcher` (skip if you are already in it) | The folder has `install.sh` |
+| 4 | `adb connect <IP>:5555`, then tell the person: "Look at the TV: tick *Always allow* and press *OK*". Then `adb devices` | `<IP>:5555	device`. `unauthorized`: the TV is still asking, wait. `offline`: `adb kill-server && adb connect <IP>:5555` |
+| 5 | Interview the person (§1), write `cinetv-profile.json`, run `python3 scripts/personalize.py --profile cinetv-profile.json --plan` and show them the plan | They say yes |
+| 6 | `./install.sh --tv <IP>:5555 --profile cinetv-profile.json --yes` (add the API keys as environment variables if they gave any, §2; add `--debloat` only if they agreed, §5) | Ends with `Done. Press Home on the remote.` |
+| 7 | `./install.sh --tv <IP>:5555 --verify` | Every line `✓` (or PASS). `!` lines are optional extras |
+| 8 | Finish Nuvio (§3) by screenshots and keys | Their rows on Nuvio's home |
+| 9 | Clean up (§8) and tell them the phone remote and YouTube *Send to TV* (§6) | Done |
+
+---
+
 ## 0. Before you start
 
 - Tools on the computer: `adb` (Android platform-tools), `curl`, `bash`, `python3`. On macOS:
@@ -77,8 +97,8 @@ CINETV_TMDB_KEY=... CINETV_AI_KEY=... CINETV_MDBLIST_KEY=... \
   ./install.sh --tv <TV_IP> --profile cinetv-profile.json --theme cinetv --yes
 ```
 
-Add `--debloat` only if the person agreed (§5). Themes: `cinetv` (Alptug Default) · `glass` · `aurora` ·
-`scenes` · `dussehra` (Royal Gold) · `six-columns` (Cinema Wall) · `oled`.
+Add `--debloat` only if the person agreed (§5). Themes: `cinetv` (Alptug Default) · `glass` (Liquid
+Glass) · `metal` (Metallic) · `cinema` (Cinema Hall) · `dvdstore` (DVD Store) · `neon` (Neon Night) · `oled`.
 
 **API keys**, all optional and all also enterable later on the TV in *Settings › AI & films*:
 
@@ -154,7 +174,13 @@ Once installed, the phone button at the top of Home shows an address and a QR co
 (`https://<ip-with-dashes>.local-ip.sh:9443`) and can be added to the home screen. It has search (Enter shows the
 results on the TV too), a full remote that works in every app (keys reach any app through a small bridge
 CineTV starts on the TV: the TV asks once to allow it; tell the person to tick "Always allow" and press
-Allow), typing from the phone's keyboard, casting of any video link, and a background-photo upload.
+Allow), typing from the phone's keyboard, casting of any video link or film page (the TV presses play, skips
+the ads and ignores anything under three minutes), a real power-off (tap twice), and a background-photo upload.
+
+**YouTube's "Send to TV"**: CineTV answers on the network as *"<TV name> · YouTube"*. In the YouTube app on any
+phone on the same Wi-Fi, the person taps Cast and picks that name; the video opens in TizenTube. If the name
+does not appear: TizenTube › Settings › *Link with TV code*, and on the phone YouTube › Settings › *Watch on TV* ›
+*Enter TV code*.
 
 ## 7. On the TV itself
 
@@ -163,7 +189,8 @@ Allow), typing from the phone's keyboard, casting of any video link, and a backg
 - **Live TV**: on TVs with a tuner, the *Live TV* tile opens the TV's own channels; *Settings › TV channels on
   Home* turns it off.
 - **Optimize & test** (in Settings): freezes cached apps, shortens animations, frees memory. Safe to run any time.
-- **Performance**: a picker; *Auto* detects weak hardware and lightens the 3D shelf.
+- **Performance**: Low, Medium or High, each adapting by itself to what holds the TV back; *Determine
+  automatically* runs a short benchmark and picks one. Run it once after installing.
 - **Remove CineTV** (*CineTV'yi yok et!*, red, at the end of Settings): restores every setting CineTV changed
   and gives Home back to the TV's launcher. Prefer it over `adb uninstall`, which leaves those settings as
   they are.
@@ -175,8 +202,27 @@ adb shell rm -f /data/local/tmp/*.apk /sdcard/Download/cinetv*.apk
 adb disconnect
 ```
 
-Keep `cinetv-profile.json` if the person may want to set up another TV the same way. Suggest the person turn
-**USB / network debugging off** again when everything works.
+Keep `cinetv-profile.json` if the person may want to set up another TV the same way. Leave network debugging
+**on**: the phone remote's key bridge and CineTV's own repair (it makes itself Home again if something resets
+it) use it, and only devices the person allowed on the TV can connect.
+
+## 9. When something goes wrong
+
+| What you see | What to do |
+| :--- | :--- |
+| `adb: command not found` | macOS `brew install android-platform-tools`; Linux `sudo apt install adb`; Windows: the person runs `CineTV-Kur.bat` (KURULUM.md, Yol B) |
+| `failed to connect` / `Connection refused` | Wrong IP, or network debugging off (KURULUM.md, Adım 1). Same Wi-Fi? Ask the person to restart the TV and try again |
+| `unauthorized` | The TV is showing *Allow debugging?*. Ask the person to tick *Always allow* and press OK, then `adb devices` again |
+| `offline` | `adb kill-server && adb connect <IP>:5555` |
+| `more than one device` | Always pass `--tv <IP>:5555` (and `adb -s <IP>:5555 ...` for your own commands) |
+| `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | install.sh handles it (it reinstalls). By hand: `adb uninstall com.cinetv.launcher`, then install again |
+| `python3: command not found` | macOS: `xcode-select --install`; Linux `sudo apt install python3`. Or `./install.sh --no-personalize --apps --nuvio` |
+| `Could not reach GitHub releases` | No internet on the computer, or GitHub rate limit: wait a minute, or download `CineTV.apk` from the releases page and pass `--apk CineTV.apk` |
+| Verify says *CineTV is not the Home app* | `adb shell cmd package set-home-activity com.cinetv.launcher/.MainActivity`, then press Home on the remote |
+| Phone remote keys do nothing outside CineTV | The TV's *Allow debugging?* for CineTV was not accepted: `adb shell am force-stop com.cinetv.launcher`, press Home, and have the person tick *Always allow* |
+| The TV went black after a command | Nothing is broken: ask the person to press Home on the remote. If live TV/HDMI are gone: `scripts/restore_tv_core.sh` |
+
+If a command here fails twice in a row, stop and tell the person what you saw, word for word; never guess.
 
 ## Rules for agents
 

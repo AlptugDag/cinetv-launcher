@@ -20,7 +20,8 @@ import java.security.MessageDigest;
  * screen: Nuvio, live TV, any app. It listens on localhost only, and a connection must first send the
  * random key CineTV started it with.
  *
- * Lines it understands: {@code k <keycode>} press, {@code l <keycode>} long press, {@code t <text>} type.
+ * Lines it understands: {@code k <keycode>} press, {@code l <keycode>} long press, {@code t <text>} type,
+ * {@code o -} power off.
  */
 public final class KeyInjector {
     public static final int PORT = 47815;
@@ -77,6 +78,11 @@ public final class KeyInjector {
                 else if (cmd == 'l') press(Integer.parseInt(arg.trim()), true);
                 else if (cmd == 't') type(arg);
                 client.getOutputStream().write('.');
+                if (cmd == 'o') {
+                    // a real power-off, not the panel-off standby the power key gives; the remote turns it on again
+                    client.getOutputStream().flush();
+                    Runtime.getRuntime().exec(new String[]{"sh", "-c", "svc power shutdown || reboot -p"});
+                }
             }
         } catch (Throwable ignored) {
         } finally {

@@ -11,3 +11,5 @@
 
 # The phone remote's key bridge runs from the APK under app_process (see KeyInjector).
 -keep class com.cinetv.launcher.remote.KeyInjector { public static void main(java.lang.String[]); }
+# The cast sniffer page calls these from JavaScript by name
+-keepclassmembers class * { @android.webkit.JavascriptInterface <methods>; }

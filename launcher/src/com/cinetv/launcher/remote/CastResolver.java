@@ -32,14 +32,21 @@ public final class CastResolver {
     public static final class Video {
         public final String url;
         public final String label;
+        /** The page the stream was found on; many film hosts refuse a stream without it. */
+        public final String referrer;
 
         Video(String url, String label) {
+            this(url, label, null);
+        }
+
+        Video(String url, String label, String referrer) {
             this.url = url;
             this.label = label;
+            this.referrer = referrer;
         }
     }
 
-    private static final String UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
+    static final String UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
     private static final Pattern MEDIA_EXT = Pattern.compile("(?i)\\.(m3u8|mp4|m4v|mov|webm|mkv|mpd|ts|mp3|m4a|aac|flac)(\\?|#|$)");
     private static final Pattern[] PAGE_PATTERNS = {
             Pattern.compile("(?is)<(?:video|source)[^>]+src=[\"']([^\"']+)[\"']"),
@@ -56,8 +63,31 @@ public final class CastResolver {
         return u.contains("youtube.com/") || u.contains("youtu.be/");
     }
 
-    /** Playable streams for a link, best first. Blocks (network). */
-    public static List<Video> find(String url) {
+    /** Playable streams for a link, best first; the film before any trailer or ad. Blocks (network, up to ~25 s). */
+    public static List<Video> find(Context ctx, String url) {
+        List<Video> out = findInSource(url);
+        boolean film = false;
+        for (Video v : out) film |= !CastSniffer.isAd(v.url) && VideoLength.knownLong(v.url, url);
+        // The player starts only after a click, or sits in a player frame, or the page shows an ad first:
+        // open the page, press play, skip the ad and catch the film's own stream.
+        if (!film && !isYouTube(url) && !MEDIA_EXT.matcher(url).find()) {
+            Map<String, Video> all = new LinkedHashMap<>();
+            for (Video v : CastSniffer.sniff(ctx, url)) all.put(v.url, v);
+            for (Video v : out) if (!all.containsKey(v.url)) all.put(v.url, v);
+            out = new ArrayList<>(all.values());
+        }
+        List<Video> clean = new ArrayList<>();
+        // ads and trailers out: anything shorter than three minutes is not the film
+        for (Video v : out) {
+            if (CastSniffer.isAd(v.url)) continue;
+            if (isYouTube(v.url) || VideoLength.longEnough(v.url, v.referrer != null ? v.referrer : url)) clean.add(v);
+        }
+        clean.sort((a, b) -> Integer.compare(rank(a.url), rank(b.url)));
+        return clean.size() > 8 ? clean.subList(0, 8) : clean;
+    }
+
+    /** Streams written in the page's source itself. */
+    private static List<Video> findInSource(String url) {
         List<Video> out = new ArrayList<>();
         if (!url.startsWith("http://") && !url.startsWith("https://")) return out;
         if (isYouTube(url)) {
@@ -97,12 +127,23 @@ public final class CastResolver {
 
     /** Plays a stream full screen: YouTube in its app, everything else in a video player. */
     public static boolean play(Context ctx, String url) {
+        return play(ctx, url, null);
+    }
+
+    public static boolean play(Context ctx, String url, String referrer) {
         if (isYouTube(url)) {
             return AppLauncher.start(ctx, new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         }
         String type = url.toLowerCase(Locale.ROOT).contains(".m3u8") ? "application/x-mpegURL"
                 : url.toLowerCase(Locale.ROOT).contains(".mpd") ? "application/dash+xml" : "video/*";
         Intent i = new Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(url), type).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (referrer != null && referrer.startsWith("http")) {
+            // the players that take request headers (MX, Just, VLC-style "headers" extras) send the page along
+            i.putExtra("headers", new String[]{"Referer", referrer, "User-Agent", UA});
+            android.os.Bundle b = new android.os.Bundle();
+            b.putString("Referer", referrer);
+            i.putExtra(android.provider.Browser.EXTRA_HEADERS, b);
+        }
         // Nova plays HLS, DASH and nearly every codec; any other player is the fallback.
         Intent nova = new Intent(i).setPackage("org.courville.nova");
         if (AppLauncher.start(ctx, nova)) return true;
@@ -111,13 +152,16 @@ public final class CastResolver {
 
     private static int rank(String url) {
         String u = url.toLowerCase(Locale.ROOT);
-        if (u.contains(".m3u8")) return 0;
+        if (CastSniffer.isAd(u)) return 9;
+        if (u.contains("trailer") || u.contains("fragman")) return 8;
+        if (u.contains("master") && u.contains(".m3u8")) return -1;
+        if (u.contains(".m3u8") || u.contains("/hls/")) return 0;
         if (u.contains(".mpd")) return 1;
         if (u.contains(".mp4") || u.contains(".webm")) return 2;
         return 3;
     }
 
-    private static String label(String url) {
+    static String label(String url) {
         Uri u = Uri.parse(url);
         String name = u.getLastPathSegment();
         String host = u.getHost() == null ? "" : u.getHost();

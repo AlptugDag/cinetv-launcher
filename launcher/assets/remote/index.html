@@ -78,31 +78,52 @@ label.btn{cursor:pointer}
 .btn.ghost{background:var(--glass-hi);box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 16px);transform:translate(-50%,-140%);transition:.3s;z-index:40;padding:10px 18px;font-size:14px}
 .toast.on{transform:translate(-50%,0)}
-/* remote */
-.pad{margin:20px auto 8px;width:260px;height:260px;border-radius:50%;position:relative}
-.pad button{position:absolute;background:none;border:0;color:var(--ink);font-size:22px;width:80px;height:80px}
-.pad .u{top:0;left:90px}.pad .d{bottom:0;left:90px}.pad .l{left:0;top:90px}.pad .r{right:0;top:90px}
-.pad .ok{left:75px;top:75px;width:110px;height:110px;border-radius:50%;background:var(--glass-hi);font-size:16px;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
-.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
-.keys button{padding:16px 0;font-size:14px;color:var(--ink);border:1px solid var(--edge)}
-.rtop{display:grid;grid-template-columns:52px 1fr 1fr 52px;gap:10px;margin-top:4px}
-.rk{padding:13px 0;font-size:14px;color:var(--ink);border:1px solid var(--edge);border-radius:16px}
-.rk.pwr{color:#ff5b5b;font-size:18px}
-.rockers{display:grid;grid-template-columns:76px 1fr 76px;gap:12px;margin-top:16px;align-items:stretch}
-.rocker{display:flex;flex-direction:column;align-items:center;justify-content:space-between;border-radius:38px;padding:4px 0}
-.rocker button{background:none;border:0;color:var(--ink);font-size:26px;width:100%;padding:14px 0}
-.rocker span{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--dim)}
-.rockers .mid{display:grid;gap:10px}
-.media{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
-.media .rk{font-size:13px}
-.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
-.numpad button{padding:14px 0;font-size:18px;font-weight:600;color:var(--ink);border:1px solid var(--edge);border-radius:14px}
-.colors{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
-.colors button{height:18px;border:0;border-radius:9px;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
-[data-key]:active{transform:scale(.96)}
-.field{display:flex;gap:8px;margin-top:16px;padding:6px 6px 6px 14px;align-items:center}
-.field input{flex:1;background:none;border:0;outline:0;color:var(--ink);font-size:15px}
-.field button{border:0;border-radius:14px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:600}
+/* remote: one screen, no scrolling, no zoom; a touchpad like the TV makers' own apps, in liquid glass */
+html,body,button{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+input,textarea{-webkit-user-select:text;user-select:text}
+body.remote header .search{display:none}
+body.remote main{padding-bottom:0}
+#tab-remote.on{display:flex;flex-direction:column;gap:12px;height:calc(100dvh - var(--hdr,96px) - 84px - var(--safe-b));min-height:420px}
+.rbar{display:flex;align-items:center;justify-content:space-between}
+.ic{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:var(--ink);padding:0}
+.ic svg{width:24px;height:24px}
+.pwr{color:#4ade80;transition:background .2s,color .2s}
+.pwr.arm{background:rgba(255,59,48,.85);color:#fff;border-color:transparent}
+.rbar .hint{font-size:12px;color:var(--dim);text-align:center;flex:1;padding:0 8px}
+.deck{flex:1;min-height:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:28px}
+.deck::-webkit-scrollbar{display:none}
+.page{flex:0 0 100%;scroll-snap-align:center;min-height:0;position:relative}
+.touch{height:100%;border-radius:28px;touch-action:none;position:relative;overflow:hidden;
+  background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.04) 45%,rgba(255,255,255,.07))}
+.touch::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(120% 60% at 30% 0%,rgba(255,255,255,.16),transparent 55%)}
+.touch .ripple{position:absolute;width:90px;height:90px;margin:-45px 0 0 -45px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(rgba(255,255,255,.35),transparent 70%);animation:rip .45s ease-out forwards}
+@keyframes rip{from{transform:scale(.3);opacity:1}to{transform:scale(1.6);opacity:0}}
+.touch .arrow{position:absolute;inset:0;display:grid;place-items:center;font-size:54px;color:rgba(255,255,255,.55);pointer-events:none;opacity:0;transition:opacity .25s}
+.touch .arrow.on{opacity:1;transition:none}
+.touch .tip{position:absolute;left:0;right:0;bottom:16px;text-align:center;font-size:12px;color:var(--faint);pointer-events:none}
+.more{height:100%;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:10px;padding:2px}
+.more button{border-radius:20px;color:var(--ink);font-size:13px;font-weight:600;padding:0;min-height:0}
+.more .c{border:0;margin:18% 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.more .w2{grid-column:span 2}
+.nums{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:10px;height:100%}
+.nums button{border-radius:20px;color:var(--ink);font-size:22px;font-weight:600;padding:0}
+.dots{display:flex;justify-content:center;gap:8px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--faint);transition:background .2s}
+.dots i.on{background:var(--ink)}
+.ctl{display:grid;grid-template-columns:1fr 3fr 1fr;gap:12px;align-items:stretch}
+.rocker{display:flex;flex-direction:column;align-items:center;justify-content:space-between;border-radius:40px;padding:4px 0}
+.rocker button{background:none;border:0;color:var(--ink);font-size:28px;width:100%;padding:12px 0;line-height:1}
+.rocker span{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--dim)}
+.rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;place-items:center}
+.rgrid button{width:min(64px,100%);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;color:var(--ink);padding:0}
+.rgrid svg{width:26px;height:26px}
+.rgrid .on{background:var(--accent);border-color:transparent}
+[data-key]:active,.rgrid button:active,.ic:active{transform:scale(.93)}
+.kbd{position:fixed;left:12px;right:12px;bottom:calc(12px + var(--safe-b));z-index:30;display:flex;gap:8px;padding:6px 6px 6px 14px;align-items:center}
+.kbd input{flex:1;background:none;border:0;outline:0;color:var(--ink);font-size:16px}
+.kbd button{border:0;border-radius:14px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:600}
 /* calibration */
 .cal{padding:16px;margin-top:12px}
 .slider{margin:14px 0}
@@ -158,61 +179,44 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   </section>
 
   <section id="tab-remote">
-    <div class="rtop">
-      <button class="glass rk pwr" data-key="26" aria-label="Power">⏻</button>
-      <button class="glass rk" data-key="178" data-i="input"></button>
-      <button class="glass rk" data-key="172" data-i="guide"></button>
-      <button class="glass rk" data-key="176" aria-label="Settings">⚙︎</button>
+    <div class="rbar">
+      <button class="glass ic" data-key="176" aria-label="Settings"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button>
+      <span class="hint" id="rHint" data-i="swipeHint"></span>
+      <button class="glass ic pwr" id="pwr" aria-label="Power"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg></button>
     </div>
-    <div class="pad glass">
-      <button class="u" data-key="19" data-repeat>▲</button><button class="d" data-key="20" data-repeat>▼</button>
-      <button class="l" data-key="21" data-repeat>◀</button><button class="r" data-key="22" data-repeat>▶</button>
-      <button class="ok" data-key="23">OK</button>
+    <div class="deck" id="deck">
+      <div class="page"><div class="touch glass" id="touch"><div class="arrow" id="arrow"></div><div class="tip" data-i="touchTip"></div></div></div>
+      <div class="page"><div class="more">
+        <button class="glass" data-key="178" data-i="input"></button><button class="glass" data-key="172" data-i="guide"></button>
+        <button class="glass" data-key="82" data-i="menu"></button><button class="glass" data-key="165" data-i="info"></button>
+        <button class="glass" data-key="89" data-repeat aria-label="Rewind">⏪︎</button><button class="glass" data-key="85" aria-label="Play/Pause">⏯︎</button>
+        <button class="glass" data-key="86" aria-label="Stop">⏹︎</button><button class="glass" data-key="90" data-repeat aria-label="Fast forward">⏩︎</button>
+        <button class="glass" data-key="175" data-i="subs"></button><button class="glass" data-key="222" data-i="audio"></button>
+        <button class="glass" data-key="229" data-i="last"></button><button class="glass" data-key="231" data-i="assistant"></button>
+        <button class="c" data-key="183" style="background:#e5383b" aria-label="Red"></button><button class="c" data-key="184" style="background:#2db84c" aria-label="Green"></button>
+        <button class="c" data-key="185" style="background:#f4c430" aria-label="Yellow"></button><button class="c" data-key="186" style="background:#2f7de1" aria-label="Blue"></button>
+        <button class="glass w2" id="sleepBtn" data-i="sleepOff"></button><button class="glass w2" id="saver" data-i="screensaver"></button>
+      </div></div>
+      <div class="page"><div class="nums">
+        <button class="glass" data-key="8">1</button><button class="glass" data-key="9">2</button><button class="glass" data-key="10">3</button>
+        <button class="glass" data-key="11">4</button><button class="glass" data-key="12">5</button><button class="glass" data-key="13">6</button>
+        <button class="glass" data-key="14">7</button><button class="glass" data-key="15">8</button><button class="glass" data-key="16">9</button>
+        <button class="glass" data-key="66" aria-label="Enter">↵</button><button class="glass" data-key="7">0</button><button class="glass" data-key="67" aria-label="Delete">⌫</button>
+      </div></div>
     </div>
-    <div class="keys">
-      <button class="glass" data-key="4" data-i="back"></button>
-      <button class="glass" data-key="3" data-i="home"></button>
-      <button class="glass" data-key="82" data-i="menu"></button>
-    </div>
-    <div class="rockers">
-      <div class="rocker glass"><button data-key="24" data-repeat>＋</button><span>VOL</span><button data-key="25" data-repeat>－</button></div>
-      <div class="mid">
-        <button class="glass rk" data-key="164" aria-label="Mute">🔇</button>
-        <button class="glass rk" data-key="85" aria-label="Play/Pause">⏯︎</button>
-        <button class="glass rk" data-key="165" data-i="info"></button>
+    <div class="dots" id="dots"><i class="on"></i><i></i><i></i></div>
+    <div class="ctl">
+      <div class="rocker glass"><button data-key="24" data-repeat aria-label="Volume up">+</button><span>VOL</span><button data-key="25" data-repeat aria-label="Volume down">−</button></div>
+      <div class="rgrid">
+        <button class="glass" id="kbdBtn" aria-label="Keyboard"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm2 3v2h2V9zm3 0v2h2V9zm3 0v2h2V9zm3 0v2h2V9zm3 0v2h2V9zM5 12v2h2v-2zm3 0v2h2v-2zm3 0v2h2v-2zm3 0v2h2v-2zm3 0v2h2v-2zM7 15v1.5h10V15z"/></svg></button>
+        <button class="glass" data-key="3" aria-label="Home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M12 15v5"/></svg></button>
+        <button class="glass" id="numBtn" aria-label="Numbers"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="5" r="1.8"/><circle cx="12" cy="5" r="1.8"/><circle cx="18" cy="5" r="1.8"/><circle cx="6" cy="10.5" r="1.8"/><circle cx="12" cy="10.5" r="1.8"/><circle cx="18" cy="10.5" r="1.8"/><circle cx="6" cy="16" r="1.8"/><circle cx="12" cy="16" r="1.8"/><circle cx="18" cy="16" r="1.8"/><circle cx="12" cy="21.3" r="1.8"/></svg></button>
+        <button class="glass" data-key="164" aria-label="Mute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="m17 9 4 6m0-6-4 6"/></svg></button>
+        <button class="glass" id="micBtn" aria-label="Voice"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 17.5V21" stroke="currentColor" stroke-width="2"/></svg></button>
+        <button class="glass" data-key="4" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5 4 10l5 5"/><path d="M4 10h10a6 6 0 0 1 0 12h-3" transform="translate(0 -3)"/></svg></button>
       </div>
-      <div class="rocker glass"><button data-key="166" data-repeat>＋</button><span>CH</span><button data-key="167" data-repeat>－</button></div>
+      <div class="rocker glass"><button data-key="166" data-repeat aria-label="Channel up">⌃</button><span>CH</span><button data-key="167" data-repeat aria-label="Channel down">⌄</button></div>
     </div>
-    <div class="media">
-      <button class="glass rk" data-key="89" data-repeat aria-label="Rewind">⏪︎</button>
-      <button class="glass rk" data-key="86" aria-label="Stop">⏹︎</button>
-      <button class="glass rk" data-key="90" data-repeat aria-label="Fast forward">⏩︎</button>
-      <button class="glass rk" data-key="175" data-i="subs"></button>
-      <button class="glass rk" data-key="222" data-i="audio"></button>
-    </div>
-    <div class="numpad">
-      <button class="glass" data-key="8">1</button><button class="glass" data-key="9">2</button><button class="glass" data-key="10">3</button>
-      <button class="glass" data-key="11">4</button><button class="glass" data-key="12">5</button><button class="glass" data-key="13">6</button>
-      <button class="glass" data-key="14">7</button><button class="glass" data-key="15">8</button><button class="glass" data-key="16">9</button>
-      <button class="glass" data-key="229" data-i="last"></button><button class="glass" data-key="7">0</button><button class="glass" data-key="67">⌫</button>
-    </div>
-    <div class="colors">
-      <button data-key="183" style="background:#e5383b" aria-label="Red"></button>
-      <button data-key="184" style="background:#2db84c" aria-label="Green"></button>
-      <button data-key="185" style="background:#f4c430" aria-label="Yellow"></button>
-      <button data-key="186" style="background:#2f7de1" aria-label="Blue"></button>
-    </div>
-    <button class="btn ghost" id="sleepBtn" style="margin-bottom:12px" data-i="sleepOff"></button>
-    <div class="field glass">
-      <input id="typer" data-ph="typePh" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false">
-      <button id="typerGo">↵</button>
-    </div>
-    <p class="note" style="margin:6px 4px 14px" data-i="typeNote"></p>
-    <div class="field glass">
-      <input id="tvq" data-ph="tvSearchPh">
-      <button id="tvqGo" data-i="send"></button>
-    </div>
-    <button class="btn ghost" style="margin-top:12px" id="saver" data-i="screensaver"></button>
   </section>
 
   <section id="tab-cast">
@@ -267,6 +271,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 </nav>
 </div>
 
+<form class="kbd glass" id="kbd" hidden onsubmit="return false">
+  <input id="typer" data-ph="typePh" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="send">
+  <button id="typerGo" type="button">↵</button>
+</form>
 <div class="sheet-bg" id="sheetBg"></div>
 <div class="sheet glass" id="sheet"></div>
 <div class="toast glass" id="toast"></div>
@@ -274,11 +282,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <script>
 (() => {
   const T = {
-    en: {aboutBio:"Alptuğ Dağ is a filmmaker, storyteller and voice artist, born in Ankara in 2000. He is known for his short film Sessiz (2023). He designed and built CineTV.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgSent:"Now on your TV",bgFail:"Could not send the picture",
+    en: {swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ is a filmmaker, storyteller and voice artist, born in Ankara in 2000. He is known for his short film Sessiz (2023). He designed and built CineTV.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgSent:"Now on your TV",bgFail:"Could not send the picture",
       installAndroid:"Install CineTV on this phone for one-tap access.",installGo:"Install",installIos:"Tap Share, then “Add to Home Screen” to keep CineTV one tap away.",
       otherTvs:"CineTV TVs here",onTv:"On your TV now",waiting:"Allow this phone on your TV with the remote",denied:"Not allowed on the TV. Tap to ask again.",busy:"Another phone is asking. Retrying…",
       tabCast:"Cast",tabAbout:"About",castTitle:"Play a video on the TV",castPh:"Paste a video link or any page with a video",paste:"Paste",castPlay:"Play on TV",
-      castNote:"Works with direct links (mp4, m3u8…) and most pages that contain a video; the TV finds the stream itself.",castFinding:"Looking for the video…",castNone:"No playable video found on that page.",castPlaying:"Playing on your TV",
+      castNote:"Works with direct links (mp4, m3u8…) and film pages: the TV opens the page, presses play itself and skips the ads.",castFinding:"Looking for the film… ads are skipped (up to 45 s)",castNone:"No film found on that page (videos under 3 minutes are skipped as ads).",castPlaying:"Playing on your TV",
       aboutRole:"Filmmaker · Storyteller",followIg:"Follow on Instagram",followYt:"Subscribe on YouTube",hisFilms:"Show his films on the TV",
       homeHint:"Tip: Share › Add to Home Screen keeps CineTV one tap away, full screen.",
       connecting:"Connecting…",connected:"Connected",offline:"TV not reachable",searchPh:"Films, series, people…",trending:"Trending",
@@ -290,11 +298,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       p_natural:"Natural",p_cinema:"Cinema",p_night:"Dark room",p_vivid:"Vivid",
       t_off:"Off",t_gray:"Gray ramp",t_bars:"Colour bars",t_black:"Black level",t_white:"White level",t_skin:"Skin tones",
       backlight:"Backlight",brightness:"Brightness",contrast:"Contrast",saturation:"Colour",hue:"Tint",sharpness:"Sharpness",red:"Red gain",green:"Green gain",blue:"Blue gain",done:"Saved"},
-    tr: {aboutBio:"Alptuğ Dağ, 2000'de Ankara'da doğmuş bir sinemacı, hikâye anlatıcı ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. CineTV'yi tasarlayıp geliştirdi.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
+    tr: {swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ, 2000'de Ankara'da doğmuş bir sinemacı, hikâye anlatıcı ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. CineTV'yi tasarlayıp geliştirdi.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
       installAndroid:"CineTV'yi bu telefona uygulama olarak ekleyin, tek dokunuşla açılsın.",installGo:"Ekle",installIos:"Paylaş'a, ardından “Ana Ekrana Ekle”ye dokunun; CineTV tek dokunuşla açılsın.",
       otherTvs:"Bu ağdaki CineTV televizyonları",onTv:"TV'de vitrine geldi",waiting:"Bu telefona TV'den kumandayla izin verin",denied:"TV'de izin verilmedi. Tekrar sormak için dokunun.",busy:"Başka bir telefon soruyor. Tekrar deneniyor…",
       tabCast:"Yayınla",tabAbout:"Hakkımda",castTitle:"TV'de video oynat",castPh:"Bir video bağlantısı ya da videolu herhangi bir sayfa yapıştırın",paste:"Yapıştır",castPlay:"TV'de oynat",
-      castNote:"Doğrudan bağlantılarla (mp4, m3u8…) ve video içeren çoğu sayfayla çalışır; yayını TV kendisi bulur.",castFinding:"Video aranıyor…",castNone:"Bu sayfada oynatılabilir video bulunamadı.",castPlaying:"TV'de oynatılıyor",
+      castNote:"Doğrudan bağlantılarla (mp4, m3u8…) ve film sayfalarıyla çalışır: TV sayfayı açar, oynat tuşuna kendisi basar, reklamları atlar.",castFinding:"Film aranıyor… reklam varsa geçiliyor (en fazla 45 sn)",castNone:"Bu sayfada film bulunamadı (3 dakikadan kısa videolar reklam sayılıp atlanır).",castPlaying:"TV'de oynatılıyor",
       aboutRole:"Sinemacı · Hikâye anlatıcı",followIg:"Instagram'da takip et",followYt:"YouTube'da abone ol",hisFilms:"Filmlerini TV'de göster",
       homeHint:"İpucu: Paylaş › Ana Ekrana Ekle ile CineTV tam ekran, tek dokunuşla açılır.",
       connecting:"Bağlanıyor…",connected:"Bağlı",offline:"TV'ye ulaşılamıyor",searchPh:"Film, dizi, oyuncu…",trending:"Trend",
@@ -375,6 +383,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === "tab-" + name));
     document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
     $("searchBox").style.display = name === "search" ? "" : "none";
+    document.body.classList.toggle("remote", name === "remote");
+    if (name !== "remote") $("kbd").hidden = true;
+    requestAnimationFrame(() => document.documentElement.style.setProperty("--hdr", document.querySelector("header").offsetHeight + "px"));
   };
   document.querySelectorAll("nav button").forEach(b => b.onclick = () => { show(b.dataset.tab); location.hash = b.dataset.tab; });
 
@@ -475,35 +486,112 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       $("sleepBtn").textContent = r.minutes > 0 ? t("sleepIn").replace("{n}", r.minutes) : t("sleepOff");
     } catch (e) {}
   };
-  // The phone's keyboard types into the TV's selected field, live
+  // The keyboard key: the phone's keyboard types into the TV's selected field, live, in any app
   let typeTimer = null;
-  $("typer").addEventListener("input", () => {
+  const kbd = $("kbd"), typer = $("typer");
+  $("kbdBtn").onclick = () => {
+    if (!kbd.hidden) { kbd.hidden = true; typer.blur(); return; }
+    kbd.hidden = false; typer.value = ""; typer.focus();
+  };
+  typer.addEventListener("input", () => {
     clearTimeout(typeTimer);
-    typeTimer = setTimeout(() => api("type", {q: $("typer").value}).catch(() => {}), 90);
+    typeTimer = setTimeout(() => api("type", {q: typer.value}).catch(() => {}), 90);
   });
-  const typeEnter = () => { clearTimeout(typeTimer); api("type", {q: $("typer").value}).then(() => press(66)).catch(() => {}); };
+  const typeEnter = () => { clearTimeout(typeTimer); api("type", {q: typer.value}).then(() => press(66)).catch(() => {}); kbd.hidden = true; typer.blur(); };
   $("typerGo").onclick = typeEnter;
-  $("typer").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); typeEnter(); } });
-  $("tvqGo").onclick = () => { const q = $("tvq").value.trim(); if (q) { api("tv/search", {q}); $("tvq").value = ""; toast(t("done")); } };
+  typer.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); typeEnter(); } });
+  typer.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== typer) kbd.hidden = true; }, 150));
   $("saver").onclick = () => api("screensaver");
+
+  // Pages of the remote: touchpad, more keys, numbers
+  const deck = $("deck"), dots = [...$("dots").children];
+  const page = () => Math.round(deck.scrollLeft / Math.max(1, deck.clientWidth));
+  deck.addEventListener("scroll", () => dots.forEach((d, i) => d.classList.toggle("on", i === page())), {passive: true});
+  const goPage = i => deck.scrollTo({left: i * deck.clientWidth, behavior: "smooth"});
+  dots.forEach((d, i) => d.onclick = () => goPage(i));
+  $("numBtn").onclick = () => goPage(page() === 2 ? 0 : 2);
+
+  // Touchpad: swipe moves (keep sliding to keep moving), tap is OK, hold is a long OK
+  const pad = $("touch"), arrow = $("arrow"), STEP = 34;
+  let ox = 0, oy = 0, moved = false, downAt = 0, holdT = null, arrowT = null;
+  const showArrow = s => { arrow.textContent = s; arrow.classList.add("on"); clearTimeout(arrowT); arrowT = setTimeout(() => arrow.classList.remove("on"), 160); };
+  const ripple = (x, y) => { const r = document.createElement("i"); r.className = "ripple";
+    const b = pad.getBoundingClientRect(); r.style.left = (x - b.left) + "px"; r.style.top = (y - b.top) + "px"; pad.appendChild(r); setTimeout(() => r.remove(), 500); };
+  pad.addEventListener("pointerdown", e => {
+    e.preventDefault(); pad.setPointerCapture(e.pointerId);
+    ox = e.clientX; oy = e.clientY; moved = false; downAt = Date.now();
+    clearTimeout(holdT);
+    holdT = setTimeout(() => { if (!moved) { moved = true; navigator.vibrate && navigator.vibrate(20); press(23, true); ripple(ox, oy); } }, 600);
+  });
+  pad.addEventListener("pointermove", e => {
+    if (!downAt) return;
+    const dx = e.clientX - ox, dy = e.clientY - oy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < STEP) return;
+    moved = true; clearTimeout(holdT);
+    const h = Math.abs(dx) > Math.abs(dy);
+    press(h ? (dx > 0 ? 22 : 21) : (dy > 0 ? 20 : 19));
+    showArrow(h ? (dx > 0 ? "›" : "‹") : (dy > 0 ? "⌄" : "⌃"));
+    navigator.vibrate && navigator.vibrate(6);
+    ox = e.clientX; oy = e.clientY;
+  });
+  const padUp = e => {
+    clearTimeout(holdT);
+    if (downAt && !moved && Date.now() - downAt < 600) { press(23); ripple(e.clientX, e.clientY); navigator.vibrate && navigator.vibrate(10); }
+    downAt = 0;
+  };
+  pad.addEventListener("pointerup", padUp);
+  pad.addEventListener("pointercancel", () => { clearTimeout(holdT); downAt = 0; });
+
+  // Power: a second tap within 3 s really switches the TV off (only its own remote turns it on again)
+  let pwrT = null;
+  $("pwr").onclick = () => {
+    const b = $("pwr");
+    if (!b.classList.contains("arm")) { b.classList.add("arm"); $("rHint").textContent = t("powerAgain"); navigator.vibrate && navigator.vibrate(30);
+      pwrT = setTimeout(() => { b.classList.remove("arm"); $("rHint").textContent = t("swipeHint"); }, 3000); return; }
+    clearTimeout(pwrT); b.classList.remove("arm"); $("rHint").textContent = t("swipeHint");
+    api("power/off").then(() => toast(t("powerOff"))).catch(() => {});
+  };
+
+  // Microphone: the phone listens and CineTV's assistant answers on the TV; hold for the TV's own assistant
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let micHold = null, micLong = false;
+  $("micBtn").addEventListener("pointerdown", () => { micLong = false; micHold = setTimeout(() => { micLong = true; press(231); }, 500); });
+  $("micBtn").addEventListener("pointerup", () => {
+    clearTimeout(micHold); if (micLong) return;
+    if (!SR) { press(231); return; }
+    const rec = new SR(); rec.lang = navigator.language || "tr-TR"; rec.interimResults = false;
+    $("micBtn").classList.add("on"); toast(t("listening"));
+    rec.onresult = ev => { const q = ev.results[0][0].transcript.trim(); if (q) { api("tv/search", {q}); toast("“" + q + "”"); } };
+    rec.onend = () => $("micBtn").classList.remove("on");
+    rec.onerror = () => { $("micBtn").classList.remove("on"); press(231); };
+    try { rec.start(); } catch (e) { press(231); }
+  });
+
+  // Double taps must never zoom the page
+  document.addEventListener("dblclick", e => e.preventDefault(), {passive: false});
+  document.addEventListener("gesturestart", e => e.preventDefault(), {passive: false});
+  const fitHeader = () => document.documentElement.style.setProperty("--hdr", document.querySelector("header").offsetHeight + "px");
+  addEventListener("resize", fitHeader);
 
 
   // cast
   $("castPaste").onclick = async () => { try { $("castUrl").value = await navigator.clipboard.readText(); } catch (e) { $("castUrl").focus(); } };
-  const castPlay = async u => {
-    try { const r = await api("cast/play", {url: u}); toast(r.ok ? t("castPlaying") : t("castNone")); } catch (e) {}
+  const castPlay = async (u, ref) => {
+    try { const r = await api("cast/play", {url: u, ref: ref || ""}); toast(r.ok ? t("castPlaying") : t("castNone")); } catch (e) {}
   };
   $("castGo").onclick = async () => {
     const u = $("castUrl").value.trim(); if (!u) return;
-    $("castFound").innerHTML = ""; toast(t("castFinding"));
+    $("castFound").innerHTML = `<div class="wait glass"><i></i><span>${t("castFinding")}</span></div>`;
     try {
       const r = await api("cast/find", {url: u});
       const list = r.videos || [];
+      $("castFound").innerHTML = "";
       if (!list.length) return toast(t("castNone"));
-      if (list.length === 1) return castPlay(list[0].url);
-      $("castFound").innerHTML = list.map((v, i) => `<button data-v="${i}">▶︎ ${esc(v.label || v.url)}</button>`).join("");
-      $("castFound").querySelectorAll("button").forEach(b => b.onclick = () => castPlay(list[+b.dataset.v].url));
-    } catch (e) { toast(t("offline")); }
+      if (list.length === 1) return castPlay(list[0].url, list[0].ref);
+      $("castFound").innerHTML = list.map((v, i) => `<button data-v="${i}">${i ? "▶︎" : "★"} ${esc(v.label || v.url)}</button>`).join("");
+      $("castFound").querySelectorAll("button").forEach(b => b.onclick = () => castPlay(list[+b.dataset.v].url, list[+b.dataset.v].ref));
+      castPlay(list[0].url, list[0].ref); // the film comes first; the others stay here to pick from
+    } catch (e) { $("castFound").innerHTML = ""; toast(t("offline")); }
   };
 
   // about

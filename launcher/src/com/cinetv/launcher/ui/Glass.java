@@ -35,7 +35,12 @@ public final class Glass extends Drawable {
         FOCUSED
     }
 
+    /** The current theme's material (ThemeManager.MAT_*), set when the room changes. */
+    static volatile String material = com.cinetv.launcher.service.ThemeManager.MAT_GLASS;
+
     private final View host;
+    private final Paint accentRim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private String rimFor;
     private final float radius;
     private Style style;
     private final boolean frosted;
@@ -72,6 +77,7 @@ public final class Glass extends Drawable {
     @Override
     protected void onBoundsChange(Rect b) {
         rect.set(b);
+        rimFor = null;
         float h = Math.max(1, b.height());
         rim.setShader(new LinearGradient(0, b.top, 0, b.top + h * 0.5f,
                 new int[]{Color.argb(150, 255, 255, 255), Color.argb(26, 255, 255, 255), Color.argb(0, 255, 255, 255)},
@@ -104,16 +110,75 @@ public final class Glass extends Drawable {
             shader.setLocalMatrix(matrix);
             canvas.drawRoundRect(rect, radius, radius, blurPaint);
         }
-        int tint = style == Style.CONTROL ? 46 : 30;
-        fill.setColor(blurred != null ? Color.argb(tint, 255, 255, 255) : Color.argb(style == Style.CONTROL ? 70 : 150, 28, 30, 38));
-        canvas.drawRoundRect(rect, radius, radius, fill);
-        if (blurred != null) {
-            fill.setColor(Color.argb(56, 0, 0, 0));
-            canvas.drawRoundRect(rect, radius, radius, fill);
+        String mat = material;
+        boolean control = style == Style.CONTROL;
+        int tint = control ? 46 : 30;
+        float inset = rim.getStrokeWidth() / 2f;
+        switch (mat) {
+            case com.cinetv.launcher.service.ThemeManager.MAT_CLEAR:
+                // clearer than the default glass: less frost, a brighter rim all round
+                fill.setColor(Color.argb(control ? 34 : 18, 220, 240, 255));
+                canvas.drawRoundRect(rect, radius, radius, fill);
+                break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_METAL:
+                fill.setShader(new LinearGradient(0, rect.top, 0, rect.bottom, Color.argb(control ? 200 : 170, 92, 99, 110),
+                        Color.argb(control ? 210 : 190, 38, 42, 48), Shader.TileMode.CLAMP));
+                canvas.drawRoundRect(rect, radius, radius, fill);
+                fill.setShader(null);
+                break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_VELVET:
+                fill.setColor(Color.argb(control ? 170 : 150, 70, 8, 14));
+                canvas.drawRoundRect(rect, radius, radius, fill);
+                break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_WOOD:
+                fill.setShader(new LinearGradient(rect.left, 0, rect.right, 0, Color.argb(190, 92, 58, 30), Color.argb(200, 60, 36, 18), Shader.TileMode.CLAMP));
+                canvas.drawRoundRect(rect, radius, radius, fill);
+                fill.setShader(null);
+                break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_NEON:
+                fill.setColor(Color.argb(control ? 150 : 130, 18, 6, 36));
+                canvas.drawRoundRect(rect, radius, radius, fill);
+                break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_BLACK:
+                fill.setColor(Color.argb(235, 0, 0, 0));
+                canvas.drawRoundRect(rect, radius, radius, fill);
+                break;
+            default:
+                fill.setColor(blurred != null ? Color.argb(tint, 255, 255, 255) : Color.argb(control ? 70 : 150, 28, 30, 38));
+                canvas.drawRoundRect(rect, radius, radius, fill);
+                if (blurred != null) {
+                    fill.setColor(Color.argb(56, 0, 0, 0));
+                    canvas.drawRoundRect(rect, radius, radius, fill);
+                }
         }
         canvas.drawRoundRect(rect, radius, radius, shade);
-        float inset = rim.getStrokeWidth() / 2f;
-        canvas.drawRoundRect(rect.left + inset, rect.top + inset, rect.right - inset, rect.bottom - inset, radius, radius, rim);
+        Paint edge = edgeFor(mat);
+        canvas.drawRoundRect(rect.left + inset, rect.top + inset, rect.right - inset, rect.bottom - inset, radius, radius, edge);
+    }
+
+    /** The rim in the material's own light: chrome, gold braid, brass, a neon tube; the default top light otherwise. */
+    private Paint edgeFor(String mat) {
+        int[] colors;
+        switch (mat) {
+            case com.cinetv.launcher.service.ThemeManager.MAT_METAL: colors = new int[]{0xF0FFFFFF, 0x50FFFFFF, 0xC0E2E8F0}; break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_VELVET: colors = new int[]{0xE0F5C26B, 0x80B8862E, 0xC0F5C26B}; break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_WOOD: colors = new int[]{0xC0FBBF24, 0x60B45309, 0x90FBBF24}; break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_NEON: colors = new int[]{0xF0FF4FA0, 0xE0A855F7, 0xF000E5FF}; break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_CLEAR: colors = new int[]{0xE6FFFFFF, 0x66FFFFFF, 0xB3FFFFFF}; break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_BLACK: colors = new int[]{0x55FFFFFF, 0x30FFFFFF, 0x55FFFFFF}; break;
+            default: return rim;
+        }
+        if (!mat.equals(rimFor)) {
+            rimFor = mat;
+            accentRim.setStyle(Paint.Style.STROKE);
+            accentRim.setStrokeWidth(Math.max(1.5f, UiKit.pxf(rimWidth(mat))));
+            accentRim.setShader(new LinearGradient(rect.left, rect.top, rect.right, rect.bottom, colors, null, Shader.TileMode.CLAMP));
+        }
+        return accentRim;
+    }
+
+    private static float rimWidth(String mat) {
+        return com.cinetv.launcher.service.ThemeManager.MAT_NEON.equals(mat) ? 2.6f : 1.8f;
     }
 
     @Override

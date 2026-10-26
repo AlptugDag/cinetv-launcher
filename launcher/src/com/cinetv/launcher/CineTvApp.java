@@ -21,6 +21,7 @@ public class CineTvApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        HomeGuard.install(this);
         // The phone remote works whatever is on screen: its server and key bridge live with the process
         // (kept alive by the remote-button service), not with the home screen.
         // An update that changes the remote-button service's capabilities makes Android switch it off:

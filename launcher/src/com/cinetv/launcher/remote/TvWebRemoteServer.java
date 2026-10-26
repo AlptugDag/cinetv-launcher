@@ -110,6 +110,7 @@ public final class TvWebRemoteServer {
         tls.setDaemon(true);
         tls.start();
         PeerDiscovery.start(app);
+        DialServer.start(app);
     }
 
     /** True once the secure page (no "not secure" warning) is being served. */
@@ -227,7 +228,7 @@ public final class TvWebRemoteServer {
                 else if (lower.startsWith("content-length:")) length = parseInt(line.substring(15));
             }
             OutputStream out = sock.getOutputStream();
-            if (!"GET".equals(method) && !"POST".equals(method)) {
+            if (!"GET".equals(method) && !"POST".equals(method) && !"DELETE".equals(method)) {
                 send(out, 405, "application/json", "{\"error\":\"method\"}".getBytes(StandardCharsets.UTF_8));
                 return;
             }
@@ -237,6 +238,22 @@ public final class TvWebRemoteServer {
             }
             String path = uri.contains("?") ? uri.substring(0, uri.indexOf('?')) : uri;
             Map<String, String> q = query(uri);
+            if (path.startsWith("/dial/")) {
+                // the phone's YouTube app: "Send to TV" opens TizenTube (DialServer); public, as DIAL is
+                String body = "";
+                if ("POST".equals(method) && length > 0 && length < 16_384) {
+                    byte[] b = new byte[length];
+                    int read = 0, n;
+                    while (read < length && (n = in.read(b, read, length - read)) > 0) read += n;
+                    body = new String(b, 0, read, StandardCharsets.UTF_8);
+                }
+                DialServer.handle(app, method, path, body, out);
+                return;
+            }
+            if ("DELETE".equals(method)) {
+                send(out, 405, "application/json", "{\"error\":\"method\"}".getBytes(StandardCharsets.UTF_8));
+                return;
+            }
 
             if (path.equals("/") || path.equals("/index.html")) {
                 asset(out, "remote/index.html", "text/html; charset=utf-8");
@@ -451,14 +468,17 @@ public final class TvWebRemoteServer {
                 String u = clip(q.get("url"), 2000);
                 JSONArray videos = new JSONArray();
                 if (isPublicHttpUrl(u)) {
-                    for (CastResolver.Video v : CastResolver.find(u)) videos.put(new JSONObject().put("url", v.url).put("label", v.label));
+                    for (CastResolver.Video v : CastResolver.find(app, u)) {
+                        videos.put(new JSONObject().put("url", v.url).put("label", v.label).put("ref", v.referrer == null ? "" : v.referrer));
+                    }
                 }
                 return ok.put("videos", videos);
             }
             case "/api/cast/play": {
                 final String u = clip(q.get("url"), 2000);
+                final String ref = clip(q.get("ref"), 2000);
                 if (!u.startsWith("http://") && !u.startsWith("https://")) return new JSONObject().put("ok", false);
-                post(() -> CastResolver.play(app, u));
+                post(() -> CastResolver.play(app, u, ref.isEmpty() ? null : ref));
                 return ok;
             }
             case "/api/tv/typing": {
@@ -469,6 +489,10 @@ public final class TvWebRemoteServer {
                 });
                 return ok;
             }
+            case "/api/power/off":
+                // the bridge shuts down for real; without it, the adb the TV itself offers does
+                if (!KeyBridge.powerOff(app)) LocalAdb.shell(app, "svc power shutdown || reboot -p", 10_000);
+                return ok;
             case "/api/key":
                 sendKey(parseInt(q.get("code")), "1".equals(q.get("long")));
                 return ok;

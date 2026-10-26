@@ -7,11 +7,76 @@ watches it.** The installer gets to know you first, then installs only what you 
 Your films on a shelf of real 3D DVD cases, an AI that understands what you want to watch, your phone as
 remote and caster, and a TV tuned the way the film was mastered. One command to install, free.
 
-[Made for you](#made-for-whoever-watches-it) · [Install](#install-in-one-command) · [Features](#what-it-does) · [Phone](#your-phone-is-the-remote) · [For AI agents](AGENTS.md) · [Türkçe](#türkçe)
+**[⬇ Download CineTV.apk](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk)** · [Kurulum rehberi / Install guide](KURULUM.md)
+
+[Türkçe](#türkçe) · [Made for you](#made-for-whoever-watches-it) · [Install](#install-in-one-command) · [Features](#what-it-does) · [Phone](#your-phone-is-the-remote) · [For AI agents](AGENTS.md)
 
 ![CineTV home, dark room](docs/media/home-dark.jpg)
 
 </div>
+
+---
+
+## Türkçe
+
+**CineTV**, her Android TV, Google TV çubuğu ve Android projeksiyon için sinema odaklı bir ana ekran; ve
+**izleyen kişiye göre kurulur**. Kurulum önce seni tanır (dil, ülke, sevdiklerin, hiç izlemediklerin, spor,
+dizi kökenleri, anime, servisler, kalite, cihazlar), sonra sadece izleyeceklerini kurar: televizyonun dili,
+Nuvio eklentileri ve sana özel raflar (ör. sadece Türk dizileri, futbol belgeselleri, Kore dizileri), istersen
+ücretsiz canlı kanallar ve sadece ihtiyacın olan uygulamalar. Hiç izlemeyeceğin bir şey boşuna kurulmaz.
+Abone olduğun servislerin (Netflix, Disney+, TOD, Exxen…) uygulamaları ana ekrana gelir; anten, uydu, kablo
+ya da HDMI'deki alıcına göre Canlı TV kutucuğu doğru yeri açar (ya da hiç görünmez).
+Türkçe profillere Nuvio'da Anthology'nin izlediklerine uyan eklentileri gelir (film ve dizi kaynakları, anime
+kaynakları, seçtiği kanal türleri). Paralı kanalları taşıyan eklentileri (*Anthology Canlı Spor*, *Anthology Canlı
+TV*, *Anthology Sinema Kanalları*) kurulumda kapalı kalır; bunlar yalnızca elle, *Nuvio › Ayarlar › Eklentiler*
+bölümünden açılabilir.
+
+**DVD Rafı**: Ana ekranda, gün içinde farklı farklı filmlerin -konum, saat hava durumu gibi ögelere göre- önerildiği dvd kutusunda listelendiği, bir kez basınca kutunun açılıp iç kapağındaki Türkçe film özetinin okunduğu, bir kez daha basınca cdnin dönüp ilgili filmin nuvio'da açıldığı bir tasarım benimsedim.
+
+**Arama**: "Takeshi Kitano filmleri", "araba temalı filmler", "kızı kaçırılan baba filmleri", dizi aramaları yaptığınızda vitrini doğrudan bunlarla dolduracak ve "Türkiye'nin yüz ölçümü kaçtır?" gibi dilediğiniz soruları cevaplayabilecek; Gemini, Claude, Grok, OpenAI anahtarıyla çalışan, sesli aramayı da destekleyen bir search bar ekledim.
+
+**Ekran koruyucu**: filmlerin sahneleri ve repliklerinden oluşan dinamik bir ekran koruyucu, 35 mm film şeridi geçişiyle.
+
+**Görüntü, ses ve ağ**: Ağ hızınızı ve donanımınızı tespit edip hem nuvio yayın ayarlarınızı hem televizyonunuzun ağ, ses ve görüntü ayarlarını; televizyonunuzun sunabileceği (Dolby, hdr, 4k...) en kusursuz sinema deneyimine göre optimize edecek, var olan youtube uygulamanızı reklamsıza çevirip cihaz çapında reklam engelleyecek düzenlemeler yaptım.
+
+**Telefondan kontrol**: Sadece basit bir qr kod kullanarak, tvniz ile aynı ağa bağlı telefonunuzu kumanda olarak kullanabilir, nuvio aramalarınızı onun içerisinden gerçekleştirip tvde anında oynatabilir, tv arka planınızı değiştirebilir veya web adresleri girerek video cast edebilirsiniz. (Ayrıca airplay ve airpods desteği de var)
+
+**Canlı TV**: Tuneri olan televizyonlarda ana ekrandaki Canlı TV kutucuğu televizyonun kendi kanallarını açar; Ayarlar › Ana ekranda TV kanalları ile kapatılır.
+
+**Kaynaklar İsimli**: Kaynak tuşu, HDMI'ye takılı cihazın adıyla ("PlayStation 5", "Digiturk") girişleri listeler.
+
+**Güvenli sadeleştirme** özelliği olduğundan, televizyonunuzla birlikte gelen gereksiz tüm servislerden, izleyicilerden, kısacası yavaşlatan her şeyden kurtulabilirsiniz ve buna ek olarak, uygun cihazlarda sanal ram oluşturup daha da ferahlatır.
+
+Beğenmediğiniz takdirde, ayar menüsündeki **CineTV'yi yok et!** tuşu ile her şeyi geri almanız da mümkün tabii.
+
+Tüm bunların kurulumu sırasında, eğer bir yapay zekaya kurdurursanız size çeşitli sorular sorup tarzınızı analiz edecek ve tüm ayarlarınızı, eklenti ve uzantılarınızı ona göre düzenleyecek.
+Örneğin sadece anime izlemek, sadece spor kanalları izlemek ya da asla film görmemek gibi şeyler istiyorsanız, tamamen size göre bir kurulum yapacak (Ben en başından kendime göre kurduğum için bu kısmı tam test etme şansım olmadı)
+
+Film, dizi, canlı tv içeriklerine ek olarak canlı spor kanallarını da otomatik olarak ekliyor çeşitli eklentiler sayesinde ama deaktif bırakıyor etik dışı olduğunu düşündüğünden, onları nuvio ayarlarından manuel olarak etkinleştirebilirsiniz.
+
+***Projede hatalar çıkması muhtemeldir (benim ve ailemin televizyonunda yok) eğer çıkarsa, kullandığınız yapay zeka aracından (antigravity (ÜCRETSİZDİR) veya claude desktop tavsiye ederim) ilgili sorunu çözmesini talep edebilirsiniz.
+Kurulum: `./install.sh --tv <TV_IP>` — ya da bir yapay zekâ ajanına "CineTV'yi televizyonuma kur" deyin
+([AGENTS.md](AGENTS.md)).
+
+### Kurulum
+
+**[📥 CineTV.apk'yı indir](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk)** · **[Adım adım kurulum rehberi (KURULUM.md)](KURULUM.md)**
+
+Beş yol var, hepsi rehberde ekran ekran anlatılıyor; en kolayından:
+
+1. **Sadece televizyonla**: Play Store'dan *Downloader* uygulamasını kurun, adres çubuğuna
+   `github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk` yazın, kurun, açın.
+2. **Windows'ta çift tıkla**: [CineTV-Kur.bat](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.bat)
+   dosyasını indirip çift tıklayın; televizyonun IP adresini sorar, gerisini kendisi yapar.
+3. **Mac'te çift tıkla**: [CineTV-Kur.command](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.command).
+4. **Bir yapay zekâya kurdurun** (Claude Desktop, Antigravity, Gemini, Cursor…): *"https://github.com/AlptugDag/cinetv-launcher
+   adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur"* deyin. Size soru sorup televizyonu size göre kurar.
+5. **Terminalden**: `git clone https://github.com/AlptugDag/cinetv-launcher && cd cinetv-launcher && ./install.sh`
+
+Hangi yolu seçerseniz seçin, televizyonda önce **Geliştirici seçenekleri › Ağ hata ayıklama** açık olmalı
+(rehberin 1. adımı). İlk açılışta televizyon *"hata ayıklamaya izin verilsin mi?"* diye sorarsa **Her zaman izin ver**'i
+işaretleyip **Tamam**'a basın: CineTV kendini ana ekran yapar ve telefon kumandasını hazırlar.
+
 
 ---
 
@@ -134,8 +199,13 @@ On first start, and from *Settings › Picture, sound & network tuning*:
   (a minute's warning first), and quiet hours keep the volume at 30 percent or less from 22:00 to 08:00.
 - **Long press** (or Menu) on an app: a glass bar under the tile to move, hide, uninstall or open its info.
 - **All apps** drawer in the same tiles, without system services.
-- **Themes**: Alptug Default, Liquid Glass, Aurora, Living Scenes, Royal Gold, Cinema Wall, OLED Black (true
-  black), and **your own background** sent from your phone. Dark, light or automatic by time of day.
+- **Themes, each a different room**: Alptug Default; Liquid Glass (clear glass drops over a cool scene);
+  Metallic (brushed titanium, chrome edges); Cinema Hall (velvet curtains, the lit screen, rows of seats);
+  DVD Store (wooden shelves of DVD spines, warm lamps, a neon sign); Neon Night (synthwave sun and grid);
+  OLED Black (true black). Panels and buttons take the room's material. All drawn by the app, so they cost
+  no download. Or **your own background** sent from your phone. Dark, light or automatic by time of day.
+- **Performance: Low, Medium, High, each adapting by itself** to what holds the TV back (graphics, memory,
+  processor), measured again while it runs; *Determine automatically* runs a short benchmark and picks one.
 - **Remote buttons**: Netflix opens Nuvio, YouTube opens ad-free YouTube, Prime opens phone casting; any
   button can be given any job.
 - **AirPods** (and other paired headphones) reconnect by themselves when you open the case. AirPlay and
@@ -161,11 +231,17 @@ TV. From then on it connects by itself.
   `<ip-with-dashes>.local-ip.sh`), and the plain address forwards there by itself.
 - **Installable**: an *Add to Home Screen* prompt turns it into an app icon.
 - **Discover**: trending titles; type to search, press Enter and the TV's shelf shows the same.
-- **A full TV remote that works in every app** (Nuvio, live TV, the TV's own menus): power, input, guide,
-  settings, D-pad, volume and channel rockers, number pad, media and colour keys, a sleep-timer button, and **typing from the
-  phone's keyboard** into whatever field is selected on the TV, Turkish letters included. Keys reach any app
-  through a small bridge CineTV starts on the TV itself; the TV asks once to allow it ("Always allow").
-- **Cast**: paste any video link or a page with a video; the TV finds the stream and plays it full screen.
+- **A full TV remote that works in every app** (Nuvio, live TV, the TV's own menus), on one screen in liquid
+  glass: a touchpad (swipe to move, tap for OK, hold for a long OK), volume and channel rockers, keyboard,
+  home, numbers, mute, voice and back; swipe the pad for input, guide, menu, info, media, subtitles, audio,
+  colour keys, sleep timer and screensaver. **Typing from the phone's keyboard** goes into whatever field is
+  selected on the TV, Turkish letters included. Double taps never zoom the page. **Power** (tap twice)
+  really switches the TV off; its own remote turns it on again. Keys reach any app through a small bridge
+  CineTV starts on the TV itself; the TV asks once to allow it ("Always allow").
+- **Cast**: paste any video link or a film page. The TV opens the page itself, presses play, follows the
+  player into its embedded frame, skips the ads and plays the film full screen.
+- **YouTube's "Send to TV"**: in the YouTube app on any phone on the same Wi-Fi, tap Cast and pick
+  *"<your TV> · YouTube"*: the video opens in ad-free TizenTube, and the phone controls it as usual.
 - **Background**: pick a photo and it becomes the backdrop of Home.
 - **Several CineTV TVs** on one network show up in a switcher.
 
@@ -175,8 +251,9 @@ TV. From then on it connects by itself.
 
 ## Install in one command
 
-On a computer on the same network as the TV (macOS, Linux, or Windows with WSL), with `adb` and `python3`
-installed:
+Five ways, from "only the TV" to "an AI does it", are in the step-by-step [install guide](KURULUM.md). The
+most complete one, on a computer on the same network as the TV (macOS, Linux, or Windows with WSL), with
+`adb` and `python3` installed:
 
 1. On the TV: *Settings › Device preferences › About*, press *Build* 7 times, then *Developer options ›
    Network debugging* on. Note the TV's IP address.
@@ -239,7 +316,8 @@ brand's own live TV app.
 ## Privacy and security
 
 - No analytics, no tracking, no crash reporting. Calls go only to TMDB, Cinemeta, the AI you chose, the
-  weather service and, for HTTPS on the phone page, local-ip.sh's public certificate.
+  weather service, Google Translate for a synopsis TMDB has only in English, the pages you cast and, for
+  HTTPS on the phone page, local-ip.sh's public certificate.
 - API keys live in an AES-256-GCM store whose key never leaves the TV's hardware keystore.
 - The phone server answers only phones you allowed on the TV, refuses other host names (DNS-rebinding
   guard), and will not fetch addresses on your home network for casting.
@@ -259,49 +337,6 @@ and are shrunk and obfuscated with R8.
 Code layout (`launcher/src/com/cinetv/launcher`): `ui/` what is drawn (shelf, cases, screensaver, panels,
 keyboard), `service/` apps, films, themes, secrets, `ai/` search and curation, `remote/` the phone page
 server, casting and HTTPS, `device/` keys, picture and sound, network, memory, AirPods, performance.
-
----
-
-## Türkçe
-
-**CineTV**, her Android TV, Google TV çubuğu ve Android projeksiyon için sinema odaklı bir ana ekran; ve
-**izleyen kişiye göre kurulur**. Kurulum önce seni tanır (dil, ülke, sevdiklerin, hiç izlemediklerin, spor,
-dizi kökenleri, anime, servisler, kalite, cihazlar), sonra sadece izleyeceklerini kurar: televizyonun dili,
-Nuvio eklentileri ve sana özel raflar (ör. sadece Türk dizileri, futbol belgeselleri, Kore dizileri), istersen
-ücretsiz canlı kanallar ve sadece ihtiyacın olan uygulamalar. Hiç izlemeyeceğin bir şey boşuna kurulmaz.
-Abone olduğun servislerin (Netflix, Disney+, TOD, Exxen…) uygulamaları ana ekrana gelir; anten, uydu, kablo
-ya da HDMI'deki alıcına göre Canlı TV kutucuğu doğru yeri açar (ya da hiç görünmez).
-Türkçe profillere Nuvio'da Anthology'nin izlediklerine uyan eklentileri gelir (film ve dizi kaynakları, anime
-kaynakları, seçtiği kanal türleri). Paralı kanalları taşıyan eklentileri (*Anthology Canlı Spor*, *Anthology Canlı
-TV*, *Anthology Sinema Kanalları*) kurulumda kapalı kalır; bunlar yalnızca elle, *Nuvio › Ayarlar › Eklentiler*
-bölümünden açılabilir.
-
-**DVD Rafı**: Ana ekranda, gün içinde farklı farklı filmlerin -konum, saat hava durumu gibi ögelere göre- önerildiği dvd kutusunda listelendiği, bir kez basınca kutunun açılıp iç kapağındaki Türkçe film özetinin okunduğu, bir kez daha basınca cdnin dönüp ilgili filmin nuvio'da açıldığı bir tasarım benimsedim.
-
-**Arama**: "Takeshi Kitano filmleri", "araba temalı filmler", "kızı kaçırılan baba filmleri", dizi aramaları yaptığınızda vitrini doğrudan bunlarla dolduracak ve "Türkiye'nin yüz ölçümü kaçtır?" gibi dilediğiniz soruları cevaplayabilecek; Gemini, Claude, Grok, OpenAI anahtarıyla çalışan, sesli aramayı da destekleyen bir search bar ekledim.
-
-**Ekran koruyucu**: filmlerin sahneleri ve repliklerinden oluşan dinamik bir ekran koruyucu, 35 mm film şeridi geçişiyle.
-
-**Görüntü, ses ve ağ**: Ağ hızınızı ve donanımınızı tespit edip hem nuvio yayın ayarlarınızı hem televizyonunuzun ağ, ses ve görüntü ayarlarını; televizyonunuzun sunabileceği (Dolby, hdr, 4k...) en kusursuz sinema deneyimine göre optimize edecek, var olan youtube uygulamanızı reklamsıza çevirip cihaz çapında reklam engelleyecek düzenlemeler yaptım.
-
-**Telefondan kontrol**: Sadece basit bir qr kod kullanarak, tvniz ile aynı ağa bağlı telefonunuzu kumanda olarak kullanabilir, nuvio aramalarınızı onun içerisinden gerçekleştirip tvde anında oynatabilir, tv arka planınızı değiştirebilir veya web adresleri girerek video cast edebilirsiniz. (Ayrıca airplay ve airpods desteği de var)
-
-**Canlı TV**: Tuneri olan televizyonlarda ana ekrandaki Canlı TV kutucuğu televizyonun kendi kanallarını açar; Ayarlar › Ana ekranda TV kanalları ile kapatılır.
-
-**Kaynaklar İsimli**: Kaynak tuşu, HDMI'ye takılı cihazın adıyla ("PlayStation 5", "Digiturk") girişleri listeler.
-
-**Güvenli sadeleştirme** özelliği olduğundan, televizyonunuzla birlikte gelen gereksiz tüm servislerden, izleyicilerden, kısacası yavaşlatan her şeyden kurtulabilirsiniz ve buna ek olarak, uygun cihazlarda sanal ram oluşturup daha da ferahlatır.
-
-Beğenmediğiniz takdirde, ayar menüsündeki **CineTV'yi yok et!** tuşu ile her şeyi geri almanız da mümkün tabii.
-
-Tüm bunların kurulumu sırasında, eğer bir yapay zekaya kurdurursanız size çeşitli sorular sorup tarzınızı analiz edecek ve tüm ayarlarınızı, eklenti ve uzantılarınızı ona göre düzenleyecek.
-Örneğin sadece anime izlemek, sadece spor kanalları izlemek ya da asla film görmemek gibi şeyler istiyorsanız, tamamen size göre bir kurulum yapacak (Ben en başından kendime göre kurduğum için bu kısmı tam test etme şansım olmadı)
-
-Film, dizi, canlı tv içeriklerine ek olarak canlı spor kanallarını da otomatik olarak ekliyor çeşitli eklentiler sayesinde ama deaktif bırakıyor etik dışı olduğunu düşündüğünden, onları nuvio ayarlarından manuel olarak etkinleştirebilirsiniz.
-
-***Projede hatalar çıkması muhtemeldir (benim ve ailemin televizyonunda yok) eğer çıkarsa, kullandığınız yapay zeka aracından (antigravity (ÜCRETSİZDİR) veya claude desktop tavsiye ederim) ilgili sorunu çözmesini talep edebilirsiniz.
-Kurulum: `./install.sh --tv <TV_IP>` — ya da bir yapay zekâ ajanına "CineTV'yi televizyonuma kur" deyin
-([AGENTS.md](AGENTS.md)).
 
 ---
 

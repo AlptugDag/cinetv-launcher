@@ -47,9 +47,11 @@ android {
         def ver = (project.findProperty('cineTvVersion') ?: '1.0.0').toString().replaceFirst('^v', '')
         def parts = ver.tokenize('.').collect { it.replaceAll('[^0-9]', '') as int }
         versionName ver
-        // Numbering restarted at 1.0.0 after 3.2.0: the 100000 base keeps codes above the old builds', so
+        // Numbering restarted at 1.0.0 after 3.2.0: the 1000000 base keeps codes above every older build's, so
         // TVs that had them still take updates (Android refuses a lower code without wiping the app's data).
-        versionCode 100000 + parts[0] * 10000 + (parts.size() > 1 ? parts[1] : 0) * 100 + (parts.size() > 2 ? parts[2] : 0)
+        // A fourth part counts small fixes: 1.0.0.1 = 1100001.
+        def part = { i -> parts.size() > i ? parts[i] : 0 }
+        versionCode 1000000 + part(0) * 100000 + part(1) * 1000 + part(2) * 10 + part(3)
     }
 
     sourceSets {

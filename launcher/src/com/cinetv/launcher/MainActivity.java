@@ -206,7 +206,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.shelf.post(() -> {
             home.shelf.requestFocus();
             // Real frame times decide whether this TV keeps its effects (auto mode only).
-            PerformanceProfile.watchFrames(this, 6000, this::recreate);
+            // The mode stays; its effects adapt to what holds this TV back, in place (no rebuild of Home).
+            PerformanceProfile.watchFrames(this, 6000, () -> home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this)));
         });
         handleIntent(getIntent());
         if (!Prefs.get(this).getBoolean(Prefs.FIRST_SETUP_DONE, false)) {
@@ -235,6 +236,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         refreshWeather();
         loadApps(false);
         MemoryOptimizer.sweepAsync(this);
+        PerformanceProfile.noteMemory(this);
         resetIdle();
         // Back on Home after a while: a fresh selection for the moment.
         if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > SHELF_EVERY_MS) refreshShelf();
@@ -830,7 +832,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void onPerformanceChanged() {
-        handler.postDelayed(this::recreate, 300);
+        // in place: rebuilding the activity is what let the TV's old launcher step in on some TVs
+        handler.postDelayed(() -> {
+            home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this));
+            loadApps(true);
+            refreshShelf();
+        }, 300);
     }
 
     @Override

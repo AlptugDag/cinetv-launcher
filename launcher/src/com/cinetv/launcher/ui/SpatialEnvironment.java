@@ -83,14 +83,17 @@ public class SpatialEnvironment extends View {
     public void apply(ThemeManager.Theme theme, boolean light) {
         this.theme = theme;
         this.light = light;
-        composited = PerformanceProfile.tier(getContext()) != PerformanceProfile.Tier.HIGH;
+        composited = PerformanceProfile.compositedBackdrop(getContext());
         focusLight = PerformanceProfile.focusLight(getContext()) && theme.wash && !theme.pureBlack;
         if (ThemeManager.usesCustomWallpaper(getContext())) {
             wallpaper = android.graphics.BitmapFactory.decodeFile(ThemeManager.customWallpaper(getContext()).getPath());
+        } else if (theme.scene != null) {
+            wallpaper = ThemeArt.render(getContext(), theme.scene);
         } else {
             String wp = ThemeManager.wallpaperNow(theme);
             wallpaper = wp == null ? null : PosterCache.decodeAsset(getContext(), wp, 1280, 720);
         }
+        Glass.material = theme.material;
         pattern = null;
         roomGradient = null;
         if (getWidth() > 0) rebuild(getWidth(), getHeight());

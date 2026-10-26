@@ -425,19 +425,41 @@ public class HomeScreen {
             note.setMaxWidth(UiKit.px(1100));
             col.addView(note);
         }
-        f.addView(col, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+        // Full width: a column only as wide as the signature cut the words to "Cin" and "by Alptuğ"
+        f.addView(col, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
         return f;
     }
 
+    /** The signature is written left to right, "CineTV" types itself in, then "by Alptuğ Dağ" rises. */
     public void showSplash() {
         splash.setVisibility(View.VISIBLE);
         splash.setAlpha(1f);
-        View content = splash.getChildAt(0);
-        content.setAlpha(0f);
-        content.setScaleX(0.94f);
-        content.setScaleY(0.94f);
-        content.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(520).start();
-        splash.animate().alpha(0f).setStartDelay(1700).setDuration(520)
+        LinearLayout col = (LinearLayout) splash.getChildAt(0);
+        final View mark = col.getChildAt(0);
+        final TextView word = (TextView) col.getChildAt(1);
+        final View by = col.getChildAt(2);
+        final CharSequence full = Brand.wordmark();
+        by.setAlpha(0f);
+        by.setTranslationY(UiKit.px(18));
+        android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        a.setDuration(1500);
+        a.setInterpolator(new android.view.animation.DecelerateInterpolator());
+        a.addUpdateListener(v -> {
+            float t = (float) v.getAnimatedValue();
+            float sig = Math.min(1f, t / 0.55f);
+            mark.setClipBounds(new android.graphics.Rect(0, 0, Math.round(mark.getWidth() * sig), mark.getHeight()));
+            // letters appear one by one; the hidden rest stays laid out so the word does not shift
+            int shown = Math.round(Math.max(0f, (t - 0.35f) / 0.45f) * full.length());
+            android.text.SpannableString s = new android.text.SpannableString(full.toString());
+            for (int i = 0; i < full.length(); i++) {
+                int c = i >= shown ? Color.TRANSPARENT : i >= 4 ? Brand.TV_RED : UiKit.INK;
+                s.setSpan(new android.text.style.ForegroundColorSpan(c), i, i + 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            word.setText(s);
+        });
+        a.start();
+        by.animate().alpha(1f).translationY(0f).setStartDelay(1150).setDuration(520).start();
+        splash.animate().alpha(0f).setStartDelay(2600).setDuration(520)
                 .withEndAction(() -> splash.setVisibility(View.GONE)).start();
     }
 

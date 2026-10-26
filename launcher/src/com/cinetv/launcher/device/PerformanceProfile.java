@@ -2,6 +2,13 @@ package com.cinetv.launcher.device;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.graphics.Shader;
 import android.util.Log;
 import android.view.Choreographer;
 
@@ -9,26 +16,37 @@ import com.cinetv.launcher.service.Prefs;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.security.MessageDigest;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Picks how much visual work the TV can afford, so the same APK runs smoothly on a 1 GB stick
- * and looks its best on a flagship set.
+ * How much visual work the TV can afford. Three modes, Low, Medium and High, and each one adapts by
+ * itself to what holds this TV back:
  *
- * The tier is estimated from RAM, CPU cores and clock at start-up, then corrected at runtime:
- * {@link #watchFrames} samples real frame times while the home screen animates and steps the
- * tier down (persistently) when too many frames miss the 60 Hz budget. Users can pin a tier
- * in Settings (Auto / Eco / Max).
+ *   graphics   frames miss the 60 Hz budget          softer blur, one-quad backdrop, shorter animations
+ *   memory     little RAM free (or a low-RAM device)  fewer films on the shelf, smaller caches
+ *   processor  slow cores                              fewer films, no focus light on Low
+ *
+ * The limits are measured again and again while CineTV runs (frame times while Home animates, free
+ * memory on every return to Home) and can also clear again, so a TV that was busy once is not stuck
+ * on the lightest look. "Determine automatically" runs a short benchmark (processor, drawing, memory)
+ * and picks the mode.
  */
 public final class PerformanceProfile {
 
     public enum Tier { LOW, MID, HIGH }
 
+    public static final String MODE_LOW = "low";
+    public static final String MODE_MID = "mid";
+    public static final String MODE_HIGH = "high";
+    /** No mode chosen yet: a quick guess from the hardware until the benchmark has run. */
     public static final String MODE_AUTO = "auto";
-    public static final String MODE_ECO = "eco";
-    public static final String MODE_MAX = "max";
+
+    public static final int LIMIT_GPU = 1, LIMIT_RAM = 2, LIMIT_CPU = 4;
 
     private static final String KEY_MODE = "perf_mode";
-    private static final String KEY_DEMOTED = "perf_demoted_tier";
+    private static final String KEY_LIMITS = "perf_limits";
+    private static final String KEY_SMOOTH_RUNS = "perf_smooth_runs";
     private static final String TAG = "CineTvPerf";
 
     private static Tier cached;
@@ -38,24 +56,29 @@ public final class PerformanceProfile {
     public static synchronized Tier tier(Context ctx) {
         if (cached != null) return cached;
         String mode = mode(ctx);
-        if (MODE_ECO.equals(mode)) cached = Tier.LOW;
-        else if (MODE_MAX.equals(mode)) cached = Tier.HIGH;
-        else {
-            Tier detected = detect(ctx);
-            int demoted = Prefs.get(ctx).getInt(KEY_DEMOTED, -1);
-            cached = demoted >= 0 && demoted < detected.ordinal() ? Tier.values()[demoted] : detected;
-        }
-        Log.i(TAG, "Performance tier " + cached + " (mode " + mode + ")");
+        if (MODE_LOW.equals(mode)) cached = Tier.LOW;
+        else if (MODE_MID.equals(mode)) cached = Tier.MID;
+        else if (MODE_HIGH.equals(mode)) cached = Tier.HIGH;
+        else cached = detect(ctx);
+        Log.i(TAG, "Performance " + cached + " (mode " + mode + ", limits " + limits(ctx) + ")");
         return cached;
     }
 
+    /** low, mid, high, or auto before a choice; the older eco / max read as low / high. */
     public static String mode(Context ctx) {
-        return Prefs.get(ctx).getString(KEY_MODE, MODE_AUTO);
+        String m = Prefs.get(ctx).getString(KEY_MODE, MODE_AUTO);
+        if ("eco".equals(m)) return MODE_LOW;
+        if ("max".equals(m)) return MODE_HIGH;
+        return m;
     }
 
     public static synchronized void setMode(Context ctx, String mode) {
-        Prefs.get(ctx).edit().putString(KEY_MODE, mode).remove(KEY_DEMOTED).apply();
+        Prefs.get(ctx).edit().putString(KEY_MODE, mode).remove(KEY_LIMITS).remove(KEY_SMOOTH_RUNS).apply();
         cached = null;
+    }
+
+    public static String modeFor(Tier t) {
+        return t == Tier.LOW ? MODE_LOW : t == Tier.HIGH ? MODE_HIGH : MODE_MID;
     }
 
     /** What this TV's hardware suggests, whatever mode is chosen. */
@@ -63,16 +86,29 @@ public final class PerformanceProfile {
         return detect(ctx);
     }
 
-    /** Heuristic from hardware facts; deliberately conservative because TV SoCs throttle. */
+    /** What currently holds this TV back (LIMIT_* bits), as measured while it runs. */
+    public static int limits(Context ctx) {
+        return Prefs.get(ctx).getInt(KEY_LIMITS, 0);
+    }
+
+    private static boolean limited(Context ctx, int bit) {
+        return (limits(ctx) & bit) != 0;
+    }
+
+    private static void setLimit(Context ctx, int bit, boolean on) {
+        int now = limits(ctx);
+        int next = on ? now | bit : now & ~bit;
+        if (next != now) Prefs.get(ctx).edit().putInt(KEY_LIMITS, next).apply();
+    }
+
     static Tier detect(Context ctx) {
         ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
         ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
         if (am != null) am.getMemoryInfo(mi);
         long ramMb = mi.totalMem / (1024 * 1024);
         int cores = Runtime.getRuntime().availableProcessors();
-        int maxMhz = maxCpuMhz();
         boolean lowRam = am != null && am.isLowRamDevice();
-        return classify(ramMb, cores, maxMhz, lowRam);
+        return classify(ramMb, cores, maxCpuMhz(), lowRam);
     }
 
     /** Pure function so it can be unit-tested off-device. */
@@ -95,38 +131,168 @@ public final class PerformanceProfile {
         return best;
     }
 
-    // ---- Feature switches derived from the tier ------------------------------------------------
+    // ---- "Determine automatically" ----------------------------------------------------------------
 
-    /** Frosted glass samples a pre-blurred bitmap: one textured quad, so every tier can afford it. */
-    public static boolean frostedGlass(Context ctx) { return true; }
-
-    /** The focused item's neon wash on the room: two textured quads, so every tier keeps it. */
-    public static boolean focusLight(Context ctx) { return true; }
-
-    public static int animationMs(Context ctx, int base) {
-        return tier(ctx) == Tier.LOW ? base * 2 / 3 : base;
+    public static final class Result {
+        public Tier tier;
+        public int cpuScore, drawScore, freeRamMb, totalRamMb, limits;
     }
 
-    /** Films on the shelf: 20 / 18 / 14 by tier. Weak TVs also draw them as flat covers. */
-    public static int shelfSize(Context ctx) {
-        switch (tier(ctx)) {
-            case LOW: return 14;
-            case MID: return 18;
-            default: return 20;
+    /**
+     * A ~2 s benchmark (call off the main thread): hashing on every core, drawing a frame's worth of
+     * gradients and pictures, and memory. Picks Low, Medium or High, records what holds the TV back,
+     * and switches to that mode.
+     */
+    public static Result benchmark(Context ctx) {
+        Result r = new Result();
+        r.cpuScore = cpuScore();
+        r.drawScore = drawScore();
+        ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+        if (am != null) am.getMemoryInfo(mi);
+        r.totalRamMb = (int) (mi.totalMem / (1024 * 1024));
+        r.freeRamMb = (int) (mi.availMem / (1024 * 1024));
+        boolean lowRam = am != null && am.isLowRamDevice();
+        r.tier = pick(r.cpuScore, r.drawScore, r.totalRamMb, r.freeRamMb, lowRam);
+        r.limits = (r.drawScore < 60 ? LIMIT_GPU : 0) | (lowRam || r.freeRamMb < 450 ? LIMIT_RAM : 0) | (r.cpuScore < 90 ? LIMIT_CPU : 0);
+        setMode(ctx, modeFor(r.tier));
+        Prefs.get(ctx).edit().putInt(KEY_LIMITS, r.limits).apply();
+        Log.i(TAG, "Benchmark cpu " + r.cpuScore + " draw " + r.drawScore + " ram " + r.freeRamMb + "/" + r.totalRamMb + " -> " + r.tier);
+        return r;
+    }
+
+    /** Pure function so it can be unit-tested off-device. Scores are roughly 100 for a mid-range 2020 TV. */
+    public static Tier pick(int cpu, int draw, int totalRamMb, int freeRamMb, boolean lowRam) {
+        if (lowRam || totalRamMb < 1400 || freeRamMb < 250) return Tier.LOW;
+        int weakest = Math.min(cpu, draw);
+        if (weakest < 60) return Tier.LOW;
+        if (weakest >= 160 && totalRamMb >= 2800 && freeRamMb >= 700) return Tier.HIGH;
+        return Tier.MID;
+    }
+
+    private static int cpuScore() {
+        final int threads = Math.max(1, Math.min(8, Runtime.getRuntime().availableProcessors()));
+        final AtomicLong rounds = new AtomicLong();
+        final long end = System.nanoTime() + 500_000_000L;
+        Thread[] ts = new Thread[threads];
+        for (int i = 0; i < threads; i++) {
+            ts[i] = new Thread(() -> {
+                try {
+                    MessageDigest md = MessageDigest.getInstance("SHA-256");
+                    byte[] buf = new byte[4096];
+                    while (System.nanoTime() < end) {
+                        md.update(buf);
+                        buf[0] = md.digest()[0];
+                        rounds.incrementAndGet();
+                    }
+                } catch (Throwable ignored) {
+                }
+            });
+            ts[i].start();
+        }
+        for (Thread t : ts) {
+            try {
+                t.join();
+            } catch (InterruptedException ignored) {
+            }
+        }
+        return (int) (rounds.get() / 150); // ~100 on a quad-core A55 at 1.5 GHz
+    }
+
+    private static int drawScore() {
+        try {
+            Bitmap target = Bitmap.createBitmap(960, 540, Bitmap.Config.ARGB_8888);
+            Bitmap sprite = Bitmap.createBitmap(240, 360, Bitmap.Config.ARGB_8888);
+            new Canvas(sprite).drawColor(Color.rgb(120, 60, 200));
+            Canvas c = new Canvas(target);
+            Paint g = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+            RectF r = new RectF();
+            int frames = 0;
+            long end = System.nanoTime() + 600_000_000L;
+            while (System.nanoTime() < end) {
+                for (int i = 0; i < 24; i++) {
+                    r.set(i * 36, (i % 4) * 120, i * 36 + 200, (i % 4) * 120 + 300);
+                    g.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom, 0x40FFFFFF, 0x10000000, Shader.TileMode.CLAMP));
+                    c.drawRoundRect(r, 24, 24, g);
+                    g.setShader(null);
+                    c.drawBitmap(sprite, null, r, g);
+                }
+                frames++;
+            }
+            target.recycle();
+            sprite.recycle();
+            return frames * 4; // ~100 on a mid-range TV
+        } catch (Throwable t) {
+            return 50;
         }
     }
 
-    /** Downscale factor for the blurred environment bitmap. */
-    public static int blurDownscale(Context ctx) { return tier(ctx) == Tier.HIGH ? 8 : 12; }
+    // ---- Runtime adaptation -----------------------------------------------------------------------
 
-    // ---- Runtime frame watchdog ---------------------------------------------------------------
+    /** On every return to Home: is memory tight right now? (Clears again once it is not.) */
+    public static void noteMemory(Context ctx) {
+        try {
+            ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+            ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+            if (am == null) return;
+            am.getMemoryInfo(mi);
+            boolean tight = am.isLowRamDevice() || mi.lowMemory || mi.availMem < 350L * 1024 * 1024;
+            boolean before = limited(ctx, LIMIT_RAM);
+            if (tight != before) {
+                setLimit(ctx, LIMIT_RAM, tight);
+                synchronized (PerformanceProfile.class) {
+                    cached = null;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    // ---- Feature switches: the mode, then what holds this TV back ---------------------------------
+
+    /** Frosted glass samples a pre-blurred bitmap: one textured quad, so every mode can afford it. */
+    public static boolean frostedGlass(Context ctx) { return true; }
+
+    /** The focused item's light on the room: off only on Low when graphics or the processor struggle. */
+    public static boolean focusLight(Context ctx) {
+        return !(tier(ctx) == Tier.LOW && (limited(ctx, LIMIT_GPU) || limited(ctx, LIMIT_CPU)));
+    }
+
+    public static int animationMs(Context ctx, int base) {
+        int ms = tier(ctx) == Tier.LOW ? base * 2 / 3 : base;
+        return limited(ctx, LIMIT_GPU) ? ms * 4 / 5 : ms;
+    }
+
+    /** Films on the shelf: 14 / 18 / 20 by mode, four fewer when memory or the processor is short. */
+    public static int shelfSize(Context ctx) {
+        int n;
+        switch (tier(ctx)) {
+            case LOW: n = 14; break;
+            case MID: n = 18; break;
+            default: n = 20;
+        }
+        if (limited(ctx, LIMIT_RAM) || limited(ctx, LIMIT_CPU)) n -= 4;
+        return n;
+    }
+
+    /** Downscale factor for the blurred environment bitmap: coarser when graphics are the bottleneck. */
+    public static int blurDownscale(Context ctx) {
+        int d = tier(ctx) == Tier.HIGH ? 8 : tier(ctx) == Tier.MID ? 12 : 16;
+        return limited(ctx, LIMIT_GPU) ? d + 4 : d;
+    }
+
+    /** The backdrop drawn from one pre-composited bitmap (one quad a frame) instead of live layers. */
+    public static boolean compositedBackdrop(Context ctx) {
+        return tier(ctx) != Tier.HIGH || limited(ctx, LIMIT_GPU);
+    }
+
+    // ---- Frame watchdog ---------------------------------------------------------------------------
 
     /**
-     * Samples frames for {@code durationMs}; if more than a quarter take longer than ~2 vsyncs the
-     * tier is lowered for good (until the user picks a mode again). Call while the UI animates.
+     * Samples frames for {@code durationMs} while Home animates. Too many slow frames marks graphics as
+     * the bottleneck (the mode stays; its effects lighten); three smooth runs in a row clear it again.
      */
-    public static void watchFrames(final Context ctx, final long durationMs, final Runnable onDemoted) {
-        if (!MODE_AUTO.equals(mode(ctx)) || tier(ctx) == Tier.LOW) return;
+    public static void watchFrames(final Context ctx, final long durationMs, final Runnable onChanged) {
         final Choreographer ch = Choreographer.getInstance();
         ch.postFrameCallback(new Choreographer.FrameCallback() {
             long start, last;
@@ -146,16 +312,28 @@ public final class PerformanceProfile {
                     ch.postFrameCallback(this);
                     return;
                 }
-                if (frames > 30 && slow * 4 > frames) {
-                    Tier now = tier(ctx);
-                    Tier lower = Tier.values()[Math.max(0, now.ordinal() - 1)];
-                    Prefs.get(ctx).edit().putInt(KEY_DEMOTED, lower.ordinal()).apply();
-                    synchronized (PerformanceProfile.class) {
-                        cached = lower;
-                    }
-                    Log.i(TAG, "Frame watchdog: " + slow + "/" + frames + " slow frames, tier " + now + " -> " + lower);
-                    if (onDemoted != null) onDemoted.run();
+                if (frames < 30) return;
+                boolean struggling = slow * 4 > frames;
+                boolean was = limited(ctx, LIMIT_GPU);
+                int smooth = Prefs.get(ctx).getInt(KEY_SMOOTH_RUNS, 0);
+                if (struggling) {
+                    Prefs.get(ctx).edit().putInt(KEY_SMOOTH_RUNS, 0).apply();
+                    if (!was) changed();
+                } else if (was) {
+                    smooth++;
+                    Prefs.get(ctx).edit().putInt(KEY_SMOOTH_RUNS, smooth).apply();
+                    if (smooth >= 3) changed();
                 }
+                Log.i(TAG, "Frames: " + slow + "/" + frames + " slow, graphics limit " + limited(ctx, LIMIT_GPU));
+            }
+
+            private void changed() {
+                setLimit(ctx, LIMIT_GPU, !limited(ctx, LIMIT_GPU));
+                Prefs.get(ctx).edit().putInt(KEY_SMOOTH_RUNS, 0).apply();
+                synchronized (PerformanceProfile.class) {
+                    cached = null;
+                }
+                if (onChanged != null) onChanged.run();
             }
         });
     }

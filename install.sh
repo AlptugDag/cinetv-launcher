@@ -11,7 +11,7 @@
 #   --apk FILE            Install this APK instead of downloading the latest release.
 #   --version vX.Y.Z      Download this release instead of the latest.
 #   --city NAME           City for the weather next to the clock.
-#   --theme ID            cinetv (Alptug Default) | glass | aurora | scenes | dussehra (Royal Gold) | six-columns (Cinema Wall) | oled
+#   --theme ID            cinetv (Alptug Default) | glass (Liquid Glass) | metal (Metallic) | cinema (Cinema Hall) | dvdstore (DVD Store) | neon (Neon Night) | oled
 #   --debloat             Disable the TV's bloatware (reversible, never touches TV core).
 #   --youtube             Install ad-free YouTube (TizenTube) and retire the stock app (reversible).
 #   --profile FILE        Set the TV up from saved interview answers (cinetv-profile.json, see AGENTS.md).
@@ -184,7 +184,7 @@ fi
 
 # --- 4. questions ----------------------------------------------------------------------------------
 [ -n "$CITY" ] || CITY=$(ask "City for the weather (empty = automatic)" "")
-[ -n "$THEME" ] || THEME=$(ask "Theme: cinetv, glass, aurora, scenes, dussehra, six-columns, oled" "cinetv")
+[ -n "$THEME" ] || THEME=$(ask "Theme: cinetv, glass, metal, cinema, dvdstore, neon, oled" "cinetv")
 if [ -z "$PROFILE" ]; then
     if [ "$YOUTUBE" = 0 ] && [ "$(ask "Install ad-free YouTube (TizenTube)? y/n" "y")" = "y" ] && [ "$YES" = 0 ]; then YOUTUBE=1; fi
     if [ "$APPS" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Install Nuvio, Nova Video Player and the AirPlay receiver? y/n" "y")" = "y" ]; then APPS=1; fi
@@ -224,6 +224,8 @@ case "$CURRENT" in *"$KEY_SERVICE"*) ;; null|"") tv settings put secure enabled_
 tv settings put secure accessibility_enabled 1
 tv settings put secure screensaver_enabled 1
 tv settings put secure screensaver_components "$DREAM"
+# dream when idle instead of going straight to standby
+tv settings put secure screensaver_activate_on_sleep 1
 ok "Remote buttons and screensaver configured"
 
 [ -z "$CITY" ] || { tv settings put global cinetv_city "\"$CITY\""; ok "Weather city: $CITY"; }

@@ -226,8 +226,9 @@ public final class Panels {
     }
 
     private static int perfModeRes(String m) {
-        if (PerformanceProfile.MODE_ECO.equals(m)) return R.string.perf_eco;
-        if (PerformanceProfile.MODE_MAX.equals(m)) return R.string.perf_max;
+        if (PerformanceProfile.MODE_LOW.equals(m)) return R.string.perf_low;
+        if (PerformanceProfile.MODE_MID.equals(m)) return R.string.perf_mid;
+        if (PerformanceProfile.MODE_HIGH.equals(m)) return R.string.perf_high;
         return R.string.perf_auto;
     }
 
@@ -241,16 +242,16 @@ public final class Panels {
 
     // ---- Performance --------------------------------------------------------------------------------
 
-    /** A deliberate choice, never a cycling tap: Maximum on a weak TV would hurt. */
+    /** Low, Medium or High, each adapting by itself; or a benchmark picks one. */
     private static View buildPerformancePicker(final Context ctx, final ModalHost host, final Actions a) {
-        LinearLayout root = new LinearLayout(ctx);
+        final LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
         root.addView(Controls.header(ctx, ctx.getString(R.string.performance)));
         String current = PerformanceProfile.mode(ctx);
         String[][] modes = {
-                {PerformanceProfile.MODE_AUTO, ctx.getString(R.string.perf_auto), ctx.getString(R.string.perf_auto_hint, ctx.getString(tierRes(PerformanceProfile.detectedTier(ctx))))},
-                {PerformanceProfile.MODE_ECO, ctx.getString(R.string.perf_eco), ctx.getString(R.string.perf_eco_hint)},
-                {PerformanceProfile.MODE_MAX, ctx.getString(R.string.perf_max), ctx.getString(R.string.perf_max_hint)}};
+                {PerformanceProfile.MODE_LOW, ctx.getString(R.string.perf_low), ctx.getString(R.string.perf_low_hint)},
+                {PerformanceProfile.MODE_MID, ctx.getString(R.string.perf_mid), ctx.getString(R.string.perf_mid_hint)},
+                {PerformanceProfile.MODE_HIGH, ctx.getString(R.string.perf_high), ctx.getString(R.string.perf_high_hint)}};
         for (final String[] m : modes) {
             root.addView(Controls.tile(ctx, m[1], m[2], m[0].equals(current), v -> {
                 host.back();
@@ -259,7 +260,25 @@ public final class Panels {
                 a.onPerformanceChanged();
             }));
         }
-        root.setLayoutParams(new LinearLayout.LayoutParams(UiKit.px(640), ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(Controls.tile(ctx, ctx.getString(R.string.perf_detect),
+                ctx.getString(R.string.perf_detect_hint, ctx.getString(tierRes(PerformanceProfile.detectedTier(ctx)))), false, v -> {
+                    final TextView status = UiKit.label(ctx, 24, UiKit.INK_DIM);
+                    status.setText(R.string.perf_detecting);
+                    status.setPadding(0, UiKit.px(18), 0, 0);
+                    root.addView(status);
+                    new Thread(() -> {
+                        final PerformanceProfile.Result r = PerformanceProfile.benchmark(ctx);
+                        status.post(() -> {
+                            status.setText(ctx.getString(R.string.perf_detected, ctx.getString(perfModeRes(PerformanceProfile.modeFor(r.tier))),
+                                    r.cpuScore, r.drawScore, r.freeRamMb, r.totalRamMb));
+                            status.postDelayed(() -> {
+                                host.back();
+                                a.onPerformanceChanged();
+                            }, 2500);
+                        });
+                    }, "cinetv-perf").start();
+                }));
+        root.setLayoutParams(new LinearLayout.LayoutParams(UiKit.px(680), ViewGroup.LayoutParams.WRAP_CONTENT));
         return root;
     }
 

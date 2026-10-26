@@ -436,7 +436,10 @@ public final class MovieCatalog {
 
     /** Synopsis, director and a backdrop for the inside of the DVD case. Blocks; fills what it can. */
     public static Movie details(Context ctx, Movie m) {
-        if (!hasTmdb(ctx)) return m;
+        if (!hasTmdb(ctx)) {
+            m.overview = localized(m.overview); // Cinemeta writes in English only
+            return m;
+        }
         try {
             String kind = "series".equals(m.type) ? "tv" : "movie";
             int id = m.tmdbId;
@@ -451,6 +454,8 @@ public final class MovieCatalog {
             String overview = d.optString("overview", "").trim();
             if (overview.isEmpty()) overview = tmdb(ctx, kind + "/" + id + "?language=en-US").optString("overview", "").trim();
             if (!overview.isEmpty()) m.overview = overview;
+            // TMDB has no synopsis in this language for many films: the English one, translated
+            m.overview = localized(m.overview);
             String backdrop = d.optString("backdrop_path", "");
             if (!backdrop.isEmpty() && !"null".equals(backdrop)) m.backdropUrl = TMDB_IMG + "w780" + backdrop;
             m.director = "";
@@ -469,6 +474,44 @@ public final class MovieCatalog {
             Log.w(TAG, "Details failed: " + t.getMessage());
         }
         return m;
+    }
+
+    private static final java.util.Map<String, String> translated = java.util.Collections.synchronizedMap(
+            new java.util.LinkedHashMap<String, String>(64, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(java.util.Map.Entry<String, String> e) {
+                    return size() > 200;
+                }
+            });
+    private static final java.util.regex.Pattern ENGLISH = java.util.regex.Pattern.compile(
+            "(?i)\\b(the|and|of|is|his|her|their|with|when|after|who|must|from|into)\\b");
+
+    /** An English synopsis in the TV's language (Turkish on a Turkish TV); unchanged when it already is, or offline. */
+    static String localized(String text) {
+        String lang = Locale.getDefault().getLanguage();
+        if (text == null || text.trim().isEmpty() || "en".equals(lang)) return text;
+        java.util.regex.Matcher m = ENGLISH.matcher(text);
+        int hits = 0;
+        while (m.find() && hits < 4) hits++;
+        if (hits < 3) return text; // not English
+        String key = lang + ":" + text;
+        String done = translated.get(key);
+        if (done != null) return done;
+        try {
+            String url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=" + lang + "&dt=t&q=" + enc(text);
+            JSONArray parts = new JSONArray(Http.getText(url, null, TIMEOUT)).getJSONArray(0);
+            StringBuilder b = new StringBuilder();
+            for (int i = 0; i < parts.length(); i++) {
+                JSONArray p = parts.optJSONArray(i);
+                if (p != null && !p.isNull(0)) b.append(p.optString(0));
+            }
+            String out = b.toString().trim();
+            if (out.isEmpty()) return text;
+            translated.put(key, out);
+            return out;
+        } catch (Throwable t) {
+            return text;
+        }
     }
 
     /** The film's official tagline in the device language, or null when TMDB has none. */

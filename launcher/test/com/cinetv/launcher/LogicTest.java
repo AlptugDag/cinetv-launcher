@@ -80,10 +80,11 @@ public class LogicTest {
     @Test
     public void themesResolveSafely() {
         assertEquals("cinetv", ThemeManager.byId("does-not-exist").id);
-        assertEquals("aurora", ThemeManager.byId("AURORA").id);
+        assertEquals("metal", ThemeManager.byId("AURORA").id);
+        assertEquals("dvdstore", ThemeManager.byId("scenes").id);
         assertEquals(ThemeManager.MODE_AUTO, ThemeManager.nextAppearance(ThemeManager.MODE_DARK));
         assertNull("the signature theme is procedural", ThemeManager.wallpaperNow(ThemeManager.byId("cinetv")));
-        assertTrue(ThemeManager.wallpaperNow(ThemeManager.byId("scenes")).startsWith("themes/scenes/"));
+        assertEquals("cinema", ThemeManager.byId("cinema").scene);
     }
 
     @Test

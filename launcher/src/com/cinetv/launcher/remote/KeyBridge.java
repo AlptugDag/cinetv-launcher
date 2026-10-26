@@ -35,6 +35,11 @@ public final class KeyBridge {
         return send(ctx, "t " + text.replace('\n', ' '));
     }
 
+    /** Shuts the TV down for real (the power key only puts the panel to sleep on many TVs). */
+    public static synchronized boolean powerOff(Context ctx) {
+        return send(ctx, "o -");
+    }
+
     /** Starts the bridge ahead of time (call off the main thread), e.g. when CineTV starts. */
     public static synchronized void warmUp(Context ctx) {
         connect(ctx, true);

@@ -11,8 +11,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Themes are environments, as on visionOS: a backdrop, an ambient palette and a density. Every theme
- * keeps the same CineTV home (DVD shelf, AI search, spatial depth, screensaver); only the scenery changes.
+ * Themes are rooms: each has its own scenery (drawn by the app, so no photos to download), its own panel
+ * material (clear glass, brushed metal, velvet, wood, neon, black) and grid density. Every theme keeps the
+ * same CineTV home (DVD shelf, AI search, spatial depth, screensaver).
  *
  * The appearance (dark / light / auto) is stored separately from the theme, so picking a theme never
  * overwrites it as older builds did.
@@ -36,6 +37,10 @@ public final class ThemeManager {
         public final boolean wash;
         /** Pure #000 room, no glow, no watermark: pixels off on OLED panels. */
         public final boolean pureBlack;
+        /** A room drawn by the app (ThemeArt) instead of a photo; null for none. */
+        public String scene;
+        /** What panels and buttons are made of in this room. */
+        public String material = MAT_GLASS;
 
         Theme(String id, String name, int[] palette, String[] wallpapers, int columns, boolean signaturePattern, int accent,
               boolean wash, boolean pureBlack) {
@@ -49,7 +54,16 @@ public final class ThemeManager {
             this.wash = wash;
             this.pureBlack = pureBlack;
         }
+
+        Theme drawn(String scene, String material) {
+            this.scene = scene;
+            this.material = material;
+            return this;
+        }
     }
+
+    public static final String MAT_GLASS = "glass", MAT_CLEAR = "clear", MAT_METAL = "metal", MAT_VELVET = "velvet",
+            MAT_WOOD = "wood", MAT_NEON = "neon", MAT_BLACK = "black";
 
     /**
      * Each theme is a different room, not a recolour: backdrop, grid density, whether the focused
@@ -61,26 +75,26 @@ public final class ThemeManager {
                     new String[0], 4, true, Color.parseColor("#38BDF8"), true, false),
             new Theme("glass", "Liquid Glass",
                     colors("#0A111E", "#0E1A2C", "#111827", "#0D1B2A"),
-                    new String[]{"themes/glass.jpg"}, 4, false, Color.parseColor("#7DD3FC"), true, false),
-            new Theme("aurora", "Aurora",
-                    colors("#061A14", "#082F2C", "#0A192F", "#150D2A"),
-                    new String[]{"themes/aurora.jpg"}, 5, false, Color.parseColor("#5EEAD4"), true, false),
-            new Theme("scenes", "Living Scenes",
-                    colors("#1A0B2E", "#24142E", "#0F1E36", "#132A2A"),
-                    sequence("themes/scenes/", "01-dusk-peaks", "02-golden-coast", "03-moon-lake", "04-aurora",
-                            "05-dunes", "06-above-the-clouds", "07-mirror-lake", "08-tea-hills", "09-alpenglow",
-                            "10-city-lights", "11-balloon-sunrise", "12-monsoon", "13-lighthouse-coast", "14-autumn-valley"),
-                    4, false, Color.parseColor("#C4B5FD"), false, false),
-            new Theme("dussehra", "Royal Gold",
-                    colors("#240F08", "#291500", "#1F0A10", "#1F1300"),
-                    new String[]{"themes/dussehra.jpg"}, 5, false, Color.parseColor("#FFB23C"), true, false),
-            new Theme("six-columns", "Cinema Wall",
-                    colors("#0B1120", "#0F172A", "#1E293B", "#0A192F"),
-                    new String[0], 6, false, Color.parseColor("#94A3B8"), false, false),
+                    new String[0], 4, false, Color.parseColor("#7DD3FC"), true, false).drawn("glass", MAT_CLEAR),
+            new Theme("metal", "Metallic",
+                    colors("#1C1F24", "#24282E", "#16181C", "#202429"),
+                    new String[0], 5, false, Color.parseColor("#CBD5E1"), false, false).drawn("metal", MAT_METAL),
+            new Theme("cinema", "Cinema Hall",
+                    colors("#1A0406", "#240608", "#120304", "#1C0507"),
+                    new String[0], 4, false, Color.parseColor("#F5C26B"), true, false).drawn("cinema", MAT_VELVET),
+            new Theme("dvdstore", "DVD Store",
+                    colors("#1E120A", "#24160C", "#140C06", "#1A1008"),
+                    new String[0], 6, false, Color.parseColor("#FBBF24"), true, false).drawn("dvdstore", MAT_WOOD),
+            new Theme("neon", "Neon Night",
+                    colors("#12042A", "#1E0838", "#0A0220", "#2A0A40"),
+                    new String[0], 5, false, Color.parseColor("#F472B6"), true, false).drawn("neon", MAT_NEON),
             new Theme("oled", "OLED Black",
                     colors("#000000", "#000000", "#000000", "#000000"),
-                    new String[0], 4, false, Color.parseColor("#E2E8F0"), false, true),
+                    new String[0], 4, false, Color.parseColor("#E2E8F0"), false, true).drawn(null, MAT_BLACK),
     };
+
+    /** Ids of earlier builds' themes, kept so a TV that had one opens in its successor. */
+    private static final String[][] FORMER = {{"aurora", "metal"}, {"six-columns", "cinema"}, {"scenes", "dvdstore"}, {"dussehra", "neon"}};
 
     public static final String MODE_DARK = "dark";
     public static final String MODE_LIGHT = "light";
@@ -113,6 +127,7 @@ public final class ThemeManager {
     }
 
     public static Theme byId(String id) {
+        for (String[] f : FORMER) if (f[0].equalsIgnoreCase(id)) id = f[1];
         for (Theme t : THEMES) if (t.id.equalsIgnoreCase(id)) return t;
         return THEMES[0];
     }
@@ -182,9 +197,4 @@ public final class ThemeManager {
         return out;
     }
 
-    private static String[] sequence(String dir, String... names) {
-        String[] out = new String[names.length];
-        for (int i = 0; i < names.length; i++) out[i] = dir + names[i] + ".jpg";
-        return out;
-    }
 }
