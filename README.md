@@ -60,9 +60,10 @@ Kurulum: `./install.sh --tv <TV_IP>` — ya da bir yapay zekâ ajanına "CineTV'
 
 ### Kurulum
 
-**[📥 CineTV.apk'yı indir](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk)** · **[Adım adım kurulum rehberi (KURULUM.md)](KURULUM.md)**
+KURULUMU AI AGENT ARACILIĞIYLA YAPMANIZ TAVSİYE EDİLİR, AKSİ HALDE ÇOK FAZLA HATA ALABİLMENİZ MUHTEMELDİR,
+KURULUMU AI İLE YAPMAMAYI TERCİH EDİYORSANIZ, CİHAZINIZDA MUTLAKA NUVIO KURULU OLMALIDIR.
 
-Beş yol var, hepsi rehberde ekran ekran anlatılıyor; en kolayından:
+Beş yol var, hepsi rehberde ekran ekran anlatılıyor;
 
 1. **Sadece televizyonla**: Play Store'dan *Downloader* uygulamasını kurun, adres çubuğuna
    `github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk` yazın, kurun, açın.
@@ -72,6 +73,8 @@ Beş yol var, hepsi rehberde ekran ekran anlatılıyor; en kolayından:
 4. (TAVSİYE EDİLEN) **Bir yapay zekâya kurdurun** (Claude Desktop, Antigravity, Gemini, Cursor…): *"https://github.com/AlptugDag/cinetv-launcher
    adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur"* deyin. Size soru sorup televizyonu size göre kurar.
 5. **Terminalden**: `git clone https://github.com/AlptugDag/cinetv-launcher && cd cinetv-launcher && ./install.sh`
+
+**[📥 CineTV.apk'yı indir](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk)** · **[Adım adım kurulum rehberi (KURULUM.md)](KURULUM.md)**
 
 Hangi yolu seçerseniz seçin, televizyonda önce **Geliştirici seçenekleri › Ağ hata ayıklama** açık olmalı
 (rehberin 1. adımı). İlk açılışta televizyon *"hata ayıklamaya izin verilsin mi?"* diye sorarsa **Her zaman izin ver**'i
