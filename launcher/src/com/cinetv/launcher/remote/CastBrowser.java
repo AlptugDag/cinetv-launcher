@@ -297,13 +297,22 @@ public final class CastBrowser {
     public static void scroll(final float dy) {
         main.post(() -> {
             if (web == null) return;
+            // exactly as far as the finger moved on the phone, never a fling: the drag runs at a calm pace and
+            // the finger rests a moment before it lifts, so the page keeps no speed to coast on
             float x = W / 2f, y0 = H / 2f, y1 = y0 - dy * H;
-            long now = SystemClock.uptimeMillis();
-            web.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y0, 0));
-            for (int i = 1; i <= 6; i++) {
-                web.dispatchTouchEvent(MotionEvent.obtain(now, now + i * 16, MotionEvent.ACTION_MOVE, x, y0 + (y1 - y0) * i / 6f, 0));
+            float dist = Math.abs(y1 - y0);
+            int steps = Math.max(8, Math.round(dist / 12f));
+            long now = SystemClock.uptimeMillis(), t = now;
+            web.dispatchTouchEvent(MotionEvent.obtain(now, t, MotionEvent.ACTION_DOWN, x, y0, 0));
+            for (int i = 1; i <= steps; i++) {
+                t += 16;
+                web.dispatchTouchEvent(MotionEvent.obtain(now, t, MotionEvent.ACTION_MOVE, x, y0 + (y1 - y0) * i / (float) steps, 0));
             }
-            web.dispatchTouchEvent(MotionEvent.obtain(now, now + 120, MotionEvent.ACTION_UP, x, y1, 0));
+            for (int i = 0; i < 6; i++) {
+                t += 20;
+                web.dispatchTouchEvent(MotionEvent.obtain(now, t, MotionEvent.ACTION_MOVE, x, y1, 0));
+            }
+            web.dispatchTouchEvent(MotionEvent.obtain(now, t + 20, MotionEvent.ACTION_UP, x, y1, 0));
         });
     }
 
