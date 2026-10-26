@@ -171,16 +171,24 @@ public class AppGrid {
     /** Resting pose on the cylinder: the outer tiles turn in towards the viewer. */
     private float[] restPose(boolean inDock, int index, int count) {
         if (!spatial) return new float[]{0, 0, 0};
-        // the first row is the grid's row 0: the same curve everywhere
+        // the curve is measured on the tiles actually in this row (a short row is centred), so both ends of
+        // every row lean the same way and by the same amount; gently, so no tile looks askew
         int col = inDock ? index : index % columns;
-        int n = columns;
         int row = inDock ? 0 : index / columns + 1;
+        int n = Math.max(1, rowCount(inDock, index));
         float mid = (n - 1) / 2f;
         float norm = n <= 1 ? 0 : (col - mid) / mid;
-        float rotY = -norm * 24f;
-        float rotX = -11f - row * 2.5f;
-        float z = (1f - norm * norm) * 14f - 12f;
-        return new float[]{rotY, Math.max(-18f, rotX), z};
+        float rotY = -norm * 12f;
+        float rotX = -6f - row * 1.5f;
+        float z = (1f - norm * norm) * 10f - 8f;
+        return new float[]{rotY, Math.max(-10f, rotX), z};
+    }
+
+    /** How many tiles (apps and the "Add" tile) the row of this tile holds. */
+    private int rowCount(boolean inDock, int index) {
+        if (inDock) return dock.size() + (grid.isEmpty() && dock.size() < columns ? 1 : 0);
+        int cells = gridCells(), rowStart = (index / columns) * columns;
+        return Math.min(columns, cells - rowStart);
     }
 
     private View tile(final AppTileItem item, final boolean inDock, final int index, int count) {

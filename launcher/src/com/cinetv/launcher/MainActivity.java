@@ -748,7 +748,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             AppCatalog.Snapshot snap = AppCatalog.load(app);
             ui(() -> {
                 knownPackages = now;
-                home.apps.setColumns(ThemeManager.current(this).columns);
+                // one layout in every theme: five apps a row (more only when there are many apps)
+                home.apps.setColumns(5);
                 home.apps.setApps(snap.dock, snap.grid);
             });
         });

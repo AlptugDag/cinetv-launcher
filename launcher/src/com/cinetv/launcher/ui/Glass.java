@@ -140,7 +140,8 @@ public final class Glass extends Drawable {
                 canvas.drawRoundRect(rect, radius, radius, fill);
                 break;
             case com.cinetv.launcher.service.ThemeManager.MAT_BLACK:
-                fill.setColor(Color.argb(235, 0, 0, 0));
+                // a hint above the black room, so panels and tiles never vanish into it
+                fill.setColor(Color.rgb(16, 16, 19));
                 canvas.drawRoundRect(rect, radius, radius, fill);
                 break;
             default:
@@ -165,7 +166,7 @@ public final class Glass extends Drawable {
             case com.cinetv.launcher.service.ThemeManager.MAT_WOOD: colors = new int[]{0xC0FBBF24, 0x60B45309, 0x90FBBF24}; break;
             case com.cinetv.launcher.service.ThemeManager.MAT_NEON: colors = new int[]{0xF0FF4FA0, 0xE0A855F7, 0xF000E5FF}; break;
             case com.cinetv.launcher.service.ThemeManager.MAT_CLEAR: colors = new int[]{0xE6FFFFFF, 0x66FFFFFF, 0xB3FFFFFF}; break;
-            case com.cinetv.launcher.service.ThemeManager.MAT_BLACK: colors = new int[]{0x55FFFFFF, 0x30FFFFFF, 0x55FFFFFF}; break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_BLACK: colors = new int[]{0x8CFFFFFF, 0x4DFFFFFF, 0x8CFFFFFF}; break;
             default: return rim;
         }
         if (!mat.equals(rimFor)) {
