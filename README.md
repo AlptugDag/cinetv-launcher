@@ -24,12 +24,12 @@ remote and caster, and a TV tuned the way the film was mastered. One command to 
 dizi kökenleri, anime, servisler, kalite, cihazlar), sonra sadece izleyeceklerini kurar: televizyonun dili,
 Nuvio eklentileri ve sana özel raflar (ör. sadece Türk dizileri, futbol belgeselleri, Kore dizileri), istersen
 ücretsiz canlı kanallar ve sadece ihtiyacın olan uygulamalar. Hiç izlemeyeceğin bir şey boşuna kurulmaz.
-Abone olduğun servislerin (Netflix, Disney+, TOD, Exxen…) uygulamaları ana ekrana gelir; anten, uydu, kablo
-ya da HDMI'deki alıcına göre Canlı TV kutucuğu doğru yeri açar (ya da hiç görünmez).
+Abone olduğun servislerin (Netflix, Disney+, TOD, Exxen…) uygulamaları ana ekrana gelir ama *abone değilsen bile onların
+içerikleri açılır*; anten, uydu, kablo ya da HDMI'deki alıcına göre Canlı TV kutucuğu doğru yeri açar (ya da hiç görünmez).
 Türkçe profillere Nuvio'da Anthology'nin izlediklerine uyan eklentileri gelir (film ve dizi kaynakları, anime
 kaynakları, seçtiği kanal türleri). Paralı kanalları taşıyan eklentileri (*Anthology Canlı Spor*, *Anthology Canlı
 TV*, *Anthology Sinema Kanalları*) kurulumda kapalı kalır; bunlar yalnızca elle, *Nuvio › Ayarlar › Eklentiler*
-bölümünden açılabilir.
+bölümünden açılabilir ve *ücretsiz* seyredilebilir.
 
 **DVD Rafı**: Ana ekranda, gün içinde farklı farklı filmlerin -konum, saat hava durumu gibi ögelere göre- önerildiği dvd kutusunda listelendiği, bir kez basınca kutunun açılıp iç kapağındaki Türkçe film özetinin okunduğu, bir kez daha basınca cdnin dönüp ilgili filmin nuvio'da açıldığı bir tasarım benimsedim.
 
@@ -69,7 +69,7 @@ Beş yol var, hepsi rehberde ekran ekran anlatılıyor; en kolayından:
 2. **Windows'ta çift tıkla**: [CineTV-Kur.bat](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.bat)
    dosyasını indirip çift tıklayın; televizyonun IP adresini sorar, gerisini kendisi yapar.
 3. **Mac'te çift tıkla**: [CineTV-Kur.command](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.command).
-4. **Bir yapay zekâya kurdurun** (Claude Desktop, Antigravity, Gemini, Cursor…): *"https://github.com/AlptugDag/cinetv-launcher
+4. (TAVSİYE EDİLEN) **Bir yapay zekâya kurdurun** (Claude Desktop, Antigravity, Gemini, Cursor…): *"https://github.com/AlptugDag/cinetv-launcher
    adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur"* deyin. Size soru sorup televizyonu size göre kurar.
 5. **Terminalden**: `git clone https://github.com/AlptugDag/cinetv-launcher && cd cinetv-launcher && ./install.sh`
 
@@ -79,6 +79,7 @@ işaretleyip **Tamam**'a basın: CineTV kendini ana ekran yapar ve telefon kuman
 
 
 ---
+
 
 ## Made for whoever watches it
 
