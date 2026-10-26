@@ -172,16 +172,16 @@ public class AppGrid {
     private float[] restPose(boolean inDock, int index, int count) {
         if (!spatial) return new float[]{0, 0, 0};
         // the curve is measured on the tiles actually in this row (a short row is centred), so both ends of
-        // every row lean the same way and by the same amount; gently, so no tile looks askew
+        // every row lean the same way and by the same amount: the Spatial HUD's full curve, never lopsided
         int col = inDock ? index : index % columns;
         int row = inDock ? 0 : index / columns + 1;
         int n = Math.max(1, rowCount(inDock, index));
         float mid = (n - 1) / 2f;
         float norm = n <= 1 ? 0 : (col - mid) / mid;
-        float rotY = -norm * 12f;
-        float rotX = -6f - row * 1.5f;
-        float z = (1f - norm * norm) * 10f - 8f;
-        return new float[]{rotY, Math.max(-10f, rotX), z};
+        float rotY = -norm * 24f;
+        float rotX = -11f - row * 2.5f;
+        float z = (1f - norm * norm) * 14f - 12f;
+        return new float[]{rotY, Math.max(-18f, rotX), z};
     }
 
     /** How many tiles (apps and the "Add" tile) the row of this tile holds. */
