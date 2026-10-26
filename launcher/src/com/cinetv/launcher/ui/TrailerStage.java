@@ -135,7 +135,7 @@ public final class TrailerStage extends FrameLayout {
                 Bitmap b = PosterCache.load(app, m.backdropUrl != null && !m.backdropUrl.isEmpty() ? m.backdropUrl : m.posterUrl, 1280, 720);
                 boolean video = PerformanceProfile.tier(app) != PerformanceProfile.Tier.LOW && MovieCatalog.hasTmdb(app);
                 final String key = video ? MovieCatalog.trailerKey(app, m) : null;
-                if (m.overview == null || m.overview.isEmpty()) MovieCatalog.details(app, m);
+                if (m.overview == null || m.overview.isEmpty() || m.ratings == null || m.ratings.isEmpty()) MovieCatalog.details(app, m);
                 main.post(() -> {
                     if (my != gen) return;
                     if (b != null) {
@@ -143,6 +143,7 @@ public final class TrailerStage extends FrameLayout {
                         drift();
                     }
                     if (story.getText().length() == 0 && m.overview != null) story.setText(m.overview);
+                    if (m.ratings != null && !m.ratings.isEmpty()) meta.setText(meta.getText() + "  ·  " + m.ratings);
                     if (key != null) playVideo(key, my);
                 });
             });

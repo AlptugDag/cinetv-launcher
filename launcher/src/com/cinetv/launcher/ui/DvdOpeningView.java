@@ -432,6 +432,15 @@ public class DvdOpeningView extends View {
                 c.drawText(sig, paper.right - pad - Math.min(sw, textW), bottom, ink);
                 bottom -= w * 0.11f;
             }
+            if (movie.ratings != null && !movie.ratings.isEmpty()) {
+                // the critics, small, above the signature line
+                ink.setTextSize(w * 0.05f);
+                ink.setColor(filmInk);
+                String r = movie.ratings;
+                while (ink.measureText(r) > textW && r.contains("  ·  ")) r = r.substring(0, r.lastIndexOf("  ·  "));
+                c.drawText(r, paper.right - pad - Math.min(ink.measureText(r), textW), bottom, ink);
+                bottom -= w * 0.09f;
+            }
 
             ink.setColor(blackInk);
             // The story: as large as fits, never smaller than legible.

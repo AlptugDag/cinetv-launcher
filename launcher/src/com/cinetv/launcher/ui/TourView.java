@@ -29,11 +29,18 @@ public final class TourView extends FrameLayout {
     public static final class Step {
         final View target;
         final int title, body;
+        /** A line added under the text, e.g. whether this TV already has the key a card asks for. */
+        final CharSequence status;
 
         public Step(View target, int title, int body) {
+            this(target, title, body, null);
+        }
+
+        public Step(View target, int title, int body, CharSequence status) {
             this.target = target;
             this.title = title;
             this.body = body;
+            this.status = status;
         }
     }
 
@@ -126,7 +133,8 @@ public final class TourView extends FrameLayout {
         Step s = steps[at];
         progress.setText(getContext().getString(R.string.tour_progress, at + 1, steps.length));
         title.setText(s.title);
-        body.setText(s.body);
+        if (s.status == null) body.setText(s.body);
+        else body.setText(new android.text.SpannableStringBuilder(getContext().getText(s.body)).append("\n\n").append(s.status));
         int w = getWidth() > 0 ? getWidth() : UiKit.px(1920), h = getHeight() > 0 ? getHeight() : UiKit.px(1080);
         int[] me = new int[2];
         getLocationOnScreen(me);

@@ -460,13 +460,27 @@ public class HomeScreen {
                 new TourView.Step(gear, R.string.tour_trailers_t, R.string.tour_trailers),
                 new TourView.Step(search, R.string.tour_search_t, R.string.tour_search),
                 new TourView.Step(micButton, R.string.tour_voice_t, R.string.tour_voice),
+                new TourView.Step(gear, R.string.tour_ai_t, R.string.tour_ai, keyStatus(com.cinetv.launcher.ai.LlmClient.isConfigured(ctx))),
+                new TourView.Step(gear, R.string.tour_tmdb_t, R.string.tour_tmdb, keyStatus(com.cinetv.launcher.service.MovieCatalog.hasTmdb(ctx))),
+                new TourView.Step(gear, R.string.tour_mdb_t, R.string.tour_mdb,
+                        keyStatus(com.cinetv.launcher.service.SecretStore.has(ctx, com.cinetv.launcher.service.SecretStore.MDBLIST_KEY))),
+                new TourView.Step(null, R.string.tour_allow_t, R.string.tour_allow),
                 new TourView.Step(phone, R.string.tour_phone_t, R.string.tour_phone),
                 new TourView.Step(phone, R.string.tour_cast_t, R.string.tour_cast),
                 new TourView.Step(inputs, R.string.tour_inputs_t, R.string.tour_inputs),
                 new TourView.Step(apps.dockView(), R.string.tour_apps_t, R.string.tour_apps),
                 new TourView.Step(gear, R.string.tour_settings_t, R.string.tour_settings),
+                new TourView.Step(gear, R.string.tour_perf_t, R.string.tour_perf),
                 new TourView.Step(null, R.string.tour_saver_t, R.string.tour_saver),
                 new TourView.Step(logoButton, R.string.tour_done_t, R.string.tour_done)};
+    }
+
+    /** "On this TV: entered ✓" in green, or "not entered yet" in amber. */
+    private CharSequence keyStatus(boolean set) {
+        android.text.SpannableString s = new android.text.SpannableString(ctx.getString(set ? R.string.tour_key_set : R.string.tour_key_missing));
+        s.setSpan(new android.text.style.ForegroundColorSpan(Color.parseColor(set ? "#4ADE80" : "#FBBF24")), 0, s.length(), 0);
+        s.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, s.length(), 0);
+        return s;
     }
 
     public void setTrailerMode(boolean on) {

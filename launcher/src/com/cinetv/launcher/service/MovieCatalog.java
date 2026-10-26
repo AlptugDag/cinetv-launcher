@@ -36,6 +36,8 @@ public final class MovieCatalog {
         public String backdropUrl = "";
         public String overview = "";
         public String director = "";
+        /** "IMDb 8.3 · RT 91% · Letterboxd 4.1" with an MDBList key; empty otherwise. */
+        public String ratings = "";
         public double rating;
 
         public JSONObject toJson() {
@@ -438,6 +440,7 @@ public final class MovieCatalog {
     public static Movie details(Context ctx, Movie m) {
         if (!hasTmdb(ctx)) {
             m.overview = localized(m.overview); // Cinemeta writes in English only
+            ratings(ctx, m);
             return m;
         }
         try {
@@ -450,7 +453,7 @@ public final class MovieCatalog {
             }
             if (id <= 0) return m;
             m.tmdbId = id;
-            JSONObject d = tmdb(ctx, kind + "/" + id + "?append_to_response=credits&language=" + language());
+            JSONObject d = tmdb(ctx, kind + "/" + id + "?append_to_response=credits,external_ids&language=" + language());
             String overview = d.optString("overview", "").trim();
             if (overview.isEmpty()) overview = tmdb(ctx, kind + "/" + id + "?language=en-US").optString("overview", "").trim();
             if (!overview.isEmpty()) m.overview = overview;
@@ -470,6 +473,12 @@ public final class MovieCatalog {
                 JSONArray by = d.optJSONArray("created_by");
                 if (by != null && by.length() > 0) m.director = by.getJSONObject(0).optString("name");
             }
+            if (!m.imdbId.startsWith("tt")) {
+                JSONObject ext = d.optJSONObject("external_ids");
+                String imdb = d.optString("imdb_id", ext != null ? ext.optString("imdb_id", "") : "");
+                if (imdb.startsWith("tt")) m.imdbId = imdb;
+            }
+            ratings(ctx, m);
         } catch (Throwable t) {
             Log.w(TAG, "Details failed: " + t.getMessage());
         }
@@ -511,6 +520,42 @@ public final class MovieCatalog {
             return out;
         } catch (Throwable t) {
             return text;
+        }
+    }
+
+    private static final java.util.Map<String, String> ratingCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** IMDb, Rotten Tomatoes and Letterboxd ratings from MDBList (needs its key and an IMDb id). Blocks. */
+    static void ratings(Context ctx, Movie m) {
+        if (!m.imdbId.startsWith("tt")) return;
+        String key = SecretStore.get(ctx, SecretStore.MDBLIST_KEY);
+        if (key == null || key.isEmpty()) return;
+        String cached = ratingCache.get(m.imdbId);
+        if (cached != null) {
+            m.ratings = cached;
+            return;
+        }
+        try {
+            String kind = "series".equals(m.type) ? "show" : "movie";
+            JSONObject r = Http.getJson("https://api.mdblist.com/imdb/" + kind + "/" + m.imdbId + "?apikey=" + enc(key), null, TIMEOUT);
+            JSONArray list = r.optJSONArray("ratings");
+            StringBuilder b = new StringBuilder();
+            for (int i = 0; list != null && i < list.length(); i++) {
+                JSONObject x = list.getJSONObject(i);
+                String src = x.optString("source");
+                double v = x.optDouble("value", 0);
+                if (v <= 0) continue;
+                String part = "imdb".equals(src) ? "IMDb " + String.format(Locale.US, "%.1f", v)
+                        : "tomatoes".equals(src) ? "RT " + Math.round(v) + "%"
+                        : "letterboxd".equals(src) ? "Letterboxd " + String.format(Locale.US, "%.1f", v) : null;
+                if (part == null) continue;
+                if (b.length() > 0) b.append("  ·  ");
+                b.append(part);
+            }
+            m.ratings = b.toString();
+            ratingCache.put(m.imdbId, m.ratings);
+        } catch (Throwable t) {
+            Log.w(TAG, "Ratings failed: " + t.getMessage());
         }
     }
 
