@@ -117,6 +117,17 @@ public class LogicTest {
         assertEquals("30", com.cinetv.launcher.ai.VoiceCommands.parse("30 dakika sonra kapan").arg);
         assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.POWER_OFF, com.cinetv.launcher.ai.VoiceCommands.parse("televizyonu kapat").kind);
         assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.MUTE, com.cinetv.launcher.ai.VoiceCommands.parse("sessiz").kind);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.OPTIMIZE, com.cinetv.launcher.ai.VoiceCommands.parse("ram temizle").kind);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.OPTIMIZE, com.cinetv.launcher.ai.VoiceCommands.parse("belleği temizle").kind);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.OPTIMIZE, com.cinetv.launcher.ai.VoiceCommands.parse("hızlandır").kind);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.REBOOT, com.cinetv.launcher.ai.VoiceCommands.parse("yeniden başlat").kind);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.KEY, com.cinetv.launcher.ai.VoiceCommands.parse("altyazı").kind);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.KEY, com.cinetv.launcher.ai.VoiceCommands.parse("ses dili").kind);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.KEY, com.cinetv.launcher.ai.VoiceCommands.parse("tv rehberi").kind);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.HDMI, com.cinetv.launcher.ai.VoiceCommands.parse("hdmi bir").kind);
+        assertEquals("1", com.cinetv.launcher.ai.VoiceCommands.parse("hdmi bir").arg);
+        assertEquals(com.cinetv.launcher.ai.VoiceCommands.Kind.CHANNEL, com.cinetv.launcher.ai.VoiceCommands.parse("kanal bir").kind);
+        assertEquals("1", com.cinetv.launcher.ai.VoiceCommands.parse("kanal bir").arg);
         // searches stay searches
         assertNull(com.cinetv.launcher.ai.VoiceCommands.parse("Nolan'ın filmlerini listele"));
         assertNull(com.cinetv.launcher.ai.VoiceCommands.parse("araba temalı filmler"));

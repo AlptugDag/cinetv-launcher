@@ -37,7 +37,12 @@ public final class NuvioSetup {
             "opensubtitles-v3.strem.io/manifest.json",
             "anime-kitsu.strem.fun/manifest.json",
             "v3-channels.strem.io/manifest.json"};
-    private static final String TR_ALTYAZI = "tr-altyazi.altyazi.workers.dev/manifest.json";
+    private static final String[] TR_ADDONS = {
+            "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE",
+            "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json",
+            "aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/eyJpIjoiWXlHVnFaUWlDSUFQeXlDWlF3RXNXZz09IiwiZSI6ImJKclJJRWpwRyttbFk5NXE3Ym42UG95TmxxN2xmZktRaXlMclBORFpzOVU9IiwidCI6ImEifQ/manifest.json",
+            "falsisdev.github.io/anthology/stremio/manifest.json",
+            "tr-altyazi.altyazi.workers.dev/manifest.json"};
 
     private NuvioSetup() {}
 
@@ -64,7 +69,11 @@ public final class NuvioSetup {
             Prefs.get(app).edit().putBoolean(DONE, true).apply();
             boolean turkish = "tr".equals(Locale.getDefault().getLanguage());
             for (String addon : ADDONS) addAddon(app, addon);
-            if (turkish) addAddon(app, TR_ALTYAZI);
+            if (turkish) {
+                for (String trAddon : TR_ADDONS) addAddon(app, trAddon);
+                copyAsset(app, "nuvio/aiometadata-config.json", new File("/sdcard/Download/aiometadata-config-2026-10-27.json"));
+                copyAsset(app, "nuvio/aiometadata-config.json", new File("/sdcard/Download/aiometadata-config.json"));
+            }
             // back to Home when the addons are in
             AppLauncher.start(app, new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             Log.i(TAG, "Nuvio installed with its addons");
@@ -115,6 +124,16 @@ public final class NuvioSetup {
             }
         }
         return false;
+    }
+
+    private static void copyAsset(Context ctx, String assetPath, File dest) {
+        try (java.io.InputStream in = ctx.getAssets().open(assetPath);
+             java.io.OutputStream out = new java.io.FileOutputStream(dest)) {
+            byte[] buf = new byte[8192];
+            int r;
+            while ((r = in.read(buf)) != -1) out.write(buf, 0, r);
+        } catch (Throwable ignored) {
+        }
     }
 
     private static void addAddon(Context app, String manifest) throws InterruptedException {

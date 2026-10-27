@@ -16,8 +16,22 @@ public final class Creator {
     public static final String LINKEDIN_URL = "https://www.linkedin.com/in/AlptugDag/";
     public static final String LETTERBOXD_URL = "https://letterboxd.com/AlptugDag/";
     public static final String GITHUB_URL = "https://github.com/AlptugDag";
+    public static final String SESSIZ_YOUTUBE_ID = "bLvdsibrR-I";
+    public static final String SESSIZ_YOUTUBE_URL = "https://www.youtube.com/watch?v=" + SESSIZ_YOUTUBE_ID;
 
     private Creator() {}
+
+    /** True when the movie is Alptuğ Dağ's short film "Sessiz" (2023). */
+    public static boolean isSessiz(MovieCatalog.Movie m) {
+        if (m == null) return false;
+        String t = fold(m.title);
+        String orig = fold(m.originalTitle);
+        if (!"sessiz".equals(t) && !"sessiz".equals(orig)) return false;
+        if (m.director != null && !m.director.isEmpty() && !mentioned(m.director) && m.year > 0 && m.year != 2023) {
+            return false;
+        }
+        return true;
+    }
 
     /** True when a query is about the author ("Alptuğ Dağ kimdir", "alptug dag filmleri"...). */
     public static boolean mentioned(String query) {

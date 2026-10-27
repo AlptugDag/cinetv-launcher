@@ -47,15 +47,15 @@ public final class AppCatalog {
             "com.mediatek.wwtv.tvcenter", "com.mediatek.wwtv.tvcenter.rro", "mediatek.factorymenu.ui",
             "arcelik.factorymenu.hatone", "com.mediatek.tv.factory", "com.mediatek.wwtv.webview",
             "com.google.android.webview", "com.mediatek.tv.service", "io.github.jqssun.airplay", "org.courville.nova",
-            "com.mediatek.wwtv.mediaplayer"));
+            "com.mediatek.wwtv.mediaplayer", "com.swap.noroot", "com.allakore.swapnoroot"));
 
     /** Never offered anywhere: this launcher, firmware services, factory and test menus. */
     private static final String[] NEVER_FRAGMENTS = {
             "com.cinetv.launcher", "factory", "webview", "tv.service", "tvcenter", "setupwraith", "tvlauncher",
-            "launcherx", "rctest", "channeleditor", "wwtv.mediaplayer"};
+            "launcherx", "rctest", "channeleditor", "wwtv.mediaplayer", "swap", "noroot", "zram", "ramexpander"};
 
     private static final String[] HIDDEN_FRAGMENTS = {
-            "factory", "webview", "mediaplayer", "rctest", "channeleditor", "airplay", "nova", "bein"};
+            "factory", "webview", "mediaplayer", "rctest", "channeleditor", "airplay", "nova", "bein", "swap", "noroot", "zram", "ramexpander"};
 
     private AppCatalog() {}
 

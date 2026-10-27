@@ -560,21 +560,59 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     } catch (e) {}
   };
   // The keyboard key: the phone's keyboard types into the TV's selected field, live, in any app
-  let typeTimer = null;
+  let typeTimer = null, lastTypedVal = "";
   const kbd = $("kbd"), typer = $("typer");
+  const openKbd = (init) => {
+    kbd.hidden = false;
+    typer.value = init || "";
+    lastTypedVal = typer.value;
+    typer.focus();
+  };
+  const closeKbd = () => {
+    kbd.hidden = true;
+    lastTypedVal = "";
+    typer.blur();
+  };
   $("kbdBtn").onclick = () => {
-    if (!kbd.hidden) { kbd.hidden = true; typer.blur(); return; }
-    kbd.hidden = false; typer.value = ""; typer.focus();
+    if (!kbd.hidden) { closeKbd(); return; }
+    openKbd("");
   };
   typer.addEventListener("input", () => {
     clearTimeout(typeTimer);
-    typeTimer = setTimeout(() => api("type", {q: typer.value}).catch(() => {}), 90);
+    const cur = typer.value;
+    const old = lastTypedVal;
+    lastTypedVal = cur;
+    let common = 0;
+    while (common < old.length && common < cur.length && old[common] === cur[common]) common++;
+    const del = old.length - common;
+    const add = cur.slice(common);
+    typeTimer = setTimeout(() => {
+      api("type", {q: cur, del, add}).catch(() => {});
+    }, 40);
   });
-  const typeEnter = () => { clearTimeout(typeTimer); api("type", {q: typer.value}).then(() => press(66)).catch(() => {}); kbd.hidden = true; typer.blur(); };
+  const typeEnter = () => {
+    clearTimeout(typeTimer);
+    const cur = typer.value;
+    api("type", {q: cur, enter: 1}).then(() => press(66)).catch(() => {});
+    closeKbd();
+  };
   $("typerGo").onclick = typeEnter;
   typer.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); typeEnter(); } });
-  typer.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== typer) kbd.hidden = true; }, 150));
+  typer.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== typer) kbd.hidden = true; }, 350));
   $("saver").onclick = () => api("screensaver");
+
+  // Auto-open keyboard when TV reports an active input field focused
+  let lastFocusState = false;
+  setInterval(async () => {
+    if (!token) return;
+    try {
+      const s = await api("status");
+      if (s && s.inputFocused && !lastFocusState && kbd.hidden) {
+        openKbd("");
+      }
+      lastFocusState = !!(s && s.inputFocused);
+    } catch (e) {}
+  }, 2000);
 
   // Pages of the remote: touchpad, more keys, numbers
   const deck = $("deck"), dots = [...$("dots").children];

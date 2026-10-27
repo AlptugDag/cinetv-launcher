@@ -161,6 +161,34 @@ public final class DeviceTweaks {
         }
     }
 
+    /** Pauses any playing media on the TV without leaving the current app or screen. */
+    public static void pauseMedia(Context ctx) {
+        try {
+            AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                long now = SystemClock.uptimeMillis();
+                am.dispatchMediaKeyEvent(new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE, 0));
+                am.dispatchMediaKeyEvent(new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE, 0));
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            Intent pauseIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+            long now = SystemClock.uptimeMillis();
+            pauseIntent.putExtra(Intent.EXTRA_KEY_EVENT, new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE, 0));
+            ctx.sendOrderedBroadcast(pauseIntent, null);
+            pauseIntent.putExtra(Intent.EXTRA_KEY_EVENT, new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE, 0));
+            ctx.sendOrderedBroadcast(pauseIntent, null);
+        } catch (Throwable ignored) {
+        }
+        new Thread(() -> {
+            try {
+                com.cinetv.launcher.remote.KeyBridge.key(ctx, android.view.KeyEvent.KEYCODE_MEDIA_PAUSE, false);
+            } catch (Throwable ignored) {
+            }
+        }, "cinetv-media-pause").start();
+    }
+
     /** Keeps the system night mode in step with the launcher's dark / light / auto appearance. */
     public static void syncNightMode(Context ctx) {
         try {

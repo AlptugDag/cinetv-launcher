@@ -178,8 +178,23 @@ public final class AppLauncher {
         return false;
     }
 
+    /** Opens a YouTube video URL directly inside the installed ad-free YouTube app (TizenTube). */
+    public static boolean openYouTubeVideo(Context ctx, String url) {
+        if (url == null || url.isEmpty()) return launchFirst(ctx, YOUTUBE_PACKAGES);
+        Uri uri = Uri.parse(url);
+        for (String pkg : YOUTUBE_PACKAGES) {
+            Intent view = new Intent(Intent.ACTION_VIEW, uri).setPackage(pkg)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            if (start(ctx, view)) return true;
+        }
+        return start(ctx, new Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    }
+
     /** Opens a title on Nuvio's detail/stream page; falls back to Nuvio's start screen. */
     public static boolean openInNuvio(Context ctx, String title, String imdbId, String type, String posterUrl) {
+        if (title != null && "sessiz".equals(Creator.fold(title))) {
+            return openYouTubeVideo(ctx, Creator.SESSIZ_YOUTUBE_URL);
+        }
         if (imdbId != null && imdbId.startsWith("tt") && "series".equals(type)) {
             // Series open on their detail page (season and episode picker), not on an episode's streams.
             Intent detail = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/series/" + imdbId)).setPackage(NUVIO);

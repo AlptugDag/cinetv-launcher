@@ -5,6 +5,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.provider.Settings;
+
+import com.cinetv.launcher.remote.LocalAdb;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -104,6 +107,55 @@ public final class MemoryOptimizer {
         }
     }
 
+    /**
+     * Disables Google Assistant on the TV while keeping Google Speech Recognition (Katniss / RecognitionService)
+     * active, and applies rootless virtual RAM / zRAM expansion and kernel memory tuning.
+     */
+    public static void applyTvOptimizations(Context ctx) {
+        final Context app = ctx.getApplicationContext();
+        try {
+            android.content.ContentResolver cr = app.getContentResolver();
+            Settings.Secure.putString(cr, "assistant", "");
+            Settings.Secure.putString(cr, "voice_interaction_service", "");
+        } catch (Throwable ignored) {
+        }
+        new Thread(() -> {
+            try {
+                // Keep speech recognition service enabled, but disable assistant overlays and activities
+                LocalAdb.shell(app,
+                        "pm disable-user --user 0 com.google.android.apps.googleassistant 2>/dev/null; " +
+                        "settings put secure assistant \"\" 2>/dev/null; " +
+                        "settings put secure voice_interaction_service \"\" 2>/dev/null; " +
+                        "pm disable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.VoiceActivity 2>/dev/null; " +
+                        "pm disable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.AssistantActivity 2>/dev/null", 3000);
+
+                // Rootless virtual RAM / dynamic zRAM expansion and background process limit properties
+                LocalAdb.shell(app,
+                        "setprop persist.sys.purgeable_assets 1; " +
+                        "settings put global ram_expand_size_list 2048 2>/dev/null; " +
+                        "setprop persist.sys.ram_expand.size 2048 2>/dev/null; " +
+                        "setprop persist.sys.ram_expand.enable 1 2>/dev/null; " +
+                        "setprop sys.sysctl.extra_free_kbytes 24300 2>/dev/null; " +
+                        "setprop persist.sys.fw.trim_empty_apps true 2>/dev/null; " +
+                        "setprop persist.sys.fw.empty_app_percent 50 2>/dev/null; " +
+                        "setprop persist.sys.fw.bservice_enable true 2>/dev/null; " +
+                        "setprop persist.sys.fw.bservice_limit 5 2>/dev/null; " +
+                        "sysctl -w vm.swappiness=80 2>/dev/null; " +
+                        "sysctl -w vm.vfs_cache_pressure=100 2>/dev/null", 3000);
+            } catch (Throwable ignored) {
+            }
+        }, "cinetv-tv-opt").start();
+    }
+
+    /** Synchronizes virtual RAM / swap and drops cached pages without affecting active foreground playback. */
+    public static void applyVirtualRamProperties(Context ctx) {
+        final Context app = ctx.getApplicationContext();
+        try {
+            LocalAdb.shell(app, "sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null; sysctl -w vm.swappiness=80 2>/dev/null; am trim-memory com.cinetv.launcher RUNNING_MODERATE 2>/dev/null", 2000);
+        } catch (Throwable ignored) {
+        }
+    }
+
     /** Measures RAM, a CPU micro-benchmark and cache I/O, then frees memory. Blocking. */
     /**
      * System-level tuning a launcher may do without root: Android's cached-app freezer (background
@@ -160,6 +212,7 @@ public final class MemoryOptimizer {
         }
 
         b.killed = cleanBackground(ctx, ctx.getPackageName());
+        applyVirtualRamProperties(ctx);
         try {
             Thread.sleep(400);
         } catch (InterruptedException ignored) {

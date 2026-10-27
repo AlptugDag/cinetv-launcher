@@ -28,6 +28,8 @@ import com.cinetv.launcher.FontManager;
 import com.cinetv.launcher.R;
 import com.cinetv.launcher.service.MovieCatalog.Movie;
 
+import java.util.Locale;
+
 /**
  * Taking a film off the shelf, in two steps like a real DVD:
  *
@@ -464,7 +466,7 @@ public class DvdOpeningView extends View {
         if (movie != null) {
             // letters sized from the cover's narrow side: a wide (sideways) cover gets longer lines, not bigger letters
             float u = Math.min(w, h * DvdCase.ASPECT);
-            float pad = u * 0.075f;
+            float pad = u * 0.058f;
             float textW = paper.width() - pad * 2;
             TextPaint ink = new TextPaint(Paint.ANTI_ALIAS_FLAG);
             ink.setTypeface(FontManager.getMarker(ctx));
@@ -473,75 +475,179 @@ public class DvdOpeningView extends View {
             // nothing written ever leaves the paper, whatever the title, the names or the cover's shape
             c.clipRect(paper);
             // handwriting leans a little; less on a wide cover, where the far end would drift off the line
-            c.rotate(-1.6f * Math.min(1f, h / (float) w), w / 2f, h / 2f);
-            float y = paper.top + pad * 0.9f;
+            c.rotate(-1.1f * Math.min(1f, h / (float) w), w / 2f, h / 2f);
+            float y = paper.top + pad * 0.78f;
 
             // Title and signature in the film's own colour (as its glow), deep enough to read on paper.
             int filmInk = filmInk(cover);
             int blackInk = ink.getColor();
             ink.setColor(filmInk);
             // the title in the viewer's language, the film's own beside it: "Sonbahar (秋日和)"; two lines at most
-            float titleSize = u * 0.092f;
+            float titleSize = u * 0.084f;
             ink.setTextSize(titleSize);
-            StaticLayout title = layout(movie.innerTitle(), ink, (int) textW, 1.0f);
-            while (title.getLineCount() > 2 && titleSize > u * 0.05f) {
-                titleSize -= u * 0.006f;
+            StaticLayout title = layout(movie.innerTitle(), ink, (int) textW, 0.98f);
+            while (title.getLineCount() > 2 && titleSize > u * 0.046f) {
+                titleSize -= u * 0.005f;
                 ink.setTextSize(titleSize);
-                title = layout(movie.innerTitle(), ink, (int) textW, 1.0f);
+                title = layout(movie.innerTitle(), ink, (int) textW, 0.98f);
             }
             drawInk(c, title, paper.left + pad, y, ink);
             y += title.getHeight();
             Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
             stroke.setColor(filmInk);
-            stroke.setStrokeWidth(Math.max(2f, u * 0.008f));
+            stroke.setStrokeWidth(Math.max(2f, u * 0.0075f));
             stroke.setStrokeCap(Paint.Cap.ROUND);
             stroke.setStyle(Paint.Style.STROKE);
             Path line = new Path();
             float lw = Math.min(textW, title.getLineWidth(title.getLineCount() - 1) * 1.05f);
-            line.moveTo(paper.left + pad, y + u * 0.012f);
-            line.quadTo(paper.left + pad + lw * 0.5f, y + u * 0.004f, paper.left + pad + lw, y + u * 0.016f);
+            line.moveTo(paper.left + pad, y + u * 0.010f);
+            line.quadTo(paper.left + pad + lw * 0.5f, y + u * 0.003f, paper.left + pad + lw, y + u * 0.014f);
             c.drawPath(line, stroke);
-            y += u * 0.05f;
+            y += u * 0.036f;
 
-            // Signature line at the bottom: director and year.
-            String by = (movie.director == null || movie.director.isEmpty() ? "" : movie.director)
-                    + (movie.year > 1900 ? (movie.director == null || movie.director.isEmpty() ? "" : ", ") + movie.year : "");
-            float bottom = paper.bottom - pad * 0.8f;
+            // Signature line at the bottom: director, year and runtime.
+            String runtime = movie.formattedRuntime();
+            StringBuilder byBuilder = new StringBuilder();
+            if (movie.director != null && !movie.director.isEmpty()) byBuilder.append(movie.director);
+            if (movie.year > 1900) {
+                if (byBuilder.length() > 0) byBuilder.append(", ");
+                byBuilder.append(movie.year);
+            }
+            if (!runtime.isEmpty()) {
+                if (byBuilder.length() > 0) byBuilder.append("  ·  ");
+                byBuilder.append(runtime);
+            }
+            String by = byBuilder.toString();
+            float bottom = paper.bottom - pad * 0.68f;
             if (!by.isEmpty()) {
                 ink.setColor(filmInk);
-                String sig = fit(ink, "— " + by, textW, u * 0.064f, u * 0.04f);
+                String sig = fit(ink, "— " + by, textW, u * 0.056f, u * 0.036f);
                 c.drawText(sig, paper.right - pad - ink.measureText(sig), bottom, ink);
-                bottom -= u * 0.11f;
+                bottom -= u * 0.082f;
             }
             if (movie.ratings != null && !movie.ratings.isEmpty()) {
                 // the critics, small, above the signature line
                 ink.setColor(filmInk);
-                ink.setTextSize(u * 0.05f);
-                String r = movie.ratings;
-                while (ink.measureText(r) > textW && r.contains("  ·  ")) r = r.substring(0, r.lastIndexOf("  ·  "));
-                r = fit(ink, r, textW, u * 0.05f, u * 0.036f);
-                c.drawText(r, paper.right - pad - ink.measureText(r), bottom, ink);
-                bottom -= u * 0.09f;
+                ink.setTextSize(u * 0.044f);
+                String rtStr = movie.ratings;
+                while (ink.measureText(rtStr) > textW && rtStr.contains("  ·  ")) rtStr = rtStr.substring(0, rtStr.lastIndexOf("  ·  "));
+                rtStr = fit(ink, rtStr, textW, u * 0.044f, u * 0.032f);
+                c.drawText(rtStr, paper.right - pad - ink.measureText(rtStr), bottom, ink);
+                bottom -= u * 0.068f;
+            }
+
+            // Lead cast: vintage postage-stamp portraits + handwritten names ("pul falan gibi"), integrated into the insert note.
+            float availTotal = bottom - y;
+            if (movie.cast != null && !movie.cast.isEmpty() && availTotal > u * 0.18f) {
+                int count = Math.min(3, movie.cast.size());
+                float castH = Math.min(u * 0.118f, Math.max(u * 0.075f, availTotal * 0.26f));
+                float castTop = bottom - castH;
+                // Subtle felt-tip divider line above the cast strip
+                Paint divPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                divPaint.setColor(UiKit.withAlpha(filmInk, 65));
+                divPaint.setStrokeWidth(Math.max(1f, u * 0.0035f));
+                divPaint.setStrokeCap(Paint.Cap.ROUND);
+                divPaint.setStyle(Paint.Style.STROKE);
+                Path divPath = new Path();
+                divPath.moveTo(paper.left + pad, castTop - u * 0.008f);
+                divPath.quadTo(paper.left + pad + textW * 0.5f, castTop - u * 0.014f, paper.left + pad + textW, castTop - u * 0.006f);
+                c.drawPath(divPath, divPaint);
+
+                float colW = textW / count;
+                float diam = castH * 0.76f;
+                float rad = diam / 2f;
+                Paint photoPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+                ColorMatrix castCm = new ColorMatrix();
+                castCm.setSaturation(0.78f);
+                ColorMatrixColorFilter castFilter = new ColorMatrixColorFilter(castCm);
+                Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                ringPaint.setStyle(Paint.Style.STROKE);
+                ringPaint.setStrokeWidth(Math.max(1.2f, u * 0.0035f));
+                ringPaint.setColor(filmInk);
+                Paint creamPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                creamPaint.setColor(Color.parseColor("#F7F2E7"));
+                Paint stampPerforate = new Paint(Paint.ANTI_ALIAS_FLAG);
+                stampPerforate.setColor(Color.argb(55, 0, 0, 0));
+                stampPerforate.setStyle(Paint.Style.STROKE);
+                stampPerforate.setStrokeWidth(Math.max(1f, u * 0.0025f));
+                stampPerforate.setPathEffect(new android.graphics.DashPathEffect(new float[]{u * 0.006f, u * 0.004f}, 0));
+
+                for (int i = 0; i < count; i++) {
+                    com.cinetv.launcher.service.MovieCatalog.CastMember cm = movie.cast.get(i);
+                    float colX = paper.left + pad + i * colW;
+                    float cx = colX + rad + u * 0.008f;
+                    float cy = castTop + castH * 0.52f;
+
+                    // Postage stamp paper base (serrated perforated rectangular border)
+                    float stampPad = rad * 0.22f;
+                    RectF sRect = new RectF(cx - rad - stampPad, cy - rad - stampPad, cx + rad + stampPad, cy + rad + stampPad);
+                    c.drawRoundRect(sRect, u * 0.006f, u * 0.006f, creamPaint);
+                    c.drawRoundRect(sRect, u * 0.006f, u * 0.006f, stampPerforate);
+
+                    if (cm.photo != null && !cm.photo.isRecycled()) {
+                        BitmapShader pbs = new BitmapShader(cm.photo, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+                        float ps = Math.max(diam / cm.photo.getWidth(), diam / cm.photo.getHeight());
+                        Matrix pm = new Matrix();
+                        pm.setScale(ps, ps);
+                        pm.postTranslate(cx - cm.photo.getWidth() * ps / 2f, cy - cm.photo.getHeight() * ps / 2f);
+                        pbs.setLocalMatrix(pm);
+                        photoPaint.setShader(pbs);
+                        photoPaint.setColorFilter(castFilter);
+                        c.drawCircle(cx, cy, rad, photoPaint);
+                        photoPaint.setShader(null);
+                        photoPaint.setColorFilter(null);
+                    } else {
+                        creamPaint.setColor(UiKit.withAlpha(filmInk, 28));
+                        c.drawCircle(cx, cy, rad, creamPaint);
+                        creamPaint.setColor(Color.parseColor("#F7F2E7"));
+                        String init = initials(cm.name);
+                        ink.setColor(filmInk);
+                        ink.setTextSize(u * 0.036f);
+                        float iw = ink.measureText(init);
+                        c.drawText(init, cx - iw / 2f, cy - (ink.ascent() + ink.descent()) / 2f, ink);
+                    }
+                    // Hand-sketched felt-tip ring and postal cancellation stamp
+                    ringPaint.setAlpha(190);
+                    c.drawCircle(cx, cy, rad, ringPaint);
+                    ringPaint.setAlpha(65);
+                    c.drawCircle(cx + u * 0.002f, cy + u * 0.0015f, rad + u * 0.002f, ringPaint);
+
+                    // Postal cancellation wavy lines ("damga") over top-right of stamp
+                    ringPaint.setAlpha(55);
+                    c.drawLine(cx + rad * 0.4f, cy - rad * 1.1f, cx + rad * 1.3f, cy - rad * 0.6f, ringPaint);
+                    c.drawLine(cx + rad * 0.4f, cy - rad * 0.85f, cx + rad * 1.3f, cy - rad * 0.35f, ringPaint);
+
+                    // Handwritten actor name next to the portrait stamp
+                    float nameX = cx + rad + stampPad + u * 0.012f;
+                    float nameMaxW = Math.max(u * 0.08f, (colX + colW) - nameX - u * 0.006f);
+                    ink.setColor(blackInk);
+                    float nameSize = u * 0.041f;
+                    ink.setTextSize(nameSize);
+                    StaticLayout nameLayout = layout(cm.name, ink, (int) nameMaxW, 0.92f);
+                    while ((nameLayout.getLineCount() > 2 || nameLayout.getHeight() > castH * 0.92f) && nameSize > u * 0.024f) {
+                        nameSize -= u * 0.002f;
+                        ink.setTextSize(nameSize);
+                        nameLayout = layout(cm.name, ink, (int) nameMaxW, 0.92f);
+                    }
+                    drawInk(c, nameLayout, nameX, cy - nameLayout.getHeight() / 2f, ink);
+                }
+                bottom = castTop - u * 0.020f;
             }
 
             ink.setColor(blackInk);
-            // The story: as large as fits, never smaller than legible.
-            String story = movie.overview == null ? "" : movie.overview.trim();
+            // The story: dynamically scaled with NFC Turkish normalization so full overview fits without cutting sentences short.
+            String story = movie.overview == null ? "" : java.text.Normalizer.normalize(movie.overview.trim(), java.text.Normalizer.Form.NFC);
             float avail = bottom - y;
-            if (!story.isEmpty() && avail > u * 0.12f) {
-                float size = u * 0.072f;
-                StaticLayout body = layout(story, ink, (int) textW, 1.02f);
-                while (size > u * 0.046f) {
+            if (!story.isEmpty() && avail > u * 0.06f) {
+                float size = u * 0.066f;
+                float spacing = 0.98f;
+                ink.setTextSize(size);
+                StaticLayout body = layout(story, ink, (int) textW, spacing);
+                while (body.getHeight() > avail && size > u * 0.020f) {
+                    size -= u * 0.002f;
+                    spacing = size < u * 0.042f ? 0.90f : 0.95f;
                     ink.setTextSize(size);
-                    body = layout(story, ink, (int) textW, 1.02f);
-                    if (body.getHeight() <= avail) break;
-                    size -= u * 0.003f;
-                }
-                if (body.getHeight() > avail) {
-                    // Still too long: cut at a sentence and end with an ellipsis, as one would by hand.
-                    int lines = Math.max(1, body.getLineForVertical((int) avail) - 1);
-                    String cut = story.substring(0, body.getLineEnd(lines)).trim();
-                    body = layout(cut.replaceAll("[\\s,;:.]+$", "") + "…", ink, (int) textW, 1.02f);
+                    body = layout(story, ink, (int) textW, spacing);
                 }
                 drawInk(c, body, paper.left + pad, y, ink);
             }
@@ -585,7 +691,19 @@ public class DvdOpeningView extends View {
 
     @SuppressWarnings("deprecation")
     private static StaticLayout layout(String text, TextPaint paint, int width, float spacing) {
-        return new StaticLayout(text, paint, Math.max(1, width), Layout.Alignment.ALIGN_NORMAL, spacing, 0f, false);
+        String clean = text == null ? "" : java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFC);
+        return new StaticLayout(clean, paint, Math.max(1, width), Layout.Alignment.ALIGN_NORMAL, spacing, 0f, false);
+    }
+
+    private static String initials(String name) {
+        if (name == null || name.trim().isEmpty()) return "?";
+        String clean = java.text.Normalizer.normalize(name.trim(), java.text.Normalizer.Form.NFC);
+        String[] parts = clean.split("\\s+");
+        Locale tr = new Locale("tr");
+        if (parts.length == 1) {
+            return parts[0].substring(0, Math.min(2, parts[0].length())).toUpperCase(tr);
+        }
+        return ("" + parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase(tr);
     }
 
     /** Felt-tip: a faint bleed under the stroke. */

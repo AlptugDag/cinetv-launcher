@@ -78,6 +78,18 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
     }
 
+    /** Returns true if there is an editable input field currently focused on screen. */
+    public static boolean isInputFocused() {
+        TvKeyInterceptorService s = instance;
+        if (s == null) return false;
+        try {
+            android.view.accessibility.AccessibilityNodeInfo node = s.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT);
+            return node != null && node.isEditable();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public static TvKeyInterceptorService getInstance() {
         return instance;
     }
@@ -91,6 +103,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
         registerReceiver(timeTick, f);
         DeviceTweaks.syncNightMode(this);
         MemoryOptimizer.ensureAirPlayReceiver(this);
+        MemoryOptimizer.applyTvOptimizations(this);
         airPods = new com.cinetv.launcher.device.AirPodsLink(this);
         airPods.start();
     }
@@ -128,13 +141,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
             case "com.google.android.katniss":
             case "com.google.android.googlequicksearchbox":
             case "com.google.android.apps.googleassistant":
-                // The remote's microphone talks to Google's voice service directly (no key reaches any app):
-                // when its window opens and CineTV did not ask for it, it closes and CineTV's voice search
-                // and commands open instead. CineTV's own listening uses the same service, so that one stays.
+                // If CineTV did not deliberately start listening, dismiss Katniss/Assistant immediately,
+                // pause any playing content on screen if possible, and NEVER dump the viewer to the home screen.
                 if (android.os.SystemClock.elapsedRealtime() - MainActivity.ourVoiceAt > 20_000) {
                     performGlobalAction(GLOBAL_ACTION_BACK);
-                    startActivity(new Intent(this, MainActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT).putExtra("action", "voice"));
+                    DeviceTweaks.pauseMedia(this);
                     return;
                 }
                 break;
@@ -192,12 +203,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
         boolean gamepad = (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
                 || (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
         if (gamepad || HardwareKeys.isNavigation(event.getKeyCode())) return false;
-        // the remote's microphone: CineTV's own voice search and commands, not the Google Assistant, in every app
+        // The remote's microphone: pause playing content on screen without dumping the user to the home menu
         int code = event.getKeyCode();
         if (code == KeyEvent.KEYCODE_SEARCH || code == KeyEvent.KEYCODE_VOICE_ASSIST || code == KeyEvent.KEYCODE_ASSIST) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-                startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                        .putExtra("action", "voice"));
+                DeviceTweaks.pauseMedia(this);
             }
             return true;
         }

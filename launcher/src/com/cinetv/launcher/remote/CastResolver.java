@@ -127,10 +127,14 @@ public final class CastResolver {
 
     /** Plays a stream full screen: YouTube in its app, everything else in a video player. */
     public static boolean play(Context ctx, String url) {
-        return play(ctx, url, null);
+        return play(ctx, url, null, null, null);
     }
 
     public static boolean play(Context ctx, String url, String referrer) {
+        return play(ctx, url, referrer, null, null);
+    }
+
+    public static boolean play(Context ctx, String url, String referrer, String origin, String cookie) {
         if (isYouTube(url)) {
             return AppLauncher.start(ctx, new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         }
@@ -139,13 +143,49 @@ public final class CastResolver {
         String type = low.contains(".m3u8") || low.contains("master.txt") || low.contains("playlist.txt") || low.contains("/hls/") ? "application/x-mpegurl"
                 : url.toLowerCase(Locale.ROOT).contains(".mpd") ? "application/dash+xml" : "video/*";
         Intent i = new Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(url), type).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        if (referrer != null && referrer.startsWith("http")) {
-            // the players that take request headers (MX, Just, VLC-style "headers" extras) send the page along
-            i.putExtra("headers", new String[]{"Referer", referrer, "User-Agent", UA});
-            android.os.Bundle b = new android.os.Bundle();
-            b.putString("Referer", referrer);
-            i.putExtra(android.provider.Browser.EXTRA_HEADERS, b);
+
+        if (origin == null && referrer != null && referrer.startsWith("http")) {
+            Uri ru = Uri.parse(referrer);
+            if (ru.getScheme() != null && ru.getAuthority() != null) {
+                origin = ru.getScheme() + "://" + ru.getAuthority();
+            }
         }
+
+        List<String> headerPairs = new ArrayList<>();
+        android.os.Bundle bundle = new android.os.Bundle();
+
+        headerPairs.add("User-Agent");
+        headerPairs.add(UA);
+        bundle.putString("User-Agent", UA);
+
+        if (referrer != null && referrer.startsWith("http")) {
+            headerPairs.add("Referer");
+            headerPairs.add(referrer);
+            bundle.putString("Referer", referrer);
+            i.putExtra("Referer", referrer);
+            i.putExtra("referer", referrer);
+        }
+        if (origin != null && origin.startsWith("http")) {
+            headerPairs.add("Origin");
+            headerPairs.add(origin);
+            bundle.putString("Origin", origin);
+            i.putExtra("Origin", origin);
+            i.putExtra("origin", origin);
+        }
+        if (cookie != null && !cookie.isEmpty()) {
+            headerPairs.add("Cookie");
+            headerPairs.add(cookie);
+            bundle.putString("Cookie", cookie);
+            i.putExtra("Cookie", cookie);
+            i.putExtra("cookie", cookie);
+        }
+
+        String[] headersArr = headerPairs.toArray(new String[0]);
+        // the players that take request headers (MX, Just, Nova/ExoPlayer, VLC "headers" extras) send them along
+        i.putExtra("headers", headersArr);
+        i.putExtra(android.provider.Browser.EXTRA_HEADERS, bundle);
+        i.putExtra("android.media.intent.extra.HTTP_HEADERS", bundle);
+
         // Nova plays HLS, DASH and nearly every codec; any other player is the fallback.
         Intent nova = new Intent(i).setPackage("org.courville.nova");
         if (AppLauncher.start(ctx, nova)) return true;

@@ -35,6 +35,11 @@ public final class KeyBridge {
         return send(ctx, "t " + text.replace('\n', ' '));
     }
 
+    /** Deletes count characters backwards via KEYCODE_DEL. */
+    public static synchronized boolean delete(Context ctx, int count) {
+        return send(ctx, "d " + Math.max(1, count));
+    }
+
     /** A tap on the screen at (x, y), for the air mouse. */
     public static synchronized boolean tap(Context ctx, int x, int y) {
         return send(ctx, "c " + x + " " + y);

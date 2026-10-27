@@ -222,11 +222,24 @@ public final class MovieAssistant {
         Reply out = new Reply();
         out.title = Creator.NAME;
         out.movies = MovieCatalog.personWork(ctx, Creator.TMDB_PERSON, "director", true, max);
+        for (Movie m : out.movies) {
+            if (m.director == null || m.director.isEmpty()) m.director = Creator.NAME;
+        }
+        if (out.movies.isEmpty()) {
+            Movie sessiz = new Movie();
+            sessiz.title = "Sessiz";
+            sessiz.originalTitle = "Sessiz";
+            sessiz.year = 2023;
+            sessiz.director = Creator.NAME;
+            sessiz.posterUrl = "https://i.ytimg.com/vi/" + Creator.SESSIZ_YOUTUBE_ID + "/hqdefault.jpg";
+            sessiz.backdropUrl = "https://i.ytimg.com/vi/" + Creator.SESSIZ_YOUTUBE_ID + "/maxresdefault.jpg";
+            out.movies.add(sessiz);
+        }
         String q = query.toLowerCase(Locale.getDefault());
         boolean question = false;
         for (String w : QUESTION_WORDS) if (q.contains(w)) question = true;
-        if (question || out.movies.isEmpty()) {
-            out.kind = out.movies.isEmpty() ? Kind.ANSWER : Kind.SHELF;
+        if (question) {
+            out.kind = Kind.SHELF;
             out.answer = MovieCatalog.personBio(ctx, Creator.TMDB_PERSON, 2);
         }
         return out;

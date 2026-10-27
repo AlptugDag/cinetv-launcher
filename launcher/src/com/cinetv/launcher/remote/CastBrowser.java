@@ -144,7 +144,30 @@ public final class CastBrowser {
                     String u = r.getUrl().toString();
                     if (CastSniffer.isAd(u)) return empty();
                     if (u.startsWith("http") && MEDIA.matcher(u).find()) {
-                        note(u, pageUrl);
+                        String ref = null;
+                        String origin = null;
+                        java.util.Map<String, String> headers = r.getRequestHeaders();
+                        if (headers != null) {
+                            for (java.util.Map.Entry<String, String> e : headers.entrySet()) {
+                                if ("referer".equalsIgnoreCase(e.getKey())) ref = e.getValue();
+                                else if ("origin".equalsIgnoreCase(e.getKey())) origin = e.getValue();
+                            }
+                        }
+                        if (ref == null || ref.isEmpty()) ref = pageUrl;
+                        if (origin == null && ref != null && ref.startsWith("http")) {
+                            android.net.Uri uri = android.net.Uri.parse(ref);
+                            if (uri.getScheme() != null && uri.getAuthority() != null) {
+                                origin = uri.getScheme() + "://" + uri.getAuthority();
+                            }
+                        }
+                        String cookies = null;
+                        try {
+                            android.webkit.CookieManager cm = android.webkit.CookieManager.getInstance();
+                            cookies = cm.getCookie(u);
+                            if ((cookies == null || cookies.isEmpty()) && ref != null) cookies = cm.getCookie(ref);
+                        } catch (Throwable ignored) {
+                        }
+                        note(u, ref, origin, cookies);
                         return empty(); // the TV stays silent; the stream is played by the TV's player instead
                     }
                     return null;
@@ -195,7 +218,7 @@ public final class CastBrowser {
     }
 
     /** A stream the page asked for: measured, and sent to the TV when it is the film and followed a tap. */
-    private static void note(final String url, final String referrer) {
+    private static void note(final String url, final String referrer, final String origin, final String cookies) {
         final long at = System.currentTimeMillis();
         synchronized (found) {
             for (JSONObject o : found) if (url.equals(o.optString("url"))) return;
@@ -206,14 +229,16 @@ public final class CastBrowser {
                     || (secs == VideoLength.UNKNOWN && url.toLowerCase(java.util.Locale.ROOT).contains(".m3u8"));
             try {
                 JSONObject o = new JSONObject().put("url", url).put("ref", referrer == null ? "" : referrer)
+                        .put("origin", origin == null ? "" : origin)
                         .put("label", CastResolver.label(url)).put("seconds", secs).put("film", film);
+                if (cookies != null && !cookies.isEmpty()) o.put("cookie", cookies);
                 synchronized (found) {
                     found.add(o);
                 }
                 // the viewer pressed play on the film: it goes to the TV, once
                 if (film && sent == null && at - lastTap < AFTER_TAP_MS) {
                     sent = url;
-                    main.post(() -> CastResolver.play(app, url, referrer));
+                    main.post(() -> CastResolver.play(app, url, referrer, origin, cookies));
                 }
             } catch (Throwable ignored) {
             }
@@ -259,8 +284,10 @@ public final class CastBrowser {
             }
             if (film != null) {
                 final String u = film.optString("url"), r = film.optString("ref");
+                final String o = film.optString("origin", null);
+                final String c = film.optString("cookie", null);
                 sent = u;
-                main.post(() -> CastResolver.play(app, u, r));
+                main.post(() -> CastResolver.play(app, u, r, o, c));
                 return;
             }
         }

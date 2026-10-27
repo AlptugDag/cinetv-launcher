@@ -1,7 +1,11 @@
 package com.cinetv.launcher.ui;
 
 import android.content.Context;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RadialGradient;
+import android.graphics.Shader;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -14,6 +18,8 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import java.util.Locale;
 
 import com.cinetv.launcher.FontManager;
 import com.cinetv.launcher.R;
@@ -428,26 +434,59 @@ public class HomeScreen {
         });
     }
 
-    /** The opening: the signature, then "CineTV" (red TV) and "by Alptuğ Dağ", fading into Home. */
+    /** The opening: cinematic glowing emblem, grand centered "CineTV" and "by Alptuğ Dağ", dissolving into Home. */
     private static FrameLayout buildSplash(Context ctx) {
         FrameLayout f = new FrameLayout(ctx);
-        f.setBackgroundColor(Color.parseColor("#050507"));
+        f.setBackgroundColor(Color.parseColor("#030305"));
         f.setVisibility(View.GONE);
         f.setClickable(true);
+
+        // Grand cinematic ambient backlight
+        View aura = new View(ctx) {
+            private final Paint auraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            @Override
+            protected void onDraw(Canvas c) {
+                float cx = getWidth() / 2f, cy = getHeight() / 2f;
+                float r = Math.min(getWidth(), getHeight()) * 0.48f;
+                auraPaint.setShader(new RadialGradient(cx, cy, r,
+                        new int[]{Color.argb(85, 204, 0, 41), Color.argb(45, 245, 194, 107), Color.TRANSPARENT},
+                        new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+                c.drawCircle(cx, cy, r, auraPaint);
+            }
+        };
+        f.addView(aura, match());
+
         LinearLayout col = new LinearLayout(ctx);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setGravity(Gravity.CENTER_HORIZONTAL);
+        col.setGravity(Gravity.CENTER);
+
         ImageView mark = new ImageView(ctx);
-        mark.setImageBitmap(Brand.tinted(ctx, Color.WHITE, UiKit.px(260)));
-        col.addView(mark, new LinearLayout.LayoutParams(UiKit.px(200), UiKit.px(200)));
-        TextView word = UiKit.text(ctx, 104, UiKit.INK, FontManager.getBlack(ctx));
+        mark.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        mark.setImageBitmap(Brand.tinted(ctx, Color.WHITE, UiKit.px(340)));
+        LinearLayout.LayoutParams markLp = new LinearLayout.LayoutParams(UiKit.px(320), UiKit.px(130));
+        markLp.gravity = Gravity.CENTER_HORIZONTAL;
+        markLp.bottomMargin = UiKit.px(8);
+        col.addView(mark, markLp);
+
+        TextView word = UiKit.text(ctx, 116, UiKit.INK, FontManager.getBlack(ctx));
+        word.setGravity(Gravity.CENTER);
         word.setText(Brand.wordmark());
-        word.setLetterSpacing(-0.02f);
-        col.addView(word);
-        TextView by = UiKit.label(ctx, 30, UiKit.INK_DIM);
-        by.setText("by " + Brand.AUTHOR);
-        by.setLetterSpacing(0.08f);
-        col.addView(by);
+        word.setLetterSpacing(0.04f);
+        word.setShadowLayer(UiKit.pxf(24), 0, 0, Color.argb(120, 204, 0, 41));
+        LinearLayout.LayoutParams wordLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        wordLp.gravity = Gravity.CENTER_HORIZONTAL;
+        col.addView(word, wordLp);
+
+        TextView by = UiKit.label(ctx, 32, Color.parseColor("#F5D59A"));
+        by.setGravity(Gravity.CENTER);
+        by.setText("by " + Brand.AUTHOR.toUpperCase(new Locale("tr")));
+        by.setLetterSpacing(0.22f);
+        by.setShadowLayer(UiKit.pxf(14), 0, UiKit.pxf(2), Color.argb(90, 0, 0, 0));
+        LinearLayout.LayoutParams byLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        byLp.gravity = Gravity.CENTER_HORIZONTAL;
+        byLp.topMargin = UiKit.px(12);
+        col.addView(by, byLp);
+
         if (!com.cinetv.launcher.service.Integrity.isGenuine(ctx)) {
             TextView note = UiKit.label(ctx, 22, Brand.TV_RED);
             note.setText(R.string.unofficial);
@@ -456,7 +495,7 @@ public class HomeScreen {
             note.setMaxWidth(UiKit.px(1100));
             col.addView(note);
         }
-        // Full width: a column only as wide as the signature cut the words to "Cin" and "by Alptuğ"
+
         f.addView(col, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
         return f;
     }
@@ -503,22 +542,37 @@ public class HomeScreen {
     public void showSplash() {
         splash.setVisibility(View.VISIBLE);
         splash.setAlpha(1f);
-        LinearLayout col = (LinearLayout) splash.getChildAt(0);
+        final View aura = splash.getChildAt(0);
+        LinearLayout col = (LinearLayout) splash.getChildAt(1);
         final View mark = col.getChildAt(0);
         final TextView word = (TextView) col.getChildAt(1);
         final View by = col.getChildAt(2);
         final CharSequence full = Brand.wordmark();
-        by.setAlpha(0f);
-        by.setTranslationY(UiKit.px(18));
+
+        aura.setAlpha(0f);
+        aura.setScaleX(0.7f);
+        aura.setScaleY(0.7f);
+        aura.animate().alpha(1f).scaleX(1.15f).scaleY(1.15f).setDuration(1800)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+
+        mark.setAlpha(0f);
+        mark.setScaleX(0.85f);
+        mark.setScaleY(0.85f);
+        mark.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(1200)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+
+        word.setAlpha(0f);
+        word.setScaleX(0.92f);
+        word.setScaleY(0.92f);
+        word.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(200).setDuration(1400)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+
         android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(0f, 1f);
-        a.setDuration(1500);
+        a.setDuration(1600);
         a.setInterpolator(new android.view.animation.DecelerateInterpolator());
         a.addUpdateListener(v -> {
             float t = (float) v.getAnimatedValue();
-            float sig = Math.min(1f, t / 0.55f);
-            mark.setClipBounds(new android.graphics.Rect(0, 0, Math.round(mark.getWidth() * sig), mark.getHeight()));
-            // letters appear one by one; the hidden rest stays laid out so the word does not shift
-            int shown = Math.round(Math.max(0f, (t - 0.35f) / 0.45f) * full.length());
+            int shown = Math.round(Math.max(0f, (t - 0.2f) / 0.65f) * full.length());
             android.text.SpannableString s = new android.text.SpannableString(full.toString());
             for (int i = 0; i < full.length(); i++) {
                 int c = i >= shown ? Color.TRANSPARENT : i >= 4 ? Brand.TV_RED : UiKit.INK;
@@ -527,8 +581,13 @@ public class HomeScreen {
             word.setText(s);
         });
         a.start();
-        by.animate().alpha(1f).translationY(0f).setStartDelay(1150).setDuration(520).start();
-        splash.animate().alpha(0f).setStartDelay(2600).setDuration(520)
+
+        by.setAlpha(0f);
+        by.setTranslationY(UiKit.pxf(24));
+        by.animate().alpha(1f).translationY(0f).setStartDelay(1000).setDuration(700)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+
+        splash.animate().alpha(0f).setStartDelay(2800).setDuration(600)
                 .withEndAction(() -> splash.setVisibility(View.GONE)).start();
     }
 

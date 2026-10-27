@@ -88,7 +88,7 @@ final class CastSniffer {
                     w.addJavascriptInterface(new Object() {
                         @android.webkit.JavascriptInterface
                         public void media(String u) {
-                            catchMedia(u);
+                            catchMedia(u, current);
                         }
 
                         @android.webkit.JavascriptInterface
@@ -110,7 +110,13 @@ final class CastSniffer {
                                     frames.add(u);
                                 }
                             }
-                            catchMedia(u);
+                            String ref = null;
+                            if (r.getRequestHeaders() != null) {
+                                for (Map.Entry<String, String> e : r.getRequestHeaders().entrySet()) {
+                                    if ("referer".equalsIgnoreCase(e.getKey())) ref = e.getValue();
+                                }
+                            }
+                            catchMedia(u, ref != null ? ref : current);
                             return null;
                         }
 
@@ -131,15 +137,15 @@ final class CastSniffer {
                 }
             }
 
-            private void catchMedia(String u) {
+            private void catchMedia(String u, String ref) {
                 if (u == null || !u.startsWith("http") || AD.matcher(u).find() || !MEDIA.matcher(u).find()) return;
+                final String targetRef = ref != null ? ref : current;
                 synchronized (media) {
                     if (media.containsKey(u)) return;
-                    media.put(u, current);
+                    media.put(u, targetRef);
                 }
-                final String ref = current;
                 // measured off the main thread: only a stream of three minutes or more is the film
-                probe.execute(() -> film.put(u, VideoLength.knownLong(u, ref)));
+                probe.execute(() -> film.put(u, VideoLength.knownLong(u, targetRef)));
             }
 
             private void open(String url, String referrer) {

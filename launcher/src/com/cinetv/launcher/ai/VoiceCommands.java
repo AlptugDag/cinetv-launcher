@@ -5,6 +5,8 @@ import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.cinetv.launcher.device.DeviceTweaks;
+import com.cinetv.launcher.device.MemoryOptimizer;
 import com.cinetv.launcher.device.NightCare;
 import com.cinetv.launcher.remote.KeyBridge;
 import com.cinetv.launcher.service.AppCatalog;
@@ -28,7 +30,7 @@ import java.util.regex.Pattern;
 public final class VoiceCommands {
 
     public enum Kind { APP, LIVE_TV, HDMI, VOL_UP, VOL_DOWN, VOL_SET, MUTE, CHANNEL, CH_UP, CH_DOWN, KEY, SLEEP, POWER_OFF,
-        SCREENSAVER, SETTINGS, INPUTS }
+        SCREENSAVER, SETTINGS, INPUTS, OPTIMIZE, REBOOT }
 
     public static final class Command {
         public final Kind kind;
@@ -65,6 +67,12 @@ public final class VoiceCommands {
 
         if (s.matches(".*\\b(televizyonu|tv'?yi|tivi'?yi)\\s+kapat.*") || s.matches(".*\\b(turn|switch) (the )?(tv|television) off.*")
                 || s.matches(".*\\b(turn|switch) off (the )?(tv|television).*")) return new Command(Kind.POWER_OFF, null);
+        if (s.matches(".*\\b(yeniden ba[sş]lat|televizyonu yeniden ba[sş]lat|tv'?yi yeniden ba[sş]lat|reboot|restart tv)\\b.*"))
+            return new Command(Kind.REBOOT, null);
+        if (s.matches(".*\\b(ram|bellek|belle[gğ]i|haf[ıi]za|haf[ıi]zay[ıi]|memory)\\b.*\\b(temizle|bo[sş]alt|h[ıi]zland[ıi]r|optimize|boost|clean|clear)\\b.*")
+                || s.matches("^(h[ıi]zland[ıi]r|optimize et|tv'?yi h[ıi]zland[ıi]r|speed up|boost tv)$"))
+            return new Command(Kind.OPTIMIZE, null);
+
         if (s.matches(".*\\b(uyku|sleep).*\\b(iptal|kapat|cancel|off)\\b.*")) return new Command(Kind.SLEEP, "0");
         if (num != null && s.matches(".*\\b(dakika|dk|minute|minutes)\\b.*") && s.matches(".*\\b(kapan|uyu|uyku|sleep|kapat|off)\\w*.*"))
             return new Command(Kind.SLEEP, num);
@@ -84,6 +92,13 @@ public final class VoiceCommands {
         if (s.matches(".*\\bhdm[iı]\\b.*")) return new Command(Kind.HDMI, num == null ? "0" : num);
         if (s.matches("^(kaynak|kaynaklar|giriş|giriş(ler)?i? (a[cç]|g[oö]ster)|inputs?|sources?)( a[cç]| g[oö]ster)?$")) return new Command(Kind.INPUTS, null);
         if (s.matches(".*\\b(canl[ıi] tv|canl[ıi] yay[ıi]n|televizyon kanallar[ıi]|tv kanallar[ıi]|live tv)\\b.*")) return new Command(Kind.LIVE_TV, null);
+
+        if (s.matches("^(altyaz[ıi]|altyaz[ıi]y[ıi]|altyaz[ıi]lar|subtitles?)( a[cç]| kapat| de[gğ]i[sş]tir)?$")) return new Command(Kind.KEY, "175");
+        if (s.matches("^(ses dili|dublaj|ses par[cç]as[ıi]|audio track|language)( a[cç]| de[gğ]i[sş]tir)?$")) return new Command(Kind.KEY, "244");
+        if (s.matches("^(tv rehberi|yay[ıi]n ak[ıi][sş][ıi]|program rehberi|epg|tv guide|guide)$")) return new Command(Kind.KEY, "172");
+        if (s.matches("^(men[uü]|men[uü]y[uü] a[cç]|se[cç]enekler|menu|open menu)$")) return new Command(Kind.KEY, "82");
+        if (s.matches("^(bilgi|film bilgisi|program bilgisi|info|information)$")) return new Command(Kind.KEY, "165");
+        if (s.matches("^(ba[sş]a sar|en ba[sş]a sar|restart from beginning)$")) return new Command(Kind.KEY, "88");
 
         if (s.matches("^(duraklat|durdur|beklet|pause|stop)$")) return new Command(Kind.KEY, "127");
         if (s.matches("^(devam|devam et|oynat|başlat|play|resume|continue)$")) return new Command(Kind.KEY, "126");
@@ -107,6 +122,11 @@ public final class VoiceCommands {
 
     /** "beş" -> "5" and the like, so "kanal beş" works too ("bir" and "on" stay words: "bir film", "turn on"). */
     private static String words(String s) {
+        s = s.replaceAll("\\b(hdmi|hdm[ıi])\\s+(bir|one|1\\.?)\\b", "hdmi 1");
+        s = s.replaceAll("\\b(hdmi|hdm[ıi])\\s+(iki|two|2\\.?)\\b", "hdmi 2");
+        s = s.replaceAll("\\b(hdmi|hdm[ıi])\\s+(üç|three|3\\.?)\\b", "hdmi 3");
+        s = s.replaceAll("\\b(hdmi|hdm[ıi])\\s+(dört|four|4\\.?)\\b", "hdmi 4");
+        s = s.replaceAll("\\b(kanal|channel)\\s+(bir|one)\\b", "kanal 1");
         String[][] w = {{"iki", "2"}, {"üç", "3"}, {"dört", "4"}, {"beş", "5"}, {"altı", "6"}, {"yedi", "7"}, {"sekiz", "8"},
                 {"dokuz", "9"}, {"yirmi", "20"}, {"otuz", "30"}, {"kırk", "40"}, {"elli", "50"}, {"altmış", "60"}, {"doksan", "90"},
                 {"one", "1"}, {"two", "2"}, {"three", "3"}, {"four", "4"}, {"five", "5"}, {"six", "6"}, {"seven", "7"}, {"eight", "8"},
@@ -189,6 +209,17 @@ public final class VoiceCommands {
                 host.say(app.getString(com.cinetv.launcher.R.string.voice_power_off));
                 new Handler(Looper.getMainLooper()).postDelayed(() -> new Thread(() -> KeyBridge.powerOff(app), "cinetv-voice-off").start(), 2500);
                 return true;
+            case OPTIMIZE:
+                MemoryOptimizer.cleanBackground(app, app.getPackageName());
+                MemoryOptimizer.applyVirtualRamProperties(app);
+                com.cinetv.launcher.service.PosterCache.trimMemory();
+                com.cinetv.launcher.ui.Glow.clear();
+                host.say("tr".equals(Locale.getDefault().getLanguage()) ? "Bellek ve arka plan temizlendi, performans optimize edildi." : "Memory and performance optimized.");
+                return true;
+            case REBOOT:
+                host.say("tr".equals(Locale.getDefault().getLanguage()) ? "Televizyon yeniden başlatılıyor..." : "Restarting TV...");
+                new Handler(Looper.getMainLooper()).postDelayed(() -> DeviceTweaks.reboot(app), 2000);
+                return true;
             case SCREENSAVER:
                 host.showScreensaver();
                 return true;
@@ -204,8 +235,44 @@ public final class VoiceCommands {
     static String findApp(Context ctx, String spoken) {
         String want = squash(spoken);
         if (want.isEmpty()) return null;
-        if (want.equals("youtube") || want.equals("yutup") || want.equals("yutub")) {
+        if (want.equals("nuvio")) {
+            for (String p : AppLauncher.NUVIO_PACKAGES) if (AppLauncher.isLaunchable(ctx.getPackageManager(), p)) return p;
+        }
+        if (want.equals("youtube") || want.equals("yutup") || want.equals("yutub") || want.equals("smarttube") || want.equals("tizentube")) {
             for (String p : AppLauncher.YOUTUBE_PACKAGES) if (AppLauncher.isLaunchable(ctx.getPackageManager(), p)) return p;
+        }
+        if (want.equals("netflix") || want.equals("netfliks")) {
+            if (AppLauncher.isLaunchable(ctx.getPackageManager(), "com.netflix.ninja")) return "com.netflix.ninja";
+        }
+        if (want.equals("blutv") || want.equals("blu")) {
+            if (AppLauncher.isLaunchable(ctx.getPackageManager(), "com.blutv")) return "com.blutv";
+        }
+        if (want.equals("exxen") || want.equals("eksen")) {
+            if (AppLauncher.isLaunchable(ctx.getPackageManager(), "com.exxen")) return "com.exxen";
+        }
+        if (want.equals("gain") || want.equals("geyin")) {
+            if (AppLauncher.isLaunchable(ctx.getPackageManager(), "com.beycon.gain")) return "com.beycon.gain";
+        }
+        if (want.equals("tod") || want.equals("bein") || want.equals("todtv") || want.equals("beinconnect")) {
+            if (AppLauncher.isLaunchable(ctx.getPackageManager(), "tr.com.bein.connect.tv")) return "tr.com.bein.connect.tv";
+        }
+        if (want.equals("turkcell") || want.equals("tvplus") || want.equals("tv") || want.equals("tiviarti")) {
+            if (AppLauncher.isLaunchable(ctx.getPackageManager(), "com.turkcell.ott")) return "com.turkcell.ott";
+        }
+        if (want.equals("tivibu") || want.equals("tivibugo")) {
+            if (AppLauncher.isLaunchable(ctx.getPackageManager(), "com.ttnet.tivibugo")) return "com.ttnet.tivibugo";
+        }
+        if (want.equals("disney") || want.equals("disneyplus") || want.equals("dizni")) {
+            if (AppLauncher.isLaunchable(ctx.getPackageManager(), "com.disney.disneyplus")) return "com.disney.disneyplus";
+        }
+        if (want.equals("stremio") || want.equals("stremyo")) {
+            if (AppLauncher.isLaunchable(ctx.getPackageManager(), "com.stremio.one")) return "com.stremio.one";
+        }
+        if (want.equals("prime") || want.equals("amazon") || want.equals("primevideo")) {
+            if (AppLauncher.isLaunchable(ctx.getPackageManager(), "com.amazon.amazonvideo.livingroom")) return "com.amazon.amazonvideo.livingroom";
+        }
+        if (want.equals("spotify") || want.equals("spotifay")) {
+            if (AppLauncher.isLaunchable(ctx.getPackageManager(), "com.spotify.tv.android")) return "com.spotify.tv.android";
         }
         String best = null;
         int bestScore = 0;

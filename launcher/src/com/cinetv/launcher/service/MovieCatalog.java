@@ -26,6 +26,21 @@ import java.util.concurrent.TimeUnit;
  */
 public final class MovieCatalog {
 
+    public static String cleanNfc(String s) {
+        return s == null ? "" : java.text.Normalizer.normalize(s.trim(), java.text.Normalizer.Form.NFC);
+    }
+
+    public static final class CastMember {
+        public final String name;
+        public final String photoUrl;
+        public transient android.graphics.Bitmap photo;
+
+        public CastMember(String name, String photoUrl) {
+            this.name = cleanNfc(name);
+            this.photoUrl = photoUrl == null ? "" : photoUrl;
+        }
+    }
+
     public static final class Movie {
         /** In the TV's language (English when it has none there). */
         public String title = "";
@@ -39,9 +54,24 @@ public final class MovieCatalog {
         public String backdropUrl = "";
         public String overview = "";
         public String director = "";
+        public int runtimeMinutes;
+        public String tagline = "";
+        public String logoUrl = "";
+        public List<CastMember> cast = new ArrayList<>();
         /** "IMDb 8.3 · RT 91% · Letterboxd 4.1" with an MDBList key; empty otherwise. */
         public String ratings = "";
         public double rating;
+
+        public String formattedRuntime() {
+            if (runtimeMinutes <= 0) return "";
+            boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+            int h = runtimeMinutes / 60;
+            int m = runtimeMinutes % 60;
+            if (h > 0) {
+                return tr ? (h + "s" + (m > 0 ? " " + m + "dk" : "")) : (h + "h" + (m > 0 ? " " + m + "m" : ""));
+            }
+            return tr ? (m + " dk") : (m + " min");
+        }
 
         /** The cover, spine and disc: the film's own title, as on a real DVD. */
         public String coverTitle() {
@@ -366,7 +396,9 @@ public final class MovieCatalog {
         if (cached != null) return cached;
         int id = 0;
         try {
-            JSONArray r = tmdb(ctx, "find/" + imdbId + "?external_source=imdb_id").optJSONArray("movie_results");
+            JSONObject found = tmdb(ctx, "find/" + imdbId + "?external_source=imdb_id");
+            JSONArray r = found.optJSONArray("movie_results");
+            if (r == null || r.length() == 0) r = found.optJSONArray("tv_results");
             if (r != null && r.length() > 0) id = r.getJSONObject(0).optInt("id");
         } catch (Throwable ignored) {
         }
@@ -407,14 +439,20 @@ public final class MovieCatalog {
     }
 
     /**
-     * The film's own title treatment (its logo, in its original lettering) from TMDB: the viewer's
+     * The film's or series' own title treatment (its logo, in its original lettering) from TMDB: the viewer's
      * language first, then English, then any. PNG only; null when there is none.
      */
     public static String logoFor(Context ctx, int tmdbId) {
+        String logo = logoFor(ctx, tmdbId, "movie");
+        return logo != null ? logo : logoFor(ctx, tmdbId, "tv");
+    }
+
+    public static String logoFor(Context ctx, int tmdbId, String type) {
         if (tmdbId <= 0 || !hasTmdb(ctx)) return null;
         try {
+            String kind = "series".equals(type) || "tv".equals(type) ? "tv" : "movie";
             String lang = Locale.getDefault().getLanguage();
-            JSONArray logos = tmdb(ctx, "movie/" + tmdbId + "/images?include_image_language=" + lang + ",en,null").optJSONArray("logos");
+            JSONArray logos = tmdb(ctx, kind + "/" + tmdbId + "/images?include_image_language=" + lang + ",en,null").optJSONArray("logos");
             if (logos == null) return null;
             String best = null;
             int bestRank = 9;
@@ -437,20 +475,28 @@ public final class MovieCatalog {
 
     /** A wide still for the screensaver: a random TMDB backdrop when possible, Metahub otherwise. */
     public static String backdropFor(Context ctx, String imdbId, int tmdbId, int variant) {
+        return backdropFor(ctx, imdbId, tmdbId, "movie", variant);
+    }
+
+    public static String backdropFor(Context ctx, String imdbId, int tmdbId, String type, int variant) {
         if (hasTmdb(ctx) && tmdbId > 0) {
-            try {
-                JSONArray backdrops = tmdb(ctx, "movie/" + tmdbId + "/images?").optJSONArray("backdrops");
-                if (backdrops != null && backdrops.length() > 0) {
-                    String path = backdrops.getJSONObject(Math.abs(variant) % Math.min(5, backdrops.length())).optString("file_path");
-                    if (!path.isEmpty()) return TMDB_IMG + "w1280" + path;
+            String first = "series".equals(type) || "tv".equals(type) ? "tv" : "movie";
+            String second = "tv".equals(first) ? "movie" : "tv";
+            for (String kind : new String[]{first, second}) {
+                try {
+                    JSONArray backdrops = tmdb(ctx, kind + "/" + tmdbId + "/images?").optJSONArray("backdrops");
+                    if (backdrops != null && backdrops.length() > 0) {
+                        String path = backdrops.getJSONObject(Math.abs(variant) % Math.min(5, backdrops.length())).optString("file_path");
+                        if (!path.isEmpty()) return TMDB_IMG + "w1280" + path;
+                    }
+                } catch (Throwable ignored) {
                 }
-            } catch (Throwable ignored) {
             }
         }
         return "https://images.metahub.space/background/medium/" + imdbId + "/img";
     }
 
-    /** Synopsis, director and a backdrop for the inside of the DVD case. Blocks; fills what it can. */
+    /** Synopsis, director, runtime, cast and a backdrop for the inside of the DVD case. Blocks; fills what it can. */
     public static Movie details(Context ctx, Movie m) {
         if (!hasTmdb(ctx)) {
             m.overview = localized(m.overview); // Cinemeta writes in English only
@@ -458,25 +504,55 @@ public final class MovieCatalog {
             return m;
         }
         try {
-            String kind = "series".equals(m.type) ? "tv" : "movie";
+            String kind = "series".equals(m.type) || "tv".equals(m.type) ? "tv" : "movie";
             int id = m.tmdbId;
             if (id <= 0 && m.imdbId.startsWith("tt")) {
                 JSONObject found = tmdb(ctx, "find/" + m.imdbId + "?external_source=imdb_id");
-                JSONArray r = found.optJSONArray("series".equals(m.type) ? "tv_results" : "movie_results");
+                JSONArray r = found.optJSONArray("tv".equals(kind) ? "tv_results" : "movie_results");
+                if (r == null || r.length() == 0) r = found.optJSONArray("tv".equals(kind) ? "movie_results" : "tv_results");
                 if (r != null && r.length() > 0) id = r.getJSONObject(0).optInt("id");
             }
             if (id <= 0) return m;
             m.tmdbId = id;
             JSONObject d = tmdb(ctx, kind + "/" + id + "?append_to_response=credits,external_ids&language=" + language());
             String overview = d.optString("overview", "").trim();
-            if (overview.isEmpty()) overview = tmdb(ctx, kind + "/" + id + "?language=en-US").optString("overview", "").trim();
+            JSONObject enData = null;
+            if (overview.isEmpty()) {
+                enData = tmdb(ctx, kind + "/" + id + "?language=en-US");
+                overview = enData.optString("overview", "").trim();
+            }
             if (!overview.isEmpty()) m.overview = overview;
             // TMDB has no synopsis in this language for many films: the English one, translated
             m.overview = localized(m.overview);
+            String tag = d.optString("tagline", "").trim();
+            if (tag.isEmpty() && enData != null) tag = enData.optString("tagline", "").trim();
+            if (!tag.isEmpty()) {
+                m.tagline = localized(tag);
+                taglineCache.put(kind + ":" + id + "/" + language(), m.tagline);
+            } else {
+                m.tagline = taglineFor(ctx, id, kind);
+            }
+            if (m.logoUrl == null || m.logoUrl.isEmpty()) {
+                m.logoUrl = logoFor(ctx, id, kind);
+            }
+            m.title = cleanNfc(m.title);
+            m.originalTitle = cleanNfc(m.originalTitle);
+            m.overview = cleanNfc(m.overview);
+            m.tagline = cleanNfc(m.tagline);
+            int rt = d.optInt("runtime", 0);
+            if (rt <= 0) {
+                JSONArray epRt = d.optJSONArray("episode_run_time");
+                if (epRt != null && epRt.length() > 0) rt = epRt.optInt(0, 0);
+            }
+            if (rt <= 0 && d.optJSONObject("last_episode_to_air") != null) {
+                rt = d.optJSONObject("last_episode_to_air").optInt("runtime", 0);
+            }
+            if (rt > 0) m.runtimeMinutes = rt;
             String backdrop = d.optString("backdrop_path", "");
             if (!backdrop.isEmpty() && !"null".equals(backdrop)) m.backdropUrl = TMDB_IMG + "w780" + backdrop;
             m.director = "";
-            JSONArray crew = d.optJSONObject("credits") != null ? d.optJSONObject("credits").optJSONArray("crew") : null;
+            JSONObject creditsObj = d.optJSONObject("credits");
+            JSONArray crew = creditsObj != null ? creditsObj.optJSONArray("crew") : null;
             if (crew != null) {
                 for (int i = 0; i < crew.length(); i++) {
                     JSONObject c = crew.getJSONObject(i);
@@ -486,6 +562,36 @@ public final class MovieCatalog {
             if (m.director.isEmpty()) {
                 JSONArray by = d.optJSONArray("created_by");
                 if (by != null && by.length() > 0) m.director = readablePerson(ctx, by.getJSONObject(0));
+            }
+            JSONArray castArr = creditsObj != null ? creditsObj.optJSONArray("cast") : null;
+            if (castArr != null && castArr.length() > 0) {
+                List<CastMember> members = new ArrayList<>();
+                // First pick lead cast with photos, then fill up to 3 if needed
+                for (int pass = 0; pass < 2 && members.size() < 3; pass++) {
+                    for (int i = 0; i < Math.min(8, castArr.length()) && members.size() < 3; i++) {
+                        JSONObject c = castArr.optJSONObject(i);
+                        if (c == null) continue;
+                        String profile = c.optString("profile_path", "");
+                        boolean hasPhoto = !profile.isEmpty() && !"null".equals(profile);
+                        if ((pass == 0) != hasPhoto) continue;
+                        String personName = readablePerson(ctx, c).trim();
+                        if (personName.isEmpty()) continue;
+                        members.add(new CastMember(personName, hasPhoto ? TMDB_IMG + "w185" + profile : ""));
+                    }
+                }
+                List<Future<?>> photoJobs = new ArrayList<>();
+                for (final CastMember cm : members) {
+                    if (!cm.photoUrl.isEmpty()) {
+                        photoJobs.add(resolver.submit(() -> cm.photo = PosterCache.load(ctx, cm.photoUrl, 128, 128)));
+                    }
+                }
+                for (Future<?> f : photoJobs) {
+                    try {
+                        f.get(2500, TimeUnit.MILLISECONDS);
+                    } catch (Throwable ignored) {
+                    }
+                }
+                m.cast = members;
             }
             // the shelf may hold an original-script title from an older cache
             String original = d.optString("movie".equals(kind) ? "original_title" : "original_name", "").trim();
@@ -532,12 +638,12 @@ public final class MovieCatalog {
                 JSONArray p = parts.optJSONArray(i);
                 if (p != null && !p.isNull(0)) b.append(p.optString(0));
             }
-            String out = b.toString().trim();
-            if (out.isEmpty()) return text;
+            String out = cleanNfc(b.toString());
+            if (out.isEmpty()) return cleanNfc(text);
             translated.put(key, out);
             return out;
         } catch (Throwable t) {
-            return text;
+            return cleanNfc(text);
         }
     }
 
@@ -581,6 +687,7 @@ public final class MovieCatalog {
 
     /** The YouTube id of the film's trailer (official, in the TV's language first, then English); null if none. Blocks. */
     public static String trailerKey(Context ctx, Movie m) {
+        if (Creator.isSessiz(m)) return Creator.SESSIZ_YOUTUBE_ID;
         if (!hasTmdb(ctx)) return null;
         String cacheKey = m.type + ":" + (m.tmdbId > 0 ? m.tmdbId : m.imdbId);
         String cached = trailers.get(cacheKey);
@@ -589,7 +696,7 @@ public final class MovieCatalog {
         try {
             if (m.tmdbId <= 0) details(ctx, m);
             if (m.tmdbId > 0) {
-                String kind = "series".equals(m.type) ? "tv" : "movie";
+                String kind = "series".equals(m.type) || "tv".equals(m.type) ? "tv" : "movie";
                 String lang = Locale.getDefault().getLanguage();
                 JSONArray r = tmdb(ctx, kind + "/" + m.tmdbId + "/videos?include_video_language=" + lang + ",en,null").optJSONArray("results");
                 int bestScore = -1;
@@ -614,14 +721,24 @@ public final class MovieCatalog {
         return best;
     }
 
-    /** The film's official tagline in the device language, or null when TMDB has none. */
+    /** The film's or series' official tagline in the device language, or null when TMDB has none. */
     public static String taglineFor(Context ctx, int tmdbId) {
+        String tag = taglineFor(ctx, tmdbId, "movie");
+        return tag != null ? tag : taglineFor(ctx, tmdbId, "tv");
+    }
+
+    public static String taglineFor(Context ctx, int tmdbId, String type) {
         if (tmdbId <= 0 || !hasTmdb(ctx)) return null;
-        String key = tmdbId + "/" + language();
+        String kind = "series".equals(type) || "tv".equals(type) ? "tv" : "movie";
+        String key = kind + ":" + tmdbId + "/" + language();
         if (taglineCache.containsKey(key)) return taglineCache.get(key);
         String tagline = null;
         try {
-            tagline = tmdb(ctx, "movie/" + tmdbId + "?language=" + language()).optString("tagline", "").trim();
+            tagline = tmdb(ctx, kind + "/" + tmdbId + "?language=" + language()).optString("tagline", "").trim();
+            if (tagline.isEmpty()) {
+                tagline = tmdb(ctx, kind + "/" + tmdbId + "?language=en-US").optString("tagline", "").trim();
+                if (!tagline.isEmpty()) tagline = localized(tagline);
+            }
             if (tagline.isEmpty()) tagline = null;
         } catch (Throwable ignored) {
         }

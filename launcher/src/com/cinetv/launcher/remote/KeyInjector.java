@@ -77,6 +77,10 @@ public final class KeyInjector {
                 if (cmd == 'k') press(Integer.parseInt(arg.trim()), false);
                 else if (cmd == 'l') press(Integer.parseInt(arg.trim()), true);
                 else if (cmd == 't') type(arg);
+                else if (cmd == 'd') {
+                    int delCount = Math.max(1, Math.min(100, Integer.parseInt(arg.trim())));
+                    for (int i = 0; i < delCount; i++) press(KeyEvent.KEYCODE_DEL, false);
+                }
                 else if (cmd == 'c' || cmd == 'w') touch(arg.trim().split(" "));
                 client.getOutputStream().write('.');
                 if (cmd == 'o') {

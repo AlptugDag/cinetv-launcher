@@ -454,15 +454,20 @@ public final class TvWebRemoteServer {
         return "Phone";
     }
 
+    private static volatile String lastTyped = "";
+
     private static JSONObject api(String path, Map<String, String> q) throws Exception {
         JSONObject ok = new JSONObject().put("ok", true);
         switch (path) {
+            case "/api/status":
+                return ok.put("inputFocused", TvKeyInterceptorService.isInputFocused());
             case "/api/hello":
                 post(() -> {
                     Controller c = controller;
                     if (c != null) c.onPhoneConnected();
                 });
-                return ok.put("tmdb", MovieCatalog.hasTmdb(app)).put("calibration", PictureCalibration.capabilities(app));
+                return ok.put("tmdb", MovieCatalog.hasTmdb(app)).put("calibration", PictureCalibration.capabilities(app))
+                        .put("inputFocused", TvKeyInterceptorService.isInputFocused());
             case "/api/catalog/trending":
                 return ok.put("results", toJson(MovieCatalog.trending(app, 24)));
             case "/api/catalog/search": {
@@ -544,8 +549,10 @@ public final class TvWebRemoteServer {
             case "/api/cast/play": {
                 final String u = clip(q.get("url"), 2000);
                 final String ref = clip(q.get("ref"), 2000);
+                final String origin = clip(q.get("origin"), 500);
+                final String cookie = clip(q.get("cookie"), 2000);
                 if (!u.startsWith("http://") && !u.startsWith("https://")) return new JSONObject().put("ok", false);
-                post(() -> CastResolver.play(app, u, ref.isEmpty() ? null : ref));
+                post(() -> CastResolver.play(app, u, ref.isEmpty() ? null : ref, origin.isEmpty() ? null : origin, cookie.isEmpty() ? null : cookie));
                 return ok;
             }
             case "/api/tv/voice": {
@@ -594,9 +601,48 @@ public final class TvWebRemoteServer {
                 return new JSONObject().put("ok", true).put("minutes", Math.max(0, Math.min(240, minutes)));
             }
             case "/api/type": {
-                // the phone's keyboard: the whole field each time, into whatever field the TV has focused
                 final String text = clip(q.get("q"), 300);
-                if (!TvKeyInterceptorService.typeIntoFocused(text)) KeyBridge.text(app, text);
+                final String add = q.get("add");
+                final String delStr = q.get("del");
+                final boolean enter = "1".equals(q.get("enter"));
+
+                if (delStr != null || add != null) {
+                    int del = delStr != null ? parseInt(delStr) : 0;
+                    if (del > 0) KeyBridge.delete(app, del);
+                    if (add != null && !add.isEmpty()) KeyBridge.text(app, add);
+                } else if (!text.isEmpty()) {
+                    boolean replaced = TvKeyInterceptorService.typeIntoFocused(text);
+                    if (!replaced) {
+                        String prev = lastTyped;
+                        if (prev == null) prev = "";
+                        if (text.startsWith(prev)) {
+                            String diff = text.substring(prev.length());
+                            if (!diff.isEmpty()) KeyBridge.text(app, diff);
+                        } else if (prev.startsWith(text)) {
+                            int del = prev.length() - text.length();
+                            if (del > 0) KeyBridge.delete(app, del);
+                        } else {
+                            int common = 0;
+                            while (common < prev.length() && common < text.length() && prev.charAt(common) == text.charAt(common)) common++;
+                            int del = prev.length() - common;
+                            String diff = text.substring(common);
+                            if (del > 0) KeyBridge.delete(app, del);
+                            if (!diff.isEmpty()) KeyBridge.text(app, diff);
+                        }
+                    }
+                    lastTyped = text;
+                }
+
+                if (enter) {
+                    lastTyped = "";
+                    KeyBridge.key(app, android.view.KeyEvent.KEYCODE_ENTER, false);
+                    if (!text.isEmpty()) {
+                        post(() -> {
+                            Controller c = controller;
+                            if (c != null) c.searchOnTv(text);
+                        });
+                    }
+                }
                 return ok;
             }
             case "/api/launch": {
