@@ -127,8 +127,15 @@ public final class Glass extends Drawable {
                 fill.setShader(null);
                 break;
             case com.cinetv.launcher.service.ThemeManager.MAT_VELVET:
-                fill.setColor(Color.argb(control ? 170 : 150, 70, 8, 14));
+                fill.setColor(Color.argb(control ? 165 : 145, 54, 6, 11));
                 canvas.drawRoundRect(rect, radius, radius, fill);
+                break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_REDCARPET:
+                fill.setShader(new LinearGradient(0, rect.top, 0, rect.bottom,
+                        Color.argb(control ? 185 : 160, 138, 10, 24),
+                        Color.argb(control ? 200 : 180, 22, 2, 6), Shader.TileMode.CLAMP));
+                canvas.drawRoundRect(rect, radius, radius, fill);
+                fill.setShader(null);
                 break;
             case com.cinetv.launcher.service.ThemeManager.MAT_WOOD:
                 fill.setShader(new LinearGradient(rect.left, 0, rect.right, 0, Color.argb(190, 92, 58, 30), Color.argb(200, 60, 36, 18), Shader.TileMode.CLAMP));
@@ -162,7 +169,8 @@ public final class Glass extends Drawable {
         int[] colors;
         switch (mat) {
             case com.cinetv.launcher.service.ThemeManager.MAT_METAL: colors = new int[]{0xF0FFFFFF, 0x50FFFFFF, 0xC0E2E8F0}; break;
-            case com.cinetv.launcher.service.ThemeManager.MAT_VELVET: colors = new int[]{0xE0F5C26B, 0x80B8862E, 0xC0F5C26B}; break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_VELVET: colors = new int[]{0xE6D4AF37, 0x90B8860B, 0xD0C5A059}; break;
+            case com.cinetv.launcher.service.ThemeManager.MAT_REDCARPET: colors = new int[]{0xF8FFF5C0, 0xEEFFE082, 0xD0FF2A42}; break;
             case com.cinetv.launcher.service.ThemeManager.MAT_WOOD: colors = new int[]{0xC0FBBF24, 0x60B45309, 0x90FBBF24}; break;
             case com.cinetv.launcher.service.ThemeManager.MAT_NEON: colors = new int[]{0xF0FF4FA0, 0xE0A855F7, 0xF000E5FF}; break;
             case com.cinetv.launcher.service.ThemeManager.MAT_CLEAR: colors = new int[]{0xE6FFFFFF, 0x66FFFFFF, 0xB3FFFFFF}; break;
@@ -179,7 +187,9 @@ public final class Glass extends Drawable {
     }
 
     private static float rimWidth(String mat) {
-        return com.cinetv.launcher.service.ThemeManager.MAT_NEON.equals(mat) ? 2.6f : 1.8f;
+        if (com.cinetv.launcher.service.ThemeManager.MAT_NEON.equals(mat)) return 2.6f;
+        if (com.cinetv.launcher.service.ThemeManager.MAT_REDCARPET.equals(mat)) return 2.2f;
+        return 1.8f;
     }
 
     @Override

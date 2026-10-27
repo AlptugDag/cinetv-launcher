@@ -1,5 +1,22 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.6
+
+### Yenilikler
+- **Kırmızı Halı ve Sinema Salonu UI Ayrımı**:
+  - *Sinema Salonu (Cinema Hall)*: Klasik 1930'lar Art-Deco sinema salonu atmosferi; derin bordo kadife malzeme (`MAT_VELVET`), antik pirinç/sıcak altın kordon bordürleri (`#E5A93C`), sıcak akkor flamanlı lamba aydınlatması.
+  - *Kırmızı Halı (Red Carpet)*: Modern festival & Oscar gala prömiyeri; yepyeni `MAT_REDCARPET` malzemesi (safir yakut kırmızı degrade, smokin/black-tie derin kontrast), 24K parlak şampanya altın ve elmas beyazı ışık kenarları (`#FFE57F`), paparazi flaş parıltıları.
+- **Kırmızı Halı Vitrin Başlığı Okunurluğu (Özel Kırmızı Tasarım)**:
+  - Arka plandaki festival amblem/logosundan dolayı vitrin başlığının kaybolmasını önlemek için sadece Kırmızı Halı temasına özel olarak vitrin başlığı yüksek kontrastlı prömiyer kırmızısına (`#FF2638`) ve derin zemin gölgesine kavuşturuldu.
+- **Bütün Temalarda %100 Kusursuz ve Eşit Düzen (Layout)**:
+  - Kırmızı Halı temasındaki suni 38px'lik yükseltilmiş blok katmanı ve yan dikmeler kaldırıldı; DVD kutuları arka plandaki 3D kırmızı halı dokusuna organik kadife temas gölgesi ve flaş pırıltılarıyla doğrudan ve tüm diğer temalarla birebir aynı düşey eksende oturtuldu.
+- **Her Temaya Özgü Karakteristik Ögeler**:
+  - **Saat & Tarih**: Kırmızı Halı'da şampanya altın, Sinema Salonu'nda nostaljik art-deco altın/fildişi, Neon Gece'de lazer pembe/camgöbeği, Metalik'te platin gümüşü, Sıvı Cam'da buz mavisi kristal, Film Dolabı'nda stüdyo beyazı.
+  - **Alptuğ Dağ İmzası & Wordmark**: Her temanın ışığına göre özel renk degrade veya metal/altın/kristal tonlu imza ve tema renginde yazar künyesi.
+  - **DVD Kutularının Dış Görünüşü & Işık Derecelendirmesi**: Her odaya özel GPU donanım renk matrisi (`grade`); Kırmızı Halı'da spot ışıklı yakut ışıltısı, Sinema Salonu'nda akkor tungsten sıcaklığı, Metalik'te platin gümüş yansımaları, Sıvı Cam'da kristal kırılımları.
+  - **Arama Çubuğu**: Tema malzemesiyle senkronize cam hazne, temaya özel büyüteç ikonu, ipucu rengi ve mikrofon ikonu.
+  - **UI Butonları**: Başlık butonları, odak ışıkları ve kontrol kapsülleri temasının vurgu rengine ve malzemesine tam duyarlı.
+
 ## 1.0.0.5
 
 ### Yenilikler

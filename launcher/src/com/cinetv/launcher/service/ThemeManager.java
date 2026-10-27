@@ -70,7 +70,7 @@ public final class ThemeManager {
     }
 
     public static final String MAT_GLASS = "glass", MAT_CLEAR = "clear", MAT_METAL = "metal", MAT_VELVET = "velvet",
-            MAT_WOOD = "wood", MAT_NEON = "neon", MAT_BLACK = "black";
+            MAT_WOOD = "wood", MAT_NEON = "neon", MAT_BLACK = "black", MAT_REDCARPET = "redcarpet";
 
     /**
      * Each theme is a different room, not a recolour: backdrop, grid density, whether the focused
@@ -88,8 +88,8 @@ public final class ThemeManager {
                     new String[0], 5, false, Color.parseColor("#CBD5E1"), false, false).drawn("metal", MAT_METAL),
             // a real hall (Lichtburg, Essen): the cases take its warm light, the curtains stand in front of them
             new Theme("cinema", "Cinema Hall",
-                    colors("#1A0406", "#240608", "#120304", "#1C0507"),
-                    new String[]{"themes/cinema.jpg"}, 4, false, Color.parseColor("#F5C26B"), true, false)
+                    colors("#1A0406", "#260509", "#120204", "#1E0407"),
+                    new String[]{"themes/cinema.jpg"}, 4, false, Color.parseColor("#E5A93C"), true, false)
                     .drawn(null, MAT_VELVET).furnished("cinema"),
             // a film closet: floor-to-ceiling white shelves of films; Home's cases are one of its shelves
             new Theme("closet", "Film Closet",
@@ -99,9 +99,9 @@ public final class ThemeManager {
                     colors("#12042A", "#1E0838", "#0A0220", "#2A0A40"),
                     new String[0], 5, false, Color.parseColor("#F472B6"), true, false).drawn("neon", MAT_NEON),
             new Theme("redcarpet", "Red Carpet",
-                    colors("#180306", "#2B060C", "#140204", "#200408"),
-                    new String[]{"themes/redcarpet.jpg"}, 4, false, Color.parseColor("#F5C26B"), true, false)
-                    .drawn(null, MAT_VELVET).furnished("redcarpet"),
+                    colors("#2C0207", "#44040E", "#160103", "#35030A"),
+                    new String[]{"themes/redcarpet.jpg"}, 4, false, Color.parseColor("#FFE57F"), true, false)
+                    .drawn(null, MAT_REDCARPET).furnished("redcarpet"),
     };
 
     /** Ids of earlier builds' themes, kept so a TV that had one opens in its successor. */

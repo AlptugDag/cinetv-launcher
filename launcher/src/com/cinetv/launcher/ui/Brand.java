@@ -75,6 +75,18 @@ public final class Brand {
         return b;
     }
 
+    public static CharSequence signedWordmarkForTheme(String themeId) {
+        int byColor;
+        if ("redcarpet".equals(themeId)) byColor = Color.parseColor("#FFE57F");
+        else if ("cinema".equals(themeId)) byColor = Color.parseColor("#F5C26B");
+        else if ("neon".equals(themeId)) byColor = Color.parseColor("#F472B6");
+        else if ("metal".equals(themeId)) byColor = Color.parseColor("#CBD5E1");
+        else if ("glass".equals(themeId)) byColor = Color.parseColor("#7DD3FC");
+        else if ("closet".equals(themeId)) byColor = Color.parseColor("#E7E5E4");
+        else byColor = UiKit.INK_FAINT;
+        return signedWordmark(byColor);
+    }
+
     /** The signature tinted (white on dark screens), for small marks on discs and overlays. */
     public static Bitmap tinted(Context ctx, int color, int maxWidth) {
         Bitmap src = mark(ctx);
@@ -100,6 +112,29 @@ public final class Brand {
         p.setShader(new LinearGradient(0, 0, 0, h, colorTop, colorBottom, Shader.TileMode.CLAMP));
         c.drawRect(0, 0, w, h, p);
         return out;
+    }
+
+    /** Returns the signature mark styled and tinted to match the specific atmosphere of each theme. */
+    public static Bitmap signatureForTheme(Context ctx, String themeId, int maxWidth) {
+        if ("redcarpet".equals(themeId)) {
+            return gradientSignature(ctx, Color.parseColor("#FFE57F"), Color.parseColor("#FF2A42"), maxWidth);
+        }
+        if ("cinema".equals(themeId)) {
+            return tinted(ctx, Color.parseColor("#F5C26B"), maxWidth);
+        }
+        if ("neon".equals(themeId)) {
+            return gradientSignature(ctx, Color.parseColor("#FF4FA0"), Color.parseColor("#00E5FF"), maxWidth);
+        }
+        if ("metal".equals(themeId)) {
+            return tinted(ctx, Color.parseColor("#E2E8F0"), maxWidth);
+        }
+        if ("glass".equals(themeId)) {
+            return tinted(ctx, Color.parseColor("#BAE6FD"), maxWidth);
+        }
+        if ("closet".equals(themeId)) {
+            return tinted(ctx, Color.parseColor("#FAFAF9"), maxWidth);
+        }
+        return UiKit.isLight() ? tinted(ctx, Color.BLACK, maxWidth) : mark(ctx);
     }
 
     private static Bitmap drawDefault(int size) {

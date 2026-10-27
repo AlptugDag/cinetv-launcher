@@ -31,34 +31,55 @@ final class ShelfSet {
     private ShelfSet() {}
 
     static View back(Context ctx, String scene, int caseW, float caseH) {
-        return "closet".equals(scene) || "redcarpet".equals(scene) ? new Layer(ctx, scene, caseW, caseH, false) : null;
+        return "closet".equals(scene) ? new Layer(ctx, scene, caseW, caseH, false) : null;
     }
 
     static View front(Context ctx, String scene, int caseW, float caseH) {
         return "closet".equals(scene) || "cinema".equals(scene) || "redcarpet".equals(scene) ? new Layer(ctx, scene, caseW, caseH, true) : null;
     }
 
-    /** The room's light on the cases: the hall's warm stage light, the closet's cool ceiling tubes, the red carpet's golden premiere glow. */
+    /** The room's light on the cases: tailored cinematic lighting grade per theme. */
     static android.graphics.ColorMatrix grade(String scene) {
         if ("redcarpet".equals(scene)) {
             return new android.graphics.ColorMatrix(new float[]{
-                    1.08f, 0.04f, 0f, 0, 8,
-                    0.02f, 0.95f, 0.02f, 0, 5,
-                    0f, 0.02f, 0.82f, 0, -3,
+                    1.12f, 0.02f, 0f, 0, 10,
+                    0.01f, 0.94f, 0.01f, 0, 3,
+                    0f, 0.02f, 0.88f, 0, -2,
                     0, 0, 0, 1, 0});
         }
         if ("cinema".equals(scene)) {
             return new android.graphics.ColorMatrix(new float[]{
-                    0.98f, 0.06f, 0f, 0, 6,
-                    0.02f, 0.80f, 0.02f, 0, -2,
-                    0f, 0.04f, 0.66f, 0, -6,
+                    1.04f, 0.06f, 0f, 0, 8,
+                    0.02f, 0.92f, 0.02f, 0, 6,
+                    0f, 0.02f, 0.74f, 0, -8,
+                    0, 0, 0, 1, 0});
+        }
+        if ("neon".equals(scene)) {
+            return new android.graphics.ColorMatrix(new float[]{
+                    1.08f, 0.02f, 0.04f, 0, 12,
+                    0.01f, 0.92f, 0.02f, 0, -2,
+                    0.04f, 0.02f, 1.12f, 0, 14,
+                    0, 0, 0, 1, 0});
+        }
+        if ("metal".equals(scene)) {
+            return new android.graphics.ColorMatrix(new float[]{
+                    1.02f, 0.02f, 0.02f, 0, 2,
+                    0.02f, 1.02f, 0.02f, 0, 2,
+                    0.02f, 0.02f, 1.06f, 0, 6,
+                    0, 0, 0, 1, 0});
+        }
+        if ("glass".equals(scene)) {
+            return new android.graphics.ColorMatrix(new float[]{
+                    0.96f, 0.02f, 0.02f, 0, 0,
+                    0.01f, 0.98f, 0.03f, 0, 3,
+                    0.02f, 0.04f, 1.08f, 0, 10,
                     0, 0, 0, 1, 0});
         }
         if ("closet".equals(scene)) {
             return new android.graphics.ColorMatrix(new float[]{
-                    0.96f, 0.02f, 0.02f, 0, 2,
-                    0.01f, 0.97f, 0.02f, 0, 3,
-                    0.01f, 0.02f, 1.0f, 0, 5,
+                    0.98f, 0.02f, 0.02f, 0, 3,
+                    0.01f, 0.98f, 0.02f, 0, 4,
+                    0.01f, 0.02f, 1.00f, 0, 4,
                     0, 0, 0, 1, 0});
         }
         return null;
@@ -112,8 +133,7 @@ final class ShelfSet {
         @Override
         protected void onDraw(Canvas c) {
             if ("redcarpet".equals(scene)) {
-                if (front) redCarpetFront(c);
-                else redCarpetBack(c);
+                redCarpetStage(c);
             } else if ("cinema".equals(scene)) {
                 cinemaStage(c);
             } else if (front) {
@@ -206,85 +226,22 @@ final class ShelfSet {
 
         // ---- redcarpet (Kırmızı Halı) ----------------------------------------------------------------
 
-        private void redCarpetBack(Canvas c) {
+        private void redCarpetStage(Canvas c) {
             int w = getWidth(), h = getHeight();
             float fl = floor();
             float lb = leftBleed(), rb = rightBleed();
 
-            // 1. Two grand overhead golden floodlights casting spotlight pools on the red carpet
-            float spotR = w * 0.42f;
-            p.setShader(new RadialGradient(w * 0.25f, fl - caseH * 0.75f, spotR,
-                    new int[]{Color.argb(50, 245, 194, 107), Color.argb(18, 245, 194, 107), Color.TRANSPARENT},
-                    new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
-            c.drawCircle(w * 0.25f, fl - caseH * 0.75f, spotR, p);
-
-            p.setShader(new RadialGradient(w * 0.75f, fl - caseH * 0.75f, spotR,
-                    new int[]{Color.argb(50, 245, 194, 107), Color.argb(18, 245, 194, 107), Color.TRANSPARENT},
-                    new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
-            c.drawCircle(w * 0.75f, fl - caseH * 0.75f, spotR, p);
-
-            // 2. Soft atmospheric crimson premiere glow rising behind the cases
-            p.setShader(new LinearGradient(0, fl - UiKit.pxf(60), 0, fl,
-                    Color.TRANSPARENT, Color.argb(65, 150, 10, 25), Shader.TileMode.CLAMP));
-            c.drawRect(-lb, fl - UiKit.pxf(60), w + rb, fl, p);
-            p.setShader(null);
-        }
-
-        private void redCarpetFront(Canvas c) {
-            int w = getWidth(), h = getHeight();
-            float fl = floor();
-            float lb = leftBleed(), rb = rightBleed();
-
-            float carpetH = UiKit.pxf(38);
-            float y0 = fl - UiKit.pxf(4);
-            float y1 = y0 + carpetH;
-
-            // 1. Plush Red Carpet Runner Deck (spans edge-to-edge from -lb to w + rb)
-            p.setShader(new LinearGradient(0, y0, 0, y1,
-                    new int[]{
-                            Color.parseColor("#820812"), // top plush velvet catch
-                            Color.parseColor("#CF1427"), // primary vivid scarlet crest
-                            Color.parseColor("#A80D1D"), // deep velvet body
-                            Color.parseColor("#5A040B")  // bottom rim shadow
-                    },
-                    new float[]{0f, 0.22f, 0.65f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(-lb, y0, w + rb, y1, p);
-
-            // 2. Upper Gold Bullion Border Trim (metallic brass cord catching flashlights)
-            float rodH = UiKit.pxf(4.2f);
-            p.setShader(new LinearGradient(0, y0 - rodH * 0.5f, 0, y0 + rodH * 0.5f,
-                    new int[]{Color.parseColor("#FFF5B8"), Color.parseColor("#D4AF37"), Color.parseColor("#7A5510")},
-                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(-lb, y0 - rodH * 0.5f, w + rb, y0 + rodH * 0.5f, p);
-
-            // 3. Lower Gold Bullion Border Trim
-            p.setShader(new LinearGradient(0, y1 - rodH, 0, y1,
-                    new int[]{Color.parseColor("#FFF5B8"), Color.parseColor("#D4AF37"), Color.parseColor("#7A5510")},
-                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(-lb, y1 - rodH, w + rb, y1, p);
-
-            // 4. Velvet Contact Crevice Shadow under DVD cases as they walk the red carpet
-            p.setShader(new LinearGradient(0, fl - UiKit.pxf(2), 0, fl + UiKit.pxf(12),
-                    Color.argb(185, 20, 2, 4), Color.TRANSPARENT, Shader.TileMode.CLAMP));
-            c.drawRect(-lb, fl - UiKit.pxf(2), w + rb, fl + UiKit.pxf(12), p);
-
-            // 5. Dual-stage drop shadow below the red carpet runner
-            p.setShader(new LinearGradient(0, y1, 0, y1 + UiKit.pxf(14),
-                    Color.argb(160, 0, 0, 0), Color.argb(35, 0, 0, 0), Shader.TileMode.CLAMP));
-            c.drawRect(-lb, y1, w + rb, y1 + UiKit.pxf(14), p);
-
-            p.setShader(new LinearGradient(0, y1 + UiKit.pxf(14), 0, y1 + UiKit.pxf(36),
-                    Color.argb(35, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
-            c.drawRect(-lb, y1 + UiKit.pxf(14), w + rb, y1 + UiKit.pxf(36), p);
+            // Seamless plush velvet contact shadow directly under the cases walking the red carpet
+            float shadowH = UiKit.pxf(24);
+            p.setShader(new LinearGradient(0, fl - shadowH * 0.35f, 0, fl + shadowH,
+                    new int[]{Color.TRANSPARENT, Color.argb(175, 30, 2, 6), Color.argb(70, 20, 1, 3), Color.TRANSPARENT},
+                    new float[]{0f, 0.28f, 0.72f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(-lb, fl - shadowH * 0.35f, w + rb, fl + shadowH, p);
             p.setShader(null);
 
-            // 6. VIP Entrance Golden Stanchions at left & right borders
-            drawStanchion(c, -lb + UiKit.pxf(36), y0, y1);
-            drawStanchion(c, w + rb - UiKit.pxf(36), y0, y1);
-
-            // 7. Paparazzi flash glints along the gold bullion border
-            drawGlint(c, w * 0.28f, y0, UiKit.pxf(6f));
-            drawGlint(c, w * 0.72f, y0, UiKit.pxf(5f));
+            // Subtle paparazzi starburst flash glints along the gala red carpet
+            drawGlint(c, w * 0.20f, fl + UiKit.pxf(2), UiKit.pxf(6f));
+            drawGlint(c, w * 0.80f, fl + UiKit.pxf(2), UiKit.pxf(5f));
         }
 
         private void drawGlint(Canvas c, float gx, float gy, float r) {
@@ -294,34 +251,6 @@ final class ShelfSet {
             p.setColor(Color.argb(210, 255, 245, 180));
             c.drawLine(gx - r * 1.4f, gy, gx + r * 1.4f, gy, p);
             c.drawLine(gx, gy - r * 1.4f, gx, gy + r * 1.4f, p);
-        }
-
-        private void drawStanchion(Canvas c, float cx, float carpetTop, float carpetBot) {
-            float postW = UiKit.pxf(10);
-            float postTop = carpetTop - UiKit.pxf(60);
-            float finialR = UiKit.pxf(11);
-
-            // Solid polished brass post
-            p.setShader(new LinearGradient(cx - postW / 2f, 0, cx + postW / 2f, 0,
-                    new int[]{Color.parseColor("#D4AF37"), Color.parseColor("#FFF5B8"), Color.parseColor("#7A5510")},
-                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(cx - postW / 2f, postTop, cx + postW / 2f, carpetBot + UiKit.pxf(4), p);
-
-            // Brass base collar
-            float baseW = UiKit.pxf(28);
-            c.drawRoundRect(new android.graphics.RectF(cx - baseW / 2f, carpetBot - UiKit.pxf(2), cx + baseW / 2f, carpetBot + UiKit.pxf(6)),
-                    UiKit.pxf(3), UiKit.pxf(3), p);
-
-            // Polished brass spherical finial
-            p.setShader(new RadialGradient(cx - finialR * 0.3f, postTop - finialR * 0.7f, finialR * 1.2f,
-                    new int[]{Color.parseColor("#FFFFFF"), Color.parseColor("#FFF5B8"), Color.parseColor("#D4AF37"), Color.parseColor("#5A3E08")},
-                    new float[]{0f, 0.25f, 0.70f, 1f}, Shader.TileMode.CLAMP));
-            c.drawCircle(cx, postTop - finialR * 0.7f, finialR, p);
-
-            // Paparazzi flash specular glint on the finial
-            p.setShader(null);
-            p.setColor(Color.WHITE);
-            c.drawCircle(cx - finialR * 0.35f, postTop - finialR * 1.05f, UiKit.pxf(2.5f), p);
         }
 
         // ---- closet (Film Dolabı) -------------------------------------------------------------------

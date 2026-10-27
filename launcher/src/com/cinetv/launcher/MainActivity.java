@@ -912,7 +912,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (persist) ThemeManager.setTheme(this, id);
         ThemeManager.Theme t = ThemeManager.byId(id);
         home.environment.apply(t, ThemeManager.isLight(this));
-        home.shelf.setScene(ThemeManager.usesCustomWallpaper(this) ? null : t.furniture);
+        home.shelf.setTheme(t.id, ThemeManager.usesCustomWallpaper(this) ? null : t.furniture);
+        home.applyTheme(t);
         // every glass panel and button takes the new room's material at once
         redraw(getWindow().getDecorView());
         String wp = ThemeManager.wallpaperNow(t);

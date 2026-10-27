@@ -27,6 +27,7 @@ import java.util.Locale;
 import com.cinetv.launcher.FontManager;
 import com.cinetv.launcher.R;
 import com.cinetv.launcher.device.PerformanceProfile;
+import com.cinetv.launcher.service.ThemeManager;
 
 /**
  * The home screen's view tree. Owns layout and focus routing between the header, the DVD shelf and
@@ -86,6 +87,11 @@ public class HomeScreen {
     private final FrameLayout aiCard;
     private final FrameLayout micButton;
     private final View[] headerButtons;
+    private final ImageView mark;
+    private final TextView signed;
+    private final ImageView searchIcon;
+    private final ImageView micIcon;
+    private ThemeManager.Theme currentTheme;
 
     public HomeScreen(Context ctx, Listener listener, AppGrid.Host appHost) {
         this.ctx = ctx;
@@ -123,12 +129,12 @@ public class HomeScreen {
         logoButton = new FrameLayout(ctx);
         logoButton.setFocusable(true);
         logoButton.setClickable(true);
-        ImageView mark = new ImageView(ctx);
+        mark = new ImageView(ctx);
         mark.setImageBitmap(UiKit.isLight() ? Brand.tinted(ctx, Color.BLACK, UiKit.px(160)) : Brand.mark(ctx));
         logoButton.addView(mark, match());
         logoButton.setOnFocusChangeListener((v, has) -> {
             UiKit.lift(v, has, 1.15f, 160);
-            if (has) listener.onFocusLight(v, Color.parseColor("#38BDF8"));
+            if (has) listener.onFocusLight(v, currentTheme != null ? currentTheme.accent : Color.parseColor("#38BDF8"));
         });
         logoButton.setOnClickListener(v -> listener.onLogo());
         leftGroup.addView(logoButton, new LinearLayout.LayoutParams(UiKit.px(76), UiKit.px(76)));
@@ -148,7 +154,7 @@ public class HomeScreen {
         sub.addView(date);
         sub.addView(weather);
         timeCol.addView(sub);
-        TextView signed = UiKit.bold(ctx, 15, UiKit.INK_DIM);
+        signed = UiKit.bold(ctx, 15, UiKit.INK_DIM);
         signed.setLetterSpacing(0.04f);
         CharSequence credit = Brand.signedWordmark(UiKit.INK_FAINT);
         if (!com.cinetv.launcher.service.Integrity.isGenuine(ctx)) {
@@ -165,11 +171,11 @@ public class HomeScreen {
         LinearLayout searchRow = new LinearLayout(ctx);
         searchRow.setGravity(Gravity.CENTER_VERTICAL);
         searchRow.setPadding(UiKit.px(26), 0, UiKit.px(12), 0);
-        ImageView glass = new ImageView(ctx);
+        searchIcon = new ImageView(ctx);
         android.graphics.drawable.Drawable sd = ctx.getDrawable(R.drawable.ic_search).mutate();
         sd.setTint(UiKit.INK_DIM);
-        glass.setImageDrawable(sd);
-        searchRow.addView(glass, new LinearLayout.LayoutParams(UiKit.px(28), UiKit.px(28)));
+        searchIcon.setImageDrawable(sd);
+        searchRow.addView(searchIcon, new LinearLayout.LayoutParams(UiKit.px(28), UiKit.px(28)));
         search = new EditText(ctx);
         search.setBackground(null);
         search.setSingleLine(true);
@@ -193,7 +199,7 @@ public class HomeScreen {
         micDisc.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         micDisc.setColor(Color.TRANSPARENT);
         micButton.setBackground(micDisc);
-        final ImageView micIcon = new ImageView(ctx);
+        micIcon = new ImageView(ctx);
         final android.graphics.drawable.Drawable md = ctx.getDrawable(R.drawable.ic_mic).mutate();
         md.setTint(UiKit.INK_DIM);
         micIcon.setImageDrawable(md);
@@ -202,7 +208,7 @@ public class HomeScreen {
             micDisc.setColor(has ? Color.WHITE : Color.TRANSPARENT);
             md.setTint(has ? UiKit.INK_DARK : UiKit.INK_DIM);
             v.animate().scaleX(has ? 1.12f : 1f).scaleY(has ? 1.12f : 1f).setDuration(140).start();
-            if (has) listener.onFocusLight(v, Color.parseColor("#A78BFA"));
+            if (has) listener.onFocusLight(v, currentTheme != null ? currentTheme.accent : Color.parseColor("#A78BFA"));
         });
         micButton.setOnClickListener(v -> listener.onVoice());
         LinearLayout.LayoutParams mlp0 = new LinearLayout.LayoutParams(UiKit.px(48), UiKit.px(48));
@@ -215,7 +221,7 @@ public class HomeScreen {
             searchBevel.setFocusedState(has);
             searchBox.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(160).start();
             searchBox.setAlpha(has ? 1f : 0.92f);
-            if (has) listener.onFocusLight(searchBox, Color.parseColor("#A78BFA"));
+            if (has) listener.onFocusLight(searchBox, currentTheme != null ? currentTheme.accent : Color.parseColor("#A78BFA"));
         });
         search.setOnEditorActionListener((v, id, e) -> {
             String q = v.getText().toString().trim();
@@ -356,7 +362,7 @@ public class HomeScreen {
         b.setOnFocusChangeListener((v, has) -> {
             inner.onFocusChange(v, has);
             if (has) {
-                listener.onFocusLight(v, Color.parseColor("#38BDF8"));
+                listener.onFocusLight(v, currentTheme != null ? currentTheme.accent : Color.parseColor("#38BDF8"));
                 showButtonHint(v, ctx.getString(hint));
             } else if (buttonHint != null) {
                 buttonHint.setVisibility(View.GONE);
@@ -699,7 +705,90 @@ public class HomeScreen {
         }
         shelf.setSpatial(on);
         apps.setSpatial(on);
+    }
 
+    /** Updates all UI elements (vitrin title, clock, signature, search bar, icons) to perfectly match each room's aesthetic. */
+    public void applyTheme(ThemeManager.Theme t) {
+        if (t == null) return;
+        this.currentTheme = t;
+
+        // 1. Vitrin Başlığı (shelfLabel) - specifically red with dark drop shadow in redcarpet theme
+        boolean isRedCarpet = "redcarpet".equals(t.id);
+        if (isRedCarpet) {
+            shelfLabel.setTextColor(Color.parseColor("#FF2638")); // Vivid Premiere Ruby Scarlet
+            shelfLabel.setShadowLayer(UiKit.pxf(10), 0, UiKit.pxf(2), Color.argb(240, 0, 0, 0));
+        } else if ("cinema".equals(t.id)) {
+            shelfLabel.setTextColor(Color.parseColor("#F5C26B")); // Marquee warm gold
+            shelfLabel.setShadowLayer(UiKit.pxf(6), 0, UiKit.pxf(1), Color.argb(160, 0, 0, 0));
+        } else if ("neon".equals(t.id)) {
+            shelfLabel.setTextColor(Color.parseColor("#F472B6")); // Hot synthwave pink
+            shelfLabel.setShadowLayer(UiKit.pxf(8), 0, 0, Color.argb(200, 244, 114, 182));
+        } else if ("metal".equals(t.id)) {
+            shelfLabel.setTextColor(Color.parseColor("#CBD5E1")); // Laser-etched platinum
+            shelfLabel.setShadowLayer(UiKit.pxf(4), 0, UiKit.pxf(1), Color.argb(160, 0, 0, 0));
+        } else if ("glass".equals(t.id)) {
+            shelfLabel.setTextColor(Color.parseColor("#BAE6FD")); // Icy sapphire
+            shelfLabel.setShadowLayer(UiKit.pxf(5), 0, UiKit.pxf(1), Color.argb(140, 0, 0, 0));
+        } else {
+            shelfLabel.setTextColor(UiKit.INK_DIM);
+            shelfLabel.setShadowLayer(UiKit.pxf(4), 0, UiKit.pxf(1), Color.argb(120, 0, 0, 0));
+        }
+
+        // 2. Saat, Tarih & Hava Durumu
+        if (isRedCarpet) {
+            clock.setTextColor(Color.WHITE);
+            clock.setShadowLayer(UiKit.pxf(8), 0, UiKit.pxf(2), Color.argb(180, 0, 0, 0));
+            date.setTextColor(Color.parseColor("#FFE57F")); // Starlight champagne gold
+            weather.setTextColor(Color.parseColor("#F5C26B"));
+        } else if ("cinema".equals(t.id)) {
+            clock.setTextColor(Color.parseColor("#FFFDF5")); // Marquee warm ivory
+            clock.setShadowLayer(UiKit.pxf(8), 0, UiKit.pxf(2), Color.argb(180, 0, 0, 0));
+            date.setTextColor(Color.parseColor("#F5C26B")); // Marquee gold
+            weather.setTextColor(Color.parseColor("#E5A93C"));
+        } else if ("neon".equals(t.id)) {
+            clock.setTextColor(Color.parseColor("#FFF0F6"));
+            clock.setShadowLayer(UiKit.pxf(10), 0, 0, Color.argb(180, 244, 114, 182));
+            date.setTextColor(Color.parseColor("#F472B6"));
+            weather.setTextColor(Color.parseColor("#38BDF8"));
+        } else if ("metal".equals(t.id)) {
+            clock.setTextColor(Color.parseColor("#F8FAFC"));
+            clock.setShadowLayer(UiKit.pxf(4), 0, UiKit.pxf(1), Color.argb(160, 0, 0, 0));
+            date.setTextColor(Color.parseColor("#CBD5E1"));
+            weather.setTextColor(Color.parseColor("#94A3B8"));
+        } else if ("glass".equals(t.id)) {
+            clock.setTextColor(Color.WHITE);
+            clock.setShadowLayer(UiKit.pxf(6), 0, UiKit.pxf(1), Color.argb(140, 0, 0, 0));
+            date.setTextColor(Color.parseColor("#BAE6FD"));
+            weather.setTextColor(Color.parseColor("#7DD3FC"));
+        } else if ("closet".equals(t.id)) {
+            clock.setTextColor(Color.parseColor("#FAFAF9"));
+            clock.setShadowLayer(UiKit.pxf(4), 0, UiKit.pxf(1), Color.argb(140, 0, 0, 0));
+            date.setTextColor(Color.parseColor("#D6D3D1"));
+            weather.setTextColor(Color.parseColor("#A8A29E"));
+        } else {
+            clock.setTextColor(UiKit.INK);
+            clock.setShadowLayer(UiKit.pxf(6), 0, UiKit.pxf(1), Color.argb(140, 0, 0, 0));
+            date.setTextColor(UiKit.INK_DIM);
+            weather.setTextColor(Color.parseColor("#7DD3FC"));
+        }
+
+        // 3. Alptuğ Dağ İmzası ve Wordmark
+        mark.setImageBitmap(Brand.signatureForTheme(ctx, t.id, UiKit.px(160)));
+        signed.setText(Brand.signedWordmarkForTheme(t.id));
+
+        // 4. Arama Çubuğu (Search Bar)
+        int searchAccent = t.accent;
+        if (searchIcon != null) {
+            android.graphics.drawable.Drawable sd = ctx.getDrawable(R.drawable.ic_search).mutate();
+            sd.setTint(isRedCarpet ? Color.parseColor("#FFE57F") : searchAccent);
+            searchIcon.setImageDrawable(sd);
+        }
+        if (micIcon != null) {
+            android.graphics.drawable.Drawable md = ctx.getDrawable(R.drawable.ic_mic).mutate();
+            md.setTint(isRedCarpet ? Color.parseColor("#FFE57F") : searchAccent);
+            micIcon.setImageDrawable(md);
+        }
+        search.setHintTextColor(isRedCarpet ? Color.parseColor("#D4A373") : UiKit.withAlpha(searchAccent, 140));
     }
 
     // ---- AI answer card ---------------------------------------------------------------------------
