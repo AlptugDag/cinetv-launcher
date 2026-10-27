@@ -3,10 +3,20 @@
 ## 1.0.0.3
 
 ### Yenilikler
+- **Genişletilmiş TV sesli komutları & akıllı mikrofon tuşu**: Televizyonda hangi ekranda veya uygulamada olunursa olunsun, kumandadan mikrofon tuşuna basıldığında artık ana ekrana fırlatma veya menüye atma yaşanmaz; yalnızca oynatılan içerik duraklatılır ve pencere hemen kapanır. Sesli komutlara RAM temizliği ("ram temizle", "hızlandır", "belleği temizle"), televizyonu yeniden başlatma ("yeniden başlat"), altyazı ve ses dili/dublaj değiştirme, TV rehberi/EPG, menü ve popüler platform kısayolları (BluTV, Exxen, GAİN, TOD/beIN, Tivibu, Turkcell TV+, Disney+, Stremio) eklendi.
+- **Gerçek iframe Referer ve Origin ile akış başlatma**: Yerli film sitelerindeki (vidmoly, closeload, rapidrame vb.) iframe içi CDN korumalı .m3u8/.mp4 akışları artık oynatıcıya (Nova, Just Player vb.) gerçek iframe Referer, Origin ve çerez bilgileriyle iletilir; daha önce "bağlantı hatası" veren yayınlar sorunsuz başlar.
+- **Kutu içinde süre ve pul tasarımlı başrol oyuncuları (sıfır ek ağ isteği)**: DVD kutuları açıldığında ek hiçbir API isteği atmadan filmin ve dizinin süresi ("2s 28dk"), ilk 3 başrol oyuncusunun fotoğrafları vintage posta pulu ve damga mühür çizgileriyle el yazısı künyeye eklendi. Özet metni taşmayacak ve yarım kalmayacak şekilde dinamik ölçeklenir.
+- **Diziler için logo ve slogan (tagline)**: Dizi kutularında da tipografik logo ve sloganlar eksiksiz görünür; medya türüne göre (film / dizi) doğru TMDB verisi çekilir.
+- **Google Asistanı devre dışı bırakma & root'suz sanal RAM (zRAM/Swap)**: Televizyonu yavaşlatan Google Asistan devre dışı bırakılırken Google ses tanıma servisi açık tutulur. Root gerektirmeyen sanal RAM/zRAM genişletmesi arka planda uygulanır ve Ayarlar'daki *Optimize Et* butonu ile sesli komutlarla senkronize çalışır.
+- **Ortalanmış ve görkemli açılış (loading) animasyonu**: Sola yaslı eski açılış kaldırıldı; ekranın tam ortasında radyal altın ışık aurası, parlayan CineTV logosu ve yükselen altın renkli *"by ALPTUĞ DAĞ"* imzası ile sinematik bir açılış inşa edildi.
+- **Kusursuz ve seamless temalar (Film Dolabı & Sinema Salonu)**: Rafların altındaki yapay dikdörtgen bloklar ve halatlar kaldırıldı; ahşap dolapta ortam karartması ve temas gölgeleri, sinema salonunda sahne ışığı zemin yansımaları ve kadife drape gölgeleriyle zemin arka planla organik bir bütün oluşturuldu.
+- **Türk kullanıcılar için hazır Nuvio eklenti paketi**: Nuvio kurulu olmayan Türk kullanıcılara Nuvio ilk açılışta Xperience, Netflix Kataloğu, AIOStreams Nightly, Anthology, TR-Altyazı eklentileri ve hazır Türkçe AIOMetadata ayarlarıyla birlikte kurulur.
 - **Oynatıcı hazır gelir**: televizyonda video oynatıcı uygulaması yoksa CineTV ilk açılışta Nova Video Player'ı (resmî sürüm, işlemciye uygun) kendisi kurar. Nova uygulama listesinde görünmez; yalnızca telefondan bir video gönderildiğinde açılır. Bir oynatıcı zaten varsa hiçbir şey kurulmaz.
 - **Daha geniş yayın görünümü**: *Yayınla* sekmesindeki site görünümü artık telefonun bütün genişliğini kaplıyor; televizyondaki sayfa telefonun ekran oranında açıldığı için görüntü uzamıyor, dokunuşlar tam yerine gidiyor.
 
 ### Çözülenler
+- **Mobil web kumanda klavyesi**: Telefondan yazarken harflerin tekrarlanması, öneri kelimesi seçince silinmeme ve arama yapmama sorunları diff tabanlı artımlı yazma ile giderildi; Enter tuşu aramayı tetikler; TV'de bir arama kutusuna odaklanıldığında telefon klavyesi otomatik açılır.
+- **DVD kutularındaki Türkçe harf (ü, ğ) fontu**: El yazısı fontundaki eksik birleştirici işaretler tamamlandı ve Unicode NFC normalizasyonu uygulandı; Türkçe harflerin sistem sans-serif fontuna düşmesi engellendi.
 - Uygulama tepsisi temadan temaya değişiyordu (bazılarında satırda 4, bazılarında 5 uygulama; "Ekle" kimi zaman alt satıra düşüyordu). Artık her temada aynı: satırda 5.
 - Uygulama kutucukları yamuk duruyordu: eğim, satırda olmayan kutucuklar da varmış gibi hesaplanıyordu. Artık her satırın eğimi o satırdaki kutucuklara göre, iki uçta eşit; Uzamsal HUD'un kavisi aynı güçte.
 - OLED Siyah'ta paneller ve kutucuklar zemine karışıp ekran simsiyah görünebiliyordu: artık zeminden bir ton açık, kenarları belirgin.
