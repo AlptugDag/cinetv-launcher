@@ -861,17 +861,17 @@ public final class Panels {
                     v.postDelayed(() -> host.replace(() -> buildWizard(ctx, host)), 1500);
                 }));
 
-        // 2. Alptugflix (Nuvio) Media Center
+        // 2. Nuvio Media Center
         final boolean nuvioOk = AppLauncher.isLaunchable(ctx.getPackageManager(), AppLauncher.NUVIO);
         list.addView(Controls.tile(ctx,
-                turkish ? "2. Alptuğflix Medya Merkezi & Türkçe Eklentiler" : "2. Alptugflix Media Center & Addons",
+                turkish ? "2. Nuvio Medya Merkezi & Türkçe Eklentiler" : "2. Nuvio Media Center & Addons",
                 nuvioOk ? (turkish ? "Yüklü ve hazır (filmler, diziler, eklentiler)" : "Installed and ready")
                         : (turkish ? "Yüklü değil (dokunarak arka planda indirin ve kurun)" : "Not installed (tap to download & install)"),
                 nuvioOk, v -> {
                     if (nuvioOk) {
                         AppLauncher.launch(ctx, AppLauncher.NUVIO);
                     } else {
-                        Toast.makeText(ctx, turkish ? "Alptuğflix ve eklentileri indiriliyor..." : "Installing Alptugflix and addons...", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(ctx, turkish ? "Nuvio ve eklentileri indiriliyor..." : "Installing Nuvio and addons...", Toast.LENGTH_SHORT).show();
                         new Thread(() -> {
                             NuvioSetup.installNuvio(ctx, true);
                             v.post(() -> host.replace(() -> buildWizard(ctx, host)));
@@ -942,6 +942,9 @@ public final class Panels {
         buttons.addView(Controls.button(ctx, turkish ? "Tamamla" : "Done", v -> {
             Prefs.get(ctx).edit().putBoolean("wizard_done", true).apply();
             host.back();
+            if (ctx instanceof com.cinetv.launcher.MainActivity) {
+                ((com.cinetv.launcher.MainActivity) ctx).onWizardFinished();
+            }
         }));
 
         root.addView(buttons);

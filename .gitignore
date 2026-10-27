@@ -39,6 +39,19 @@ private-assets/
 .env*
 google-services.json
 
+# Personal brand assets, signatures, photos, and private logos (never commit to public GitHub)
+launcher/assets/brand/*
+!launcher/assets/brand/.gitkeep
+launcher/assets/remote/creator.jpg
+launcher/assets/remote/signature.png
+docs/remote/static/creator.jpg
+docs/remote/static/signature.png
+docs/media/nuvio-signature.jpg
+*.svg
+*alptugflix*
+*signature*.png
+*creator*.jpg
+
 # Local tooling
 .claude/
 

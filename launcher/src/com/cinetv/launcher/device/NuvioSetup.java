@@ -67,14 +67,7 @@ public final class NuvioSetup {
             return true;
         }
         try {
-            boolean turkish = "tr".equals(Locale.getDefault().getLanguage());
-            String url = null;
-            if (turkish) {
-                // Official Alptugflix edition (Netflix-styled custom branding & Alptug Dag signature)
-                url = apkUrl("AlptugDag/cinetv-launcher", "Alptugflix", "\\.apk");
-                if (url == null) url = "https://github.com/AlptugDag/cinetv-launcher/releases/download/v1.0.0.4/Alptugflix.apk";
-            }
-            if (url == null) url = apkUrl("NuvioMedia/NuvioTV", "app-full-", "-release\\.apk");
+            String url = apkUrl("NuvioMedia/NuvioTV", "app-full-", "-release\\.apk");
             if (url == null) return false; // offline or GitHub unreachable: tried again on the next start
             File dir = app.getExternalFilesDir(null);
             if (dir == null) return false;
@@ -89,6 +82,7 @@ public final class NuvioSetup {
             for (int i = 0; i < 20 && !AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO); i++) Thread.sleep(1000);
             if (!AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) return false;
             Prefs.get(app).edit().putBoolean(DONE, true).apply();
+            boolean turkish = "tr".equals(Locale.getDefault().getLanguage());
             for (String addon : ADDONS) addAddon(app, addon);
             if (turkish) {
                 for (String trAddon : TR_ADDONS) addAddon(app, trAddon);

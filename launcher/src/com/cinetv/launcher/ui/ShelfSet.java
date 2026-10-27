@@ -173,44 +173,85 @@ final class ShelfSet {
         // ---- closet (Film Dolabı) -------------------------------------------------------------------
 
         private void shelfBack(Canvas c) {
-            int w = getWidth(), h = getHeight();
+            int w = getWidth();
             float fl = floor();
-            float top = fl - caseH * 1.02f;
+            float top = fl - caseH * 1.05f;
 
-            // Ambient occlusion shadow behind the cases: keeps closet wallpaper visible while grounding cases
+            // 1. Deep ambient occlusion alcove shadow behind cases (deepening towards corners)
             p.setShader(new LinearGradient(0, top, 0, fl,
-                    new int[]{Color.argb(120, 10, 11, 14), Color.argb(40, 14, 16, 20), Color.argb(95, 8, 9, 12)},
-                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+                    new int[]{Color.argb(140, 6, 7, 10), Color.argb(45, 12, 13, 17), Color.argb(120, 8, 9, 12)},
+                    new float[]{0f, 0.40f, 1f}, Shader.TileMode.CLAMP));
             c.drawRect(-bleed, top, w + bleed, fl, p);
 
-            // Realistic contact shadow directly where the cases sit on the shelf
-            p.setShader(new LinearGradient(0, fl - UiKit.pxf(24), 0, fl,
-                    Color.TRANSPARENT, Color.argb(140, 0, 0, 0), Shader.TileMode.CLAMP));
-            c.drawRect(-bleed, fl - UiKit.pxf(24), w + bleed, fl, p);
+            // 2. Lateral corner vignettes (shadows deepening where the back wall meets the side walls)
+            p.setShader(new LinearGradient(-bleed, 0, w * 0.18f, 0,
+                    Color.argb(90, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, top, w * 0.18f, fl, p);
+
+            p.setShader(new LinearGradient(w + bleed, 0, w * 0.82f, 0,
+                    Color.argb(90, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+            c.drawRect(w * 0.82f, top, w + bleed, fl, p);
+
+            // 3. Dense physical contact crevice shadow where DVD spines rest on the shelf deck
+            p.setShader(new LinearGradient(0, fl - UiKit.pxf(16), 0, fl,
+                    Color.TRANSPARENT, Color.argb(200, 4, 4, 6), Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, fl - UiKit.pxf(16), w + bleed, fl, p);
             p.setShader(null);
         }
 
         private void shelfFront(Canvas c) {
             int w = getWidth();
             float fl = floor();
-            float lip = UiKit.pxf(20);
-            float y = fl - UiKit.pxf(8);
 
-            // The shelf's front laminate bevel: soft, natural white/ivory shelf edge matching closet's lighting
-            p.setShader(new LinearGradient(0, y, 0, y + lip,
-                    new int[]{Color.argb(220, 245, 245, 244), Color.argb(190, 218, 220, 222), Color.argb(150, 160, 162, 165)},
-                    new float[]{0f, 0.35f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(-bleed, y, w + bleed, y + lip, p);
+            // Perspective shelf plank thickness (architectural 28mm solid shelf nosing)
+            float nosingH = UiKit.pxf(24);
+            float y0 = fl - UiKit.pxf(4); // slight overlap with case bottoms
+            float y1 = y0 + nosingH;
 
-            // Top highlight reflection along the shelf front rim
+            // 1. Top Shelf Deck Plane (visible depth receding into the closet)
+            p.setShader(new LinearGradient(0, y0, 0, y0 + UiKit.pxf(5),
+                    new int[]{Color.argb(240, 248, 247, 244), Color.argb(220, 235, 233, 229)},
+                    new float[]{0f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, y0, w + bleed, y0 + UiKit.pxf(5), p);
+
+            // 2. Crisp specular highlight along the top front chamfer (catching ceiling light tube)
             p.setShader(null);
-            p.setColor(Color.argb(160, 255, 255, 255));
-            c.drawRect(-bleed, y, w + bleed, y + UiKit.pxf(1.5f), p);
+            p.setColor(Color.argb(235, 255, 255, 255));
+            c.drawRect(-bleed, y0 + UiKit.pxf(4.5f), w + bleed, y0 + UiKit.pxf(6f), p);
 
-            // Gentle ambient drop shadow below the shelf front
-            p.setShader(new LinearGradient(0, y + lip, 0, y + lip + UiKit.pxf(26),
-                    Color.argb(90, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
-            c.drawRect(-bleed, y + lip, w + bleed, y + lip + UiKit.pxf(26), p);
+            // 3. Architectural Fascia Face (vertical bullnose/bevel profile with rich material depth)
+            p.setShader(new LinearGradient(0, y0 + UiKit.pxf(6f), 0, y1,
+                    new int[]{
+                            Color.argb(245, 244, 243, 240), // upper satin catch
+                            Color.argb(235, 226, 224, 220), // main ivory face
+                            Color.argb(220, 204, 202, 198), // lower curvature transition
+                            Color.argb(240, 168, 165, 160)  // bottom undercut shadow
+                    },
+                    new float[]{0f, 0.35f, 0.75f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, y0 + UiKit.pxf(6f), w + bleed, y1, p);
+
+            // 4. Subtle horizontal timber grain texture lines across the shelf face
+            p.setShader(null);
+            p.setColor(Color.argb(24, 0, 0, 0));
+            float gY1 = y0 + UiKit.pxf(11f);
+            float gY2 = y0 + UiKit.pxf(17f);
+            c.drawRect(-bleed, gY1, w + bleed, gY1 + UiKit.pxf(1f), p);
+            c.drawRect(-bleed, gY2, w + bleed, gY2 + UiKit.pxf(1f), p);
+
+            // 5. Underside cove dark shadow line
+            p.setColor(Color.argb(160, 40, 38, 35));
+            c.drawRect(-bleed, y1 - UiKit.pxf(1.5f), w + bleed, y1, p);
+
+            // 6. Dual-stage physical drop shadow below the shelf (creates massive floating 3D depth)
+            // A) Core dense penumbra
+            p.setShader(new LinearGradient(0, y1, 0, y1 + UiKit.pxf(10),
+                    Color.argb(170, 0, 0, 0), Color.argb(40, 0, 0, 0), Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, y1, w + bleed, y1 + UiKit.pxf(10), p);
+
+            // B) Soft ambient room spread
+            p.setShader(new LinearGradient(0, y1 + UiKit.pxf(10), 0, y1 + UiKit.pxf(38),
+                    Color.argb(40, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, y1 + UiKit.pxf(10), w + bleed, y1 + UiKit.pxf(38), p);
             p.setShader(null);
         }
     }

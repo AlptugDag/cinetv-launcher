@@ -211,9 +211,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         });
         handleIntent(getIntent());
         handler.postDelayed(tourCheck, 6000);
+        boolean alreadyConfigured = (HomeGuard.isDefault(this) && AppLauncher.isLaunchable(getPackageManager(), AppLauncher.NUVIO))
+                || com.cinetv.launcher.ui.Brand.isPersonal(this) || Prefs.get(this).contains(Prefs.FIRST_SETUP_DONE);
+        if (alreadyConfigured && !Prefs.get(this).contains("wizard_done")) {
+            Prefs.get(this).edit().putBoolean("wizard_done", true).apply();
+        }
         if (!Prefs.get(this).getBoolean("wizard_done", false)) {
             handler.postDelayed(() -> {
-                if (!isFinishing() && home != null && !home.modal.isShowing()) Panels.wizard(this, home.modal);
+                if (!isFinishing() && home != null && !home.modal.isShowing()) {
+                    home.modal.setOnClosed(this::onWizardFinished);
+                    Panels.wizard(this, home.modal);
+                }
             }, 3000);
         } else if (!Prefs.get(this).getBoolean(Prefs.FIRST_SETUP_DONE, false)) {
             // First start only: tune picture & sound and measure the network once.
@@ -943,6 +951,88 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             else handler.postDelayed(this, 2500);
         }
     };
+
+    private boolean wizardTransitionTriggered;
+
+    public void onWizardFinished() {
+        if (wizardTransitionTriggered) return;
+        if (home != null && home.modal != null) home.modal.setOnClosed(null);
+        if (Prefs.get(this).getBoolean(Prefs.TOUR_DONE, false)) return;
+        wizardTransitionTriggered = true;
+        handler.postDelayed(() -> {
+            if (isFinishing() || home == null) return;
+            boolean turkish = "tr".equals(java.util.Locale.getDefault().getLanguage());
+            final String welcomeMsg = turkish
+                    ? "Kusursuz sinema deneyimine adım atacağın CineTV by Alptuğ Dağ'a hoş geldin!"
+                    : "Welcome to CineTV by Alptuğ Dağ, your ultimate cinema experience!";
+            showCinematicWelcome(welcomeMsg, this::startTour);
+        }, 350);
+    }
+
+    public void showCinematicWelcome(final String message, final Runnable onFinished) {
+        if (home == null || home.root == null) {
+            if (onFinished != null) onFinished.run();
+            return;
+        }
+        final android.widget.FrameLayout container = new android.widget.FrameLayout(this);
+        container.setBackgroundColor(android.graphics.Color.argb(230, 8, 9, 13));
+        container.setAlpha(0f);
+        container.setFocusable(true);
+        container.setClickable(true);
+
+        android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        box.setGravity(android.view.Gravity.CENTER);
+        box.setPadding(UiKit.px(48), UiKit.px(36), UiKit.px(48), UiKit.px(36));
+
+        android.widget.ImageView mark = new android.widget.ImageView(this);
+        mark.setImageBitmap(com.cinetv.launcher.ui.Brand.mark(this));
+        int logoSize = UiKit.px(84);
+        android.widget.LinearLayout.LayoutParams mlp = new android.widget.LinearLayout.LayoutParams(logoSize, logoSize);
+        mlp.bottomMargin = UiKit.px(24);
+        mlp.gravity = android.view.Gravity.CENTER_HORIZONTAL;
+        box.addView(mark, mlp);
+
+        android.widget.TextView tv = new android.widget.TextView(this);
+        tv.setText(message);
+        tv.setTextColor(android.graphics.Color.WHITE);
+        tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 28);
+        tv.setGravity(android.view.Gravity.CENTER);
+        tv.setLineSpacing(UiKit.pxf(6), 1.15f);
+        tv.setTypeface(FontManager.getMedium(this));
+        tv.setShadowLayer(UiKit.pxf(14), 0, UiKit.pxf(4), android.graphics.Color.argb(180, 0, 0, 0));
+        box.addView(tv, new android.widget.LinearLayout.LayoutParams(UiKit.px(840), android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        android.widget.FrameLayout.LayoutParams flp = new android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.Gravity.CENTER);
+        container.addView(box, flp);
+        home.root.addView(container, new android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+
+        final Runnable finishAction = () -> {
+            home.root.removeView(container);
+            if (onFinished != null) onFinished.run();
+        };
+
+        container.animate().alpha(1f).setDuration(500).withEndAction(() -> {
+            container.postDelayed(() -> {
+                container.animate().alpha(0f).setDuration(600).withEndAction(finishAction).start();
+            }, 2600);
+        }).start();
+
+        container.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                container.animate().cancel();
+                finishAction.run();
+                return true;
+            }
+            return false;
+        });
+        container.requestFocus();
+    }
 
     @Override
     public void startTour() {

@@ -26,6 +26,17 @@ public final class Brand {
 
     public static synchronized Bitmap mark(Context ctx) {
         if (mark != null) return mark;
+        try {
+            java.io.File localBrand = new java.io.File(ctx.getExternalFilesDir(null), "brand/signature.png");
+            if (localBrand.exists()) {
+                mark = BitmapFactory.decodeFile(localBrand.getAbsolutePath());
+                if (mark != null) {
+                    personal = true;
+                    return mark;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
         for (String path : new String[]{"brand/signature.png", "signature_logo.png"}) {
             if (mark != null) break;
             try (InputStream in = ctx.getAssets().open(path)) {

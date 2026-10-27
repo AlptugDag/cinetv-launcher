@@ -129,7 +129,7 @@
     <string name="tour_shelf_t">Her açılışta yeni bir raf</string>
     <string name="tour_shelf">Bu filmler tam bu an için seçildi: saate, güne, şehrine ve havaya göre. Sağa sola git; oda filmin rengiyle aydınlanır.</string>
     <string name="tour_dvd_t">Bir DVD aç</string>
-    <string name="tour_dvd">Bir kutuda OK: raftan çıkar ve açılır, iç kapağında konusu el yazısıyla yazar. Bir daha OK: disk döner ve film Alptuğflix\'te başlar.</string>
+    <string name="tour_dvd">Bir kutuda OK: raftan çıkar ve açılır, iç kapağında konusu el yazısıyla yazar. Bir daha OK: disk döner ve film Nuvio\'da başlar.</string>
     <string name="tour_trailers_t">Fragman anları</string>
     <string name="tour_trailers">Ayarlar › Fragman anları: açılan DVD yan yatar, filmin fragmanı diskin yerinde sessizce oynar, konusu diğer iç kapakta yazar. Kapalıyken DVD her zamanki gibi açılır.</string>
     <string name="tour_search_t">Konuşur gibi ara</string>
@@ -236,9 +236,9 @@
     <string name="setup_network_failed">Ağ testi Cloudflare\'e ulaşamadı.</string>
     <string name="setup_partial">Ayar tamamlandı. Bu televizyon bazı ayarlarını kendine saklıyor, onlar atlandı.</string>
     <string name="setup_applied">Açılanlar: %s</string>
-    <string name="setup_recommend">Önerilen Alptuğflix yayın kalitesi: %s</string>
+    <string name="setup_recommend">Önerilen Nuvio yayın kalitesi: %s</string>
     <string name="setup_ui_note">Bu TV menüleri 1080p çizer, videoyu ise ayrı bir katmanda 4K oynatır; uygulamalar ekranı \"HD\" gösterse de filmler 4K HDR oynar.</string>
-    <string name="setup_apply_nuvio">Alptuğflix\'te uygula</string>
+    <string name="setup_apply_nuvio">Nuvio\'da uygula</string>
     <string name="setup_apply_av">Görüntü ve sesi optimize et</string>
     <string name="setup_restore">Ayarlarıma geri dön</string>
     <string name="setup_restored">Orijinal görüntü ve ses ayarları geri yüklendi</string>

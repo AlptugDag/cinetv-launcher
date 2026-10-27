@@ -666,11 +666,11 @@ public final class AppArtwork {
         return bmp;
     }
 
-    /** 4. Alptugflix (Nuvio) Liquid Glass Card: Liquid Glass crystal + Authentic Netflix Red ALPTUGFLIX Wordmark & Signature */
+    /** 4. Nuvio Liquid Glass Card: Liquid Glass crystal + Authentic Nuvio Electric Violet Wordmark */
     public static Bitmap createNuvioCard(Context ctx) {
         Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
-        int neon = Color.parseColor("#E50914"); // Authentic Netflix Signature Red
+        int neon = Color.parseColor("#8B5CF6");
         drawLiquidGlassCardBase(canvas, neon, CARD_W / 2f, CARD_H / 2f);
 
         Drawable wordmark = null;
@@ -680,8 +680,14 @@ public final class AppArtwork {
         }
 
         if (wordmark != null) {
-            int targetW = 400;
-            int targetH = 128;
+            int w = wordmark.getIntrinsicWidth();
+            int h = wordmark.getIntrinsicHeight();
+            if (w <= 0 || h <= 0) { w = 434; h = 138; }
+            float maxW = 390f;
+            float maxH = 142f;
+            float scale = Math.min(maxW / w, maxH / h);
+            int targetW = Math.max(1, Math.round(w * scale));
+            int targetH = Math.max(1, Math.round(h * scale));
             int left = (CARD_W - targetW) / 2;
             int top = (CARD_H - targetH) / 2;
             Bitmap wmBmp = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888);
@@ -689,18 +695,16 @@ public final class AppArtwork {
             wordmark.setBounds(0, 0, targetW, targetH);
             wordmark.draw(wmCanvas);
 
-            // Apply subtle metallic luster over authentic Netflix Red ALPTUGFLIX colors
-            Bitmap lusterWm = applySubtleMetallicLusterToBitmap(wmBmp);
             Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-            p.setShadowLayer(38f, 0f, 0f, Color.argb(245, 229, 9, 20));
-            canvas.drawBitmap(lusterWm, left, top, p);
+            p.setShadowLayer(38f, 0f, 0f, Color.argb(245, 139, 92, 246));
+            canvas.drawBitmap(wmBmp, left, top, p);
         } else {
-            Paint text = createCrispTextPaint(ctx, 64f, neon);
-            text.setLetterSpacing(0.06f);
-            float tw = text.measureText("ALPTUGFLIX");
+            Paint text = createCrispTextPaint(ctx, 68f, neon);
+            text.setLetterSpacing(0.04f);
+            float tw = text.measureText("nuvio");
             Paint.FontMetrics fm = text.getFontMetrics();
             float ty = (CARD_H / 2f) - ((fm.ascent + fm.descent) / 2f);
-            canvas.drawText("ALPTUGFLIX", (CARD_W - tw) / 2f, ty, text);
+            canvas.drawText("nuvio", (CARD_W - tw) / 2f, ty, text);
         }
         return bmp;
     }

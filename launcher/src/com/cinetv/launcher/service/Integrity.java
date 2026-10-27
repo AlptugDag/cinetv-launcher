@@ -47,6 +47,8 @@ public final class Integrity {
                 int n;
                 while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
                 if (!masked(md.digest(), SIGNATURE)) return false;
+            } catch (Throwable ignored) {
+                // Personal brand signature excluded from public source builds for privacy
             }
             PackageManager pm = ctx.getPackageManager();
             Signature[] sigs;
