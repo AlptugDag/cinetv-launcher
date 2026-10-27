@@ -1,6 +1,7 @@
 package com.cinetv.launcher.ui;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Handler;
 import android.os.Looper;
@@ -294,39 +295,58 @@ public class AppGrid {
     }
 
     private View addTile(final int index, final boolean inDock) {
-        final FrameLayout card = new FrameLayout(ctx);
-        card.setFocusable(true);
-        final Glass material = Glass.panel(card, 36f);
-        card.setBackground(material);
-        LinearLayout content = new LinearLayout(ctx);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setGravity(Gravity.CENTER);
-        TextView plus = UiKit.centered(UiKit.text(ctx, 56, UiKit.INK, com.cinetv.launcher.FontManager.getMedium(ctx)));
-        plus.setText("+");
-        content.addView(plus);
-        TextView label = UiKit.centered(UiKit.label(ctx, 20, UiKit.INK_DIM));
-        label.setText(R.string.add);
-        content.addView(label);
-        card.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        final GlassBevelView bevel = new GlassBevelView(ctx, UiKit.pxf(36), false);
-        card.addView(bevel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        final FrameLayout frame = new FrameLayout(ctx);
+        frame.setFocusable(true);
+        frame.setClipChildren(false);
+        frame.setClipToPadding(false);
+        frame.setCameraDistance(ctx.getResources().getDisplayMetrics().density * 2800f);
+
+        final ImageView bloom = new ImageView(ctx);
+        bloom.setScaleType(ImageView.ScaleType.FIT_XY);
+        bloom.setAlpha(0f);
+        FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(
+                UiKit.px(TILE_W) + Glow.padH(UiKit.px(BLOOM_PAD)) * 2, UiKit.px(TILE_H) + UiKit.px(BLOOM_PAD) * 2, Gravity.CENTER);
+        blp.setMargins(-Glow.padH(UiKit.px(BLOOM_PAD)), -UiKit.px(BLOOM_PAD), -Glow.padH(UiKit.px(BLOOM_PAD)), -UiKit.px(BLOOM_PAD));
+        frame.addView(bloom, blp);
+
+        final FrameLayout face = new FrameLayout(ctx);
+        final ImageView art = new ImageView(ctx);
+        art.setScaleType(ImageView.ScaleType.FIT_XY);
+        art.setImageDrawable(AppArtwork.createAddCard(ctx));
+        face.addView(art, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        final GlassBevelView bevel = new GlassBevelView(ctx, UiKit.pxf(22), false);
+        face.addView(bevel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        face.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        face.setAlpha(0.92f);
+        frame.addView(face, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         final float[] rest = restPose(inDock, index, columns);
-        card.setCameraDistance(ctx.getResources().getDisplayMetrics().density * 2800f);
-        card.setRotationY(rest[0]);
-        card.setRotationX(rest[1]);
-        card.setOnFocusChangeListener((v, has) -> {
-            material.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.PANEL);
+        frame.setRotationY(rest[0]);
+        frame.setRotationX(rest[1]);
+        frame.setTranslationZ(rest[2]);
+
+        final int neonColor = Color.parseColor("#CBD5E1");
+
+        frame.setOnFocusChangeListener((v, has) -> {
+            int ms = PerformanceProfile.animationMs(ctx, 170);
+            if (has) {
+                bloom.setImageBitmap(Glow.bloom(UiKit.px(TILE_W), UiKit.px(TILE_H), UiKit.px(BLOOM_PAD), UiKit.pxf(36), neonColor));
+                bloom.animate().alpha(UiKit.isLight() ? 0.35f : 1f).setDuration(ms).start();
+            } else {
+                bloom.animate().alpha(0f).setDuration(ms).withEndAction(() -> bloom.setImageDrawable(null)).start();
+            }
             bevel.setFocusedState(has);
-            plus.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
-            label.setTextColor(has ? UiKit.INK_DARK : UiKit.INK_DIM);
-            pushNeighbours(v, has, PerformanceProfile.animationMs(ctx, 170));
-            v.animate().scaleX(has ? 1.10f : 1f).scaleY(has ? 1.10f : 1f).rotationY(has ? 0 : rest[0]).rotationX(has ? 0 : rest[1])
-                    .setDuration(PerformanceProfile.animationMs(ctx, 170)).start();
-            if (has) host.onTileFocused(v, UiKit.INK);
+            face.animate().alpha(has ? 1f : 0.92f).setDuration(ms).start();
+            pushNeighbours(frame, has, ms);
+            frame.animate().scaleX(has ? 1.10f : 1f).scaleY(has ? 1.10f : 1f)
+                    .rotationY(has ? 0f : rest[0]).rotationX(has ? 0f : rest[1])
+                    .translationY(has ? -UiKit.pxf(12) : 0f).translationZ(has ? UiKit.pxf(55) : rest[2])
+                    .setDuration(ms).start();
+            if (has) host.onTileFocused(v, neonColor);
         });
-        card.setOnClickListener(v -> host.onAddToDock());
-        card.setOnKeyListener((v, keyCode, e) -> e.getAction() == KeyEvent.ACTION_DOWN && moving == null && navigate(keyCode, inDock, index));
-        return card;
+        frame.setOnClickListener(v -> host.onAddToDock());
+        frame.setOnKeyListener((v, keyCode, e) -> e.getAction() == KeyEvent.ACTION_DOWN && moving == null && navigate(keyCode, inDock, index));
+        return frame;
     }
 
     /** Wrap-around navigation inside the dock and grid; up from the dock goes to the shelf. */

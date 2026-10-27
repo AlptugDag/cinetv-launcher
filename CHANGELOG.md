@@ -1,5 +1,21 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.9
+
+### Yenilikler & Düzeltmeler
+- **Film Dolabı Raf Dokusu & Doğal Derinlik**:
+  - Film Dolabı temasında vitrinin arkasını kaplayan rahatsız edici suni koyuluk ve koyu bant katmanı tamamen kaldırıldı.
+  - Kütüphane dolabının orijinal ahşap/laminat derinliğini yansıtan gerçekçi mimari uygulandı: Üst raftan süzülen yumuşak ışık gölgesi, dikey panel derz çizgileri, DVD kutularının üzerinde durduğu fildişi yatay raf düzlemi (receding deck plane) ve kutuların tabanındaki zarif temas gölgesiyle tam bir fiziksel raf hissi sağlandı.
+- **Uygulama Tepsisi "Ekle" (+) Butonunda %100 Şeffaf Cam Uyumu**:
+  - Tüm temalarda "Ekle" butonunun arkasındaki opak gri arka plan ve uyumsuz köşe yarıçapı kaldırıldı.
+  - Diğer tüm uygulamalarla birebir aynı olan Liquid Glass yarı şeffaf dumanlı kristal gövde (`createAddCard`), 22dp köşe yarıçapı, üst ışık prizması, zarif yuvarlak uçlu `+` glifi ve platin odak ışıltısı eklendi.
+- **Kitapçıkta Tam Responsive Tasarım (Responsive Booklet Engine)**:
+  - Film özetinin uzunluğuna göre oyuncu portreleri, isimleri, yönetmen künyesi ve puanların konum ve boyutları dinamik olarak ölçekleniyor.
+  - Özet tek cümlelik vurucu bir önerme olduğunda oyuncu madalyonları %35 daha da büyüyerek (`u * 0.23f`) sayfanın ferahlığını sanatsal bir şekilde dolduruyor; özet uzadığında tipografi ve portreler sayfa sınırlarına göre otomatik hizalanarak mükemmel bir editoryal düzen oluşturuyor.
+- **Fragman Oynatıcı YouTube Hata 153 Çözümü**:
+  - Android WebView'da HTTP Referer başlığının iletilmemesinden kaynaklanan YouTube "Video oynatıcı yapılandırma hatası (Hata 153)" giderildi.
+  - `loadDataWithBaseURL` ile güvenli YouTube kaynak doğrulaması (`strict-origin-when-cross-origin`) sağlanarak fragmanların tepside doğrudan ve hatasız başlaması sağlandı.
+
 ## 1.0.0.8
 
 ### Yenilikler & Düzeltmeler

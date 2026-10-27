@@ -387,6 +387,43 @@ public final class AppArtwork {
     }
 
     /**
+     * Builds a translucent visionOS / tvOS Liquid Glass card for the "Ekle" (+) add tile,
+     * perfectly matching the translucent crystal cards of installed apps.
+     */
+    public static Drawable createAddCard(Context ctx) {
+        Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
+
+        // 1. Exact same visionOS / tvOS Liquid Glass card base with subtle pearl neon glow
+        int neonColor = Color.parseColor("#CBD5E1");
+        drawLiquidGlassCardBase(canvas, neonColor, CARD_W / 2f, CARD_H * 0.40f);
+
+        // 2. High-end centered "+" glyph with rounded stroke caps
+        float cx = CARD_W / 2f;
+        float cy = CARD_H * 0.40f;
+        float arm = 26f;
+        Paint plusPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        plusPaint.setColor(Color.parseColor("#F8FAFC"));
+        plusPaint.setStrokeWidth(6.5f);
+        plusPaint.setStrokeCap(Paint.Cap.ROUND);
+        plusPaint.setShadowLayer(16f, 0f, 0f, Color.argb(160, 226, 232, 240));
+        canvas.drawLine(cx - arm, cy, cx + arm, cy, plusPaint);
+        canvas.drawLine(cx, cy - arm, cx, cy + arm, plusPaint);
+
+        // 3. Crisp label "Ekle" / "Add" underneath
+        Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        textPaint.setTypeface(FontManager.getMedium(ctx));
+        textPaint.setTextSize(32f);
+        textPaint.setColor(Color.parseColor("#E2E8F0"));
+        textPaint.setTextAlign(Paint.Align.CENTER);
+        textPaint.setShadowLayer(10f, 0f, 2f, Color.argb(140, 0, 0, 0));
+        String label = ctx.getString(R.string.add);
+        canvas.drawText(label, cx, CARD_H * 0.74f, textPaint);
+
+        return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(bmp));
+    }
+
+    /**
      * Argent Molten Chrome Gradient Paint (seangeng/argent):
      * Reflective liquid mercury specular gradient with bright platinum horizons.
      */

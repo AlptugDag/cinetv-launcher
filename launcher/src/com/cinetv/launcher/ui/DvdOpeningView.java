@@ -583,11 +583,11 @@ public class DvdOpeningView extends View {
             int blackInk = ink.getColor();
             ink.setColor(filmInk);
             // the title in the viewer's language, the film's own beside it: "Sonbahar (秋日和)"; two lines at most
-            float titleSize = u * 0.084f;
+            float titleSize = u * 0.092f;
             ink.setTextSize(titleSize);
             StaticLayout title = layout(movie.innerTitle(), ink, (int) textW, 0.98f);
-            while (title.getLineCount() > 2 && titleSize > u * 0.046f) {
-                titleSize -= u * 0.005f;
+            while (title.getLineCount() > 2 && titleSize > u * 0.052f) {
+                titleSize -= u * 0.004f;
                 ink.setTextSize(titleSize);
                 title = layout(movie.innerTitle(), ink, (int) textW, 0.98f);
             }
@@ -595,7 +595,7 @@ public class DvdOpeningView extends View {
             y += title.getHeight();
             Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
             stroke.setColor(filmInk);
-            stroke.setStrokeWidth(Math.max(2f, u * 0.0075f));
+            stroke.setStrokeWidth(Math.max(2.2f, u * 0.008f));
             stroke.setStrokeCap(Paint.Cap.ROUND);
             stroke.setStyle(Paint.Style.STROKE);
             Path line = new Path();
@@ -603,9 +603,13 @@ public class DvdOpeningView extends View {
             line.moveTo(paper.left + pad, y + u * 0.010f);
             line.quadTo(paper.left + pad + lw * 0.5f, y + u * 0.003f, paper.left + pad + lw, y + u * 0.014f);
             c.drawPath(line, stroke);
-            y += u * 0.036f;
+            y += u * 0.038f;
 
-            // Signature line at the bottom: director, year and runtime.
+            // --- Consistent & Proportional Booklet Hierarchy ---
+            String story = punchyOverview(movie.overview);
+            int castCount = (movie.cast != null && !movie.cast.isEmpty()) ? Math.min(3, movie.cast.size()) : 0;
+
+            // 1. Signature & ratings data
             String runtime = movie.formattedRuntime();
             StringBuilder byBuilder = new StringBuilder();
             if (movie.director != null && !movie.director.isEmpty()) byBuilder.append(movie.director);
@@ -618,31 +622,61 @@ public class DvdOpeningView extends View {
                 byBuilder.append(runtime);
             }
             String by = byBuilder.toString();
-            float bottom = paper.bottom - pad * 0.68f;
-            if (!by.isEmpty()) {
+            boolean hasRatings = movie.ratings != null && !movie.ratings.isEmpty();
+            boolean hasSig = !by.isEmpty();
+
+            // 2. Uniform, balanced proportions across all films (never giant in one and tiny in another)
+            float castH = (castCount > 0) ? u * 0.185f : 0f;
+            float sigSize = u * 0.060f;
+            float ratSize = u * 0.048f;
+
+            // 3. Bottom metadata anchoring (credits and critic ratings)
+            float bottom = paper.bottom - pad * 0.65f;
+            if (hasSig) {
                 ink.setColor(filmInk);
-                String sig = fit(ink, "— " + by, textW, u * 0.056f, u * 0.036f);
+                String sig = fit(ink, "— " + by, textW, sigSize, u * 0.040f);
                 c.drawText(sig, paper.right - pad - ink.measureText(sig), bottom, ink);
-                bottom -= u * 0.078f;
+                bottom -= ink.getTextSize() * 1.30f;
             }
-            if (movie.ratings != null && !movie.ratings.isEmpty()) {
-                // the critics, small, above the signature line
+            if (hasRatings) {
                 ink.setColor(filmInk);
-                ink.setTextSize(u * 0.044f);
                 String rtStr = movie.ratings;
-                while (ink.measureText(rtStr) > textW && rtStr.contains("  ·  ")) rtStr = rtStr.substring(0, rtStr.lastIndexOf("  ·  "));
-                rtStr = fit(ink, rtStr, textW, u * 0.044f, u * 0.032f);
+                while (ink.measureText(rtStr) > textW && rtStr.contains("  ·  ")) {
+                    rtStr = rtStr.substring(0, rtStr.lastIndexOf("  ·  "));
+                }
+                rtStr = fit(ink, rtStr, textW, ratSize, u * 0.034f);
                 c.drawText(rtStr, paper.right - pad - ink.measureText(rtStr), bottom, ink);
-                bottom -= u * 0.065f;
+                bottom -= ink.getTextSize() * 1.25f;
             }
 
-            // Lead cast: prominent circular cameo portraits + bold handwritten names, zero rectangular bleeding
-            float availTotal = bottom - y;
-            if (movie.cast != null && !movie.cast.isEmpty() && availTotal > u * 0.18f) {
-                int count = Math.min(3, movie.cast.size());
-                float castH = Math.min(u * 0.175f, Math.max(u * 0.12f, availTotal * 0.38f));
-                float castTop = bottom - castH;
-                // Subtle felt-tip divider line above the cast strip
+            // 4. Stable cast strip positioning
+            float castTop = 0f;
+            if (castCount > 0) {
+                float remainingH = bottom - y;
+                castH = Math.min(castH, remainingH * 0.48f);
+                castTop = bottom - castH;
+                bottom = castTop - u * 0.018f;
+            }
+
+            // 5. Generous, consistent Story Typography across all movies
+            float storyAvailH = bottom - y;
+            if (!story.isEmpty() && storyAvailH > u * 0.05f) {
+                float targetSize = Math.min(u * 0.068f, storyAvailH * 0.36f);
+                ink.setColor(blackInk);
+                ink.setTextSize(targetSize);
+                float spacing = 0.96f;
+                StaticLayout body = layout(story, ink, (int) textW, spacing);
+                while (body.getHeight() > storyAvailH && targetSize > u * 0.038f) {
+                    targetSize -= u * 0.002f;
+                    spacing = targetSize < u * 0.048f ? 0.90f : 0.94f;
+                    ink.setTextSize(targetSize);
+                    body = layout(story, ink, (int) textW, spacing);
+                }
+                drawInk(c, body, paper.left + pad, y, ink);
+            }
+
+            // 6. Draw Cast Strip with uniform prominent medallions
+            if (castCount > 0) {
                 Paint divPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                 divPaint.setColor(UiKit.withAlpha(filmInk, 65));
                 divPaint.setStrokeWidth(Math.max(1.2f, u * 0.0035f));
@@ -653,8 +687,8 @@ public class DvdOpeningView extends View {
                 divPath.quadTo(paper.left + pad + textW * 0.5f, castTop - u * 0.014f, paper.left + pad + textW, castTop - u * 0.006f);
                 c.drawPath(divPath, divPaint);
 
-                float colW = textW / count;
-                float diam = castH * 0.84f;
+                float colW = textW / castCount;
+                float diam = castH * 0.86f;
                 float rad = diam / 2f;
                 Paint photoPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
                 ColorMatrix castCm = new ColorMatrix();
@@ -664,18 +698,18 @@ public class DvdOpeningView extends View {
                 ringPaint.setStyle(Paint.Style.STROKE);
                 Paint creamPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-                for (int i = 0; i < count; i++) {
+                for (int i = 0; i < castCount; i++) {
                     com.cinetv.launcher.service.MovieCatalog.CastMember cm = movie.cast.get(i);
                     float colX = paper.left + pad + i * colW;
                     float cx = colX + rad + u * 0.006f;
                     float cy = castTop + castH * 0.52f;
 
-                    // 1. Soft grounding drop shadow under the portrait medallion
+                    // 1. Soft grounding drop shadow
                     Paint shadowP = new Paint(Paint.ANTI_ALIAS_FLAG);
                     shadowP.setColor(Color.argb(38, 0, 0, 0));
                     c.drawCircle(cx, cy + u * 0.0025f, rad + u * 0.003f, shadowP);
 
-                    // 2. Circular warm ivory/cream portrait base (NO rectangular sRect, zero bleeding corners)
+                    // 2. Circular warm ivory/cream portrait base
                     creamPaint.setColor(Color.parseColor("#F7F2E7"));
                     c.drawCircle(cx, cy, rad + u * 0.003f, creamPaint);
 
@@ -718,39 +752,20 @@ public class DvdOpeningView extends View {
                     c.drawLine(cx + rad * 0.35f, cy - rad * 1.05f, cx + rad * 1.25f, cy - rad * 0.55f, ringPaint);
                     c.drawLine(cx + rad * 0.35f, cy - rad * 0.80f, cx + rad * 1.25f, cy - rad * 0.30f, ringPaint);
 
-                    // 6. Prominent handwritten actor name next to the circular portrait
+                    // 6. Prominent handwritten actor name with consistent uniform size
                     float nameX = cx + rad + u * 0.016f;
                     float nameMaxW = Math.max(u * 0.10f, (colX + colW) - nameX - u * 0.008f);
                     ink.setColor(blackInk);
-                    float nameSize = u * 0.048f;
+                    float nameSize = u * 0.050f;
                     ink.setTextSize(nameSize);
                     StaticLayout nameLayout = layout(cm.name, ink, (int) nameMaxW, 0.94f);
-                    while ((nameLayout.getLineCount() > 2 || nameLayout.getHeight() > castH * 0.92f) && nameSize > u * 0.026f) {
+                    while ((nameLayout.getLineCount() > 2 || nameLayout.getHeight() > castH * 0.92f) && nameSize > u * 0.032f) {
                         nameSize -= u * 0.002f;
                         ink.setTextSize(nameSize);
                         nameLayout = layout(cm.name, ink, (int) nameMaxW, 0.94f);
                     }
                     drawInk(c, nameLayout, nameX, cy - nameLayout.getHeight() / 2f, ink);
                 }
-                bottom = castTop - u * 0.020f;
-            }
-
-            ink.setColor(blackInk);
-            // The story: punchy, spoiler-free premise (first 1-2 sentences), leaving ample breathing room
-            String story = punchyOverview(movie.overview);
-            float avail = bottom - y;
-            if (!story.isEmpty() && avail > u * 0.06f) {
-                float size = u * 0.066f;
-                float spacing = 0.98f;
-                ink.setTextSize(size);
-                StaticLayout body = layout(story, ink, (int) textW, spacing);
-                while (body.getHeight() > avail && size > u * 0.024f) {
-                    size -= u * 0.002f;
-                    spacing = size < u * 0.044f ? 0.90f : 0.95f;
-                    ink.setTextSize(size);
-                    body = layout(story, ink, (int) textW, spacing);
-                }
-                drawInk(c, body, paper.left + pad, y, ink);
             }
             c.restore();
         }
@@ -825,19 +840,44 @@ public class DvdOpeningView extends View {
     public static String punchyOverview(String text) {
         if (text == null || text.trim().isEmpty()) return "";
         String clean = java.text.Normalizer.normalize(text.trim(), java.text.Normalizer.Form.NFC);
-        int firstDot = findSentenceEnd(clean, 0);
-        if (firstDot > 25 && firstDot <= 175) {
-            int secondDot = findSentenceEnd(clean, firstDot + 1);
-            if (secondDot > firstDot && secondDot <= 235) {
-                return clean.substring(0, secondDot).trim();
+
+        // We NEVER cut mid-sentence with ellipsis like "Bir gün Travis kardeşinin…".
+        // Every synopsis MUST consist of complete, grammatically closed sentences (plot premise).
+        int end1 = findSentenceEnd(clean, 0);
+        if (end1 > 0) {
+            int end2 = findSentenceEnd(clean, end1 + 1);
+            if (end2 > end1 && end2 <= 320) {
+                int end3 = findSentenceEnd(clean, end2 + 1);
+                if (end3 > end2 && end3 <= 300) {
+                    return clean.substring(0, end3).trim();
+                }
+                return clean.substring(0, end2).trim();
             }
-            return clean.substring(0, firstDot).trim();
+            if (end1 <= 280) {
+                return clean.substring(0, end1).trim();
+            }
         }
-        if (clean.length() > 190) {
-            int cut = clean.lastIndexOf(' ', 190);
-            return (cut > 50 ? clean.substring(0, cut) : clean.substring(0, 190)).trim() + "…";
+
+        // If no standard sentence punctuation before 280, look for a clause:
+        int clause = clean.indexOf("; ");
+        if (clause > 35 && clause <= 260) {
+            return clean.substring(0, clause).trim() + ".";
         }
-        return clean;
+        int firstSentence = end1 > 0 ? end1 : clean.length();
+        if (firstSentence <= 340) {
+            return clean.substring(0, firstSentence).trim();
+        }
+        int lastEnd = -1;
+        for (int i = 0; i < Math.min(clean.length() - 1, 340); i++) {
+            char c = clean.charAt(i);
+            if ((c == '.' || c == '!' || c == '?') && (i == clean.length() - 1 || Character.isWhitespace(clean.charAt(i + 1)))) {
+                lastEnd = i + 1;
+            }
+        }
+        if (lastEnd > 30) {
+            return clean.substring(0, lastEnd).trim();
+        }
+        return clean.trim() + (clean.endsWith(".") ? "" : ".");
     }
 
     private static int findSentenceEnd(String s, int from) {

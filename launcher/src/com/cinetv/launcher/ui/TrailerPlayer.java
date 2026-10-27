@@ -110,7 +110,7 @@ public final class TrailerPlayer extends FrameLayout {
             s.setDatabaseEnabled(true);
             s.setCacheMode(WebSettings.LOAD_DEFAULT);
             s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-            s.setUserAgentString("Mozilla/5.0 (Linux; Android 11; Smart TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36");
+            s.setUserAgentString("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
             w.setWebChromeClient(new WebChromeClient());
             w.setBackgroundColor(Color.BLACK);
             w.setFocusable(false);
@@ -122,12 +122,6 @@ public final class TrailerPlayer extends FrameLayout {
             w.setWebViewClient(new WebViewClient() {
                 @Override
                 public void onPageFinished(WebView view, String url) {
-                    view.evaluateJavascript(
-                            "try{" +
-                            "document.body.style.backgroundColor='#000';" +
-                            "var v=document.querySelector('video');" +
-                            "if(v){v.muted=true;v.play();}" +
-                            "}catch(e){}", null);
                     main.postDelayed(() -> {
                         if (my == gen && web == w && getVisibility() != VISIBLE) {
                             setAlpha(0f);
@@ -140,19 +134,33 @@ public final class TrailerPlayer extends FrameLayout {
 
             addView(w, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
-            // Safety fallback: ensure player becomes visible after 1.6s even if onPageFinished is slow
+            // Safety fallback: ensure player becomes visible after 1.5s even if onPageFinished is slow
             main.postDelayed(() -> {
                 if (my == gen && web == w && getVisibility() != VISIBLE) {
                     setAlpha(0f);
                     setVisibility(VISIBLE);
                     animate().alpha(1f).setDuration(400).start();
                 }
-            }, 1600);
+            }, 1500);
 
-            String url = "https://www.youtube-nocookie.com/embed/" + key
+            String embedUrl = "https://www.youtube-nocookie.com/embed/" + key
                     + "?autoplay=1&mute=1&controls=0&loop=1&playlist=" + key
                     + "&playsinline=1&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1";
-            w.loadUrl(url);
+
+            String html = "<!DOCTYPE html><html><head>"
+                    + "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                    + "<meta name='referrer' content='strict-origin-when-cross-origin'>"
+                    + "<style>"
+                    + "* { margin:0; padding:0; box-sizing:border-box; }"
+                    + "html, body { width:100%; height:100%; overflow:hidden; background:#000000; }"
+                    + "iframe { width:100%; height:100%; border:none; display:block; }"
+                    + "</style></head><body>"
+                    + "<iframe src=\"" + embedUrl + "\" "
+                    + "allow=\"autoplay; encrypted-media; picture-in-picture\" "
+                    + "referrerpolicy=\"strict-origin-when-cross-origin\"></iframe>"
+                    + "</body></html>";
+
+            w.loadDataWithBaseURL("https://themoviedb.org", html, "text/html", "utf-8", "https://themoviedb.org");
         } catch (Throwable t) {
             Log.w(TAG, "WebView play failed: " + t.getMessage());
             web = null;

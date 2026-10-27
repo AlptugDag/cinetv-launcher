@@ -31,11 +31,11 @@ final class ShelfSet {
     private ShelfSet() {}
 
     static View back(Context ctx, String scene, int caseW, float caseH) {
-        return "closet".equals(scene) ? new Layer(ctx, scene, caseW, caseH, false) : null;
+        return new Layer(ctx, scene, caseW, caseH, false);
     }
 
     static View front(Context ctx, String scene, int caseW, float caseH) {
-        return "closet".equals(scene) || "cinema".equals(scene) || "redcarpet".equals(scene) ? new Layer(ctx, scene, caseW, caseH, true) : null;
+        return new Layer(ctx, scene, caseW, caseH, true);
     }
 
     /** The room's light on the cases: tailored cinematic lighting grade per theme. */
@@ -133,14 +133,129 @@ final class ShelfSet {
         @Override
         protected void onDraw(Canvas c) {
             if ("redcarpet".equals(scene)) {
-                redCarpetStage(c);
+                if (front) redCarpetStage(c);
+                else redCarpetBackDeck(c);
             } else if ("cinema".equals(scene)) {
-                cinemaStage(c);
-            } else if (front) {
-                shelfFront(c);
+                if (front) cinemaStage(c);
+                else cinemaBackDeck(c);
+            } else if ("closet".equals(scene)) {
+                if (front) shelfFront(c);
+                else shelfBack(c);
             } else {
-                shelfBack(c);
+                if (front) themedFront(c);
+                else themedBackDeck(c);
             }
+        }
+
+        private void redCarpetBackDeck(Canvas c) {
+            int w = getWidth();
+            float fl = floor();
+            float lb = leftBleed();
+            float rb = rightBleed();
+            float deckDepth = UiKit.pxf(32);
+
+            // 1. Plush Gala Red Carpet Deck Plane under the spinning cases
+            p.setShader(new LinearGradient(0, fl - deckDepth, 0, fl,
+                    new int[]{Color.argb(230, 118, 10, 22), Color.argb(245, 175, 14, 30)},
+                    new float[]{0f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(-lb, fl - deckDepth, w + rb, fl, p);
+
+            // 2. Twin Gold Fringe/Braid Guide Lines receding along the carpet edges
+            p.setShader(null);
+            p.setColor(Color.argb(200, 255, 215, 64));
+            float goldH = UiKit.pxf(1.8f);
+            c.drawRect(-lb, fl - deckDepth, w + rb, fl - deckDepth + goldH, p);
+            c.drawRect(-lb, fl - goldH * 1.5f, w + rb, fl, p);
+
+            // 3. Grounding contact shadow directly under case footprints
+            p.setShader(new LinearGradient(0, fl - UiKit.pxf(8), 0, fl,
+                    Color.TRANSPARENT, Color.argb(85, 30, 2, 6), Shader.TileMode.CLAMP));
+            c.drawRect(-lb, fl - UiKit.pxf(8), w + rb, fl, p);
+            p.setShader(null);
+        }
+
+        private void cinemaBackDeck(Canvas c) {
+            int w = getWidth();
+            float fl = floor();
+            float lb = leftBleed();
+            float rb = rightBleed();
+            float deckDepth = UiKit.pxf(28);
+
+            // 1. Polished Cinema Stage Mahogany Parquet Deck
+            p.setShader(new LinearGradient(0, fl - deckDepth, 0, fl,
+                    new int[]{Color.argb(230, 24, 12, 10), Color.argb(245, 42, 20, 16)},
+                    new float[]{0f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(-lb, fl - deckDepth, w + rb, fl, p);
+
+            // 2. Warm brass front footlight rim catch
+            p.setShader(null);
+            p.setColor(Color.argb(160, 218, 165, 32));
+            c.drawRect(-lb, fl - UiKit.pxf(1.6f), w + rb, fl, p);
+
+            // 3. Soft contact shadow under the cases
+            p.setShader(new LinearGradient(0, fl - UiKit.pxf(7), 0, fl,
+                    Color.TRANSPARENT, Color.argb(80, 10, 4, 3), Shader.TileMode.CLAMP));
+            c.drawRect(-lb, fl - UiKit.pxf(7), w + rb, fl, p);
+            p.setShader(null);
+        }
+
+        private void themedBackDeck(Canvas c) {
+            int w = getWidth();
+            float fl = floor();
+            float deckDepth = UiKit.pxf(26);
+
+            int colTop, colBot, rimCol;
+            if ("metal".equals(scene)) {
+                colTop = Color.argb(200, 48, 54, 64);
+                colBot = Color.argb(230, 75, 85, 99);
+                rimCol = Color.argb(190, 226, 232, 240);
+            } else if ("glass".equals(scene)) {
+                colTop = Color.argb(160, 15, 23, 42);
+                colBot = Color.argb(190, 30, 41, 59);
+                rimCol = Color.argb(180, 56, 189, 248);
+            } else if ("neon".equals(scene)) {
+                colTop = Color.argb(210, 15, 10, 28);
+                colBot = Color.argb(235, 28, 14, 46);
+                rimCol = Color.argb(210, 236, 72, 153);
+            } else {
+                colTop = Color.argb(180, 20, 22, 28);
+                colBot = Color.argb(210, 32, 35, 45);
+                rimCol = Color.argb(140, 255, 255, 255);
+            }
+
+            // Ground deck plane
+            p.setShader(new LinearGradient(0, fl - deckDepth, 0, fl, colTop, colBot, Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, fl - deckDepth, w + bleed, fl, p);
+
+            // Front edge catch
+            p.setShader(null);
+            p.setColor(rimCol);
+            c.drawRect(-bleed, fl - UiKit.pxf(1.5f), w + bleed, fl, p);
+
+            // Contact shadow
+            p.setShader(new LinearGradient(0, fl - UiKit.pxf(7), 0, fl, Color.TRANSPARENT, Color.argb(75, 0, 0, 0), Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, fl - UiKit.pxf(7), w + bleed, fl, p);
+            p.setShader(null);
+        }
+
+        private void themedFront(Canvas c) {
+            int w = getWidth();
+            float fl = floor();
+            float nosingH = UiKit.pxf(14);
+            float y0 = fl;
+            float y1 = y0 + nosingH;
+
+            // Front fascia bevel
+            p.setShader(new LinearGradient(0, y0, 0, y1,
+                    new int[]{Color.argb(180, 30, 34, 44), Color.argb(220, 16, 18, 24)},
+                    new float[]{0f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, y0, w + bleed, y1, p);
+
+            // Drop shadow
+            p.setShader(new LinearGradient(0, y1, 0, y1 + UiKit.pxf(18),
+                    Color.argb(90, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, y1, w + bleed, y1 + UiKit.pxf(18), p);
+            p.setShader(null);
         }
 
         // ---- cinema ---------------------------------------------------------------------------------
@@ -260,25 +375,36 @@ final class ShelfSet {
             float fl = floor();
             float top = fl - caseH * 1.05f;
 
-            // 1. Deep ambient occlusion alcove shadow behind cases (deepening towards corners)
-            p.setShader(new LinearGradient(0, top, 0, fl,
-                    new int[]{Color.argb(140, 6, 7, 10), Color.argb(45, 12, 13, 17), Color.argb(120, 8, 9, 12)},
+            // 1. Soft, realistic ambient room shadow cast downward by the upper shelf (no artificial dark box!)
+            p.setShader(new LinearGradient(0, top, 0, top + UiKit.pxf(28),
+                    new int[]{Color.argb(50, 15, 15, 20), Color.argb(16, 15, 15, 20), Color.TRANSPARENT},
                     new float[]{0f, 0.40f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(-bleed, top, w + bleed, fl, p);
+            c.drawRect(-bleed, top, w + bleed, top + UiKit.pxf(28), p);
 
-            // 2. Lateral corner vignettes (shadows deepening where the back wall meets the side walls)
-            p.setShader(new LinearGradient(-bleed, 0, w * 0.18f, 0,
-                    Color.argb(125, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
-            c.drawRect(-bleed, top, w * 0.18f, fl, p);
+            // 2. Subtle architectural vertical back-panel seams (every ~210dp) giving genuine bookshelf backing
+            p.setShader(null);
+            p.setColor(Color.argb(18, 0, 0, 0));
+            float seamStep = UiKit.pxf(210);
+            for (float sx = -bleed + seamStep * 0.5f; sx < w + bleed; sx += seamStep) {
+                c.drawLine(sx, top, sx, fl, p);
+            }
 
-            p.setShader(new LinearGradient(w + bleed, 0, w * 0.82f, 0,
-                    Color.argb(125, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
-            c.drawRect(w * 0.82f, top, w + bleed, fl, p);
+            // 3. Realistic perspective shelf deck receding backward into the bookcase (warm satin ivory plane)
+            float deckDepth = UiKit.pxf(16);
+            p.setShader(new LinearGradient(0, fl - deckDepth, 0, fl,
+                    new int[]{Color.argb(215, 240, 238, 233), Color.argb(240, 248, 247, 243)},
+                    new float[]{0f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, fl - deckDepth, w + bleed, fl, p);
 
-            // 3. Dense physical contact crevice shadow where DVD spines rest on the shelf deck
-            p.setShader(new LinearGradient(0, fl - UiKit.pxf(16), 0, fl,
-                    Color.TRANSPARENT, Color.argb(200, 4, 4, 6), Shader.TileMode.CLAMP));
-            c.drawRect(-bleed, fl - UiKit.pxf(16), w + bleed, fl, p);
+            // 4. Subtle rear junction crease shadow where backboard meets the shelf board
+            p.setShader(new LinearGradient(0, fl - deckDepth - UiKit.pxf(4), 0, fl - deckDepth + UiKit.pxf(2),
+                    Color.argb(32, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, fl - deckDepth - UiKit.pxf(4), w + bleed, fl - deckDepth + UiKit.pxf(2), p);
+
+            // 5. Delicate contact shadow where DVD cases stand on the shelf deck (soft occlusion)
+            p.setShader(new LinearGradient(0, fl - UiKit.pxf(7), 0, fl,
+                    Color.TRANSPARENT, Color.argb(65, 25, 22, 20), Shader.TileMode.CLAMP));
+            c.drawRect(-bleed, fl - UiKit.pxf(7), w + bleed, fl, p);
             p.setShader(null);
         }
 
