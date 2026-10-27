@@ -231,4 +231,32 @@ public final class MemoryOptimizer {
         b.freedRamMb = Math.max(0, b.freeRamMb - before);
         return b;
     }
+
+    /** Undoes all TV memory and Google Assistant changes, putting system settings and components back to factory defaults. */
+    public static void restoreTvOptimizations(Context ctx) {
+        final Context app = ctx.getApplicationContext();
+        Prefs.get(app).edit().remove("tv_opt_applied").apply();
+        try {
+            android.content.ContentResolver cr = app.getContentResolver();
+            Settings.Global.putFloat(cr, Settings.Global.WINDOW_ANIMATION_SCALE, 1.0f);
+            Settings.Global.putFloat(cr, Settings.Global.TRANSITION_ANIMATION_SCALE, 1.0f);
+            Settings.Global.putFloat(cr, "animator_duration_scale", 1.0f);
+        } catch (Throwable ignored) {
+        }
+        try {
+            // Re-enable Google Assistant packages & reset assistant settings
+            LocalAdb.shell(app,
+                    "pm enable com.google.android.apps.googleassistant 2>/dev/null; " +
+                    "settings delete secure assistant 2>/dev/null; " +
+                    "settings delete secure voice_interaction_service 2>/dev/null; " +
+                    "pm enable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.VoiceActivity 2>/dev/null; " +
+                    "pm enable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.AssistantActivity 2>/dev/null; " +
+                    "pm enable com.google.android.katniss 2>/dev/null; " +
+                    "setprop persist.sys.ram_expand.enable 0 2>/dev/null; " +
+                    "sysctl -w vm.swappiness=60 2>/dev/null; " +
+                    "sysctl -w vm.vfs_cache_pressure=100 2>/dev/null; " +
+                    "setprop persist.sys.fw.bservice_enable false 2>/dev/null", 3000);
+        } catch (Throwable ignored) {
+        }
+    }
 }

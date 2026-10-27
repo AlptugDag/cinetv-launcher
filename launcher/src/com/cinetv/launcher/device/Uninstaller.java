@@ -34,7 +34,38 @@ public final class Uninstaller {
             PictureCalibration.reset(ctx);
         } catch (Throwable ignored) {
         }
-        DeviceTweaks.restoreOriginals(ctx);
+        try {
+            DeviceTweaks.restoreOriginals(ctx);
+        } catch (Throwable ignored) {
+        }
+        try {
+            MemoryOptimizer.restoreTvOptimizations(ctx);
+        } catch (Throwable ignored) {
+        }
+        // Undo any journaled debloat packages (re-enable original OEM TV apps)
+        try {
+            com.cinetv.launcher.remote.LocalAdb.shell(ctx,
+                    "if [ -f /sdcard/cinetv-debloat.txt ]; then " +
+                    "  while read -r action pkg; do " +
+                    "    case \"$action\" in " +
+                    "      disabled) pm enable \"$pkg\" 2>/dev/null ;; " +
+                    "      uninstalled) cmd package install-existing \"$pkg\" 2>/dev/null ;; " +
+                    "    esac; " +
+                    "  done < /sdcard/cinetv-debloat.txt; " +
+                    "  rm -f /sdcard/cinetv-debloat.txt 2>/dev/null; " +
+                    "fi; " +
+                    "pm clear-package-preferred-activities " + ctx.getPackageName() + " 2>/dev/null; " +
+                    "cmd package set-home-activity --user 0 \"\" 2>/dev/null; ", 5000);
+        } catch (Throwable ignored) {
+        }
+        // Launch original OEM Home activity so the user immediately lands on their native TV home
+        try {
+            Intent home = new Intent(Intent.ACTION_MAIN)
+                    .addCategory(Intent.CATEGORY_HOME)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(home);
+        } catch (Throwable ignored) {
+        }
         Intent delete = new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + ctx.getPackageName()))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {

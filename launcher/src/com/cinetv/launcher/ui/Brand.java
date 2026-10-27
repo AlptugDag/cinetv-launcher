@@ -75,6 +75,22 @@ public final class Brand {
         return out;
     }
 
+    /** The signature rendered with a luxurious subtle linear gradient shader (e.g. champagne to Netflix red). */
+    public static Bitmap gradientSignature(Context ctx, int colorTop, int colorBottom, int maxWidth) {
+        Bitmap src = mark(ctx);
+        float s = Math.min(1f, maxWidth / (float) src.getWidth());
+        int w = Math.max(1, Math.round(src.getWidth() * s));
+        int h = Math.max(1, Math.round(src.getHeight() * s));
+        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(out);
+        c.drawBitmap(src, null, new RectF(0, 0, w, h), null);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN));
+        p.setShader(new LinearGradient(0, 0, 0, h, colorTop, colorBottom, Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, h, p);
+        return out;
+    }
+
     private static Bitmap drawDefault(int size) {
         Bitmap b = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(b);

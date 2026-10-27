@@ -235,7 +235,7 @@ public final class VoiceCommands {
     static String findApp(Context ctx, String spoken) {
         String want = squash(spoken);
         if (want.isEmpty()) return null;
-        if (want.equals("nuvio")) {
+        if (want.equals("nuvio") || want.contains("alptugflix") || want.contains("alptuğflix") || want.contains("alptukfliks") || want.contains("alptugfliks")) {
             for (String p : AppLauncher.NUVIO_PACKAGES) if (AppLauncher.isLaunchable(ctx.getPackageManager(), p)) return p;
         }
         if (want.equals("youtube") || want.equals("yutup") || want.equals("yutub") || want.equals("smarttube") || want.equals("tizentube")) {

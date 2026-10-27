@@ -60,19 +60,20 @@ Kurulum: `./install.sh --tv <TV_IP>` — ya da bir yapay zekâ ajanına "CineTV'
 
 ### Kurulum
 
-Kurulumu ister bir yapay zekâ ajanıyla (Antigravity veya Claude Desktop - tamamen zevklerinize göre özel profil oluşturur), ister hiçbir bilgisayar olmadan sadece televizyonunuza APK'yı indirerek yapabilirsiniz. Dahili **Kurulum Sihirbazı** sayesinde, televizyonda Nuvio veya oynatıcı bulunmasa dahi CineTV ilk açılışta eksik bileşenleri (ana ekran başlatıcı, Nuvio, Türkçe eklentiler, Nova Player, kumanda tuş servisi ve 2 GB sanal RAM) kumandadan tek tıkla tamamlar.
+### Kurulum
 
-Beş yol var, hepsi rehberde ekran ekran anlatılıyor:
+Kurulumu iki garantili yoldan biriyle yapabilirsiniz:
 
-1. **Sadece televizyonla (Downloader / USB)**: Play Store'dan *Downloader* uygulamasını kurun, adres çubuğuna `github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk` yazın, kurun ve açın. Açılışta gelen **CineTV Kurulum Sihirbazı** ile *"Tümünü Otomatik Tamamla"* diyerek saniyeler içinde kullanmaya başlayın.
-2. **Windows'ta çift tıkla**: [CineTV-Kur.bat](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.bat) dosyasını indirip çift tıklayın; televizyonun IP adresini sorar, gerisini kendisi yapar.
-3. **Mac'te çift tıkla**: [CineTV-Kur.command](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.command).
-4. (TAVSİYE EDİLEN) **Bir yapay zekâya kurdurun** (Claude Desktop, Antigravity, Gemini, Cursor…): *"https://github.com/AlptugDag/cinetv-launcher adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur"* deyin. Size soru sorup televizyonu tamamen size göre kurar.
-5. **Terminalden**: `git clone https://github.com/AlptugDag/cinetv-launcher && cd cinetv-launcher && ./install.sh`
+1. **Sadece Televizyonla (Önerilen & En Kolayı — Bilgisayar Gerekmez)**: Play Store'dan ücretsiz *Downloader* uygulamasını kurun, adres çubuğuna `github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk` yazın, kurun ve açın (ya da flash bellekle atın). İlk açılışta açılan **CineTV Kurulum Sihirbazı**'nda *"Tümünü Otomatik Tamamla"* butonuna basın; ana ekran kilitlenmesi, Alptuğflix medya merkezi, Türkçe film/dizi kaynakları, altyazı eklentileri, gizli Nova Player, kumanda tuş servisi ve 2 GB sanal RAM arka planda kumandanızla tek tıkla eksiksiz tamamlanır.
+2. **Bir Yapay Zekâya Kurdurun (Gelişmiş & Kişiselleştirilmiş)** (Claude Desktop, Antigravity, Gemini, Cursor…): *"https://github.com/AlptugDag/cinetv-launcher adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur"* deyin. Size sorular sorarak zevklerinize özel katalog rafları ve kişisel profil oluşturur.
 
-**[📥 CineTV.apk'yı indir](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk)** · **[Adım adım kurulum rehberi (KURULUM.md)](KURULUM.md)**
+*(Geliştiriciler veya terminal meraklıları için tek satır komut: `git clone https://github.com/AlptugDag/cinetv-launcher && cd cinetv-launcher && ./install.sh`)*
 
-Hangi yolu seçerseniz seçin, televizyonda önce **Geliştirici seçenekleri › Ağ hata ayıklama** açık olmalı (rehberin 1. adımı). İlk açılışta televizyon *"hata ayıklamaya izin verilsin mi?"* diye sorarsa **Her zaman izin ver**'i işaretleyip **Tamam**'a basın: CineTV kendini ana ekran yapar, sanal RAM ve kumanda servislerini hazırlar.
+**[📥 CineTV.apk'yı indir](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk)** · **[Adım Adım Kurulum Rehberi (KURULUM.md)](KURULUM.md)**
+
+Hangi yolu seçerseniz seçin, televizyonda önce **Geliştirici seçenekleri › USB / Ağ hata ayıklama** açık olmalı (rehberin 1. adımı). İlk açılışta televizyon *"hata ayıklamaya izin verilsin mi?"* diye sorarsa **Her zaman izin ver**'i işaretleyip **Tamam**'a basın.
+
+> **%100 Güvenli ve Geri Alınabilir**: Dilediğiniz an CineTV › Ayarlar menüsünün en altındaki kırmızı **"CineTV'yi yok et!"** butonuna basarak televizyonu hiçbir kalıntı kalmadan, Google Asistan ve orijinal ana ekran dahil adeta hiçbir şey olmamış gibi ilk günkü fabrika haline döndürebilirsiniz.
 
 
 ---

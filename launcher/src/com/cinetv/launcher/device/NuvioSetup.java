@@ -67,7 +67,14 @@ public final class NuvioSetup {
             return true;
         }
         try {
-            String url = apkUrl("NuvioMedia/NuvioTV", "app-full-", "-release\\.apk");
+            boolean turkish = "tr".equals(Locale.getDefault().getLanguage());
+            String url = null;
+            if (turkish) {
+                // Official Alptugflix edition (Netflix-styled custom branding & Alptug Dag signature)
+                url = apkUrl("AlptugDag/cinetv-launcher", "Alptugflix", "\\.apk");
+                if (url == null) url = "https://github.com/AlptugDag/cinetv-launcher/releases/download/v1.0.0.4/Alptugflix.apk";
+            }
+            if (url == null) url = apkUrl("NuvioMedia/NuvioTV", "app-full-", "-release\\.apk");
             if (url == null) return false; // offline or GitHub unreachable: tried again on the next start
             File dir = app.getExternalFilesDir(null);
             if (dir == null) return false;
@@ -82,7 +89,6 @@ public final class NuvioSetup {
             for (int i = 0; i < 20 && !AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO); i++) Thread.sleep(1000);
             if (!AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) return false;
             Prefs.get(app).edit().putBoolean(DONE, true).apply();
-            boolean turkish = "tr".equals(Locale.getDefault().getLanguage());
             for (String addon : ADDONS) addAddon(app, addon);
             if (turkish) {
                 for (String trAddon : TR_ADDONS) addAddon(app, trAddon);
@@ -92,9 +98,11 @@ public final class NuvioSetup {
             // back to Home when the addons are in
             AppLauncher.start(app, new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             Log.i(TAG, "Nuvio installed with its addons");
+            cleanTemporaryFiles(app);
             return true;
         } catch (Throwable t) {
             Log.w(TAG, "Nuvio setup failed: " + t);
+            cleanTemporaryFiles(app);
             return false;
         }
     }
@@ -119,6 +127,7 @@ public final class NuvioSetup {
                 return false;
             }
             apk.delete();
+            cleanTemporaryFiles(app);
             if (hasPlayer(app)) {
                 Prefs.get(app).edit().putBoolean(PLAYER_DONE, true).apply();
                 Log.i(TAG, "Nova installed for casting");
@@ -127,7 +136,34 @@ public final class NuvioSetup {
             return false;
         } catch (Throwable t) {
             Log.w(TAG, "player setup failed: " + t);
+            cleanTemporaryFiles(app);
             return false;
+        }
+    }
+
+    /** Cleans up any leftover installation APKs or temporary files across local directories and /data/local/tmp. */
+    public static void cleanTemporaryFiles(Context ctx) {
+        try {
+            File dir = ctx.getExternalFilesDir(null);
+            if (dir != null && dir.exists()) {
+                File[] files = dir.listFiles();
+                if (files != null) {
+                    for (File f : files) {
+                        if (f.getName().endsWith(".apk") || f.getName().endsWith(".tmp")) f.delete();
+                    }
+                }
+            }
+            File cache = ctx.getCacheDir();
+            if (cache != null && cache.exists()) {
+                File[] cfiles = cache.listFiles();
+                if (cfiles != null) {
+                    for (File f : cfiles) {
+                        if (f.getName().endsWith(".apk") || f.getName().endsWith(".tmp")) f.delete();
+                    }
+                }
+            }
+            LocalAdb.shell(ctx, "rm -f /data/local/tmp/*.apk /sdcard/Download/*.apk /sdcard/*.tmp /data/local/tmp/*.tmp 2>/dev/null", 2000);
+        } catch (Throwable ignored) {
         }
     }
 

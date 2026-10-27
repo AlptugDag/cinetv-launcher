@@ -43,7 +43,9 @@ public final class SignatureOverlay {
         try {
             UiKit.init(service);
             view = new ImageView(service);
-            view.setImageBitmap(withShadow(Brand.tinted(service, Color.WHITE, UiKit.px(150))));
+            int topColor = Color.parseColor("#FFF2E6"); // Champagne warmth
+            int botColor = Color.parseColor("#FF2B38"); // Subtle Netflix Crimson luster
+            view.setImageBitmap(withShadow(Brand.gradientSignature(service, topColor, botColor, UiKit.px(160))));
             view.setAlpha(0f);
             WindowManager.LayoutParams lp = new WindowManager.LayoutParams(UiKit.px(104), UiKit.px(104),
                     WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,

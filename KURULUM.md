@@ -10,21 +10,18 @@ alttaki **Sorun çözme** tablosuna bakın. *(English: [the short version is in 
 
 ## Hangi yolu seçmeliyim?
 
+CineTV'yi televizyonunuza kurmak için iki resmî ve garantili yol vardır:
+
 | Elinizde ne var? | Yol | Süre | Kurulum şekli |
 | :--- | :--- | :--- | :--- |
-| Sadece televizyon ve kumandası | [Yol A: Sadece TV](#yol-a-sadece-televizyonla-bilgisayar-gerekmez) | 5 dk | **Dahili Kurulum Sihirbazı ile tek tıkla eksiksiz ve otomatik** |
-| Windows bilgisayar | [Yol B: Windows'ta çift tıkla](#yol-b-windowsta-çift-tıkla) | 5 dk | Otomatik script ile hızlı kurulum |
-| Mac bilgisayar | [Yol C: Mac'te çift tıkla](#yol-c-macte-çift-tıkla) | 10 dk | Kişiye özel sorular ve Nuvio rafları |
-| Claude Desktop, Antigravity, Gemini, Cursor gibi bir yapay zekâ | [Yol D: Yapay zekâya kurdur](#yol-d-bir-yapay-zekâya-kurdurun-en-iyi-sonuç) | 15 dk | **En iyisi (tamamen zevklerinize göre özel profil)** |
-| Terminal kullanmayı biliyorum | [Yol E: Terminal](#yol-e-terminal-mac--linux--windows-wsl) | 5 dk | Hızlı tek satır komut |
-
-Hepsinde önce **Adım 1**'i yapın.
+| Sadece televizyon ve kumandası | [1. Yol: Kurulum Sihirbazı (Önerilen)](#1-yol-kurulum-sihirbazı-önerilen--bilgisayar-gerekmez) | 3 dk | **TV kumandasıyla tek tıkla %100 eksiksiz ve otomatik** |
+| Claude, Antigravity, Gemini gibi bir AI ajanı | [2. Yol: Yapay Zekâya Kurdur](#2-yol-bir-yapay-zekâya-kurdurun-kişiye-özel) | 10 dk | **Tamamen zevklerinize göre özel profil ve katalog rafları** |
 
 ---
 
-## Adım 1: Televizyonda "Geliştirici seçenekleri"ni açın (hepsi için gerekli)
+## Adım 1: Televizyonda "Geliştirici seçenekleri"ni açın (her iki yol için de gerekli)
 
-CineTV, kumanda tuşlarını her uygulamada çalıştırmak, kendini ana ekran yapmak ve arka planda 2 GB sanal RAM oluşturup sistemi hızlandırmak için televizyonun "hata ayıklama" özelliğini kullanır. Bu işlem televizyonun garantisini bozmaz ve istediğiniz zaman kapatılabilir.
+CineTV, kumanda tuşlarını her uygulamada çalıştırmak, kendini varsayılan ana ekran yapmak, Google Asistan çakışmasını engellemek ve arka planda 2 GB sanal RAM oluşturup sistemi hızlandırmak için televizyonun standart "hata ayıklama" özelliğini kullanır. Bu işlem televizyonun garantisini bozmaz ve istediğiniz zaman Ayarlar'daki **"CineTV'yi yok et!"** tuşuyla tamamen geri alınabilir.
 
 **1.1. Geliştirici olun.** Menü adları markaya göre biraz değişir; size uyan satırı izleyin:
 
@@ -44,19 +41,15 @@ Ekranda *"Artık bir geliştiricisiniz"* yazısı çıkar. (Şifre sorarsa telev
 - **USB hata ayıklama**
 - **Ağ hata ayıklama** (ya da *ADB over network* / *Kablosuz hata ayıklama*)
 
-**1.3. Televizyonun IP adresini not edin** (Yol B, C, D, E için):
-Ayarlar › Ağ ve İnternet › bağlı olduğunuz Wi-Fi'nin ya da kablonun adı › **IP adresi**.
-`192.168.1.50` gibi bir şeydir.
-
 > Telefonunuz ve bilgisayarınız televizyonla **aynı Wi-Fi'ye** bağlı olmalı.
 
 ---
 
-## Yol A: Sadece televizyonla (bilgisayar gerekmez)
+## 1. Yol: Kurulum Sihirbazı (Önerilen — Bilgisayar gerekmez)
 
-CineTV v1.0.0.4 ile birlikte gelen dahili **Kurulum Sihirbazı** sayesinde, yanınızda bilgisayar veya yapay zekâ olmasa dahi tek başına APK olarak kurulduğunda eksik kalan hiçbir şey olmaz.
+CineTV v1.0.0.4 ile birlikte gelen dahili **Kurulum Sihirbazı** sayesinde, yanınızda bilgisayar veya harici bir araç olmasa dahi tek başına APK olarak kurulduğunda eksik kalan hiçbir şey olmaz.
 
-1. Televizyonda **Play Store**'u açın, **Downloader** diye aratın (turuncu simgeli, *AFTVnews* yapımı) ve **Yükle**'ye basın. (Ya da APK'yı bilgisayardan bir USB belleğe atıp televizyonunuza takabilirsiniz.)
+1. Televizyonda **Play Store**'u açın, **Downloader** diye aratın (turuncu simgeli, *AFTVnews* yapımı) ve **Yükle**'ye basın. (Ya da `CineTV.apk`'yı bilgisayardan bir USB belleğe atıp televizyonunuza takabilirsiniz.)
 2. Downloader'ı açın. Depolama izni isterse **İzin ver** deyin.
 3. Bilinmeyen kaynaklara izin verin (Downloader ilk kurulumda kendisi sorar; sormazsa):
    - Android TV: Ayarlar › Cihaz Tercihleri › Güvenlik ve kısıtlamalar › **Bilinmeyen kaynaklar** › Downloader: **Açık**
@@ -71,7 +64,7 @@ CineTV v1.0.0.4 ile birlikte gelen dahili **Kurulum Sihirbazı** sayesinde, yan�
 7. **CineTV Kurulum Sihirbazı**: CineTV ilk açılışında otomatik olarak karşınıza çıkar.
    - Sihirbaz ekrandaki 5 temel bileşeni gösterir:
      1. **Varsayılan Ana Ekran**: Kumanda Home (Ev) tuşu için sistem seçiciyi açar (*CineTV* › *Her zaman* seçin).
-     2. **Nuvio Medya Merkezi**: Televizyonda Nuvio yoksa arka planda indirip kurar ve hazır Türkçe film/dizi kaynaklarını, altyazı eklentilerini yükler.
+     2. **Alptuğflix Medya Merkezi**: Televizyonda medya merkezi yoksa arka planda Alptuğflix'i kurar ve hazır Türkçe film/dizi kaynaklarını, altyazı eklentilerini (Xperience, Netflix Kataloğu, AIOStreams Nightly, Anthology, TR-Altyazı) yükler.
      3. **Video Oynatıcı**: Yayınları oynatmak için Nova Player'ı kurar.
      4. **Kumanda Tuş Servisi**: Kumanda tuşlarının her ekranda çalışması için erişilebilirlik ayarını açar.
      5. **2 GB Sanal RAM & Optimizasyon**: Root gerekmeden 2 GB sanal RAM (zRAM) oluşturur ve Google Asistan'ı sessize alıp sistemi hızlandırır.
@@ -82,51 +75,21 @@ CineTV v1.0.0.4 ile birlikte gelen dahili **Kurulum Sihirbazı** sayesinde, yan�
 
 ---
 
-## Yol B: Windows'ta çift tıkla
-
-1. Bu dosyayı indirin: **[CineTV-Kur.bat](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.bat)**
-2. İndirilenler klasöründe **CineTV-Kur.bat**'a çift tıklayın.
-   - *"Windows bilgisayarınızı korudu"* uyarısı çıkarsa: **Ek bilgi** › **Yine de çalıştır**.
-3. Siyah pencere televizyonun **IP adresini** sorar (Adım 1.3). Yazın, **Enter**.
-4. Televizyonda *"USB hata ayıklamaya izin verilsin mi?"* çıkar: **Her zaman izin ver**'i işaretleyip **Tamam**.
-5. Pencere CineTV'yi indirip kurar, ayarlar. İsterseniz TMDB ve yapay zekâ anahtarını sorar (boş bırakıp Enter'a basabilirsiniz).
-6. *"Bitti!"* yazınca televizyonda **Ana Sayfa** tuşuna basın.
-
-Bilgisayara kalıcı bir şey kurulmaz; gereken her şey `%LOCALAPPDATA%\CineTV` klasöründedir.
-
----
-
-## Yol C: Mac'te çift tıkla
-
-1. Bu dosyayı indirin: **[CineTV-Kur.command](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.command)**
-2. İlk sefer için: **Terminal** uygulamasını açın (Spotlight'ta "Terminal" yazın), şunu yapıştırıp Enter'a basın:
-   ```bash
-   chmod +x ~/Downloads/CineTV-Kur.command && xattr -d com.apple.quarantine ~/Downloads/CineTV-Kur.command 2>/dev/null; open ~/Downloads/CineTV-Kur.command
-   ```
-   (Sonraki seferlerde dosyaya çift tıklamanız yeter.)
-3. Kurulum televizyonu bulur ya da IP adresini sorar, sonra **sizi tanımak için sorular sorar**: dil, ne izlersiniz, ne izlemezsiniz, hangi takımı tutarsınız, hangi servislere abonesiniz… Her sorunun hazır bir cevabı vardır; bilmiyorsanız Enter'a basın.
-4. Televizyonda *"USB hata ayıklamaya izin verilsin mi?"*: **Her zaman izin ver** › **Tamam**.
-5. Sonunda yazan **Nuvio'da bitir** adımlarını uygulayın (rafları içe aktarmak gibi; 2 dakika).
-
-*"python3 bulunamadı"* derse: Mac bir pencere açıp "geliştirici araçlarını yükle" der; **Yükle**'ye basın, bitince dosyayı yeniden açın.
-
----
-
-## Yol D: Bir yapay zekâya kurdurun (en iyi sonuç)
+## 2. Yol: Bir yapay zekâya kurdurun (Kişiye özel)
 
 Bilgisayarınızda dosya okuyup komut çalıştırabilen bir yapay zekâ olmalı: **Claude Desktop** (Claude Code), **Antigravity** (ücretsiz), **Gemini CLI**, **Cursor**, **Codex** gibi. Tarayıcıdaki sohbet pencereleri (sadece yazışan) televizyona bağlanamaz.
 
-1. Adım 1'i yapın, IP adresini not edin.
+1. Adım 1'i yapın, televizyonun IP adresini not edin (Ayarlar › Ağ ve İnternet › bağlı olduğunuz Wi-Fi › IP adresi).
 2. Yapay zekâya aynen şunu yazın:
    > https://github.com/AlptugDag/cinetv-launcher adresindeki projeyi indir, AGENTS.md dosyasını baştan sona oku ve oradaki adımlarla CineTV'yi televizyonuma kur. Televizyonumun IP adresi 192.168.1.50. Bana soruları Türkçe sor.
 3. Yapay zekâ size soru sorar (ne izlediğiniz, dil, servisler…), cevaplayın. Televizyonda izin sorusu çıkınca **Her zaman izin ver** › **Tamam**.
 4. Komut çalıştırmak için onay isterse **İzin ver** deyin.
 
-Yapay zekâ Nuvio'daki son adımları da (raflar, eklentiler, altyazı) televizyonun ekranına bakarak kendisi yapar.
+Yapay zekâ Alptuğflix'teki son adımları da (zevklerinize özel raflar, eklentiler, altyazı) televizyonun ekranına bakarak kendisi yapar.
 
 ---
 
-## Yol E: Terminal (Mac / Linux / Windows WSL)
+### Geliştiriciler & İleri Düzey Kullanıcılar İçin: Terminal (İsteğe Bağlı)
 
 ```bash
 git clone https://github.com/AlptugDag/cinetv-launcher
@@ -168,9 +131,22 @@ cd cinetv-launcher
 | Telefondaki kumanda tuşları başka uygulamalarda çalışmıyor | Televizyonda çıkan *"hata ayıklamaya izin ver"* sorusuna **Her zaman** demediniz; CineTV'yi kapatıp açın, soru yeniden gelir veya Ayarlar › TV & Telefon › Erişilebilirlik & Tuşlar'ı kontrol edin. |
 | YouTube'da televizyon listede yok | Telefon ve televizyon aynı Wi-Fi'de mi? YouTube'u kapatıp açın. Yine yoksa: TizenTube › Ayarlar › **TV koduyla bağla**, kodu telefonda YouTube › Ayarlar › **TV'de izle** › **TV kodunu gir**'e yazın. |
 | Film özetleri İngilizce | Televizyonun dili Türkçe mi? (Ayarlar › Cihaz Tercihleri › Dil). TMDB anahtarı girerseniz özetler doğrudan Türkçe gelir. |
-| Bir şey bozuldu, eskiye dönmek istiyorum | CineTV › Ayarlar › en altta kırmızı **CineTV'yi yok et!** Her şeyi eski hâline getirir. |
+| Bir şey bozuldu, eskiye dönmek istiyorum | CineTV › Ayarlar › en altta kırmızı **CineTV'yi yok et!** Televizyonu hiçbir şey kurulmamış gibi adeta ilk günkü orijinal fabrika haline döndürür. |
 
-Hâlâ çözülmediyse: bir yapay zekâya (Yol D) *"CineTV'de şu sorun var: …, AGENTS.md'ye göre çöz"* deyin.
+Hâlâ çözülmediyse: bir yapay zekâya (2. Yol) *"CineTV'de şu sorun var: …, AGENTS.md'ye göre çöz"* deyin.
+
+---
+
+## %100 Geri Alınabilirlik: "CineTV'yi Yok Et!"
+
+CineTV televizyonunuzda hiçbir zaman kalıcı, geri alınamaz bir hasar veya kilitli değişiklik bırakmaz. Dilediğiniz an CineTV › **Ayarlar** › ekranın en altındaki kırmızı **"CineTV'yi yok et!"** butonuna bastığınızda:
+
+1. **Orijinal Başlatıcıya Dönüş**: Varsayılan başlatıcı kilidi kaldırılır; televizyonunuz kendi orijinal fabrika ana ekranına (Google TV / Android TV Home) anında geri döner.
+2. **Google Asistan ve Ses Servisleri**: Sessize alınmış veya devre dışı bırakılmış tüm Google Asistan bileşenleri (`com.google.android.apps.googleassistant`, `KatnissAssistantService`, `VoiceActivity`) eksiksiz olarak yeniden açılır.
+3. **Bellek & Kernel Standartları**: 2 GB sanal RAM genişletmesi, kernel takas alanı (`swappiness=60`) ve sistem animasyon ölçekleri orijinal fabrika değerlerine (1.0x) döndürülür.
+4. **Görüntü, Ses ve DNS**: Orijinal görüntü kalibrasyonu, ses modları ve şifreli DNS ayarları sıfırlanıp fabrika varsayılanına döner.
+5. **Erişilebilirlik & Ekran Koruyucu**: Kumanda tuş yakalama servisi ve saat ekran koruyucusu sistem servislerinden güvenle temizlenir.
+6. **Temiz Kaldırma**: CineTV paketi sistemden tamamen silinir; televizyon adeta hiçbir şey yaşanmamış gibi eski haline tamamen geri döner.
 
 ---
 
