@@ -247,6 +247,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     protected void onResume() {
         super.onResume();
+        TvWebRemoteServer.setController(this);
         if (home == null) return;
         inFront = true;
         home.opening.dismiss();
@@ -261,6 +262,18 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         resetIdle();
         // Back on Home after a while: a fresh selection for the moment.
         if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > SHELF_EVERY_MS) refreshShelf();
+        // Suppress unwanted OEM TV tuner attempting to steal focus
+        if (DeviceTweaks.isUnwantedTuner()) {
+            handler.postDelayed(() -> {
+                if (!isFinishing() && !hasWindowFocus() && DeviceTweaks.isUnwantedTuner()) {
+                    try {
+                        startActivity(new Intent(this, MainActivity.class)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }, 600);
+        }
     }
 
     private static boolean inFront;

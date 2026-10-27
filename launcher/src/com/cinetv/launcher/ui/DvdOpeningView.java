@@ -107,11 +107,29 @@ public class DvdOpeningView extends View {
 
     /** Size of the inner insert texture for the current screen (bake it with {@link #bakeInner}). */
     public int innerWidth() {
-        return landscape ? Math.max(2, Math.round(getHeight() * 0.72f / DvdCase.ASPECT)) : Math.max(2, Math.round(getHeight() * 0.84f * DvdCase.ASPECT));
+        if (caseW > 0) return caseW;
+        int w = getWidth() > 0 ? getWidth() : 1920;
+        int h = getHeight() > 0 ? getHeight() : 1080;
+        if (landscape) {
+            float tw = Math.min((w * 0.88f) / 2f, (h * 0.55f) / DvdCase.ASPECT);
+            return Math.max(2, Math.round(tw));
+        } else {
+            float tw = Math.min((w * 0.88f) / 2f, (h * 0.68f) * DvdCase.ASPECT);
+            return Math.max(2, Math.round(tw));
+        }
     }
 
     public int innerHeight() {
-        return landscape ? Math.max(2, Math.round(getHeight() * 0.72f)) : Math.max(2, Math.round(getHeight() * 0.84f));
+        if (caseH > 0) return caseH;
+        int w = getWidth() > 0 ? getWidth() : 1920;
+        int h = getHeight() > 0 ? getHeight() : 1080;
+        if (landscape) {
+            float tw = Math.min((w * 0.88f) / 2f, (h * 0.55f) / DvdCase.ASPECT);
+            return Math.max(2, Math.round(tw * DvdCase.ASPECT));
+        } else {
+            float tw = Math.min((w * 0.88f) / 2f, (h * 0.68f) * DvdCase.ASPECT);
+            return Math.max(2, Math.round(tw / DvdCase.ASPECT));
+        }
     }
 
     /**
@@ -131,21 +149,35 @@ public class DvdOpeningView extends View {
         // trailer moments: the case lies sideways and opens wide, the trailer in its tray
         landscape = slot != null && com.cinetv.launcher.service.Prefs.trailerMoments(getContext()) && TrailerPlayer.available(getContext());
         trailerShown = false;
+        int w = getWidth(), h = getHeight();
         if (landscape) {
-            caseH = Math.round(getHeight() * 0.72f);
-            caseW = Math.round(caseH / DvdCase.ASPECT);
+            float maxW = (w * 0.88f) / 2f;
+            float maxH = h * 0.70f;
+            float targetH = h * 0.55f;
+            float targetW = targetH / DvdCase.ASPECT;
+            if (targetW > maxW) { targetW = maxW; targetH = targetW * DvdCase.ASPECT; }
+            if (targetH > maxH) { targetH = maxH; targetW = targetH / DvdCase.ASPECT; }
+            caseH = Math.max(2, Math.round(targetH));
+            caseW = Math.max(2, Math.round(targetW));
+
             Matrix rot = new Matrix();
             rot.postRotate(90);
             coverL = Bitmap.createBitmap(dvd.cover, 0, 0, dvd.cover.getWidth(), dvd.cover.getHeight(), rot, true);
         } else {
-            caseH = Math.round(getHeight() * 0.84f);
-            caseW = Math.round(caseH * DvdCase.ASPECT);
+            float maxW = (w * 0.88f) / 2f;
+            float maxH = h * 0.74f;
+            float targetH = h * 0.68f;
+            float targetW = targetH * DvdCase.ASPECT;
+            if (targetW > maxW) { targetW = maxW; targetH = targetW / DvdCase.ASPECT; }
+            if (targetH > maxH) { targetH = maxH; targetW = targetH * DvdCase.ASPECT; }
+            caseH = Math.max(2, Math.round(targetH));
+            caseW = Math.max(2, Math.round(targetW));
+
             coverL = null;
         }
         inner = bakeInner(getContext(), caseW, caseH, dvd.cover, null, movie);
         int discSize = Math.round(Math.min(caseW, caseH) * 0.88f);
         disc = bakeDisc(getContext(), dvd.cover, movie.coverTitle(), discSize);
-        int w = getWidth(), h = getHeight();
         roomGlow = new RadialGradient(w / 2f, h / 2f, h * 0.75f,
                 new int[]{UiKit.withAlpha(accent, 90), UiKit.withAlpha(accent, 24), Color.TRANSPARENT},
                 new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP);
@@ -348,8 +380,8 @@ public class DvdOpeningView extends View {
             marker.setTypeface(FontManager.getMarker(getContext()));
             float labelSize = Math.max(16f, w * 0.034f);
             marker.setTextSize(labelSize);
-            int ink = dvd != null ? filmInk(dvd.cover) : accent;
-            marker.setColor(UiKit.withAlpha(ink, 240));
+            marker.setColor(Color.WHITE);
+            marker.setShadowLayer(UiKit.pxf(3), 0, UiKit.pxf(1.5f), Color.argb(160, 0, 0, 0));
             String label = "tr".equals(Locale.getDefault().getLanguage()) ? "Fragman" : "Trailer";
             float tw = marker.measureText(label);
             float labelX = sc.left + w * 0.015f;
@@ -357,9 +389,9 @@ public class DvdOpeningView extends View {
             c.save();
             c.rotate(-1.2f, labelX, labelY);
             c.drawText(label, labelX, labelY, marker);
-            // Hand-drawn felt-tip underline
+            // Hand-drawn felt-tip underline in pure white
             Paint under = new Paint(Paint.ANTI_ALIAS_FLAG);
-            under.setColor(UiKit.withAlpha(ink, 130));
+            under.setColor(Color.argb(190, 255, 255, 255));
             under.setStrokeWidth(Math.max(1.5f, w * 0.0028f));
             under.setStrokeCap(Paint.Cap.ROUND);
             under.setStyle(Paint.Style.STROKE);

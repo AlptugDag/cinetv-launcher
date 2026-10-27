@@ -98,13 +98,14 @@ public final class ThemeManager {
             new Theme("neon", "Neon Night",
                     colors("#12042A", "#1E0838", "#0A0220", "#2A0A40"),
                     new String[0], 5, false, Color.parseColor("#F472B6"), true, false).drawn("neon", MAT_NEON),
-            new Theme("oled", "OLED Black",
-                    colors("#000000", "#000000", "#000000", "#000000"),
-                    new String[0], 4, false, Color.parseColor("#E2E8F0"), false, true).drawn(null, MAT_BLACK),
+            new Theme("redcarpet", "Red Carpet",
+                    colors("#180306", "#2B060C", "#140204", "#200408"),
+                    new String[]{"themes/redcarpet.jpg"}, 4, false, Color.parseColor("#F5C26B"), true, false)
+                    .drawn(null, MAT_VELVET).furnished("redcarpet"),
     };
 
     /** Ids of earlier builds' themes, kept so a TV that had one opens in its successor. */
-    private static final String[][] FORMER = {{"aurora", "metal"}, {"six-columns", "cinema"}, {"scenes", "closet"}, {"dvdstore", "closet"}, {"dussehra", "neon"}};
+    private static final String[][] FORMER = {{"aurora", "metal"}, {"six-columns", "cinema"}, {"scenes", "closet"}, {"dvdstore", "closet"}, {"dussehra", "neon"}, {"oled", "redcarpet"}, {"amoled", "redcarpet"}};
 
     public static final String MODE_DARK = "dark";
     public static final String MODE_LIGHT = "light";

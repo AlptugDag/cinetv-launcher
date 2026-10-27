@@ -35,23 +35,30 @@ public final class TrailerPlayer extends FrameLayout {
     private WebView web;
     private int gen;
 
-    /** The player page: muted, no controls, jumping between moments of the trailer, looping. */
-    private static final String PAGE = "<!doctype html><html><head><meta name=viewport content='width=device-width'>"
-            + "<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}"
-            + "#curtain{position:absolute;left:0;top:0;width:100%;height:100%;background:#000;z-index:99;pointer-events:none;transition:opacity .5s}"
-            + "#p{position:absolute;left:50%;top:50%;width:177.78vh;height:100vh;min-width:100vw;min-height:56.25vw;transform:translate(-50%,-50%) scale(1.48);"
-            + "pointer-events:none;transition:opacity .45s;opacity:0}</style></head>"
-            + "<body><div id=curtain></div><div id=p></div><script src='https://www.youtube.com/iframe_api'></script><script>"
-            + "var p,moments=[],i=0,LEN=6,el=function(){return document.getElementById('p')},curtain=function(){return document.getElementById('curtain')};"
+    /** The player page: muted, no controls, fitted exactly into the 16:9 tray frame, smooth continuous loop. */
+    private static final String PAGE = "<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no'>"
+            + "<style>html,body{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;user-select:none;-webkit-user-select:none;}"
+            + "#shield{position:absolute;left:0;top:0;width:100%;height:100%;z-index:90;background:transparent;pointer-events:auto;}"
+            + "#curtain{position:absolute;left:0;top:0;width:100%;height:100%;background:#000;z-index:99;pointer-events:none;transition:opacity .5s ease;}"
+            + "#p,iframe{position:absolute;left:0;top:0;width:100% !important;height:100% !important;border:none !important;pointer-events:none !important;transition:opacity .45s ease;}"
+            + "</style></head>"
+            + "<body><div id=shield></div><div id=curtain></div><div id=p></div><script src='https://www.youtube.com/iframe_api'></script><script>"
+            + "var p,el=function(){return document.getElementById('p')},curtain=function(){return document.getElementById('curtain')};"
             + "function show(on){var e=el(),c=curtain();if(e)e.style.opacity=on?1:0;if(c)c.style.opacity=on?0:1;}"
-            + "function onYouTubeIframeAPIReady(){p=new YT.Player('p',{videoId:'%KEY%',playerVars:{autoplay:1,mute:1,controls:0,"
-            + "disablekb:1,fs:0,iv_load_policy:3,cc_load_policy:0,modestbranding:1,playsinline:1,rel:0,showinfo:0,origin:'https://www.youtube-nocookie.com'},events:{onReady:function(e){"
-            + "e.target.mute();try{e.target.unloadModule('captions');e.target.unloadModule('cc')}catch(x){}e.target.playVideo();},"
-            + "onStateChange:function(e){if(e.data==2||e.data==0){p.playVideo();return;}if(e.data==1){try{p.unloadModule('captions')}catch(x){}"
-            + "if(!moments.length){var d=p.getDuration()||120;moments=[.18,.35,.52,.68,.82].map(function(f){return Math.max(10,Math.floor(d*f))});"
-            + "p.seekTo(moments[0],true);}else{setTimeout(function(){show(true);try{Cine.ready()}catch(x){}},450);}}},onError:function(){Cine.failed();}}});}"
-            + "setInterval(function(){if(!p||!moments.length||!p.getCurrentTime)return;var m=moments[i%moments.length],t=p.getCurrentTime();"
-            + "if(t>m+LEN-0.5&&t<m+LEN+3)show(false);if(t>m+LEN||t<m-1){i++;show(false);p.seekTo(moments[i%moments.length],true);}},250);"
+            + "function onYouTubeIframeAPIReady(){"
+            + "p=new YT.Player('p',{"
+            + "width:'100%',height:'100%',videoId:'%KEY%',"
+            + "playerVars:{autoplay:1,mute:1,controls:0,disablekb:1,fs:0,iv_load_policy:3,cc_load_policy:0,modestbranding:1,playsinline:1,rel:0,showinfo:0,origin:'https://www.youtube-nocookie.com'},"
+            + "events:{"
+            + "onReady:function(e){e.target.mute();try{e.target.unloadModule('captions');e.target.unloadModule('cc');}catch(x){}e.target.playVideo();},"
+            + "onStateChange:function(e){"
+            + "if(e.data===1){try{p.unloadModule('captions');}catch(x){}setTimeout(function(){show(true);try{Cine.ready();}catch(x){}},350);}"
+            + "else if(e.data===0){p.seekTo(0,true);p.playVideo();}"
+            + "else if(e.data===2){p.playVideo();}"
+            + "},"
+            + "onError:function(){try{Cine.failed();}catch(x){}}"
+            + "}});"
+            + "}"
             + "</script></body></html>";
 
     public TrailerPlayer(Context ctx) {

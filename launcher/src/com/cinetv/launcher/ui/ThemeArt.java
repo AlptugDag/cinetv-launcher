@@ -74,6 +74,10 @@ final class ThemeArt {
                         new int[]{Color.argb(55, 0, 8, 24), Color.argb(20, 0, 5, 16), Color.TRANSPARENT},
                         new float[]{0f, 0.7f, 1f}, Shader.TileMode.CLAMP));
                 c.drawCircle(x + r * 0.12f, y + r * 0.18f, r * 1.15f, shadow);
+            } else {
+                Paint lowShadow = p();
+                lowShadow.setColor(Color.argb(34, 0, 8, 22));
+                c.drawCircle(x + r * 0.10f, y + r * 0.14f, r * 1.05f, lowShadow);
             }
 
             // Liquid body with chromatic sapphire refraction
@@ -153,14 +157,14 @@ final class ThemeArt {
         // Milled countersunk hex fasteners with directional lighting
         Paint bolt = p();
         Paint boltCavity = p();
-        boltCavity.setColor(Color.argb(120, 0, 0, 0));
+        boltCavity.setColor(Color.argb(tier == PerformanceProfile.Tier.LOW ? 95 : 120, 0, 0, 0));
 
         for (float y : new float[]{H * 0.32f - 14, H * 0.76f + 16}) {
             for (float x = 40; x < W; x += 220) {
-                c.drawCircle(x, y + 1f, 6.5f, boltCavity); // recessed drop shadow
-                bolt.setShader(new RadialGradient(x - 2, y - 2, 7,
+                c.drawCircle(x, y + 1f, 6.0f, boltCavity); // recessed drop shadow
+                bolt.setShader(new RadialGradient(x - 2, y - 2, 6.5f,
                         Color.parseColor("#E2E8F0"), Color.parseColor("#475569"), Shader.TileMode.CLAMP));
-                c.drawCircle(x, y, 5.5f, bolt);
+                c.drawCircle(x, y, 5.0f, bolt);
                 // Center tool indentation
                 c.drawCircle(x, y, 1.8f, boltCavity);
             }
@@ -205,8 +209,8 @@ final class ThemeArt {
         Paint gapP = p();
         gapP.setColor(Color.parseColor("#3B0744"));
         for (int i = 0; i < 6; i++) {
-            float y = cy + 12 + i * 17;
-            c.drawRect(cx - sr, y, cx + sr, y + 2.5f + i * 1.5f, gapP);
+            float y = cy + 12 + i * 16.5f;
+            c.drawRect(cx - sr, y, cx + sr, y + 2.0f + i * 1.35f, gapP);
         }
         c.restore();
 

@@ -1,5 +1,28 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.5
+
+### Yenilikler
+- **Kırmızı Halı (Red Carpet) Teması**: Ödül töreni atmosferini yansıtan peluş kırmızı kadife halı (`#CF1427`), çift altın saçak kordon şeritleri, 3D küresel başlıklı altın kordon dikmeleri (stanchions), tavan projektör spot ışıkları ve parıltılı paparazi flaş patlamalarıyla donatılmış yepyeni bir sinematik tema eklendi. Eski OLED teması geriye dönük tam uyumlulukla bu temaya yükseltildi.
+- **Sinema Salonu Teması Perde Hizalaması & Aydınlatma**: Kadife proscenium perdeleri cihazın ekran sınırlarını dinamik piksel seviyesinde hesaplayarak (`leftBleed`, `rightBleed`) ekranın sol ve sağ kenarına sıfır boşlukla (flush) dayandı; vitrin başlığının perdelerin arkasında kalması sorunu ve aydınlatma artefaktları tamamen düzeltildi.
+- **UI Artist Tema Cilalama (Tüm 6 Temada)**:
+  - *Alptug Teması*: Odak ışığı arkasına ultra-yumuşak ortam difüzyon katmanı ve 4K imza kontrast ayarı.
+  - *Sıvı Cam (Liquid Glass)*: Düşük donanımlı cihazlarda gölgeleri koruyan ve performans kaybettirmeyen hafif alfa zemin gölgesi ve 45 derecelik tutarlı ışık açısı.
+  - *Metalik (Metallic)*: Çözünürlüğe duyarlı gömme cıvata ve oyuk yarıçapları.
+  - *Film Dolabı (Closet)*: Sıcak fildişi/krem (`#FFF8F0`) pah parıltısı ve derinleştirilmiş köşe vinyetleri.
+  - *Neon Gece (Neon Night)*: Pürüzsüz antialias güneş dilimi aralıkları.
+  - *Kırmızı Halı (Red Carpet)*: Altın kordon ve dikmeler üzerinde yıldız biçimli paparazi flaş parıltıları.
+- **Sinematik Açılış Animasyonu (Intro Splash)**: Sarı açılış ışığı yerine logonun kırmızı tonlarıyla kusursuz uyumlu, kalp atışı gibi organik zonklayan kırmızı sinematik glow; DVD kutularındaki parlama efekti gibi logonun üzerinden geçen zarif ışıltı dalgası.
+- **DVD Kutusu Fragman Sekmesi İyileştirmeleri**: Fragman sekmesinde "Fragman" başlığı yüksek kontrastlı beyaz renge çekildi. 16:9 fragman videosunun çerçeveye tam oturması sağlandı; video oynarken YouTube kontrollerinin anlık belirip kaybolması opak geçiş perdesiyle tamamen maskelendi.
+- **OEM Tuner & Canlı TV Bastırma**: Televizyon açılışlarında veya CineTV'ye geçişte OEM TV tuner'ının (uydu/anten canlı yayın arayüzü) CineTV'nin önüne geçerek ekranı çalmaya çalışması arka plan tuner focus dismiss mekanizması ile engellendi.
+- **Mobil Kumanda Safari/Chrome "Ana Ekrana Ekle" PWA İzin Yönetimi**: PWA olarak ana ekrana eklenen web kumandasının TV izin diyaloğunu tetikleyememesi sorunu çözüldü; izin isteği doğrudan TV WebRemoteServer üzerinden senkronize diyalog olarak televizyona düşürülür.
+- **Arçelik TV zRAM ve RAM Optimizasyonu**: Arçelik TV'de zRAM / Swap sanal bellek alanının aktifliği güvenceye alındı; bellek temizliği ve arka plan bellek tüketimi stabilize edildi.
+- **Alptugflix Dahili Logo Büyütme**: Alptugflix (Nuvio) içindeki tüm logo, başlık ve banner öğeleri sınırları aşmadan, tasarımı bozmayacak en yüksek ölçeğe büyütüldü.
+
+### Çözülenler
+- **Vitrin ve Perde Örtüşmesi**: Vitrin başlığı ve yan proscenium perdelerinin çakışması katman sırası ve bleed hesaplamasıyla tamamen giderildi.
+- **Fragman Kontrol Titremesi**: YouTube oynatıcı kontrollerinin video başlarken sebep olduğu UI titremesi çift katmanlı perdeleme ve optik kırpma ile sıfırlandı.
+
 ## 1.0.0.4
 
 ### Yenilikler

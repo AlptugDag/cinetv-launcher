@@ -370,9 +370,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   }
   let token = url.searchParams.get("k") || hp.get("k");
   try { if (token) localStorage.setItem("cinetv.k", token); else token = localStorage.getItem("cinetv.k"); } catch (e) {}
-  if (url.searchParams.has("k")) history.replaceState(null, "", "/" + location.hash);
-  // the token and the TV stay on this phone, out of the address bar
-  if (RELAY && hp.get("k")) history.replaceState(null, "", location.pathname + (hp.get("s") ? "#" + hp.get("s") : ""));
+  // For PWA and Safari "Add to Home Screen": keep p and k in the fragment so shortcuts stay paired
+  if (PEER || token) {
+    const pms = new URLSearchParams(location.hash.slice(1));
+    if (PEER && !pms.has("p")) pms.set("p", PEER);
+    if (token && !pms.has("k")) pms.set("k", token);
+    const newHash = "#" + pms.toString();
+    if (location.hash !== newHash) {
+      try { history.replaceState(null, "", location.pathname + location.search + newHash); } catch (e) {}
+    }
+  }
 
   // the direct link to the TV: one connection, requests and answers matched by number
   let conn = null, linking = null, rid = 0;
@@ -429,17 +436,44 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     if (pairing) return; pairing = true;
     waitBox.hidden = false; waitBox.onclick = null; waitText.textContent = t("waiting");
     $("status").textContent = t("connecting");
+    if (location.hostname.endsWith("github.io") && !PEER) {
+      pairing = false;
+      waitText.textContent = "TV'den 'Kumanda' QR kodunu telefonunuzla okutun";
+      waitBox.onclick = () => location.reload();
+      return;
+    }
     try {
       let req = await open("pair/request");
       while (!req.ok && req.error === "busy") { waitText.textContent = t("busy"); await new Promise(r => setTimeout(r, 3000)); req = await open("pair/request"); }
+      if (!req || !req.ok) {
+        pairing = false;
+        waitText.textContent = "TV'ye bağlanılamadı. TV'nin açık olduğundan emin olun.";
+        waitBox.onclick = () => pair();
+        return;
+      }
       waitText.textContent = t("waiting");
       for (let i = 0; i < 120; i++) {
         await new Promise(r => setTimeout(r, 1500));
         const c = await open("pair/claim?id=" + encodeURIComponent(req.id));
-        if (c.state === "allowed") { token = c.k; try { localStorage.setItem("cinetv.k", token); } catch (e) {} waitBox.hidden = true; pairing = false; connected(); return; }
+        if (c.state === "allowed") {
+          token = c.k;
+          try { localStorage.setItem("cinetv.k", token); } catch (e) {}
+          if (PEER) {
+            try { history.replaceState(null, "", location.pathname + "#p=" + encodeURIComponent(PEER) + "&k=" + encodeURIComponent(token)); } catch (e) {}
+          }
+          waitBox.hidden = true;
+          pairing = false;
+          connected();
+          return;
+        }
         if (c.state === "denied" || c.state === "expired") break;
       }
-    } catch (e) {}
+    } catch (e) {
+      pairing = false;
+      waitText.textContent = "TV'ye bağlanılamadı. Tekrar denemek için dokunun.";
+      waitBox.onclick = () => pair();
+      return;
+    }
     pairing = false;
     waitText.textContent = t("denied");
     waitBox.onclick = () => pair();

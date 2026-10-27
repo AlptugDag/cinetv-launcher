@@ -140,17 +140,13 @@ public final class MemoryOptimizer {
 
                 // Rootless virtual RAM / dynamic zRAM expansion and background process limit properties
                 LocalAdb.shell(app,
-                        "setprop persist.sys.purgeable_assets 1; " +
+                        "device_config put activity_manager max_cached_processes 8 2>/dev/null; " +
+                        "device_config put activity_manager max_empty_time_millis 60000 2>/dev/null; " +
                         "settings put global ram_expand_size_list 2048 2>/dev/null; " +
-                        "setprop persist.sys.ram_expand.size 2048 2>/dev/null; " +
-                        "setprop persist.sys.ram_expand.enable 1 2>/dev/null; " +
-                        "setprop sys.sysctl.extra_free_kbytes 24300 2>/dev/null; " +
-                        "setprop persist.sys.fw.trim_empty_apps true 2>/dev/null; " +
-                        "setprop persist.sys.fw.empty_app_percent 50 2>/dev/null; " +
-                        "setprop persist.sys.fw.bservice_enable true 2>/dev/null; " +
-                        "setprop persist.sys.fw.bservice_limit 5 2>/dev/null; " +
-                        "sysctl -w vm.swappiness=80 2>/dev/null; " +
-                        "sysctl -w vm.vfs_cache_pressure=100 2>/dev/null", 3000);
+                        "settings put global cached_apps_freezer enabled 2>/dev/null; " +
+                        "settings put global zram_enabled 1 2>/dev/null; " +
+                        "pm trim-caches 200M 2>/dev/null; " +
+                        "sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null", 3000);
             } catch (Throwable ignored) {
             }
         }, "cinetv-tv-opt").start();

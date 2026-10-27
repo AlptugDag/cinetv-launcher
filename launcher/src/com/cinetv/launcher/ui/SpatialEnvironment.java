@@ -179,6 +179,12 @@ public class SpatialEnvironment extends View {
         }
         if (focusLight) {
             int r = Color.red(glowColor), g = Color.green(glowColor), b = Color.blue(glowColor);
+            // Ultra-soft ambient diffusion layer for seamless blending into deep atmospheric tones
+            float rxWide = Math.max(w, h) * 0.82f, ryWide = rxWide * 0.72f;
+            lightPaint.setColorFilter(filter(Color.argb(light ? 16 : 24, r, g, b)));
+            dst.set(glowX - rxWide, glowY - ryWide, glowX + rxWide, glowY + ryWide);
+            canvas.drawBitmap(lightSprite, null, dst, lightPaint);
+
             // Wide spill, slightly flattened like light on a wall...
             float rx = Math.max(w, h) * 0.56f, ry = rx * 0.78f;
             lightPaint.setColorFilter(filter(Color.argb(light ? 34 : 52, r, g, b)));

@@ -131,10 +131,12 @@ public class TvKeyInterceptorService extends AccessibilityService {
         switch (pkg) {
             case "com.mediatek.wwtv.tvcenter":
             case "com.mediatek.tv.oneworld.tvcenter": // Grundig
-                // The "scan channels" tuner screen MediaTek TVs push right after power-on: go home.
-                // Later (Inputs, HDMI, live TV opened by the user) it is left alone.
-                if (DeviceTweaks.isUnwantedBootTuner()) {
-                    startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+                // The OEM tuner MediaTek TVs push on boot/wake: suppress immediately and stay in CineTV
+                // If user deliberately pressed Inputs / Live TV, it is left alone.
+                if (DeviceTweaks.isUnwantedTuner()) {
+                    performGlobalAction(GLOBAL_ACTION_HOME);
+                    startActivity(new Intent(this, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
                     return;
                 }
                 break;

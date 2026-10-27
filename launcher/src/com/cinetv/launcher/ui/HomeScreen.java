@@ -3,7 +3,10 @@ package com.cinetv.launcher.ui;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.RadialGradient;
 import android.graphics.Shader;
 import android.view.Gravity;
@@ -255,7 +258,7 @@ public class HomeScreen {
         shelfLabel = UiKit.bold(ctx, 20, UiKit.INK_DIM);
         shelfLabel.setLetterSpacing(0.14f);
         LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        llp.setMargins(UiKit.px(36), UiKit.px(30), 0, 0);
+        llp.setMargins(UiKit.px(80), UiKit.px(30), 0, 0);
         content.addView(shelfLabel, llp);
 
         shelf = new PosterShelf(ctx);
@@ -437,6 +440,49 @@ public class HomeScreen {
         });
     }
 
+    private static final class SplashLogoLayout extends LinearLayout {
+        private float sheenProgress = -1f;
+        private final Paint sheenPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        SplashLogoLayout(Context ctx) {
+            super(ctx);
+            setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        }
+
+        void setSheenProgress(float p) {
+            this.sheenProgress = p;
+            invalidate();
+        }
+
+        @Override
+        protected void dispatchDraw(Canvas canvas) {
+            super.dispatchDraw(canvas);
+            if (sheenProgress >= -0.25f && sheenProgress <= 1.25f) {
+                int w = getWidth(), h = getHeight();
+                float bandW = UiKit.pxf(140);
+                float totalSpan = w + bandW * 2f + h * 0.45f;
+                float startX = totalSpan * sheenProgress - bandW - h * 0.45f;
+                sheenPaint.setShader(new LinearGradient(
+                        startX, 0,
+                        startX + bandW, h,
+                        new int[]{
+                                Color.TRANSPARENT,
+                                Color.argb(40, 255, 255, 255),
+                                Color.argb(220, 255, 255, 255),
+                                Color.argb(40, 255, 255, 255),
+                                Color.TRANSPARENT
+                        },
+                        new float[]{0f, 0.32f, 0.50f, 0.68f, 1f},
+                        Shader.TileMode.CLAMP
+                ));
+                sheenPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP));
+                canvas.drawRect(0, 0, w, h, sheenPaint);
+                sheenPaint.setXfermode(null);
+                sheenPaint.setShader(null);
+            }
+        }
+    }
+
     /** The opening: cinematic glowing emblem, grand centered "CineTV" and "by Alptuğ Dağ", dissolving into Home. */
     private static FrameLayout buildSplash(Context ctx) {
         FrameLayout f = new FrameLayout(ctx);
@@ -444,22 +490,27 @@ public class HomeScreen {
         f.setVisibility(View.GONE);
         f.setClickable(true);
 
-        // Grand cinematic ambient backlight
+        // Grand cinematic ambient backlight: authentic brand red heartbeat glow
         View aura = new View(ctx) {
             private final Paint auraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             @Override
             protected void onDraw(Canvas c) {
                 float cx = getWidth() / 2f, cy = getHeight() / 2f;
-                float r = Math.min(getWidth(), getHeight()) * 0.48f;
+                float r = Math.min(getWidth(), getHeight()) * 0.52f;
                 auraPaint.setShader(new RadialGradient(cx, cy, r,
-                        new int[]{Color.argb(85, 204, 0, 41), Color.argb(45, 245, 194, 107), Color.TRANSPARENT},
-                        new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+                        new int[]{
+                                Color.argb(165, 235, 18, 35),
+                                Color.argb(95, 180, 0, 25),
+                                Color.argb(35, 110, 0, 15),
+                                Color.TRANSPARENT
+                        },
+                        new float[]{0f, 0.35f, 0.70f, 1f}, Shader.TileMode.CLAMP));
                 c.drawCircle(cx, cy, r, auraPaint);
             }
         };
         f.addView(aura, match());
 
-        LinearLayout col = new LinearLayout(ctx);
+        SplashLogoLayout col = new SplashLogoLayout(ctx);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER);
 
@@ -546,17 +597,39 @@ public class HomeScreen {
         splash.setVisibility(View.VISIBLE);
         splash.setAlpha(1f);
         final View aura = splash.getChildAt(0);
-        LinearLayout col = (LinearLayout) splash.getChildAt(1);
+        final SplashLogoLayout col = (SplashLogoLayout) splash.getChildAt(1);
         final View mark = col.getChildAt(0);
         final TextView word = (TextView) col.getChildAt(1);
         final View by = col.getChildAt(2);
         final CharSequence full = Brand.wordmark();
 
         aura.setAlpha(0f);
-        aura.setScaleX(0.7f);
-        aura.setScaleY(0.7f);
-        aura.animate().alpha(1f).scaleX(1.15f).scaleY(1.15f).setDuration(1800)
-                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+        aura.setScaleX(0.85f);
+        aura.setScaleY(0.85f);
+
+        // Heartbeat pulse animation: rhythmic lub-dub contraction & expansion of the red aura
+        android.animation.Keyframe k0 = android.animation.Keyframe.ofFloat(0f, 0.85f);
+        android.animation.Keyframe k1 = android.animation.Keyframe.ofFloat(0.14f, 1.15f); // lub crest
+        android.animation.Keyframe k2 = android.animation.Keyframe.ofFloat(0.24f, 1.02f); // lub trough
+        android.animation.Keyframe k3 = android.animation.Keyframe.ofFloat(0.38f, 1.26f); // dub crest (strongest)
+        android.animation.Keyframe k4 = android.animation.Keyframe.ofFloat(0.65f, 0.95f); // settling
+        android.animation.Keyframe k5 = android.animation.Keyframe.ofFloat(1.0f, 0.85f);  // rest
+        android.animation.PropertyValuesHolder pvhX = android.animation.PropertyValuesHolder.ofKeyframe(View.SCALE_X, k0, k1, k2, k3, k4, k5);
+        android.animation.PropertyValuesHolder pvhY = android.animation.PropertyValuesHolder.ofKeyframe(View.SCALE_Y, k0, k1, k2, k3, k4, k5);
+
+        android.animation.Keyframe a0 = android.animation.Keyframe.ofFloat(0f, 0.50f);
+        android.animation.Keyframe a1 = android.animation.Keyframe.ofFloat(0.14f, 0.90f);
+        android.animation.Keyframe a2 = android.animation.Keyframe.ofFloat(0.24f, 0.72f);
+        android.animation.Keyframe a3 = android.animation.Keyframe.ofFloat(0.38f, 1.0f);
+        android.animation.Keyframe a4 = android.animation.Keyframe.ofFloat(0.65f, 0.65f);
+        android.animation.Keyframe a5 = android.animation.Keyframe.ofFloat(1.0f, 0.50f);
+        android.animation.PropertyValuesHolder pvhA = android.animation.PropertyValuesHolder.ofKeyframe(View.ALPHA, a0, a1, a2, a3, a4, a5);
+
+        android.animation.ObjectAnimator heartbeat = android.animation.ObjectAnimator.ofPropertyValuesHolder(aura, pvhX, pvhY, pvhA);
+        heartbeat.setDuration(1100);
+        heartbeat.setRepeatCount(2);
+        heartbeat.setInterpolator(new android.view.animation.LinearInterpolator());
+        heartbeat.start();
 
         mark.setAlpha(0f);
         mark.setScaleX(0.85f);
@@ -585,13 +658,25 @@ public class HomeScreen {
         });
         a.start();
 
+        // Collector's specular sheen glint passing across the logo mark & letters
+        android.animation.ValueAnimator sheenAnim = android.animation.ValueAnimator.ofFloat(-0.25f, 1.25f);
+        sheenAnim.setStartDelay(1050);
+        sheenAnim.setDuration(950);
+        sheenAnim.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+        sheenAnim.addUpdateListener(anim -> col.setSheenProgress((float) anim.getAnimatedValue()));
+        sheenAnim.start();
+
         by.setAlpha(0f);
         by.setTranslationY(UiKit.pxf(24));
         by.animate().alpha(1f).translationY(0f).setStartDelay(1000).setDuration(700)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
 
         splash.animate().alpha(0f).setStartDelay(2800).setDuration(600)
-                .withEndAction(() -> splash.setVisibility(View.GONE)).start();
+                .withEndAction(() -> {
+                    heartbeat.cancel();
+                    sheenAnim.cancel();
+                    splash.setVisibility(View.GONE);
+                }).start();
     }
 
     public void focusHeader() {

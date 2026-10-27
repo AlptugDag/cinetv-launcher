@@ -134,7 +134,7 @@ The questions and what each answer changes are in [AGENTS.md](AGENTS.md#1-get-to
 - Prefer flat posters? *Settings › DVD cases* switches to glowing posters.
 
 <p align="center"><img src="docs/media/themes.jpg" alt="Themes" width="760"><br>
-<sub>Liquid Glass · Metallic · Cinema Hall<br>Film Closet · Neon Night · OLED Black</sub></p>
+<sub>Liquid Glass · Metallic · Cinema Hall<br>Film Closet · Neon Night · Red Carpet</sub></p>
 
 ### Opening a film, in two steps
 1. **OK** on a case: it flies off the shelf and opens. Inside the cover, the story is handwritten in felt-tip
@@ -209,7 +209,7 @@ On first start, and from *Settings › Picture, sound & network tuning*:
   Metallic (brushed titanium, chrome edges); Cinema Hall (a real art-deco cinema, its velvet curtains in front of the
   shelf's ends, the cases in its warm light); Film Closet (a collector's closet of white shelves packed with films, the
   row of cases one of its shelves); Neon Night (synthwave sun and grid);
-  OLED Black (true black). Panels and buttons take the room's material. Drawn by the app, apart from the cinema photo. Or **your own background** sent from your phone. Always dark, as a cinema is.
+  Red Carpet (gala premiere with plush red velvet, gold rope trim, and stanchions). Panels and buttons take the room's material. Drawn by the app, apart from the photo backdrops. Or **your own background** sent from your phone. Always dark, as a cinema is.
 - **Performance: Low, Medium, High, each adapting by itself** to what holds the TV back (graphics, memory,
   processor), measured again while it runs; *Determine automatically* runs a short benchmark and picks one.
 - **Remote buttons**: Netflix opens Nuvio, YouTube opens ad-free YouTube, Prime opens phone casting; any

@@ -146,10 +146,15 @@ public final class DeviceTweaks {
         lastUserIntent = android.os.SystemClock.elapsedRealtime();
     }
 
-    /** True right after boot when the tuner screen appeared on its own (not because the user asked). */
-    public static boolean isUnwantedBootTuner() {
+    /** True whenever the OEM TV tuner appears on its own (not because the user requested it). */
+    public static boolean isUnwantedTuner() {
         long now = android.os.SystemClock.elapsedRealtime();
-        return now < BOOT_GUARD_MS && now - lastUserIntent > 10_000L;
+        return now - lastUserIntent > 20_000L;
+    }
+
+    /** True right after boot or standby wake when the tuner screen appeared on its own. */
+    public static boolean isUnwantedBootTuner() {
+        return isUnwantedTuner();
     }
 
     public static boolean isMediaPlaying(Context ctx) {

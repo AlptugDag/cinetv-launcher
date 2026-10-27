@@ -31,15 +31,22 @@ final class ShelfSet {
     private ShelfSet() {}
 
     static View back(Context ctx, String scene, int caseW, float caseH) {
-        return "closet".equals(scene) ? new Layer(ctx, scene, caseW, caseH, false) : null;
+        return "closet".equals(scene) || "redcarpet".equals(scene) ? new Layer(ctx, scene, caseW, caseH, false) : null;
     }
 
     static View front(Context ctx, String scene, int caseW, float caseH) {
-        return "closet".equals(scene) || "cinema".equals(scene) ? new Layer(ctx, scene, caseW, caseH, true) : null;
+        return "closet".equals(scene) || "cinema".equals(scene) || "redcarpet".equals(scene) ? new Layer(ctx, scene, caseW, caseH, true) : null;
     }
 
-    /** The room's light on the cases: the hall's warm stage light, the closet's cool ceiling tubes. */
+    /** The room's light on the cases: the hall's warm stage light, the closet's cool ceiling tubes, the red carpet's golden premiere glow. */
     static android.graphics.ColorMatrix grade(String scene) {
+        if ("redcarpet".equals(scene)) {
+            return new android.graphics.ColorMatrix(new float[]{
+                    1.08f, 0.04f, 0f, 0, 8,
+                    0.02f, 0.95f, 0.02f, 0, 5,
+                    0f, 0.02f, 0.82f, 0, -3,
+                    0, 0, 0, 1, 0});
+        }
         if ("cinema".equals(scene)) {
             return new android.graphics.ColorMatrix(new float[]{
                     0.98f, 0.06f, 0f, 0, 6,
@@ -83,6 +90,20 @@ final class ShelfSet {
             return velvetCache;
         }
 
+        private float leftBleed() {
+            int[] loc = new int[2];
+            getLocationOnScreen(loc);
+            return loc[0] > 0 ? (float) loc[0] : UiKit.pxf(64);
+        }
+
+        private float rightBleed() {
+            int[] loc = new int[2];
+            getLocationOnScreen(loc);
+            float screenW = getResources().getDisplayMetrics().widthPixels;
+            float r = screenW - (loc[0] + getWidth());
+            return r > 0 ? r : UiKit.pxf(64);
+        }
+
         /** Where the cases beside the focused one stand: their bottom edge. */
         private float floor() {
             return getHeight() / 2f + UiKit.pxf(12) + caseH * 0.86f / 2f;
@@ -90,9 +111,16 @@ final class ShelfSet {
 
         @Override
         protected void onDraw(Canvas c) {
-            if ("cinema".equals(scene)) cinemaStage(c);
-            else if (front) shelfFront(c);
-            else shelfBack(c);
+            if ("redcarpet".equals(scene)) {
+                if (front) redCarpetFront(c);
+                else redCarpetBack(c);
+            } else if ("cinema".equals(scene)) {
+                cinemaStage(c);
+            } else if (front) {
+                shelfFront(c);
+            } else {
+                shelfBack(c);
+            }
         }
 
         // ---- cinema ---------------------------------------------------------------------------------
@@ -100,74 +128,200 @@ final class ShelfSet {
         private void cinemaStage(Canvas c) {
             int w = getWidth(), h = getHeight();
             float fl = floor();
+            float lb = leftBleed();
+            float rb = rightBleed();
 
-            // Seamless warm stage reflection & contact shadow under the cases
-            float shadowH = UiKit.pxf(28);
-            p.setShader(new LinearGradient(0, fl - shadowH * 0.4f, 0, fl + shadowH,
-                    new int[]{Color.TRANSPARENT, Color.argb(130, 18, 2, 5), Color.argb(45, 245, 194, 107), Color.TRANSPARENT},
-                    new float[]{0f, 0.35f, 0.65f, 1f}, Shader.TileMode.CLAMP));
-            c.drawRect(-bleed, fl - shadowH * 0.4f, w + bleed, fl + shadowH, p);
+            // Seamless dark stage contact shadow under the cases (no yellow tint)
+            float shadowH = UiKit.pxf(26);
+            p.setShader(new LinearGradient(0, fl - shadowH * 0.35f, 0, fl + shadowH,
+                    new int[]{Color.TRANSPARENT, Color.argb(140, 12, 1, 3), Color.argb(50, 10, 1, 2), Color.TRANSPARENT},
+                    new float[]{0f, 0.30f, 0.70f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(-lb, fl - shadowH * 0.35f, w + rb, fl + shadowH, p);
             p.setShader(null);
 
-            // Luxurious, soft atmospheric velvet side framing (seamlessly feathered into the room)
-            float panel = w * 0.12f + bleed;
-            for (int side = 0; side < 2; side++) {
-                c.save();
-                if (side == 1) {
-                    c.scale(-1, 1, w / 2f, 0);
-                }
-                float x0 = -bleed;
-                // Soft velvet drape path with natural organic drape curve
-                Path drape = new Path();
-                drape.moveTo(x0, -UiKit.pxf(40));
-                drape.lineTo(x0 + panel, -UiKit.pxf(40));
-                drape.cubicTo(x0 + panel * 0.88f, h * 0.32f, x0 + panel * 0.52f, h * 0.54f, x0 + panel * 0.58f, h * 0.62f);
-                drape.cubicTo(x0 + panel * 0.68f, h * 0.74f, x0 + panel * 0.98f, h * 0.90f, x0 + panel * 1.05f, h + UiKit.pxf(30));
-                drape.lineTo(x0, h + UiKit.pxf(30));
-                drape.close();
+            // Architectural theatrical proscenium velvet side framing pinned flush to screen borders
+            float curtainVisible = UiKit.pxf(145);
+            float topY = 0;
+            float botY = h;
 
-                c.save();
-                c.clipPath(drape);
-                android.graphics.Bitmap velvet = velvet();
-                if (velvet != null) {
-                    android.graphics.BitmapShader bs = new android.graphics.BitmapShader(velvet, Shader.TileMode.MIRROR, Shader.TileMode.MIRROR);
-                    android.graphics.Matrix m = new android.graphics.Matrix();
-                    float sc = (h + UiKit.pxf(80)) / (float) velvet.getHeight();
-                    m.setScale(sc * 0.85f, sc);
-                    m.postTranslate(x0, -UiKit.pxf(40));
-                    bs.setLocalMatrix(m);
-                    p.setShader(bs);
-                    c.drawRect(x0, -UiKit.pxf(40), x0 + panel * 1.15f, h + UiKit.pxf(40), p);
-                } else {
-                    int folds = 8;
-                    float fw = (panel * 1.1f) / folds;
-                    for (int i = 0; i < folds; i++) {
-                        float fx = x0 + i * fw;
-                        p.setShader(new LinearGradient(fx, 0, fx + fw, 0,
-                                new int[]{Color.parseColor("#220204"), Color.parseColor("#65080E"), Color.parseColor("#9B1220"),
-                                        Color.parseColor("#5A060C"), Color.parseColor("#220204")},
-                                new float[]{0f, 0.28f, 0.48f, 0.72f, 1f}, Shader.TileMode.CLAMP));
-                        c.drawRect(fx, -UiKit.pxf(40), fx + fw + 1, h + UiKit.pxf(40), p);
-                    }
-                }
-                // Seamless soft feathering from the edge into the hall
-                p.setShader(new LinearGradient(x0 + panel * 0.4f, 0, x0 + panel * 1.08f, 0,
-                        Color.TRANSPARENT, Color.argb(180, 10, 1, 2), Shader.TileMode.CLAMP));
-                c.drawRect(x0, -UiKit.pxf(40), x0 + panel * 1.15f, h + UiKit.pxf(40), p);
+            // --- Left Curtain (Pinned to x = -lb) ---
+            float lx0 = -lb;
+            float lx1 = lx0 + lb + curtainVisible;
+            drawProsceniumCurtain(c, lx0, lx1, topY, botY, false);
 
-                // Subtle warm hall lighting glow across the inner fold
-                p.setShader(new LinearGradient(x0 + panel * 0.3f, 0, x0 + panel * 0.9f, 0,
-                        Color.argb(40, 245, 194, 107), Color.TRANSPARENT, Shader.TileMode.CLAMP));
-                c.drawRect(x0, 0, x0 + panel * 1.1f, h * 0.65f, p);
-                c.restore();
+            // --- Right Curtain (Pinned to x = w + rb) ---
+            float rx0 = w - curtainVisible;
+            float rx1 = w + rb;
+            drawProsceniumCurtain(c, rx0, rx1, topY, botY, true);
+        }
 
-                // Soft shadow from the curtain onto the shelf behind
-                p.setShader(new LinearGradient(x0 + panel * 0.58f, 0, x0 + panel * 0.58f + UiKit.pxf(55), 0,
-                        Color.argb(90, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
-                c.drawRect(x0 + panel * 0.58f, h * 0.45f, x0 + panel * 0.58f + UiKit.pxf(55), h * 0.82f, p);
+        private void drawProsceniumCurtain(Canvas c, float x0, float x1, float topY, float botY, boolean isRight) {
+            float curtainW = x1 - x0;
+            // 1. Velvet base texture
+            android.graphics.Bitmap velvet = velvet();
+            if (velvet != null) {
+                android.graphics.BitmapShader bs = new android.graphics.BitmapShader(velvet, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT);
+                android.graphics.Matrix m = new android.graphics.Matrix();
+                float sc = (botY - topY) / (float) velvet.getHeight();
+                m.setScale(sc, sc);
+                m.postTranslate(x0, topY);
+                bs.setLocalMatrix(m);
+                p.setShader(bs);
+                c.drawRect(x0, topY, x1, botY, p);
                 p.setShader(null);
-                c.restore();
             }
+
+            // 2. Realistic 3D cylindrical velvet flutes (vertical folds with deep crevice shadows)
+            int folds = 4;
+            float fw = curtainW / folds;
+            for (int i = 0; i < folds; i++) {
+                float fx = x0 + i * fw;
+                p.setShader(new LinearGradient(fx, 0, fx + fw, 0,
+                        new int[]{
+                                Color.argb(235, 18, 2, 4),   // deep shadow crevice
+                                Color.argb(120, 48, 5, 9),   // shaded rise
+                                Color.argb(velvet != null ? 30 : 255, 142, 14, 27), // velvet highlight ridge
+                                Color.argb(130, 48, 5, 9),   // receding slope
+                                Color.argb(235, 18, 2, 4)    // crevice
+                        },
+                        new float[]{0f, 0.22f, 0.50f, 0.78f, 1f}, Shader.TileMode.CLAMP));
+                c.drawRect(fx, topY, fx + fw + 0.5f, botY, p);
+            }
+
+            // 3. Crisp vertical piping edge along the inner curtain fold
+            float pipeX = isRight ? x0 : x1;
+            p.setShader(null);
+            p.setColor(Color.argb(180, 168, 22, 35));
+            c.drawRect(pipeX - UiKit.pxf(1.5f), topY, pipeX + UiKit.pxf(1.5f), botY, p);
+
+            // 4. Soft ambient shadow cast from the curtain inward onto the stage and passing posters
+            float shadowStart = isRight ? x0 : x1 - UiKit.pxf(8);
+            float shadowEnd = isRight ? x0 - UiKit.pxf(48) : x1 + UiKit.pxf(48);
+            p.setShader(new LinearGradient(shadowStart, 0, shadowEnd, 0,
+                    new int[]{Color.argb(150, 8, 1, 2), Color.argb(60, 8, 1, 2), Color.TRANSPARENT},
+                    new float[]{0f, 0.35f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(Math.min(shadowStart, shadowEnd), topY, Math.max(shadowStart, shadowEnd), botY, p);
+            p.setShader(null);
+        }
+
+        // ---- redcarpet (Kırmızı Halı) ----------------------------------------------------------------
+
+        private void redCarpetBack(Canvas c) {
+            int w = getWidth(), h = getHeight();
+            float fl = floor();
+            float lb = leftBleed(), rb = rightBleed();
+
+            // 1. Two grand overhead golden floodlights casting spotlight pools on the red carpet
+            float spotR = w * 0.42f;
+            p.setShader(new RadialGradient(w * 0.25f, fl - caseH * 0.75f, spotR,
+                    new int[]{Color.argb(50, 245, 194, 107), Color.argb(18, 245, 194, 107), Color.TRANSPARENT},
+                    new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
+            c.drawCircle(w * 0.25f, fl - caseH * 0.75f, spotR, p);
+
+            p.setShader(new RadialGradient(w * 0.75f, fl - caseH * 0.75f, spotR,
+                    new int[]{Color.argb(50, 245, 194, 107), Color.argb(18, 245, 194, 107), Color.TRANSPARENT},
+                    new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
+            c.drawCircle(w * 0.75f, fl - caseH * 0.75f, spotR, p);
+
+            // 2. Soft atmospheric crimson premiere glow rising behind the cases
+            p.setShader(new LinearGradient(0, fl - UiKit.pxf(60), 0, fl,
+                    Color.TRANSPARENT, Color.argb(65, 150, 10, 25), Shader.TileMode.CLAMP));
+            c.drawRect(-lb, fl - UiKit.pxf(60), w + rb, fl, p);
+            p.setShader(null);
+        }
+
+        private void redCarpetFront(Canvas c) {
+            int w = getWidth(), h = getHeight();
+            float fl = floor();
+            float lb = leftBleed(), rb = rightBleed();
+
+            float carpetH = UiKit.pxf(38);
+            float y0 = fl - UiKit.pxf(4);
+            float y1 = y0 + carpetH;
+
+            // 1. Plush Red Carpet Runner Deck (spans edge-to-edge from -lb to w + rb)
+            p.setShader(new LinearGradient(0, y0, 0, y1,
+                    new int[]{
+                            Color.parseColor("#820812"), // top plush velvet catch
+                            Color.parseColor("#CF1427"), // primary vivid scarlet crest
+                            Color.parseColor("#A80D1D"), // deep velvet body
+                            Color.parseColor("#5A040B")  // bottom rim shadow
+                    },
+                    new float[]{0f, 0.22f, 0.65f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(-lb, y0, w + rb, y1, p);
+
+            // 2. Upper Gold Bullion Border Trim (metallic brass cord catching flashlights)
+            float rodH = UiKit.pxf(4.2f);
+            p.setShader(new LinearGradient(0, y0 - rodH * 0.5f, 0, y0 + rodH * 0.5f,
+                    new int[]{Color.parseColor("#FFF5B8"), Color.parseColor("#D4AF37"), Color.parseColor("#7A5510")},
+                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(-lb, y0 - rodH * 0.5f, w + rb, y0 + rodH * 0.5f, p);
+
+            // 3. Lower Gold Bullion Border Trim
+            p.setShader(new LinearGradient(0, y1 - rodH, 0, y1,
+                    new int[]{Color.parseColor("#FFF5B8"), Color.parseColor("#D4AF37"), Color.parseColor("#7A5510")},
+                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(-lb, y1 - rodH, w + rb, y1, p);
+
+            // 4. Velvet Contact Crevice Shadow under DVD cases as they walk the red carpet
+            p.setShader(new LinearGradient(0, fl - UiKit.pxf(2), 0, fl + UiKit.pxf(12),
+                    Color.argb(185, 20, 2, 4), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+            c.drawRect(-lb, fl - UiKit.pxf(2), w + rb, fl + UiKit.pxf(12), p);
+
+            // 5. Dual-stage drop shadow below the red carpet runner
+            p.setShader(new LinearGradient(0, y1, 0, y1 + UiKit.pxf(14),
+                    Color.argb(160, 0, 0, 0), Color.argb(35, 0, 0, 0), Shader.TileMode.CLAMP));
+            c.drawRect(-lb, y1, w + rb, y1 + UiKit.pxf(14), p);
+
+            p.setShader(new LinearGradient(0, y1 + UiKit.pxf(14), 0, y1 + UiKit.pxf(36),
+                    Color.argb(35, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+            c.drawRect(-lb, y1 + UiKit.pxf(14), w + rb, y1 + UiKit.pxf(36), p);
+            p.setShader(null);
+
+            // 6. VIP Entrance Golden Stanchions at left & right borders
+            drawStanchion(c, -lb + UiKit.pxf(36), y0, y1);
+            drawStanchion(c, w + rb - UiKit.pxf(36), y0, y1);
+
+            // 7. Paparazzi flash glints along the gold bullion border
+            drawGlint(c, w * 0.28f, y0, UiKit.pxf(6f));
+            drawGlint(c, w * 0.72f, y0, UiKit.pxf(5f));
+        }
+
+        private void drawGlint(Canvas c, float gx, float gy, float r) {
+            p.setShader(null);
+            p.setColor(Color.WHITE);
+            c.drawCircle(gx, gy, r * 0.35f, p);
+            p.setColor(Color.argb(210, 255, 245, 180));
+            c.drawLine(gx - r * 1.4f, gy, gx + r * 1.4f, gy, p);
+            c.drawLine(gx, gy - r * 1.4f, gx, gy + r * 1.4f, p);
+        }
+
+        private void drawStanchion(Canvas c, float cx, float carpetTop, float carpetBot) {
+            float postW = UiKit.pxf(10);
+            float postTop = carpetTop - UiKit.pxf(60);
+            float finialR = UiKit.pxf(11);
+
+            // Solid polished brass post
+            p.setShader(new LinearGradient(cx - postW / 2f, 0, cx + postW / 2f, 0,
+                    new int[]{Color.parseColor("#D4AF37"), Color.parseColor("#FFF5B8"), Color.parseColor("#7A5510")},
+                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(cx - postW / 2f, postTop, cx + postW / 2f, carpetBot + UiKit.pxf(4), p);
+
+            // Brass base collar
+            float baseW = UiKit.pxf(28);
+            c.drawRoundRect(new android.graphics.RectF(cx - baseW / 2f, carpetBot - UiKit.pxf(2), cx + baseW / 2f, carpetBot + UiKit.pxf(6)),
+                    UiKit.pxf(3), UiKit.pxf(3), p);
+
+            // Polished brass spherical finial
+            p.setShader(new RadialGradient(cx - finialR * 0.3f, postTop - finialR * 0.7f, finialR * 1.2f,
+                    new int[]{Color.parseColor("#FFFFFF"), Color.parseColor("#FFF5B8"), Color.parseColor("#D4AF37"), Color.parseColor("#5A3E08")},
+                    new float[]{0f, 0.25f, 0.70f, 1f}, Shader.TileMode.CLAMP));
+            c.drawCircle(cx, postTop - finialR * 0.7f, finialR, p);
+
+            // Paparazzi flash specular glint on the finial
+            p.setShader(null);
+            p.setColor(Color.WHITE);
+            c.drawCircle(cx - finialR * 0.35f, postTop - finialR * 1.05f, UiKit.pxf(2.5f), p);
         }
 
         // ---- closet (Film Dolabı) -------------------------------------------------------------------
@@ -185,11 +339,11 @@ final class ShelfSet {
 
             // 2. Lateral corner vignettes (shadows deepening where the back wall meets the side walls)
             p.setShader(new LinearGradient(-bleed, 0, w * 0.18f, 0,
-                    Color.argb(90, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+                    Color.argb(125, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
             c.drawRect(-bleed, top, w * 0.18f, fl, p);
 
             p.setShader(new LinearGradient(w + bleed, 0, w * 0.82f, 0,
-                    Color.argb(90, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+                    Color.argb(125, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
             c.drawRect(w * 0.82f, top, w + bleed, fl, p);
 
             // 3. Dense physical contact crevice shadow where DVD spines rest on the shelf deck
@@ -214,9 +368,9 @@ final class ShelfSet {
                     new float[]{0f, 1f}, Shader.TileMode.CLAMP));
             c.drawRect(-bleed, y0, w + bleed, y0 + UiKit.pxf(5), p);
 
-            // 2. Crisp specular highlight along the top front chamfer (catching ceiling light tube)
+            // 2. Crisp specular highlight along the top front chamfer (warm ivory ceiling light catch)
             p.setShader(null);
-            p.setColor(Color.argb(235, 255, 255, 255));
+            p.setColor(Color.argb(235, 255, 248, 240));
             c.drawRect(-bleed, y0 + UiKit.pxf(4.5f), w + bleed, y0 + UiKit.pxf(6f), p);
 
             // 3. Architectural Fascia Face (vertical bullnose/bevel profile with rich material depth)

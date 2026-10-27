@@ -394,7 +394,19 @@ public final class TvWebRemoteServer {
                 post(() -> {
                     Controller c = controller;
                     if (c == null) {
-                        req.state = -1;
+                        try {
+                            app.startActivity(new Intent(app, com.cinetv.launcher.MainActivity.class)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+                        } catch (Throwable ignored) {
+                        }
+                        main.postDelayed(() -> {
+                            Controller c2 = controller;
+                            if (c2 != null) {
+                                c2.askPairing(device, () -> req.state = 1, () -> req.state = -1);
+                            } else {
+                                req.state = -1;
+                            }
+                        }, 1200);
                         return;
                     }
                     c.askPairing(device, () -> req.state = 1, () -> req.state = -1);
