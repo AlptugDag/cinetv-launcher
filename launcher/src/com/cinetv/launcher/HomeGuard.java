@@ -110,6 +110,7 @@ public final class HomeGuard {
         if (isDefault(app) && secure) return;
         String service = pkg + "/" + TvKeyInterceptorService.class.getName();
         String cmd = "pm grant " + pkg + " android.permission.WRITE_SECURE_SETTINGS; "
+                + "pm grant " + pkg + " android.permission.RECORD_AUDIO 2>/dev/null; "
                 + "appops set " + pkg + " SYSTEM_ALERT_WINDOW allow; "
                 + "pm grant " + pkg + " android.permission.BLUETOOTH_CONNECT 2>/dev/null; "
                 + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity; "

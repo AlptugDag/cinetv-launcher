@@ -33,7 +33,7 @@ import java.util.Random;
  */
 final class Closet {
     private static final int W = 1600, H = 900;
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
 
     private static final String[] TITLES = {
             "Seven Samurai", "8½", "The Seventh Seal", "Persona", "Rashomon", "Tokyo Story", "Wild Strawberries",
@@ -134,9 +134,11 @@ final class Closet {
         c.drawRect(0, 0, W, H, fall);
 
         depthOfField(out, c);
-        // grain and the lens's vignette
+        // grain and the lens's vignette (scaled per performance tier)
         Paint grain = new Paint();
-        for (int i = 0; i < 90000; i++) {
+        int grainIters = com.cinetv.launcher.device.PerformanceProfile.tier(ctx) == com.cinetv.launcher.device.PerformanceProfile.Tier.LOW ? 12000
+                : (com.cinetv.launcher.device.PerformanceProfile.tier(ctx) == com.cinetv.launcher.device.PerformanceProfile.Tier.MID ? 36000 : 75000);
+        for (int i = 0; i < grainIters; i++) {
             grain.setColor(r.nextBoolean() ? Color.argb(10, 255, 255, 255) : Color.argb(12, 0, 0, 0));
             c.drawPoint(r.nextInt(W), r.nextInt(H), grain);
         }

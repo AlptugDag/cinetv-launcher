@@ -48,27 +48,39 @@ public final class NuvioSetup {
 
     /** Off the main thread. */
     public static void runOnce(Context ctx) {
+        installNuvio(ctx, false);
+    }
+
+    /**
+     * Off the main thread. A TV with no video player of its own gets Nova (casting from the phone plays
+     * there); hidden from CineTV's apps, it only opens when a stream is sent. A TV that has one is left alone.
+     */
+    public static void playerOnce(Context ctx) {
+        installPlayer(ctx, false);
+    }
+
+    public static boolean installNuvio(Context ctx, boolean force) {
         final Context app = ctx.getApplicationContext();
-        if (Prefs.get(app).getBoolean(DONE, false)) return;
+        if (!force && Prefs.get(app).getBoolean(DONE, false)) return true;
         if (AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) {
             Prefs.get(app).edit().putBoolean(DONE, true).apply(); // already there: never touched
-            return;
+            return true;
         }
         try {
             String url = apkUrl("NuvioMedia/NuvioTV", "app-full-", "-release\\.apk");
-            if (url == null) return; // offline or GitHub unreachable: tried again on the next start
+            if (url == null) return false; // offline or GitHub unreachable: tried again on the next start
             File dir = app.getExternalFilesDir(null);
-            if (dir == null) return;
+            if (dir == null) return false;
             File apk = new File(dir, "nuvio.apk");
-            if (!Http.download(url, apk, 120_000)) return;
+            if (!Http.download(url, apk, 120_000)) return false;
             boolean ok = LocalAdb.shell(app, "pm install -r '" + apk.getAbsolutePath() + "'", 90_000);
             if (!ok) {
                 promptInstall(app, apk);
-                return;
+                return false;
             }
             apk.delete();
             for (int i = 0; i < 20 && !AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO); i++) Thread.sleep(1000);
-            if (!AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) return;
+            if (!AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) return false;
             Prefs.get(app).edit().putBoolean(DONE, true).apply();
             boolean turkish = "tr".equals(Locale.getDefault().getLanguage());
             for (String addon : ADDONS) addAddon(app, addon);
@@ -80,41 +92,42 @@ public final class NuvioSetup {
             // back to Home when the addons are in
             AppLauncher.start(app, new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             Log.i(TAG, "Nuvio installed with its addons");
+            return true;
         } catch (Throwable t) {
             Log.w(TAG, "Nuvio setup failed: " + t);
+            return false;
         }
     }
 
-    /**
-     * Off the main thread. A TV with no video player of its own gets Nova (casting from the phone plays
-     * there); hidden from CineTV's apps, it only opens when a stream is sent. A TV that has one is left alone.
-     */
-    public static void playerOnce(Context ctx) {
+    public static boolean installPlayer(Context ctx, boolean force) {
         final Context app = ctx.getApplicationContext();
-        if (Prefs.get(app).getBoolean(PLAYER_DONE, false)) return;
+        if (!force && Prefs.get(app).getBoolean(PLAYER_DONE, false)) return true;
         if (hasPlayer(app)) {
             Prefs.get(app).edit().putBoolean(PLAYER_DONE, true).apply();
-            return;
+            return true;
         }
         try {
             String url = apkUrl("nova-video-player/aos-AVP", "org\\.courville\\.nova-.*-", "-release\\.apk");
-            if (url == null) return;
+            if (url == null) return false;
             File dir = app.getExternalFilesDir(null);
-            if (dir == null) return;
+            if (dir == null) return false;
             File apk = new File(dir, "nova.apk");
-            if (!Http.download(url, apk, 180_000)) return;
+            if (!Http.download(url, apk, 180_000)) return false;
             boolean ok = LocalAdb.shell(app, "pm install -r '" + apk.getAbsolutePath() + "'", 120_000);
             if (!ok) {
                 promptInstall(app, apk);
-                return;
+                return false;
             }
             apk.delete();
             if (hasPlayer(app)) {
                 Prefs.get(app).edit().putBoolean(PLAYER_DONE, true).apply();
                 Log.i(TAG, "Nova installed for casting");
+                return true;
             }
+            return false;
         } catch (Throwable t) {
             Log.w(TAG, "player setup failed: " + t);
+            return false;
         }
     }
 
@@ -131,7 +144,7 @@ public final class NuvioSetup {
     }
 
     /** An installed (not built-in) app that plays a video stream. */
-    private static boolean hasPlayer(Context app) {
+    public static boolean hasPlayer(Context app) {
         PackageManager pm = app.getPackageManager();
         String[][] probes = {{"http://x/v.m3u8", "application/x-mpegurl"}, {"http://x/v.mp4", "video/*"}};
         for (String[] p : probes) {

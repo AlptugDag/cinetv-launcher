@@ -211,15 +211,21 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         });
         handleIntent(getIntent());
         handler.postDelayed(tourCheck, 6000);
-        if (!Prefs.get(this).getBoolean(Prefs.FIRST_SETUP_DONE, false)) {
+        if (!Prefs.get(this).getBoolean("wizard_done", false)) {
+            handler.postDelayed(() -> {
+                if (!isFinishing() && home != null && !home.modal.isShowing()) Panels.wizard(this, home.modal);
+            }, 3000);
+        } else if (!Prefs.get(this).getBoolean(Prefs.FIRST_SETUP_DONE, false)) {
             // First start only: tune picture & sound and measure the network once.
-            handler.postDelayed(() -> Panels.setup(this, home.modal, true), 4000);
+            handler.postDelayed(() -> {
+                if (!isFinishing() && home != null && !home.modal.isShowing()) Panels.setup(this, home.modal, true);
+            }, 4000);
         }
         if (!HomeGuard.isDefault(this) && !Prefs.get(this).getBoolean("prompted_default_home", false)) {
             Prefs.get(this).edit().putBoolean("prompted_default_home", true).apply();
             handler.postDelayed(() -> {
                 if (!isFinishing() && !HomeGuard.isDefault(this)) HomeGuard.promptHomeChooser(this);
-            }, 6000);
+            }, 8000);
         }
     }
 
@@ -266,6 +272,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         home.environment.pause();
         home.trailer.stop();
+        if (home.voice != null) home.voice.dismiss();
         handler.removeCallbacks(clockTick);
         handler.removeCallbacks(idle);
         handler.removeCallbacks(sleepPanel);
@@ -341,8 +348,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             if (home.keyboard.handleKey(e, getCurrentFocus())) return true;
             return super.dispatchKeyEvent(e);
         }
-        if (down && e.getRepeatCount() == 0 && !home.modal.isShowing()
-                && (e.getKeyCode() == KeyEvent.KEYCODE_SEARCH || e.getKeyCode() == KeyEvent.KEYCODE_VOICE_ASSIST)) {
+        if (home.voice.isShowing()) return home.voice.dispatchKeyEvent(e);
+        if (down && e.getRepeatCount() == 0 && !home.modal.isShowing() && !home.voice.isShowing()
+                && (e.getKeyCode() == KeyEvent.KEYCODE_SEARCH || e.getKeyCode() == KeyEvent.KEYCODE_VOICE_ASSIST || e.getKeyCode() == KeyEvent.KEYCODE_ASSIST)) {
             onVoice();
             return true;
         }
@@ -524,6 +532,27 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     public void onVoice() {
         home.keyboard.hide();
         ourVoiceAt = android.os.SystemClock.elapsedRealtime();
+
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, REQ_VOICE);
+            startSystemVoiceFallback();
+            return;
+        }
+
+        home.voice.start(new com.cinetv.launcher.ui.VoiceOverlay.Listener() {
+            @Override
+            public void onResult(String text) {
+                onSpoken(text);
+            }
+
+            @Override
+            public void onFallback() {
+                startSystemVoiceFallback();
+            }
+        });
+    }
+
+    private void startSystemVoiceFallback() {
         try {
             Intent i = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                     .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)

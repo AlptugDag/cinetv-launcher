@@ -107,11 +107,11 @@ public class DvdOpeningView extends View {
 
     /** Size of the inner insert texture for the current screen (bake it with {@link #bakeInner}). */
     public int innerWidth() {
-        return landscape ? Math.max(2, Math.round(getHeight() * 0.5f / DvdCase.ASPECT)) : Math.max(2, Math.round(getHeight() * 0.62f * DvdCase.ASPECT));
+        return landscape ? Math.max(2, Math.round(getHeight() * 0.72f / DvdCase.ASPECT)) : Math.max(2, Math.round(getHeight() * 0.84f * DvdCase.ASPECT));
     }
 
     public int innerHeight() {
-        return landscape ? Math.max(2, Math.round(getHeight() * 0.5f)) : Math.max(2, Math.round(getHeight() * 0.62f));
+        return landscape ? Math.max(2, Math.round(getHeight() * 0.72f)) : Math.max(2, Math.round(getHeight() * 0.84f));
     }
 
     /**
@@ -132,13 +132,13 @@ public class DvdOpeningView extends View {
         landscape = slot != null && com.cinetv.launcher.service.Prefs.trailerMoments(getContext()) && TrailerPlayer.available(getContext());
         trailerShown = false;
         if (landscape) {
-            caseH = Math.round(getHeight() * 0.5f);
+            caseH = Math.round(getHeight() * 0.72f);
             caseW = Math.round(caseH / DvdCase.ASPECT);
             Matrix rot = new Matrix();
             rot.postRotate(90);
             coverL = Bitmap.createBitmap(dvd.cover, 0, 0, dvd.cover.getWidth(), dvd.cover.getHeight(), rot, true);
         } else {
-            caseH = Math.round(getHeight() * 0.62f);
+            caseH = Math.round(getHeight() * 0.84f);
             caseW = Math.round(caseH * DvdCase.ASPECT);
             coverL = null;
         }
@@ -285,6 +285,11 @@ public class DvdOpeningView extends View {
                 canvas.rotate(-90f * (1f - fly), cx, cy);
             }
             if (open > 0.01f) {
+                // Soft ambient drop shadow under both leaves of the open case for realistic 3D presence
+                Paint shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
+                shadow.setColor(Color.argb((int) (110 * open * (caseAlpha / 255f)), 0, 0, 0));
+                RectF shadowRect = new RectF(left - cw * open * 0.96f, top + ch * 0.04f, left + cw, top + ch + ch * 0.05f);
+                canvas.drawRoundRect(shadowRect, cw * 0.04f, cw * 0.04f, shadow);
                 drawTray(canvas, left, top, cw, ch);
                 if (play < 0 && disc != null && !landscape) drawDisc(canvas, x, y, size, rise);
             }
@@ -307,7 +312,7 @@ public class DvdOpeningView extends View {
         String s = getContext().getString(R.string.dvd_play_hint);
         float tw = hintPaint.measureText(s);
         float ph = UiKit.pxf(54), pw = tw + UiKit.pxf(56);
-        r.set(w / 2f - pw / 2f, h - UiKit.pxf(96), w / 2f + pw / 2f, h - UiKit.pxf(96) + ph);
+        r.set(w / 2f - pw / 2f, h - UiKit.pxf(64), w / 2f + pw / 2f, h - UiKit.pxf(64) + ph);
         fill.setColor(Color.argb(120, 20, 20, 28));
         c.drawRoundRect(r, ph / 2f, ph / 2f, fill);
         fill.setStyle(Paint.Style.STROKE);
@@ -337,6 +342,33 @@ public class DvdOpeningView extends View {
             fill.setColor(Color.argb(70, 255, 255, 255));
             c.drawRoundRect(sc, w * 0.012f, w * 0.012f, fill);
             fill.setStyle(Paint.Style.FILL);
+
+            // "Fragman" handwritten label in marker font above the trailer window
+            android.text.TextPaint marker = new android.text.TextPaint(Paint.ANTI_ALIAS_FLAG);
+            marker.setTypeface(FontManager.getMarker(getContext()));
+            float labelSize = Math.max(16f, w * 0.034f);
+            marker.setTextSize(labelSize);
+            int ink = dvd != null ? filmInk(dvd.cover) : accent;
+            marker.setColor(UiKit.withAlpha(ink, 240));
+            String label = "tr".equals(Locale.getDefault().getLanguage()) ? "Fragman" : "Trailer";
+            float tw = marker.measureText(label);
+            float labelX = sc.left + w * 0.015f;
+            float labelY = sc.top - w * 0.014f;
+            c.save();
+            c.rotate(-1.2f, labelX, labelY);
+            c.drawText(label, labelX, labelY, marker);
+            // Hand-drawn felt-tip underline
+            Paint under = new Paint(Paint.ANTI_ALIAS_FLAG);
+            under.setColor(UiKit.withAlpha(ink, 130));
+            under.setStrokeWidth(Math.max(1.5f, w * 0.0028f));
+            under.setStrokeCap(Paint.Cap.ROUND);
+            under.setStyle(Paint.Style.STROKE);
+            Path up = new Path();
+            up.moveTo(labelX, labelY + w * 0.005f);
+            up.quadTo(labelX + tw * 0.5f, labelY + w * 0.002f, labelX + tw * 1.05f, labelY + w * 0.006f);
+            c.drawPath(up, under);
+            c.restore();
+
             return;
         }
         float cx = l + w / 2f, cy = t + h / 2f, rr = w * 0.45f;

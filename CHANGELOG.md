@@ -1,5 +1,23 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.4
+
+### Yenilikler
+- **Dahili Kurulum Sihirbazı (Setup Wizard)**: CineTV artık yanınızda bilgisayar veya AI ajanı olmadan, tek başına APK olarak kurulduğunda bile %100 eksiksiz ve kendi kendine yeten bir sistem kurar. İlk açılışta açılan sihirbaz (veya Ayarlar › TV & Telefon › Kurulum Sihirbazı); Varsayılan Başlatıcı, Nuvio Medya Merkezi & Türkçe Eklentiler, Video Oynatıcı, Kumanda Tuş Servisi ve 2 GB Sanal RAM bileşenlerini kontrol eder; tek tıkla "Tümünü Otomatik Tamamla" diyerek kumandayla her şeyi tamamlar.
+- **DVD Kutusu Açık Halde Yakınlaşma & Büyütülmüş Tipografi**: DVD kutusunun açık hali koltuktan rahatça okunabilmesi için ekrana belirgin şekilde yaklaştırıldı ve %35 daha büyük ölçeklendi. İç kapaktaki film özetleri, el yazısı künye, yönetmen, süre ve posta pulu fotoğraflı başrol oyuncuları artık uzaktan çok net ve sinematik okunur. Kutu altına eklenen yumuşak 3D ortam temas gölgesiyle fiziksel derinlik hissi güçlendirildi.
+- **Kusursuz Fragman Deneyimi & YouTube UI Parıltısının Engellenmesi**: Fragman oynatma sekmesinde YouTube'un başlık çubuğu, kanal logosu ve kontrollerinin açılışta anlık görünmesi 1.48x optik kırpma ve opak siyah perde (`#curtain`) geçişi ile tamamen engellendi. TMDB `details()` çağrısına videolar dahil edilerek fragman açılış gecikmesi sıfırlandı. Açık DVD tepsisinin üzerine film özetiyle birebir uyumlu el yazısı ve film mürekkebiyle **"Fragman"** başlığı eklendi.
+- **Modern Dahili Sesli Arama Arayüzü & Yeşil Nokta (Privacy Indicator) Çözümü**: CineTV'nin VisionOS arayüzü ile uyumlu, buzlu cam ve sese duyarlı gerçek zamanlı akustik ses dalgaları barındıran modern bir sesli arama arayüzü (`VoiceOverlay`) geliştirildi. Dinleme tamamlandığında veya kapatıldığında ses donanımı hemen serbest bırakılarak Android 12, 13 ve 14'te ekranın köşesinde takılı kalan yeşil mikrofon noktası tamamen giderildi.
+- **Profesyonel UI Tasarımı & Performans Kademesine (Tier) Göre Tema Optimizasyonu**:
+  - *Sıvı Cam (Liquid Glass)*: Kostik ışık yansımaları, derinlik zemin gölgesi ve kromatizma safir saçılımlı akışkan damlacıklar; Low kademede 3 çekirdek damla ile hafif, High kademede tam optik kırılımlarla çalışır.
+  - *Metalik (Metallic)*: Havacılık sınıfı fırçalanmış titanyum kaplama, anizotropik çapraz ışık parıltısı, 1px pahlı lazer dikişleri ve derinliği olan gömme cıvatalar; Low kademede sıfır döngü ek yüküyle yüksek performans.
+  - *Neon Gece (Neon Night)*: Derin synthwave alacakaranlık göğü, yumuşak korona auralı parlayan retro güneş, atmosferik mesafe sisi ve sonsuz perspektif siber-ızgara.
+  - *Film Dolabı (Closet)*: Ahşap dolap dokusu ve zemin gren döngüsü performans kademesine göre ölçeklendi; düşük donanımlı TV'lerde açılış hızlandırıldı.
+- **Android 9 ve 14 Çekirdek Başlatıcı ve Erişilebilirlik Uyumluluğu**: Üretici arayüzleri tarafından gizlenen erişilebilirlik ve varsayılan başlatıcı menüleri CineTV'nin doğrudan sistem intentleri ile atlatıldı. `BootReceiver` entegrasyonu sayesinde televizyon fişten çekilip açılsa dahi CineTV arka planda otomatik uyanır.
+
+### Çözülenler
+- **Mobil Kumanda Klavyesinde Enter / Arama**: Telefondan web kumandası kullanılırken klavyede Enter/Ara tuşuna basıldığında aramanın başlamaması sorunu giderildi; form gönderimi ve Enter tuş kodları (key, keyCode, which) dinlenerek hem TV'de hem telefonda arama anında tetiklenir.
+- **Downloader / Manuel Kurulum Eksiklikleri**: Yerel ADB portu kapalı veya yetkisiz olsa dahi Nuvio ve Nova Player APK'larının otomatik sistem paket yükleyicisine güvenli şekilde düşmesi (fallback) sağlandı.
+
 ## 1.0.0.3
 
 ### Yenilikler

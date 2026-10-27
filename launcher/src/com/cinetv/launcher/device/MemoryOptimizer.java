@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.provider.Settings;
 
 import com.cinetv.launcher.remote.LocalAdb;
+import com.cinetv.launcher.service.Prefs;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -108,11 +109,19 @@ public final class MemoryOptimizer {
     }
 
     /**
+     * Checks if TV optimizations (virtual RAM, background trimming, assistant tweaks) have been applied.
+     */
+    public static boolean isTvOptimized(Context ctx) {
+        return Prefs.get(ctx).getBoolean("tv_opt_applied", false);
+    }
+
+    /**
      * Disables Google Assistant on the TV while keeping Google Speech Recognition (Katniss / RecognitionService)
      * active, and applies rootless virtual RAM / zRAM expansion and kernel memory tuning.
      */
     public static void applyTvOptimizations(Context ctx) {
         final Context app = ctx.getApplicationContext();
+        Prefs.get(app).edit().putBoolean("tv_opt_applied", true).apply();
         try {
             android.content.ContentResolver cr = app.getContentResolver();
             Settings.Secure.putString(cr, "assistant", "");

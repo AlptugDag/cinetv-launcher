@@ -73,6 +73,7 @@ public class HomeScreen {
     public final TextView clock, date, weather, shelfLabel, caption, moveHint;
     public final EditText search;
     public final GlassKeyboard keyboard;
+    public final VoiceOverlay voice;
 
     private final Context ctx;
     private final Listener listener;
@@ -335,6 +336,8 @@ public class HomeScreen {
         root.addView(tour, match());
         splash = buildSplash(ctx);
         root.addView(splash, match());
+        voice = new VoiceOverlay(ctx);
+        root.addView(voice, match());
         screensaver = new FrameLayout(ctx);
         screensaver.setVisibility(View.GONE);
         screensaverView = new CinemaScreensaverView(ctx);

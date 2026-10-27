@@ -31,7 +31,7 @@ kaynakları, seçtiği kanal türleri). Paralı kanalları taşıyan eklentileri
 TV*, *Anthology Sinema Kanalları*) kurulumda kapalı kalır; bunlar yalnızca elle, *Nuvio › Ayarlar › Eklentiler*
 bölümünden açılabilir ve *ücretsiz* seyredilebilir.
 
-**DVD Rafı**: Ana ekranda, gün içinde farklı farklı filmlerin -konum, saat hava durumu gibi ögelere göre- önerildiği dvd kutusunda listelendiği, bir kez basınca kutunun açılıp iç kapağındaki Türkçe film özetinin okunduğu, bir kez daha basınca cdnin dönüp ilgili filmin nuvio'da açıldığı bir tasarım benimsedim.
+**DVD Rafı**: Ana ekranda, gün içinde farklı farklı filmlerin -konum, saat hava durumu gibi ögelere göre- önerildiği dvd kutusunda listelendiği, bir kez basınca kutunun açılıp iç kapağındaki Türkçe film özetinin okunduğu, süresinin ve başrol oyuncularının fotoğraflı pul biçiminde listelendiği, bir kez daha basınca cdnin dönüp ilgili filmin nuvio'da açıldığı bir tasarım benimsedim. (Diziler için de özel logolar ve sloganlar yer alıyor).
 
 **Arama**: "Takeshi Kitano filmleri", "araba temalı filmler", "kızı kaçırılan baba filmleri", dizi aramaları yaptığınızda vitrini doğrudan bunlarla dolduracak ve "Türkiye'nin yüz ölçümü kaçtır?" gibi dilediğiniz soruları cevaplayabilecek; Gemini, Claude, Grok, OpenAI anahtarıyla çalışan, sesli aramayı da destekleyen bir search bar ekledim.
 
@@ -39,13 +39,13 @@ bölümünden açılabilir ve *ücretsiz* seyredilebilir.
 
 **Görüntü, ses ve ağ**: Ağ hızınızı ve donanımınızı tespit edip hem nuvio yayın ayarlarınızı hem televizyonunuzun ağ, ses ve görüntü ayarlarını; televizyonunuzun sunabileceği (Dolby, hdr, 4k...) en kusursuz sinema deneyimine göre optimize edecek, var olan youtube uygulamanızı reklamsıza çevirip cihaz çapında reklam engelleyecek düzenlemeler yaptım.
 
-**Telefondan kontrol**: Sadece basit bir qr kod kullanarak, tvniz ile aynı ağa bağlı telefonunuzu kumanda olarak kullanabilir, nuvio aramalarınızı onun içerisinden gerçekleştirip tvde anında oynatabilir, tv arka planınızı değiştirebilir veya web adresleri girerek video cast edebilirsiniz. (Ayrıca airplay ve airpods desteği de var)
+**Telefondan kontrol**: Sadece basit bir qr kod kullanarak, tvniz ile aynı ağa bağlı telefonunuzu kumanda olarak kullanabilir, nuvio aramalarınızı onun içerisinden gerçekleştirip tvde anında oynatabilir, tv arka planınızı değiştirebilir veya web adresleri girerek video cast edebilirsiniz. Gerçek iframe referer ve origin yakalama desteği sayesinde yerli film sitelerindeki videolar doğrudan televizyonda sorunsuz oynatılır. (Ayrıca airplay ve airpods desteği de var)
 
 **Canlı TV**: Tuneri olan televizyonlarda ana ekrandaki Canlı TV kutucuğu televizyonun kendi kanallarını açar; Ayarlar › Ana ekranda TV kanalları ile kapatılır.
 
 **Kaynaklar İsimli**: Kaynak tuşu, HDMI'ye takılı cihazın adıyla ("PlayStation 5", "Digiturk") girişleri listeler.
 
-**Güvenli sadeleştirme** özelliği olduğundan, televizyonunuzla birlikte gelen gereksiz tüm servislerden, izleyicilerden, kısacası yavaşlatan her şeyden kurtulabilirsiniz ve buna ek olarak, uygun cihazlarda sanal ram oluşturup daha da ferahlatır.
+**Güvenli sadeleştirme & 2 GB Sanal RAM**: Televizyonunuzla birlikte gelen gereksiz tüm servislerden, izleyicilerden, Google Asistan'ın arayüzü bölen pencerelerinden kurtulabilirsiniz (Google Ses Tanıma servisi açık kalarak kumandadan mikrofonla Türkçe arama kusursuz çalışmaya devam eder). Root gerektirmeyen 2 GB sanal RAM / zRAM artışı televizyonu daha da ferahlatır.
 
 Beğenmediğiniz takdirde, ayar menüsündeki **CineTV'yi yok et!** tuşu ile her şeyi geri almanız da mümkün tabii.
 
@@ -60,25 +60,19 @@ Kurulum: `./install.sh --tv <TV_IP>` — ya da bir yapay zekâ ajanına "CineTV'
 
 ### Kurulum
 
-KURULUMU AI AGENT ARACILIĞIYLA YAPMANIZ TAVSİYE EDİLİR, AKSİ HALDE ÇOK FAZLA HATA ALABİLMENİZ MUHTEMELDİR,
-KURULUMU AI İLE YAPMAMAYI TERCİH EDİYORSANIZ, CİHAZINIZDA MUTLAKA NUVIO KURULU OLMALIDIR.
+Kurulumu ister bir yapay zekâ ajanıyla (Antigravity veya Claude Desktop - tamamen zevklerinize göre özel profil oluşturur), ister hiçbir bilgisayar olmadan sadece televizyonunuza APK'yı indirerek yapabilirsiniz. Dahili **Kurulum Sihirbazı** sayesinde, televizyonda Nuvio veya oynatıcı bulunmasa dahi CineTV ilk açılışta eksik bileşenleri (ana ekran başlatıcı, Nuvio, Türkçe eklentiler, Nova Player, kumanda tuş servisi ve 2 GB sanal RAM) kumandadan tek tıkla tamamlar.
 
-Beş yol var, hepsi rehberde ekran ekran anlatılıyor;
+Beş yol var, hepsi rehberde ekran ekran anlatılıyor:
 
-1. **Sadece televizyonla**: Play Store'dan *Downloader* uygulamasını kurun, adres çubuğuna
-   `github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk` yazın, kurun, açın.
-2. **Windows'ta çift tıkla**: [CineTV-Kur.bat](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.bat)
-   dosyasını indirip çift tıklayın; televizyonun IP adresini sorar, gerisini kendisi yapar.
+1. **Sadece televizyonla (Downloader / USB)**: Play Store'dan *Downloader* uygulamasını kurun, adres çubuğuna `github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk` yazın, kurun ve açın. Açılışta gelen **CineTV Kurulum Sihirbazı** ile *"Tümünü Otomatik Tamamla"* diyerek saniyeler içinde kullanmaya başlayın.
+2. **Windows'ta çift tıkla**: [CineTV-Kur.bat](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.bat) dosyasını indirip çift tıklayın; televizyonun IP adresini sorar, gerisini kendisi yapar.
 3. **Mac'te çift tıkla**: [CineTV-Kur.command](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.command).
-4. (TAVSİYE EDİLEN) **Bir yapay zekâya kurdurun** (Claude Desktop, Antigravity, Gemini, Cursor…): *"https://github.com/AlptugDag/cinetv-launcher
-   adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur"* deyin. Size soru sorup televizyonu size göre kurar.
+4. (TAVSİYE EDİLEN) **Bir yapay zekâya kurdurun** (Claude Desktop, Antigravity, Gemini, Cursor…): *"https://github.com/AlptugDag/cinetv-launcher adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur"* deyin. Size soru sorup televizyonu tamamen size göre kurar.
 5. **Terminalden**: `git clone https://github.com/AlptugDag/cinetv-launcher && cd cinetv-launcher && ./install.sh`
 
 **[📥 CineTV.apk'yı indir](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk)** · **[Adım adım kurulum rehberi (KURULUM.md)](KURULUM.md)**
 
-Hangi yolu seçerseniz seçin, televizyonda önce **Geliştirici seçenekleri › Ağ hata ayıklama** açık olmalı
-(rehberin 1. adımı). İlk açılışta televizyon *"hata ayıklamaya izin verilsin mi?"* diye sorarsa **Her zaman izin ver**'i
-işaretleyip **Tamam**'a basın: CineTV kendini ana ekran yapar ve telefon kumandasını hazırlar.
+Hangi yolu seçerseniz seçin, televizyonda önce **Geliştirici seçenekleri › Ağ hata ayıklama** açık olmalı (rehberin 1. adımı). İlk açılışta televizyon *"hata ayıklamaya izin verilsin mi?"* diye sorarsa **Her zaman izin ver**'i işaretleyip **Tamam**'a basın: CineTV kendini ana ekran yapar, sanal RAM ve kumanda servislerini hazırlar.
 
 
 ---

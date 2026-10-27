@@ -16,10 +16,14 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.cinetv.launcher.HomeGuard;
 import com.cinetv.launcher.R;
+import com.cinetv.launcher.TvKeyInterceptorService;
 import com.cinetv.launcher.ai.LlmClient;
+import com.cinetv.launcher.device.DeviceTweaks;
 import com.cinetv.launcher.device.HardwareKeys;
 import com.cinetv.launcher.device.MemoryOptimizer;
+import com.cinetv.launcher.device.NuvioSetup;
 import com.cinetv.launcher.device.PerformanceProfile;
 import com.cinetv.launcher.device.PictureCalibration;
 import com.cinetv.launcher.remote.RemotePairing;
@@ -180,6 +184,9 @@ public final class Panels {
 
         // 4. TV & phone
         LinearLayout c4 = column(ctx, cols, R.string.col_tv, 390);
+        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Kurulum Sihirbazı" : "Setup Wizard",
+                "tr".equals(Locale.getDefault().getLanguage()) ? "Eksik bileşenleri kontrol et ve kur" : "Check and setup components", false,
+                v -> wizard(ctx, host)));
         boolean isHome = com.cinetv.launcher.HomeGuard.isDefault(ctx);
         c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Ana Başlatıcı Yap" : "Set as Default Home",
                 isHome ? ("tr".equals(Locale.getDefault().getLanguage()) ? "CineTV varsayılan ana ekran" : "CineTV is default home")
@@ -804,6 +811,143 @@ public final class Panels {
             });
           }
         }, "cinetv-bench").start();
+        return root;
+    }
+
+    // ---- In-App Setup Wizard: ensures standalone installs are 100% self-sufficient --------------------
+
+    public static void wizard(final Context ctx, final ModalHost host) {
+        host.push(() -> buildWizard(ctx, host));
+    }
+
+    private static View buildWizard(final Context ctx, final ModalHost host) {
+        final LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setClipChildren(false);
+
+        final boolean turkish = "tr".equals(Locale.getDefault().getLanguage());
+        LinearLayout head = new LinearLayout(ctx);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView logo = new ImageView(ctx);
+        logo.setImageBitmap(Brand.mark(ctx));
+        head.addView(logo, new LinearLayout.LayoutParams(UiKit.px(44), UiKit.px(44)));
+        TextView title = UiKit.bold(ctx, 30, UiKit.INK);
+        title.setText(turkish ? "CineTV Kurulum Sihirbazı" : "CineTV Setup Wizard");
+        title.setPadding(UiKit.px(16), 0, 0, 0);
+        head.addView(title);
+        root.addView(head);
+
+        TextView subtitle = UiKit.label(ctx, 18, UiKit.INK_DIM);
+        subtitle.setText(turkish
+                ? "Tüm bileşenleri kumandanızla tek tıkla tamamlayabilir veya tek tek kontrol edebilirsiniz:"
+                : "Complete all components with your remote in one click or check them individually:");
+        subtitle.setPadding(0, UiKit.px(10), 0, UiKit.px(18));
+        root.addView(subtitle);
+
+        final LinearLayout list = new LinearLayout(ctx);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setClipChildren(false);
+        LinearLayout.LayoutParams listLp = new LinearLayout.LayoutParams(UiKit.px(920), ViewGroup.LayoutParams.WRAP_CONTENT);
+        root.addView(list, listLp);
+
+        // 1. Home Launcher
+        boolean isHome = HomeGuard.isDefault(ctx);
+        list.addView(Controls.tile(ctx,
+                turkish ? "1. Varsayılan Ana Ekran (Home Launcher)" : "1. Default Home Launcher",
+                isHome ? (turkish ? "CineTV varsayılan ana ekran olarak devrede" : "CineTV is default home")
+                       : (turkish ? "Kumanda Home tuşu için dokunun (Her zaman seçin)" : "Tap to set as default launcher (choose Always)"),
+                isHome, v -> {
+                    HomeGuard.promptHomeChooser(ctx);
+                    v.postDelayed(() -> host.replace(() -> buildWizard(ctx, host)), 1500);
+                }));
+
+        // 2. Nuvio Media Center
+        final boolean nuvioOk = AppLauncher.isLaunchable(ctx.getPackageManager(), AppLauncher.NUVIO);
+        list.addView(Controls.tile(ctx,
+                turkish ? "2. Nuvio Medya Merkezi & Türkçe Eklentiler" : "2. Nuvio Media Center & Addons",
+                nuvioOk ? (turkish ? "Yüklü ve hazır (filmler, diziler, eklentiler)" : "Installed and ready")
+                        : (turkish ? "Yüklü değil (dokunarak arka planda indirin ve kurun)" : "Not installed (tap to download & install)"),
+                nuvioOk, v -> {
+                    if (nuvioOk) {
+                        AppLauncher.launch(ctx, AppLauncher.NUVIO);
+                    } else {
+                        Toast.makeText(ctx, turkish ? "Nuvio ve eklentileri indiriliyor..." : "Installing Nuvio and addons...", Toast.LENGTH_SHORT).show();
+                        new Thread(() -> {
+                            NuvioSetup.installNuvio(ctx, true);
+                            v.post(() -> host.replace(() -> buildWizard(ctx, host)));
+                        }, "cinetv-wiz-nuvio").start();
+                    }
+                }));
+
+        // 3. Video Player
+        final boolean playerOk = NuvioSetup.hasPlayer(ctx);
+        list.addView(Controls.tile(ctx,
+                turkish ? "3. Video Oynatıcı (Stream Player)" : "3. Video Stream Player",
+                playerOk ? (turkish ? "Yayın oynatıcı mevcut ve hazır" : "Video player ready")
+                         : (turkish ? "Nova Player yüklemek için dokunun (harici yayınlar için)" : "Tap to install Nova Player"),
+                playerOk, v -> {
+                    if (!playerOk) {
+                        Toast.makeText(ctx, turkish ? "Nova Player indiriliyor..." : "Downloading Nova Player...", Toast.LENGTH_SHORT).show();
+                        new Thread(() -> {
+                            NuvioSetup.installPlayer(ctx, true);
+                            v.post(() -> host.replace(() -> buildWizard(ctx, host)));
+                        }, "cinetv-wiz-player").start();
+                    }
+                }));
+
+        // 4. Remote Keys & Permissions
+        boolean a11yOk = TvKeyInterceptorService.getInstance() != null || DeviceTweaks.canWriteSecureSettings(ctx);
+        list.addView(Controls.tile(ctx,
+                turkish ? "4. Kumanda Tuş Servisi & Erişilebilirlik" : "4. Remote Key Interceptor & Accessibility",
+                a11yOk ? (turkish ? "Erişilebilirlik ve tuş servisi aktif" : "Key interceptor active")
+                       : (turkish ? "Erişilebilirlik ayarlarını açıp CineTV'yi etkinleştirin" : "Open accessibility settings to enable CineTV"),
+                a11yOk, v -> {
+                    HomeGuard.openAccessibilitySettings(ctx);
+                    v.postDelayed(() -> host.replace(() -> buildWizard(ctx, host)), 2000);
+                }));
+
+        // 5. Virtual RAM & TV Optimization
+        boolean optOk = MemoryOptimizer.isTvOptimized(ctx);
+        list.addView(Controls.tile(ctx,
+                turkish ? "5. 2 GB Sanal RAM & Arka Plan Hızlandırma" : "5. 2 GB Virtual RAM & Optimization",
+                optOk ? (turkish ? "Sanal RAM devrede, Google Asistan optimize edildi" : "Virtual RAM active, assistant optimized")
+                      : (turkish ? "Sanal RAM oluşturup gereksiz servisleri kapatmak için dokunun" : "Tap to apply 2 GB virtual RAM & optimize"),
+                optOk, v -> {
+                    MemoryOptimizer.applyTvOptimizations(ctx);
+                    Toast.makeText(ctx, turkish ? "Sanal RAM ve optimizasyon uygulandı" : "Virtual RAM & optimizations applied", Toast.LENGTH_SHORT).show();
+                    v.postDelayed(() -> host.replace(() -> buildWizard(ctx, host)), 800);
+                }));
+
+        // Footer buttons
+        LinearLayout buttons = new LinearLayout(ctx);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+        buttons.setPadding(0, UiKit.px(14), 0, 0);
+
+        buttons.addView(Controls.button(ctx, turkish ? "Tümünü Otomatik Tamamla" : "Auto-Setup All", v -> {
+            Toast.makeText(ctx, turkish ? "Kurulum otomatik tamamlanıyor..." : "Completing setup...", Toast.LENGTH_SHORT).show();
+            new Thread(() -> {
+                if (!HomeGuard.isDefault(ctx)) {
+                    v.post(() -> HomeGuard.promptHomeChooser(ctx));
+                }
+                NuvioSetup.installNuvio(ctx, true);
+                NuvioSetup.installPlayer(ctx, true);
+                MemoryOptimizer.applyTvOptimizations(ctx);
+                v.post(() -> host.replace(() -> buildWizard(ctx, host)));
+            }, "cinetv-wiz-auto").start();
+        }));
+
+        View space = new View(ctx);
+        buttons.addView(space, new LinearLayout.LayoutParams(UiKit.px(20), 1));
+
+        buttons.addView(Controls.button(ctx, turkish ? "Tamamla" : "Done", v -> {
+            Prefs.get(ctx).edit().putBoolean("wizard_done", true).apply();
+            host.back();
+        }));
+
+        root.addView(buttons);
+        root.post(() -> {
+            if (list.getChildCount() > 0) list.getChildAt(0).requestFocus();
+        });
         return root;
     }
 }

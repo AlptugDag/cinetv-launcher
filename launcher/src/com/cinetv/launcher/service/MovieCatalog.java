@@ -514,7 +514,7 @@ public final class MovieCatalog {
             }
             if (id <= 0) return m;
             m.tmdbId = id;
-            JSONObject d = tmdb(ctx, kind + "/" + id + "?append_to_response=credits,external_ids&language=" + language());
+            JSONObject d = tmdb(ctx, kind + "/" + id + "?append_to_response=credits,external_ids,videos&language=" + language());
             String overview = d.optString("overview", "").trim();
             JSONObject enData = null;
             if (overview.isEmpty()) {
@@ -592,6 +592,14 @@ public final class MovieCatalog {
                     }
                 }
                 m.cast = members;
+            }
+            JSONObject videosObj = d.optJSONObject("videos");
+            JSONArray vids = videosObj != null ? videosObj.optJSONArray("results") : null;
+            if (vids != null && vids.length() > 0) {
+                String bestKey = selectTrailerKey(vids);
+                if (bestKey != null) {
+                    trailers.put(m.type + ":" + (m.tmdbId > 0 ? m.tmdbId : m.imdbId), bestKey);
+                }
             }
             // the shelf may hold an original-script title from an older cache
             String original = d.optString("movie".equals(kind) ? "original_title" : "original_name", "").trim();
@@ -695,29 +703,40 @@ public final class MovieCatalog {
         String best = null;
         try {
             if (m.tmdbId <= 0) details(ctx, m);
+            String cachedAfterDetails = trailers.get(cacheKey);
+            if (cachedAfterDetails != null) return cachedAfterDetails.isEmpty() ? null : cachedAfterDetails;
             if (m.tmdbId > 0) {
                 String kind = "series".equals(m.type) || "tv".equals(m.type) ? "tv" : "movie";
                 String lang = Locale.getDefault().getLanguage();
                 JSONArray r = tmdb(ctx, kind + "/" + m.tmdbId + "/videos?include_video_language=" + lang + ",en,null").optJSONArray("results");
-                int bestScore = -1;
-                for (int i = 0; r != null && i < r.length(); i++) {
-                    JSONObject v = r.getJSONObject(i);
-                    if (!"YouTube".equals(v.optString("site"))) continue;
-                    String type = v.optString("type");
-                    int score = ("Trailer".equals(type) ? 40 : "Teaser".equals(type) ? 20 : "Clip".equals(type) ? 10 : -1);
-                    if (score < 0) continue;
-                    if (v.optBoolean("official")) score += 8;
-                    if ("en".equals(v.optString("iso_639_1"))) score += 4; // fewer burnt-in captions than dubbed cuts
-                    if (score > bestScore) {
-                        bestScore = score;
-                        best = v.optString("key", null);
-                    }
-                }
+                best = selectTrailerKey(r);
             }
         } catch (Throwable t) {
             Log.w(TAG, "Trailer lookup failed: " + t.getMessage());
         }
         trailers.put(cacheKey, best == null ? "" : best);
+        return best;
+    }
+
+    private static String selectTrailerKey(JSONArray r) {
+        String best = null;
+        int bestScore = -1;
+        try {
+            for (int i = 0; r != null && i < r.length(); i++) {
+                JSONObject v = r.getJSONObject(i);
+                if (!"YouTube".equals(v.optString("site"))) continue;
+                String type = v.optString("type");
+                int score = ("Trailer".equals(type) ? 40 : "Teaser".equals(type) ? 20 : "Clip".equals(type) ? 10 : -1);
+                if (score < 0) continue;
+                if (v.optBoolean("official")) score += 8;
+                if ("en".equals(v.optString("iso_639_1"))) score += 4; // fewer burnt-in captions than dubbed cuts
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = v.optString("key", null);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
         return best;
     }
 

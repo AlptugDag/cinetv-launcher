@@ -12,6 +12,7 @@ out/
 *.log
 *.tmp
 *.idsig
+*.apk
 
 # IDE files
 .idea/

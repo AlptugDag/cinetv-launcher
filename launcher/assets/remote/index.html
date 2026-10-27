@@ -183,7 +183,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <header>
   <div class="brand"><img class="sig" src="/static/signature.png" alt="" onerror="this.remove()"><b>Cine<span class="tv">TV</span></b><small>by Alptuğ Dağ</small><span class="st" id="tvPick"><i id="dot" class="dot"></i><em id="status" data-i="connecting"></em></span></div>
   <div class="install glass" id="install" hidden><span id="installText"></span><button id="installGo" hidden></button><button class="x" id="installX">✕</button></div>
-  <form class="search glass" id="searchBox" onsubmit="return false">
+  <form class="search glass" id="searchBox" action="javascript:void(0);">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
     <input id="q" type="search" enterkeyhint="search" autocomplete="off" data-ph="searchPh">
   </form>
@@ -297,7 +297,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 </nav>
 </div>
 
-<form class="kbd glass" id="kbd" hidden onsubmit="return false">
+<form class="kbd glass" id="kbd" hidden action="javascript:void(0);">
   <input id="typer" data-ph="typePh" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="send">
   <button id="typerGo" type="button">↵</button>
 </form>
@@ -481,8 +481,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     const q = e.target.value.trim();
     mirrorTimer = setTimeout(() => api("tv/typing", {q}).catch(() => {}), 450);
   });
-  $("searchBox").addEventListener("submit", e => {
-    e.preventDefault();
+  const submitSearch = () => {
+    clearTimeout(mirrorTimer);
+    clearTimeout(searchTimer);
     const q = $("q").value.trim(); if (!q) return;
     $("q").blur();
     api("tv/search", {q}).then(() => toast(t("onTv"))).catch(() => {});
@@ -496,6 +497,22 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         $("results").insertAdjacentHTML("afterbegin", `<div class="answer glass" style="grid-column:1/-1">${esc(r.answer)}</div>`);
       }
     }).catch(() => {});
+  };
+  $("searchBox").addEventListener("submit", e => {
+    e.preventDefault();
+    submitSearch();
+  });
+  $("q").addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.keyCode === 13 || e.which === 13) {
+      e.preventDefault();
+      submitSearch();
+    }
+  });
+  $("q").addEventListener("keyup", e => {
+    if (e.key === "Enter" || e.keyCode === 13 || e.which === 13) {
+      e.preventDefault();
+      submitSearch();
+    }
   });
   $("q").addEventListener("input", e => {
     clearTimeout(searchTimer);
@@ -592,12 +609,24 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   });
   const typeEnter = () => {
     clearTimeout(typeTimer);
-    const cur = typer.value;
+    const cur = typer.value.trim();
     api("type", {q: cur, enter: 1}).then(() => press(66)).catch(() => {});
+    if (cur) api("tv/search", {q: cur}).catch(() => {});
     closeKbd();
   };
   $("typerGo").onclick = typeEnter;
-  typer.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); typeEnter(); } });
+  typer.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.keyCode === 13 || e.which === 13) {
+      e.preventDefault();
+      typeEnter();
+    }
+  });
+  typer.addEventListener("keyup", e => {
+    if (e.key === "Enter" || e.keyCode === 13 || e.which === 13) {
+      e.preventDefault();
+      typeEnter();
+    }
+  });
   typer.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== typer) kbd.hidden = true; }, 350));
   $("saver").onclick = () => api("screensaver");
 
