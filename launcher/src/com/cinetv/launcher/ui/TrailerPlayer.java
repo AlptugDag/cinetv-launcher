@@ -36,29 +36,23 @@ public final class TrailerPlayer extends FrameLayout {
     private int gen;
 
     /** The player page: muted, no controls, fitted exactly into the 16:9 tray frame, smooth continuous loop. */
-    private static final String PAGE = "<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no'>"
-            + "<style>html,body{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;user-select:none;-webkit-user-select:none;}"
+    private static final String PAGE = "<!doctype html><html><head>"
+            + "<meta name='viewport' content='width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no'>"
+            + "<style>"
+            + "html,body{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;user-select:none;-webkit-user-select:none;}"
             + "#shield{position:absolute;left:0;top:0;width:100%;height:100%;z-index:90;background:transparent;pointer-events:auto;}"
-            + "#curtain{position:absolute;left:0;top:0;width:100%;height:100%;background:#000;z-index:99;pointer-events:none;transition:opacity .5s ease;}"
-            + "#p,iframe{position:absolute;left:0;top:0;width:100% !important;height:100% !important;border:none !important;pointer-events:none !important;transition:opacity .45s ease;}"
+            + "#curtain{position:absolute;left:0;top:0;width:100%;height:100%;background:#000;z-index:99;pointer-events:none;transition:opacity .4s ease;}"
+            + "#yt,iframe{position:absolute;left:0;top:0;width:100% !important;height:100% !important;border:none !important;pointer-events:none !important;}"
             + "</style></head>"
-            + "<body><div id=shield></div><div id=curtain></div><div id=p></div><script src='https://www.youtube.com/iframe_api'></script><script>"
-            + "var p,el=function(){return document.getElementById('p')},curtain=function(){return document.getElementById('curtain')};"
-            + "function show(on){var e=el(),c=curtain();if(e)e.style.opacity=on?1:0;if(c)c.style.opacity=on?0:1;}"
-            + "function onYouTubeIframeAPIReady(){"
-            + "p=new YT.Player('p',{"
-            + "width:'100%',height:'100%',videoId:'%KEY%',"
-            + "playerVars:{autoplay:1,mute:1,controls:0,disablekb:1,fs:0,iv_load_policy:3,cc_load_policy:0,modestbranding:1,playsinline:1,rel:0,showinfo:0,origin:'https://www.youtube-nocookie.com'},"
-            + "events:{"
-            + "onReady:function(e){e.target.mute();try{e.target.unloadModule('captions');e.target.unloadModule('cc');}catch(x){}e.target.playVideo();},"
-            + "onStateChange:function(e){"
-            + "if(e.data===1){try{p.unloadModule('captions');}catch(x){}setTimeout(function(){show(true);try{Cine.ready();}catch(x){}},350);}"
-            + "else if(e.data===0){p.seekTo(0,true);p.playVideo();}"
-            + "else if(e.data===2){p.playVideo();}"
-            + "},"
-            + "onError:function(){try{Cine.failed();}catch(x){}}"
-            + "}});"
-            + "}"
+            + "<body><div id='shield'></div><div id='curtain'></div>"
+            + "<iframe id='yt' src='https://www.youtube-nocookie.com/embed/%KEY%?autoplay=1&mute=1&controls=0&loop=1&playlist=%KEY%&playsinline=1&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1&enablejsapi=1' allow='autoplay; encrypted-media'></iframe>"
+            + "<script>"
+            + "var revealed=false;"
+            + "function reveal(){if(revealed)return;revealed=true;"
+            + "var c=document.getElementById('curtain');if(c)c.style.opacity='0';"
+            + "try{Cine.ready();}catch(x){}}"
+            + "window.addEventListener('load',function(){setTimeout(reveal,500);});"
+            + "setTimeout(reveal,1600);"
             + "</script></body></html>";
 
     public TrailerPlayer(Context ctx) {
@@ -90,9 +84,13 @@ public final class TrailerPlayer extends FrameLayout {
         return true; // no mouse hover either: it would bring up the player's controls
     }
 
-    /** Whether trailers can play on this TV at all (key and performance). */
+    /** Whether trailers can play on this TV at all. */
     public static boolean available(Context ctx) {
-        return MovieCatalog.hasTmdb(ctx) && PerformanceProfile.tier(ctx) != PerformanceProfile.Tier.LOW;
+        try {
+            return android.webkit.WebViewDatabase.getInstance(ctx) != null;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     /** Plays the film's trailer over {@code screen} (the DVD tray's screen, in this view's parent's coordinates). */
@@ -141,9 +139,11 @@ public final class TrailerPlayer extends FrameLayout {
                 public void ready() {
                     main.post(() -> {
                         if (my != gen || web != w) return;
-                        setAlpha(0f);
-                        setVisibility(VISIBLE);
-                        animate().alpha(1f).setDuration(500).start();
+                        if (getVisibility() != VISIBLE) {
+                            setAlpha(0f);
+                            setVisibility(VISIBLE);
+                            animate().alpha(1f).setDuration(400).start();
+                        }
                     });
                 }
 
@@ -155,6 +155,16 @@ public final class TrailerPlayer extends FrameLayout {
                 }
             }, "Cine");
             addView(w, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+
+            // Safety fallback: if JS bridge ready() is missed or slow, fade in after 1.8s
+            main.postDelayed(() -> {
+                if (my == gen && web == w && getVisibility() != VISIBLE) {
+                    setAlpha(0f);
+                    setVisibility(VISIBLE);
+                    animate().alpha(1f).setDuration(400).start();
+                }
+            }, 1800);
+
             w.loadDataWithBaseURL("https://www.youtube-nocookie.com", PAGE.replace("%KEY%", key), "text/html", "utf-8", null);
         } catch (Throwable t) {
             web = null; // no WebView on this TV

@@ -283,7 +283,7 @@ public final class PerformanceProfile {
 
     /** The backdrop drawn from one pre-composited bitmap (one quad a frame) instead of live layers. */
     public static boolean compositedBackdrop(Context ctx) {
-        return tier(ctx) != Tier.HIGH || limited(ctx, LIMIT_GPU);
+        return true;
     }
 
     // ---- Frame watchdog ---------------------------------------------------------------------------

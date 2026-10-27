@@ -86,6 +86,8 @@ public class DvdOpeningView extends View {
     private Bitmap coverL;
     private Movie movie;
     private TrailerSlot slot;
+    private final Paint caseShadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF caseShadowRect = new RectF();
 
     public void setTrailerSlot(TrailerSlot s) {
         slot = s;
@@ -318,10 +320,9 @@ public class DvdOpeningView extends View {
             }
             if (open > 0.01f) {
                 // Soft ambient drop shadow under both leaves of the open case for realistic 3D presence
-                Paint shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
-                shadow.setColor(Color.argb((int) (110 * open * (caseAlpha / 255f)), 0, 0, 0));
-                RectF shadowRect = new RectF(left - cw * open * 0.96f, top + ch * 0.04f, left + cw, top + ch + ch * 0.05f);
-                canvas.drawRoundRect(shadowRect, cw * 0.04f, cw * 0.04f, shadow);
+                caseShadowPaint.setColor(Color.argb((int) (110 * open * (caseAlpha / 255f)), 0, 0, 0));
+                caseShadowRect.set(left - cw * open * 0.96f, top + ch * 0.04f, left + cw, top + ch + ch * 0.05f);
+                canvas.drawRoundRect(caseShadowRect, cw * 0.04f, cw * 0.04f, caseShadowPaint);
                 drawTray(canvas, left, top, cw, ch);
                 if (play < 0 && disc != null && !landscape) drawDisc(canvas, x, y, size, rise);
             }

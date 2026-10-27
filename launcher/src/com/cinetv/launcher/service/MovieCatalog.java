@@ -696,20 +696,45 @@ public final class MovieCatalog {
     /** The YouTube id of the film's trailer (official, in the TV's language first, then English); null if none. Blocks. */
     public static String trailerKey(Context ctx, Movie m) {
         if (Creator.isSessiz(m)) return Creator.SESSIZ_YOUTUBE_ID;
-        if (!hasTmdb(ctx)) return null;
         String cacheKey = m.type + ":" + (m.tmdbId > 0 ? m.tmdbId : m.imdbId);
         String cached = trailers.get(cacheKey);
         if (cached != null) return cached.isEmpty() ? null : cached;
         String best = null;
         try {
-            if (m.tmdbId <= 0) details(ctx, m);
-            String cachedAfterDetails = trailers.get(cacheKey);
-            if (cachedAfterDetails != null) return cachedAfterDetails.isEmpty() ? null : cachedAfterDetails;
-            if (m.tmdbId > 0) {
-                String kind = "series".equals(m.type) || "tv".equals(m.type) ? "tv" : "movie";
-                String lang = Locale.getDefault().getLanguage();
-                JSONArray r = tmdb(ctx, kind + "/" + m.tmdbId + "/videos?include_video_language=" + lang + ",en,null").optJSONArray("results");
-                best = selectTrailerKey(r);
+            if (hasTmdb(ctx)) {
+                if (m.tmdbId <= 0) details(ctx, m);
+                String cachedAfterDetails = trailers.get(cacheKey);
+                if (cachedAfterDetails != null) return cachedAfterDetails.isEmpty() ? null : cachedAfterDetails;
+                if (m.tmdbId > 0) {
+                    String kind = "series".equals(m.type) || "tv".equals(m.type) ? "tv" : "movie";
+                    String lang = Locale.getDefault().getLanguage();
+                    JSONArray r = tmdb(ctx, kind + "/" + m.tmdbId + "/videos?include_video_language=" + lang + ",en,null").optJSONArray("results");
+                    best = selectTrailerKey(r);
+                }
+            }
+            // Fallback to Cinemeta if TMDB did not have it or TMDB key is not present
+            if (best == null && m.imdbId != null && m.imdbId.startsWith("tt")) {
+                String kind = "series".equals(m.type) || "tv".equals(m.type) ? "series" : "movie";
+                String url = "https://v3-cinemeta.strem.io/meta/" + kind + "/" + m.imdbId + ".json";
+                JSONObject root = Http.getJson(url, null, TIMEOUT);
+                if (root != null) {
+                    JSONObject meta = root.optJSONObject("meta");
+                    if (meta != null) {
+                        JSONArray trs = meta.optJSONArray("trailers");
+                        if (trs != null) {
+                            for (int i = 0; i < trs.length(); i++) {
+                                JSONObject t = trs.optJSONObject(i);
+                                if (t != null) {
+                                    String src = t.optString("source", "");
+                                    if (src.matches("[A-Za-z0-9_-]{6,20}")) {
+                                        best = src;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         } catch (Throwable t) {
             Log.w(TAG, "Trailer lookup failed: " + t.getMessage());

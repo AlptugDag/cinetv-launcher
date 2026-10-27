@@ -1,5 +1,21 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.7
+
+### Yenilikler & Düzeltmeler
+- **DVD Kutusu Yatay Açılış & Fragman Oynatımı**:
+  - Düşük RAM / Tier LOW televizyonlarda (Arçelik TV vb.) fragman oynatıcının donanım seviyesi kontrolü kaldırılarak tüm cihazlarda fragman oynatımı ve 90° yatay (landscape) kutu açılışı tamamen etkinleştirildi.
+  - Fragman gösterimi tercihi varsayılan olarak açık (`true`) hale getirildi.
+  - Fragman arama motoruna Cinemeta meta yedekleme sistemi eklendi; TMDB anahtarı girilmemiş olsa dahi Cinemeta üzerinden resmi YouTube fragman kimliği anında çekilerek kesintisiz oynatılıyor.
+  - Fragman içi YouTube oynatıcı WebView altyapısı doğrudan ve pürüzsüz döngü (native seamless loop) ile optimize edildi; aralarda oynat/duraklat butonlarının ve yükleme ikonlarının belirip kaybolması engellendi.
+  - Oynatıcı görünümüne siyah perde ve zaman aşımı güvenlik mekanizması eklenerek fragman yüklenirken takılı kalma veya siyah ekranda gizli kalma olasılığı sıfırlandı.
+- **Yüksek Performans (En Güçlü Mod) Optimizasyonu**:
+  - `PosterShelf` vitrin konteyneri üzerindeki gereksiz `LAYER_TYPE_HARDWARE` FBO katman tamponu kaldırılarak tüm temalarda doğrudan 60 FPS donanım çizimine geçildi; vitrin kaydırma ve 3D kutu animasyonları tereyağı akıcılığına kavuştu.
+  - `SpatialEnvironment` arka planında `compositedBackdrop` ön-bileşik arka plan tamponu tüm performans profillerinde aktif hale getirildi; yüksek modda her karede gereksiz arka plan katmanlarının baştan çizilmesi önlendi.
+  - Odak ışığındaki 3. aşırı geniş yayılım katmanı optimize edilerek GPU dolum hızı (fillrate) darboğazı giderildi.
+  - `DvdOpeningView` animasyon döngüsü içerisindeki `Paint` nesne tahsisleri sınıf seviyesine taşınarak Garbage Collector duraklamaları önlendi.
+  - `MemoryOptimizer` içerisindeki aşırı agresif `max_cached_processes 8` kısıtlaması kaldırılarak Android sistem servislerinin arka planda döngüsel olarak yeniden başlatılması ve CPU tüketimi engellendi.
+
 ## 1.0.0.6
 
 ### Yenilikler

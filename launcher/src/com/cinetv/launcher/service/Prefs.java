@@ -56,9 +56,9 @@ public final class Prefs {
         return get(ctx).getBoolean(GLASS_BEVEL, true);
     }
 
-    /** Home shows looping trailer moments instead of DVD cases; off unless chosen. */
+    /** Home shows looping trailer moments inside opened DVD cases. Default on. */
     public static boolean trailerMoments(Context ctx) {
-        return get(ctx).getBoolean(TRAILER_MOMENTS, false);
+        return get(ctx).getBoolean(TRAILER_MOMENTS, true);
     }
 
     public static boolean dvdAnimation(Context ctx) {

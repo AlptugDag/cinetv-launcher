@@ -94,15 +94,9 @@ public class PosterShelf extends FrameLayout {
             if (setBack != null) addView(setBack, 0, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
             if (setFront != null) addView(setFront, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         }
-        // the cases take the room's light: tailored cinematic grade per theme
-        android.graphics.ColorMatrix grade = ShelfSet.grade(themeId != null ? themeId : furniture);
-        if (grade != null && com.cinetv.launcher.device.PerformanceProfile.tier(getContext()) != com.cinetv.launcher.device.PerformanceProfile.Tier.LOW) {
-            android.graphics.Paint p = new android.graphics.Paint();
-            p.setColorFilter(new android.graphics.ColorMatrixColorFilter(grade));
-            setLayerType(LAYER_TYPE_HARDWARE, p);
-        } else {
-            setLayerType(LAYER_TYPE_NONE, null);
-        }
+        // Hardware layer on a dynamic scrolling shelf causes heavy offscreen texture overhead on TV GPUs;
+        // keeping LAYER_TYPE_NONE ensures direct zero-overhead drawing of cases at 60 FPS.
+        setLayerType(LAYER_TYPE_NONE, null);
     }
 
     public void setScene(String scene) {
