@@ -89,7 +89,7 @@ public final class MovieCatalog {
             try {
                 o.put("title", title).put("original", originalTitle).put("year", year).put("imdb", imdbId).put("tmdb", tmdbId)
                         .put("type", type).put("poster", posterUrl).put("backdrop", backdropUrl)
-                        .put("overview", overview).put("rating", rating);
+                        .put("overview", overview).put("rating", rating).put("runtime", runtimeMinutes).put("tagline", tagline);
             } catch (Throwable ignored) {
             }
             return o;
