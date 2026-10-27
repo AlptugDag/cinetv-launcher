@@ -62,8 +62,11 @@ public final class NuvioSetup {
             File apk = new File(dir, "nuvio.apk");
             if (!Http.download(url, apk, 120_000)) return;
             boolean ok = LocalAdb.shell(app, "pm install -r '" + apk.getAbsolutePath() + "'", 90_000);
+            if (!ok) {
+                promptInstall(app, apk);
+                return;
+            }
             apk.delete();
-            if (!ok) return;
             for (int i = 0; i < 20 && !AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO); i++) Thread.sleep(1000);
             if (!AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) return;
             Prefs.get(app).edit().putBoolean(DONE, true).apply();
@@ -101,13 +104,29 @@ public final class NuvioSetup {
             File apk = new File(dir, "nova.apk");
             if (!Http.download(url, apk, 180_000)) return;
             boolean ok = LocalAdb.shell(app, "pm install -r '" + apk.getAbsolutePath() + "'", 120_000);
+            if (!ok) {
+                promptInstall(app, apk);
+                return;
+            }
             apk.delete();
-            if (ok && hasPlayer(app)) {
+            if (hasPlayer(app)) {
                 Prefs.get(app).edit().putBoolean(PLAYER_DONE, true).apply();
                 Log.i(TAG, "Nova installed for casting");
             }
         } catch (Throwable t) {
             Log.w(TAG, "player setup failed: " + t);
+        }
+    }
+
+    private static void promptInstall(Context ctx, File apk) {
+        try {
+            android.os.StrictMode.setVmPolicy(new android.os.StrictMode.VmPolicy.Builder().build());
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(Uri.fromFile(apk), "application/vnd.android.package-archive");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            ctx.startActivity(intent);
+        } catch (Throwable t) {
+            Log.w(TAG, "promptInstall fallback: " + t);
         }
     }
 

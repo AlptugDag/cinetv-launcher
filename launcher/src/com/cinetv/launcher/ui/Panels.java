@@ -180,6 +180,16 @@ public final class Panels {
 
         // 4. TV & phone
         LinearLayout c4 = column(ctx, cols, R.string.col_tv, 390);
+        boolean isHome = com.cinetv.launcher.HomeGuard.isDefault(ctx);
+        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Ana Başlatıcı Yap" : "Set as Default Home",
+                isHome ? ("tr".equals(Locale.getDefault().getLanguage()) ? "CineTV varsayılan ana ekran" : "CineTV is default home")
+                       : ("tr".equals(Locale.getDefault().getLanguage()) ? "Kumanda ana tuşu için dokunun" : "Tap to set as default launcher"),
+                isHome, v -> com.cinetv.launcher.HomeGuard.promptHomeChooser(ctx)));
+        boolean a11y = com.cinetv.launcher.TvKeyInterceptorService.getInstance() != null;
+        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Erişilebilirlik & Tuşlar" : "Accessibility & Keys",
+                a11y ? ("tr".equals(Locale.getDefault().getLanguage()) ? "Tuş servisi aktif" : "Key service active")
+                     : ("tr".equals(Locale.getDefault().getLanguage()) ? "Erişilebilirlik ayarlarını aç" : "Open accessibility settings"),
+                a11y, v -> com.cinetv.launcher.HomeGuard.openAccessibilitySettings(ctx)));
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.tv_settings), ctx.getString(R.string.tv_settings_hint), false,
                 v -> AppLauncher.openSystemSettings(ctx)));
         if (AppLauncher.liveTvPackage(ctx.getPackageManager()) != null || AppLauncher.hasHdmiSource(ctx)) {

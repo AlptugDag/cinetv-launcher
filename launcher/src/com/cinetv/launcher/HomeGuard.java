@@ -56,6 +56,49 @@ public final class HomeGuard {
         }
     }
 
+    /** Prompts the system to set CineTV as the default Home launcher across Android 9-14. */
+    public static void promptHomeChooser(Context ctx) {
+        try {
+            Intent homeSettings = new Intent(android.provider.Settings.ACTION_HOME_SETTINGS);
+            homeSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(homeSettings);
+            return;
+        } catch (Throwable ignored) {
+        }
+        try {
+            Intent defaultApps = new Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
+            defaultApps.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(defaultApps);
+            return;
+        } catch (Throwable ignored) {
+        }
+        try {
+            Intent home = new Intent(Intent.ACTION_MAIN);
+            home.addCategory(Intent.CATEGORY_HOME);
+            home.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            Intent chooser = Intent.createChooser(home, ctx.getString(R.string.app_name));
+            chooser.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(chooser);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** Directly opens system accessibility settings, bypassing custom OEM TV settings menus. */
+    public static void openAccessibilitySettings(Context ctx) {
+        try {
+            Intent intent = new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(intent);
+        } catch (Throwable t) {
+            try {
+                Intent intent = new Intent(android.provider.Settings.ACTION_SETTINGS);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(intent);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
     /**
      * Installed from the APK alone (no computer)? CineTV then does what install.sh would, through the TV's
      * own adb ("network debugging" on; the TV asks once to allow it): its permissions, Home, the

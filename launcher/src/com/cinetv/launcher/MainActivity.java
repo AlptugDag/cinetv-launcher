@@ -215,6 +215,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             // First start only: tune picture & sound and measure the network once.
             handler.postDelayed(() -> Panels.setup(this, home.modal, true), 4000);
         }
+        if (!HomeGuard.isDefault(this) && !Prefs.get(this).getBoolean("prompted_default_home", false)) {
+            Prefs.get(this).edit().putBoolean("prompted_default_home", true).apply();
+            handler.postDelayed(() -> {
+                if (!isFinishing() && !HomeGuard.isDefault(this)) HomeGuard.promptHomeChooser(this);
+            }, 6000);
+        }
     }
 
     @Override
