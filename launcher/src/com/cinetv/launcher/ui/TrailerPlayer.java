@@ -7,59 +7,36 @@ import android.graphics.Outline;
 import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewOutlineProvider;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 
-import com.cinetv.launcher.device.PerformanceProfile;
 import com.cinetv.launcher.service.MovieCatalog;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * "Trailer moments" (Settings, off by default): the opened DVD lies landscape and the film's trailer
- * plays in its tray, where the disc would rest, muted, a few seconds at a time from several points of
- * it, looping. The DVD view tells this player where the tray's screen is; the player is a WebView laid
- * exactly over it, with the tray's rounded corners.
- *
- * Needs a TMDB key (to find the trailer) and a TV above Low performance; otherwise the tray stays empty
- * and the DVD works as before.
+ * "Trailer moments": the opened DVD lies landscape and the film's trailer plays in its tray,
+ * where the disc would rest, muted, looping continuously. The DVD view tells this player where
+ * the tray's screen is; the player is a WebView laid exactly over it, with the tray's rounded corners.
  */
 public final class TrailerPlayer extends FrameLayout {
+    private static final String TAG = "CineTvTrailer";
     private static final ExecutorService io = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
     private WebView web;
     private int gen;
 
-    /** The player page: muted, no controls, fitted exactly into the 16:9 tray frame, smooth continuous loop. */
-    private static final String PAGE = "<!doctype html><html><head>"
-            + "<meta name='viewport' content='width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no'>"
-            + "<style>"
-            + "html,body{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;user-select:none;-webkit-user-select:none;}"
-            + "#shield{position:absolute;left:0;top:0;width:100%;height:100%;z-index:90;background:transparent;pointer-events:auto;}"
-            + "#curtain{position:absolute;left:0;top:0;width:100%;height:100%;background:#000;z-index:99;pointer-events:none;transition:opacity .4s ease;}"
-            + "#yt,iframe{position:absolute;left:0;top:0;width:100% !important;height:100% !important;border:none !important;pointer-events:none !important;}"
-            + "</style></head>"
-            + "<body><div id='shield'></div><div id='curtain'></div>"
-            + "<iframe id='yt' src='https://www.youtube-nocookie.com/embed/%KEY%?autoplay=1&mute=1&controls=0&loop=1&playlist=%KEY%&playsinline=1&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1&enablejsapi=1' allow='autoplay; encrypted-media'></iframe>"
-            + "<script>"
-            + "var revealed=false;"
-            + "function reveal(){if(revealed)return;revealed=true;"
-            + "var c=document.getElementById('curtain');if(c)c.style.opacity='0';"
-            + "try{Cine.ready();}catch(x){}}"
-            + "window.addEventListener('load',function(){setTimeout(reveal,500);});"
-            + "setTimeout(reveal,1600);"
-            + "</script></body></html>";
-
     public TrailerPlayer(Context ctx) {
         super(ctx);
         setVisibility(GONE);
         setFocusable(false);
-        // the trailer only plays: no focus, no keys and no touches ever reach the player inside
         setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS);
     }
 
@@ -81,7 +58,7 @@ public final class TrailerPlayer extends FrameLayout {
 
     @Override
     public boolean dispatchGenericMotionEvent(android.view.MotionEvent event) {
-        return true; // no mouse hover either: it would bring up the player's controls
+        return true;
     }
 
     /** Whether trailers can play on this TV at all. */
@@ -111,13 +88,16 @@ public final class TrailerPlayer extends FrameLayout {
         final Context app = getContext().getApplicationContext();
         io.execute(() -> {
             final String key = MovieCatalog.trailerKey(app, m);
+            Log.i(TAG, "Resolved trailer key for " + m.title + " -> " + key);
             main.post(() -> {
-                if (my == gen && key != null) play(key, my);
+                if (my == gen && key != null && !key.isEmpty()) {
+                    play(key, my);
+                }
             });
         });
     }
 
-    @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
+    @SuppressLint("SetJavaScriptEnabled")
     private void play(String key, final int my) {
         if (!key.matches("[A-Za-z0-9_-]{6,20}")) return;
         try {
@@ -127,6 +107,10 @@ public final class TrailerPlayer extends FrameLayout {
             s.setJavaScriptEnabled(true);
             s.setMediaPlaybackRequiresUserGesture(false);
             s.setDomStorageEnabled(true);
+            s.setDatabaseEnabled(true);
+            s.setCacheMode(WebSettings.LOAD_DEFAULT);
+            s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            s.setUserAgentString("Mozilla/5.0 (Linux; Android 11; Smart TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36");
             w.setWebChromeClient(new WebChromeClient());
             w.setBackgroundColor(Color.BLACK);
             w.setFocusable(false);
@@ -134,40 +118,44 @@ public final class TrailerPlayer extends FrameLayout {
             w.setClickable(false);
             w.setLongClickable(false);
             w.setHapticFeedbackEnabled(false);
-            w.addJavascriptInterface(new Object() {
-                @android.webkit.JavascriptInterface
-                public void ready() {
-                    main.post(() -> {
-                        if (my != gen || web != w) return;
-                        if (getVisibility() != VISIBLE) {
+
+            w.setWebViewClient(new WebViewClient() {
+                @Override
+                public void onPageFinished(WebView view, String url) {
+                    view.evaluateJavascript(
+                            "try{" +
+                            "document.body.style.backgroundColor='#000';" +
+                            "var v=document.querySelector('video');" +
+                            "if(v){v.muted=true;v.play();}" +
+                            "}catch(e){}", null);
+                    main.postDelayed(() -> {
+                        if (my == gen && web == w && getVisibility() != VISIBLE) {
                             setAlpha(0f);
                             setVisibility(VISIBLE);
                             animate().alpha(1f).setDuration(400).start();
                         }
-                    });
+                    }, 400);
                 }
+            });
 
-                @android.webkit.JavascriptInterface
-                public void failed() {
-                    main.post(() -> {
-                        if (web == w) stop(); // not embeddable: the tray stays empty
-                    });
-                }
-            }, "Cine");
             addView(w, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
-            // Safety fallback: if JS bridge ready() is missed or slow, fade in after 1.8s
+            // Safety fallback: ensure player becomes visible after 1.6s even if onPageFinished is slow
             main.postDelayed(() -> {
                 if (my == gen && web == w && getVisibility() != VISIBLE) {
                     setAlpha(0f);
                     setVisibility(VISIBLE);
                     animate().alpha(1f).setDuration(400).start();
                 }
-            }, 1800);
+            }, 1600);
 
-            w.loadDataWithBaseURL("https://www.youtube-nocookie.com", PAGE.replace("%KEY%", key), "text/html", "utf-8", null);
+            String url = "https://www.youtube-nocookie.com/embed/" + key
+                    + "?autoplay=1&mute=1&controls=0&loop=1&playlist=" + key
+                    + "&playsinline=1&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1";
+            w.loadUrl(url);
         } catch (Throwable t) {
-            web = null; // no WebView on this TV
+            Log.w(TAG, "WebView play failed: " + t.getMessage());
+            web = null;
         }
     }
 

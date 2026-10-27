@@ -696,15 +696,16 @@ public final class MovieCatalog {
     /** The YouTube id of the film's trailer (official, in the TV's language first, then English); null if none. Blocks. */
     public static String trailerKey(Context ctx, Movie m) {
         if (Creator.isSessiz(m)) return Creator.SESSIZ_YOUTUBE_ID;
-        String cacheKey = m.type + ":" + (m.tmdbId > 0 ? m.tmdbId : m.imdbId);
+        String cacheKey = (m.imdbId != null && !m.imdbId.isEmpty()) ? (m.type + ":" + m.imdbId) : (m.type + ":" + m.tmdbId);
         String cached = trailers.get(cacheKey);
         if (cached != null) return cached.isEmpty() ? null : cached;
         String best = null;
         try {
             if (hasTmdb(ctx)) {
                 if (m.tmdbId <= 0) details(ctx, m);
-                String cachedAfterDetails = trailers.get(cacheKey);
-                if (cachedAfterDetails != null) return cachedAfterDetails.isEmpty() ? null : cachedAfterDetails;
+                String afterDetails = (m.imdbId != null && !m.imdbId.isEmpty()) ? trailers.get(m.type + ":" + m.imdbId) : null;
+                if (afterDetails == null && m.tmdbId > 0) afterDetails = trailers.get(m.type + ":" + m.tmdbId);
+                if (afterDetails != null && !afterDetails.isEmpty()) return afterDetails;
                 if (m.tmdbId > 0) {
                     String kind = "series".equals(m.type) || "tv".equals(m.type) ? "tv" : "movie";
                     String lang = Locale.getDefault().getLanguage();
@@ -739,7 +740,11 @@ public final class MovieCatalog {
         } catch (Throwable t) {
             Log.w(TAG, "Trailer lookup failed: " + t.getMessage());
         }
-        trailers.put(cacheKey, best == null ? "" : best);
+        if (best != null) {
+            trailers.put(cacheKey, best);
+            if (m.imdbId != null && !m.imdbId.isEmpty()) trailers.put(m.type + ":" + m.imdbId, best);
+            if (m.tmdbId > 0) trailers.put(m.type + ":" + m.tmdbId, best);
+        }
         return best;
     }
 

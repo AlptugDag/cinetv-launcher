@@ -185,8 +185,16 @@ public class DvdOpeningView extends View {
                 new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP);
         discGlowR = discSize * 1.06f * 0.62f;
         discGlow = new RadialGradient(0, 0, discGlowR, new int[]{UiKit.withAlpha(accent, 120), Color.TRANSPARENT}, null, Shader.TileMode.CLAMP);
+        // Photorealistic anisotropic diffraction grating: two opposing rainbow wedges (hourglass/bowtie pattern)
         sheen = new SweepGradient(0, 0,
-                new int[]{0x00FFFFFF, 0x30FF6EC7, 0x3060A5FA, 0x3034D399, 0x30FDE047, 0x00FFFFFF, 0x26FFFFFF, 0x00FFFFFF}, null);
+                new int[]{
+                        0x00FFFFFF, 0x55FF3B30, 0x60FF9500, 0x60FFCC00, 0x6034C759, 0x60007AFF, 0x55AF52DE, 0x00FFFFFF,
+                        0x00FFFFFF, 0x55FF3B30, 0x60FF9500, 0x60FFCC00, 0x6034C759, 0x60007AFF, 0x55AF52DE, 0x00FFFFFF
+                },
+                new float[]{
+                        0f, 0.05f, 0.10f, 0.16f, 0.22f, 0.28f, 0.35f, 0.42f,
+                        0.50f, 0.55f, 0.60f, 0.66f, 0.72f, 0.78f, 0.85f, 0.92f
+                });
         trayShade = new LinearGradient(0, 0, caseW, caseH, Color.parseColor("#1B1B21"), Color.parseColor("#0A0A0D"), Shader.TileMode.CLAMP);
         launched = false;
         t = 0;
@@ -226,9 +234,10 @@ public class DvdOpeningView extends View {
         anim.setDuration(PLAY_TOTAL);
         anim.setInterpolator(new LinearInterpolator());
         anim.addUpdateListener(a -> {
-            long prev = play;
             play = (long) (float) a.getAnimatedValue();
-            spin += (play - prev) * (0.05f + 0.85f * clamp(play / 700f));
+            float progress = clamp(play / (float) PLAY_TOTAL);
+            // Smooth exponential motor spin-up: starts with authentic torque, reaches high-speed blur
+            spin = (float) (Math.pow(progress, 2.2) * 2160f);
             if (!launched && play >= PLAY_LAUNCH) launch();
             invalidate();
         });
@@ -280,8 +289,8 @@ public class DvdOpeningView extends View {
         int w = getWidth(), h = getHeight();
         float fly = ease(clamp(t / (float) FLY_END));
         float open = easeInOut(clamp((t - FLY_END) / (float) (OPEN_END - FLY_END)));
-        float rise = play < 0 ? 0f : ease(clamp(play / 380f));
-        float approach = play < 0 ? 0f : easeIn(clamp((play - 260) / 1000f));
+        float rise = play < 0 ? 0f : ease(clamp(play / 260f));
+        float approach = play < 0 ? 0f : easeInOut(clamp((play - 180) / 950f));
 
         // Room dims, and the film's colour glows behind the case (the CineTV bloom, full screen).
         canvas.drawColor(Color.argb((int) (215 * fly), 3, 3, 6));
@@ -336,9 +345,15 @@ public class DvdOpeningView extends View {
             final float corner = cw * 0.012f;
             post(() -> slot.show(movie, screen, corner));
         }
-        if (play >= 0 && disc != null) drawDisc(canvas, x, y, size, rise);
+        if (play >= 0 && disc != null) {
+            float tilt = (float) Math.sin(clamp(play / 650f) * Math.PI) * -8.5f;
+            canvas.save();
+            canvas.rotate(tilt, x, y);
+            drawDisc(canvas, x, y, size, rise);
+            canvas.restore();
+        }
         if (play < 0 && t >= OPEN_END) drawHint(canvas, w, h);
-        if (approach > 0.7f) canvas.drawColor(Color.argb((int) (255 * clamp((approach - 0.7f) / 0.3f)), 0, 0, 0));
+        if (approach > 0.65f) canvas.drawColor(Color.argb((int) (255 * clamp((approach - 0.65f) / 0.35f)), 0, 0, 0));
     }
 
     private void drawHint(Canvas c, int w, int h) {
@@ -442,7 +457,15 @@ public class DvdOpeningView extends View {
             fill.setShader(null);
             fill.setAlpha(255);
             c.restore();
+
+            // Grounding drop shadow behind the spinning disc as it lifts off the tray hub
+            Paint dShadow = new Paint(Paint.ANTI_ALIAS_FLAG);
+            dShadow.setColor(Color.argb((int) (95 * rise), 0, 0, 0));
+            float sOff = rise * dd * 0.035f;
+            c.drawCircle(cx + sOff * 0.6f, cy + sOff, dd * 0.475f, dShadow);
         }
+
+        // Disc Artwork rotated by spin angle
         c.save();
         c.translate(cx, cy);
         c.rotate(spin);
@@ -450,12 +473,24 @@ public class DvdOpeningView extends View {
         p.setAlpha(255);
         c.drawBitmap(disc, null, r, p);
         c.restore();
-        // The rainbow sheen stays put while the disc turns underneath it.
+
+        // Photorealistic Holographic Diffraction Grating:
+        // Two opposing rainbow fan wedges that shimmer across the disc tracks
         c.save();
         c.translate(cx, cy);
+        c.rotate(spin * 0.35f);
         fill.setShader(sheen);
-        c.drawCircle(0, 0, dd / 2f, fill);
+        fill.setAlpha(play >= 0 ? 190 : 135);
+        c.drawCircle(0, 0, dd * 0.485f, fill);
         fill.setShader(null);
+        fill.setAlpha(255);
+
+        // High-gloss diagonal specular light gleam across the polycarbonate surface
+        Paint gleam = new Paint(Paint.ANTI_ALIAS_FLAG);
+        gleam.setShader(new LinearGradient(-dd * 0.5f, -dd * 0.5f, dd * 0.5f, dd * 0.5f,
+                new int[]{Color.TRANSPARENT, Color.argb(35, 255, 255, 255), Color.argb(85, 255, 255, 255), Color.argb(25, 255, 255, 255), Color.TRANSPARENT},
+                new float[]{0f, 0.44f, 0.50f, 0.56f, 1f}, Shader.TileMode.CLAMP));
+        c.drawCircle(0, 0, dd * 0.485f, gleam);
         c.restore();
     }
 
@@ -588,7 +623,7 @@ public class DvdOpeningView extends View {
                 ink.setColor(filmInk);
                 String sig = fit(ink, "— " + by, textW, u * 0.056f, u * 0.036f);
                 c.drawText(sig, paper.right - pad - ink.measureText(sig), bottom, ink);
-                bottom -= u * 0.082f;
+                bottom -= u * 0.078f;
             }
             if (movie.ratings != null && !movie.ratings.isEmpty()) {
                 // the critics, small, above the signature line
@@ -598,19 +633,19 @@ public class DvdOpeningView extends View {
                 while (ink.measureText(rtStr) > textW && rtStr.contains("  ·  ")) rtStr = rtStr.substring(0, rtStr.lastIndexOf("  ·  "));
                 rtStr = fit(ink, rtStr, textW, u * 0.044f, u * 0.032f);
                 c.drawText(rtStr, paper.right - pad - ink.measureText(rtStr), bottom, ink);
-                bottom -= u * 0.068f;
+                bottom -= u * 0.065f;
             }
 
-            // Lead cast: vintage postage-stamp portraits + handwritten names ("pul falan gibi"), integrated into the insert note.
+            // Lead cast: prominent circular cameo portraits + bold handwritten names, zero rectangular bleeding
             float availTotal = bottom - y;
             if (movie.cast != null && !movie.cast.isEmpty() && availTotal > u * 0.18f) {
                 int count = Math.min(3, movie.cast.size());
-                float castH = Math.min(u * 0.118f, Math.max(u * 0.075f, availTotal * 0.26f));
+                float castH = Math.min(u * 0.175f, Math.max(u * 0.12f, availTotal * 0.38f));
                 float castTop = bottom - castH;
                 // Subtle felt-tip divider line above the cast strip
                 Paint divPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                 divPaint.setColor(UiKit.withAlpha(filmInk, 65));
-                divPaint.setStrokeWidth(Math.max(1f, u * 0.0035f));
+                divPaint.setStrokeWidth(Math.max(1.2f, u * 0.0035f));
                 divPaint.setStrokeCap(Paint.Cap.ROUND);
                 divPaint.setStyle(Paint.Style.STROKE);
                 Path divPath = new Path();
@@ -619,36 +654,32 @@ public class DvdOpeningView extends View {
                 c.drawPath(divPath, divPaint);
 
                 float colW = textW / count;
-                float diam = castH * 0.76f;
+                float diam = castH * 0.84f;
                 float rad = diam / 2f;
                 Paint photoPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
                 ColorMatrix castCm = new ColorMatrix();
-                castCm.setSaturation(0.78f);
+                castCm.setSaturation(0.82f);
                 ColorMatrixColorFilter castFilter = new ColorMatrixColorFilter(castCm);
                 Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                 ringPaint.setStyle(Paint.Style.STROKE);
-                ringPaint.setStrokeWidth(Math.max(1.2f, u * 0.0035f));
-                ringPaint.setColor(filmInk);
                 Paint creamPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                creamPaint.setColor(Color.parseColor("#F7F2E7"));
-                Paint stampPerforate = new Paint(Paint.ANTI_ALIAS_FLAG);
-                stampPerforate.setColor(Color.argb(55, 0, 0, 0));
-                stampPerforate.setStyle(Paint.Style.STROKE);
-                stampPerforate.setStrokeWidth(Math.max(1f, u * 0.0025f));
-                stampPerforate.setPathEffect(new android.graphics.DashPathEffect(new float[]{u * 0.006f, u * 0.004f}, 0));
 
                 for (int i = 0; i < count; i++) {
                     com.cinetv.launcher.service.MovieCatalog.CastMember cm = movie.cast.get(i);
                     float colX = paper.left + pad + i * colW;
-                    float cx = colX + rad + u * 0.008f;
+                    float cx = colX + rad + u * 0.006f;
                     float cy = castTop + castH * 0.52f;
 
-                    // Postage stamp paper base (serrated perforated rectangular border)
-                    float stampPad = rad * 0.22f;
-                    RectF sRect = new RectF(cx - rad - stampPad, cy - rad - stampPad, cx + rad + stampPad, cy + rad + stampPad);
-                    c.drawRoundRect(sRect, u * 0.006f, u * 0.006f, creamPaint);
-                    c.drawRoundRect(sRect, u * 0.006f, u * 0.006f, stampPerforate);
+                    // 1. Soft grounding drop shadow under the portrait medallion
+                    Paint shadowP = new Paint(Paint.ANTI_ALIAS_FLAG);
+                    shadowP.setColor(Color.argb(38, 0, 0, 0));
+                    c.drawCircle(cx, cy + u * 0.0025f, rad + u * 0.003f, shadowP);
 
+                    // 2. Circular warm ivory/cream portrait base (NO rectangular sRect, zero bleeding corners)
+                    creamPaint.setColor(Color.parseColor("#F7F2E7"));
+                    c.drawCircle(cx, cy, rad + u * 0.003f, creamPaint);
+
+                    // 3. Circular actor portrait photo inside
                     if (cm.photo != null && !cm.photo.isRecycled()) {
                         BitmapShader pbs = new BitmapShader(cm.photo, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
                         float ps = Math.max(diam / cm.photo.getWidth(), diam / cm.photo.getHeight());
@@ -667,32 +698,37 @@ public class DvdOpeningView extends View {
                         creamPaint.setColor(Color.parseColor("#F7F2E7"));
                         String init = initials(cm.name);
                         ink.setColor(filmInk);
-                        ink.setTextSize(u * 0.036f);
+                        ink.setTextSize(u * 0.048f);
                         float iw = ink.measureText(init);
                         c.drawText(init, cx - iw / 2f, cy - (ink.ascent() + ink.descent()) / 2f, ink);
                     }
-                    // Hand-sketched felt-tip ring and postal cancellation stamp
-                    ringPaint.setAlpha(190);
+
+                    // 4. Concentric circular decorative accent rings
+                    ringPaint.setStyle(Paint.Style.STROKE);
+                    ringPaint.setColor(filmInk);
+                    ringPaint.setStrokeWidth(Math.max(1.5f, u * 0.004f));
+                    ringPaint.setAlpha(200);
                     c.drawCircle(cx, cy, rad, ringPaint);
-                    ringPaint.setAlpha(65);
-                    c.drawCircle(cx + u * 0.002f, cy + u * 0.0015f, rad + u * 0.002f, ringPaint);
+                    ringPaint.setStrokeWidth(Math.max(1f, u * 0.002f));
+                    ringPaint.setAlpha(75);
+                    c.drawCircle(cx, cy, rad + u * 0.0035f, ringPaint);
 
-                    // Postal cancellation wavy lines ("damga") over top-right of stamp
-                    ringPaint.setAlpha(55);
-                    c.drawLine(cx + rad * 0.4f, cy - rad * 1.1f, cx + rad * 1.3f, cy - rad * 0.6f, ringPaint);
-                    c.drawLine(cx + rad * 0.4f, cy - rad * 0.85f, cx + rad * 1.3f, cy - rad * 0.35f, ringPaint);
+                    // 5. Postal cancellation marks
+                    ringPaint.setAlpha(50);
+                    c.drawLine(cx + rad * 0.35f, cy - rad * 1.05f, cx + rad * 1.25f, cy - rad * 0.55f, ringPaint);
+                    c.drawLine(cx + rad * 0.35f, cy - rad * 0.80f, cx + rad * 1.25f, cy - rad * 0.30f, ringPaint);
 
-                    // Handwritten actor name next to the portrait stamp
-                    float nameX = cx + rad + stampPad + u * 0.012f;
-                    float nameMaxW = Math.max(u * 0.08f, (colX + colW) - nameX - u * 0.006f);
+                    // 6. Prominent handwritten actor name next to the circular portrait
+                    float nameX = cx + rad + u * 0.016f;
+                    float nameMaxW = Math.max(u * 0.10f, (colX + colW) - nameX - u * 0.008f);
                     ink.setColor(blackInk);
-                    float nameSize = u * 0.041f;
+                    float nameSize = u * 0.048f;
                     ink.setTextSize(nameSize);
-                    StaticLayout nameLayout = layout(cm.name, ink, (int) nameMaxW, 0.92f);
-                    while ((nameLayout.getLineCount() > 2 || nameLayout.getHeight() > castH * 0.92f) && nameSize > u * 0.024f) {
+                    StaticLayout nameLayout = layout(cm.name, ink, (int) nameMaxW, 0.94f);
+                    while ((nameLayout.getLineCount() > 2 || nameLayout.getHeight() > castH * 0.92f) && nameSize > u * 0.026f) {
                         nameSize -= u * 0.002f;
                         ink.setTextSize(nameSize);
-                        nameLayout = layout(cm.name, ink, (int) nameMaxW, 0.92f);
+                        nameLayout = layout(cm.name, ink, (int) nameMaxW, 0.94f);
                     }
                     drawInk(c, nameLayout, nameX, cy - nameLayout.getHeight() / 2f, ink);
                 }
@@ -700,17 +736,17 @@ public class DvdOpeningView extends View {
             }
 
             ink.setColor(blackInk);
-            // The story: dynamically scaled with NFC Turkish normalization so full overview fits without cutting sentences short.
-            String story = movie.overview == null ? "" : java.text.Normalizer.normalize(movie.overview.trim(), java.text.Normalizer.Form.NFC);
+            // The story: punchy, spoiler-free premise (first 1-2 sentences), leaving ample breathing room
+            String story = punchyOverview(movie.overview);
             float avail = bottom - y;
             if (!story.isEmpty() && avail > u * 0.06f) {
                 float size = u * 0.066f;
                 float spacing = 0.98f;
                 ink.setTextSize(size);
                 StaticLayout body = layout(story, ink, (int) textW, spacing);
-                while (body.getHeight() > avail && size > u * 0.020f) {
+                while (body.getHeight() > avail && size > u * 0.024f) {
                     size -= u * 0.002f;
-                    spacing = size < u * 0.042f ? 0.90f : 0.95f;
+                    spacing = size < u * 0.044f ? 0.90f : 0.95f;
                     ink.setTextSize(size);
                     body = layout(story, ink, (int) textW, spacing);
                 }
@@ -786,69 +822,156 @@ public class DvdOpeningView extends View {
         c.restore();
     }
 
+    public static String punchyOverview(String text) {
+        if (text == null || text.trim().isEmpty()) return "";
+        String clean = java.text.Normalizer.normalize(text.trim(), java.text.Normalizer.Form.NFC);
+        int firstDot = findSentenceEnd(clean, 0);
+        if (firstDot > 25 && firstDot <= 175) {
+            int secondDot = findSentenceEnd(clean, firstDot + 1);
+            if (secondDot > firstDot && secondDot <= 235) {
+                return clean.substring(0, secondDot).trim();
+            }
+            return clean.substring(0, firstDot).trim();
+        }
+        if (clean.length() > 190) {
+            int cut = clean.lastIndexOf(' ', 190);
+            return (cut > 50 ? clean.substring(0, cut) : clean.substring(0, 190)).trim() + "…";
+        }
+        return clean;
+    }
+
+    private static int findSentenceEnd(String s, int from) {
+        for (int i = from; i < s.length() - 1; i++) {
+            char c = s.charAt(i);
+            if ((c == '.' || c == '!' || c == '?') && Character.isWhitespace(s.charAt(i + 1))) {
+                return i + 1;
+            }
+        }
+        return -1;
+    }
+
     static Bitmap bakeDisc(Context ctx, Bitmap art, String title, int size) {
         Bitmap out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         float r = size / 2f;
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
 
-        // Printed label: the film's art, cropped to the disc.
-        BitmapShader bs = new BitmapShader(art, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
-        float s = Math.max(size / (float) art.getWidth(), size / (float) art.getHeight());
-        Matrix mm = new Matrix();
-        mm.setScale(s, s);
-        mm.postTranslate((size - art.getWidth() * s) / 2f, (size - art.getHeight() * s) / 2f);
-        bs.setLocalMatrix(mm);
-        p.setShader(bs);
-        c.drawCircle(r, r, r * 0.985f, p);
-        p.setShader(new RadialGradient(r, r, r, new int[]{Color.TRANSPARENT, Color.TRANSPARENT, Color.argb(150, 0, 0, 0)},
-                new float[]{0f, 0.62f, 1f}, Shader.TileMode.CLAMP));
-        c.drawCircle(r, r, r * 0.985f, p);
-        p.setShader(null);
+        // Zone 1 & 2: Silkscreen Printed Art Label (from r * 0.37f to r * 0.965f)
+        if (art != null) {
+            BitmapShader bs = new BitmapShader(art, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+            float s = Math.max(size / (float) art.getWidth(), size / (float) art.getHeight());
+            Matrix mm = new Matrix();
+            mm.setScale(s, s);
+            mm.postTranslate((size - art.getWidth() * s) / 2f, (size - art.getHeight() * s) / 2f);
+            bs.setLocalMatrix(mm);
+            p.setShader(bs);
+            c.drawCircle(r, r, r * 0.965f, p);
+            // Radial depth: darkens subtly towards outer rim and inner hub
+            p.setShader(new RadialGradient(r, r, r * 0.965f,
+                    new int[]{Color.argb(40, 0, 0, 0), Color.TRANSPARENT, Color.argb(140, 0, 0, 0)},
+                    new float[]{0.35f, 0.65f, 1f}, Shader.TileMode.CLAMP));
+            c.drawCircle(r, r, r * 0.965f, p);
+            p.setShader(null);
 
-        // Title along the lower arc, "DVD VIDEO" along the top.
+            // Fine concentric optical micro-groove tracks over silkscreen
+            Paint groove = new Paint(Paint.ANTI_ALIAS_FLAG);
+            groove.setStyle(Paint.Style.STROKE);
+            groove.setStrokeWidth(Math.max(1f, size * 0.0018f));
+            for (float gr = r * 0.40f; gr < r * 0.95f; gr += size * 0.024f) {
+                groove.setColor(Color.argb(14, 255, 255, 255));
+                c.drawCircle(r, r, gr, groove);
+                groove.setColor(Color.argb(10, 0, 0, 0));
+                c.drawCircle(r, r, gr + size * 0.003f, groove);
+            }
+        }
+
+        // Title along lower arc
         Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
         tp.setTypeface(FontManager.getBold(ctx));
         tp.setColor(Color.WHITE);
-        tp.setShadowLayer(size * 0.012f, 0, 0, Color.argb(200, 0, 0, 0));
+        tp.setShadowLayer(size * 0.014f, 0, size * 0.003f, Color.argb(220, 0, 0, 0));
         tp.setTextAlign(Paint.Align.CENTER);
         tp.setLetterSpacing(0.12f);
-        tp.setTextSize(size * 0.058f);
+        tp.setTextSize(size * 0.056f);
         Path arc = new Path();
-        float ar = r * 0.80f;
+        float ar = r * 0.79f;
         arc.addArc(new RectF(r - ar, r - ar, r + ar, r + ar), 160, -140);
         String t = title == null ? "" : title.toUpperCase();
         if (t.length() > 34) t = t.substring(0, 33) + "…";
         c.drawTextOnPath(t, arc, 0, 0, tp);
-        tp.setTextSize(size * 0.038f);
-        tp.setColor(Color.argb(210, 255, 255, 255));
+
+        // Top arc branding: "CINETV · DVD VIDEO · ALL REGIONS"
+        tp.setTextSize(size * 0.034f);
+        tp.setColor(Color.argb(220, 255, 255, 255));
         Path top = new Path();
         top.addArc(new RectF(r - ar, r - ar, r + ar, r + ar), 205, 130);
-        c.drawTextOnPath("CINETV  ·  DVD VIDEO", top, 0, size * 0.03f, tp);
+        c.drawTextOnPath("CINETV  ·  DVD VIDEO  ·  ALL REGIONS", top, 0, size * 0.028f, tp);
 
-        // Printed on every disc: Alptuğ Dağ's signature, white with a soft dark under-print.
-        // It sits in the ring between the hub (0.36 r) and the top lettering (0.8 r).
-        Bitmap sig = Brand.tinted(ctx, Color.WHITE, Math.round(size * 0.16f));
-        Bitmap shade = Brand.tinted(ctx, Color.argb(150, 0, 0, 0), Math.round(size * 0.16f));
+        // Alptuğ Dağ signature stamp in upper ring
+        Bitmap sig = Brand.tinted(ctx, Color.WHITE, Math.round(size * 0.15f));
+        Bitmap shade = Brand.tinted(ctx, Color.argb(160, 0, 0, 0), Math.round(size * 0.15f));
         float sx = r - sig.getWidth() / 2f, sy = r - r * 0.54f - sig.getHeight() / 2f;
-        c.drawBitmap(shade, sx + size * 0.004f, sy + size * 0.006f, null);
+        c.drawBitmap(shade, sx + size * 0.003f, sy + size * 0.005f, null);
         c.drawBitmap(sig, sx, sy, null);
 
-        // Clear hub, mirror band and centre hole.
-        Paint hub = new Paint(Paint.ANTI_ALIAS_FLAG);
-        hub.setShader(new SweepGradient(r, r, new int[]{0xFFD9DEE8, 0xFF8A93A5, 0xFFF5F7FB, 0xFF7C8496, 0xFFD9DEE8}, null));
-        c.drawCircle(r, r, r * 0.36f, hub);
-        hub.setShader(null);
-        hub.setColor(Color.argb(150, 210, 220, 235));
-        c.drawCircle(r, r, r * 0.30f, hub);
-        Paint clear = new Paint(Paint.ANTI_ALIAS_FLAG);
-        clear.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
-        c.drawCircle(r, r, r * 0.15f, clear);
-        Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
-        rim.setStyle(Paint.Style.STROKE);
-        rim.setStrokeWidth(size * 0.012f);
-        rim.setShader(new SweepGradient(r, r, new int[]{0xFFE5E7EB, 0xFF6B7280, 0xFFF9FAFB, 0xFF9CA3AF, 0xFFE5E7EB}, null));
-        c.drawCircle(r, r, r - size * 0.006f, rim);
+        // Zone 3: Mirror Lead-In Band (from r * 0.32f to r * 0.37f)
+        // High-reflectivity metallized mirror track with laser matrix micro-text
+        Paint mirror = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mirror.setShader(new SweepGradient(r, r,
+                new int[]{0xFFE2E8F0, 0xFF94A3B8, 0xFFF8FAFC, 0xFF64748B, 0xFFE2E8F0}, null));
+        c.drawCircle(r, r, r * 0.37f, mirror);
+        mirror.setShader(null);
+
+        // Laser IFPI matrix barcode code along lead-in track
+        Paint matrixP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        matrixP.setTypeface(android.graphics.Typeface.MONOSPACE);
+        matrixP.setTextSize(size * 0.016f);
+        matrixP.setColor(Color.argb(120, 255, 255, 255));
+        matrixP.setTextAlign(Paint.Align.CENTER);
+        Path matrixArc = new Path();
+        float mar = r * 0.345f;
+        matrixArc.addArc(new RectF(r - mar, r - mar, r + mar, r + mar), 180, -360);
+        c.drawTextOnPath("IFPI L011 · CINETV MASTER DISC · 443706-01 · DVD-9", matrixArc, 0, 0, matrixP);
+
+        // Zone 4: Transparent Clamping Hub (from r * 0.17f to r * 0.32f)
+        // Clear polycarbonate with molded 3D stacking ring ridge
+        Paint clearHub = new Paint(Paint.ANTI_ALIAS_FLAG);
+        clearHub.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
+        c.drawCircle(r, r, r * 0.32f, clearHub);
+
+        // Molded clear plastic reflections around clamping area
+        Paint plastic = new Paint(Paint.ANTI_ALIAS_FLAG);
+        plastic.setStyle(Paint.Style.STROKE);
+        plastic.setStrokeWidth(Math.max(1f, size * 0.003f));
+        plastic.setColor(Color.argb(90, 255, 255, 255));
+        c.drawCircle(r, r, r * 0.315f, plastic);
+
+        // Raised 3D stacking ring at r * 0.25f (top light catch, bottom shadow)
+        plastic.setStrokeWidth(Math.max(1.5f, size * 0.005f));
+        plastic.setColor(Color.argb(110, 255, 255, 255));
+        c.drawArc(new RectF(r - r * 0.25f, r - r * 0.25f, r + r * 0.25f, r + r * 0.25f), 190, 160, false, plastic);
+        plastic.setColor(Color.argb(70, 0, 0, 0));
+        c.drawArc(new RectF(r - r * 0.25f, r - r * 0.25f, r + r * 0.25f, r + r * 0.25f), 10, 160, false, plastic);
+
+        // Zone 5: Center Spindle Hole (15mm standard, r * 0.165f)
+        c.drawCircle(r, r, r * 0.165f, clearHub);
+
+        // High-gloss beveled inner rim catching specular point highlight
+        Paint innerBevel = new Paint(Paint.ANTI_ALIAS_FLAG);
+        innerBevel.setStyle(Paint.Style.STROKE);
+        innerBevel.setStrokeWidth(Math.max(1.5f, size * 0.004f));
+        innerBevel.setShader(new SweepGradient(r, r,
+                new int[]{0xFFFFFFFF, 0x40FFFFFF, 0x10000000, 0x80FFFFFF, 0xFFFFFFFF}, null));
+        c.drawCircle(r, r, r * 0.165f, innerBevel);
+
+        // Outer clear polycarbonate rim bevel (r - size * 0.005f)
+        Paint outerRim = new Paint(Paint.ANTI_ALIAS_FLAG);
+        outerRim.setStyle(Paint.Style.STROKE);
+        outerRim.setStrokeWidth(Math.max(1.5f, size * 0.006f));
+        outerRim.setShader(new SweepGradient(r, r,
+                new int[]{0xFFF1F5F9, 0xFF64748B, 0xFFFFFFFF, 0xFF475569, 0xFFF1F5F9}, null));
+        c.drawCircle(r, r, r - size * 0.004f, outerRim);
+
         return out;
     }
 

@@ -1,5 +1,21 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.8
+
+### Yenilikler & Düzeltmeler
+- **Fotogerçekçi Optik Medya (CD / DVD) & Sinematik Dönüş Fiziği**:
+  - DVD diski 6 bölgeli otantik optik disk mimarisiyle baştan tasarlandı: Dış polikarbonat şeffaf pah halkası ve speküler yansıma, mikroskopik veri izleri (micro-grooves) içeren ipeksi serigrafi poster baskısı, lazer kazımalı IFPI matris barkod mikro metinleri (`IFPI L011 · CINETV MASTER DISC · DVD-9`) barındıran ayna lead-in halkası, 3D kabartmalı istifleme halkası (stacking ring) içeren şeffaf polikarbon göbek ve 15mm şeffaf merkez delik.
+  - Optik diskin üzerine düşen ışık yansıması, disk döndükçe dinamik açı alan ve gerçek difraksiyon ızgarası fiziğine dayalı çift konili gökkuşağı saçılımı (opposing rainbow diffraction wedges) ile zenginleştirildi.
+  - Film başlatma animasyonu gerçeğe uygun motor tork fiziğine kavuşturuldu: Üstel hızlanma eğrisi ($\theta(t) = t^{2.2} \times 2160^\circ$) ile önce tork alıp ardından yüksek devirli dönüş hissi veriyor; disk tepsiden ayrılırken hafif 3D eğimle (pitch tilt) yükselip ekrana yaklaşırken pürüzsüzce tam siyah perdeye geçiyor.
+- **Kitapçık Oyuncu Portreleri & Özet İyileştirmeleri**:
+  - Oyuncu fotoğraflarının arkasından taşan beyaz dikdörtgen kağıt fazlalıkları kaldırıldı; oyuncu portreleri zarif fildişi zemin halkası, gömme gölge ve dairesel çerçeveyle kusursuz madalyon görünümüne kavuşturuldu.
+  - Kitapçık sayfasını tamamen kaplayan uzun film özetleri yerine, filmin ana temasını veren, spoiler içermeyen ve en fazla 1-2 cümlelik vurucu özetleme algoritması (`punchyOverview`) getirildi.
+  - Oyuncu portreleri %65 daha büyük alana genişletildi (`castH` %48 büyütüldü); oyuncu isimleri ve fotoğrafları kitapçıkta çok daha belirgin ve okunaklı hale getirildi.
+- **Doğrudan Fragman Oynatımı & Chromium CSP Güvenliği**:
+  - Chromium WebView'daki `require-trusted-types-for 'script'` CSP kısıtlamasına takılan iç içe iframe yapısı kaldırıldı; doğrudan YouTube embed URL navigasyonuna geçildi.
+  - WebView `domStorageEnabled`, `databaseEnabled` ve optimize TV User-Agent ile güçlendirildi.
+  - Sayfa yüklenir yüklenmez video oynatımını tetikleyen ve 400 ms pürüzsüz kararma/açılma sağlayan `onPageFinished` entegrasyonu ve 1.6s güvenlik zaman aşımı koruması eklendi.
+
 ## 1.0.0.7
 
 ### Yenilikler & Düzeltmeler
