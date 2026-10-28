@@ -469,6 +469,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.clock.setText(timeFmt.format(now));
         home.date.setText(dateFmt.format(now));
         home.updateSpecialDay();
+        home.updateRamadanBadge();
         if (ThemeManager.MODE_AUTO.equals(ThemeManager.appearance(this))) applyAppearance();
         checkSpecialDayCelebration();
 

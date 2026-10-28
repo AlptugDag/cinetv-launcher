@@ -93,6 +93,7 @@ public class HomeScreen {
     private final View[] headerButtons;
     private final ImageView mark;
     private final TextView signed;
+    private final TextView ramadanBadge;
     private final ImageView searchIcon;
     private final ImageView micIcon;
     private ThemeManager.Theme currentTheme;
@@ -187,6 +188,16 @@ public class HomeScreen {
         }
         signed.setText(credit);
         timeCol.addView(signed);
+
+        ramadanBadge = UiKit.bold(ctx, 13, Color.parseColor("#FDE68A"));
+        ramadanBadge.setSingleLine(true);
+        ramadanBadge.setVisibility(View.GONE);
+        ramadanBadge.setShadowLayer(UiKit.pxf(6), 0, UiKit.pxf(1), Color.argb(180, 0, 0, 0));
+        LinearLayout.LayoutParams rblp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        rblp.topMargin = UiKit.px(3);
+        timeCol.addView(ramadanBadge, rblp);
+
         leftGroup.addView(timeCol);
         header.addView(leftGroup);
 
@@ -863,6 +874,18 @@ public class HomeScreen {
 
     public void updateSpecialDay() {
         updateSpecialDay(false);
+    }
+
+    public void updateRamadanBadge() {
+        com.cinetv.launcher.service.RamadanTimes.getStatusAsync(ctx, status -> {
+            if (ramadanBadge == null) return;
+            if (status != null && !status.isEmpty()) {
+                ramadanBadge.setText(status);
+                ramadanBadge.setVisibility(View.VISIBLE);
+            } else {
+                ramadanBadge.setVisibility(View.GONE);
+            }
+        });
     }
 
     public void showThinking() {
