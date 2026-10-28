@@ -29,14 +29,21 @@ public final class SpecialDay {
     public final int accent;
     /** 10 Kasım: the screen turns solemn (muted colours, black ribbon). */
     public final boolean mourning;
+    public final String celebrationTitle;
+    public final String celebrationBody;
+    public final String celebrationAuthor;
 
-    private SpecialDay(String id, String title, String subtitle, Icon icon, int accent, boolean mourning) {
+    private SpecialDay(String id, String title, String subtitle, Icon icon, int accent, boolean mourning,
+                       String celebrationTitle, String celebrationBody, String celebrationAuthor) {
         this.id = id;
         this.title = title;
         this.subtitle = subtitle;
         this.icon = icon;
         this.accent = accent;
         this.mourning = mourning;
+        this.celebrationTitle = celebrationTitle;
+        this.celebrationBody = celebrationBody;
+        this.celebrationAuthor = celebrationAuthor;
     }
 
     private static String lastPreview;
@@ -82,41 +89,58 @@ public final class SpecialDay {
     /** Pure: the special day for a date ({@code month} is 1-12), or null. */
     public static SpecialDay forDate(int year, int month, int day, int hour, int minute) {
         if (month == 10 && day == 29) {
+            int years = year - 1923;
             return new SpecialDay("cumhuriyet", "29 Ekim Cumhuriyet Bayramı",
-                    "Cumhuriyetimizin 103. yılı kutlu olsun", Icon.FLAG, RED, false)
-                    .withYears(year - 1923);
+                    "Cumhuriyetimizin " + years + ". yılı kutlu olsun", Icon.FLAG, RED, false,
+                    "29 Ekim Cumhuriyet Bayramımız Kutlu Olsun!",
+                    "Cumhuriyetimizin " + years + ". yılı kutlu olsun! Bağımsızlık ve özgürlük meşalesini bizlere emanet eden Gazi Mustafa Kemal Atatürk ve tüm kahramanlarımızı saygı ve sonsuz minnetle anıyoruz.",
+                    "Alptuğ Dağ");
         }
         if (month == 11 && day == 10) {
             boolean minute905 = hour == 9 && minute >= 0 && minute <= 15;
             return new SpecialDay("10kasim", "10 Kasım Atatürk'ü Anma Günü",
                     minute905 ? "09:05 · Saygı duruşu" : "Saygı, sevgi ve minnetle anıyoruz · 1881 – 1938",
-                    Icon.RIBBON, GREY, true);
+                    Icon.RIBBON, GREY, true,
+                    "10 Kasım · Atatürk'ü Sevgi, Saygı ve Minnetle Anıyoruz",
+                    "Cumhuriyetimizin kurucusu, büyük önder Gazi Mustafa Kemal Atatürk'ü ebediyete intikalinin yıl dönümünde sevgi, saygı ve bitmeyen minnetle anıyoruz.",
+                    "Alptuğ Dağ");
         }
         if (month == 4 && day == 23) {
             return new SpecialDay("23nisan", "23 Nisan Ulusal Egemenlik ve Çocuk Bayramı",
-                    "Bayramınız kutlu olsun", Icon.FLAG, RED, false);
+                    "Bayramınız kutlu olsun", Icon.FLAG, RED, false,
+                    "23 Nisan Ulusal Egemenlik ve Çocuk Bayramımız Kutlu Olsun!",
+                    "Millet iradesinin tecelligahı Türkiye Büyük Millet Meclisi'nin açılışını ve Atamızın tüm dünya çocuklarına armağan ettiği kutlu bayramı gururla kutluyoruz.",
+                    "Alptuğ Dağ");
         }
         if (month == 5 && day == 19) {
             return new SpecialDay("19mayis", "19 Mayıs Atatürk'ü Anma, Gençlik ve Spor Bayramı",
-                    "Bayramınız kutlu olsun", Icon.FLAG, RED, false);
+                    "Bayramınız kutlu olsun", Icon.FLAG, RED, false,
+                    "19 Mayıs Atatürk'ü Anma, Gençlik ve Spor Bayramımız Kutlu Olsun!",
+                    "Samsun'da yakılan kurtuluş meşalesini ve Cumhuriyetimizin geleceği olan Türk gençliğinin bayramını coşkuyla kutluyoruz.",
+                    "Alptuğ Dağ");
         }
         if (month == 7 && day == 15) {
             return new SpecialDay("15temmuz", "15 Temmuz Demokrasi ve Milli Birlik Günü",
-                    "Şehitlerimizi rahmetle anıyoruz", Icon.FLAG, RED, false);
+                    "Şehitlerimizi rahmetle anıyoruz", Icon.FLAG, RED, false,
+                    "15 Temmuz Demokrasi ve Milli Birlik Günü",
+                    "Milletimizin bağımsızlığı ve demokrasimiz uğruna canlarını feda eden tüm aziz şehitlerimizi rahmet ve minnetle anıyoruz.",
+                    "Alptuğ Dağ");
         }
         if (month == 8 && day == 30) {
             return new SpecialDay("30agustos", "30 Ağustos Zafer Bayramı",
-                    "Zaferimiz kutlu olsun", Icon.FLAG, RED, false);
+                    "Zaferimiz kutlu olsun", Icon.FLAG, RED, false,
+                    "30 Ağustos Zafer Bayramımız Kutlu Olsun!",
+                    "Büyük Taarruz ile taçlanan şanlı zaferimizin yıl dönümünde, vatanımızı bizlere emanet eden kahraman ordumuzu ve aziz şehitlerimizi saygıyla anıyoruz.",
+                    "Alptuğ Dağ");
         }
         if (month == 1 && day == 1) {
             return new SpecialDay("yilbasi", "Mutlu yıllar",
-                    "Yeni yılınız sağlık ve güzel filmlerle dolsun", Icon.SNOW, GOLD, false);
+                    "Yeni yılınız sağlık ve güzel filmlerle dolsun", Icon.SNOW, GOLD, false,
+                    "Mutlu Yıllar!",
+                    "Yeni yılınızın sevdiklerinizle birlikte sağlık, huzur, mutluluk ve keyifli filmlerle dolu geçmesini dilerim.",
+                    "Alptuğ Dağ");
         }
         return null;
-    }
-
-    private SpecialDay withYears(int years) {
-        return new SpecialDay(id, title, years + ". yılı kutlu olsun", icon, accent, mourning);
     }
 
     /** One line for the badge and the screensaver. */

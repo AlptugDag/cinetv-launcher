@@ -6,12 +6,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Toast;
 
 import com.cinetv.launcher.ai.LlmClient;
@@ -459,6 +463,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.date.setText(dateFmt.format(now));
         home.updateSpecialDay();
         if (ThemeManager.MODE_AUTO.equals(ThemeManager.appearance(this))) applyAppearance();
+        checkSpecialDayCelebration();
 
         Calendar c = Calendar.getInstance();
         int hour = c.get(Calendar.HOUR_OF_DAY);
@@ -1137,6 +1142,125 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 container.animate().cancel();
                 finishAction.run();
+                return true;
+            }
+            return false;
+        });
+        container.requestFocus();
+    }
+
+    private void checkSpecialDayCelebration() {
+        final com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(this);
+        if (day == null || isFinishing()) return;
+        Calendar c = Calendar.getInstance();
+        int year = c.get(Calendar.YEAR);
+        String prefKey = "celebration_shown_" + day.id + "_" + year;
+        boolean alreadyShown = Prefs.get(this).getBoolean(prefKey, false);
+        if (!alreadyShown && home != null && !home.modal.isShowing() && home.screensaver.getVisibility() != View.VISIBLE) {
+            Prefs.get(this).edit().putBoolean(prefKey, true).apply();
+            showCinematicCelebration(day);
+        }
+    }
+
+    public void showCinematicCelebration(final com.cinetv.launcher.service.SpecialDay day) {
+        if (home == null || home.root == null || day == null) return;
+        final android.widget.FrameLayout container = new android.widget.FrameLayout(this);
+        container.setBackgroundColor(Color.argb(day.mourning ? 240 : 232, 7, 8, 12));
+        container.setAlpha(0f);
+        container.setFocusable(true);
+        container.setClickable(true);
+
+        android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER);
+        box.setPadding(UiKit.px(56), UiKit.px(42), UiKit.px(56), UiKit.px(44));
+
+        // Drawn vector badge (flag / ribbon / snowflake)
+        android.widget.ImageView iconView = new android.widget.ImageView(this);
+        int iconW = UiKit.px(day.icon == com.cinetv.launcher.service.SpecialDay.Icon.FLAG ? 96 : 72);
+        int iconH = UiKit.px(day.icon == com.cinetv.launcher.service.SpecialDay.Icon.FLAG ? 64 : 72);
+        iconView.setImageDrawable(com.cinetv.launcher.ui.SpecialDayArt.drawable(day.icon, day.accent));
+        android.widget.LinearLayout.LayoutParams ilp = new android.widget.LinearLayout.LayoutParams(iconW, iconH);
+        ilp.bottomMargin = UiKit.px(22);
+        ilp.gravity = Gravity.CENTER_HORIZONTAL;
+        box.addView(iconView, ilp);
+
+        // Celebration Title
+        android.widget.TextView titleTv = new android.widget.TextView(this);
+        titleTv.setText(day.celebrationTitle);
+        titleTv.setTextColor(Color.WHITE);
+        titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+        titleTv.setGravity(Gravity.CENTER);
+        titleTv.setTypeface(FontManager.getBold(this));
+        titleTv.setShadowLayer(UiKit.pxf(14), 0, UiKit.pxf(3), Color.argb(190, 0, 0, 0));
+        box.addView(titleTv, new android.widget.LinearLayout.LayoutParams(UiKit.px(920), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // Celebration Body Message
+        android.widget.TextView bodyTv = new android.widget.TextView(this);
+        bodyTv.setText(day.celebrationBody);
+        bodyTv.setTextColor(Color.parseColor(day.mourning ? "#D1D5DB" : "#F3F4F6"));
+        bodyTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        bodyTv.setGravity(Gravity.CENTER);
+        bodyTv.setLineSpacing(UiKit.pxf(6), 1.18f);
+        bodyTv.setTypeface(FontManager.getMedium(this));
+        bodyTv.setShadowLayer(UiKit.pxf(10), 0, UiKit.pxf(2), Color.argb(160, 0, 0, 0));
+        android.widget.LinearLayout.LayoutParams blp = new android.widget.LinearLayout.LayoutParams(UiKit.px(880), ViewGroup.LayoutParams.WRAP_CONTENT);
+        blp.topMargin = UiKit.px(16);
+        blp.bottomMargin = UiKit.px(26);
+        box.addView(bodyTv, blp);
+
+        // Thin elegant divider line tinted in accent
+        View div = new View(this);
+        div.setBackgroundColor(UiKit.withAlpha(day.accent, 180));
+        android.widget.LinearLayout.LayoutParams dlp = new android.widget.LinearLayout.LayoutParams(UiKit.px(160), UiKit.px(2));
+        dlp.bottomMargin = UiKit.px(18);
+        box.addView(div, dlp);
+
+        // Personal Author Signature on behalf of Alptuğ Dağ
+        android.widget.TextView authorTv = new android.widget.TextView(this);
+        authorTv.setText("— " + day.celebrationAuthor);
+        authorTv.setTextColor(Color.parseColor(day.mourning ? "#E5E7EB" : "#FDE68A"));
+        authorTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19);
+        authorTv.setTypeface(FontManager.getBold(this));
+        authorTv.setLetterSpacing(0.06f);
+        authorTv.setShadowLayer(UiKit.pxf(8), 0, UiKit.pxf(2), Color.argb(180, 0, 0, 0));
+        box.addView(authorTv, new android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // Hint to dismiss: (OK)
+        android.widget.TextView hintTv = new android.widget.TextView(this);
+        hintTv.setText("Devam etmek için kumandadan (OK) tuşuna basın");
+        hintTv.setTextColor(Color.parseColor("#9CA3AF"));
+        hintTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        hintTv.setGravity(Gravity.CENTER);
+        android.widget.LinearLayout.LayoutParams hlp = new android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        hlp.topMargin = UiKit.px(28);
+        box.addView(hintTv, hlp);
+
+        android.widget.FrameLayout.LayoutParams flp = new android.widget.FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER);
+        container.addView(box, flp);
+        home.root.addView(container, new android.widget.FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+
+        final Runnable finishAction = () -> {
+            try {
+                home.root.removeView(container);
+            } catch (Throwable ignored) {}
+        };
+
+        container.animate().alpha(1f).setDuration(550).withEndAction(() -> {
+            container.postDelayed(() -> {
+                container.animate().alpha(0f).setDuration(600).withEndAction(finishAction).start();
+            }, 10_000L);
+        }).start();
+
+        container.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                container.animate().cancel();
+                container.animate().alpha(0f).setDuration(220).withEndAction(finishAction).start();
                 return true;
             }
             return false;

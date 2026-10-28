@@ -58,7 +58,7 @@ public final class NuvioSetup {
         installPlayer(ctx, false);
     }
 
-    /** Deploys Xperience and AIOMetadata configs to /sdcard/Download/ for instant Nuvio import. */
+    /** Deploys Alptuğ'un Filmleri, Xperience and AIOMetadata configs to /sdcard/Download/ for instant Nuvio import. */
     public static void deployConfigs(Context app) {
         try {
             File dl = new File("/sdcard/Download");
@@ -68,6 +68,8 @@ public final class NuvioSetup {
             new File(dl, "aiostreams-config.json").delete();
 
             String[][] files = {
+                    {"nuvio/alptugun-filmleri-2026-10-28.22-47-00-l1cz377-template.json", "alptugun-filmleri-2026-10-28.22-47-00-l1cz377-template.json"},
+                    {"nuvio/alptugun-filmleri-template.json", "alptugun-filmleri-template.json"},
                     {"nuvio/xperience-kategori-setup-profile.json", "xperience-kategori-setup-profile.json"},
                     {"nuvio/xperience-profile.json", "xperience-profile.json"},
                     {"nuvio/aiometadata-config-2026-10-28.json", "aiometadata-config-2026-10-28.json"},

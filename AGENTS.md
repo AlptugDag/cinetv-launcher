@@ -156,12 +156,13 @@ Read `nuvio-preferences.json`, open Nuvio (`adb shell monkey -p com.nuvio.tv 1`)
    URL, then switch on only the plugins listed (chosen from what the person watches). Leave
    `plugins_to_leave_off` off ("Anthology Canlı Spor", "Anthology Canlı TV", "Anthology Sinema
    Kanalları": they carry paid channels); only the person may switch those on, by hand.
-3. **Addons** (`disabled_addons`, `anthology_disabled`): in *Addons › Installed Addons*, Anthology is installed and deactivated (disabled) by default. Keep it disabled unless the viewer asks to enable its channels.
-4. **Playback**: subtitle languages from `subtitles`, in that order; *autoplay the best source* from
+3. **Addons**: Nuvio arrives with TR Altyazı, Anthology, Netflix Catalog and Xperience pre-installed and enabled.
+4. **Templates & Configs**: In Nuvio, the viewer's ready profiles (*Alptuğ'un Filmleri*, *Xperience*, *AIOMetadata*) are in Downloads (`/sdcard/Download/`).
+5. **Playback**: subtitle languages from `subtitles`, in that order; *autoplay the best source* from
    `autoplay_best_source`.
-5. **YouTube** (`youtube_follow`): in Nuvio's YouTube, search each name, open its official channel and add
+6. **YouTube** (`youtube_follow`): in Nuvio's YouTube, search each name, open its official channel and add
    it to the library, so highlights and new videos show up.
-6. If the installer said the TV is in another language, the TV's language screen is open: pick the
+7. If the installer said the TV is in another language, the TV's language screen is open: pick the
    person's language there.
 
 ## 4. Check it

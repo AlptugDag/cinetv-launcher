@@ -52,9 +52,10 @@ install_addon "Anthology" "falsisdev.github.io/anthology/stremio/manifest.json"
 install_addon "Netflix Catalog" "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json"
 install_addon "Xperience" "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json"
 
-echo "Deploying Xperience and AIOMetadata configs to /sdcard/Download/"
+echo "Deploying Alptuğ'un Filmleri, Xperience and AIOMetadata configs to /sdcard/Download/"
 ASSETS_DIR="$(dirname "$0")/assets"
-for cfg in "xperience-kategori-setup-profile.json" "xperience-profile.json" \
+for cfg in "alptugun-filmleri-2026-10-28.22-47-00-l1cz377-template.json" "alptugun-filmleri-template.json" \
+           "xperience-kategori-setup-profile.json" "xperience-profile.json" \
            "aiometadata-config-2026-10-28.json" "aiometadata-config.json"; do
     if [ -f "$ASSETS_DIR/$cfg" ]; then
         adb push "$ASSETS_DIR/$cfg" "/sdcard/Download/$cfg" >/dev/null 2>&1 || true
@@ -78,11 +79,7 @@ cat > nuvio-preferences.json <<EOF
   "plugin_repositories": [
     "https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json",
     "https://raw.githubusercontent.com/Wiojelt/TurkSinema/main/repo.json"
-  ],
-  "disabled_addons": [
-    "https://falsisdev.github.io/anthology/stremio"
-  ],
-  "anthology_disabled": true
+  ]
 }
 EOF
 echo "Saved nuvio-preferences.json"
@@ -92,7 +89,6 @@ Finish in Nuvio (or let an AI agent do it, AGENTS.md › Nuvio):
   Settings › Plugins › Add repository:
      https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json
      https://raw.githubusercontent.com/Wiojelt/TurkSinema/main/repo.json
-  Settings › Addons: Anthology is installed and disabled by default (toggle on anytime in Addons if needed).
   Settings › Playback: subtitles $SUB1 (second: ${SUB2:-none}), autoplay first source: $AUTOPLAY
   Settings › Appearance / Language: $HOME_LANG
 EOF

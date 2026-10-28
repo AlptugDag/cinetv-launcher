@@ -143,6 +143,9 @@ public class LogicTest {
         assertEquals(com.cinetv.launcher.service.SpecialDay.Icon.FLAG, oct29.icon);
         assertFalse(oct29.mourning);
         assertTrue(oct29.subtitle.contains("103"));
+        assertEquals("Alptuğ Dağ", oct29.celebrationAuthor);
+        assertTrue(oct29.celebrationTitle.contains("29 Ekim Cumhuriyet Bayramımız"));
+        assertTrue(oct29.celebrationBody.contains("103. yılı"));
 
         // 10 Kasım Atatürk'ü Anma Günü (normal hour vs 09:05 saygı duruşu)
         com.cinetv.launcher.service.SpecialDay nov10Normal = com.cinetv.launcher.service.SpecialDay.forDate(2026, 11, 10, 15, 30);
@@ -150,18 +153,34 @@ public class LogicTest {
         assertEquals("10kasim", nov10Normal.id);
         assertEquals(com.cinetv.launcher.service.SpecialDay.Icon.RIBBON, nov10Normal.icon);
         assertTrue(nov10Normal.mourning);
+        assertEquals("Alptuğ Dağ", nov10Normal.celebrationAuthor);
 
         com.cinetv.launcher.service.SpecialDay nov10Minute905 = com.cinetv.launcher.service.SpecialDay.forDate(2026, 11, 10, 9, 5);
         org.junit.Assert.assertNotNull(nov10Minute905);
         assertTrue(nov10Minute905.subtitle.contains("09:05"));
         assertTrue(nov10Minute905.mourning);
+        assertEquals("Alptuğ Dağ", nov10Minute905.celebrationAuthor);
 
         // Other national days
-        org.junit.Assert.assertNotNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 4, 23, 10, 0));
-        org.junit.Assert.assertNotNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 5, 19, 10, 0));
-        org.junit.Assert.assertNotNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 7, 15, 10, 0));
-        org.junit.Assert.assertNotNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 8, 30, 10, 0));
-        org.junit.Assert.assertNotNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 1, 1, 10, 0));
+        com.cinetv.launcher.service.SpecialDay apr23 = com.cinetv.launcher.service.SpecialDay.forDate(2026, 4, 23, 10, 0);
+        org.junit.Assert.assertNotNull(apr23);
+        assertEquals("Alptuğ Dağ", apr23.celebrationAuthor);
+
+        com.cinetv.launcher.service.SpecialDay may19 = com.cinetv.launcher.service.SpecialDay.forDate(2026, 5, 19, 10, 0);
+        org.junit.Assert.assertNotNull(may19);
+        assertEquals("Alptuğ Dağ", may19.celebrationAuthor);
+
+        com.cinetv.launcher.service.SpecialDay jul15 = com.cinetv.launcher.service.SpecialDay.forDate(2026, 7, 15, 10, 0);
+        org.junit.Assert.assertNotNull(jul15);
+        assertEquals("Alptuğ Dağ", jul15.celebrationAuthor);
+
+        com.cinetv.launcher.service.SpecialDay aug30 = com.cinetv.launcher.service.SpecialDay.forDate(2026, 8, 30, 10, 0);
+        org.junit.Assert.assertNotNull(aug30);
+        assertEquals("Alptuğ Dağ", aug30.celebrationAuthor);
+
+        com.cinetv.launcher.service.SpecialDay jan01 = com.cinetv.launcher.service.SpecialDay.forDate(2026, 1, 1, 10, 0);
+        org.junit.Assert.assertNotNull(jan01);
+        assertEquals("Alptuğ Dağ", jan01.celebrationAuthor);
 
         // Ordinary days and removed religious/arife dates must return null
         assertNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 10, 28, 10, 0)); // Arife
