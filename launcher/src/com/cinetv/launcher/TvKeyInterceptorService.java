@@ -64,6 +64,16 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
     };
 
+    private final BroadcastReceiver celebrationReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(TvKeyInterceptorService.this);
+            if (day != null) {
+                com.cinetv.launcher.ui.CelebrationOverlay.show(TvKeyInterceptorService.this, day);
+            }
+        }
+    };
+
     /** Puts text into the input field that has focus on screen, in any app; false when there is none. */
     public static boolean typeIntoFocused(String text) {
         TvKeyInterceptorService s = instance;
@@ -111,6 +121,29 @@ public class TvKeyInterceptorService extends AccessibilityService {
             android.util.Log.w("CineTvKeyService", "timeTick register failed: " + t.getMessage());
         }
         try {
+            IntentFilter cf = new IntentFilter("com.cinetv.launcher.ACTION_CELEBRATION");
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(celebrationReceiver, cf, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                registerReceiver(celebrationReceiver, cf);
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("CineTvKeyService", "celebrationReceiver register failed: " + t.getMessage());
+        }
+        try {
+            final com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(this);
+            if (day != null) {
+                java.util.Calendar c = java.util.Calendar.getInstance();
+                int year = c.get(java.util.Calendar.YEAR);
+                String prefKey = "celebration_shown_" + day.id + "_" + year;
+                boolean alreadyShown = com.cinetv.launcher.service.Prefs.get(this).getBoolean(prefKey, false);
+                if (!alreadyShown) {
+                    com.cinetv.launcher.service.Prefs.get(this).edit().putBoolean(prefKey, true).apply();
+                    handler.postDelayed(() -> com.cinetv.launcher.ui.CelebrationOverlay.show(this, day), 2500);
+                }
+            }
+        } catch (Throwable ignored) {}
+        try {
             DeviceTweaks.syncNightMode(this);
         } catch (Throwable ignored) {}
         try {
@@ -134,8 +167,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (signature != null) signature.hide();
         try {
             unregisterReceiver(timeTick);
-        } catch (Throwable ignored) {
-        }
+        } catch (Throwable ignored) {}
+        try {
+            unregisterReceiver(celebrationReceiver);
+        } catch (Throwable ignored) {}
         handler.removeCallbacksAndMessages(null);
         super.onDestroy();
     }
@@ -238,6 +273,13 @@ public class TvKeyInterceptorService extends AccessibilityService {
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
         if (instance == null) return false;
+        // Holiday celebration modal: any key closes the celebration overlay cleanly
+        if (com.cinetv.launcher.ui.CelebrationOverlay.isShowing()) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                com.cinetv.launcher.ui.CelebrationOverlay.dismiss();
+            }
+            return true;
+        }
         armIdleSaver();
         int source = event.getSource();
         boolean gamepad = (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD

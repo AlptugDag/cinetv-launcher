@@ -207,7 +207,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         TvWebRemoteServer.setController(this);
         TvWebRemoteServer.start(this);
-        AppUpdater.checkInBackground(this);
+        AppUpdater.checkAndAutoUpdateOnBoot(this);
 
         packageReceiver = new BroadcastReceiver() {
             @Override
@@ -361,7 +361,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         String action = intent.getStringExtra("action");
         if (action == null) action = intent.getAction();
         if (action == null) return;
-        if ("setup".equals(action)) handler.postDelayed(() -> Panels.setup(this, home.modal, true), 1500);
+        else if ("celebration".equals(action) || intent.getBooleanExtra("force_celebration", false)) {
+            handler.postDelayed(() -> {
+                final com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(this);
+                if (day != null) showCinematicCelebration(day);
+            }, 300);
+        }
+        else if ("setup".equals(action)) handler.postDelayed(() -> Panels.setup(this, home.modal, true), 1500);
         else if ("settings".equals(action)) handler.postDelayed(this::onSettings, 300);
         else if ("voice".equals(action)) handler.postDelayed(this::onVoice, 250);
         else if ("tour".equals(action)) handler.postDelayed(this::startTour, 300);
@@ -1194,7 +1200,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     public void showCinematicCelebration(final com.cinetv.launcher.service.SpecialDay day) {
-        if (home == null || home.root == null || day == null) return;
+        if (day == null) return;
+        if (com.cinetv.launcher.TvKeyInterceptorService.getInstance() != null) {
+            com.cinetv.launcher.ui.CelebrationOverlay.show(this, day);
+            return;
+        }
+        if (home == null || home.root == null) return;
         final android.widget.FrameLayout container = new android.widget.FrameLayout(this);
         container.setBackgroundColor(Color.argb(170, 4, 5, 8));
         container.setAlpha(0f);
@@ -1261,6 +1272,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         hlp.gravity = Gravity.CENTER_HORIZONTAL;
         box.addView(hintTv, hlp);
 
+        // Floating translucent crimson celebratory balloons behind the card
+        container.addView(new com.cinetv.launcher.ui.FloatingBalloonsView(this),
+                new android.widget.FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+
         android.widget.FrameLayout.LayoutParams flp = new android.widget.FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -1276,19 +1293,20 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             } catch (Throwable ignored) {}
         };
 
-        container.animate().alpha(1f).setDuration(550).withEndAction(() -> {
-            container.postDelayed(() -> {
-                container.animate().alpha(0f).setDuration(600).withEndAction(finishAction).start();
-            }, 10_000L);
-        }).start();
+        // Smooth fade-in: stays visible indefinitely until user presses a remote key
+        container.animate().alpha(1f).setDuration(550).start();
 
         container.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 container.animate().cancel();
-                container.animate().alpha(0f).setDuration(220).withEndAction(finishAction).start();
+                container.animate().alpha(0f).setDuration(240).withEndAction(finishAction).start();
                 return true;
             }
             return false;
+        });
+        container.setOnClickListener(v -> {
+            container.animate().cancel();
+            container.animate().alpha(0f).setDuration(240).withEndAction(finishAction).start();
         });
         container.requestFocus();
     }

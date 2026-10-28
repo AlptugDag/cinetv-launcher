@@ -114,13 +114,6 @@ public final class TrailerPlayer extends FrameLayout {
             s.setDatabaseEnabled(true);
             s.setCacheMode(WebSettings.LOAD_DEFAULT);
             s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-            w.setWebChromeClient(new WebChromeClient() {
-                @Override
-                public boolean onConsoleMessage(android.webkit.ConsoleMessage consoleMessage) {
-                    Log.d(TAG, "Trailer console: " + consoleMessage.message());
-                    return true;
-                }
-            });
             w.setBackgroundColor(Color.BLACK);
             w.setFocusable(false);
             w.setFocusableInTouchMode(false);
@@ -128,24 +121,7 @@ public final class TrailerPlayer extends FrameLayout {
             w.setLongClickable(false);
             w.setHapticFeedbackEnabled(false);
 
-            w.addJavascriptInterface(new Object() {
-                @android.webkit.JavascriptInterface
-                public void onVideoPlaying() {
-                    main.post(() -> {
-                        if (my == gen && web == w && getAlpha() < 1f) {
-                            animate().alpha(1f).setDuration(300).start();
-                        }
-                    });
-                }
-
-                @android.webkit.JavascriptInterface
-                public void onVideoError() {
-                    main.post(() -> {
-                        if (my == gen) stop();
-                    });
-                }
-            }, "CineTrailer");
-
+            w.setWebChromeClient(new WebChromeClient());
             w.setWebViewClient(new WebViewClient() {
                 @Override
                 public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -155,62 +131,29 @@ public final class TrailerPlayer extends FrameLayout {
 
             addView(w, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
-            // Safety timeout: do NOT prematurely reveal if playback was delayed; give up after 8s so disk tray art stays visible
-            main.postDelayed(() -> {
-                if (my == gen && web == w && getAlpha() < 0.1f) {
-                    stop();
-                }
-            }, 8000);
-
             final String origin = "https://" + getContext().getPackageName();
             String html = "<!DOCTYPE html><html><head>"
                     + "<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'>"
-                    + "<meta name='referrer' content='strict-origin-when-cross-origin'>"
                     + "<style>"
                     + "* { margin:0; padding:0; box-sizing:border-box; }"
-                    + "html, body { width:100%; height:100%; overflow:hidden; background:#000000; position:fixed; }"
-                    + "#stage { width:100%; height:100%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#000000; position:relative; }"
-                    + "#player { width:100% !important; height:100% !important; border:none !important; display:block !important; background:#000000 !important; "
-                    + "opacity:0; transition:opacity .35s ease-in-out; transform:scale(1.24); transform-origin:center center; }"
-                    + "#player.on { opacity:1; }"
-                    + "iframe { width:100% !important; height:100% !important; border:none !important; display:block !important; background:#000000 !important; }"
+                    + "html, body { width:100%; height:100%; overflow:hidden; background:#000000; position:fixed; pointer-events:none; }"
+                    + "#stage { width:100%; height:100%; overflow:hidden; position:relative; background:#000000; display:flex; align-items:center; justify-content:center; }"
+                    + "iframe { position:absolute; width:142% !important; height:142% !important; top:-21% !important; left:-21% !important; border:none !important; pointer-events:none !important; }"
                     + "</style>"
-                    + "<script defer src='https://www.youtube.com/iframe_api'></script>"
                     + "</head><body>"
-                    + "<div id='stage'><div id='player'></div></div>"
-                    + "<script>"
-                    + "var player;"
-                    + "function onYouTubeIframeAPIReady() {"
-                    + "  player = new YT.Player('player', {"
-                    + "    height: '100%',"
-                    + "    width: '100%',"
-                    + "    videoId: '" + key + "',"
-                    + "    playerVars: {"
-                    + "      autoplay: 1, mute: 1, controls: 0,"
-                    + "      playsinline: 1, rel: 0, iv_load_policy: 3, disablekb: 1, modestbranding: 1, fs: 0,"
-                    + "      loop: 1, playlist: '" + key + "',"
-                    + "      origin: '" + origin + "'"
-                    + "    },"
-                    + "    events: {"
-                    + "      'onReady': function(e) { try { e.target.mute(); e.target.playVideo(); } catch(x){} },"
-                    + "      'onStateChange': function(e) {"
-                    + "        if (e.data === 1) {"
-                    + "          var el = document.getElementById('player');"
-                    + "          if (el) el.classList.add('on');"
-                    + "          setTimeout(function() { try { CineTrailer.onVideoPlaying(); } catch(err){} }, 180);"
-                    + "        } else if (e.data === 0) {"
-                    + "          e.target.seekTo(0);"
-                    + "          e.target.playVideo();"
-                    + "        }"
-                    + "      },"
-                    + "      'onError': function(e) { try { CineTrailer.onVideoError(); } catch(err){} }"
-                    + "    }"
-                    + "  });"
-                    + "}"
-                    + "</script>"
+                    + "<div id='stage'>"
+                    + "<iframe src='https://www.youtube-nocookie.com/embed/" + key + "?autoplay=1&mute=1&controls=0&loop=1&playlist=" + key + "&playsinline=1&rel=0&iv_load_policy=3&modestbranding=1&disablekb=1&fs=0' allow='autoplay; encrypted-media' frameborder='0'></iframe>"
+                    + "</div>"
                     + "</body></html>";
 
             w.loadDataWithBaseURL(origin, html, "text/html", "utf-8", null);
+
+            // Instant smooth fade-in after 350ms layout settle: completely crops YouTube chrome and eliminates startup lag
+            main.postDelayed(() -> {
+                if (my == gen && web == w) {
+                    animate().alpha(1f).setDuration(350).start();
+                }
+            }, 350);
         } catch (Throwable t) {
             Log.w(TAG, "WebView play failed: " + t.getMessage());
             web = null;

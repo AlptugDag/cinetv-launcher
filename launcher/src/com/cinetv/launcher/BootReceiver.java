@@ -28,6 +28,7 @@ public class BootReceiver extends BroadcastReceiver {
             } catch (Throwable t) {
                 Log.w(TAG, "failed to start on boot: " + t);
             }
+            com.cinetv.launcher.service.AppUpdater.checkAndAutoUpdateOnBoot(context);
         }
     }
 }

@@ -173,6 +173,36 @@ public final class AppUpdater {
         });
     }
 
+    private static volatile boolean bootCheckDone = false;
+
+    /**
+     * Automatic check on TV boot: if a newer GitHub version exists, automatically
+     * downloads and updates in the background.
+     */
+    public static void checkAndAutoUpdateOnBoot(final Context ctx) {
+        if (bootCheckDone || ctx == null) return;
+        bootCheckDone = true;
+        MAIN_HANDLER.postDelayed(() -> {
+            checkForUpdates(ctx, new UpdateCheckCallback() {
+                @Override
+                public void onUpdateAvailable(ReleaseInfo info) {
+                    Log.i(TAG, "Boot update check: newer version found: " + info.tagName + ", downloading in background...");
+                    downloadAndInstallBackground(ctx.getApplicationContext(), info, true);
+                }
+
+                @Override
+                public void onUpToDate(String currentVersion) {
+                    Log.i(TAG, "Boot update check: CineTV is up to date: v" + currentVersion);
+                }
+
+                @Override
+                public void onError(String message) {
+                    Log.w(TAG, "Boot update check error: " + message);
+                }
+            });
+        }, 12000L); // Allow network to stabilize after boot
+    }
+
     /**
      * Automatic startup check with debounce. If an update is detected, presents an update dialog to the viewer.
      */
@@ -211,16 +241,25 @@ public final class AppUpdater {
     }
 
     /** Downloads release APK and installs via LocalAdb (silent) or PackageInstaller. */
-    public static void downloadAndInstall(final Activity activity, final ReleaseInfo info) {
+    public static void downloadAndInstall(final Context ctx, final ReleaseInfo info) {
+        downloadAndInstallBackground(ctx, info, false);
+    }
+
+    /** Downloads release APK and installs via LocalAdb (silent) or PackageInstaller. */
+    public static void downloadAndInstallBackground(final Context ctx, final ReleaseInfo info, final boolean silent) {
         if (isDownloading) {
-            Toast.makeText(activity, "Güncelleme zaten indiriliyor...", Toast.LENGTH_SHORT).show();
+            if (!silent) Toast.makeText(ctx, "Güncelleme zaten indiriliyor...", Toast.LENGTH_SHORT).show();
             return;
         }
         isDownloading = true;
-        Toast.makeText(activity, "CineTV " + info.tagName + " indiriliyor, lütfen bekleyin...", Toast.LENGTH_LONG).show();
+        if (!silent) {
+            Toast.makeText(ctx, "CineTV " + info.tagName + " indiriliyor, lütfen bekleyin...", Toast.LENGTH_LONG).show();
+        } else {
+            Log.i(TAG, "Background auto-update downloading: " + info.tagName);
+        }
 
         new Thread(() -> {
-            File target = new File(activity.getCacheDir(), "cinetv_update.apk");
+            File target = new File(ctx.getCacheDir(), "cinetv_update.apk");
             try {
                 if (target.exists()) target.delete();
 
@@ -253,15 +292,15 @@ public final class AppUpdater {
                 Log.i(TAG, "Update APK downloaded successfully: " + target.length() + " bytes");
                 isDownloading = false;
 
-                MAIN_HANDLER.post(() -> {
-                    Toast.makeText(activity, "İndirme tamamlandı! Güncelleme kuruluyor...", Toast.LENGTH_SHORT).show();
-                });
+                if (!silent) {
+                    MAIN_HANDLER.post(() -> Toast.makeText(ctx, "İndirme tamamlandı! Güncelleme kuruluyor...", Toast.LENGTH_SHORT).show());
+                }
 
                 // 1. Try silent background install via LocalAdb
-                boolean installed = LocalAdb.shell(activity, "pm install -r '" + target.getAbsolutePath() + "'", 90_000);
+                boolean installed = LocalAdb.shell(ctx, "pm install -r '" + target.getAbsolutePath() + "'", 90_000);
                 if (installed) {
                     Log.i(TAG, "Silent install successful via LocalAdb!");
-                    LocalAdb.shell(activity, "am start -n " + activity.getPackageName() + "/.MainActivity", 5000);
+                    LocalAdb.shell(ctx, "am start -n " + ctx.getPackageName() + "/.MainActivity", 5000);
                     return;
                 }
 
@@ -271,19 +310,19 @@ public final class AppUpdater {
                         Intent prompt = new Intent(Intent.ACTION_VIEW);
                         prompt.setDataAndType(Uri.fromFile(target), "application/vnd.android.package-archive");
                         prompt.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        activity.startActivity(prompt);
+                        ctx.startActivity(prompt);
                     } catch (Throwable t) {
                         Log.e(TAG, "Fallback package install failed: " + t.getMessage());
-                        Toast.makeText(activity, "Kurulum başlatılamadı: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                        if (!silent) Toast.makeText(ctx, "Kurulum başlatılamadı: " + t.getMessage(), Toast.LENGTH_LONG).show();
                     }
                 });
 
             } catch (Throwable t) {
                 isDownloading = false;
                 Log.e(TAG, "Download failed: " + t.getMessage(), t);
-                MAIN_HANDLER.post(() -> {
-                    Toast.makeText(activity, "Güncelleme indirilemedi: " + t.getMessage(), Toast.LENGTH_LONG).show();
-                });
+                if (!silent) {
+                    MAIN_HANDLER.post(() -> Toast.makeText(ctx, "Güncelleme indirilemedi: " + t.getMessage(), Toast.LENGTH_LONG).show());
+                }
             }
         }).start();
     }

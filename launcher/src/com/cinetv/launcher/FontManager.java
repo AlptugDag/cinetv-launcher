@@ -44,6 +44,18 @@ public final class FontManager {
         return poppinsMedium;
     }
 
+    public static Typeface bold(Context context) {
+        return getBold(context);
+    }
+
+    public static Typeface medium(Context context) {
+        return getMedium(context);
+    }
+
+    public static Typeface regular(Context context) {
+        return getMedium(context);
+    }
+
     /** Caveat Brush: a felt-tip handwriting face (full Turkish coverage) for notes inside the DVD case. */
     public static synchronized Typeface getMarker(Context context) {
         if (marker == null) {

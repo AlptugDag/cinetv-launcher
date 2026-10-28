@@ -28,6 +28,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.cinetv.launcher.FontManager;
+
 import com.cinetv.launcher.HomeGuard;
 import com.cinetv.launcher.R;
 import com.cinetv.launcher.TvKeyInterceptorService;
@@ -72,38 +74,118 @@ public final class Panels {
 
     private Panels() {}
 
-    // ---- Settings ---------------------------------------------------------------------------------
+    // ---- Settings (Paginated: Temalar, Görsel Deneyim, Yapay Zeka & Ağ, Sistem & TV) ------------
+
+    public static final int PAGE_THEMES = 0;
+    public static final int PAGE_VISUAL = 1;
+    public static final int PAGE_AI = 2;
+    public static final int PAGE_SYSTEM = 3;
 
     public static void settings(final Context ctx, final ModalHost host, final Actions a) {
-        host.push(() -> buildSettings(ctx, host, a, null));
+        host.push(() -> buildSettings(ctx, host, a, 0, null));
     }
 
     private static View buildSettings(final Context ctx, final ModalHost host, final Actions a) {
-        return buildSettings(ctx, host, a, null);
+        return buildSettings(ctx, host, a, 0, null);
     }
 
     private static View buildSettings(final Context ctx, final ModalHost host, final Actions a, final String focusTag) {
+        return buildSettings(ctx, host, a, 0, focusTag);
+    }
+
+    private static View buildSettings(final Context ctx, final ModalHost host, final Actions a, final int pageIndex, final String focusTag) {
         LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
-
-        LinearLayout head = new LinearLayout(ctx);
-        head.setGravity(Gravity.CENTER_VERTICAL);
-        ImageView logo = new ImageView(ctx);
-        logo.setImageBitmap(Brand.mark(ctx));
-        head.addView(logo, new LinearLayout.LayoutParams(UiKit.px(48), UiKit.px(48)));
-        TextView title = UiKit.bold(ctx, 32, UiKit.INK);
-        title.setText(R.string.settings_title);
-        title.setPadding(UiKit.px(18), 0, 0, 0);
-        head.addView(title);
-        root.addView(head);
-        LinearLayout cols = new LinearLayout(ctx);
-        cols.setClipChildren(false);
-        cols.setClipToPadding(false);
         root.setClipChildren(false);
         root.setClipToPadding(false);
+
+        // Header: Logo, Title & Tab Bar Navigation
+        LinearLayout head = new LinearLayout(ctx);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.setClipChildren(false);
+        head.setClipToPadding(false);
+
+        ImageView logo = new ImageView(ctx);
+        logo.setImageBitmap(Brand.mark(ctx));
+        head.addView(logo, new LinearLayout.LayoutParams(UiKit.px(44), UiKit.px(44)));
+
+        TextView title = UiKit.bold(ctx, 30, UiKit.INK);
+        title.setText(R.string.settings_title);
+        title.setPadding(UiKit.px(16), 0, UiKit.px(32), 0);
+        head.addView(title);
+
+        // Paginated Tabs: 1. Temalar & Arka Plan, 2. Görsel Deneyim, 3. Yapay Zeka & Ağ, 4. Sistem & TV
+        final String[] tabLabels = "tr".equals(Locale.getDefault().getLanguage())
+                ? new String[]{"1. Temalar", "2. Görsel Deneyim", "3. Yapay Zeka & Ağ", "4. Sistem & TV"}
+                : new String[]{"1. Themes", "2. Visual Experience", "3. AI & Network", "4. System & TV"};
+
+        LinearLayout tabsBar = new LinearLayout(ctx);
+        tabsBar.setOrientation(LinearLayout.HORIZONTAL);
+        tabsBar.setClipChildren(false);
+        tabsBar.setClipToPadding(false);
+
+        for (int i = 0; i < tabLabels.length; i++) {
+            final int targetPage = i;
+            final boolean isSelected = (targetPage == pageIndex);
+            final TextView tabBtn = new TextView(ctx);
+            tabBtn.setText(tabLabels[i]);
+            tabBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.px(14));
+            tabBtn.setTypeface(isSelected ? FontManager.bold(ctx) : FontManager.regular(ctx));
+            tabBtn.setTextColor(isSelected ? Color.WHITE : Color.parseColor("#9CA3AF"));
+            tabBtn.setPadding(UiKit.px(18), UiKit.px(8), UiKit.px(18), UiKit.px(8));
+            tabBtn.setFocusable(true);
+            tabBtn.setClickable(true);
+            tabBtn.setTag("tab_" + targetPage);
+
+            final android.graphics.drawable.GradientDrawable tabBg = new android.graphics.drawable.GradientDrawable();
+            tabBg.setCornerRadius(UiKit.px(14));
+            tabBg.setColor(isSelected ? Color.argb(70, 255, 255, 255) : Color.argb(18, 255, 255, 255));
+            if (isSelected) tabBg.setStroke(UiKit.px(1.5f), Color.argb(120, 255, 255, 255));
+            tabBtn.setBackground(tabBg);
+
+            tabBtn.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    tabBtn.setTextColor(Color.WHITE);
+                    tabBg.setColor(Color.argb(100, 255, 255, 255));
+                    tabBg.setStroke(UiKit.px(2f), Color.WHITE);
+                } else {
+                    tabBtn.setTextColor(isSelected ? Color.WHITE : Color.parseColor("#9CA3AF"));
+                    tabBg.setColor(isSelected ? Color.argb(70, 255, 255, 255) : Color.argb(18, 255, 255, 255));
+                    tabBg.setStroke(isSelected ? UiKit.px(1.5f) : 0, isSelected ? Color.argb(120, 255, 255, 255) : 0);
+                }
+            });
+
+            tabBtn.setOnClickListener(v -> host.replace(() -> buildSettings(ctx, host, a, targetPage, null)));
+
+            tabBtn.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && targetPage < tabLabels.length - 1) {
+                        host.replace(() -> buildSettings(ctx, host, a, targetPage + 1, "tab_" + (targetPage + 1)));
+                        return true;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && targetPage > 0) {
+                        host.replace(() -> buildSettings(ctx, host, a, targetPage - 1, "tab_" + (targetPage - 1)));
+                        return true;
+                    }
+                }
+                return false;
+            });
+
+            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            tlp.rightMargin = UiKit.px(10);
+            tabsBar.addView(tabBtn, tlp);
+        }
+        head.addView(tabsBar);
+        root.addView(head);
+
+        LinearLayout cols = new LinearLayout(ctx);
+        cols.setOrientation(LinearLayout.HORIZONTAL);
+        cols.setClipChildren(false);
+        cols.setClipToPadding(false);
+
         LinearLayout.LayoutParams colsLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        colsLp.topMargin = UiKit.px(16);
-        colsLp.leftMargin = UiKit.px(10);
+        colsLp.topMargin = UiKit.px(22);
+        colsLp.leftMargin = UiKit.px(8);
 
         ScrollView scroll = new ScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
@@ -113,202 +195,215 @@ public final class Panels {
         scroll.addView(cols, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(scroll, colsLp);
 
-        // 1. Themes
-        LinearLayout c1 = column(ctx, cols, R.string.col_themes, 470);
-        ThemeManager.Theme current = ThemeManager.current(ctx);
-        for (int i = 0; i < ThemeManager.THEMES.length; i += 2) {
-            LinearLayout pair = new LinearLayout(ctx);
-            pair.setOrientation(LinearLayout.HORIZONTAL);
-            pair.setWeightSum(2f);
-            pair.setClipChildren(false);
-            pair.setClipToPadding(false);
-            for (int k = i; k < Math.min(i + 2, ThemeManager.THEMES.length); k++) {
-                final ThemeManager.Theme t = ThemeManager.THEMES[k];
-                final String themeTag = "theme_" + t.id;
-                LinearLayout tile = Controls.tile(ctx, themeName(ctx, t), null, t.id.equals(current.id), v -> {
-                    a.applyTheme(t.id);
-                    host.replace(() -> buildSettings(ctx, host, a, themeTag));
-                });
-                tile.setTag(themeTag);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-                lp.setMargins(k == i ? 0 : UiKit.px(6), 0, k == i ? UiKit.px(6) : 0, UiKit.px(8));
-                pair.addView(tile, lp);
+        if (pageIndex == PAGE_THEMES) {
+            // Page 1: Themes & Atmosphere
+            LinearLayout c1 = column(ctx, cols, R.string.col_themes, 480);
+            ThemeManager.Theme current = ThemeManager.current(ctx);
+            for (int i = 0; i < ThemeManager.THEMES.length; i += 2) {
+                LinearLayout pair = new LinearLayout(ctx);
+                pair.setOrientation(LinearLayout.HORIZONTAL);
+                pair.setWeightSum(2f);
+                pair.setClipChildren(false);
+                pair.setClipToPadding(false);
+                for (int k = i; k < Math.min(i + 2, ThemeManager.THEMES.length); k++) {
+                    final ThemeManager.Theme t = ThemeManager.THEMES[k];
+                    final String themeTag = "theme_" + t.id;
+                    LinearLayout tile = Controls.tile(ctx, themeName(ctx, t), null, t.id.equals(current.id), v -> {
+                        a.applyTheme(t.id);
+                        host.replace(() -> buildSettings(ctx, host, a, PAGE_THEMES, themeTag));
+                    });
+                    tile.setTag(themeTag);
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                    lp.setMargins(k == i ? 0 : UiKit.px(6), 0, k == i ? UiKit.px(6) : 0, UiKit.px(8));
+                    pair.addView(tile, lp);
+                }
+                if (i + 1 >= ThemeManager.THEMES.length) {
+                    View dummy = new View(ctx);
+                    LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+                    dlp.setMargins(UiKit.px(6), 0, 0, UiKit.px(8));
+                    pair.addView(dummy, dlp);
+                }
+                c1.addView(pair);
             }
-            if (i + 1 >= ThemeManager.THEMES.length) {
-                // If there's an odd number of themes (e.g. 7 themes), add an invisible dummy spacer
-                // with weight 1f so the last theme button remains exactly the same width as the others!
-                View dummy = new View(ctx);
-                LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-                dlp.setMargins(UiKit.px(6), 0, 0, UiKit.px(8));
-                pair.addView(dummy, dlp);
-            }
-            c1.addView(pair);
-        }
-        boolean customBg = ThemeManager.usesCustomWallpaper(ctx);
-        c1.addView(Controls.tile(ctx, ctx.getString(R.string.background), ctx.getString(customBg ? R.string.background_custom : R.string.background_hint), customBg,
-                v -> host.push(() -> buildPairing(ctx, host, "background"))));
-        c1.addView(Controls.tile(ctx, ctx.getString(R.string.night_title), nightState(ctx), com.cinetv.launcher.device.NightCare.sleepMinutesLeft(ctx) > 0,
-                v -> host.push(() -> buildNight(ctx, host, a))));
+            boolean customBg = ThemeManager.usesCustomWallpaper(ctx);
+            c1.addView(Controls.tile(ctx, ctx.getString(R.string.background), ctx.getString(customBg ? R.string.background_custom : R.string.background_hint), customBg,
+                    v -> host.push(() -> buildPairing(ctx, host, "background"))));
 
-        // 2. Look & feel
-        LinearLayout c2 = column(ctx, cols, R.string.col_visual, 390);
-        boolean spatial = Prefs.spatial3d(ctx);
-        LinearLayout spatialTile = Controls.tile(ctx, ctx.getString(R.string.spatial_hud), ctx.getString(spatial ? R.string.state_on_spatial : R.string.state_off), spatial, v -> {
-            boolean next = !Prefs.spatial3d(ctx);
-            Prefs.setFlag(ctx, Prefs.SPATIAL_3D, next);
-            a.setSpatial(next);
-            host.replace(() -> buildSettings(ctx, host, a, "opt_spatial"));
-        });
-        spatialTile.setTag("opt_spatial");
-        c2.addView(spatialTile);
+            LinearLayout c2 = column(ctx, cols, "Atmosfer & Dinlenme", 480);
+            c2.addView(Controls.tile(ctx, ctx.getString(R.string.night_title), nightState(ctx), com.cinetv.launcher.device.NightCare.sleepMinutesLeft(ctx) > 0,
+                    v -> host.push(() -> buildNight(ctx, host, a))));
+            c2.addView(Controls.tile(ctx, ctx.getString(R.string.tour_title), ctx.getString(R.string.tour_hint), false, v -> a.startTour()));
 
-        boolean bevel = Prefs.glassBevel(ctx);
-        LinearLayout bevelTile = Controls.tile(ctx, ctx.getString(R.string.glass_bevel), ctx.getString(bevel ? R.string.state_on : R.string.state_off), bevel, v -> {
-            boolean next = !Prefs.glassBevel(ctx);
-            Prefs.setFlag(ctx, Prefs.GLASS_BEVEL, next);
-            GlassBevelView.setAberrationEnabled(next);
-            host.replace(() -> buildSettings(ctx, host, a, "opt_bevel"));
-        });
-        bevelTile.setTag("opt_bevel");
-        c2.addView(bevelTile);
-
-        boolean cases = Prefs.dvdCases(ctx);
-        LinearLayout casesTile = Controls.tile(ctx, ctx.getString(R.string.dvd_cases), ctx.getString(cases ? R.string.dvd_cases_on : R.string.dvd_cases_off), cases, v -> {
-            boolean next = !Prefs.dvdCases(ctx);
-            Prefs.setFlag(ctx, Prefs.DVD_CASES, next);
-            a.setDvdCases(next);
-            host.replace(() -> buildSettings(ctx, host, a, "opt_cases"));
-        });
-        casesTile.setTag("opt_cases");
-        c2.addView(casesTile);
-
-        boolean trailers = Prefs.trailerMoments(ctx);
-        LinearLayout trailersTile = Controls.tile(ctx, ctx.getString(R.string.trailer_moments), ctx.getString(trailers ? R.string.trailer_moments_on : R.string.state_off), trailers, v -> {
-            boolean next = !Prefs.trailerMoments(ctx);
-            Prefs.setFlag(ctx, Prefs.TRAILER_MOMENTS, next);
-            a.setTrailerMoments(next);
-            host.replace(() -> buildSettings(ctx, host, a, "opt_trailers"));
-        });
-        trailersTile.setTag("opt_trailers");
-        c2.addView(trailersTile);
-
-        boolean dvd = Prefs.dvdAnimation(ctx);
-        LinearLayout dvdTile = Controls.tile(ctx, ctx.getString(R.string.dvd_animation), ctx.getString(dvd ? R.string.state_on : R.string.state_off), dvd, v -> {
-            Prefs.setFlag(ctx, Prefs.DVD_ANIMATION, !Prefs.dvdAnimation(ctx));
-            host.replace(() -> buildSettings(ctx, host, a, "opt_dvd"));
-        });
-        dvdTile.setTag("opt_dvd");
-        c2.addView(dvdTile);
-        String perfMode = PerformanceProfile.mode(ctx);
-        String tierName = ctx.getString(tierRes(PerformanceProfile.tier(ctx)));
-        c2.addView(Controls.tile(ctx, ctx.getString(R.string.performance),
-                ctx.getString(perfModeRes(perfMode)) + " · " + tierName, false, v -> host.push(() -> buildPerformancePicker(ctx, host, a))));
-        c2.addView(Controls.tile(ctx, ctx.getString(R.string.tour_title), ctx.getString(R.string.tour_hint), false, v -> a.startTour()));
-        c2.addView(Controls.tile(ctx, ctx.getString(R.string.screensaver), ctx.getString(R.string.screensaver_preview), false, v -> {
-            host.close();
-            a.previewScreensaver();
-        }));
-
-        // 3. AI & media
-        LinearLayout c3 = column(ctx, cols, R.string.col_ai, 390);
-        String provider = LlmClient.providerName(ctx);
-        c3.addView(Controls.tile(ctx, ctx.getString(R.string.ai_key), provider != null ? provider : ctx.getString(R.string.not_set),
-                provider != null, v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.AI_KEY, R.string.ai_key, R.string.ai_key_hint))));
-        boolean tmdb = MovieCatalog.hasTmdb(ctx);
-        c3.addView(Controls.tile(ctx, ctx.getString(R.string.tmdb_key), ctx.getString(tmdb ? R.string.state_on : R.string.not_set), tmdb,
-                v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.TMDB_KEY, R.string.tmdb_key, R.string.tmdb_key_hint))));
-        boolean mdb = SecretStore.has(ctx, SecretStore.MDBLIST_KEY);
-        c3.addView(Controls.tile(ctx, ctx.getString(R.string.mdblist_key), ctx.getString(mdb ? R.string.state_on : R.string.not_set), mdb,
-                v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.MDBLIST_KEY, R.string.mdblist_key, R.string.mdblist_key_hint))));
-        String city = Prefs.city(ctx);
-        final String dnsChoice = com.cinetv.launcher.device.NetworkOptimizer.choice(ctx);
-        LinearLayout dnsTile = Controls.tile(ctx, ctx.getString(R.string.dns_title), ctx.getString(dnsRes(dnsChoice)),
-                !com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(dnsChoice), v -> {
-                    final String next = com.cinetv.launcher.device.NetworkOptimizer.next(com.cinetv.launcher.device.NetworkOptimizer.choice(ctx));
-                    new Thread(() -> {
-                        boolean ok = com.cinetv.launcher.device.NetworkOptimizer.apply(ctx, next);
-                        v.post(() -> {
-                            if (!ok && !com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(next)) {
-                                Toast.makeText(ctx, R.string.dns_blocked, Toast.LENGTH_LONG).show();
-                            }
-                            host.replace(() -> buildSettings(ctx, host, a, "opt_dns"));
-                        });
-                    }, "cinetv-dns").start();
-                });
-        dnsTile.setTag("opt_dns");
-        c3.addView(dnsTile);
-        c3.addView(Controls.tile(ctx, ctx.getString(R.string.weather_city), city != null ? city : ctx.getString(R.string.weather_auto), city != null,
-                v -> host.push(() -> buildCityInput(ctx, host, a))));
-        c3.addView(Controls.tile(ctx, ctx.getString(R.string.setup_tune), ctx.getString(R.string.setup_tune_hint), false,
-                v -> setup(ctx, host, false)));
-
-        // 4. TV & phone
-        LinearLayout c4 = column(ctx, cols, R.string.col_tv, 390);
-        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Kurulum Sihirbazı & Bileşen Kontrolü" : "Setup Wizard & Component Health",
-                "tr".equals(Locale.getDefault().getLanguage()) ? "Eksik bileşenleri kontrol et ve kur" : "Check and setup components", false,
-                v -> wizard(ctx, host)));
-        boolean isHome = com.cinetv.launcher.HomeGuard.isDefault(ctx);
-        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Ana Başlatıcı Yap" : "Set as Default Home",
-                isHome ? ("tr".equals(Locale.getDefault().getLanguage()) ? "CineTV varsayılan ana ekran" : "CineTV is default home")
-                       : ("tr".equals(Locale.getDefault().getLanguage()) ? "Kumanda ana tuşu için dokunun" : "Tap to set as default launcher"),
-                isHome, v -> com.cinetv.launcher.HomeGuard.promptHomeChooser(ctx)));
-        boolean a11y = com.cinetv.launcher.TvKeyInterceptorService.getInstance() != null;
-        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Erişilebilirlik & Tuşlar" : "Accessibility & Keys",
-                a11y ? ("tr".equals(Locale.getDefault().getLanguage()) ? "Tuş servisi aktif" : "Key service active")
-                     : ("tr".equals(Locale.getDefault().getLanguage()) ? "Erişilebilirlik ayarlarını aç" : "Open accessibility settings"),
-                a11y, v -> com.cinetv.launcher.HomeGuard.openAccessibilitySettings(ctx)));
-        c4.addView(Controls.tile(ctx, ctx.getString(R.string.tv_settings), ctx.getString(R.string.tv_settings_hint), false,
-                v -> AppLauncher.openSystemSettings(ctx)));
-        if (AppLauncher.liveTvPackage(ctx.getPackageManager()) != null || AppLauncher.hasHdmiSource(ctx)) {
-            boolean liveTv = AppCatalog.liveTvShown(ctx);
-            LinearLayout liveTvTile = Controls.tile(ctx, ctx.getString(R.string.live_tv_tile), ctx.getString(liveTv ? R.string.live_tv_tile_on : R.string.state_off), liveTv, v -> {
-                if (AppCatalog.liveTvShown(ctx)) AppCatalog.hide(ctx, AppLauncher.LIVE_TV);
-                else AppCatalog.addToHome(ctx, AppLauncher.LIVE_TV);
-                a.onAppsChanged();
-                host.replace(() -> buildSettings(ctx, host, a, "opt_livetv"));
+        } else if (pageIndex == PAGE_VISUAL) {
+            // Page 2: Visual Experience & 3D
+            LinearLayout c1 = column(ctx, cols, R.string.col_visual, 480);
+            boolean spatial = Prefs.spatial3d(ctx);
+            LinearLayout spatialTile = Controls.tile(ctx, ctx.getString(R.string.spatial_hud), ctx.getString(spatial ? R.string.state_on_spatial : R.string.state_off), spatial, v -> {
+                boolean next = !Prefs.spatial3d(ctx);
+                Prefs.setFlag(ctx, Prefs.SPATIAL_3D, next);
+                a.setSpatial(next);
+                host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_spatial"));
             });
-            liveTvTile.setTag("opt_livetv");
-            c4.addView(liveTvTile);
-        }
-        c4.addView(Controls.tile(ctx, ctx.getString(R.string.optimize), ctx.getString(R.string.optimize_hint), false,
-                v -> host.push(() -> buildBenchmark(ctx, host))));
-        c4.addView(Controls.tile(ctx, ctx.getString(R.string.remote_keys), ctx.getString(R.string.remote_keys_hint), false,
-                v -> host.push(() -> buildKeyCapture(ctx, host, a))));
-        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "TV Inspector (Donanım & Panel)" : "TV Inspector (Hardware & Panel)",
-                "tr".equals(Locale.getDefault().getLanguage()) ? "Ekran, HDR, ses çözücüleri, bellek ve canlı tuşlar" : "Display, HDR, audio codecs, memory & live keys", false,
-                v -> host.push(() -> buildTvInspector(ctx, host))));
-        String curVer = AppUpdater.currentVersion(ctx);
-        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Sürüm & Güncelleme" : "Version & Updates",
-                "v" + curVer + ("tr".equals(Locale.getDefault().getLanguage()) ? " · Güncellemeleri Denetle" : " · Check for Updates"), false, v -> {
-            Toast.makeText(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "GitHub güncellemeleri denetleniyor..." : "Checking GitHub updates...", Toast.LENGTH_SHORT).show();
-            AppUpdater.checkForUpdates(ctx, new AppUpdater.UpdateCheckCallback() {
-                @Override
-                public void onUpdateAvailable(AppUpdater.ReleaseInfo info) {
-                    if (ctx instanceof android.app.Activity) {
-                        AppUpdater.showUpdateDialog((android.app.Activity) ctx, info);
+            spatialTile.setTag("opt_spatial");
+            c1.addView(spatialTile);
+
+            boolean bevel = Prefs.glassBevel(ctx);
+            LinearLayout bevelTile = Controls.tile(ctx, ctx.getString(R.string.glass_bevel), ctx.getString(bevel ? R.string.state_on : R.string.state_off), bevel, v -> {
+                boolean next = !Prefs.glassBevel(ctx);
+                Prefs.setFlag(ctx, Prefs.GLASS_BEVEL, next);
+                GlassBevelView.setAberrationEnabled(next);
+                host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_bevel"));
+            });
+            bevelTile.setTag("opt_bevel");
+            c1.addView(bevelTile);
+
+            boolean cases = Prefs.dvdCases(ctx);
+            LinearLayout casesTile = Controls.tile(ctx, ctx.getString(R.string.dvd_cases), ctx.getString(cases ? R.string.dvd_cases_on : R.string.dvd_cases_off), cases, v -> {
+                boolean next = !Prefs.dvdCases(ctx);
+                Prefs.setFlag(ctx, Prefs.DVD_CASES, next);
+                a.setDvdCases(next);
+                host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_cases"));
+            });
+            casesTile.setTag("opt_cases");
+            c1.addView(casesTile);
+
+            boolean trailers = Prefs.trailerMoments(ctx);
+            LinearLayout trailersTile = Controls.tile(ctx, ctx.getString(R.string.trailer_moments), ctx.getString(trailers ? R.string.trailer_moments_on : R.string.state_off), trailers, v -> {
+                boolean next = !Prefs.trailerMoments(ctx);
+                Prefs.setFlag(ctx, Prefs.TRAILER_MOMENTS, next);
+                a.setTrailerMoments(next);
+                host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_trailers"));
+            });
+            trailersTile.setTag("opt_trailers");
+            c1.addView(trailersTile);
+
+            LinearLayout c2 = column(ctx, cols, "Animasyon & Performans", 480);
+            boolean dvd = Prefs.dvdAnimation(ctx);
+            LinearLayout dvdTile = Controls.tile(ctx, ctx.getString(R.string.dvd_animation), ctx.getString(dvd ? R.string.state_on : R.string.state_off), dvd, v -> {
+                Prefs.setFlag(ctx, Prefs.DVD_ANIMATION, !Prefs.dvdAnimation(ctx));
+                host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_dvd"));
+            });
+            dvdTile.setTag("opt_dvd");
+            c2.addView(dvdTile);
+
+            String perfMode = PerformanceProfile.mode(ctx);
+            String tierName = ctx.getString(tierRes(PerformanceProfile.tier(ctx)));
+            c2.addView(Controls.tile(ctx, ctx.getString(R.string.performance),
+                    ctx.getString(perfModeRes(perfMode)) + " · " + tierName, false, v -> host.push(() -> buildPerformancePicker(ctx, host, a))));
+            c2.addView(Controls.tile(ctx, ctx.getString(R.string.screensaver), ctx.getString(R.string.screensaver_preview), false, v -> {
+                host.close();
+                a.previewScreensaver();
+            }));
+
+        } else if (pageIndex == PAGE_AI) {
+            // Page 3: AI & Media / Network
+            LinearLayout c1 = column(ctx, cols, R.string.col_ai, 480);
+            String provider = LlmClient.providerName(ctx);
+            c1.addView(Controls.tile(ctx, ctx.getString(R.string.ai_key), provider != null ? provider : ctx.getString(R.string.not_set),
+                    provider != null, v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.AI_KEY, R.string.ai_key, R.string.ai_key_hint))));
+            boolean tmdb = MovieCatalog.hasTmdb(ctx);
+            c1.addView(Controls.tile(ctx, ctx.getString(R.string.tmdb_key), ctx.getString(tmdb ? R.string.state_on : R.string.not_set), tmdb,
+                    v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.TMDB_KEY, R.string.tmdb_key, R.string.tmdb_key_hint))));
+            boolean mdb = SecretStore.has(ctx, SecretStore.MDBLIST_KEY);
+            c1.addView(Controls.tile(ctx, ctx.getString(R.string.mdblist_key), ctx.getString(mdb ? R.string.state_on : R.string.not_set), mdb,
+                    v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.MDBLIST_KEY, R.string.mdblist_key, R.string.mdblist_key_hint))));
+
+            LinearLayout c2 = column(ctx, cols, "Ağ & Ortam", 480);
+            final String dnsChoice = com.cinetv.launcher.device.NetworkOptimizer.choice(ctx);
+            LinearLayout dnsTile = Controls.tile(ctx, ctx.getString(R.string.dns_title), ctx.getString(dnsRes(dnsChoice)),
+                    !com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(dnsChoice), v -> {
+                        final String next = com.cinetv.launcher.device.NetworkOptimizer.next(com.cinetv.launcher.device.NetworkOptimizer.choice(ctx));
+                        new Thread(() -> {
+                            boolean ok = com.cinetv.launcher.device.NetworkOptimizer.apply(ctx, next);
+                            v.post(() -> {
+                                if (!ok && !com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(next)) {
+                                    Toast.makeText(ctx, R.string.dns_blocked, Toast.LENGTH_LONG).show();
+                                }
+                                host.replace(() -> buildSettings(ctx, host, a, PAGE_AI, "opt_dns"));
+                            });
+                        }, "cinetv-dns").start();
+                    });
+            dnsTile.setTag("opt_dns");
+            c2.addView(dnsTile);
+
+            String city = Prefs.city(ctx);
+            c2.addView(Controls.tile(ctx, ctx.getString(R.string.weather_city), city != null ? city : ctx.getString(R.string.weather_auto), city != null,
+                    v -> host.push(() -> buildCityInput(ctx, host, a))));
+            c2.addView(Controls.tile(ctx, ctx.getString(R.string.setup_tune), ctx.getString(R.string.setup_tune_hint), false,
+                    v -> setup(ctx, host, false)));
+
+        } else if (pageIndex == PAGE_SYSTEM) {
+            // Page 4: System & TV
+            LinearLayout c1 = column(ctx, cols, R.string.col_tv, 480);
+            c1.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Kurulum Sihirbazı & Bileşen Kontrolü" : "Setup Wizard & Component Health",
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "Eksik bileşenleri kontrol et ve kur" : "Check and setup components", false,
+                    v -> wizard(ctx, host)));
+            boolean isHome = com.cinetv.launcher.HomeGuard.isDefault(ctx);
+            c1.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Ana Başlatıcı Yap" : "Set as Default Home",
+                    isHome ? ("tr".equals(Locale.getDefault().getLanguage()) ? "CineTV varsayılan ana ekran" : "CineTV is default home")
+                           : ("tr".equals(Locale.getDefault().getLanguage()) ? "Kumanda ana tuşu için dokunun" : "Tap to set as default launcher"),
+                    isHome, v -> com.cinetv.launcher.HomeGuard.promptHomeChooser(ctx)));
+            boolean a11y = com.cinetv.launcher.TvKeyInterceptorService.getInstance() != null;
+            c1.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Erişilebilirlik & Tuşlar" : "Accessibility & Keys",
+                    a11y ? ("tr".equals(Locale.getDefault().getLanguage()) ? "Tuş servisi aktif" : "Key service active")
+                         : ("tr".equals(Locale.getDefault().getLanguage()) ? "Erişilebilirlik ayarlarını aç" : "Open accessibility settings"),
+                    a11y, v -> com.cinetv.launcher.HomeGuard.openAccessibilitySettings(ctx)));
+            c1.addView(Controls.tile(ctx, ctx.getString(R.string.tv_settings), ctx.getString(R.string.tv_settings_hint), false,
+                    v -> AppLauncher.openSystemSettings(ctx)));
+            if (AppLauncher.liveTvPackage(ctx.getPackageManager()) != null || AppLauncher.hasHdmiSource(ctx)) {
+                boolean liveTv = AppCatalog.liveTvShown(ctx);
+                LinearLayout liveTvTile = Controls.tile(ctx, ctx.getString(R.string.live_tv_tile), ctx.getString(liveTv ? R.string.live_tv_tile_on : R.string.state_off), liveTv, v -> {
+                    if (AppCatalog.liveTvShown(ctx)) AppCatalog.hide(ctx, AppLauncher.LIVE_TV);
+                    else AppCatalog.addToHome(ctx, AppLauncher.LIVE_TV);
+                    a.onAppsChanged();
+                    host.replace(() -> buildSettings(ctx, host, a, PAGE_SYSTEM, "opt_livetv"));
+                });
+                liveTvTile.setTag("opt_livetv");
+                c1.addView(liveTvTile);
+            }
+
+            LinearLayout c2 = column(ctx, cols, "Bakım & Donanım", 480);
+            c2.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "TV Inspector (Donanım & Panel)" : "TV Inspector (Hardware & Panel)",
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "Ekran, HDR, ses çözücüleri, bellek ve canlı tuşlar" : "Display, HDR, audio codecs, memory & live keys", false,
+                    v -> host.push(() -> buildTvInspector(ctx, host))));
+            c2.addView(Controls.tile(ctx, ctx.getString(R.string.optimize), ctx.getString(R.string.optimize_hint), false,
+                    v -> host.push(() -> buildBenchmark(ctx, host))));
+            c2.addView(Controls.tile(ctx, ctx.getString(R.string.remote_keys), ctx.getString(R.string.remote_keys_hint), false,
+                    v -> host.push(() -> buildKeyCapture(ctx, host, a))));
+            String curVer = AppUpdater.currentVersion(ctx);
+            c2.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Sürüm & Güncelleme" : "Version & Updates",
+                    "v" + curVer + ("tr".equals(Locale.getDefault().getLanguage()) ? " · Güncellemeleri Denetle" : " · Check for Updates"), false, v -> {
+                Toast.makeText(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "GitHub güncellemeleri denetleniyor..." : "Checking GitHub updates...", Toast.LENGTH_SHORT).show();
+                AppUpdater.checkForUpdates(ctx, new AppUpdater.UpdateCheckCallback() {
+                    @Override
+                    public void onUpdateAvailable(AppUpdater.ReleaseInfo info) {
+                        if (ctx instanceof android.app.Activity) {
+                            AppUpdater.showUpdateDialog((android.app.Activity) ctx, info);
+                        }
                     }
-                }
 
-                @Override
-                public void onUpToDate(String currentVersion) {
-                    Toast.makeText(ctx, "tr".equals(Locale.getDefault().getLanguage())
-                            ? "CineTV en güncel sürümde (v" + currentVersion + ")"
-                            : "CineTV is up to date (v" + currentVersion + ")", Toast.LENGTH_SHORT).show();
-                }
+                    @Override
+                    public void onUpToDate(String currentVersion) {
+                        Toast.makeText(ctx, "tr".equals(Locale.getDefault().getLanguage())
+                                ? "CineTV en güncel sürümde (v" + currentVersion + ")"
+                                : "CineTV is up to date (v" + currentVersion + ")", Toast.LENGTH_SHORT).show();
+                    }
 
-                @Override
-                public void onError(String message) {
-                    Toast.makeText(ctx, "tr".equals(Locale.getDefault().getLanguage())
-                            ? "Güncelleme denetimi başarısız: " + message
-                            : "Update check failed: " + message, Toast.LENGTH_SHORT).show();
-                }
-            });
-        }));
-        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Nuvio Eklentilerini Yönet & Kur" : "Manage & Install Nuvio Addons",
-                "tr".equals(Locale.getDefault().getLanguage()) ? "Eklenti ve profil seçim penceresini aç" : "Select and install curated addons", false,
-                v -> host.push(() -> buildNuvioUpdateAddons(ctx, host))));
-        c4.addView(Controls.tile(ctx, ctx.getString(R.string.reboot), null, false, v -> a.reboot()));
-        c4.addView(Controls.alarm(ctx, ctx.getString(R.string.destroy), v -> host.push(() -> buildDestroy(ctx, host))));
+                    @Override
+                    public void onError(String message) {
+                        Toast.makeText(ctx, "tr".equals(Locale.getDefault().getLanguage())
+                                ? "Güncelleme denetimi başarısız: " + message
+                                : "Update check failed: " + message, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }));
+            c2.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Nuvio Eklentilerini Yönet & Kur" : "Manage & Install Nuvio Addons",
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "Eklenti ve profil seçim penceresini aç" : "Select and install curated addons", false,
+                    v -> host.push(() -> buildNuvioUpdateAddons(ctx, host))));
+            c2.addView(Controls.tile(ctx, ctx.getString(R.string.reboot), null, false, v -> a.reboot()));
+            c2.addView(Controls.alarm(ctx, ctx.getString(R.string.destroy), v -> host.push(() -> buildDestroy(ctx, host))));
+        }
+
         if (focusTag != null) {
             root.post(() -> {
                 View target = root.findViewWithTag(focusTag);
@@ -321,13 +416,17 @@ public final class Panels {
     }
 
     private static LinearLayout column(Context ctx, LinearLayout cols, int titleRes, int widthDesign) {
+        return column(ctx, cols, ctx.getString(titleRes), widthDesign);
+    }
+
+    private static LinearLayout column(Context ctx, LinearLayout cols, String titleStr, int widthDesign) {
         LinearLayout c = new LinearLayout(ctx);
         c.setOrientation(LinearLayout.VERTICAL);
         c.setClipChildren(false);
         c.setClipToPadding(false);
-        c.addView(Controls.header(ctx, ctx.getString(titleRes)));
+        c.addView(Controls.header(ctx, titleStr));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiKit.px(widthDesign), ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(cols.getChildCount() == 0 ? UiKit.px(8) : UiKit.px(24), 0, 0, 0);
+        lp.setMargins(cols.getChildCount() == 0 ? UiKit.px(8) : UiKit.px(36), 0, 0, 0);
         cols.addView(c, lp);
         return c;
     }
