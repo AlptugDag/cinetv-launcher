@@ -251,7 +251,8 @@ public final class AppArtwork {
         int h = bmp.getHeight();
 
         float[] binWeights = new float[12];
-        float[] binHueSum = new float[12];
+        float[] binSinSum = new float[12];
+        float[] binCosSum = new float[12];
         float[] binSatSum = new float[12];
         float[] binValSum = new float[12];
         int[] binCount = new int[12];
@@ -281,10 +282,12 @@ public final class AppArtwork {
                     weight *= 0.35f;
                 }
 
+                double rad = Math.toRadians(hue);
                 binWeights[bIdx] += weight;
-                binHueSum[bIdx] += hue;
-                binSatSum[bIdx] += sat;
-                binValSum[bIdx] += val;
+                binSinSum[bIdx] += (float) (Math.sin(rad) * weight);
+                binCosSum[bIdx] += (float) (Math.cos(rad) * weight);
+                binSatSum[bIdx] += sat * weight;
+                binValSum[bIdx] += val * weight;
                 binCount[bIdx]++;
             }
         }
@@ -321,7 +324,7 @@ public final class AppArtwork {
             }
         }
 
-        if (bestBin < 0 || binCount[bestBin] == 0) {
+        if (bestBin < 0 || binCount[bestBin] == 0 || binWeights[bestBin] <= 0f) {
             int[] fallbackPalette = new int[]{
                 Color.parseColor("#06B6D4"), Color.parseColor("#F43F5E"),
                 Color.parseColor("#3B82F6"), Color.parseColor("#10B981"),
@@ -331,9 +334,11 @@ public final class AppArtwork {
             return fallbackPalette[slotIndex % fallbackPalette.length];
         }
 
-        float avgHue = binHueSum[bestBin] / binCount[bestBin];
-        float avgSat = Math.min(1.0f, Math.max(0.85f, (binSatSum[bestBin] / binCount[bestBin]) * 1.35f));
-        float avgVal = Math.min(1.0f, Math.max(0.92f, (binValSum[bestBin] / binCount[bestBin]) * 1.25f));
+        // Circular angular mean prevents 355° + 5° red wrap-around distortion (which previously averaged to green/cyan)
+        double avgRad = Math.atan2(binSinSum[bestBin], binCosSum[bestBin]);
+        float avgHue = (float) ((Math.toDegrees(avgRad) + 360.0) % 360.0);
+        float avgSat = Math.min(1.0f, Math.max(0.85f, (binSatSum[bestBin] / binWeights[bestBin]) * 1.35f));
+        float avgVal = Math.min(1.0f, Math.max(0.92f, (binValSum[bestBin] / binWeights[bestBin]) * 1.25f));
 
         return Color.HSVToColor(new float[]{avgHue, avgSat, avgVal});
     }

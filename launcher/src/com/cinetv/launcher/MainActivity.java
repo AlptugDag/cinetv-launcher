@@ -25,6 +25,7 @@ import com.cinetv.launcher.remote.TvWebRemoteServer;
 import com.cinetv.launcher.service.AppCatalog;
 import com.cinetv.launcher.service.AppLauncher;
 import com.cinetv.launcher.service.AppTileItem;
+import com.cinetv.launcher.service.AppUpdater;
 import com.cinetv.launcher.service.MovieCatalog;
 import com.cinetv.launcher.service.MovieCatalog.Movie;
 import com.cinetv.launcher.service.PosterCache;
@@ -202,6 +203,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         TvWebRemoteServer.setController(this);
         TvWebRemoteServer.start(this);
+        AppUpdater.checkInBackground(this);
 
         packageReceiver = new BroadcastReceiver() {
             @Override
@@ -879,7 +881,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 if (still == null && m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
                     still = PosterCache.load(app, m.backdropUrl, w * 2, h);
                 }
-                final Bitmap inner = DvdOpeningView.bakeInner(app, w, h, dvd.cover, still, m);
+                final Bitmap inner = DvdOpeningView.bakeInner(app, w, h, dvd.cover, still, m, dvd.accent);
                 ui(() -> home.opening.setInner(inner));
             } catch (Throwable t) {
                 android.util.Log.w("CineTv", "writeInnerNote failed: " + t.getMessage());

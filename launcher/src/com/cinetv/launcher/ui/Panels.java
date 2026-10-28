@@ -30,6 +30,7 @@ import com.cinetv.launcher.device.PictureCalibration;
 import com.cinetv.launcher.remote.RemotePairing;
 import com.cinetv.launcher.service.AppCatalog;
 import com.cinetv.launcher.service.AppLauncher;
+import com.cinetv.launcher.service.AppUpdater;
 import com.cinetv.launcher.service.MovieCatalog;
 import com.cinetv.launcher.service.Prefs;
 import com.cinetv.launcher.service.SecretStore;
@@ -238,6 +239,33 @@ public final class Panels {
                 v -> host.push(() -> buildBenchmark(ctx, host))));
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.remote_keys), ctx.getString(R.string.remote_keys_hint), false,
                 v -> host.push(() -> buildKeyCapture(ctx, host, a))));
+        String curVer = AppUpdater.currentVersion(ctx);
+        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Sürüm & Güncelleme" : "Version & Updates",
+                "v" + curVer + ("tr".equals(Locale.getDefault().getLanguage()) ? " · Güncellemeleri Denetle" : " · Check for Updates"), false, v -> {
+            Toast.makeText(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "GitHub güncellemeleri denetleniyor..." : "Checking GitHub updates...", Toast.LENGTH_SHORT).show();
+            AppUpdater.checkForUpdates(ctx, new AppUpdater.UpdateCheckCallback() {
+                @Override
+                public void onUpdateAvailable(AppUpdater.ReleaseInfo info) {
+                    if (ctx instanceof android.app.Activity) {
+                        AppUpdater.showUpdateDialog((android.app.Activity) ctx, info);
+                    }
+                }
+
+                @Override
+                public void onUpToDate(String currentVersion) {
+                    Toast.makeText(ctx, "tr".equals(Locale.getDefault().getLanguage())
+                            ? "CineTV en güncel sürümde (v" + currentVersion + ")"
+                            : "CineTV is up to date (v" + currentVersion + ")", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onError(String message) {
+                    Toast.makeText(ctx, "tr".equals(Locale.getDefault().getLanguage())
+                            ? "Güncelleme denetimi başarısız: " + message
+                            : "Update check failed: " + message, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }));
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.reboot), null, false, v -> a.reboot()));
         c4.addView(Controls.alarm(ctx, ctx.getString(R.string.destroy), v -> host.push(() -> buildDestroy(ctx, host))));
         return root;

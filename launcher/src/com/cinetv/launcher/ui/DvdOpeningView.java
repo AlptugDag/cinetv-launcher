@@ -534,12 +534,16 @@ public class DvdOpeningView extends View {
         p.setColorFilter(null);
     }
 
+    public static Bitmap bakeInner(Context ctx, int w, int h, Bitmap cover, Bitmap still, Movie movie) {
+        return bakeInner(ctx, w, h, cover, still, movie, 0);
+    }
+
     /**
      * The inside of the front cover: the inner insert (the film's still, printed pale like the back of
      * a real insert) under the clear sleeve, with the story handwritten over it in black felt-tip.
      * Any thread; {@code still} and the movie's overview may be missing.
      */
-    public static Bitmap bakeInner(Context ctx, int w, int h, Bitmap cover, Bitmap still, Movie movie) {
+    public static Bitmap bakeInner(Context ctx, int w, int h, Bitmap cover, Bitmap still, Movie movie, int filmAccent) {
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -588,7 +592,7 @@ public class DvdOpeningView extends View {
             float y = paper.top + pad * 0.78f;
 
             // Title and signature in the film's own colour (as its glow), deep enough to read on paper.
-            int filmInk = filmInk(cover);
+            int filmInk = filmInkFromAccent(filmAccent != 0 ? filmAccent : filmInk(cover));
             int blackInk = ink.getColor();
             ink.setColor(filmInk);
             // the title in the viewer's language, the film's own beside it: "Sonbahar (秋日和)"; two lines at most
@@ -797,6 +801,15 @@ public class DvdOpeningView extends View {
         String t = text;
         while (t.length() > 2 && ink.measureText(t + "…") > maxW) t = t.substring(0, t.length() - 1);
         return t.trim() + "…";
+    }
+
+    private static int filmInkFromAccent(int accent) {
+        if (accent == 0) return Color.argb(240, 18, 18, 22);
+        float[] hsv = new float[3];
+        Color.colorToHSV(accent, hsv);
+        hsv[1] = Math.max(0.65f, hsv[1]);
+        hsv[2] = Math.min(hsv[2], 0.48f);
+        return Color.HSVToColor(240, hsv);
     }
 
     /** The poster's standout colour, darkened to a felt-tip shade that stays readable on pale paper. */
