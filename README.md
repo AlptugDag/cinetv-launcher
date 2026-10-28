@@ -39,7 +39,11 @@ Salondaki o dev ekranı reklam panolarının, hızı kısıtlanmış yayınları
 
 <div align="center">
 
-### <font color="#E50914">"Ve sizler, onca para verdiğiniz televizyonlarınızda kalite görmek için Netflix'in en üst planına abone olmaya mecbur bırakıldınız. Bense Alptuğ Dağ olarak sizleri bundan kurtarmaya kendimi adadım. Tek arzum, sinema bitti denilen şu çağda ev sinemasını ulaşılabilir kılıp, yediden yetmişe herkesle bu tutkuyu paylaşmak!"</font>
+### $$\color{#E50914}\textbf{\textit{“Ve sizler, onca para verdiğiniz televizyonlarınızda kalite görmek için Netflix'in}}$$
+### $$\color{#E50914}\textbf{\textit{en üst planına abone olmaya mecbur bırakıldınız. Bense Alptuğ Dağ olarak sizleri bundan}}$$
+### $$\color{#E50914}\textbf{\textit{kurtarmaya kendimi adadım. Tek arzum, sinema bitti denilen şu çağda ev sinemasını}}$$
+### $$\color{#E50914}\textbf{\textit{ulaşılabilir kılıp, yediden yetmişe herkesle bu tutkuyu paylaşmak!”}}$$
+
 <p>— <b>Alptuğ Dağ</b></p>
 
 </div>
@@ -298,7 +302,7 @@ Hiçbir kişisel verinizi toplamaz, kullanım alışkanlıklarınızı izlemez v
 <div align="center">
 
 Sinemaya duyulan tutkuyla **Alptuğ Dağ** tarafından tasarlandı ve hayata geçirildi.  
-Yönetmen, Anlatıcı
+Yönetmen, İçerik Üreticisi, Kurgucu
 
 <br>
 
