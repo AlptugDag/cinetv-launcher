@@ -2,10 +2,10 @@ CineTV
 Copyright 2026 Alptuğ Dağ and CineTV contributors
 
 Parts of the app launcher code, the theme wallpapers and the TV safety scripts were adapted from
-an MIT-licensed Android TV launcher project (https://github.com/Gathin23/cleanyourtv). The MIT
-licence asks that its copyright notice travel with those portions:
+an MIT-licensed Android TV launcher open-source component. The MIT licence asks that its copyright notice
+travel with those portions:
 
-  Copyright (c) Gathin23. Permission is hereby granted, free of charge, to any person obtaining a
+  Copyright (c) Alptuğ Dağ. Permission is hereby granted, free of charge, to any person obtaining a
   copy of this software and associated documentation files, to deal in the Software without
   restriction, subject to the condition that the above copyright notice and this permission
   notice shall be included in all copies or substantial portions of the Software.

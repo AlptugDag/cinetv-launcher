@@ -367,7 +367,7 @@ public final class Panels {
 
     // ---- Inputs ------------------------------------------------------------------------------------
 
-    /** The TV's inputs by the names devices give themselves, folding empty ports (CleanYourTV standard). */
+    /** The TV's inputs by the names devices give themselves, folding empty ports. */
     public static void inputs(final Context ctx, final ModalHost host) {
         inputsView(ctx, host, false);
     }
@@ -1084,8 +1084,8 @@ public final class Panels {
         root.addView(title);
 
         TextView intro = UiKit.label(ctx, 18, UiKit.INK_DIM);
-        intro.setText(tr ? "CleanYourTV v3.1 standardında ekran, çözücü yetenekleri, bellek ve canlı kumanda dedektörü"
-                         : "CleanYourTV v3.1 standard display, decoders, memory & remote key diagnostics");
+        intro.setText(tr ? "Gelişmiş donanım ve panel standardında ekran, çözücü yetenekleri, bellek ve canlı kumanda dedektörü"
+                         : "Advanced hardware and panel display, decoders, memory & remote key diagnostics");
         intro.setPadding(0, UiKit.px(8), 0, UiKit.px(20));
         root.addView(intro);
 
