@@ -68,6 +68,10 @@ public final class AirPodsLink {
 
     public void start() {
         if (running) return;
+        if (android.os.Build.VERSION.SDK_INT >= 31 && ctx.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "BLUETOOTH_CONNECT permission not granted, skipping AirPodsLink");
+            return;
+        }
         BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();
         if (bt == null) return;
         running = true;
@@ -83,7 +87,12 @@ public final class AirPodsLink {
                     a2dp = null;
                 }
             }, BluetoothProfile.A2DP);
-            ctx.registerReceiver(connected, new IntentFilter(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED));
+            IntentFilter filter = new IntentFilter(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED);
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                ctx.registerReceiver(connected, filter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                ctx.registerReceiver(connected, filter);
+            }
         } catch (Throwable t) {
             Log.w(TAG, "Bluetooth unavailable: " + t);
         }
@@ -100,6 +109,7 @@ public final class AirPodsLink {
     }
 
     private void attempt() throws Exception {
+        if (android.os.Build.VERSION.SDK_INT >= 31 && ctx.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != android.content.pm.PackageManager.PERMISSION_GRANTED) return;
         BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();
         PowerManager pm = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
         if (bt == null || !bt.isEnabled() || a2dp == null || pm == null || !pm.isInteractive()) return;

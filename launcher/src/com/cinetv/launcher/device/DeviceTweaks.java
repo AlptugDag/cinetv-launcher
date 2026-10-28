@@ -228,6 +228,26 @@ public final class DeviceTweaks {
     }
 
     public static void reboot(Context ctx) {
+        final Context app = ctx.getApplicationContext();
+        // 1. Try local adb shell (shell UID has reboot permissions)
+        new Thread(() -> {
+            try {
+                com.cinetv.launcher.remote.LocalAdb.shell(app, "svc power reboot || reboot || /system/bin/reboot", 3000);
+            } catch (Throwable ignored) {
+            }
+        }, "cinetv-reboot-adb").start();
+
+        // 2. Try direct process execution
+        try {
+            Runtime.getRuntime().exec(new String[]{"su", "-c", "reboot"});
+        } catch (Throwable ignored) {
+        }
+        try {
+            Runtime.getRuntime().exec(new String[]{"reboot"});
+        } catch (Throwable ignored) {
+        }
+
+        // 3. Try PowerManager reboot
         try {
             PowerManager pm = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
@@ -236,9 +256,29 @@ public final class DeviceTweaks {
             }
         } catch (Throwable ignored) {
         }
+
+        // 4. Try system intents
+        try {
+            Intent intent = new Intent("com.android.internal.intent.action.REQUEST_SHUTDOWN");
+            intent.putExtra("android.intent.extra.KEY_CONFIRM", false);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(intent);
+            return;
+        } catch (Throwable ignored) {
+        }
         try {
             Intent i = new Intent("android.intent.action.REBOOT").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             ctx.startActivity(i);
+            return;
+        } catch (Throwable ignored) {
+        }
+
+        // 5. If AccessibilityService is available, show native system power dialog
+        try {
+            com.cinetv.launcher.TvKeyInterceptorService service = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
+            if (service != null && android.os.Build.VERSION.SDK_INT >= 21) {
+                service.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG);
+            }
         } catch (Throwable ignored) {
         }
     }

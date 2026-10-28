@@ -1,7 +1,9 @@
 package com.cinetv.launcher.ui;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
@@ -17,11 +19,13 @@ import android.widget.TextView;
 import com.cinetv.launcher.device.PerformanceProfile;
 import com.cinetv.launcher.service.AppCatalog;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * The app drawer, phone-style: every app as the same metallic logo tile as on Home, five per row,
- * with its own coloured bloom on focus. Used for "All apps" and for "Add" (apps not on Home yet).
+ * with its own coloured bloom on focus. Separates Entertainment Apps vs Tools/System into tabs.
  * Artwork is drawn off the main thread so the drawer opens instantly even on slow TVs.
  */
 public final class AllApps {
@@ -35,6 +39,21 @@ public final class AllApps {
     private static final int COLS = 5, TILE_W = 300, TILE_H = 169, BLOOM_PAD = 48, GAP = 26;
 
     private AllApps() {}
+
+    public static boolean isTool(String pkg, String label) {
+        if (pkg == null) return false;
+        String p = pkg.toLowerCase(Locale.ROOT);
+        String l = label != null ? label.toLowerCase(Locale.ROOT) : "";
+        if (p.contains("settings") || l.contains("ayar") || l.contains("setting")) return true;
+        if (p.contains("vending") || p.contains("playstore") || l.contains("play store") || l.contains("store")) return true;
+        if (p.contains("file") || p.contains("explorer") || l.contains("dosya") || l.contains("file") || l.contains("x-plore") || p.contains("cxinventor")) return true;
+        if (p.contains("terminal") || p.contains("adb") || p.contains("speedtest") || l.contains("hız") || l.contains("speed")) return true;
+        if (p.contains("browser") || p.contains("chrome") || l.contains("tarayıcı") || l.contains("browser")) return true;
+        if (p.contains("mediatek") || p.contains("xiaomi") || p.contains("arcelik") || p.contains("beko") || p.contains("grundig") || p.contains("android.tv.frameworkpackagestubs")) return true;
+        if (p.contains("input") || p.contains("tuner") || p.contains("tvcenter") || p.contains("livetv")) return true;
+        if (p.contains("system") || p.contains("packageinstaller") || p.contains("documentsui") || p.contains("certinstaller")) return true;
+        return false;
+    }
 
     public static void show(final Context ctx, final ModalHost host, final CharSequence title,
                             final List<AppCatalog.Entry> apps, final CharSequence emptyText, final Listener l) {
@@ -58,6 +77,142 @@ public final class AllApps {
             root.addView(empty, new LinearLayout.LayoutParams(UiKit.px(760), ViewGroup.LayoutParams.WRAP_CONTENT));
             root.addView(Controls.button(ctx, "OK", v -> host.back()));
             return root;
+        }
+
+        final List<AppCatalog.Entry> appsList = new ArrayList<>();
+        final List<AppCatalog.Entry> toolsList = new ArrayList<>();
+        for (AppCatalog.Entry e : apps) {
+            if (isTool(e.packageName, e.label)) toolsList.add(e);
+            else appsList.add(e);
+        }
+        final List<AppCatalog.Entry> hiddenList = AppCatalog.hiddenApps(ctx);
+
+        final FrameLayout container = new FrameLayout(ctx);
+        container.setClipChildren(false);
+
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        if (!toolsList.isEmpty() || !hiddenList.isEmpty()) {
+            LinearLayout tabRow = new LinearLayout(ctx);
+            tabRow.setOrientation(LinearLayout.HORIZONTAL);
+            tabRow.setPadding(UiKit.px(8), 0, 0, UiKit.px(10));
+
+            final List<TextView> allTabs = new ArrayList<>();
+            TextView tabApps = makeTab(ctx, (tr ? "Uygulamalar" : "Apps") + " (" + appsList.size() + ")", true);
+            allTabs.add(tabApps);
+            TextView tabTools = null;
+            if (!toolsList.isEmpty()) {
+                tabTools = makeTab(ctx, (tr ? "Araçlar & Sistem" : "Tools & System") + " (" + toolsList.size() + ")", false);
+                allTabs.add(tabTools);
+            }
+            TextView tabHidden = null;
+            if (!hiddenList.isEmpty()) {
+                tabHidden = makeTab(ctx, (tr ? "Gizlenenler" : "Hidden") + " (" + hiddenList.size() + ")", false);
+                allTabs.add(tabHidden);
+            }
+
+            final TextView fTabApps = tabApps;
+            final TextView fTabTools = tabTools;
+            final TextView fTabHidden = tabHidden;
+
+            tabApps.setOnClickListener(v -> {
+                for (TextView t : allTabs) {
+                    boolean sel = (t == fTabApps);
+                    t.setTag(sel);
+                    applyTabBg(t, sel, t.hasFocus());
+                }
+                renderGrid(ctx, container, host, appsList, l);
+            });
+
+            if (tabTools != null) {
+                tabTools.setOnClickListener(v -> {
+                    for (TextView t : allTabs) {
+                        boolean sel = (t == fTabTools);
+                        t.setTag(sel);
+                        applyTabBg(t, sel, t.hasFocus());
+                    }
+                    renderGrid(ctx, container, host, toolsList, l);
+                });
+            }
+
+            if (tabHidden != null) {
+                tabHidden.setOnClickListener(v -> {
+                    for (TextView t : allTabs) {
+                        boolean sel = (t == fTabHidden);
+                        t.setTag(sel);
+                        applyTabBg(t, sel, t.hasFocus());
+                    }
+                    renderGrid(ctx, container, host, hiddenList, l);
+                });
+            }
+
+            tabRow.addView(tabApps);
+            if (tabTools != null) {
+                View sp1 = new View(ctx);
+                tabRow.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+                tabRow.addView(tabTools);
+            }
+            if (tabHidden != null) {
+                View sp2 = new View(ctx);
+                tabRow.addView(sp2, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+                tabRow.addView(tabHidden);
+            }
+            root.addView(tabRow);
+
+            renderGrid(ctx, container, host, appsList, l);
+        } else {
+            renderGrid(ctx, container, host, apps, l);
+        }
+
+        root.addView(container);
+        return root;
+    }
+
+    private static TextView makeTab(Context ctx, String text, boolean selected) {
+        TextView tv = UiKit.bold(ctx, 16, selected ? Color.WHITE : UiKit.INK_DIM);
+        tv.setText(text);
+        int padH = UiKit.px(22), padV = UiKit.px(8);
+        tv.setPadding(padH, padV, padH, padV);
+        tv.setFocusable(true);
+        tv.setClickable(true);
+        tv.setTag(selected);
+        applyTabBg(tv, selected, false);
+        tv.setOnFocusChangeListener((v, hasFocus) -> {
+            boolean isSel = Boolean.TRUE.equals(tv.getTag());
+            applyTabBg(tv, isSel, hasFocus);
+            v.animate().scaleX(hasFocus ? 1.06f : 1f).scaleY(hasFocus ? 1.06f : 1f).setDuration(140).start();
+        });
+        return tv;
+    }
+
+    private static void applyTabBg(TextView tv, boolean selected, boolean focused) {
+        GradientDrawable gd = new GradientDrawable();
+        gd.setCornerRadius(UiKit.pxf(20));
+        if (focused) {
+            gd.setColor(Color.parseColor("#4C1D95"));
+            gd.setStroke(UiKit.px(2), Color.parseColor("#A78BFA"));
+            tv.setTextColor(Color.WHITE);
+        } else if (selected) {
+            gd.setColor(Color.parseColor("#2E1065"));
+            gd.setStroke(UiKit.px(1), Color.parseColor("#7C3AED"));
+            tv.setTextColor(Color.WHITE);
+        } else {
+            gd.setColor(Color.argb(35, 255, 255, 255));
+            gd.setStroke(0, 0);
+            tv.setTextColor(UiKit.INK_DIM);
+        }
+        tv.setBackground(gd);
+    }
+
+    private static void renderGrid(final Context ctx, final FrameLayout container, final ModalHost host,
+                                   final List<AppCatalog.Entry> apps, final Listener l) {
+        container.removeAllViews();
+        if (apps.isEmpty()) {
+            boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+            TextView empty = UiKit.label(ctx, 20, UiKit.INK_DIM);
+            empty.setText(tr ? "Bu kategoride uygulama bulunamadı." : "No apps found in this category.");
+            empty.setPadding(UiKit.px(8), UiKit.px(20), UiKit.px(8), UiKit.px(20));
+            container.addView(empty);
+            return;
         }
 
         ScrollView scroll = new ScrollView(ctx);
@@ -85,7 +240,7 @@ public final class AllApps {
         scroll.addView(grid);
         int rows = (apps.size() + COLS - 1) / COLS;
         int h = Math.min(rows, 4) * UiKit.px(TILE_H + GAP) + pad * 2;
-        root.addView(scroll, new LinearLayout.LayoutParams(COLS * UiKit.px(TILE_W + GAP) + pad * 2, h));
+        container.addView(scroll, new FrameLayout.LayoutParams(COLS * UiKit.px(TILE_W + GAP) + pad * 2, h));
 
         // Artwork in the background, in display order.
         final Context app = ctx.getApplicationContext();
@@ -104,7 +259,6 @@ public final class AllApps {
                 ui.post(() -> target.setImageDrawable(art));
             }
         }, "cinetv-drawer").start();
-        return root;
     }
 
     private static FrameLayout tile(final Context ctx, final AppCatalog.Entry e, final Listener l, final ModalHost host) {

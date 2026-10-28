@@ -180,6 +180,7 @@ public final class AppLauncher {
 
     /** Opens a YouTube video URL directly inside the installed ad-free YouTube app (TizenTube). */
     public static boolean openYouTubeVideo(Context ctx, String url) {
+        com.cinetv.launcher.TvKeyInterceptorService.launchedYouTubeFromCineTv = true;
         if (url == null || url.isEmpty()) return launchFirst(ctx, YOUTUBE_PACKAGES);
         Uri uri = Uri.parse(url);
         for (String pkg : YOUTUBE_PACKAGES) {
@@ -213,6 +214,15 @@ public final class AppLauncher {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             if (posterUrl != null && !posterUrl.isEmpty()) nuvio.putExtra("poster", posterUrl);
             if (start(ctx, nuvio)) return true;
+        }
+        // Fallback: If imdbId is missing or stream intent didn't catch, deep-link search directly into Nuvio
+        if (title != null && !title.trim().isEmpty()) {
+            try {
+                Intent searchIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///search?search=" + Uri.encode(title.trim())))
+                        .setPackage(NUVIO)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                if (start(ctx, searchIntent)) return true;
+            } catch (Throwable ignored) {}
         }
         return launchFirst(ctx, NUVIO_PACKAGES);
     }

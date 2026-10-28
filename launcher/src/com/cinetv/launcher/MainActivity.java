@@ -803,6 +803,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             // Search results carry only TMDB ids: look the IMDb id up now.
             background(() -> {
                 MovieCatalog.ensureImdb(appCtx, m);
+                if (m.imdbId.isEmpty() && m.title != null && !m.title.isEmpty()) {
+                    Movie resolved = MovieCatalog.resolve(appCtx, m.title, m.year);
+                    if (resolved != null && !resolved.imdbId.isEmpty()) m.imdbId = resolved.imdbId;
+                }
                 ui(() -> AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl));
             });
         };
@@ -941,11 +945,21 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 name.setPadding(UiKit.px(8), 0, UiKit.px(20), 0);
                 row.addView(name);
             }
-            if (index >= 0) row.addView(spaced(Controls.button(this, getString(R.string.move), v -> {
-                home.modal.close();
-                home.moveHint.setVisibility(View.VISIBLE);
-                home.apps.startMove(item, inDock, index);
-            })));
+            if (index >= 0) {
+                row.addView(spaced(Controls.button(this, getString(R.string.move), v -> {
+                    home.modal.close();
+                    home.moveHint.setVisibility(View.VISIBLE);
+                    home.apps.startMove(item, inDock, index);
+                })));
+            } else {
+                final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+                row.addView(spaced(Controls.button(this, tr ? "Ana Ekrana Ekle" : "Add to Home", v -> {
+                    home.modal.close();
+                    AppCatalog.addToHome(this, item.packageName);
+                    loadApps(true);
+                    Toast.makeText(MainActivity.this, tr ? "Ana ekrana eklendi" : "Added to home screen", Toast.LENGTH_SHORT).show();
+                })));
+            }
             row.addView(spaced(Controls.button(this, getString(R.string.hide), v -> {
                 home.modal.close();
                 AppCatalog.hide(this, item.packageName);

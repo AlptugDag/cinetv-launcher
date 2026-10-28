@@ -160,6 +160,17 @@ public final class AppCatalog {
         return out;
     }
 
+    public static List<Entry> hiddenApps(Context ctx) {
+        SharedPreferences prefs = Prefs.get(ctx);
+        Set<String> userHidden = csvSet(prefs.getString(Prefs.HIDDEN_APPS, ""));
+        List<Entry> out = new ArrayList<>();
+        if (userHidden.isEmpty()) return out;
+        for (Entry e : allApps(ctx)) {
+            if (userHidden.contains(e.packageName)) out.add(e);
+        }
+        return out;
+    }
+
     /** Apps that could be added to Home: installed, not on Home now, not a firmware service. */
     public static List<Entry> addable(Context ctx, Set<String> onHome) {
         List<Entry> out = new ArrayList<>();

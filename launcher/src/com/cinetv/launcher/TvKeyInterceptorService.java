@@ -31,6 +31,7 @@ import com.cinetv.launcher.service.AppLauncher;
 public class TvKeyInterceptorService extends AccessibilityService {
 
     private static volatile TvKeyInterceptorService instance;
+    public static volatile boolean launchedYouTubeFromCineTv;
 
     private static final long APP_IDLE_SAVER_MS = 3 * 60 * 1000L;
 
@@ -45,8 +46,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
         public void run() {
             String top = lastPackage;
             android.util.Log.i("CineTvSaver", "idle over " + top + ", playing=" + DeviceTweaks.isMediaPlaying(TvKeyInterceptorService.this));
-            // Never over live TV / HDMI (the tuner's audio is not "music"), nor while anything plays.
-            if (top == null || top.equals(getPackageName()) || isTvCore(top)
+            // Never over stock launcher, live TV / HDMI (the tuner's audio is not "music"), nor while anything plays.
+            if (top == null || top.equals(getPackageName()) || isTvCore(top) || isStockLauncher(top)
                     || DeviceTweaks.isMediaPlaying(TvKeyInterceptorService.this)) {
                 handler.postDelayed(this, 60_000L);
                 return;
@@ -98,14 +99,32 @@ public class TvKeyInterceptorService extends AccessibilityService {
     protected void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
-        IntentFilter f = new IntentFilter(Intent.ACTION_TIME_TICK);
-        f.addAction(Intent.ACTION_TIME_CHANGED);
-        registerReceiver(timeTick, f);
-        DeviceTweaks.syncNightMode(this);
-        MemoryOptimizer.ensureAirPlayReceiver(this);
-        MemoryOptimizer.applyTvOptimizations(this);
-        airPods = new com.cinetv.launcher.device.AirPodsLink(this);
-        airPods.start();
+        try {
+            IntentFilter f = new IntentFilter(Intent.ACTION_TIME_TICK);
+            f.addAction(Intent.ACTION_TIME_CHANGED);
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(timeTick, f, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                registerReceiver(timeTick, f);
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("CineTvKeyService", "timeTick register failed: " + t.getMessage());
+        }
+        try {
+            DeviceTweaks.syncNightMode(this);
+        } catch (Throwable ignored) {}
+        try {
+            MemoryOptimizer.ensureAirPlayReceiver(this);
+        } catch (Throwable ignored) {}
+        try {
+            MemoryOptimizer.applyTvOptimizations(this);
+        } catch (Throwable ignored) {}
+        try {
+            airPods = new com.cinetv.launcher.device.AirPodsLink(this);
+            airPods.start();
+        } catch (Throwable t) {
+            android.util.Log.w("CineTvKeyService", "AirPodsLink start failed: " + t.getMessage());
+        }
     }
 
     @Override
@@ -127,6 +146,13 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (event == null || event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || event.getPackageName() == null) return;
         String pkg = event.getPackageName().toString();
         if ("com.android.systemui".equals(pkg) || "android".equals(pkg)) return;
+
+        if (isStockLauncher(pkg)) {
+            // Stock TV launcher (Xiaomi / Google TV) intercepted HOME key or boot: redirect immediately to CineTV
+            startActivity(new Intent(this, MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+            return;
+        }
 
         switch (pkg) {
             case "com.mediatek.wwtv.tvcenter":
@@ -186,9 +212,20 @@ public class TvKeyInterceptorService extends AccessibilityService {
         return pkg.startsWith("com.mediatek.wwtv") || pkg.startsWith("com.mediatek.tv.oneworld.tvcenter");
     }
 
+    /** Stock TV launchers (Xiaomi Mi TV, Google TV, Android TV). */
+    private boolean isStockLauncher(String pkg) {
+        if (pkg == null || pkg.equals(getPackageName())) return false;
+        return pkg.equals("com.google.android.tvlauncher")
+                || pkg.equals("com.google.android.apps.tv.launcherx")
+                || pkg.equals("com.xiaomi.mitv.tvhome")
+                || pkg.equals("com.android.tv.launcher")
+                || pkg.contains("tvlauncher")
+                || pkg.contains("mitv.tvhome");
+    }
+
     /** A real change of app (not a keyboard, toast or pop-up drawn over Nuvio). */
     private boolean isAppSwitch(String pkg) {
-        if (pkg.equals(getPackageName()) || isTvCore(pkg)) return true;
+        if (pkg.equals(getPackageName()) || isTvCore(pkg) || isStockLauncher(pkg)) return true;
         if (pkg.contains("inputmethod") || pkg.contains("katniss")) return false;
         return AppLauncher.isLaunchable(getPackageManager(), pkg);
     }
@@ -206,11 +243,23 @@ public class TvKeyInterceptorService extends AccessibilityService {
         boolean gamepad = (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
                 || (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
         if (gamepad || HardwareKeys.isNavigation(event.getKeyCode())) return false;
-        // The remote's microphone: pause playing content on screen without dumping the user to the home menu
         int code = event.getKeyCode();
+        // YouTube exit: if trailer was opened from CineTV, Back exits YouTube directly back to CineTV
+        if (launchedYouTubeFromCineTv && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                launchedYouTubeFromCineTv = false;
+                startActivity(new Intent(this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+                return true;
+            }
+        }
+        // The remote's microphone: pause playing content and launch CineTV voice search overlay
         if (code == KeyEvent.KEYCODE_SEARCH || code == KeyEvent.KEYCODE_VOICE_ASSIST || code == KeyEvent.KEYCODE_ASSIST) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
                 DeviceTweaks.pauseMedia(this);
+                startActivity(new Intent(this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                        .putExtra("action", "voice"));
             }
             return true;
         }

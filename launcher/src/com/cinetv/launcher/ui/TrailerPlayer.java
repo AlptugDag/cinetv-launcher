@@ -146,7 +146,12 @@ public final class TrailerPlayer extends FrameLayout {
                 }
             }, "CineTrailer");
 
-            w.setWebViewClient(new WebViewClient());
+            w.setWebViewClient(new WebViewClient() {
+                @Override
+                public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                    return true;
+                }
+            });
 
             addView(w, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 

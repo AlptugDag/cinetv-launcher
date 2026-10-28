@@ -391,10 +391,15 @@ public final class MovieCatalog {
         if (tmdbId <= 0 || !hasTmdb(ctx)) return "";
         try {
             String kind = "series".equals(type) ? "tv" : "movie";
-            return tmdb(ctx, kind + "/" + tmdbId + "/external_ids?").optString("imdb_id", "");
+            String id = tmdb(ctx, kind + "/" + tmdbId + "/external_ids?").optString("imdb_id", "");
+            if (id.startsWith("tt")) return id;
+            String altKind = "tv".equals(kind) ? "movie" : "tv";
+            id = tmdb(ctx, altKind + "/" + tmdbId + "/external_ids?").optString("imdb_id", "");
+            if (id.startsWith("tt")) return id;
         } catch (Throwable t) {
             return "";
         }
+        return "";
     }
 
     public static int tmdbIdFromImdb(Context ctx, String imdbId) {

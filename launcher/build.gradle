@@ -44,7 +44,7 @@ android {
         minSdk 26
         targetSdk 34
         // Release builds take the version from the git tag (CI passes -PcineTvVersion=1.0.0).
-        def ver = (project.findProperty('cineTvVersion') ?: '1.0.0').toString().replaceFirst('^v', '')
+        def ver = (project.findProperty('cineTvVersion') ?: '1.0.0.12').toString().replaceFirst('^v', '')
         def parts = ver.tokenize('.').collect { it.replaceAll('[^0-9]', '') as int }
         versionName ver
         // Numbering restarted at 1.0.0 after 3.2.0: the 1000000 base keeps codes above every older build's, so
@@ -52,7 +52,8 @@ android {
         // A fourth part counts small fixes: 1.0.0.1 = 1100001. Letter suffixes boost code so 1.0.0.9b > 1.0.0.9.
         def part = { i -> parts.size() > i ? parts[i] : 0 }
         def suffixBoost = ver.endsWith('b') ? 1 : (ver.endsWith('c') ? 2 : (ver.endsWith('d') ? 3 : 0))
-        versionCode 1000000 + part(0) * 100000 + part(1) * 1000 + part(2) * 10 + part(3) + suffixBoost
+        def p3 = parts.size() >= 5 ? (part(3) * 10 + part(4)) : part(3)
+        versionCode 1000000 + part(0) * 100000 + part(1) * 1000 + part(2) * 10 + p3 + suffixBoost
     }
 
     sourceSets {
