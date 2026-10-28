@@ -90,6 +90,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private BroadcastReceiver packageReceiver;
     private DateFormat timeFmt;
     private DateFormat dateFmt;
+    private int lastShelfHour = -1;
+    private int lastShelfDay = -1;
 
     private final Runnable clockTick = new Runnable() {
         @Override
@@ -260,8 +262,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         MemoryOptimizer.sweepAsync(this);
         PerformanceProfile.noteMemory(this);
         resetIdle();
-        // Back on Home after a while: a fresh selection for the moment.
-        if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > SHELF_EVERY_MS) refreshShelf();
+        // Back on Home: refresh shelf if hour/day changed, or after shelf timer
+        Calendar c = Calendar.getInstance();
+        int curHour = c.get(Calendar.HOUR_OF_DAY);
+        int curDay = c.get(Calendar.DAY_OF_YEAR);
+        if (lastShelfHour != -1 && (lastShelfHour != curHour || lastShelfDay != curDay)) {
+            refreshShelf();
+        } else if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > SHELF_EVERY_MS) {
+            refreshShelf();
+        }
+        lastShelfHour = curHour;
+        lastShelfDay = curDay;
         // Suppress unwanted OEM TV tuner attempting to steal focus
         if (DeviceTweaks.isUnwantedTuner()) {
             handler.postDelayed(() -> {
@@ -430,6 +441,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.clock.setText(timeFmt.format(now));
         home.date.setText(dateFmt.format(now));
         if (ThemeManager.MODE_AUTO.equals(ThemeManager.appearance(this))) applyAppearance();
+
+        Calendar c = Calendar.getInstance();
+        int hour = c.get(Calendar.HOUR_OF_DAY);
+        int day = c.get(Calendar.DAY_OF_YEAR);
+        if (lastShelfHour != -1 && (lastShelfHour != hour || lastShelfDay != day)) {
+            if (home != null && !home.modal.isShowing() && home.screensaver.getVisibility() != View.VISIBLE) {
+                refreshShelf();
+            }
+        }
+        lastShelfHour = hour;
+        lastShelfDay = day;
     }
 
     @Override
@@ -710,10 +732,15 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private void categoryShelf() {
         final Context app = getApplicationContext();
         String current = Prefs.get(this).getString(SHELF_TITLE, "");
+        Calendar cal = Calendar.getInstance();
+        int slot = (cal.get(Calendar.DAY_OF_YEAR) * 24 + cal.get(Calendar.HOUR_OF_DAY));
         MovieCatalog.Category pick = null;
-        for (int i = 0; i < 6 && pick == null; i++) {
-            MovieCatalog.Category c = MovieCatalog.CATEGORIES[new java.util.Random().nextInt(MovieCatalog.CATEGORIES.length)];
-            if (!getString(c.nameRes).equals(current)) pick = c;
+        for (int i = 0; i < MovieCatalog.CATEGORIES.length; i++) {
+            MovieCatalog.Category c = MovieCatalog.CATEGORIES[(slot + i) % MovieCatalog.CATEGORIES.length];
+            if (!getString(c.nameRes).equals(current)) {
+                pick = c;
+                break;
+            }
         }
         final MovieCatalog.Category cat = pick != null ? pick : MovieCatalog.CATEGORIES[0];
         background(() -> {

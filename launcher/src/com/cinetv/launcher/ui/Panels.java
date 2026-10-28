@@ -13,6 +13,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -85,9 +86,16 @@ public final class Panels {
         root.setClipChildren(false);
         root.setClipToPadding(false);
         LinearLayout.LayoutParams colsLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        colsLp.topMargin = UiKit.px(28);
+        colsLp.topMargin = UiKit.px(16);
         colsLp.leftMargin = UiKit.px(10);
-        root.addView(cols, colsLp);
+
+        ScrollView scroll = new ScrollView(ctx);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setClipChildren(false);
+        scroll.setClipToPadding(false);
+        scroll.setFillViewport(true);
+        scroll.addView(cols, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(scroll, colsLp);
 
         // 1. Themes
         LinearLayout c1 = column(ctx, cols, R.string.col_themes, 470);
@@ -105,7 +113,7 @@ public final class Panels {
                     host.replace(() -> buildSettings(ctx, host, a));
                 });
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-                lp.setMargins(k == i ? 0 : UiKit.px(6), 0, k == i ? UiKit.px(6) : 0, UiKit.px(12));
+                lp.setMargins(k == i ? 0 : UiKit.px(6), 0, k == i ? UiKit.px(6) : 0, UiKit.px(8));
                 pair.addView(tile, lp);
             }
             if (i + 1 >= ThemeManager.THEMES.length) {
@@ -113,7 +121,7 @@ public final class Panels {
                 // with weight 1f so the last theme button remains exactly the same width as the others!
                 View dummy = new View(ctx);
                 LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-                dlp.setMargins(UiKit.px(6), 0, 0, UiKit.px(12));
+                dlp.setMargins(UiKit.px(6), 0, 0, UiKit.px(8));
                 pair.addView(dummy, dlp);
             }
             c1.addView(pair);
@@ -197,6 +205,8 @@ public final class Panels {
                 }));
         c3.addView(Controls.tile(ctx, ctx.getString(R.string.weather_city), city != null ? city : ctx.getString(R.string.weather_auto), city != null,
                 v -> host.push(() -> buildCityInput(ctx, host, a))));
+        c3.addView(Controls.tile(ctx, ctx.getString(R.string.setup_tune), ctx.getString(R.string.setup_tune_hint), false,
+                v -> setup(ctx, host, false)));
 
         // 4. TV & phone
         LinearLayout c4 = column(ctx, cols, R.string.col_tv, 390);
@@ -224,8 +234,6 @@ public final class Panels {
                 host.replace(() -> buildSettings(ctx, host, a));
             }));
         }
-        c4.addView(Controls.tile(ctx, ctx.getString(R.string.setup_tune), ctx.getString(R.string.setup_tune_hint), false,
-                v -> setup(ctx, host, false)));
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.optimize), ctx.getString(R.string.optimize_hint), false,
                 v -> host.push(() -> buildBenchmark(ctx, host))));
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.remote_keys), ctx.getString(R.string.remote_keys_hint), false,

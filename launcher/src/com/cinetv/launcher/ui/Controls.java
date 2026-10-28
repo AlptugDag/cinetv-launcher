@@ -45,8 +45,8 @@ public final class Controls {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setFocusable(true);
         box.setClickable(true);
-        box.setPadding(UiKit.px(20), UiKit.px(14), UiKit.px(20), UiKit.px(14));
-        final Glass g = new Glass(box, UiKit.pxf(18), Glass.Style.CONTROL);
+        box.setPadding(UiKit.px(18), UiKit.px(10), UiKit.px(18), UiKit.px(10));
+        final Glass g = new Glass(box, UiKit.pxf(16), Glass.Style.CONTROL);
         box.setBackground(g);
 
         LinearLayout top = new LinearLayout(ctx);
@@ -58,18 +58,18 @@ public final class Controls {
         dlp.setMargins(0, 0, UiKit.px(10), 0);
         dot.setVisibility(active ? View.VISIBLE : View.GONE);
         top.addView(dot, dlp);
-        final TextView t = UiKit.bold(ctx, 21, UiKit.INK);
+        final TextView t = UiKit.bold(ctx, 20, UiKit.INK);
         t.setText(title);
         t.setSingleLine(true);
         t.setEllipsize(android.text.TextUtils.TruncateAt.END);
         top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         box.addView(top);
 
-        final TextView s = UiKit.label(ctx, 16, UiKit.INK_DIM);
+        final TextView s = UiKit.label(ctx, 15, UiKit.INK_DIM);
         s.setText(state);
         s.setSingleLine(true);
         s.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        s.setPadding(0, UiKit.px(6), 0, 0);
+        s.setPadding(0, UiKit.px(4), 0, 0);
         if (state == null || state.length() == 0) s.setVisibility(View.GONE);
         box.addView(s);
 
@@ -81,7 +81,7 @@ public final class Controls {
         });
         box.setOnClickListener(onClick);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(0, 0, 0, UiKit.px(12));
+        lp.setMargins(0, 0, 0, UiKit.px(8));
         box.setLayoutParams(lp);
         return box;
     }
@@ -89,7 +89,8 @@ public final class Controls {
     /** The red alarm tile at the end of Settings ("Remove CineTV"). */
     public static LinearLayout alarm(Context ctx, CharSequence title, View.OnClickListener onClick) {
         final LinearLayout box = tile(ctx, title, null, false, onClick);
-        final TextView t = (TextView) ((LinearLayout) box.getChildAt(0)).getChildAt(1);
+        final LinearLayout top = (LinearLayout) box.getChildAt(0);
+        final TextView t = (TextView) top.getChildAt(1);
         t.setTextColor(Brand.TV_RED);
         final View.OnFocusChangeListener inner = box.getOnFocusChangeListener();
         box.setOnFocusChangeListener((v, has) -> {

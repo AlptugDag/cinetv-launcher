@@ -5,6 +5,7 @@ import android.content.Context;
 import com.cinetv.launcher.service.Creator;
 import com.cinetv.launcher.service.MovieCatalog;
 import com.cinetv.launcher.service.MovieCatalog.Movie;
+import com.cinetv.launcher.service.Prefs;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -247,17 +248,61 @@ public final class MovieAssistant {
 
     // ---- shelves without a query ------------------------------------------------------------------
 
+    private static final String PREF_RECENT_CURATED = "recent_curated_titles";
+    private static final int MAX_RECENT_CURATED = 60;
+
+    private static String getRecentCurated(Context ctx) {
+        return Prefs.get(ctx).getString(PREF_RECENT_CURATED, "");
+    }
+
+    private static void recordRecentCurated(Context ctx, List<Movie> movies) {
+        if (movies == null || movies.isEmpty()) return;
+        List<String> list = new ArrayList<>();
+        String existing = Prefs.get(ctx).getString(PREF_RECENT_CURATED, "");
+        if (!existing.isEmpty()) {
+            for (String t : existing.split(",")) {
+                String clean = t.trim();
+                if (!clean.isEmpty()) list.add(clean);
+            }
+        }
+        for (Movie m : movies) {
+            String title = (m.originalTitle != null && !m.originalTitle.isEmpty()) ? m.originalTitle : m.title;
+            if (title != null) {
+                title = title.trim();
+                if (!title.isEmpty() && !list.contains(title)) {
+                    list.add(title);
+                }
+            }
+        }
+        while (list.size() > MAX_RECENT_CURATED) {
+            list.remove(0);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < list.size(); i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(list.get(i));
+        }
+        Prefs.get(ctx).edit().putString(PREF_RECENT_CURATED, sb.toString()).apply();
+    }
+
     /**
-     * A shelf for the moment: hour, weekday, city, country and weather picked together (an
-     * {@code context} like "Friday 21:40, Ankara, Türkiye, 12°C clear"), or the viewer's own mood.
+     * A shelf for the moment: hour, weekday, day of month, season, city, country and weather
+     * picked together with non-repeating world cinema recommendations, or the viewer's own mood.
      */
     public static Shelf curate(Context ctx, String mood, String context, int max) {
-        String request = mood != null && !mood.trim().isEmpty() ? mood.trim()
-                : "Right now it is " + context + ". Pick " + max + " outstanding films or series that fit this exact moment "
-                + "(time of day, day of week, season, the weather, the place) around ONE sharp, specific theme. "
-                + "Never mix comedy and drama. Prefer quality, vary decades and countries. The title names the moment "
-                + "and the theme, e.g. \"Pazar gecesi için suç filmleri\" or \"Yağmurlu akşama sıcak dramlar\".";
-        String system = "You are a world-class film curator. Reply ONLY with JSON, no markdown: "
+        String recent = getRecentCurated(ctx);
+        String recentInstruction = recent.isEmpty() ? ""
+                : " CRITICAL ANTI-REPETITION RULE: DO NOT recommend any of these previously shown titles: [" + recent + "]. ";
+
+        String request = mood != null && !mood.trim().isEmpty() ? mood.trim() + "." + recentInstruction
+                : "Right now the exact real-world moment is: " + context + "." + recentInstruction
+                + " Pick " + max + " outstanding films or series tailored with surgical precision to this exact moment "
+                + "(hour of the day, exact day of month, season, atmospheric weather, and emotional tone). "
+                + "Avoid generic top-250 cliches (e.g. The Godfather, Inception, Pulp Fiction, Interstellar, Shawshank Redemption, Fight Club, Dark Knight). "
+                + "Surprise the viewer with distinct, acclaimed cinema (cult classics, hidden gems, Cannes/Venice/Berlin winners, French, Japanese, Korean, Italian, Turkish, Scandinavian, Latin American cinema). "
+                + "The category title MUST be evocative, concise (max 6 words in " + language().toUpperCase(Locale.ROOT)
+                + "), and explicitly reflect this date/hour/weather mood (e.g. \"28 Ekim Sonbahar Dramları\", \"Gece Yarısı Neo-Noir\", \"Güneşli Sabah Yol Hikayeleri\").";
+        String system = "You are a world-class film curator and cinema historian. Reply ONLY with JSON, no markdown: "
                 + "{\"category_title\": \"SHORT EVOCATIVE TITLE IN " + language().toUpperCase(Locale.ROOT) + " (max 6 words)\", "
                 + "\"movies\": [{\"title\": \"original or international title\", \"year\": 1999, \"tv\": false}]}";
         LlmClient.Result r = LlmClient.generate(ctx, system, request, 2400);
@@ -276,7 +321,11 @@ public final class MovieAssistant {
                     return one;
                 }));
             }
-            return new Shelf(o.optString("category_title", ""), collect(jobs, max));
+            List<Movie> resolved = collect(jobs, max);
+            if (!resolved.isEmpty()) {
+                recordRecentCurated(ctx, resolved);
+            }
+            return new Shelf(o.optString("category_title", ""), resolved);
         } catch (Throwable t) {
             return null;
         }
@@ -298,12 +347,64 @@ public final class MovieAssistant {
     /** Context for the moment's shelf, in plain words for the curator. */
     public static String momentContext(String cityAndWeather) {
         Calendar c = Calendar.getInstance();
-        String day = c.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.LONG, Locale.ENGLISH);
+        int hour = c.get(Calendar.HOUR_OF_DAY);
+        int dayOfMonth = c.get(Calendar.DAY_OF_MONTH);
+        int monthNum = c.get(Calendar.MONTH);
+        String dayOfWeek = c.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.LONG, Locale.ENGLISH);
         String month = c.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.ENGLISH);
-        String time = String.format(Locale.ROOT, "%02d:%02d", c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE));
+        String time = String.format(Locale.ROOT, "%02d:%02d", hour, c.get(Calendar.MINUTE));
         String country = Locale.getDefault().getDisplayCountry(Locale.ENGLISH);
-        return day + " " + time + " in " + month + (cityAndWeather == null || cityAndWeather.isEmpty() ? "" : ", " + cityAndWeather)
-                + (country.isEmpty() ? "" : ", " + country);
+
+        String season;
+        if (monthNum >= 2 && monthNum <= 4) season = "Spring";
+        else if (monthNum >= 5 && monthNum <= 7) season = "Summer";
+        else if (monthNum >= 8 && monthNum <= 10) season = "Autumn/Sonbahar";
+        else season = "Winter/Kış";
+
+        String timeMood;
+        if (hour >= 5 && hour < 9) {
+            timeMood = "early morning dawn (fresh awakenings, quiet reflective energy, poetic start)";
+        } else if (hour >= 9 && hour < 12) {
+            timeMood = "bright morning (spirited adventures, witty storytelling, inspiring journeys)";
+        } else if (hour >= 12 && hour < 15) {
+            timeMood = "midday afternoon (vibrant pace, smart thrillers, captivating drama)";
+        } else if (hour >= 15 && hour < 18) {
+            timeMood = "late afternoon / golden hour (reflective, rich character studies, sweeping visual beauty)";
+        } else if (hour >= 18 && hour < 21) {
+            timeMood = "twilight evening transition (stylish suspense, gripping mysteries, prestige world cinema)";
+        } else if (hour >= 21 && hour < 24) {
+            timeMood = "prime time evening cinema (intense psychological tension, gripping thrills, cinematic masterpieces)";
+        } else if (hour >= 0 && hour < 3) {
+            timeMood = "midnight hours (dark neo-noir, cult obsessions, psychological intrigue, surreal wonders)";
+        } else {
+            timeMood = "deep nocturnal insomnia (hypnotic, atmospheric, slow-burning neon reveries, poetic cinema)";
+        }
+
+        String weatherMood = "";
+        if (cityAndWeather != null && !cityAndWeather.trim().isEmpty()) {
+            String wLower = cityAndWeather.toLowerCase(Locale.ROOT);
+            if (wLower.contains("yağmur") || wLower.contains("rain") || wLower.contains("drizzle") || wLower.contains("sağanak")) {
+                weatherMood = "rainy & moody atmosphere: melancholic, reflective, cozy indoor drama & suspense";
+            } else if (wLower.contains("kar") || wLower.contains("snow") || wLower.contains("buz") || wLower.contains("frost")) {
+                weatherMood = "snowy & chilly atmosphere: northern noir, human warmth, gripping survival";
+            } else if (wLower.contains("bulut") || wLower.contains("cloud") || wLower.contains("sis") || wLower.contains("fog") || wLower.contains("mist") || wLower.contains("kapalı")) {
+                weatherMood = "overcast & misty atmosphere: contemplative, existential mystery, enigmatic arthouse";
+            } else if (wLower.contains("güneş") || wLower.contains("açık") || wLower.contains("sun") || wLower.contains("clear")) {
+                weatherMood = "clear radiant atmosphere: vibrant, energetic, visually magnificent";
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(dayOfWeek).append(", ").append(dayOfMonth).append(" ").append(month).append(" (").append(season).append("), ");
+        sb.append(time).append(" - ").append(timeMood);
+        if (cityAndWeather != null && !cityAndWeather.trim().isEmpty()) {
+            sb.append(", location & weather: ").append(cityAndWeather);
+            if (!weatherMood.isEmpty()) {
+                sb.append(" (").append(weatherMood).append(")");
+            }
+        }
+        if (!country.isEmpty()) sb.append(", ").append(country);
+        return sb.toString();
     }
 
     private static List<Movie> collect(List<Future<List<Movie>>> jobs, int max) {

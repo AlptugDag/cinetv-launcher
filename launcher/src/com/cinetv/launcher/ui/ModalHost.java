@@ -88,7 +88,7 @@ public class ModalHost extends FrameLayout {
         card.setOrientation(LinearLayout.VERTICAL);
         final View near = anchor;
         if (near != null) card.setPadding(UiKit.px(14), UiKit.px(12), UiKit.px(14), UiKit.px(12));
-        else card.setPadding(UiKit.px(44), UiKit.px(36), UiKit.px(44), UiKit.px(36));
+        else card.setPadding(UiKit.px(38), UiKit.px(22), UiKit.px(38), UiKit.px(22));
         card.setBackground(Glass.panel(card, near != null ? 36 : 44));
         setBackgroundColor(Color.argb(near != null ? 90 : 150, 0, 0, 0));
         card.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));

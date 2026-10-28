@@ -152,7 +152,14 @@ public final class MovieCatalog {
     public static List<Movie> category(Context ctx, Category category, int max) {
         if (hasTmdb(ctx)) {
             try {
-                List<Movie> list = parseTmdbResults(tmdb(ctx, category.tmdbPath + "language=" + language()), "movie", max);
+                java.util.Calendar cal = java.util.Calendar.getInstance();
+                int slot = (cal.get(java.util.Calendar.DAY_OF_YEAR) * 24 + cal.get(java.util.Calendar.HOUR_OF_DAY));
+                int page = (slot % 4) + 1; // Rotates pages 1-4 dynamically every hour
+                String path = category.tmdbPath;
+                if (!path.contains("page=")) {
+                    path = path + (path.endsWith("&") || path.endsWith("?") ? "" : "&") + "page=" + page + "&";
+                }
+                List<Movie> list = parseTmdbResults(tmdb(ctx, path + "language=" + language()), "movie", max);
                 fillImdbIds(ctx, list);
                 if (!list.isEmpty()) return list;
             } catch (Throwable t) {
