@@ -119,33 +119,31 @@ public final class TrailerPlayer extends FrameLayout {
             w.setLongClickable(false);
             w.setHapticFeedbackEnabled(false);
 
-            w.setWebViewClient(new WebViewClient() {
-                @Override
-                public void onPageFinished(WebView view, String url) {
-                    main.postDelayed(() -> {
+            w.addJavascriptInterface(new Object() {
+                @android.webkit.JavascriptInterface
+                public void onVideoPlaying() {
+                    main.post(() -> {
                         if (my == gen && web == w && getVisibility() != VISIBLE) {
                             setAlpha(0f);
                             setVisibility(VISIBLE);
                             animate().alpha(1f).setDuration(400).start();
                         }
-                    }, 400);
+                    });
                 }
-            });
+            }, "CineTrailer");
+
+            w.setWebViewClient(new WebViewClient());
 
             addView(w, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
-            // Safety fallback: ensure player becomes visible after 1.5s even if onPageFinished is slow
+            // Safety timeout: reveal after 3.5s if playback callback was delayed
             main.postDelayed(() -> {
                 if (my == gen && web == w && getVisibility() != VISIBLE) {
                     setAlpha(0f);
                     setVisibility(VISIBLE);
                     animate().alpha(1f).setDuration(400).start();
                 }
-            }, 1500);
-
-            String embedUrl = "https://www.youtube-nocookie.com/embed/" + key
-                    + "?autoplay=1&mute=1&controls=0&loop=1&playlist=" + key
-                    + "&playsinline=1&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1";
+            }, 3500);
 
             String html = "<!DOCTYPE html><html><head>"
                     + "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
@@ -153,11 +151,34 @@ public final class TrailerPlayer extends FrameLayout {
                     + "<style>"
                     + "* { margin:0; padding:0; box-sizing:border-box; }"
                     + "html, body { width:100%; height:100%; overflow:hidden; background:#000000; }"
-                    + "iframe { width:100%; height:100%; border:none; display:block; }"
-                    + "</style></head><body>"
-                    + "<iframe src=\"" + embedUrl + "\" "
-                    + "allow=\"autoplay; encrypted-media; picture-in-picture\" "
-                    + "referrerpolicy=\"strict-origin-when-cross-origin\"></iframe>"
+                    + "#stage { position:absolute; top:-36px; left:-36px; width:calc(100% + 72px); height:calc(100% + 72px); overflow:hidden; pointer-events:none; }"
+                    + "#player { width:100%; height:100%; border:none; display:block; }"
+                    + "</style>"
+                    + "<script src='https://www.youtube-nocookie.com/iframe_api'></script>"
+                    + "</head><body>"
+                    + "<div id='stage'><div id='player'></div></div>"
+                    + "<script>"
+                    + "var notified = false;"
+                    + "function signal() {"
+                    + "  if (notified) return; notified = true;"
+                    + "  setTimeout(function() { try { CineTrailer.onVideoPlaying(); } catch(e){} }, 350);"
+                    + "}"
+                    + "function onYouTubeIframeAPIReady() {"
+                    + "  new YT.Player('player', {"
+                    + "    videoId: '" + key + "',"
+                    + "    playerVars: {"
+                    + "      autoplay: 1, mute: 1, controls: 0, loop: 1, playlist: '" + key + "',"
+                    + "      playsinline: 1, rel: 0, iv_load_policy: 3, disablekb: 1, modestbranding: 1, fs: 0"
+                    + "    },"
+                    + "    events: {"
+                    + "      'onReady': function(e) { e.target.playVideo(); },"
+                    + "      'onStateChange': function(e) { if (e.data === 1) signal(); }"
+                    + "    }"
+                    + "  });"
+                    + "}"
+                    + "// Safety fallback inside webview"
+                    + "setTimeout(signal, 2800);"
+                    + "</script>"
                     + "</body></html>";
 
             w.loadDataWithBaseURL("https://themoviedb.org", html, "text/html", "utf-8", "https://themoviedb.org");

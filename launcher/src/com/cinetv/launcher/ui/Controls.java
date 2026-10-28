@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -60,12 +61,14 @@ public final class Controls {
         final TextView t = UiKit.bold(ctx, 21, UiKit.INK);
         t.setText(title);
         t.setSingleLine(true);
-        top.addView(t);
+        t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         box.addView(top);
 
         final TextView s = UiKit.label(ctx, 16, UiKit.INK_DIM);
         s.setText(state);
         s.setSingleLine(true);
+        s.setEllipsize(android.text.TextUtils.TruncateAt.END);
         s.setPadding(0, UiKit.px(6), 0, 0);
         if (state == null || state.length() == 0) s.setVisibility(View.GONE);
         box.addView(s);

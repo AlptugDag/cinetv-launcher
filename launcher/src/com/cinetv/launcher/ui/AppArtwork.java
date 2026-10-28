@@ -47,7 +47,7 @@ public final class AppArtwork {
         if (AppCatalog.isTizenTube(pkg)) return "YouTube";
         if (lower.contains("turkcell.ott") || lower.contains("tvplus")) return "TV+";
         if (lower.contains("instantbits.cast")) return "Web Video Caster";
-        if (lower.contains("nuvio")) return "Nuvio";
+        if (lower.contains("nuvio") || lower.contains("alptugflix")) return "Alptuğflix";
         if (lower.contains("stremio")) return "Stremio";
         if (lower.contains("dizipal") || lower.contains("lipter")) return "DİZİPAL";
         if (lower.contains("courville.nova")) return "NOVA";
@@ -75,8 +75,8 @@ public final class AppArtwork {
         if (lower.contains("instantbits.cast")) {
             return Color.parseColor("#FF6B00"); // Vibrant Tangerine Amber (Hue 25°)
         }
-        if (lower.contains("nuvio")) {
-            return Color.parseColor("#8B5CF6"); // Electric Nuvio Violet (Hue 258°)
+        if (lower.contains("nuvio") || lower.contains("alptugflix")) {
+            return Color.parseColor("#E50914"); // Alptugflix Netflix Signature Red (Hue 356°)
         }
         if (AppCatalog.isTizenTube(pkg)) {
             return Color.parseColor("#FF0033"); // Official YouTube Ruby Crimson (Hue 348°)
@@ -354,7 +354,7 @@ public final class AppArtwork {
         if (lower.contains("instantbits.cast")) {
             return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createWebVideoCasterCard(ctx)));
         }
-        if (lower.contains("nuvio")) {
+        if (lower.contains("nuvio") || lower.contains("alptugflix")) {
             return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createNuvioCard(ctx)));
         }
         if (lower.contains("stremio")) {

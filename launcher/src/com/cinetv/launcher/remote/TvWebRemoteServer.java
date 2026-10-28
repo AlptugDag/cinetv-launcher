@@ -385,31 +385,26 @@ public final class TvWebRemoteServer {
         switch (path) {
             case "/api/pair/request": {
                 PairRequest p = pending;
-                if (p != null && p.state == 0 && System.currentTimeMillis() - p.at < 60_000L) {
+                if (p != null && p.state == 0 && System.currentTimeMillis() - p.at < 5_000L) {
                     return new JSONObject().put("ok", false).put("error", "busy");
                 }
                 final PairRequest req = new PairRequest();
                 pending = req;
                 final String device = deviceName(agent);
                 post(() -> {
-                    Controller c = controller;
-                    if (c == null) {
-                        try {
-                            app.startActivity(new Intent(app, com.cinetv.launcher.MainActivity.class)
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
-                        } catch (Throwable ignored) {
-                        }
-                        main.postDelayed(() -> {
-                            Controller c2 = controller;
-                            if (c2 != null) {
-                                c2.askPairing(device, () -> req.state = 1, () -> req.state = -1);
-                            } else {
-                                req.state = -1;
-                            }
-                        }, 1200);
-                        return;
+                    try {
+                        app.startActivity(new Intent(app, com.cinetv.launcher.MainActivity.class)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+                    } catch (Throwable ignored) {
                     }
-                    c.askPairing(device, () -> req.state = 1, () -> req.state = -1);
+                    main.postDelayed(() -> {
+                        Controller c = controller;
+                        if (c != null) {
+                            c.askPairing(device, () -> req.state = 1, () -> req.state = -1);
+                        } else {
+                            req.state = -1;
+                        }
+                    }, 400);
                 });
                 return new JSONObject().put("ok", true).put("id", req.id);
             }

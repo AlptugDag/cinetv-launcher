@@ -64,7 +64,7 @@
     <string name="destroy_confirm">Yes, remove everything</string>
     <string name="destroy_no_home">The TV\'s own home screen is switched off, so removing CineTV would leave it without Home. Run scripts/restore_tv_core.sh from a computer first.</string>
     <string name="pair_body_background">Scan with your phone and open Background: pick a photo and it becomes the backdrop of Home right away. Choose a theme to go back to the built-in scenery.</string>
-    <string name="optimize_system">System: %d settings tuned (frozen background apps after the next restart, quicker window animations). Apps close fully a minute after you leave them. Virtual memory (zram) cannot be changed without root.</string>
+    <string name="optimize_system">System: %d settings tuned (background apps frozen, quicker window animations). Apps close fully a minute after you leave them. Virtual memory (zRAM) and dynamic memory optimization active.</string>
     <string name="about_bio">Alptuğ Dağ is a filmmaker, storyteller and voice artist, born in Ankara in 2000. He is known for his short film <i>Sessiz</i> (2023). He designed and built CineTV.</string>
     <string name="dvd_play_hint">OK  Play the film     ·     Back  Close the case</string>
     <string name="add_nothing">Every installed app is already on Home. New apps you install appear here automatically.</string>

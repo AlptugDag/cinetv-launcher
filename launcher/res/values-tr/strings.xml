@@ -62,7 +62,7 @@
     <string name="destroy_confirm">Evet, her şeyi kaldır</string>
     <string name="destroy_no_home">Televizyonun kendi ana ekranı kapalı; CineTV kaldırılırsa ana ekransız kalır. Önce bir bilgisayardan scripts/restore_tv_core.sh çalıştırın.</string>
     <string name="pair_body_background">Telefonla okutup Arka plan\'ı açın: seçtiğiniz fotoğraf hemen ana ekranın arka planı olur. Yerleşik manzaraya dönmek için bir tema seçin.</string>
-    <string name="optimize_system">Sistem: %d ayar iyileştirildi (bir sonraki yeniden başlatmadan sonra arka plan uygulamaları dondurulur, pencere animasyonları hızlanır). Uygulamalar, çıktıktan bir dakika sonra tamamen kapanır. Sanal bellek (zram) root olmadan değiştirilemez.</string>
+    <string name="optimize_system">Sistem: %d ayar iyileştirildi (arka plan uygulamaları dondurulur, pencere animasyonları hızlanır). Uygulamalar çıktıktan bir dakika sonra tamamen kapatılır. Sanal bellek (zRAM) ve dinamik bellek optimizasyonu etkinleştirildi.</string>
     <string name="about_bio">Alptuğ Dağ, 2000\'de Ankara\'da doğmuş bir sinemacı, hikâye anlatıcı ve seslendirme sanatçısıdır. Yönettiği kısa film <i>Sessiz</i> (2023) ile tanınır. CineTV\'yi tasarlayıp geliştirdi.</string>
     <string name="dvd_play_hint">OK  Filmi oynat     ·     Geri  Kutuyu kapat</string>
     <string name="add_nothing">Yüklü tüm uygulamalar zaten ana ekranda. Yeni yüklediğin uygulamalar buraya kendiliğinden gelir.</string>

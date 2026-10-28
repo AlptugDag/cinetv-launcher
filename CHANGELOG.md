@@ -3,18 +3,29 @@
 ## 1.0.0.9
 
 ### Yenilikler & Düzeltmeler
+- **Siri / visionOS Tarzı Kromatik Kenar Dalgaları (Siri Edge Waves)**:
+  - Mikrofon tuşuna basıldığında ortada beliren basit mikrofon ikonu yerine ekranın tüm kenarlarını çevreleyen, mikrofondan gelen sesin RMS şiddetiyle dinamik dalgalanan akışkan kromatik neon dalgaları (Cyan, Magenta, Violet, Kehribar Sarısı) ve OLED derinliğinde ambiyans ışıması uygulandı.
+  - Ekranın alt kısmına şeffaf Apple Intelligence tarzı zarif Liquid Glass hap kapsülü ve gerçek zamanlı transkripsiyon metni yerleştirildi.
+- **DVD Kitapçığında Sabit Geometrik Düzen & Sıfır Çakışma Garantisi**:
+  - Oyuncu portresi ve isimlerinin yan yana sıkışmasından kaynaklanan üst üste binme sorunu tamamen giderildi; dikey kart mimarisi ve sütun bazlı `clipRect` korumasıyla madalyon ve isimlerin asla birbirine taşmaması sağlandı.
+  - Büyütülen dairesel madalyonlar (`u * 0.13f`), belirginleştirilen el yazısı isimler, film adı (`u * 0.082f`), 1-2 vurucu cümlelik tam özet (`u * 0.054f`) ve künye/puanlar her filmde birbirine denk, dengeli ve kusursuz editoryal oranlara kavuşturuldu.
+- **Fragman Oynatıcıda Sıfır YouTube UI Görünümü (0.0s Flash-Free Playback)**:
+  - Fragman başlarken YouTube video başlığı, logo ve oynat butonunun 1 saniye kadar görünmesi sorunu çözüldü.
+  - Oynatıcı, YouTube IFrame API'sinden `PLAYING (state=1)` sinyali alana ve arayüz tamamen sönene kadar tam opak siyah perdede bekletilip ardından pürüzsüzce açılıyor. Ayrıca 36px taşma kırpmasıyla YouTube kenar başlıkları ve logoları tamamen kadraj dışına itildi.
+- **Mobil Web Kumandası PWA / Ana Ekrana Ekleme Desteği**:
+  - `manifest.webmanifest` göreceli yol (`.`) ile güncellendi; kumanda ana ekrana eklendiğinde oturum anahtarları `localStorage`, `sessionStorage` ve kalıcı çerezlerde (`cookie`) saklanarak oturum kaybı önlendi.
+  - Yetki süresi dolduğunda veya sıfırdan açıldığında TV'de izin isteme penceresinin arka planda kalmaması için ana etkinlik (`MainActivity`) öne getirilerek televizyonda anında izin diyaloğunun belirmesi sağlandı.
+- **Menü Tema Seçeneklerinde Eşit Boyut & Sol Kenar Kesilme Düzeltmesi**:
+  - "Sinema Salonu" gibi uzun isimli butonların satırı genişletmesi önlendi; tüm tema butonlarına eşit ağırlık (`setWeightSum(2f)`), tek satır sınırlaması ve son satırdaki tekli buton için hizalama dengeleyicisi eklenerek tüm tema butonları milimetrik eşit boyuta getirildi.
+  - Ayarlar paneli sol kenarına güvenli kenar boşluğu ve `clipChildren=false` eklenerek en soldaki butonların çerçeveye çarpıp kesilmesi engellendi.
+- **Performans Optimizasyonu zRAM Metni Düzeltmesi**:
+  - Ayarlar altındaki zRAM hakkındaki yanıltıcı metin düzeltildi; root gerektirmeden dinamik sanal bellek (zRAM) ve bellek yönetiminin devrede olduğu bilgisi güncellendi.
+- **Alptuğflix Marka Bütünlüğü**:
+  - Televizyonlardaki Nuvio güncellense veya harici APK kurulsa bile ana sayfadaki kart ve etiket daima Alptuğflix olarak kalacak şekilde kilitlendi; NuvioSetup resmi upstream Nuvio'yu doğrudan kuracak şekilde güncellendi.
 - **Film Dolabı Raf Dokusu & Doğal Derinlik**:
-  - Film Dolabı temasında vitrinin arkasını kaplayan rahatsız edici suni koyuluk ve koyu bant katmanı tamamen kaldırıldı.
-  - Kütüphane dolabının orijinal ahşap/laminat derinliğini yansıtan gerçekçi mimari uygulandı: Üst raftan süzülen yumuşak ışık gölgesi, dikey panel derz çizgileri, DVD kutularının üzerinde durduğu fildişi yatay raf düzlemi (receding deck plane) ve kutuların tabanındaki zarif temas gölgesiyle tam bir fiziksel raf hissi sağlandı.
+  - Film Dolabı temasında vitrinin arkasını kaplayan rahatsız edici suni koyuluk ve koyu bant katmanı tamamen kaldırıldı; kütüphane dolabının orijinal ahşap/laminat derinliğini yansıtan gerçekçi mimari uygulandı.
 - **Uygulama Tepsisi "Ekle" (+) Butonunda %100 Şeffaf Cam Uyumu**:
-  - Tüm temalarda "Ekle" butonunun arkasındaki opak gri arka plan ve uyumsuz köşe yarıçapı kaldırıldı.
-  - Diğer tüm uygulamalarla birebir aynı olan Liquid Glass yarı şeffaf dumanlı kristal gövde (`createAddCard`), 22dp köşe yarıçapı, üst ışık prizması, zarif yuvarlak uçlu `+` glifi ve platin odak ışıltısı eklendi.
-- **Kitapçıkta Tam Responsive Tasarım (Responsive Booklet Engine)**:
-  - Film özetinin uzunluğuna göre oyuncu portreleri, isimleri, yönetmen künyesi ve puanların konum ve boyutları dinamik olarak ölçekleniyor.
-  - Özet tek cümlelik vurucu bir önerme olduğunda oyuncu madalyonları %35 daha da büyüyerek (`u * 0.23f`) sayfanın ferahlığını sanatsal bir şekilde dolduruyor; özet uzadığında tipografi ve portreler sayfa sınırlarına göre otomatik hizalanarak mükemmel bir editoryal düzen oluşturuyor.
-- **Fragman Oynatıcı YouTube Hata 153 Çözümü**:
-  - Android WebView'da HTTP Referer başlığının iletilmemesinden kaynaklanan YouTube "Video oynatıcı yapılandırma hatası (Hata 153)" giderildi.
-  - `loadDataWithBaseURL` ile güvenli YouTube kaynak doğrulaması (`strict-origin-when-cross-origin`) sağlanarak fragmanların tepside doğrudan ve hatasız başlaması sağlandı.
+  - Tüm temalarda "Ekle" butonunun arkasındaki opak gri arka plan ve uyumsuz köşe yarıçapı kaldırıldı; Liquid Glass yarı şeffaf dumanlı kristal gövde (`createAddCard`), 22dp köşe yarıçapı ve platin odak ışıltısı eklendi.
 
 ## 1.0.0.8
 

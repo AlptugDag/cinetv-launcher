@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Handler;
@@ -48,7 +49,7 @@ public class VoiceOverlay extends FrameLayout {
     private boolean active;
 
     private LinearLayout card;
-    private WaveView waveView;
+    private SiriEdgeWavesView siriWaves;
     private TextView statusTitle;
     private TextView statusSub;
     private TextView resultText;
@@ -58,49 +59,43 @@ public class VoiceOverlay extends FrameLayout {
         setVisibility(GONE);
         setFocusable(true);
         setClickable(true);
-        setBackgroundColor(Color.argb(140, 0, 0, 0));
+        setBackgroundColor(Color.argb(120, 0, 0, 0));
         buildUi(ctx);
     }
 
     private void buildUi(Context ctx) {
+        // Siri / visionOS style chromatic edge waves that illuminate the screen perimeter
+        siriWaves = new SiriEdgeWavesView(ctx);
+        addView(siriWaves, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+
+        // Floating crystal capsule at bottom-center (modern Apple Intelligence pill)
         card = new LinearLayout(ctx);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER_HORIZONTAL);
-        int padH = UiKit.px(44), padV = UiKit.px(36);
+        int padH = UiKit.px(38), padV = UiKit.px(24);
         card.setPadding(padH, padV, padH, padV);
-        card.setBackground(Glass.panel(card, 38));
+        card.setBackground(Glass.panel(card, 32));
         card.setClipChildren(false);
 
-        // Acoustic sound wave pulsation view
-        waveView = new WaveView(ctx);
-        LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(UiKit.px(100), UiKit.px(100));
-        wlp.gravity = Gravity.CENTER_HORIZONTAL;
-        card.addView(waveView, wlp);
-
-        statusTitle = UiKit.bold(ctx, 23, UiKit.INK);
+        statusTitle = UiKit.bold(ctx, 22, UiKit.INK);
         statusTitle.setGravity(Gravity.CENTER);
-        statusTitle.setPadding(0, UiKit.px(16), 0, 0);
+        statusTitle.setPadding(0, 0, 0, 0);
         card.addView(statusTitle);
 
-        statusSub = UiKit.label(ctx, 16, UiKit.INK_DIM);
-        statusSub.setGravity(Gravity.CENTER);
-        statusSub.setPadding(0, UiKit.px(6), 0, UiKit.px(10));
-        card.addView(statusSub);
-
-        resultText = UiKit.bold(ctx, 20, Color.parseColor("#38BDF8"));
+        resultText = UiKit.bold(ctx, 24, Color.parseColor("#38BDF8"));
         resultText.setGravity(Gravity.CENTER);
         resultText.setVisibility(GONE);
+        resultText.setPadding(0, UiKit.px(8), 0, 0);
         card.addView(resultText);
 
-        TextView hint = UiKit.label(ctx, 13, Color.argb(130, 255, 255, 255));
-        hint.setGravity(Gravity.CENTER);
-        hint.setText("tr".equals(Locale.getDefault().getLanguage())
-                ? "Kapatmak için kumandada Geri (Back) tuşuna basın"
-                : "Press Back on remote to cancel");
-        hint.setPadding(0, UiKit.px(14), 0, 0);
-        card.addView(hint);
+        statusSub = UiKit.label(ctx, 15, UiKit.INK_DIM);
+        statusSub.setGravity(Gravity.CENTER);
+        statusSub.setPadding(0, UiKit.px(6), 0, 0);
+        card.addView(statusSub);
 
-        LayoutParams clp = new LayoutParams(UiKit.px(540), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);
+        LayoutParams clp = new LayoutParams(UiKit.px(580), ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        clp.bottomMargin = UiKit.px(60);
         addView(card, clp);
     }
 
@@ -131,7 +126,7 @@ public class VoiceOverlay extends FrameLayout {
         statusTitle.setTextColor(UiKit.INK);
         statusSub.setText(tr ? "Bir film, dizi veya sesli komut söyleyin" : "Say a film, series or TV command");
         resultText.setVisibility(GONE);
-        waveView.reset();
+        siriWaves.reset();
 
         setAlpha(0f);
         setVisibility(VISIBLE);
@@ -143,7 +138,7 @@ public class VoiceOverlay extends FrameLayout {
             recognizer.setRecognitionListener(new RecognitionListener() {
                 @Override
                 public void onReadyForSpeech(Bundle params) {
-                    waveView.setListening(true);
+                    siriWaves.setListening(true);
                 }
 
                 @Override
@@ -152,7 +147,7 @@ public class VoiceOverlay extends FrameLayout {
 
                 @Override
                 public void onRmsChanged(float rmsdB) {
-                    waveView.setVolume(rmsdB);
+                    siriWaves.setVolume(rmsdB);
                 }
 
                 @Override
@@ -161,7 +156,7 @@ public class VoiceOverlay extends FrameLayout {
 
                 @Override
                 public void onEndOfSpeech() {
-                    waveView.setListening(false);
+                    siriWaves.setListening(false);
                     boolean tr = "tr".equals(Locale.getDefault().getLanguage());
                     statusTitle.setText(tr ? "İşleniyor..." : "Processing...");
                 }
@@ -194,7 +189,7 @@ public class VoiceOverlay extends FrameLayout {
                         statusTitle.setTextColor(Color.parseColor("#34D399"));
                         resultText.setText("“" + said + "”");
                         resultText.setVisibility(VISIBLE);
-                        waveView.setSuccess(true);
+                        siriWaves.setSuccess(true);
                         main.postDelayed(() -> {
                             dismiss();
                             if (listener != null) listener.onResult(said);
@@ -237,7 +232,7 @@ public class VoiceOverlay extends FrameLayout {
         cleanup(); // Releases mic hardware immediately to shut off green dot
         animate().alpha(0f).setDuration(PerformanceProfile.animationMs(getContext(), 140)).withEndAction(() -> {
             setVisibility(GONE);
-            waveView.reset();
+            siriWaves.reset();
         }).start();
     }
 
@@ -274,19 +269,45 @@ public class VoiceOverlay extends FrameLayout {
         super.onDetachedFromWindow();
     }
 
-    /** Real-time concentric sound wave rings pulsating with audio RMS level. */
-    private static final class WaveView extends View {
-        private final Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint orbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /**
+     * Organic, visionOS / Siri style chromatic edge waves.
+     * Radiates multi-spectral chromatic waves (Cyan, Hot Magenta, Violet, Radiant Amber, Electric Sky)
+     * undulating along the display perimeter, dynamically pulsating with real-time microphone RMS volume.
+     */
+    private static final class SiriEdgeWavesView extends View {
+        private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint crestPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path wavePath = new Path();
+
         private float volume = 0f;
         private boolean listening = false;
         private boolean success = false;
         private float phase = 0f;
 
-        WaveView(Context ctx) {
+        // Apple Siri chromatic color palette
+        private static final int[] CHROMATIC_COLORS = {
+                0xFF00F0FF, // Electric Cyan
+                0xFF3B82F6, // Apple Royal Blue
+                0xFF9333EA, // Deep Electric Violet
+                0xFFFF007F, // Hot Magenta
+                0xFFFF9500, // Solar Amber
+                0xFF00F0FF  // Loop back to Cyan
+        };
+        private static final float[] CHROMATIC_POSITIONS = {
+                0.0f, 0.22f, 0.45f, 0.70f, 0.88f, 1.0f
+        };
+
+        SiriEdgeWavesView(Context ctx) {
             super(ctx);
-            ringPaint.setStyle(Paint.Style.STROKE);
-            ringPaint.setStrokeWidth(UiKit.pxf(2.4f));
+            strokePaint.setStyle(Paint.Style.STROKE);
+            strokePaint.setStrokeCap(Paint.Cap.ROUND);
+            strokePaint.setStrokeJoin(Paint.Join.ROUND);
+
+            crestPaint.setStyle(Paint.Style.STROKE);
+            crestPaint.setColor(0xE6FFFFFF);
+            crestPaint.setStrokeWidth(UiKit.pxf(2.5f));
+            crestPaint.setStrokeCap(Paint.Cap.ROUND);
         }
 
         void setListening(boolean l) {
@@ -295,9 +316,8 @@ public class VoiceOverlay extends FrameLayout {
         }
 
         void setVolume(float rmsdB) {
-            // rmsdB typically ranges from -2 to 10
             float norm = Math.max(0f, Math.min(1f, (rmsdB + 2f) / 10f));
-            this.volume = this.volume * 0.4f + norm * 0.6f;
+            this.volume = this.volume * 0.35f + norm * 0.65f;
             invalidate();
         }
 
@@ -317,39 +337,114 @@ public class VoiceOverlay extends FrameLayout {
         @Override
         protected void onDraw(Canvas c) {
             int w = getWidth(), h = getHeight();
-            float cx = w / 2f, cy = h / 2f;
-            float baseR = w * 0.24f;
+            if (w <= 0 || h <= 0) return;
 
-            int accent = success ? 0xFF34D399 : (listening ? 0xFF38BDF8 : 0xFFCBD5E1);
+            phase += 0.045f + volume * 0.08f;
 
-            // Pulsing concentric ripple rings
-            if (listening) {
-                phase += 0.08f;
-                for (int i = 0; i < 3; i++) {
-                    float ringR = baseR + UiKit.pxf(10) * (i + 1) + (volume * UiKit.pxf(18));
-                    int alpha = Math.max(0, Math.min(180, (int) (140 - (i * 40) + volume * 50)));
-                    ringPaint.setColor(UiKit.withAlpha(accent, alpha));
-                    c.drawCircle(cx, cy, ringR, ringPaint);
-                }
+            // 1. Perimeter Diffuse Ambient Glow (volumetric light leaking into the dark room)
+            int glowAlpha = success ? 140 : (listening ? (int) (65 + volume * 95) : 35);
+            int primaryColor = success ? 0xFF10B981 : 0xFF00F0FF;
+            int secondaryColor = success ? 0xFF34D399 : 0xFFFF007F;
+
+            // Bottom edge ambient bloom
+            float bloomH = UiKit.pxf(65) + volume * UiKit.pxf(55);
+            glowPaint.setShader(new android.graphics.LinearGradient(0, h, 0, h - bloomH,
+                    UiKit.withAlpha(primaryColor, glowAlpha), Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP));
+            c.drawRect(0, h - bloomH, w, h, glowPaint);
+
+            // Top edge ambient bloom
+            float topBloom = UiKit.pxf(40) + volume * UiKit.pxf(35);
+            glowPaint.setShader(new android.graphics.LinearGradient(0, 0, 0, topBloom,
+                    UiKit.withAlpha(secondaryColor, (int) (glowAlpha * 0.7f)), Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP));
+            c.drawRect(0, 0, w, topBloom, glowPaint);
+
+            // Left edge ambient bloom
+            float sideBloom = UiKit.pxf(45) + volume * UiKit.pxf(35);
+            glowPaint.setShader(new android.graphics.LinearGradient(0, 0, sideBloom, 0,
+                    UiKit.withAlpha(0xFF9333EA, (int) (glowAlpha * 0.65f)), Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP));
+            c.drawRect(0, 0, sideBloom, h, glowPaint);
+
+            // Right edge ambient bloom
+            glowPaint.setShader(new android.graphics.LinearGradient(w, 0, w - sideBloom, 0,
+                    UiKit.withAlpha(0xFFFF9500, (int) (glowAlpha * 0.65f)), Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP));
+            c.drawRect(w - sideBloom, 0, w, h, glowPaint);
+
+            // 2. Continuous Chromatic Perimeter Sweeping Wave
+            strokePaint.setStrokeWidth(UiKit.pxf(5.5f) + volume * UiKit.pxf(4f));
+            if (success) {
+                strokePaint.setShader(null);
+                strokePaint.setColor(0xFF34D399);
+            } else {
+                strokePaint.setShader(new android.graphics.SweepGradient(w / 2f, h / 2f, CHROMATIC_COLORS, CHROMATIC_POSITIONS));
             }
 
-            // Central glowing microphone orb
-            orbPaint.setColor(accent);
-            c.drawCircle(cx, cy, baseR, orbPaint);
+            // Draw animated fluid undulating border path
+            float amp = UiKit.pxf(6f) + volume * UiKit.pxf(24f);
+            float baseInset = UiKit.pxf(6f);
 
-            // Inner microphone symbol
-            orbPaint.setColor(0xFF0F172A);
-            float micW = baseR * 0.46f, micH = baseR * 0.85f;
-            RectF body = new RectF(cx - micW / 2f, cy - micH / 2f, cx + micW / 2f, cy + micH * 0.2f);
-            c.drawRoundRect(body, micW / 2f, micW / 2f, orbPaint);
+            wavePath.reset();
+            // Start at top-left
+            wavePath.moveTo(baseInset, baseInset);
 
-            // U-bracket around microphone
-            ringPaint.setColor(0xFF0F172A);
-            ringPaint.setStrokeWidth(UiKit.pxf(2.2f));
-            RectF arc = new RectF(cx - micW * 0.8f, cy - micH * 0.1f, cx + micW * 0.8f, cy + micH * 0.42f);
-            c.drawArc(arc, 0, 180, false, ringPaint);
-            c.drawLine(cx, cy + micH * 0.42f, cx, cy + micH * 0.65f, ringPaint);
-            c.drawLine(cx - micW * 0.4f, cy + micH * 0.65f, cx + micW * 0.4f, cy + micH * 0.65f, ringPaint);
+            // Top edge
+            int stepsX = 32;
+            for (int i = 1; i <= stepsX; i++) {
+                float x = (w * i) / (float) stepsX;
+                float y = baseInset + (float) Math.sin(phase * 1.2f + i * 0.35f) * amp;
+                wavePath.lineTo(x, y);
+            }
+
+            // Right edge
+            int stepsY = 24;
+            for (int i = 1; i <= stepsY; i++) {
+                float y = (h * i) / (float) stepsY;
+                float x = (w - baseInset) - (float) Math.sin(phase * 1.5f + i * 0.45f) * amp;
+                wavePath.lineTo(x, y);
+            }
+
+            // Bottom edge (most dynamic and responsive, billows upward with voice)
+            float botAmp = amp * 1.35f;
+            for (int i = stepsX - 1; i >= 0; i--) {
+                float x = (w * i) / (float) stepsX;
+                float y = (h - baseInset) - (float) Math.sin(phase * 2.0f + (stepsX - i) * 0.42f) * botAmp;
+                wavePath.lineTo(x, y);
+            }
+
+            // Left edge
+            for (int i = stepsY - 1; i >= 0; i--) {
+                float y = (h * i) / (float) stepsY;
+                float x = baseInset + (float) Math.sin(phase * 1.4f + (stepsY - i) * 0.38f) * amp;
+                wavePath.lineTo(x, y);
+            }
+            wavePath.close();
+
+            // Draw glowing chromatic wave outline
+            c.drawPath(wavePath, strokePaint);
+
+            // Draw high-specular white inner crest line for vivid OLED luminance
+            crestPaint.setAlpha(Math.min(255, (int) (120 + volume * 135)));
+            c.drawPath(wavePath, crestPaint);
+
+            // Secondary harmonic ethereal wave ribbon
+            if (listening || volume > 0.05f) {
+                Path ribbon = new Path();
+                float rAmp = amp * 0.65f;
+                ribbon.moveTo(baseInset, h - baseInset);
+                for (int i = 1; i <= stepsX; i++) {
+                    float x = (w * i) / (float) stepsX;
+                    float y = (h - baseInset * 2f) - (float) Math.cos(phase * 2.4f + i * 0.55f) * rAmp;
+                    ribbon.lineTo(x, y);
+                }
+                Paint ribbonPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                ribbonPaint.setStyle(Paint.Style.STROKE);
+                ribbonPaint.setStrokeWidth(UiKit.pxf(2.8f));
+                ribbonPaint.setColor(UiKit.withAlpha(0xFF38BDF8, 160));
+                c.drawPath(ribbon, ribbonPaint);
+            }
+
+            if (listening || volume > 0.01f || isAttachedToWindow()) {
+                postInvalidateOnAnimation();
+            }
         }
     }
 }

@@ -81,8 +81,12 @@ public final class Panels {
         root.addView(head);
         LinearLayout cols = new LinearLayout(ctx);
         cols.setClipChildren(false);
+        cols.setClipToPadding(false);
+        root.setClipChildren(false);
+        root.setClipToPadding(false);
         LinearLayout.LayoutParams colsLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         colsLp.topMargin = UiKit.px(28);
+        colsLp.leftMargin = UiKit.px(10);
         root.addView(cols, colsLp);
 
         // 1. Themes
@@ -90,6 +94,10 @@ public final class Panels {
         ThemeManager.Theme current = ThemeManager.current(ctx);
         for (int i = 0; i < ThemeManager.THEMES.length; i += 2) {
             LinearLayout pair = new LinearLayout(ctx);
+            pair.setOrientation(LinearLayout.HORIZONTAL);
+            pair.setWeightSum(2f);
+            pair.setClipChildren(false);
+            pair.setClipToPadding(false);
             for (int k = i; k < Math.min(i + 2, ThemeManager.THEMES.length); k++) {
                 final ThemeManager.Theme t = ThemeManager.THEMES[k];
                 LinearLayout tile = Controls.tile(ctx, themeName(ctx, t), null, t.id.equals(current.id), v -> {
@@ -99,6 +107,14 @@ public final class Panels {
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
                 lp.setMargins(k == i ? 0 : UiKit.px(6), 0, k == i ? UiKit.px(6) : 0, UiKit.px(12));
                 pair.addView(tile, lp);
+            }
+            if (i + 1 >= ThemeManager.THEMES.length) {
+                // If there's an odd number of themes (e.g. 7 themes), add an invisible dummy spacer
+                // with weight 1f so the last theme button remains exactly the same width as the others!
+                View dummy = new View(ctx);
+                LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+                dlp.setMargins(UiKit.px(6), 0, 0, UiKit.px(12));
+                pair.addView(dummy, dlp);
             }
             c1.addView(pair);
         }
@@ -223,9 +239,10 @@ public final class Panels {
         LinearLayout c = new LinearLayout(ctx);
         c.setOrientation(LinearLayout.VERTICAL);
         c.setClipChildren(false);
+        c.setClipToPadding(false);
         c.addView(Controls.header(ctx, ctx.getString(titleRes)));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiKit.px(widthDesign), ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(cols.getChildCount() == 0 ? 0 : UiKit.px(24), 0, 0, 0);
+        lp.setMargins(cols.getChildCount() == 0 ? UiKit.px(8) : UiKit.px(24), 0, 0, 0);
         cols.addView(c, lp);
         return c;
     }

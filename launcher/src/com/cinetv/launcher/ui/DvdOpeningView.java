@@ -626,12 +626,11 @@ public class DvdOpeningView extends View {
             boolean hasSig = !by.isEmpty();
 
             // 2. Uniform, balanced proportions across all films (never giant in one and tiny in another)
-            float castH = (castCount > 0) ? u * 0.185f : 0f;
-            float sigSize = u * 0.060f;
-            float ratSize = u * 0.048f;
+            float sigSize = u * 0.052f;
+            float ratSize = u * 0.044f;
 
             // 3. Bottom metadata anchoring (credits and critic ratings)
-            float bottom = paper.bottom - pad * 0.65f;
+            float bottom = paper.bottom - pad * 0.60f;
             if (hasSig) {
                 ink.setColor(filmInk);
                 String sig = fit(ink, "— " + by, textW, sigSize, u * 0.040f);
@@ -649,33 +648,35 @@ public class DvdOpeningView extends View {
                 bottom -= ink.getTextSize() * 1.25f;
             }
 
-            // 4. Stable cast strip positioning
+            // 4. Stable cast strip positioning (fixed proportion allocation)
+            float castH = (castCount > 0) ? u * 0.225f : 0f;
             float castTop = 0f;
             if (castCount > 0) {
                 float remainingH = bottom - y;
-                castH = Math.min(castH, remainingH * 0.48f);
+                castH = Math.min(castH, remainingH * 0.52f);
                 castTop = bottom - castH;
-                bottom = castTop - u * 0.018f;
+                bottom = castTop - u * 0.016f;
             }
 
             // 5. Generous, consistent Story Typography across all movies
             float storyAvailH = bottom - y;
-            if (!story.isEmpty() && storyAvailH > u * 0.05f) {
-                float targetSize = Math.min(u * 0.068f, storyAvailH * 0.36f);
+            if (!story.isEmpty() && storyAvailH > u * 0.04f) {
+                float targetSize = Math.min(u * 0.056f, storyAvailH * 0.32f);
+                targetSize = Math.max(u * 0.042f, targetSize);
                 ink.setColor(blackInk);
                 ink.setTextSize(targetSize);
                 float spacing = 0.96f;
                 StaticLayout body = layout(story, ink, (int) textW, spacing);
                 while (body.getHeight() > storyAvailH && targetSize > u * 0.038f) {
                     targetSize -= u * 0.002f;
-                    spacing = targetSize < u * 0.048f ? 0.90f : 0.94f;
+                    spacing = targetSize < u * 0.046f ? 0.90f : 0.94f;
                     ink.setTextSize(targetSize);
                     body = layout(story, ink, (int) textW, spacing);
                 }
                 drawInk(c, body, paper.left + pad, y, ink);
             }
 
-            // 6. Draw Cast Strip with uniform prominent medallions
+            // 6. Draw Cast Strip with uniform prominent medallions and strictly isolated columns
             if (castCount > 0) {
                 Paint divPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
                 divPaint.setColor(UiKit.withAlpha(filmInk, 65));
@@ -688,7 +689,7 @@ public class DvdOpeningView extends View {
                 c.drawPath(divPath, divPaint);
 
                 float colW = textW / castCount;
-                float diam = castH * 0.86f;
+                float diam = Math.min(castH * 0.58f, colW * 0.52f);
                 float rad = diam / 2f;
                 Paint photoPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
                 ColorMatrix castCm = new ColorMatrix();
@@ -701,8 +702,12 @@ public class DvdOpeningView extends View {
                 for (int i = 0; i < castCount; i++) {
                     com.cinetv.launcher.service.MovieCatalog.CastMember cm = movie.cast.get(i);
                     float colX = paper.left + pad + i * colW;
-                    float cx = colX + rad + u * 0.006f;
-                    float cy = castTop + castH * 0.52f;
+
+                    c.save();
+                    c.clipRect(colX, castTop - u * 0.015f, colX + colW, paper.bottom);
+
+                    float cx = colX + colW / 2f;
+                    float cy = castTop + rad + u * 0.008f;
 
                     // 1. Soft grounding drop shadow
                     Paint shadowP = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -732,7 +737,7 @@ public class DvdOpeningView extends View {
                         creamPaint.setColor(Color.parseColor("#F7F2E7"));
                         String init = initials(cm.name);
                         ink.setColor(filmInk);
-                        ink.setTextSize(u * 0.048f);
+                        ink.setTextSize(u * 0.046f);
                         float iw = ink.measureText(init);
                         c.drawText(init, cx - iw / 2f, cy - (ink.ascent() + ink.descent()) / 2f, ink);
                     }
@@ -752,19 +757,23 @@ public class DvdOpeningView extends View {
                     c.drawLine(cx + rad * 0.35f, cy - rad * 1.05f, cx + rad * 1.25f, cy - rad * 0.55f, ringPaint);
                     c.drawLine(cx + rad * 0.35f, cy - rad * 0.80f, cx + rad * 1.25f, cy - rad * 0.30f, ringPaint);
 
-                    // 6. Prominent handwritten actor name with consistent uniform size
-                    float nameX = cx + rad + u * 0.016f;
-                    float nameMaxW = Math.max(u * 0.10f, (colX + colW) - nameX - u * 0.008f);
+                    // 6. Prominent handwritten actor name centered directly underneath portrait
+                    float nameMaxW = colW - u * 0.012f;
+                    float nameTop = cy + rad + u * 0.010f;
                     ink.setColor(blackInk);
-                    float nameSize = u * 0.050f;
+                    float nameSize = u * 0.042f;
                     ink.setTextSize(nameSize);
-                    StaticLayout nameLayout = layout(cm.name, ink, (int) nameMaxW, 0.94f);
-                    while ((nameLayout.getLineCount() > 2 || nameLayout.getHeight() > castH * 0.92f) && nameSize > u * 0.032f) {
+                    StaticLayout nameLayout = new StaticLayout(cm.name, ink, (int) Math.max(10, nameMaxW),
+                            android.text.Layout.Alignment.ALIGN_CENTER, 0.92f, 0f, false);
+                    while (nameLayout.getLineCount() > 2 && nameSize > u * 0.030f) {
                         nameSize -= u * 0.002f;
                         ink.setTextSize(nameSize);
-                        nameLayout = layout(cm.name, ink, (int) nameMaxW, 0.94f);
+                        nameLayout = new StaticLayout(cm.name, ink, (int) Math.max(10, nameMaxW),
+                                android.text.Layout.Alignment.ALIGN_CENTER, 0.92f, 0f, false);
                     }
-                    drawInk(c, nameLayout, nameX, cy - nameLayout.getHeight() / 2f, ink);
+                    drawInk(c, nameLayout, colX + (colW - nameLayout.getWidth()) / 2f, nameTop, ink);
+
+                    c.restore();
                 }
             }
             c.restore();
