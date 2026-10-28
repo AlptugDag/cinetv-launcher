@@ -350,9 +350,29 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const url = new URL(location.href);
   // Opened from GitHub (the QR code): the page reaches the TV over a direct link (WebRTC, introduced by
   // PeerJS's broker), whatever the home network does. #p= is the TV, #k= the pairing token, #s= a tab.
+  const getCookie = name => {
+    try {
+      const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : null;
+    } catch (e) { return null; }
+  };
+  const setCookie = (name, val) => {
+    try {
+      document.cookie = name + "=" + encodeURIComponent(val) + "; path=/; max-age=31536000; SameSite=Lax";
+    } catch (e) {}
+  };
+
   const hp = new URLSearchParams(location.hash.slice(1));
   let PEER = hp.get("p");
-  try { if (PEER) localStorage.setItem("cinetv.p", PEER); else if (location.hostname.endsWith("github.io")) PEER = localStorage.getItem("cinetv.p"); } catch (e) {}
+  try {
+    if (PEER) {
+      localStorage.setItem("cinetv.p", PEER);
+      sessionStorage.setItem("cinetv.p", PEER);
+      setCookie("cinetv_p", PEER);
+    } else {
+      PEER = localStorage.getItem("cinetv.p") || sessionStorage.getItem("cinetv.p") || getCookie("cinetv_p");
+    }
+  } catch (e) {}
   const RELAY = location.hostname.endsWith("github.io") && !!PEER;
   // On the plain address, hop to the TV's secure one (no "not secure" warning) when this phone can reach it.
   if (!RELAY && location.protocol === "http:") {
@@ -363,13 +383,22 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         const ctl = new AbortController(); setTimeout(() => ctl.abort(), 2500);
         const ping = await fetch(info.secure + "/api/ping", {mode: "cors", signal: ctl.signal});
         if (!ping.ok) return;
-        let k = url.searchParams.get("k"); try { k = k || localStorage.getItem("cinetv.k"); } catch (e) {}
+        let k = url.searchParams.get("k") || hp.get("k");
+        try { k = k || localStorage.getItem("cinetv.k") || sessionStorage.getItem("cinetv.k") || getCookie("cinetv_k"); } catch (e) {}
         location.replace(info.secure + "/" + (k ? "?k=" + encodeURIComponent(k) : "") + location.hash);
       } catch (e) {}
     })();
   }
   let token = url.searchParams.get("k") || hp.get("k");
-  try { if (token) localStorage.setItem("cinetv.k", token); else token = localStorage.getItem("cinetv.k"); } catch (e) {}
+  try {
+    if (token) {
+      localStorage.setItem("cinetv.k", token);
+      sessionStorage.setItem("cinetv.k", token);
+      setCookie("cinetv_k", token);
+    } else {
+      token = localStorage.getItem("cinetv.k") || sessionStorage.getItem("cinetv.k") || getCookie("cinetv_k");
+    }
+  } catch (e) {}
   // For PWA and Safari "Add to Home Screen": keep p and k in the fragment so shortcuts stay paired
   if (PEER || token) {
     const pms = new URLSearchParams(location.hash.slice(1));
@@ -416,12 +445,22 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     if (!token) { pair(); throw 0; }
     if (RELAY) {
       const r = await relay(path, Object.assign({k: token}, params));
-      if (r && r.error === "pair") { token = null; try { localStorage.removeItem("cinetv.k"); } catch (e) {} pair(); throw 0; }
+      if (r && r.error === "pair") {
+        token = null;
+        try { localStorage.removeItem("cinetv.k"); sessionStorage.removeItem("cinetv.k"); setCookie("cinetv_k", ""); } catch (e) {}
+        pair();
+        throw 0;
+      }
       return r;
     }
     const qs = new URLSearchParams(Object.assign({k: token}, params));
     const r = await fetch("/api/" + path + "?" + qs, {cache: "no-store"});
-    if (r.status === 401) { token = null; try { localStorage.removeItem("cinetv.k"); } catch (e) {} pair(); throw 0; }
+    if (r.status === 401) {
+      token = null;
+      try { localStorage.removeItem("cinetv.k"); sessionStorage.removeItem("cinetv.k"); setCookie("cinetv_k", ""); } catch (e) {}
+      pair();
+      throw 0;
+    }
     return r.json();
   };
   const open = async path => {
@@ -457,7 +496,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         const c = await open("pair/claim?id=" + encodeURIComponent(req.id));
         if (c.state === "allowed") {
           token = c.k;
-          try { localStorage.setItem("cinetv.k", token); } catch (e) {}
+          try {
+            localStorage.setItem("cinetv.k", token);
+            sessionStorage.setItem("cinetv.k", token);
+            setCookie("cinetv_k", token);
+          } catch (e) {}
           if (PEER) {
             try { history.replaceState(null, "", location.pathname + "#p=" + encodeURIComponent(PEER) + "&k=" + encodeURIComponent(token)); } catch (e) {}
           }
@@ -921,8 +964,20 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   // connect
   const connected = () => {
-    api("hello").then(() => { $("dot").classList.add("on"); $("status").textContent = $("status").dataset.tv || t("connected"); })
-      .catch(() => { if (token) $("status").textContent = t("offline"); });
+    api("hello").then(() => {
+      $("dot").classList.add("on");
+      $("status").textContent = $("status").dataset.tv || t("connected");
+    }).catch(() => {
+      if (token) {
+        token = null;
+        try {
+          localStorage.removeItem("cinetv.k");
+          sessionStorage.removeItem("cinetv.k");
+          setCookie("cinetv_k", "");
+        } catch (e) {}
+        pair();
+      }
+    });
     trending();
   };
   if (token) connected(); else pair();
