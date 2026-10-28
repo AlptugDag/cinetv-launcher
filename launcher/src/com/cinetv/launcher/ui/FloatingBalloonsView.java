@@ -19,7 +19,7 @@ import java.util.Random;
  */
 public class FloatingBalloonsView extends View {
 
-    private static final int BALLOON_COUNT = 24;
+    private static final int BALLOON_COUNT = 32;
 
     private static class Balloon {
         float x;
@@ -45,7 +45,17 @@ public class FloatingBalloonsView extends View {
     private final Random random = new Random();
 
     private boolean initialized = false;
+    private boolean running = false;
     private long lastTime = 0;
+
+    private final Runnable loopTicker = new Runnable() {
+        @Override
+        public void run() {
+            if (!running) return;
+            invalidate();
+            postDelayed(this, 16);
+        }
+    };
 
     public FloatingBalloonsView(Context context) {
         super(context);
@@ -54,6 +64,22 @@ public class FloatingBalloonsView extends View {
         highlightPaint.setColor(Color.argb(65, 255, 255, 255));
         stringPaint.setStyle(Paint.Style.STROKE);
         stringPaint.setStrokeWidth(UiKit.pxf(1.4f));
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        running = true;
+        lastTime = SystemClock.uptimeMillis();
+        removeCallbacks(loopTicker);
+        post(loopTicker);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        running = false;
+        removeCallbacks(loopTicker);
+        super.onDetachedFromWindow();
     }
 
     @Override
