@@ -232,12 +232,14 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             Prefs.get(this).edit().putBoolean("wizard_done", true).apply();
         }
         if (!Prefs.get(this).getBoolean("wizard_done", false)) {
-            handler.postDelayed(() -> {
-                if (!isFinishing() && home != null && !home.modal.isShowing()) {
-                    home.modal.setOnClosed(this::onWizardFinished);
-                    Panels.wizard(this, home.modal);
-                }
-            }, 3000);
+            Prefs.get(this).edit().putBoolean("wizard_done", true).apply();
+            new Thread(() -> {
+                // Completely automatic background setup: Nuvio, curated addons, Nova player, Z-RAM & tuning
+                com.cinetv.launcher.device.NuvioSetup.runOnce(getApplicationContext());
+                com.cinetv.launcher.device.NuvioSetup.playerOnce(getApplicationContext());
+                com.cinetv.launcher.device.MemoryOptimizer.applyTvOptimizations(getApplicationContext());
+                handler.post(() -> onWizardFinished());
+            }, "cinetv-auto-setup").start();
         } else if (!Prefs.get(this).getBoolean(Prefs.FIRST_SETUP_DONE, false)) {
             // First start only: tune picture & sound and measure the network once.
             handler.postDelayed(() -> {

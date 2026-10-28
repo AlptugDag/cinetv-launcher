@@ -14,8 +14,8 @@ CineTV'yi televizyonunuza kurmak için iki resmî ve garantili yol vardır:
 
 | Elinizde ne var? | Yol | Süre | Kurulum şekli |
 | :--- | :--- | :--- | :--- |
-| Sadece televizyon ve kumandası | [1. Yol: Kurulum Sihirbazı (Önerilen)](#1-yol-kurulum-sihirbazı-önerilen--bilgisayar-gerekmez) | 3 dk | **TV kumandasıyla tek tıkla %100 eksiksiz ve otomatik** |
-| Claude, Antigravity, Gemini gibi bir AI ajanı | [2. Yol: Yapay Zekâya Kurdur](#2-yol-bir-yapay-zekâya-kurdurun-kişiye-özel) | 10 dk | **Tamamen zevklerinize göre özel profil ve katalog rafları** |
+| Claude, Antigravity, Gemini gibi bir AI ajanı (veya Terminal) | [1. Yol: Yapay Zekâ / AI Agent ile Kurulum (Tavsiye Edilen)](#1-yol-yapay-zekâ--ai-agent-ile-kurulum-tavsiye-edilen--100-tam-otomatik) | 2 dk | **Sıfır çaba, tüm eklenti ve programlar %100 otomatik kurulur** |
+| Sadece televizyon ve kumandası | [2. Yol: Doğrudan Televizyona APK ile](#2-yol-doğrudan-televizyona-apk-ile-kurulum) | 3 dk | **Arka planda sessiz otomatik yapılandırma** |
 
 ---
 
@@ -45,13 +45,38 @@ Ekranda *"Artık bir geliştiricisiniz"* yazısı çıkar. (Şifre sorarsa telev
 
 ---
 
-## 1. Yol: Kurulum Sihirbazı (Önerilen — Bilgisayar gerekmez)
+## 1. Yol: Yapay Zekâ / AI Agent ile Kurulum (Tavsiye Edilen — %100 Tam Otomatik)
 
-CineTV v1.0.0.4 ile birlikte gelen dahili **Kurulum Sihirbazı** sayesinde, yanınızda bilgisayar veya harici bir araç olmasa dahi tek başına APK olarak kurulduğunda eksik kalan hiçbir şey olmaz.
+Bilgisayarınızda dosya okuyup komut çalıştırabilen bir yapay zekâ ajanı olmalı: **Antigravity** (Google DeepMind, tamamen ücretsiz), **Claude Desktop** (Claude Code), **Cursor**, **Gemini CLI**, **Codex** gibi.
+
+1. **Adım 1**'i yapın ve televizyonun IP adresini not edin (Ayarlar › Ağ ve İnternet › bağlı olduğunuz Wi-Fi › IP adresi).
+2. Yapay zekâya aynen şunu yazın:
+   > https://github.com/AlptugDag/cinetv-launcher adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur. Televizyonumun IP adresi: <TV_IP_ADRESİNİZ>.
+3. Yapay zekâ televizyonunuza bağlanır, onay isterse **Her zaman izin ver** › **Tamam**'a basın.
+4. Yapay zekâ; CineTV ana ekranını, Nuvio medya merkezini, Nova Player'ı, AirPlay'i, reklamsız YouTube'u (TizenTube), 2 GB sanal RAM (Z-RAM) artışını, debloat sadeleştirmesini, 3 hazır profil dosyasını (AIOStreams, Xperience, AIOMetadata) ve tüm eklentileri (TR Altyazı, Anthology, Netflix, Xperience, AIOStreams Nightly) **tek adımda, sıfır çaba ile %100 tam otomatik** kurar ve televizyonu sinema modunda açar.
+
+---
+
+### Geliştiriciler & Terminal Meraklıları İçin: Tek Komutla Otomatik Kurulum
+
+```bash
+git clone https://github.com/AlptugDag/cinetv-launcher
+cd cinetv-launcher
+./install.sh --tv <TV_IP_ADRESİNİZ>
+```
+
+`adb` yoksa: Mac `brew install android-platform-tools`, Ubuntu `sudo apt install adb`. Anahtarlar isteğe bağlı:
+`CINETV_TMDB_KEY=... CINETV_AI_KEY=... ./install.sh --tv <TV_IP_ADRESİNİZ>`. Ayrıntılar: [AGENTS.md](AGENTS.md).
+
+---
+
+## 2. Yol: Doğrudan Televizyona APK ile Kurulum
+
+Bilgisayar veya terminal kullanmadan doğrudan televizyonunuzla kurmak isterseniz:
 
 1. Televizyonda **Play Store**'u açın, **Downloader** diye aratın (turuncu simgeli, *AFTVnews* yapımı) ve **Yükle**'ye basın. (Ya da `CineTV.apk`'yı bilgisayardan bir USB belleğe atıp televizyonunuza takabilirsiniz.)
 2. Downloader'ı açın. Depolama izni isterse **İzin ver** deyin.
-3. Bilinmeyen kaynaklara izin verin (Downloader ilk kurulumda kendisi sorar; sormazsa):
+3. Bilinmeyen kaynaklara izin verin:
    - Android TV: Ayarlar › Cihaz Tercihleri › Güvenlik ve kısıtlamalar › **Bilinmeyen kaynaklar** › Downloader: **Açık**
    - Google TV: Ayarlar › Uygulamalar › Güvenlik ve kısıtlamalar › **Bilinmeyen kaynaklar** › Downloader: **Açık**
 4. Downloader'ın ana ekranındaki adres kutusuna kumandayla şunu yazın, sonra **Go**:
@@ -61,44 +86,9 @@ CineTV v1.0.0.4 ile birlikte gelen dahili **Kurulum Sihirbazı** sayesinde, yan�
    (Büyük-küçük harfe dikkat: `AlptugDag` ve `CineTV.apk`.)
 5. İndirme bitince **Yükle** (Install), sonra **Aç** (Open).
 6. Televizyon *"USB hata ayıklamaya izin verilsin mi?"* diye sorarsa: **"Bu bilgisayardan her zaman izin ver"** kutusunu işaretleyin ve **Tamam**'a basın.
-7. **CineTV Kurulum Sihirbazı**: CineTV ilk açılışında otomatik olarak karşınıza çıkar.
-   - Sihirbaz ekrandaki 5 temel bileşeni gösterir:
-     1. **Varsayılan Ana Ekran**: Kumanda Home (Ev) tuşu için sistem seçiciyi açar (*CineTV* › *Her zaman* seçin).
-     2. **Alptuğflix Medya Merkezi**: Televizyonda medya merkezi yoksa arka planda Alptuğflix'i kurar ve hazır Türkçe film/dizi kaynaklarını, altyazı eklentilerini (Xperience, Netflix Kataloğu, AIOStreams Nightly, Anthology, TR-Altyazı) yükler.
-     3. **Video Oynatıcı**: Yayınları oynatmak için Nova Player'ı kurar.
-     4. **Kumanda Tuş Servisi**: Kumanda tuşlarının her ekranda çalışması için erişilebilirlik ayarını açar.
-     5. **2 GB Sanal RAM & Optimizasyon**: Root gerekmeden 2 GB sanal RAM (zRAM) oluşturur ve Google Asistan'ı sessize alıp sistemi hızlandırır.
-   - Kumandanızla **"Tümünü Otomatik Tamamla"** butonuna basarak her şeyi arka planda saniyeler içinde tamamlayabilir veya maddelere tek tek basarak ayarlayabilirsiniz.
-   - Tüm göstergeler yeşile döndüğünde **"Tamamla"** butonuna basarak ana ekrana dönebilirsiniz.
+7. **Tam Otomatik Başlatma**: CineTV ilk açıldığında arka planda Nuvio medya merkezini, hazır Türkçe film/dizi kaynaklarını, altyazı eklentilerini (Xperience, Netflix Kataloğu, AIOStreams Nightly, Anthology, TR-Altyazı), video oynatıcıyı ve 2 GB sanal RAM optimizasyonunu **hiçbir kullanıcı müdahalesi gerektirmeden sessizce tamamlar** ve sinematik karşılama ekranıyla ana ekranınızı açar.
 
-> Bu sihirbaza daha sonra dilediğiniz zaman CineTV › Ayarlar › TV & Telefon › **Kurulum Sihirbazı** üzerinden de ulaşabilirsiniz.
-
----
-
-## 2. Yol: Bir yapay zekâya kurdurun (Kişiye özel)
-
-Bilgisayarınızda dosya okuyup komut çalıştırabilen bir yapay zekâ olmalı: **Claude Desktop** (Claude Code), **Antigravity** (ücretsiz), **Gemini CLI**, **Cursor**, **Codex** gibi. Tarayıcıdaki sohbet pencereleri (sadece yazışan) televizyona bağlanamaz.
-
-1. Adım 1'i yapın, televizyonun IP adresini not edin (Ayarlar › Ağ ve İnternet › bağlı olduğunuz Wi-Fi › IP adresi).
-2. Yapay zekâya aynen şunu yazın:
-   > https://github.com/AlptugDag/cinetv-launcher adresindeki projeyi indir, AGENTS.md dosyasını baştan sona oku ve oradaki adımlarla CineTV'yi televizyonuma kur. Televizyonumun IP adresi 192.168.1.50. Bana soruları Türkçe sor.
-3. Yapay zekâ size soru sorar (ne izlediğiniz, dil, servisler…), cevaplayın. Televizyonda izin sorusu çıkınca **Her zaman izin ver** › **Tamam**.
-4. Komut çalıştırmak için onay isterse **İzin ver** deyin.
-
-Yapay zekâ Alptuğflix'teki son adımları da (zevklerinize özel raflar, eklentiler, altyazı) televizyonun ekranına bakarak kendisi yapar.
-
----
-
-### Geliştiriciler & İleri Düzey Kullanıcılar İçin: Terminal (İsteğe Bağlı)
-
-```bash
-git clone https://github.com/AlptugDag/cinetv-launcher
-cd cinetv-launcher
-./install.sh --tv 192.168.1.50
-```
-
-`adb` yoksa: Mac `brew install android-platform-tools`, Ubuntu `sudo apt install adb`. Anahtarlar isteğe bağlı:
-`CINETV_TMDB_KEY=... CINETV_AI_KEY=... ./install.sh --tv 192.168.1.50`. Ayrıntılar: [AGENTS.md](AGENTS.md).
+> Bileşen durumunu kontrol etmek veya elle incelemek isterseniz dilediğiniz zaman CineTV › Ayarlar › TV & Telefon › **Kurulum Sihirbazı & Bileşen Kontrolü** üzerinden tüm bileşenleri görebilirsiniz.
 
 ---
 

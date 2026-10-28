@@ -43,7 +43,7 @@ KEY_SERVICE="$PKG/$PKG.TvKeyInterceptorService"
 DREAM="$PKG/$PKG.ClockDream"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-TV="" APK="" VERSION="" CITY="" THEME="" DEBLOAT=0 YOUTUBE=0 APPS=0 NUVIO=0 KEEP_OLD=0 YES=0 VERIFY_ONLY=0
+TV="" APK="" VERSION="" CITY="" THEME="" DEBLOAT=1 YOUTUBE=1 APPS=1 NUVIO=1 KEEP_OLD=0 YES=0 VERIFY_ONLY=0
 PROFILE="" PERSONALIZE=1
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
@@ -64,11 +64,15 @@ while [ $# -gt 0 ]; do
         --city) CITY="$2"; shift 2 ;;
         --theme) THEME="$2"; shift 2 ;;
         --debloat) DEBLOAT=1; shift ;;
+        --no-debloat) DEBLOAT=0; shift ;;
         --youtube) YOUTUBE=1; shift ;;
+        --no-youtube) YOUTUBE=0; shift ;;
         --profile) PROFILE="$2"; shift 2 ;;
         --no-personalize) PERSONALIZE=0; shift ;;
         --apps) APPS=1; PERSONALIZE=0; shift ;;
+        --no-apps) APPS=0; shift ;;
         --nuvio) NUVIO=1; PERSONALIZE=0; shift ;;
+        --no-nuvio) NUVIO=0; shift ;;
         --keep-old-launcher) KEEP_OLD=1; shift ;;
         --yes|-y) YES=1; shift ;;
         --verify) VERIFY_ONLY=1; shift ;;
@@ -253,10 +257,17 @@ bash "$DIR/scripts/optimize_ram.sh" || warn "RAM optimization completed with non
 if [ -n "$PROFILE" ]; then
     bold "Setting the TV up for you"
     python3 "$DIR/scripts/personalize.py" --profile "$PROFILE" --out .
-elif [ "$APPS" = 1 ]; then bash "$DIR/scripts/setup_apps.sh"
-elif [ "$YOUTUBE" = 1 ]; then bash "$DIR/scripts/setup_youtube.sh"; fi
-if [ -z "$PROFILE" ] && [ "$NUVIO" = 1 ]; then
-    if [ "$YES" = 1 ]; then bash "$DIR/scripts/setup_nuvio.sh" --defaults tr; else bash "$DIR/scripts/setup_nuvio.sh"; fi
+else
+    if [ "$APPS" = 1 ]; then
+        bold "Installing companion apps (Nuvio, Nova Player, AirPlay, TizenTube)"
+        bash "$DIR/scripts/setup_apps.sh"
+    elif [ "$YOUTUBE" = 1 ]; then
+        bash "$DIR/scripts/setup_youtube.sh"
+    fi
+    if [ "$NUVIO" = 1 ]; then
+        bold "Configuring Nuvio & Curated Addons"
+        bash "$DIR/scripts/setup_nuvio.sh" --defaults tr
+    fi
 fi
 
 # --- 6. start ---------------------------------------------------------------------------------------

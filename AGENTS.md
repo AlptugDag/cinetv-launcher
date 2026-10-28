@@ -11,6 +11,23 @@ repository.
 
 ---
 
+### Fully Automated 1-Step Setup (Fast Path — Recommended)
+
+If the user wants a fast, complete, zero-friction installation:
+```bash
+adb connect <IP>:5555
+./install.sh --tv <IP>:5555 --yes
+```
+This automatically installs and configures 100% of the entire ecosystem:
+- CineTV launcher & locks Home default
+- Companion apps: Nuvio, Nova Video Player, AirPlay receiver, Ad-free YouTube (TizenTube)
+- Rootless 2 GB Z-RAM (kernel swap LZ4) & memory tuning
+- System debloat (safely disabling manufacturer tracking & bloatware)
+- Deploys all 3 configuration profiles: AIOStreams (`aiostreams-config`), Xperience (`xperience-kategori-setup-profile`), AIOMetadata (`aiometadata-config`) into `/sdcard/Download/`
+- Installs all 5 curated addons into Nuvio: TR Altyazı, Anthology, Netflix Catalog, Xperience, AIOStreams Nightly
+
+---
+
 ## Quick path: follow these steps exactly, in order
 
 Do one step at a time. After each step, check its **Expect** line before going on. If it does not match,

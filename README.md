@@ -64,10 +64,12 @@ Kurulum: `./install.sh --tv <TV_IP>` — ya da bir yapay zekâ ajanına "CineTV'
 
 Kurulumu iki garantili yoldan biriyle yapabilirsiniz:
 
-1. **Sadece Televizyonla (Önerilen & En Kolayı — Bilgisayar Gerekmez)**: Play Store'dan ücretsiz *Downloader* uygulamasını kurun, adres çubuğuna `github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk` yazın, kurun ve açın (ya da flash bellekle atın). İlk açılışta açılan **CineTV Kurulum Sihirbazı**'nda *"Tümünü Otomatik Tamamla"* butonuna basın; ana ekran kilitlenmesi, Alptuğflix medya merkezi, Türkçe film/dizi kaynakları, altyazı eklentileri, gizli Nova Player, kumanda tuş servisi ve 2 GB sanal RAM arka planda kumandanızla tek tıkla eksiksiz tamamlanır.
-2. **Bir Yapay Zekâya Kurdurun (Gelişmiş & Kişiselleştirilmiş)** (Claude Desktop, Antigravity, Gemini, Cursor…): *"https://github.com/AlptugDag/cinetv-launcher adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur"* deyin. Size sorular sorarak zevklerinize özel katalog rafları ve kişisel profil oluşturur.
+1. **Bir Yapay Zekâya Kurdurun (Tavsiye Edilen & %100 Tam Otomatik)** (Claude Desktop, Antigravity, Gemini, Cursor…):
+   Yapay zekâya *"https://github.com/AlptugDag/cinetv-launcher adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur"* deyin (ya da terminalden `./install.sh --tv <TV_IP>` çalıştırın).
+   Yapay zekâ; CineTV ana ekranını, Nuvio medya merkezini, Nova Video Player'ı, AirPlay alıcısını, reklamsız YouTube'u (TizenTube), 2 GB sanal RAM (Z-RAM) artışını, güvenli sistem sadeleştirmesini (debloat), 3 hazır konfigürasyonu (AIOStreams, Xperience, AIOMetadata) ve tüm seçkin eklentileri (TR Altyazı, Anthology, Netflix Kataloğu, Xperience, AIOStreams Nightly) **kullanıcı hiçbir şeyle uğraşmadan tek seferde %100 tam otomatik** olarak kurar.
 
-*(Geliştiriciler veya terminal meraklıları için tek satır komut: `git clone https://github.com/AlptugDag/cinetv-launcher && cd cinetv-launcher && ./install.sh`)*
+2. **Doğrudan Televizyondan APK ile Kurulum**:
+   Play Store'dan ücretsiz *Downloader* uygulamasını kurun, adres çubuğuna `github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk` yazıp indirin ve kurun (ya da flash bellekle atın). İlk açılışta CineTV arka planda tüm eklenti, profil ve bellek optimizasyonlarını sessizce ve otomatik olarak tamamlar; sizi hiçbir karmaşık sihirbazla uğraştırmaz.
 
 **[📥 CineTV.apk'yı indir](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk)** · **[Adım Adım Kurulum Rehberi (KURULUM.md)](KURULUM.md)**
 

@@ -222,7 +222,7 @@ public final class Panels {
 
         // 4. TV & phone
         LinearLayout c4 = column(ctx, cols, R.string.col_tv, 390);
-        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Kurulum Sihirbazı" : "Setup Wizard",
+        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Kurulum Sihirbazı & Bileşen Kontrolü" : "Setup Wizard & Component Health",
                 "tr".equals(Locale.getDefault().getLanguage()) ? "Eksik bileşenleri kontrol et ve kur" : "Check and setup components", false,
                 v -> wizard(ctx, host)));
         boolean isHome = com.cinetv.launcher.HomeGuard.isDefault(ctx);
