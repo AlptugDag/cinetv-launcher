@@ -74,15 +74,13 @@ ADDONS = {
     "tr_altyazi": "tr-altyazi.altyazi.workers.dev/manifest.json",
     "anthology": "falsisdev.github.io/anthology/stremio/manifest.json",
     "netflix_catalog": "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json",
-    "xperience": "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json",
-    "aiostreams": "aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/eyJpIjoiWXlHVnFaUWlDSUFQeXlDWlF3RXNXZz09IiwiZSI6ImJKclJJRWpwRyttbFk5NXE3Ym42UG95TmxxN2xmZktRaXlMclBORFpzOVU9IiwidCI6ImEifQ/manifest.json",
+    "xperience": "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json"
 }
 ADDON_NAMES = {
     "tr_altyazi": "TR Altyazı",
     "anthology": "Anthology",
     "netflix_catalog": "Netflix Catalog",
-    "xperience": "Xperience",
-    "aiostreams": "AIOStreams Nightly"
+    "xperience": "Xperience"
 }
 NEXOTV = "https://263f84288ddb-nexotv.baby-beamup.club"
 ANTHOLOGY = "https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json"
@@ -356,7 +354,6 @@ def plan_for(p, data):
         addons.append(("anthology", ADDONS["anthology"]))
         addons.append(("netflix_catalog", ADDONS["netflix_catalog"]))
         addons.append(("xperience", ADDONS["xperience"]))
-        addons.append(("aiostreams", ADDONS["aiostreams"]))
     if "youtube" in loves or "music" in loves or "highlights" in as_list(p.get("sports_what")):
         addons.append(("youtube", ADDONS["youtube"]))
         follow = [t.strip() for t in (p.get("teams") or "").split(",") if t.strip()]
@@ -652,8 +649,7 @@ def apply(plan, data, out_dir):
 
     if "nuvio" in plan["apps"]:
         assets_dir = os.path.join(os.path.dirname(__file__), "assets")
-        for cfg in ("aiostreams-config-2026-10-28.21-05-36.json", "aiostreams-config.json",
-                    "xperience-kategori-setup-profile.json", "xperience-profile.json",
+        for cfg in ("xperience-kategori-setup-profile.json", "xperience-profile.json",
                     "aiometadata-config-2026-10-28.json", "aiometadata-config.json"):
             cfg_path = os.path.join(assets_dir, cfg)
             if os.path.exists(cfg_path):

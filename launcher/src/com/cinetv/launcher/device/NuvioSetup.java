@@ -39,8 +39,7 @@ public final class NuvioSetup {
             "tr-altyazi.altyazi.workers.dev/manifest.json",
             "falsisdev.github.io/anthology/stremio/manifest.json",
             "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json",
-            "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json",
-            "aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/eyJpIjoiWXlHVnFaUWlDSUFQeXlDWlF3RXNXZz09IiwiZSI6ImJKclJJRWpwRyttbFk5NXE3Ym42UG95TmxxN2xmZktRaXlMclBORFpzOVU9IiwidCI6ImEifQ/manifest.json"
+            "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json"
     };
 
     private NuvioSetup() {}
@@ -59,14 +58,16 @@ public final class NuvioSetup {
         installPlayer(ctx, false);
     }
 
-    /** Deploys AIOStreams, Xperience and AIOMetadata configs to /sdcard/Download/ for instant Nuvio import. */
+    /** Deploys Xperience and AIOMetadata configs to /sdcard/Download/ for instant Nuvio import. */
     public static void deployConfigs(Context app) {
         try {
             File dl = new File("/sdcard/Download");
             if (!dl.exists()) dl.mkdirs();
+            // Clean up removed/deprecated configs if present
+            new File(dl, "aiostreams-config-2026-10-28.21-05-36.json").delete();
+            new File(dl, "aiostreams-config.json").delete();
+
             String[][] files = {
-                    {"nuvio/aiostreams-config-2026-10-28.21-05-36.json", "aiostreams-config-2026-10-28.21-05-36.json"},
-                    {"nuvio/aiostreams-config.json", "aiostreams-config.json"},
                     {"nuvio/xperience-kategori-setup-profile.json", "xperience-kategori-setup-profile.json"},
                     {"nuvio/xperience-profile.json", "xperience-profile.json"},
                     {"nuvio/aiometadata-config-2026-10-28.json", "aiometadata-config-2026-10-28.json"},

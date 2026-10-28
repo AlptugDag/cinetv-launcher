@@ -79,13 +79,12 @@ CineTV kurulurken tüm bu ekosistem televizyonunuza **otomatik olarak kurulur ve
 - **Nuvio TV Medya Merkezi**: En güncel resmi Nuvio motoru işlemcinize özel kurulur.
 - **Nova Video Player**: Harici oynatıcı ve yüksek bitrate aktarım motoru arka planda hazır hale getirilir.
 - **AirPlay 2 Alıcısı (AirReceiver)**: iPhone, iPad ve Mac ekranınızı televizyona anında yansıtma desteği.
-- **3 Hazır Yapılandırma Profili**: `/sdcard/Download/` dizinine otomatik işlenen `aiostreams-config`, `xperience-kategori-setup-profile` ve `aiometadata-config`.
-- **5 Seçkin Eklenti**:
+- **2 Hazır Yapılandırma Profili**: `/sdcard/Download/` dizinine otomatik işlenen `xperience-kategori-setup-profile` ve `aiometadata-config`.
+- **4 Seçkin Eklenti**:
   1. `TR Altyazı` (Resmi Türkçe altyazı motoru)
-  2. `Anthology` (Türkçe ulusal, belgesel, sinema ve haber kanalları)
+  2. `Anthology` (Hazır kurulu, isteğe bağlı aktif edilebilir Türkçe kanal kütüphanesi)
   3. `Netflix Kataloğu` (Global streaming katalog düzeni)
   4. `Xperience` (Gelişmiş kategori, poster ve metadata sağlayıcısı)
-  5. `AIOStreams Nightly` (Gelişmiş P2P ve debrid akış motoru)
 
 ### 8. 📱 Telefondan Web Kumanda, Cast & AirPlay
 - **Kurulumsuz Web Kumanda**: Uygulama indirmeden, CineTV ana ekranındaki telefon simgesine tıklayıp QR kodu okutarak telefon tarayıcınızdan TV'yi kumanda edin.

@@ -23,8 +23,8 @@ This automatically installs and configures 100% of the entire ecosystem:
 - Companion apps: Nuvio, Nova Video Player, AirPlay receiver, Ad-free YouTube (TizenTube)
 - Rootless 2 GB Z-RAM (kernel swap LZ4) & memory tuning
 - System debloat (safely disabling manufacturer tracking & bloatware)
-- Deploys all 3 configuration profiles: AIOStreams (`aiostreams-config`), Xperience (`xperience-kategori-setup-profile`), AIOMetadata (`aiometadata-config`) into `/sdcard/Download/`
-- Installs all 5 curated addons into Nuvio: TR Altyazı, Anthology, Netflix Catalog, Xperience, AIOStreams Nightly
+- Deploys configuration profiles: Xperience (`xperience-kategori-setup-profile`), AIOMetadata (`aiometadata-config`) into `/sdcard/Download/`
+- Installs curated addons into Nuvio: TR Altyazı, Anthology (pre-installed, disabled by default), Netflix Catalog, Xperience
 
 ---
 

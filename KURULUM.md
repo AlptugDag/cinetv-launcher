@@ -53,7 +53,7 @@ Bilgisayarınızda dosya okuyup komut çalıştırabilen bir yapay zekâ ajanı 
 2. Yapay zekâya aynen şunu yazın:
    > https://github.com/AlptugDag/cinetv-launcher adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur. Televizyonumun IP adresi: <TV_IP_ADRESİNİZ>.
 3. Yapay zekâ televizyonunuza bağlanır, onay isterse **Her zaman izin ver** › **Tamam**'a basın.
-4. Yapay zekâ; CineTV ana ekranını, Nuvio medya merkezini, Nova Player'ı, AirPlay'i, reklamsız YouTube'u (TizenTube), 2 GB sanal RAM (Z-RAM) artışını, debloat sadeleştirmesini, 3 hazır profil dosyasını (AIOStreams, Xperience, AIOMetadata) ve tüm eklentileri (TR Altyazı, Anthology, Netflix, Xperience, AIOStreams Nightly) **tek adımda, sıfır çaba ile %100 tam otomatik** kurar ve televizyonu sinema modunda açar.
+4. Yapay zekâ; CineTV ana ekranını, Nuvio medya merkezini, Nova Player'ı, AirPlay'i, reklamsız YouTube'u (TizenTube), 2 GB sanal RAM (Z-RAM) artışını, debloat sadeleştirmesini, hazır profil dosyalarını (Xperience, AIOMetadata) ve tüm seçkin eklentileri (TR Altyazı, Anthology, Netflix, Xperience) **tek adımda, sıfır çaba ile %100 tam otomatik** kurar ve televizyonu sinema modunda açar.
 
 ---
 
@@ -86,7 +86,7 @@ Bilgisayar veya terminal kullanmadan doğrudan televizyonunuzla kurmak isterseni
    (Büyük-küçük harfe dikkat: `AlptugDag` ve `CineTV.apk`.)
 5. İndirme bitince **Yükle** (Install), sonra **Aç** (Open).
 6. Televizyon *"USB hata ayıklamaya izin verilsin mi?"* diye sorarsa: **"Bu bilgisayardan her zaman izin ver"** kutusunu işaretleyin ve **Tamam**'a basın.
-7. **Tam Otomatik Başlatma**: CineTV ilk açıldığında arka planda Nuvio medya merkezini, hazır Türkçe film/dizi kaynaklarını, altyazı eklentilerini (Xperience, Netflix Kataloğu, AIOStreams Nightly, Anthology, TR-Altyazı), video oynatıcıyı ve 2 GB sanal RAM optimizasyonunu **hiçbir kullanıcı müdahalesi gerektirmeden sessizce tamamlar** ve sinematik karşılama ekranıyla ana ekranınızı açar.
+7. **Tam Otomatik Başlatma**: CineTV ilk açıldığında arka planda Nuvio medya merkezini, hazır Türkçe film/dizi kaynaklarını, altyazı eklentilerini (Xperience, Netflix Kataloğu, Anthology, TR-Altyazı), video oynatıcıyı ve 2 GB sanal RAM optimizasyonunu **hiçbir kullanıcı müdahalesi gerektirmeden sessizce tamamlar** ve sinematik karşılama ekranıyla ana ekranınızı açar.
 
 > Bileşen durumunu kontrol etmek veya elle incelemek isterseniz dilediğiniz zaman CineTV › Ayarlar › TV & Telefon › **Kurulum Sihirbazı & Bileşen Kontrolü** üzerinden tüm bileşenleri görebilirsiniz.
 
