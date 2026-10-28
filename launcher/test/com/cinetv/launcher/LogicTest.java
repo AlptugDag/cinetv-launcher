@@ -144,8 +144,8 @@ public class LogicTest {
         assertFalse(oct29.mourning);
         assertTrue(oct29.subtitle.contains("103"));
         assertEquals("Alptuğ Dağ", oct29.celebrationAuthor);
-        assertTrue(oct29.celebrationTitle.contains("29 Ekim Cumhuriyet Bayramımız"));
-        assertTrue(oct29.celebrationBody.contains("103. yılı"));
+        assertEquals("Cinetv yapımcısı Alptuğ Dağ 29 Ekim Cumhuriyet Bayramınızı Kutlar!", oct29.celebrationTitle);
+        assertEquals("İyi seyirler...", oct29.celebrationBody);
 
         // 10 Kasım Atatürk'ü Anma Günü (normal hour vs 09:05 saygı duruşu)
         com.cinetv.launcher.service.SpecialDay nov10Normal = com.cinetv.launcher.service.SpecialDay.forDate(2026, 11, 10, 15, 30);

@@ -10,7 +10,7 @@
 [![License](https://img.shields.io/badge/License-PolyForm%20Strict%201.0.0-green.svg?style=for-the-badge)](LICENSE)
 
 **Televizyonunuzu fabrika reklamlarından ve karmaşık menülerden kurtarıp salonunuza gerçek bir sinema arşivi getirin.**
-Fotogerçekçi 3D DVD vitrini, açılabilir film kılıfları, afiş rengiyle birebir senkronize dairesel ışıklandırma, zero-flash fragman oynatıcı, yapay zekâlı doğal dil araması, milli bayram ve anma günleri detayları, gelişmiş donanım müfettişi (TV Inspector), 2 GB root'suz Z-RAM artışı ve Nuvio medya ekosistemi tek pakette.
+Fotogerçekçi 3D DVD vitrini, açılabilir film kılıfları, afiş rengiyle birebir senkronize dairesel ışıklandırma, zero-flash fragman oynatıcı, yapay zekâlı doğal dil araması, gelişmiş donanım müfettişi (TV Inspector), 2 GB root'suz Z-RAM artışı ve Nuvio medya ekosistemi tek pakette.
 
 **[⬇ CineTV.apk İndir (v1.0.0.9b)](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk)** · **[Adım Adım Kurulum Rehberi (KURULUM.md)](KURULUM.md)** · **[Yapay Zekâ Rehberi (AGENTS.md)](AGENTS.md)**
 
@@ -38,6 +38,13 @@ Sıradan Android TV ekranlarındaki kalabalığı tamamen temizler; televizyonun
 - **Cameo Oyuncu Dizilimi**: Başrol oyuncularının fotoğrafları pul formatında listelenir, oyuncu isimleri fotoğrafların altında net ve okunaklı biçimde yer alır.
 - **Dairesel Vektörel Renk Eşitleme (Circular Mean Hue Sync)**: Film afişindeki renkler dairesel trigonometrik ($\sin$/$\cos$) vektör ortalamasıyla analiz edilir. Afişin gerçek baskın rengi (ör. Fargo kırmızısı) tespit edilerek DVD iç kitapçık başlıkları, künye yazıları ve oda arkası ambiyans glow'u afiş rengiyle **1:1 kusursuz senkronize** parlar.
 - **Zero-Flash Fragman Oynatıcı**: DVD kapağındaki fragman tepsisinde video başlarken YouTube arayüz butonlarının, başlık çubuğunun ve logolarının ekranda yanıp sönmesi tamamen engellenmiştir. `scale(1.22)` kenar kırpma, gecikmeli transparan geçiş (video hazır olmadan görünmeme) ve sıfır gecikmeli kesintisiz (seamless) döngü ile çalışır.
+
+<p align="center">
+  <img src="docs/media/dvd-note.jpg" alt="DVD İç Kitapçık ve Özet" width="250">&nbsp;
+  <img src="docs/media/dvd-trailer.jpg" alt="DVD Fragman Tepsisi" width="250">&nbsp;
+  <img src="docs/media/disc.jpg" alt="Dönen Film CD'si" width="250">
+</p>
+
 - **6 Farklı Sinema Atmosferi**:
   - *Velvet*: Koyu asil kırmızı kadife sinema salonu.
   - *Cinema*: Klasik ahşap tiyatro ve nostaljik sinema salonu dokusu.
@@ -46,22 +53,31 @@ Sıradan Android TV ekranlarındaki kalabalığı tamamen temizler; televizyonun
   - *Neon*: 80'ler synthwave gece sineması ve neon ışıkları.
   - *Closet*: Özel dokulu ceviz ağacından 3D derinlikli koleksiyon dolabı.
 
+<p align="center">
+  <img src="docs/media/themes.jpg" alt="CineTV Sinema Atmosferleri ve Temaları" width="760">
+</p>
+
 ### 2. 🧠 Günün Anına ve Hava Durumuna Göre Akıllı Öneri Algoritması
 - **Dinamik Vitrin Kürasyonu**: Tarihe, mevsime, günün saatine (sabah kahve sineması, öğle klasiği, akşam prömiyeri, gece gerilimi), bulunulan şehrin hava durumuna (yağmurlu, karlı, güneşli) ve konumuna göre her açılışta benzersiz, asla tekrarlamayan film vitrini oluşturur.
+- **Dinamik 35mm Film Şeridi Ekran Koruyucusu**: Televizyon boştayken film sahneleri, unutulmaz replikler ve 35 mm hareketli film şeridi geçişiyle salonunuzu bir sinema sergisine dönüştürür.
 - **Çakışma Önleyici & Tuner Sızıntı Koruması (`HomeGuard`)**: TV açılışında vitrinin art arda yenilenmesini ve tuner görüntüsünün saniyelik de olsa ekrana sızmasını engelleyen özel koruma katmanı.
 
-### 3. 🇹🇷 Milli Bayramlar ve Özel Günler Vurgusu
-- **Milli Gurur Detayları**: 29 Ekim Cumhuriyet Bayramı, 30 Ağustos Zafer Bayramı, 23 Nisan Ulusal Egemenlik ve Çocuk Bayramı ile 19 Mayıs Atatürk'ü Anma, Gençlik ve Spor Bayramı günlerinde ekranda beliren şanlı Türk Bayrağımız 🇹🇷, kırmızı-beyaz asil cam rozet ve güne özel anlamlı kutlama mesajları.
-- **10 Kasım Saygı ve Matem Atmosferi**: 10 Kasım Atatürk'ü Anma Günü'nde saat 09:05 saygı duruşu vurgusu, siyah kurdele 🎗️ rozeti, sonsuzluk simgesi (`1881 - 1938 ∞`) ve ekrandaki renkleri hürmetle sakinleştiren desatüre asil gri-monokrom oda ambiyansı.
-- **Özel Gün Ekran Koruyucusu**: Yılbaşında kış ışıltısı, bayramlarda ve anma günlerinde ekran koruyucu saatinde beliren zarif anma detayları.
+<p align="center">
+  <img src="docs/media/screensaver-film-strip.gif" alt="35mm Film Şeridi Ekran Koruyucu" width="560">
+</p>
 
-### 4. 🎙️ Yapay Zekâ Sinema Asistanı & Dinamik Ses Arayüzü
+### 3. 🎙️ Yapay Zekâ Sinema Asistanı & Dinamik Ses Arayüzü
 - **Çoklu Model Desteği**: Gemini 2.5 Flash, Claude, OpenAI veya Grok API anahtarıyla çalışır.
 - **Doğal Dil ile Arama**: "90'lar yağmurlu dedektif filmleri", "kızı kaçırılan baba filmleri", "araba temalı aksiyonlar", "Akdeniz sıcağında geçen dramlar" gibi soyut aramaları anlayarak vitrini doğrudan bu filmlerle doldurur.
 - **Genel Bilgi Yanıtlama**: Sinema dışındaki genel kültür sorularını dahi anında sesli veya yazılı cevaplar.
 - **Dinamik Ses Dalgaları (Voice Waves)**: Kumandanın mikrofon tuşuna basıldığında açılan, mikrofondan gelen sesin frekans ve genliğine göre gerçek zamanlı dalgalanan akıcı dinleme animasyonu.
 
-### 5. 🔍 Gelişmiş Donanım Standartları & TV Inspector
+<p align="center">
+  <img src="docs/media/answer.jpg" alt="Yapay Zeka Doğal Dil Yanıt Balonu" width="375">&nbsp;
+  <img src="docs/media/keyboard.jpg" alt="Akıllı Türkçe TV Klavyesi" width="375">
+</p>
+
+### 4. 🔍 Gelişmiş Donanım Standartları & TV Inspector
 - **Panel & Ekran Tanılama**: Gerçek ekran çözünürlüğü (4K Ultra HD / Full HD), ekran tazeleme hızı (60.0 Hz / 120.0 Hz), HDR format desteği (HDR10, HDR10+, Dolby Vision, HLG) ve Geniş Renk Gamı (WCG) durumu.
 - **Donanımsal Medya Çözücü Analizi**: Televizyonun çipinde donanımsal olarak desteklenen tüm video çözücüleri (AV1, HEVC/H.265, VP9, H.264, Dolby Vision) ve ses formatları (Dolby Atmos E-AC3 JOC, Dolby Digital Plus, Dolby Digital AC-3, DTS, DTS-HD Master Audio, TrueHD) tek ekranda raporlanır.
 - **Bellek ve Depolama Detayı**: Toplam RAM, anlık kullanılabilir RAM, Düşük Bellek Cihazı (Low RAM Device) tespiti, Z-RAM swap durumu ve dahili depolama alanı.
@@ -69,12 +85,18 @@ Sıradan Android TV ekranlarındaki kalabalığı tamamen temizler; televizyonun
 - **Giriş Portları Sadeleştirmesi (Input Fold)**: Televizyona takılı olan HDMI ve konsol girişlerini öncelikli gösterir; boşta olan portları otomatik katlayarak arayüz karmaşasını önler.
 - **Temiz Yeniden Başlatma (Restart TV)**: TV menülerinde kaybolmadan, doğrudan CineTV Ayarlarından televizyonu temiz şekilde yeniden başlatma seçeneği.
 
-### 6. 🚀 2 GB No-Root Sanal RAM / Z-RAM & Sistem Sadeleştirme (Debloat)
+<p align="center">
+  <img src="docs/media/settings.jpg" alt="Hızlı Ayarlar ve TV Inspector" width="250">&nbsp;
+  <img src="docs/media/tour.jpg" alt="İnteraktif Tur Rehberi" width="250">&nbsp;
+  <img src="docs/media/long-press.jpg" alt="Uzun Basma Menüsü ve Hızlı Aksiyonlar" width="250">
+</p>
+
+### 5. 🚀 2 GB No-Root Sanal RAM / Z-RAM & Sistem Sadeleştirme (Debloat)
 - **Root'suz Z-RAM Genişletmesi**: Düşük bellekli Android TV'lerde (Arçelik, Beko, Grundig, Philips, TCL, Xiaomi vb.) yüksek kaliteli 4K akışlarda yaşanan kilitlenme ve bellek yetersizliği çökmelerini önleyen, arka planda dinamik çalışan root'suz 2 GB LZ4 kernel swap bellek optimizasyonu.
 - **Güvenli TV Sadeleştirmesi (Safe Debloat)**: Televizyonla birlikte gelen üretici telemetrilerini, reklam servislerini ve Google Asistan'ın arayüzü bölen pencerelerini sistem çekirdeğine (tuner, HDMI, ses) dokunmadan devre dışı bırakır; kumandadan mikrofonla arama kusursuz çalışmaya devam eder.
 - **"CineTV'yi Yok Et!" Butonu**: Dilediğiniz an Ayarlar menüsünün en altındaki tek bir butonla tüm değişiklikleri geri alıp televizyonu ilk günkü fabrika ayarlarına döndürebilme garantisi.
 
-### 7. 📦 Kusursuz Medya Ekosistemi: Nuvio & Hazır Seçkin Eklentiler
+### 6. 📦 Kusursuz Medya Ekosistemi: Nuvio & Hazır Seçkin Eklentiler
 CineTV kurulurken tüm bu ekosistem televizyonunuza **otomatik olarak kurulur ve bağlanır**:
 - **Nuvio TV Medya Merkezi**: En güncel resmi Nuvio motoru işlemcinize özel kurulur.
 - **Nova Video Player**: Harici oynatıcı ve yüksek bitrate aktarım motoru arka planda hazır hale getirilir.
@@ -86,13 +108,25 @@ CineTV kurulurken tüm bu ekosistem televizyonunuza **otomatik olarak kurulur ve
   3. `Netflix Kataloğu` (Global streaming katalog düzeni)
   4. `Xperience` (Gelişmiş kategori, poster ve metadata sağlayıcısı)
 
-### 8. 📱 Telefondan Web Kumanda, Cast & AirPlay
+<p align="center">
+  <img src="docs/media/nuvio-signature.jpg" alt="Nuvio & Seçkin Eklentiler İmza Ekosistemi" width="760">
+</p>
+
+### 7. 📱 Telefondan Web Kumanda, Cast & AirPlay
 - **Kurulumsuz Web Kumanda**: Uygulama indirmeden, CineTV ana ekranındaki telefon simgesine tıklayıp QR kodu okutarak telefon tarayıcınızdan TV'yi kumanda edin.
 - **Gelişmiş Video Cast**: Telefonunuzdan web sitelerindeki veya yerli film sitelerindeki video bağlantılarını televizyona gönderin; gerçek iframe referer/origin yakalama sayesinde videolar doğrudan TV'de açılır.
 - **Arka Plan Değiştirme**: Telefonunuzdaki herhangi bir fotoğrafı tek tıkla TV'nizin anlık arka planı yapın.
 - **AirPods & Bluetooth Bağlantısı**: Eşleşmiş kablosuz kulaklıkları televizyon açılır açılmaz otomatik bağlama.
 
-### 9. 🔄 Uygulama İçi Otomatik Güncelleme (In-App Updater)
+<p align="center">
+  <img src="docs/media/phone-strip.jpg" alt="Telefondan Kurulumsuz Web Kumanda, Video Cast ve Canlı Kontrol" width="760">
+</p>
+
+<p align="center">
+  <img src="docs/media/phone-walkthrough.gif" alt="Telefon Arayüzü Canlı Akışı" width="360">
+</p>
+
+### 8. 🔄 Uygulama İçi Otomatik Güncelleme (In-App Updater)
 - GitHub Releases API üzerinden arka planda otomatik sürüm denetimi.
 - Yeni bir sürüm çıktığında TV ekranında Leanback güncelleme bildirimi sunulur ve kumandadan tek tıkla güncelleme tamamlanır.
 

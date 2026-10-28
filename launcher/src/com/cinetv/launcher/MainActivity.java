@@ -1165,7 +1165,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     public void showCinematicCelebration(final com.cinetv.launcher.service.SpecialDay day) {
         if (home == null || home.root == null || day == null) return;
         final android.widget.FrameLayout container = new android.widget.FrameLayout(this);
-        container.setBackgroundColor(Color.argb(day.mourning ? 240 : 232, 7, 8, 12));
+        container.setBackgroundColor(Color.argb(170, 4, 5, 8));
         container.setAlpha(0f);
         container.setFocusable(true);
         container.setClickable(true);
@@ -1173,9 +1173,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         android.widget.LinearLayout box = new android.widget.LinearLayout(this);
         box.setOrientation(android.widget.LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
-        box.setPadding(UiKit.px(56), UiKit.px(42), UiKit.px(56), UiKit.px(44));
+        box.setPadding(UiKit.px(68), UiKit.px(50), UiKit.px(68), UiKit.px(48));
 
-        // Drawn vector badge (flag / ribbon / snowflake)
+        // Notification panel card styling
+        android.graphics.drawable.GradientDrawable panelBg = new android.graphics.drawable.GradientDrawable();
+        panelBg.setColor(Color.argb(248, 14, 16, 22));
+        panelBg.setCornerRadius(UiKit.pxf(24));
+        panelBg.setStroke(UiKit.px(2), UiKit.withAlpha(day.accent, 210));
+        box.setBackground(panelBg);
+
+        // Drawn vector badge (Turkish Flag or memorial ribbon)
         android.widget.ImageView iconView = new android.widget.ImageView(this);
         int iconW = UiKit.px(day.icon == com.cinetv.launcher.service.SpecialDay.Icon.FLAG ? 96 : 72);
         int iconH = UiKit.px(day.icon == com.cinetv.launcher.service.SpecialDay.Icon.FLAG ? 64 : 72);
@@ -1185,55 +1192,42 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         ilp.gravity = Gravity.CENTER_HORIZONTAL;
         box.addView(iconView, ilp);
 
-        // Celebration Title
+        // Celebration Title: "Cinetv yapımcısı Alptuğ Dağ (BAYRAM ADI) Bayramınızı Kutlar!"
         android.widget.TextView titleTv = new android.widget.TextView(this);
         titleTv.setText(day.celebrationTitle);
         titleTv.setTextColor(Color.WHITE);
-        titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
+        titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
         titleTv.setGravity(Gravity.CENTER);
         titleTv.setTypeface(FontManager.getBold(this));
         titleTv.setShadowLayer(UiKit.pxf(14), 0, UiKit.pxf(3), Color.argb(190, 0, 0, 0));
-        box.addView(titleTv, new android.widget.LinearLayout.LayoutParams(UiKit.px(920), ViewGroup.LayoutParams.WRAP_CONTENT));
+        android.widget.LinearLayout.LayoutParams tlp = new android.widget.LinearLayout.LayoutParams(UiKit.px(900), ViewGroup.LayoutParams.WRAP_CONTENT);
+        tlp.gravity = Gravity.CENTER_HORIZONTAL;
+        box.addView(titleTv, tlp);
 
-        // Celebration Body Message
+        // Celebration Body Message: "İyi seyirler..."
         android.widget.TextView bodyTv = new android.widget.TextView(this);
         bodyTv.setText(day.celebrationBody);
-        bodyTv.setTextColor(Color.parseColor(day.mourning ? "#D1D5DB" : "#F3F4F6"));
+        bodyTv.setTextColor(Color.parseColor(day.mourning ? "#D1D5DB" : "#FDE68A"));
         bodyTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
         bodyTv.setGravity(Gravity.CENTER);
-        bodyTv.setLineSpacing(UiKit.pxf(6), 1.18f);
+        bodyTv.setLineSpacing(UiKit.pxf(4), 1.15f);
         bodyTv.setTypeface(FontManager.getMedium(this));
         bodyTv.setShadowLayer(UiKit.pxf(10), 0, UiKit.pxf(2), Color.argb(160, 0, 0, 0));
         android.widget.LinearLayout.LayoutParams blp = new android.widget.LinearLayout.LayoutParams(UiKit.px(880), ViewGroup.LayoutParams.WRAP_CONTENT);
         blp.topMargin = UiKit.px(16);
-        blp.bottomMargin = UiKit.px(26);
+        blp.bottomMargin = UiKit.px(14);
+        blp.gravity = Gravity.CENTER_HORIZONTAL;
         box.addView(bodyTv, blp);
 
-        // Thin elegant divider line tinted in accent
-        View div = new View(this);
-        div.setBackgroundColor(UiKit.withAlpha(day.accent, 180));
-        android.widget.LinearLayout.LayoutParams dlp = new android.widget.LinearLayout.LayoutParams(UiKit.px(160), UiKit.px(2));
-        dlp.bottomMargin = UiKit.px(18);
-        box.addView(div, dlp);
-
-        // Personal Author Signature on behalf of Alptuğ Dağ
-        android.widget.TextView authorTv = new android.widget.TextView(this);
-        authorTv.setText("— " + day.celebrationAuthor);
-        authorTv.setTextColor(Color.parseColor(day.mourning ? "#E5E7EB" : "#FDE68A"));
-        authorTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19);
-        authorTv.setTypeface(FontManager.getBold(this));
-        authorTv.setLetterSpacing(0.06f);
-        authorTv.setShadowLayer(UiKit.pxf(8), 0, UiKit.pxf(2), Color.argb(180, 0, 0, 0));
-        box.addView(authorTv, new android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        // Hint to dismiss: (OK)
+        // Hint to dismiss
         android.widget.TextView hintTv = new android.widget.TextView(this);
-        hintTv.setText("Devam etmek için kumandadan (OK) tuşuna basın");
+        hintTv.setText("Kapatmak için kumandadan (OK) veya herhangi bir tuşa basın");
         hintTv.setTextColor(Color.parseColor("#9CA3AF"));
-        hintTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        hintTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         hintTv.setGravity(Gravity.CENTER);
         android.widget.LinearLayout.LayoutParams hlp = new android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        hlp.topMargin = UiKit.px(28);
+        hlp.topMargin = UiKit.px(14);
+        hlp.gravity = Gravity.CENTER_HORIZONTAL;
         box.addView(hintTv, hlp);
 
         android.widget.FrameLayout.LayoutParams flp = new android.widget.FrameLayout.LayoutParams(
