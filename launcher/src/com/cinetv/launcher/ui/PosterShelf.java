@@ -37,7 +37,7 @@ public class PosterShelf extends FrameLayout {
         boolean onEdge(int keyCode);
     }
 
-    private static final ExecutorService baker = Executors.newFixedThreadPool(2);
+    private static final ExecutorService baker = Executors.newFixedThreadPool(Math.max(3, Runtime.getRuntime().availableProcessors()));
     private static final int VISIBLE_RANGE = 10;
     private static final float SIDE_ANGLE = 62f;
     private static final float PROFILE_ANGLE = -16f;

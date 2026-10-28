@@ -130,7 +130,13 @@ public class VoiceOverlay extends FrameLayout {
 
         setAlpha(0f);
         setVisibility(VISIBLE);
-        animate().alpha(1f).setDuration(PerformanceProfile.animationMs(getContext(), 180)).start();
+        int animDuration = PerformanceProfile.animationMs(getContext(), 350);
+        animate().alpha(1f).setDuration(animDuration)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+        card.setTranslationY(UiKit.pxf(35));
+        card.setAlpha(0f);
+        card.animate().translationY(0f).alpha(1f).setDuration(animDuration + 30)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
         requestFocus();
 
         try {
@@ -143,6 +149,7 @@ public class VoiceOverlay extends FrameLayout {
 
                 @Override
                 public void onBeginningOfSpeech() {
+                    siriWaves.onSpeechStarted();
                 }
 
                 @Override
@@ -152,6 +159,19 @@ public class VoiceOverlay extends FrameLayout {
 
                 @Override
                 public void onBufferReceived(byte[] buffer) {
+                    if (buffer != null && buffer.length > 0) {
+                        long sum = 0;
+                        int count = buffer.length / 2;
+                        for (int i = 0; i < buffer.length - 1; i += 2) {
+                            short sample = (short) ((buffer[i + 1] << 8) | (buffer[i] & 0xFF));
+                            sum += Math.abs(sample);
+                        }
+                        if (count > 0) {
+                            float avg = sum / (float) count;
+                            float norm = Math.max(0f, Math.min(1f, avg / 2800f));
+                            siriWaves.setRawEnergy(norm);
+                        }
+                    }
                 }
 
                 @Override
@@ -230,7 +250,9 @@ public class VoiceOverlay extends FrameLayout {
         if (!active && getVisibility() != VISIBLE) return;
         active = false;
         cleanup(); // Releases mic hardware immediately to shut off green dot
-        animate().alpha(0f).setDuration(PerformanceProfile.animationMs(getContext(), 140)).withEndAction(() -> {
+        card.animate().translationY(UiKit.pxf(25)).alpha(0f)
+                .setDuration(PerformanceProfile.animationMs(getContext(), 180)).start();
+        animate().alpha(0f).setDuration(PerformanceProfile.animationMs(getContext(), 220)).withEndAction(() -> {
             setVisibility(GONE);
             siriWaves.reset();
         }).start();
@@ -281,9 +303,11 @@ public class VoiceOverlay extends FrameLayout {
         private final Path wavePath = new Path();
 
         private float volume = 0f;
+        private float targetVolume = 0f;
         private boolean listening = false;
         private boolean success = false;
         private float phase = 0f;
+        private float speechPulse = 0f;
 
         // Apple Siri chromatic color palette
         private static final int[] CHROMATIC_COLORS = {
@@ -315,9 +339,20 @@ public class VoiceOverlay extends FrameLayout {
             invalidate();
         }
 
+        void onSpeechStarted() {
+            this.speechPulse = 1.0f;
+            invalidate();
+        }
+
         void setVolume(float rmsdB) {
-            float norm = Math.max(0f, Math.min(1f, (rmsdB + 2f) / 10f));
-            this.volume = this.volume * 0.35f + norm * 0.65f;
+            // Broad sensitive dynamic range: TV remotes report between -18dB and +10dB
+            float norm = Math.max(0f, Math.min(1f, (rmsdB + 14f) / 22f));
+            this.targetVolume = Math.max(this.targetVolume, norm);
+            invalidate();
+        }
+
+        void setRawEnergy(float norm) {
+            this.targetVolume = Math.max(this.targetVolume, norm);
             invalidate();
         }
 
@@ -328,9 +363,11 @@ public class VoiceOverlay extends FrameLayout {
 
         void reset() {
             this.volume = 0f;
+            this.targetVolume = 0f;
             this.listening = false;
             this.success = false;
             this.phase = 0f;
+            this.speechPulse = 0f;
             invalidate();
         }
 
@@ -339,27 +376,39 @@ public class VoiceOverlay extends FrameLayout {
             int w = getWidth(), h = getHeight();
             if (w <= 0 || h <= 0) return;
 
-            phase += 0.045f + volume * 0.08f;
+            // Smooth spring attack & decay for fluid, responsive volume undulation
+            targetVolume *= 0.88f;
+            if (speechPulse > 0f) {
+                targetVolume = Math.max(targetVolume, speechPulse * 0.75f);
+                speechPulse = Math.max(0f, speechPulse - 0.04f);
+            }
+            volume += (targetVolume - volume) * 0.35f;
+
+            // Organic breathing baseline while listening so the screen perimeter is always living & undulating
+            float breathe = listening ? (0.16f + (float) Math.sin(phase * 1.5f) * 0.09f) : 0f;
+            float effectiveVol = Math.max(breathe, volume);
+
+            phase += 0.040f + effectiveVol * 0.09f;
 
             // 1. Perimeter Diffuse Ambient Glow (volumetric light leaking into the dark room)
-            int glowAlpha = success ? 140 : (listening ? (int) (65 + volume * 95) : 35);
+            int glowAlpha = success ? 140 : (listening ? (int) (65 + effectiveVol * 115) : 35);
             int primaryColor = success ? 0xFF10B981 : 0xFF00F0FF;
             int secondaryColor = success ? 0xFF34D399 : 0xFFFF007F;
 
             // Bottom edge ambient bloom
-            float bloomH = UiKit.pxf(65) + volume * UiKit.pxf(55);
+            float bloomH = UiKit.pxf(65) + effectiveVol * UiKit.pxf(60);
             glowPaint.setShader(new android.graphics.LinearGradient(0, h, 0, h - bloomH,
                     UiKit.withAlpha(primaryColor, glowAlpha), Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP));
             c.drawRect(0, h - bloomH, w, h, glowPaint);
 
             // Top edge ambient bloom
-            float topBloom = UiKit.pxf(40) + volume * UiKit.pxf(35);
+            float topBloom = UiKit.pxf(40) + effectiveVol * UiKit.pxf(40);
             glowPaint.setShader(new android.graphics.LinearGradient(0, 0, 0, topBloom,
                     UiKit.withAlpha(secondaryColor, (int) (glowAlpha * 0.7f)), Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP));
             c.drawRect(0, 0, w, topBloom, glowPaint);
 
             // Left edge ambient bloom
-            float sideBloom = UiKit.pxf(45) + volume * UiKit.pxf(35);
+            float sideBloom = UiKit.pxf(45) + effectiveVol * UiKit.pxf(40);
             glowPaint.setShader(new android.graphics.LinearGradient(0, 0, sideBloom, 0,
                     UiKit.withAlpha(0xFF9333EA, (int) (glowAlpha * 0.65f)), Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP));
             c.drawRect(0, 0, sideBloom, h, glowPaint);
@@ -370,7 +419,7 @@ public class VoiceOverlay extends FrameLayout {
             c.drawRect(w - sideBloom, 0, w, h, glowPaint);
 
             // 2. Continuous Chromatic Perimeter Sweeping Wave
-            strokePaint.setStrokeWidth(UiKit.pxf(5.5f) + volume * UiKit.pxf(4f));
+            strokePaint.setStrokeWidth(UiKit.pxf(5.5f) + effectiveVol * UiKit.pxf(5.5f));
             if (success) {
                 strokePaint.setShader(null);
                 strokePaint.setColor(0xFF34D399);
@@ -379,7 +428,7 @@ public class VoiceOverlay extends FrameLayout {
             }
 
             // Draw animated fluid undulating border path
-            float amp = UiKit.pxf(6f) + volume * UiKit.pxf(24f);
+            float amp = UiKit.pxf(8f) + effectiveVol * UiKit.pxf(28f);
             float baseInset = UiKit.pxf(6f);
 
             wavePath.reset();

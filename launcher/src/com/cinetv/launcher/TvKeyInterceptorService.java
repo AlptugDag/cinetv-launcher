@@ -134,9 +134,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 // The OEM tuner MediaTek TVs push on boot/wake: suppress immediately and stay in CineTV
                 // If user deliberately pressed Inputs / Live TV, it is left alone.
                 if (DeviceTweaks.isUnwantedTuner()) {
+                    new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(this, "am force-stop " + pkg + " 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null", 800)).start();
                     performGlobalAction(GLOBAL_ACTION_HOME);
                     startActivity(new Intent(this, MainActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
                     return;
                 }
                 break;

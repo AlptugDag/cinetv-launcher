@@ -20,6 +20,7 @@ import com.cinetv.launcher.device.DeviceTweaks;
 import com.cinetv.launcher.device.HardwareKeys;
 import com.cinetv.launcher.device.MemoryOptimizer;
 import com.cinetv.launcher.device.PerformanceProfile;
+import com.cinetv.launcher.remote.LocalAdb;
 import com.cinetv.launcher.remote.TvWebRemoteServer;
 import com.cinetv.launcher.service.AppCatalog;
 import com.cinetv.launcher.service.AppLauncher;
@@ -174,6 +175,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             @Override
             public void onFocusCase(DvdCaseView view, int accent) {
                 home.environment.focusOn(view, accent);
+                final Movie m = home.shelf.focusedMovie();
+                if (m != null) prefetchMovie(m);
             }
 
             @Override
@@ -186,8 +189,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         loadApps(true);
         showCachedShelf();
-        // A new process (power-on) or a long absence brings a new shelf; a rebuild (theme, appearance) does not.
-        if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > SHELF_EVERY_MS) handler.postDelayed(this::refreshShelf, 1500);
+        Calendar cal = Calendar.getInstance();
+        lastShelfHour = cal.get(Calendar.HOUR_OF_DAY);
+        lastShelfDay = cal.get(Calendar.DAY_OF_YEAR);
+        lastShelfAt = android.os.SystemClock.elapsedRealtime();
+        // A single debounced refresh on start to prevent startup shelf collisions
+        handler.postDelayed(() -> {
+            if (!isCurating && android.os.SystemClock.elapsedRealtime() - lastShelfAt >= 2000) {
+                refreshShelf();
+            }
+        }, 2500);
 
         TvWebRemoteServer.setController(this);
         TvWebRemoteServer.start(this);
@@ -274,17 +285,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         lastShelfHour = curHour;
         lastShelfDay = curDay;
         // Suppress unwanted OEM TV tuner attempting to steal focus
-        if (DeviceTweaks.isUnwantedTuner()) {
-            handler.postDelayed(() -> {
-                if (!isFinishing() && !hasWindowFocus() && DeviceTweaks.isUnwantedTuner()) {
-                    try {
-                        startActivity(new Intent(this, MainActivity.class)
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
-                    } catch (Throwable ignored) {
-                    }
+        handler.postDelayed(() -> {
+            if (!isFinishing() && !hasWindowFocus() && DeviceTweaks.isUnwantedTuner()) {
+                background(() -> LocalAdb.shell(this, "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null", 800));
+                try {
+                    startActivity(new Intent(this, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+                } catch (Throwable ignored) {
                 }
-            }, 600);
-        }
+            }
+        }, 300);
     }
 
     private static boolean inFront;
@@ -309,6 +319,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         handler.removeCallbacks(idle);
         handler.removeCallbacks(sleepPanel);
         hideScreensaver();
+        // Deep background hibernation: immediately free memory for torrent & external media playback
+        PosterCache.trimMemory();
+        Glow.clear();
+        MemoryOptimizer.cleanBackground(this, getPackageName());
+        System.gc();
         super.onPause();
     }
 
@@ -446,7 +461,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         int hour = c.get(Calendar.HOUR_OF_DAY);
         int day = c.get(Calendar.DAY_OF_YEAR);
         if (lastShelfHour != -1 && (lastShelfHour != hour || lastShelfDay != day)) {
-            if (home != null && !home.modal.isShowing() && home.screensaver.getVisibility() != View.VISIBLE) {
+            if (home != null && !home.modal.isShowing() && home.screensaver.getVisibility() != View.VISIBLE && !isCurating) {
                 refreshShelf();
             }
         }
@@ -651,18 +666,34 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
     };
 
+    private static volatile boolean isCurating;
+
     @Override
     public void curate(final String mood) {
+        if (isCurating) return;
+        isCurating = true;
         String provider = LlmClient.providerName(this);
         home.shelfLabel.setText(getString(R.string.shelf_curating, provider == null ? "AI" : provider).toUpperCase(Locale.getDefault()));
         final String moment = MovieAssistant.momentContext(home.weather.getText().toString());
         background(() -> {
-            MovieAssistant.Shelf s = MovieAssistant.curate(this, mood, moment, PerformanceProfile.shelfSize(this));
-            ui(() -> {
-                if (s != null && !s.movies.isEmpty()) setShelf(s.title, s.movies, true);
-                else if (mood == null) categoryShelf();
-                else restoreShelfLabel();
-            });
+            try {
+                MovieAssistant.Shelf s = MovieAssistant.curate(this, mood, moment, PerformanceProfile.shelfSize(this));
+                ui(() -> {
+                    try {
+                        if (s != null && !s.movies.isEmpty()) setShelf(s.title, s.movies, true);
+                        else if (mood == null) categoryShelf();
+                        else restoreShelfLabel();
+                    } finally {
+                        isCurating = false;
+                    }
+                });
+            } catch (Throwable t) {
+                ui(() -> {
+                    isCurating = false;
+                    if (mood == null) categoryShelf();
+                    else restoreShelfLabel();
+                });
+            }
         });
     }
 
@@ -724,6 +755,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
      * ("Pazar gecesi için suç filmleri"); without one, or if the AI fails, a different category.
      */
     private void refreshShelf() {
+        if (isCurating) return;
         lastShelfAt = android.os.SystemClock.elapsedRealtime();
         if (LlmClient.isConfigured(this)) curate(null);
         else categoryShelf();
@@ -809,15 +841,49 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         });
     }
 
+    private void prefetchMovie(final Movie m) {
+        if (m == null) return;
+        final Context app = getApplicationContext();
+        final int w = home.opening.innerWidth(), h = home.opening.innerHeight();
+        background(() -> {
+            try {
+                if (m.cast == null || m.cast.isEmpty()) {
+                    MovieCatalog.details(app, m);
+                }
+                if (m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
+                    PosterCache.load(app, m.backdropUrl, w * 2, h);
+                }
+            } catch (Throwable ignored) {
+            }
+        });
+    }
+
     /** Fetches the synopsis and a still, then writes the note inside the open case. */
     private void writeInnerNote(final Movie m, final DvdCase dvd) {
         final Context app = getApplicationContext();
         final int w = home.opening.innerWidth(), h = home.opening.innerHeight();
         background(() -> {
-            MovieCatalog.details(app, m);
-            Bitmap still = m.backdropUrl.isEmpty() ? null : PosterCache.load(app, m.backdropUrl, w * 2, h);
-            Bitmap inner = DvdOpeningView.bakeInner(app, w, h, dvd.cover, still, m);
-            ui(() -> home.opening.setInner(inner));
+            try {
+                final String initialBackdrop = m.backdropUrl;
+                final Bitmap[] stillBox = new Bitmap[1];
+                Thread stillThread = null;
+                if (initialBackdrop != null && !initialBackdrop.isEmpty()) {
+                    stillThread = new Thread(() -> stillBox[0] = PosterCache.load(app, initialBackdrop, w * 2, h));
+                    stillThread.start();
+                }
+                MovieCatalog.details(app, m);
+                if (stillThread != null) {
+                    try { stillThread.join(2500); } catch (Throwable ignored) {}
+                }
+                Bitmap still = stillBox[0];
+                if (still == null && m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
+                    still = PosterCache.load(app, m.backdropUrl, w * 2, h);
+                }
+                final Bitmap inner = DvdOpeningView.bakeInner(app, w, h, dvd.cover, still, m);
+                ui(() -> home.opening.setInner(inner));
+            } catch (Throwable t) {
+                android.util.Log.w("CineTv", "writeInnerNote failed: " + t.getMessage());
+            }
         });
     }
 

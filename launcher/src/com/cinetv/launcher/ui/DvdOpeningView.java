@@ -203,6 +203,7 @@ public class DvdOpeningView extends View {
         removeCallbacks(autoPlay);
         setVisibility(VISIBLE);
         requestFocus();
+        setLayerType(LAYER_TYPE_HARDWARE, null);
         if (anim != null) anim.cancel();
         anim = ValueAnimator.ofFloat(0, OPEN_END);
         anim.setDuration(OPEN_END);
@@ -210,6 +211,12 @@ public class DvdOpeningView extends View {
         anim.addUpdateListener(a -> {
             t = (long) (float) a.getAnimatedValue();
             invalidate();
+        });
+        anim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                setLayerType(LAYER_TYPE_NONE, null);
+            }
         });
         anim.start();
         if (autoPlayAfterMs > 0) postDelayed(autoPlay, OPEN_END + autoPlayAfterMs);
@@ -248,6 +255,7 @@ public class DvdOpeningView extends View {
         if (slot != null) slot.hide();
         if (anim != null) anim.cancel();
         removeCallbacks(autoPlay);
+        setLayerType(LAYER_TYPE_NONE, null);
         setVisibility(INVISIBLE);
         inner = null;
         disc = null;
@@ -394,14 +402,14 @@ public class DvdOpeningView extends View {
             // "Fragman" handwritten label in marker font above the trailer window
             android.text.TextPaint marker = new android.text.TextPaint(Paint.ANTI_ALIAS_FLAG);
             marker.setTypeface(FontManager.getMarker(getContext()));
-            float labelSize = Math.max(16f, w * 0.034f);
+            float labelSize = Math.max(17f, w * 0.038f);
             marker.setTextSize(labelSize);
             marker.setColor(Color.WHITE);
             marker.setShadowLayer(UiKit.pxf(3), 0, UiKit.pxf(1.5f), Color.argb(160, 0, 0, 0));
             String label = "tr".equals(Locale.getDefault().getLanguage()) ? "Fragman" : "Trailer";
             float tw = marker.measureText(label);
-            float labelX = sc.left + w * 0.015f;
-            float labelY = sc.top - w * 0.014f;
+            float labelX = sc.left + w * 0.010f;
+            float labelY = sc.top - w * 0.018f;
             c.save();
             c.rotate(-1.2f, labelX, labelY);
             c.drawText(label, labelX, labelY, marker);
@@ -436,12 +444,13 @@ public class DvdOpeningView extends View {
 
     /** The 16:9 screen inside the sideways tray. */
     private static RectF trayScreen(float l, float t, float w, float h) {
-        float sw = w * 0.86f, sh = sw * 9f / 16f;
-        if (sh > h * 0.82f) {
-            sh = h * 0.82f;
+        float sw = w * 0.74f, sh = sw * 9f / 16f;
+        if (sh > h * 0.68f) {
+            sh = h * 0.68f;
             sw = sh * 16f / 9f;
         }
-        float cx = l + w / 2f, cy = t + h / 2f;
+        float cx = l + w / 2f;
+        float cy = t + h * 0.535f;
         return new RectF(cx - sw / 2f, cy - sh / 2f, cx + sw / 2f, cy + sh / 2f);
     }
 
@@ -583,10 +592,10 @@ public class DvdOpeningView extends View {
             int blackInk = ink.getColor();
             ink.setColor(filmInk);
             // the title in the viewer's language, the film's own beside it: "Sonbahar (秋日和)"; two lines at most
-            float titleSize = u * 0.092f;
+            float titleSize = u * 0.100f;
             ink.setTextSize(titleSize);
             StaticLayout title = layout(movie.innerTitle(), ink, (int) textW, 0.98f);
-            while (title.getLineCount() > 2 && titleSize > u * 0.052f) {
+            while (title.getLineCount() > 2 && titleSize > u * 0.065f) {
                 titleSize -= u * 0.004f;
                 ink.setTextSize(titleSize);
                 title = layout(movie.innerTitle(), ink, (int) textW, 0.98f);
@@ -595,15 +604,15 @@ public class DvdOpeningView extends View {
             y += title.getHeight();
             Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
             stroke.setColor(filmInk);
-            stroke.setStrokeWidth(Math.max(2.2f, u * 0.008f));
+            stroke.setStrokeWidth(Math.max(2.4f, u * 0.009f));
             stroke.setStrokeCap(Paint.Cap.ROUND);
             stroke.setStyle(Paint.Style.STROKE);
             Path line = new Path();
             float lw = Math.min(textW, title.getLineWidth(title.getLineCount() - 1) * 1.05f);
-            line.moveTo(paper.left + pad, y + u * 0.010f);
-            line.quadTo(paper.left + pad + lw * 0.5f, y + u * 0.003f, paper.left + pad + lw, y + u * 0.014f);
+            line.moveTo(paper.left + pad, y + u * 0.012f);
+            line.quadTo(paper.left + pad + lw * 0.5f, y + u * 0.004f, paper.left + pad + lw, y + u * 0.016f);
             c.drawPath(line, stroke);
-            y += u * 0.038f;
+            y += u * 0.040f;
 
             // --- Consistent & Proportional Booklet Hierarchy ---
             String story = punchyOverview(movie.overview);
@@ -625,17 +634,43 @@ public class DvdOpeningView extends View {
             boolean hasRatings = movie.ratings != null && !movie.ratings.isEmpty();
             boolean hasSig = !by.isEmpty();
 
-            // 2. Uniform, balanced proportions across all films (never giant in one and tiny in another)
-            float sigSize = u * 0.052f;
-            float ratSize = u * 0.044f;
+            // 2. Uniform, noticeably larger typography across booklet
+            float sigSize = u * 0.068f;
+            float ratSize = u * 0.058f;
+            float metaH = (hasSig ? sigSize * 1.35f : 0f) + (hasRatings ? ratSize * 1.35f : 0f) + u * 0.024f;
 
-            // 3. Bottom metadata anchoring (credits and critic ratings)
-            float bottom = paper.bottom - pad * 0.60f;
+            // 3. Allocate Bottom area for Cast (No divider line between plot and cast)
+            float colW = (castCount > 0) ? (textW / castCount) : 0f;
+            float castH = (castCount > 0) ? u * 0.255f : 0f;
+            float castTop = paper.bottom - pad * 0.45f - castH;
+            float availForStoryAndMeta = castTop - y - u * 0.015f;
+            float storyAvailH = Math.max(u * 0.10f, availForStoryAndMeta - metaH);
+
+            // 4. Large, bold Story Typography
+            if (!story.isEmpty() && storyAvailH > u * 0.04f) {
+                float targetSize = Math.min(u * 0.078f, storyAvailH * 0.42f);
+                targetSize = Math.max(u * 0.054f, targetSize);
+                ink.setColor(blackInk);
+                ink.setTextSize(targetSize);
+                float spacing = 1.02f;
+                StaticLayout body = layout(story, ink, (int) textW, spacing);
+                while (body.getHeight() > storyAvailH && targetSize > u * 0.048f) {
+                    targetSize -= u * 0.002f;
+                    spacing = targetSize < u * 0.054f ? 0.92f : 0.96f;
+                    ink.setTextSize(targetSize);
+                    body = layout(story, ink, (int) textW, spacing);
+                }
+                drawInk(c, body, paper.left + pad, y, ink);
+                y += body.getHeight() + u * 0.028f;
+            }
+
+            // 5. Künye bilgileri (Director, Year, Runtime, Ratings) DIRECTLY UNDER Plot
+            float metaX = paper.left + pad;
             if (hasSig) {
                 ink.setColor(filmInk);
-                String sig = fit(ink, "— " + by, textW, sigSize, u * 0.040f);
-                c.drawText(sig, paper.right - pad - ink.measureText(sig), bottom, ink);
-                bottom -= ink.getTextSize() * 1.30f;
+                String sig = fit(ink, "— " + by, textW, sigSize, u * 0.048f);
+                c.drawText(sig, metaX, y + ink.getTextSize() * 0.92f, ink);
+                y += ink.getTextSize() * 1.35f;
             }
             if (hasRatings) {
                 ink.setColor(filmInk);
@@ -643,53 +678,14 @@ public class DvdOpeningView extends View {
                 while (ink.measureText(rtStr) > textW && rtStr.contains("  ·  ")) {
                     rtStr = rtStr.substring(0, rtStr.lastIndexOf("  ·  "));
                 }
-                rtStr = fit(ink, rtStr, textW, ratSize, u * 0.034f);
-                c.drawText(rtStr, paper.right - pad - ink.measureText(rtStr), bottom, ink);
-                bottom -= ink.getTextSize() * 1.25f;
+                rtStr = fit(ink, rtStr, textW, ratSize, u * 0.042f);
+                c.drawText(rtStr, metaX, y + ink.getTextSize() * 0.92f, ink);
+                y += ink.getTextSize() * 1.35f;
             }
 
-            // 4. Stable cast strip positioning (fixed proportion allocation)
-            float castH = (castCount > 0) ? u * 0.225f : 0f;
-            float castTop = 0f;
+            // 6. Draw Cast Strip (NO DIVIDER LINE between plot/künye and cast)
             if (castCount > 0) {
-                float remainingH = bottom - y;
-                castH = Math.min(castH, remainingH * 0.52f);
-                castTop = bottom - castH;
-                bottom = castTop - u * 0.016f;
-            }
-
-            // 5. Generous, consistent Story Typography across all movies
-            float storyAvailH = bottom - y;
-            if (!story.isEmpty() && storyAvailH > u * 0.04f) {
-                float targetSize = Math.min(u * 0.056f, storyAvailH * 0.32f);
-                targetSize = Math.max(u * 0.042f, targetSize);
-                ink.setColor(blackInk);
-                ink.setTextSize(targetSize);
-                float spacing = 0.96f;
-                StaticLayout body = layout(story, ink, (int) textW, spacing);
-                while (body.getHeight() > storyAvailH && targetSize > u * 0.038f) {
-                    targetSize -= u * 0.002f;
-                    spacing = targetSize < u * 0.046f ? 0.90f : 0.94f;
-                    ink.setTextSize(targetSize);
-                    body = layout(story, ink, (int) textW, spacing);
-                }
-                drawInk(c, body, paper.left + pad, y, ink);
-            }
-
-            // 6. Draw Cast Strip with uniform prominent medallions and strictly isolated columns
-            if (castCount > 0) {
-                Paint divPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                divPaint.setColor(UiKit.withAlpha(filmInk, 65));
-                divPaint.setStrokeWidth(Math.max(1.2f, u * 0.0035f));
-                divPaint.setStrokeCap(Paint.Cap.ROUND);
-                divPaint.setStyle(Paint.Style.STROKE);
-                Path divPath = new Path();
-                divPath.moveTo(paper.left + pad, castTop - u * 0.008f);
-                divPath.quadTo(paper.left + pad + textW * 0.5f, castTop - u * 0.014f, paper.left + pad + textW, castTop - u * 0.006f);
-                c.drawPath(divPath, divPaint);
-
-                float colW = textW / castCount;
-                float diam = Math.min(castH * 0.58f, colW * 0.52f);
+                float diam = Math.min(castH * 0.58f, colW * 0.56f);
                 float rad = diam / 2f;
                 Paint photoPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
                 ColorMatrix castCm = new ColorMatrix();
@@ -737,7 +733,7 @@ public class DvdOpeningView extends View {
                         creamPaint.setColor(Color.parseColor("#F7F2E7"));
                         String init = initials(cm.name);
                         ink.setColor(filmInk);
-                        ink.setTextSize(u * 0.046f);
+                        ink.setTextSize(u * 0.052f);
                         float iw = ink.measureText(init);
                         c.drawText(init, cx - iw / 2f, cy - (ink.ascent() + ink.descent()) / 2f, ink);
                     }
@@ -758,18 +754,18 @@ public class DvdOpeningView extends View {
                     c.drawLine(cx + rad * 0.35f, cy - rad * 0.80f, cx + rad * 1.25f, cy - rad * 0.30f, ringPaint);
 
                     // 6. Prominent handwritten actor name centered directly underneath portrait
-                    float nameMaxW = colW - u * 0.012f;
-                    float nameTop = cy + rad + u * 0.010f;
+                    float nameMaxW = colW - u * 0.010f;
+                    float nameTop = cy + rad + u * 0.012f;
                     ink.setColor(blackInk);
-                    float nameSize = u * 0.042f;
+                    float nameSize = u * 0.052f;
                     ink.setTextSize(nameSize);
                     StaticLayout nameLayout = new StaticLayout(cm.name, ink, (int) Math.max(10, nameMaxW),
-                            android.text.Layout.Alignment.ALIGN_CENTER, 0.92f, 0f, false);
-                    while (nameLayout.getLineCount() > 2 && nameSize > u * 0.030f) {
+                            android.text.Layout.Alignment.ALIGN_CENTER, 0.94f, 0f, false);
+                    while (nameLayout.getLineCount() > 2 && nameSize > u * 0.038f) {
                         nameSize -= u * 0.002f;
                         ink.setTextSize(nameSize);
                         nameLayout = new StaticLayout(cm.name, ink, (int) Math.max(10, nameMaxW),
-                                android.text.Layout.Alignment.ALIGN_CENTER, 0.92f, 0f, false);
+                                android.text.Layout.Alignment.ALIGN_CENTER, 0.94f, 0f, false);
                     }
                     drawInk(c, nameLayout, colX + (colW - nameLayout.getWidth()) / 2f, nameTop, ink);
 
@@ -855,29 +851,29 @@ public class DvdOpeningView extends View {
         int end1 = findSentenceEnd(clean, 0);
         if (end1 > 0) {
             int end2 = findSentenceEnd(clean, end1 + 1);
-            if (end2 > end1 && end2 <= 320) {
+            if (end2 > end1 && end2 <= 480) {
                 int end3 = findSentenceEnd(clean, end2 + 1);
-                if (end3 > end2 && end3 <= 300) {
+                if (end3 > end2 && end3 <= 520) {
                     return clean.substring(0, end3).trim();
                 }
                 return clean.substring(0, end2).trim();
             }
-            if (end1 <= 280) {
+            if (end1 <= 380) {
                 return clean.substring(0, end1).trim();
             }
         }
 
-        // If no standard sentence punctuation before 280, look for a clause:
+        // If no standard sentence punctuation before 380, look for a clause:
         int clause = clean.indexOf("; ");
-        if (clause > 35 && clause <= 260) {
+        if (clause > 45 && clause <= 380) {
             return clean.substring(0, clause).trim() + ".";
         }
         int firstSentence = end1 > 0 ? end1 : clean.length();
-        if (firstSentence <= 340) {
+        if (firstSentence <= 450) {
             return clean.substring(0, firstSentence).trim();
         }
         int lastEnd = -1;
-        for (int i = 0; i < Math.min(clean.length() - 1, 340); i++) {
+        for (int i = 0; i < Math.min(clean.length() - 1, 480); i++) {
             char c = clean.charAt(i);
             if ((c == '.' || c == '!' || c == '?') && (i == clean.length() - 1 || Character.isWhitespace(clean.charAt(i + 1)))) {
                 lastEnd = i + 1;

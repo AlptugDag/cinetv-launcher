@@ -110,8 +110,13 @@ public final class TrailerPlayer extends FrameLayout {
             s.setDatabaseEnabled(true);
             s.setCacheMode(WebSettings.LOAD_DEFAULT);
             s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-            s.setUserAgentString("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
-            w.setWebChromeClient(new WebChromeClient());
+            w.setWebChromeClient(new WebChromeClient() {
+                @Override
+                public boolean onConsoleMessage(android.webkit.ConsoleMessage consoleMessage) {
+                    Log.d(TAG, "Trailer console: " + consoleMessage.message());
+                    return true;
+                }
+            });
             w.setBackgroundColor(Color.BLACK);
             w.setFocusable(false);
             w.setFocusableInTouchMode(false);
@@ -141,47 +146,50 @@ public final class TrailerPlayer extends FrameLayout {
                 if (my == gen && web == w && getVisibility() != VISIBLE) {
                     setAlpha(0f);
                     setVisibility(VISIBLE);
-                    animate().alpha(1f).setDuration(400).start();
+                    animate().alpha(1f).setDuration(500).start();
                 }
             }, 3500);
 
+            final String origin = "https://" + getContext().getPackageName();
             String html = "<!DOCTYPE html><html><head>"
-                    + "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                    + "<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'>"
                     + "<meta name='referrer' content='strict-origin-when-cross-origin'>"
                     + "<style>"
                     + "* { margin:0; padding:0; box-sizing:border-box; }"
-                    + "html, body { width:100%; height:100%; overflow:hidden; background:#000000; }"
-                    + "#stage { position:absolute; top:-36px; left:-36px; width:calc(100% + 72px); height:calc(100% + 72px); overflow:hidden; pointer-events:none; }"
-                    + "#player { width:100%; height:100%; border:none; display:block; }"
+                    + "html, body { width:100%; height:100%; overflow:hidden; background:#000000; position:fixed; }"
+                    + "#stage { width:100%; height:100%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#000000; }"
+                    + "#player, iframe { width:100% !important; height:100% !important; border:none !important; display:block !important; background:#000000 !important; }"
                     + "</style>"
-                    + "<script src='https://www.youtube-nocookie.com/iframe_api'></script>"
+                    + "<script defer src='https://www.youtube.com/iframe_api'></script>"
                     + "</head><body>"
                     + "<div id='stage'><div id='player'></div></div>"
                     + "<script>"
-                    + "var notified = false;"
-                    + "function signal() {"
-                    + "  if (notified) return; notified = true;"
-                    + "  setTimeout(function() { try { CineTrailer.onVideoPlaying(); } catch(e){} }, 350);"
-                    + "}"
+                    + "var player;"
                     + "function onYouTubeIframeAPIReady() {"
-                    + "  new YT.Player('player', {"
+                    + "  player = new YT.Player('player', {"
+                    + "    height: '100%',"
+                    + "    width: '100%',"
                     + "    videoId: '" + key + "',"
                     + "    playerVars: {"
                     + "      autoplay: 1, mute: 1, controls: 0, loop: 1, playlist: '" + key + "',"
-                    + "      playsinline: 1, rel: 0, iv_load_policy: 3, disablekb: 1, modestbranding: 1, fs: 0"
+                    + "      playsinline: 1, rel: 0, iv_load_policy: 3, disablekb: 1, modestbranding: 1, fs: 0,"
+                    + "      enablejsapi: 1, origin: '" + origin + "'"
                     + "    },"
                     + "    events: {"
                     + "      'onReady': function(e) { e.target.playVideo(); },"
-                    + "      'onStateChange': function(e) { if (e.data === 1) signal(); }"
+                    + "      'onStateChange': function(e) {"
+                    + "        if (e.data === 1) {"
+                    + "          setTimeout(function() { try { CineTrailer.onVideoPlaying(); } catch(err){} }, 900);"
+                    + "        }"
+                    + "      },"
+                    + "      'onError': function(e) { console.log('YT Error: ' + e.data); }"
                     + "    }"
                     + "  });"
                     + "}"
-                    + "// Safety fallback inside webview"
-                    + "setTimeout(signal, 2800);"
                     + "</script>"
                     + "</body></html>";
 
-            w.loadDataWithBaseURL("https://themoviedb.org", html, "text/html", "utf-8", "https://themoviedb.org");
+            w.loadDataWithBaseURL(origin, html, "text/html", "utf-8", null);
         } catch (Throwable t) {
             Log.w(TAG, "WebView play failed: " + t.getMessage());
             web = null;
