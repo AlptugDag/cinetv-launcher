@@ -39,7 +39,7 @@ Salondaki o dev ekranı reklam panolarının, hızı kısıtlanmış yayınları
 
 <div align="center">
 
-### <font color="#E50914">"Ve sizler, onca para verdiğiniz televizyonlarınızda kalite görmek için Netflix'in en üst planına abone olmaya mecbur bırakıldınız. Bense Alptuğ Dağ olarak sizleri bundan sıfır kârla kurtarmaya kendimi adadım!"</font>
+### <font color="#E50914">"Ve sizler, onca para verdiğiniz televizyonlarınızda kalite görmek için Netflix'in en üst planına abone olmaya mecbur bırakıldınız. Bense Alptuğ Dağ olarak sizleri bundan kurtarmaya kendimi adadım. Tek arzum, sinema bitti denilen şu çağda ev sinemasını ulaşılabilir kılıp, yediden yetmişe herkesle bu tutkuyu paylaşmak!"</font>
 <p>— <b>Alptuğ Dağ</b></p>
 
 </div>
