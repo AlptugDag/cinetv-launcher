@@ -412,9 +412,9 @@ final class ShelfSet {
             int w = getWidth();
             float fl = floor();
 
-            // Perspective shelf plank thickness (architectural 28mm solid shelf nosing)
+            // Perspective shelf plank thickness: starts cleanly right at the case baseline without overlapping cases
             float nosingH = UiKit.pxf(24);
-            float y0 = fl - UiKit.pxf(4); // slight overlap with case bottoms
+            float y0 = fl + UiKit.pxf(1.5f);
             float y1 = y0 + nosingH;
 
             // 1. Top Shelf Deck Plane (visible depth receding into the closet)

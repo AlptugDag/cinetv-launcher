@@ -165,16 +165,6 @@ public class DvdOpeningView extends View {
             Matrix rot = new Matrix();
             rot.postRotate(90);
             coverL = Bitmap.createBitmap(dvd.cover, 0, 0, dvd.cover.getWidth(), dvd.cover.getHeight(), rot, true);
-
-            // Immediate pre-warm & launch of trailer WebView at t = 0 so video is ready and playing without delay
-            if (slot != null && !trailerShown) {
-                trailerShown = true;
-                final float finalLeft = w / 2f;
-                final float finalTop = h / 2f - caseH / 2f;
-                final RectF screen = trayScreen(finalLeft, finalTop, caseW, caseH);
-                final float corner = caseW * 0.012f;
-                post(() -> slot.show(movie, screen, corner));
-            }
         } else {
             float maxW = (w * 0.88f) / 2f;
             float maxH = h * 0.74f;
@@ -562,27 +552,13 @@ public class DvdOpeningView extends View {
 
         float lip = w * 0.03f;
         RectF paper = new RectF(lip, lip, w - lip * 1.6f, h - lip);
-        // Paper.
+        // Paper: authentic archival matte parchment paper with rock-solid consistency (never flashes or pops)
         p.setColor(Color.parseColor("#EEE8DC"));
         c.drawRoundRect(paper, w * 0.01f, w * 0.01f, p);
-        // The inner print: the still (or the poster) faded and desaturated, so ink reads over it.
-        Bitmap art = still != null ? still : cover;
-        if (art != null) {
-            BitmapShader bs = new BitmapShader(art, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
-            float s = Math.max(paper.width() / art.getWidth(), paper.height() / art.getHeight());
-            Matrix mm = new Matrix();
-            mm.setScale(s, s);
-            mm.postTranslate(paper.left + (paper.width() - art.getWidth() * s) / 2f, paper.top + (paper.height() - art.getHeight() * s) / 2f);
-            bs.setLocalMatrix(mm);
-            ColorMatrix cm = new ColorMatrix();
-            cm.setSaturation(0.35f);
-            p.setColorFilter(new ColorMatrixColorFilter(cm));
-            p.setShader(bs);
-            p.setAlpha(255);
-            c.drawRoundRect(paper, w * 0.01f, w * 0.01f, p);
-            p.setShader(null);
-            p.setColorFilter(null);
-            p.setColor(Color.argb(196, 242, 237, 226));
+
+        // Subtle warm accent wash based on the film's glow
+        if (filmAccent != 0) {
+            p.setColor(UiKit.withAlpha(filmAccent, 12));
             c.drawRoundRect(paper, w * 0.01f, w * 0.01f, p);
         }
 
@@ -660,41 +636,58 @@ public class DvdOpeningView extends View {
             float availForStoryAndMeta = castTop - y - u * 0.015f;
             float storyAvailH = Math.max(u * 0.10f, availForStoryAndMeta - metaH);
 
-            // 4. Large, bold Story Typography
+            // 4. Large, bold Story Typography with dynamic truncation to strictly prevent booklet overflow
             if (!story.isEmpty() && storyAvailH > u * 0.04f) {
                 float targetSize = Math.min(u * 0.078f, storyAvailH * 0.42f);
-                targetSize = Math.max(u * 0.054f, targetSize);
+                targetSize = Math.max(u * 0.050f, targetSize);
                 ink.setColor(blackInk);
                 ink.setTextSize(targetSize);
                 float spacing = 1.02f;
                 StaticLayout body = layout(story, ink, (int) textW, spacing);
-                while (body.getHeight() > storyAvailH && targetSize > u * 0.048f) {
+                while (body.getHeight() > storyAvailH && targetSize > u * 0.044f) {
                     targetSize -= u * 0.002f;
-                    spacing = targetSize < u * 0.054f ? 0.92f : 0.96f;
+                    spacing = targetSize < u * 0.050f ? 0.90f : 0.94f;
                     ink.setTextSize(targetSize);
                     body = layout(story, ink, (int) textW, spacing);
                 }
+                // Truncate cleanly by words with ellipsis if story still exceeds available height
+                if (body.getHeight() > storyAvailH) {
+                    String trimmed = story;
+                    while (body.getHeight() > storyAvailH && trimmed.length() > 20) {
+                        int sp = trimmed.lastIndexOf(' ');
+                        if (sp > 15) trimmed = trimmed.substring(0, sp);
+                        else break;
+                        body = layout(trimmed + "…", ink, (int) textW, spacing);
+                    }
+                }
                 drawInk(c, body, paper.left + pad, y, ink);
-                y += body.getHeight() + u * 0.028f;
+                y += body.getHeight() + u * 0.024f;
             }
 
             // 5. Künye bilgileri (Director, Year, Runtime, Ratings) DIRECTLY UNDER Plot
-            float metaX = paper.left + pad;
-            if (hasSig) {
-                ink.setColor(filmInk);
-                String sig = fit(ink, "— " + by, textW, sigSize, u * 0.048f);
-                c.drawText(sig, metaX, y + ink.getTextSize() * 0.92f, ink);
-                y += ink.getTextSize() * 1.35f;
+            float remainingH = castTop - y - u * 0.010f;
+            if (metaH > remainingH && remainingH > u * 0.04f) {
+                float shrink = Math.max(0.75f, remainingH / metaH);
+                sigSize *= shrink;
+                ratSize *= shrink;
             }
-            if (hasRatings) {
+
+            float metaX = paper.left + pad;
+            if (hasSig && y + sigSize < castTop) {
+                ink.setColor(filmInk);
+                String sig = fit(ink, "— " + by, textW, sigSize, u * 0.042f);
+                c.drawText(sig, metaX, y + ink.getTextSize() * 0.92f, ink);
+                y += ink.getTextSize() * 1.30f;
+            }
+            if (hasRatings && y + ratSize < castTop) {
                 ink.setColor(filmInk);
                 String rtStr = movie.ratings;
                 while (ink.measureText(rtStr) > textW && rtStr.contains("  ·  ")) {
                     rtStr = rtStr.substring(0, rtStr.lastIndexOf("  ·  "));
                 }
-                rtStr = fit(ink, rtStr, textW, ratSize, u * 0.042f);
+                rtStr = fit(ink, rtStr, textW, ratSize, u * 0.038f);
                 c.drawText(rtStr, metaX, y + ink.getTextSize() * 0.92f, ink);
-                y += ink.getTextSize() * 1.35f;
+                y += ink.getTextSize() * 1.30f;
             }
 
             // 6. Draw Cast Strip (NO DIVIDER LINE between plot/künye and cast)

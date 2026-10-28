@@ -129,6 +129,17 @@ public final class TrailerPlayer extends FrameLayout {
                 }
             });
 
+            w.addJavascriptInterface(new Object() {
+                @android.webkit.JavascriptInterface
+                public void onPlaying() {
+                    main.post(() -> {
+                        if (my == gen && web == w) {
+                            animate().alpha(1f).setDuration(450).start();
+                        }
+                    });
+                }
+            }, "CineTvBridge");
+
             addView(w, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
             final String origin = "https://" + getContext().getPackageName();
@@ -138,22 +149,41 @@ public final class TrailerPlayer extends FrameLayout {
                     + "* { margin:0; padding:0; box-sizing:border-box; }"
                     + "html, body { width:100%; height:100%; overflow:hidden; background:#000000; position:fixed; pointer-events:none; }"
                     + "#stage { width:100%; height:100%; overflow:hidden; position:relative; background:#000000; display:flex; align-items:center; justify-content:center; }"
-                    + "iframe { position:absolute; width:142% !important; height:142% !important; top:-21% !important; left:-21% !important; border:none !important; pointer-events:none !important; }"
+                    + "iframe, #player { position:absolute; width:100% !important; height:100% !important; top:0 !important; left:0 !important; border:none !important; pointer-events:none !important; }"
                     + "</style>"
                     + "</head><body>"
-                    + "<div id='stage'>"
-                    + "<iframe src='https://www.youtube-nocookie.com/embed/" + key + "?autoplay=1&mute=1&controls=0&loop=1&playlist=" + key + "&playsinline=1&rel=0&iv_load_policy=3&modestbranding=1&disablekb=1&fs=0' allow='autoplay; encrypted-media' frameborder='0'></iframe>"
-                    + "</div>"
+                    + "<div id='stage'><div id='player'></div></div>"
+                    + "<script>"
+                    + "var notified = false;"
+                    + "function notifyReady() { if (notified) return; notified = true; if (window.CineTvBridge) window.CineTvBridge.onPlaying(); }"
+                    + "var tag = document.createElement('script'); tag.src = 'https://www.youtube.com/iframe_api';"
+                    + "var firstScriptTag = document.getElementsByTagName('script')[0]; firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);"
+                    + "var player;"
+                    + "function onYouTubeIframeAPIReady() {"
+                    + "  player = new YT.Player('player', {"
+                    + "    videoId: '" + key + "',"
+                    + "    playerVars: {"
+                    + "      'autoplay': 1, 'controls': 0, 'mute': 1, 'loop': 1, 'playlist': '" + key + "',"
+                    + "      'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'iv_load_policy': 3, 'disablekb': 1, 'fs': 0"
+                    + "    },"
+                    + "    events: {"
+                    + "      'onReady': function(e) { e.target.playVideo(); },"
+                    + "      'onStateChange': function(e) { if (e.data === 1) setTimeout(notifyReady, 750); }"
+                    + "    }"
+                    + "  });"
+                    + "}"
+                    + "setTimeout(notifyReady, 2600);"
+                    + "</script>"
                     + "</body></html>";
 
             w.loadDataWithBaseURL(origin, html, "text/html", "utf-8", null);
 
-            // Instant smooth fade-in after 350ms layout settle: completely crops YouTube chrome and eliminates startup lag
+            // Fallback smooth fade-in if network or JS interface times out
             main.postDelayed(() -> {
-                if (my == gen && web == w) {
-                    animate().alpha(1f).setDuration(350).start();
+                if (my == gen && web == w && getAlpha() < 0.1f) {
+                    animate().alpha(1f).setDuration(450).start();
                 }
-            }, 350);
+            }, 2800);
         } catch (Throwable t) {
             Log.w(TAG, "WebView play failed: " + t.getMessage());
             web = null;

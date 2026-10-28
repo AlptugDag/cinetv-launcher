@@ -3,9 +3,12 @@ package com.cinetv.launcher.ui;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.RadialGradient;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.os.SystemClock;
 import android.view.View;
 
@@ -14,12 +17,15 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Dreamy, translucent crimson balloons that gently float upwards from the bottom of the screen
- * to the top and fade away into the atmosphere during national holiday celebrations.
+ * Photorealistic, majestic celebratory crimson balloons that drift smoothly upwards across
+ * the screen in an infinite loop during national holidays.
+ *
+ * Optimized for TV hardware: exactly 5 large cinematic balloons with pre-allocated shaders,
+ * realistic 3D volumetric sphere lighting, specular highlight crescents, and flowing silk strings.
  */
 public class FloatingBalloonsView extends View {
 
-    private static final int BALLOON_COUNT = 32;
+    private static final int BALLOON_COUNT = 5;
 
     private static class Balloon {
         float x;
@@ -30,56 +36,43 @@ public class FloatingBalloonsView extends View {
         float swayPhase;
         float swaySpeed;
         float swayAmplitude;
-        int color;
-        int stringColor;
+        int coreColor;
+        int rimColor;
         float stringLength;
+        float depthScale; // 0.85f (background) to 1.15f (foreground)
+        RadialGradient bodyGradient;
+        float lastGradX, lastGradY;
     }
 
     private final List<Balloon> balloons = new ArrayList<>();
-    private final Paint bodyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint bodyPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
     private final Paint highlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint stringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint knotPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path balloonPath = new Path();
     private final Path stringPath = new Path();
     private final RectF ovalRect = new RectF();
-    private final Random random = new Random();
+    private final Random random = new Random(42); // stable aesthetic seed
 
     private boolean initialized = false;
-    private boolean running = false;
     private long lastTime = 0;
-
-    private final Runnable loopTicker = new Runnable() {
-        @Override
-        public void run() {
-            if (!running) return;
-            invalidate();
-            postDelayed(this, 16);
-        }
-    };
 
     public FloatingBalloonsView(Context context) {
         super(context);
         bodyPaint.setStyle(Paint.Style.FILL);
         highlightPaint.setStyle(Paint.Style.FILL);
-        highlightPaint.setColor(Color.argb(65, 255, 255, 255));
+        knotPaint.setStyle(Paint.Style.FILL);
         stringPaint.setStyle(Paint.Style.STROKE);
-        stringPaint.setStrokeWidth(UiKit.pxf(1.4f));
+        stringPaint.setStrokeCap(Paint.Cap.ROUND);
+        stringPaint.setStrokeWidth(UiKit.pxf(1.6f));
+        setLayerType(LAYER_TYPE_HARDWARE, null);
     }
 
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        running = true;
         lastTime = SystemClock.uptimeMillis();
-        removeCallbacks(loopTicker);
-        post(loopTicker);
-    }
-
-    @Override
-    protected void onDetachedFromWindow() {
-        running = false;
-        removeCallbacks(loopTicker);
-        super.onDetachedFromWindow();
+        postInvalidateOnAnimation();
     }
 
     @Override
@@ -95,37 +88,41 @@ public class FloatingBalloonsView extends View {
 
     private void initBalloons(int w, int h) {
         balloons.clear();
+        float[] xSlots = {0.10f, 0.28f, 0.48f, 0.70f, 0.90f};
         for (int i = 0; i < BALLOON_COUNT; i++) {
             Balloon b = new Balloon();
-            resetBalloon(b, w, h, true);
+            b.x = w * xSlots[i % xSlots.length] + (random.nextFloat() - 0.5f) * UiKit.pxf(80);
+            b.depthScale = 0.88f + random.nextFloat() * 0.28f;
+            resetBalloon(b, w, h, true, i);
             balloons.add(b);
         }
     }
 
-    private void resetBalloon(Balloon b, int w, int h, boolean initialSpread) {
-        b.x = random.nextFloat() * w;
+    private void resetBalloon(Balloon b, int w, int h, boolean initialSpread, int slotIndex) {
         if (initialSpread) {
-            // Spread evenly across the height on startup so screen is immediately festive
-            b.y = random.nextFloat() * (h * 1.3f);
+            // Stagger vertically so balloons fill the entire height majestically on entrance
+            b.y = h * (0.15f + 0.22f * slotIndex) + (random.nextFloat() - 0.5f) * UiKit.pxf(60);
         } else {
-            // Spawn just below the bottom of the screen
-            b.y = h + UiKit.pxf(random.nextInt(120) + 40);
+            // Respawn below screen bottom to loop endlessly
+            b.y = h + b.baseHeight * 0.7f + UiKit.pxf(random.nextInt(120) + 40);
+            b.x = random.nextFloat() * (w * 0.85f) + w * 0.075f;
         }
-        b.speedY = UiKit.pxf(random.nextFloat() * 1.4f + 0.9f); // gentle upward float
-        b.baseWidth = UiKit.pxf(random.nextInt(26) + 38);       // 38 - 64 px
-        b.baseHeight = b.baseWidth * (1.25f + random.nextFloat() * 0.15f);
-        b.swayPhase = random.nextFloat() * (float) (Math.PI * 2);
-        b.swaySpeed = 0.0016f + random.nextFloat() * 0.0018f;
-        b.swayAmplitude = UiKit.pxf(random.nextInt(22) + 16);
-        b.stringLength = b.baseHeight * (1.2f + random.nextFloat() * 0.4f);
 
-        // Translucent celebratory crimson / ruby / rose red tones
-        int alpha = random.nextInt(60) + 85; // 85 - 145 / 255
-        int red = random.nextInt(35) + 220;  // 220 - 255
-        int green = random.nextInt(30) + 10; // 10 - 40
-        int blue = random.nextInt(35) + 20;  // 20 - 55
-        b.color = Color.argb(alpha, red, green, blue);
-        b.stringColor = Color.argb(Math.max(25, alpha - 40), 255, 230, 230);
+        // Majestic grand sizes: 340px to 480px width
+        float rawW = UiKit.pxf(340 + random.nextInt(140));
+        b.baseWidth = rawW * b.depthScale;
+        b.baseHeight = b.baseWidth * 1.28f;
+        b.speedY = UiKit.pxf(0.85f + random.nextFloat() * 0.65f) * (0.8f + b.depthScale * 0.25f);
+        b.swayPhase = random.nextFloat() * (float) (Math.PI * 2);
+        b.swaySpeed = 0.0012f + random.nextFloat() * 0.0010f;
+        b.swayAmplitude = UiKit.pxf(18 + random.nextInt(18));
+        b.stringLength = b.baseHeight * 1.05f;
+
+        // Rich cinematic Turkish ruby / crimson tones with genuine volumetric depth
+        int alpha = Math.min(235, Math.max(145, Math.round(180 * b.depthScale)));
+        b.coreColor = Color.argb(alpha, 255, 62, 70);       // luminous ruby center catch
+        b.rimColor = Color.argb(alpha + 15, 175, 12, 28);   // deep velvet red rim
+        b.bodyGradient = null;
     }
 
     @Override
@@ -135,7 +132,7 @@ public class FloatingBalloonsView extends View {
         if (w <= 0 || h <= 0) return;
 
         long now = SystemClock.uptimeMillis();
-        float dt = (lastTime == 0) ? 16f : Math.min(48f, (now - lastTime));
+        float dt = (lastTime == 0) ? 16.66f : Math.min(40f, (now - lastTime));
         lastTime = now;
 
         for (int i = 0; i < balloons.size(); i++) {
@@ -145,59 +142,77 @@ public class FloatingBalloonsView extends View {
             b.y -= b.speedY * (dt / 16.66f);
             b.swayPhase += b.swaySpeed * dt;
 
-            // Horizontal sway
+            // Graceful pendulum sway
             float curX = b.x + (float) Math.sin(b.swayPhase) * b.swayAmplitude;
 
-            // Respawn if drifted above top
-            if (b.y < -b.baseHeight - b.stringLength) {
-                resetBalloon(b, w, h, false);
+            // Infinite loop: respawn below bottom when drifted off top
+            if (b.y < -b.baseHeight - b.stringLength - UiKit.pxf(80)) {
+                resetBalloon(b, w, h, false, i);
                 continue;
             }
 
-            // Alpha fade near top of the screen (smooth disappearance)
+            // Smooth fade factor near top of screen
             float fadeFactor = 1.0f;
-            if (b.y < h * 0.25f) {
-                fadeFactor = Math.max(0f, (b.y + b.baseHeight) / (h * 0.25f + b.baseHeight));
+            if (b.y < h * 0.22f) {
+                fadeFactor = Math.max(0.05f, (b.y + b.baseHeight * 0.5f) / (h * 0.22f + b.baseHeight * 0.5f));
             }
-            int curAlpha = Math.round(Color.alpha(b.color) * fadeFactor);
-            if (curAlpha <= 0) continue;
 
-            int drawColor = (curAlpha << 24) | (b.color & 0x00FFFFFF);
-            bodyPaint.setColor(drawColor);
-
-            // Draw string
-            stringPaint.setColor((Math.min(curAlpha, Color.alpha(b.stringColor)) << 24) | (b.stringColor & 0x00FFFFFF));
+            // Draw silk string first (behind balloon body)
+            float knotY = b.y + b.baseHeight * 0.48f;
+            int stringAlpha = Math.round(110 * fadeFactor);
+            stringPaint.setColor(Color.argb(stringAlpha, 255, 220, 225));
             stringPath.reset();
-            float knotY = b.y + b.baseHeight * 0.5f;
             stringPath.moveTo(curX, knotY);
-            float swayStr = (float) Math.sin(b.swayPhase * 1.5f) * UiKit.pxf(8);
-            stringPath.quadTo(curX + swayStr, knotY + b.stringLength * 0.5f, curX, knotY + b.stringLength);
+            float swayStr = (float) Math.sin(b.swayPhase * 1.3f) * UiKit.pxf(16);
+            float midStrY = knotY + b.stringLength * 0.5f;
+            stringPath.cubicTo(curX + swayStr, midStrY - b.stringLength * 0.1f,
+                    curX - swayStr * 0.5f, midStrY + b.stringLength * 0.2f,
+                    curX + swayStr * 0.3f, knotY + b.stringLength);
             canvas.drawPath(stringPath, stringPaint);
+
+            // Volumetric 3D spherical radial gradient
+            float lightX = curX - b.baseWidth * 0.18f;
+            float lightY = b.y - b.baseHeight * 0.18f;
+            float radius = b.baseWidth * 0.72f;
+
+            if (b.bodyGradient == null || Math.abs(b.lastGradX - curX) > 2f || Math.abs(b.lastGradY - b.y) > 2f) {
+                b.lastGradX = curX;
+                b.lastGradY = b.y;
+                int c0 = Color.argb(Math.round(Color.alpha(b.coreColor) * fadeFactor), 255, 80, 88);
+                int c1 = Color.argb(Math.round(Color.alpha(b.rimColor) * fadeFactor), 205, 18, 35);
+                int c2 = Color.argb(Math.round(Color.alpha(b.rimColor) * fadeFactor * 0.95f), 105, 5, 15);
+                b.bodyGradient = new RadialGradient(lightX, lightY, radius,
+                        new int[]{c0, c1, c2},
+                        new float[]{0f, 0.65f, 1f}, Shader.TileMode.CLAMP);
+            }
+            bodyPaint.setShader(b.bodyGradient);
 
             // Draw balloon body (egg-shaped oval)
             ovalRect.set(curX - b.baseWidth * 0.5f, b.y - b.baseHeight * 0.5f,
                     curX + b.baseWidth * 0.5f, b.y + b.baseHeight * 0.5f);
             canvas.drawOval(ovalRect, bodyPaint);
+            bodyPaint.setShader(null);
 
-            // Draw small knot at the base
+            // Draw tie knot at base
             balloonPath.reset();
-            float knotSize = b.baseWidth * 0.14f;
-            balloonPath.moveTo(curX - knotSize, knotY + knotSize * 0.6f);
-            balloonPath.lineTo(curX + knotSize, knotY + knotSize * 0.6f);
+            float knotSize = b.baseWidth * 0.08f;
+            balloonPath.moveTo(curX - knotSize, knotY + knotSize * 0.5f);
+            balloonPath.lineTo(curX + knotSize, knotY + knotSize * 0.5f);
             balloonPath.lineTo(curX, knotY);
             balloonPath.close();
-            canvas.drawPath(balloonPath, bodyPaint);
+            knotPaint.setColor(Color.argb(Math.round(210 * fadeFactor), 150, 10, 20));
+            canvas.drawPath(balloonPath, knotPaint);
 
-            // Draw 3D soft highlight shine on top-left of the balloon
-            float hlW = b.baseWidth * 0.32f;
-            float hlH = b.baseHeight * 0.42f;
+            // Photorealistic glossy specular highlight crescent (catchlight on top-left)
+            float hlW = b.baseWidth * 0.28f;
+            float hlH = b.baseHeight * 0.36f;
             float hlX = curX - b.baseWidth * 0.22f;
             float hlY = b.y - b.baseHeight * 0.22f;
             ovalRect.set(hlX - hlW * 0.5f, hlY - hlH * 0.5f, hlX + hlW * 0.5f, hlY + hlH * 0.5f);
-            int hlAlpha = Math.round(55 * fadeFactor);
-            highlightPaint.setColor((hlAlpha << 24) | 0x00FFFFFF);
+            int hlAlpha = Math.round(85 * fadeFactor);
+            highlightPaint.setColor(Color.argb(hlAlpha, 255, 255, 255));
             canvas.save();
-            canvas.rotate(-24f, hlX, hlY);
+            canvas.rotate(-26f, hlX, hlY);
             canvas.drawOval(ovalRect, highlightPaint);
             canvas.restore();
         }

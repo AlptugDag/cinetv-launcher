@@ -180,6 +180,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             @Override
             public void onFocusCase(DvdCaseView view, int accent) {
                 home.environment.focusOn(view, accent);
+                com.cinetv.launcher.device.AmbilightSync.updateColor(MainActivity.this, accent);
                 final Movie m = home.shelf.focusedMovie();
                 if (m != null) prefetchMovie(m);
             }
@@ -356,6 +357,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     private void handleIntent(Intent intent) {
         if (intent == null) return;
+        String toastMsg = intent.getStringExtra("toast");
+        if (toastMsg != null && !toastMsg.trim().isEmpty()) {
+            Toast.makeText(this, toastMsg, Toast.LENGTH_LONG).show();
+        }
         String theme = intent.getStringExtra("theme");
         if (theme != null && !theme.isEmpty()) applyTheme(theme);
         String action = intent.getStringExtra("action");
@@ -363,7 +368,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (action == null) return;
         else if ("celebration".equals(action) || intent.getBooleanExtra("force_celebration", false)) {
             handler.postDelayed(() -> {
-                final com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(this);
+                com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(this);
+                if (day == null && intent.getBooleanExtra("force_celebration", false)) {
+                    day = com.cinetv.launcher.service.SpecialDay.forDate(2026, 10, 29, 12, 0);
+                }
                 if (day != null) showCinematicCelebration(day);
             }, 300);
         }
@@ -772,6 +780,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
      */
     private void refreshShelf() {
         if (isCurating) return;
+        if (home != null && home.shelf != null && home.shelf.hasFocus()) return;
         lastShelfAt = android.os.SystemClock.elapsedRealtime();
         if (LlmClient.isConfigured(this)) curate(null);
         else categoryShelf();
@@ -839,6 +848,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             from.getLocationOnScreen(loc);
             float cx = loc[0] + from.getWidth() / 2f, cy = loc[1] + from.getHeight() / 2f;
             float w = from.caseWidth() * 1.52f, h = from.caseHeight() * 1.52f;
+            com.cinetv.launcher.device.AmbilightSync.updateColor(this, from.dvdCase().accent);
             home.opening.play(from.dvdCase(), m, new RectF(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2), 0, cb);
             writeInnerNote(m, from.dvdCase());
             return;
@@ -1176,8 +1186,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         boolean nuvioInstalled = AppLauncher.isLaunchable(getPackageManager(), AppLauncher.NUVIO);
         if (!nuvioInstalled) return;
 
-        final String promptKey = "nuvio_update_prompt_v1_0_0_9b";
-        boolean alreadyPrompted = Prefs.get(this).getBoolean(promptKey, false);
+        boolean alreadyPrompted = Prefs.get(this).getBoolean("nuvio_addons_configured", false)
+                || Prefs.get(this).getBoolean("nuvio_addons_dismissed", false)
+                || Prefs.get(this).getBoolean("nuvio_update_prompt_v1_0_0_9b", false)
+                || Prefs.get(this).getBoolean("nuvio_setup_done", false);
         if (alreadyPrompted) return;
 
         handler.postDelayed(() -> {
@@ -1316,8 +1328,27 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     public void startTour() {
         home.modal.close();
         home.shelf.requestFocus();
+        home.tour.setListener((index, step) -> {
+            if (index == 2) {
+                // Step 3 (0-indexed 2: "Bir DVD aç"): Automatically open focused DVD case!
+                final DvdCaseView v = home.shelf.focusedCase();
+                final Movie m = home.shelf.focusedMovie();
+                if (v != null && m != null && !home.opening.isPlaying()) {
+                    openTitle(m, v);
+                }
+            } else {
+                // Step 4 ("Fragman anları") and other steps: close opened DVD case
+                if (home.opening.isPlaying()) {
+                    home.opening.dismiss();
+                }
+            }
+        });
         home.shelf.post(() -> home.tour.start(home.tourSteps(),
-                () -> Prefs.setFlag(this, Prefs.TOUR_DONE, true)));
+                () -> {
+                    home.tour.setListener(null);
+                    if (home.opening.isPlaying()) home.opening.dismiss();
+                    Prefs.setFlag(this, Prefs.TOUR_DONE, true);
+                }));
     }
 
     @Override
@@ -1331,7 +1362,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         handler.postDelayed(() -> {
             home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this));
             loadApps(true);
-            refreshShelf();
         }, 300);
     }
 

@@ -91,7 +91,11 @@ public class ModalHost extends FrameLayout {
         else card.setPadding(UiKit.px(38), UiKit.px(22), UiKit.px(38), UiKit.px(22));
         card.setBackground(Glass.panel(card, near != null ? 36 : 44));
         setBackgroundColor(Color.argb(near != null ? 90 : 150, 0, 0, 0));
-        card.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        ViewGroup.LayoutParams clp = content.getLayoutParams();
+        if (clp == null) {
+            clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        card.addView(content, clp);
         card.setClipChildren(false);
         card.setClipToPadding(false);
         LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,

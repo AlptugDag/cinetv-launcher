@@ -44,6 +44,10 @@ public final class TourView extends FrameLayout {
         }
     }
 
+    public interface StepListener {
+        void onStep(int index, Step step);
+    }
+
     private final Paint dim = new Paint(), clear = new Paint(Paint.ANTI_ALIAS_FLAG), ring = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF hole = new RectF();
     private final LinearLayout card;
@@ -51,6 +55,11 @@ public final class TourView extends FrameLayout {
     private Step[] steps;
     private int at;
     private Runnable onDone;
+    private StepListener listener;
+
+    public void setListener(StepListener l) {
+        this.listener = l;
+    }
 
     public TourView(Context ctx) {
         super(ctx);
@@ -125,12 +134,14 @@ public final class TourView extends FrameLayout {
     }
 
     private void finish() {
+        if (listener != null) listener.onStep(-1, null);
         animate().alpha(0f).setDuration(250).withEndAction(() -> setVisibility(GONE)).start();
         if (onDone != null) onDone.run();
     }
 
     private void show() {
         Step s = steps[at];
+        if (listener != null) listener.onStep(at, s);
         progress.setText(getContext().getString(R.string.tour_progress, at + 1, steps.length));
         title.setText(s.title);
         if (s.status == null) body.setText(s.body);

@@ -99,6 +99,13 @@ public final class Panels {
         root.setClipChildren(false);
         root.setClipToPadding(false);
 
+        // Occupy ~90% of screen width and height for expansive, luxurious TV experience
+        final int settingsW = UiKit.px(1728);
+        final int settingsH = UiKit.px(950);
+        root.setLayoutParams(new LinearLayout.LayoutParams(settingsW, settingsH));
+        root.setMinimumWidth(settingsW);
+        root.setMinimumHeight(settingsH);
+
         // Header: Logo, Title & Tab Bar Navigation
         LinearLayout head = new LinearLayout(ctx);
         head.setOrientation(LinearLayout.HORIZONTAL);
@@ -108,17 +115,25 @@ public final class Panels {
 
         ImageView logo = new ImageView(ctx);
         logo.setImageBitmap(Brand.mark(ctx));
-        head.addView(logo, new LinearLayout.LayoutParams(UiKit.px(44), UiKit.px(44)));
+        head.addView(logo, new LinearLayout.LayoutParams(UiKit.px(48), UiKit.px(48)));
 
-        TextView title = UiKit.bold(ctx, 30, UiKit.INK);
+        TextView title = UiKit.bold(ctx, 32, UiKit.INK);
         title.setText(R.string.settings_title);
-        title.setPadding(UiKit.px(16), 0, UiKit.px(32), 0);
+        title.setPadding(UiKit.px(18), 0, UiKit.px(36), 0);
         head.addView(title);
 
-        // Paginated Tabs: 1. Temalar & Arka Plan, 2. Görsel Deneyim, 3. Yapay Zeka & Ağ, 4. Sistem & TV
+        // Paginated Tabs: 1. Temalar, 2. Görsel Deneyim, 3. Yapay Zeka & Ağ, 4. Sistem & TV
         final String[] tabLabels = "tr".equals(Locale.getDefault().getLanguage())
                 ? new String[]{"1. Temalar", "2. Görsel Deneyim", "3. Yapay Zeka & Ağ", "4. Sistem & TV"}
                 : new String[]{"1. Themes", "2. Visual Experience", "3. AI & Network", "4. System & TV"};
+
+        // Distinct vibrant glass tints per page category
+        final int[] tabAccentColors = {
+                Color.parseColor("#F59E0B"), // Page 0: Warm Amber / Gold
+                Color.parseColor("#38BDF8"), // Page 1: Electric Neon Cyan
+                Color.parseColor("#C084FC"), // Page 2: Amethyst Orchid
+                Color.parseColor("#34D399")  // Page 3: Emerald Mint
+        };
 
         LinearLayout tabsBar = new LinearLayout(ctx);
         tabsBar.setOrientation(LinearLayout.HORIZONTAL);
@@ -128,31 +143,42 @@ public final class Panels {
         for (int i = 0; i < tabLabels.length; i++) {
             final int targetPage = i;
             final boolean isSelected = (targetPage == pageIndex);
+            final int tabColor = tabAccentColors[targetPage];
             final TextView tabBtn = new TextView(ctx);
             tabBtn.setText(tabLabels[i]);
-            tabBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.px(14));
-            tabBtn.setTypeface(isSelected ? FontManager.bold(ctx) : FontManager.regular(ctx));
+            tabBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.px(19));
+            tabBtn.setTypeface(FontManager.bold(ctx));
             tabBtn.setTextColor(isSelected ? Color.WHITE : Color.parseColor("#9CA3AF"));
-            tabBtn.setPadding(UiKit.px(18), UiKit.px(8), UiKit.px(18), UiKit.px(8));
+            tabBtn.setPadding(UiKit.px(24), UiKit.px(11), UiKit.px(24), UiKit.px(11));
             tabBtn.setFocusable(true);
             tabBtn.setClickable(true);
             tabBtn.setTag("tab_" + targetPage);
 
             final android.graphics.drawable.GradientDrawable tabBg = new android.graphics.drawable.GradientDrawable();
-            tabBg.setCornerRadius(UiKit.px(14));
-            tabBg.setColor(isSelected ? Color.argb(70, 255, 255, 255) : Color.argb(18, 255, 255, 255));
-            if (isSelected) tabBg.setStroke(UiKit.px(1.5f), Color.argb(120, 255, 255, 255));
+            tabBg.setCornerRadius(UiKit.px(16));
+            if (isSelected) {
+                tabBg.setColor(Color.argb(85, Color.red(tabColor), Color.green(tabColor), Color.blue(tabColor)));
+                tabBg.setStroke(UiKit.px(2f), Color.argb(220, Color.red(tabColor), Color.green(tabColor), Color.blue(tabColor)));
+            } else {
+                tabBg.setColor(Color.argb(20, 255, 255, 255));
+                tabBg.setStroke(UiKit.px(1f), Color.argb(30, 255, 255, 255));
+            }
             tabBtn.setBackground(tabBg);
 
             tabBtn.setOnFocusChangeListener((v, hasFocus) -> {
                 if (hasFocus) {
                     tabBtn.setTextColor(Color.WHITE);
-                    tabBg.setColor(Color.argb(100, 255, 255, 255));
-                    tabBg.setStroke(UiKit.px(2f), Color.WHITE);
+                    tabBg.setColor(Color.argb(125, Color.red(tabColor), Color.green(tabColor), Color.blue(tabColor)));
+                    tabBg.setStroke(UiKit.px(2.5f), Color.WHITE);
                 } else {
                     tabBtn.setTextColor(isSelected ? Color.WHITE : Color.parseColor("#9CA3AF"));
-                    tabBg.setColor(isSelected ? Color.argb(70, 255, 255, 255) : Color.argb(18, 255, 255, 255));
-                    tabBg.setStroke(isSelected ? UiKit.px(1.5f) : 0, isSelected ? Color.argb(120, 255, 255, 255) : 0);
+                    if (isSelected) {
+                        tabBg.setColor(Color.argb(85, Color.red(tabColor), Color.green(tabColor), Color.blue(tabColor)));
+                        tabBg.setStroke(UiKit.px(2f), Color.argb(220, Color.red(tabColor), Color.green(tabColor), Color.blue(tabColor)));
+                    } else {
+                        tabBg.setColor(Color.argb(20, 255, 255, 255));
+                        tabBg.setStroke(UiKit.px(1f), Color.argb(30, 255, 255, 255));
+                    }
                 }
             });
 
@@ -172,7 +198,7 @@ public final class Panels {
             });
 
             LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            tlp.rightMargin = UiKit.px(10);
+            tlp.rightMargin = UiKit.px(14);
             tabsBar.addView(tabBtn, tlp);
         }
         head.addView(tabsBar);
@@ -195,9 +221,11 @@ public final class Panels {
         scroll.addView(cols, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(scroll, colsLp);
 
+        final int colWidth = 790; // Symmetrical 2-column layout filling 90% modal footprint
+
         if (pageIndex == PAGE_THEMES) {
             // Page 1: Themes & Atmosphere
-            LinearLayout c1 = column(ctx, cols, R.string.col_themes, 480);
+            LinearLayout c1 = column(ctx, cols, R.string.col_themes, colWidth);
             ThemeManager.Theme current = ThemeManager.current(ctx);
             for (int i = 0; i < ThemeManager.THEMES.length; i += 2) {
                 LinearLayout pair = new LinearLayout(ctx);
@@ -214,13 +242,13 @@ public final class Panels {
                     });
                     tile.setTag(themeTag);
                     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-                    lp.setMargins(k == i ? 0 : UiKit.px(6), 0, k == i ? UiKit.px(6) : 0, UiKit.px(8));
+                    lp.setMargins(k == i ? 0 : UiKit.px(8), 0, k == i ? UiKit.px(8) : 0, UiKit.px(10));
                     pair.addView(tile, lp);
                 }
                 if (i + 1 >= ThemeManager.THEMES.length) {
                     View dummy = new View(ctx);
                     LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-                    dlp.setMargins(UiKit.px(6), 0, 0, UiKit.px(8));
+                    dlp.setMargins(UiKit.px(8), 0, 0, UiKit.px(10));
                     pair.addView(dummy, dlp);
                 }
                 c1.addView(pair);
@@ -229,14 +257,14 @@ public final class Panels {
             c1.addView(Controls.tile(ctx, ctx.getString(R.string.background), ctx.getString(customBg ? R.string.background_custom : R.string.background_hint), customBg,
                     v -> host.push(() -> buildPairing(ctx, host, "background"))));
 
-            LinearLayout c2 = column(ctx, cols, "Atmosfer & Dinlenme", 480);
+            LinearLayout c2 = column(ctx, cols, "Atmosfer & Dinlenme", colWidth);
             c2.addView(Controls.tile(ctx, ctx.getString(R.string.night_title), nightState(ctx), com.cinetv.launcher.device.NightCare.sleepMinutesLeft(ctx) > 0,
                     v -> host.push(() -> buildNight(ctx, host, a))));
             c2.addView(Controls.tile(ctx, ctx.getString(R.string.tour_title), ctx.getString(R.string.tour_hint), false, v -> a.startTour()));
 
         } else if (pageIndex == PAGE_VISUAL) {
             // Page 2: Visual Experience & 3D
-            LinearLayout c1 = column(ctx, cols, R.string.col_visual, 480);
+            LinearLayout c1 = column(ctx, cols, R.string.col_visual, colWidth);
             boolean spatial = Prefs.spatial3d(ctx);
             LinearLayout spatialTile = Controls.tile(ctx, ctx.getString(R.string.spatial_hud), ctx.getString(spatial ? R.string.state_on_spatial : R.string.state_off), spatial, v -> {
                 boolean next = !Prefs.spatial3d(ctx);
@@ -267,6 +295,19 @@ public final class Panels {
             casesTile.setTag("opt_cases");
             c1.addView(casesTile);
 
+            boolean ambilight = com.cinetv.launcher.device.AmbilightSync.isEnabled(ctx);
+            LinearLayout ambilightTile = Controls.tile(ctx,
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "Ambilight & Arka Işık Senkronu" : "Ambilight & Backlight Sync",
+                    ambilight ? ("tr".equals(Locale.getDefault().getLanguage()) ? "Ortam ışıkları vitrin renkleriyle senkronize" : "Ambient lights synced with poster colors")
+                              : ("tr".equals(Locale.getDefault().getLanguage()) ? "Kapalı" : "Off"),
+                    ambilight, v -> {
+                        boolean next = !com.cinetv.launcher.device.AmbilightSync.isEnabled(ctx);
+                        com.cinetv.launcher.device.AmbilightSync.setEnabled(ctx, next);
+                        host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_ambilight"));
+                    });
+            ambilightTile.setTag("opt_ambilight");
+            c1.addView(ambilightTile);
+
             boolean trailers = Prefs.trailerMoments(ctx);
             LinearLayout trailersTile = Controls.tile(ctx, ctx.getString(R.string.trailer_moments), ctx.getString(trailers ? R.string.trailer_moments_on : R.string.state_off), trailers, v -> {
                 boolean next = !Prefs.trailerMoments(ctx);
@@ -277,7 +318,7 @@ public final class Panels {
             trailersTile.setTag("opt_trailers");
             c1.addView(trailersTile);
 
-            LinearLayout c2 = column(ctx, cols, "Animasyon & Performans", 480);
+            LinearLayout c2 = column(ctx, cols, "Animasyon & Performans", colWidth);
             boolean dvd = Prefs.dvdAnimation(ctx);
             LinearLayout dvdTile = Controls.tile(ctx, ctx.getString(R.string.dvd_animation), ctx.getString(dvd ? R.string.state_on : R.string.state_off), dvd, v -> {
                 Prefs.setFlag(ctx, Prefs.DVD_ANIMATION, !Prefs.dvdAnimation(ctx));
@@ -297,7 +338,7 @@ public final class Panels {
 
         } else if (pageIndex == PAGE_AI) {
             // Page 3: AI & Media / Network
-            LinearLayout c1 = column(ctx, cols, R.string.col_ai, 480);
+            LinearLayout c1 = column(ctx, cols, R.string.col_ai, colWidth);
             String provider = LlmClient.providerName(ctx);
             c1.addView(Controls.tile(ctx, ctx.getString(R.string.ai_key), provider != null ? provider : ctx.getString(R.string.not_set),
                     provider != null, v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.AI_KEY, R.string.ai_key, R.string.ai_key_hint))));
@@ -308,7 +349,7 @@ public final class Panels {
             c1.addView(Controls.tile(ctx, ctx.getString(R.string.mdblist_key), ctx.getString(mdb ? R.string.state_on : R.string.not_set), mdb,
                     v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.MDBLIST_KEY, R.string.mdblist_key, R.string.mdblist_key_hint))));
 
-            LinearLayout c2 = column(ctx, cols, "Ağ & Ortam", 480);
+            LinearLayout c2 = column(ctx, cols, "Ağ & Ortam", colWidth);
             final String dnsChoice = com.cinetv.launcher.device.NetworkOptimizer.choice(ctx);
             LinearLayout dnsTile = Controls.tile(ctx, ctx.getString(R.string.dns_title), ctx.getString(dnsRes(dnsChoice)),
                     !com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(dnsChoice), v -> {
@@ -334,7 +375,7 @@ public final class Panels {
 
         } else if (pageIndex == PAGE_SYSTEM) {
             // Page 4: System & TV
-            LinearLayout c1 = column(ctx, cols, R.string.col_tv, 480);
+            LinearLayout c1 = column(ctx, cols, R.string.col_tv, colWidth);
             c1.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Kurulum Sihirbazı & Bileşen Kontrolü" : "Setup Wizard & Component Health",
                     "tr".equals(Locale.getDefault().getLanguage()) ? "Eksik bileşenleri kontrol et ve kur" : "Check and setup components", false,
                     v -> wizard(ctx, host)));
@@ -362,8 +403,8 @@ public final class Panels {
                 c1.addView(liveTvTile);
             }
 
-            LinearLayout c2 = column(ctx, cols, "Bakım & Donanım", 480);
-            c2.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "TV Inspector (Donanım & Panel)" : "TV Inspector (Hardware & Panel)",
+            LinearLayout c2 = column(ctx, cols, "Bakım & Donanım", colWidth);
+            c2.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "TV Denetçisi (Donanım & Panel Analizi)" : "TV Inspector (Hardware & Panel Diagnostics)",
                     "tr".equals(Locale.getDefault().getLanguage()) ? "Ekran, HDR, ses çözücüleri, bellek ve canlı tuşlar" : "Display, HDR, audio codecs, memory & live keys", false,
                     v -> host.push(() -> buildTvInspector(ctx, host))));
             c2.addView(Controls.tile(ctx, ctx.getString(R.string.optimize), ctx.getString(R.string.optimize_hint), false,
@@ -1211,24 +1252,37 @@ public final class Panels {
 
     private static View buildTvInspector(final Context ctx, final ModalHost host) {
         final ScrollView scroll = new ScrollView(ctx);
+        scroll.setVerticalScrollBarEnabled(false);
         final LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiKit.px(24), UiKit.px(16), UiKit.px(24), UiKit.px(24));
-        scroll.addView(root, new ViewGroup.LayoutParams(UiKit.px(980), ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.setPadding(UiKit.px(28), UiKit.px(20), UiKit.px(28), UiKit.px(24));
+        scroll.addView(root, new ViewGroup.LayoutParams(UiKit.px(1600), ViewGroup.LayoutParams.WRAP_CONTENT));
 
         boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         TextView title = UiKit.bold(ctx, 32, UiKit.INK);
-        title.setText(tr ? "TV Inspector · Donanım & Panel Bilgisi" : "TV Inspector · Hardware & Panel Diagnostics");
+        title.setText(tr ? "TV Denetçisi · Donanım & Panel Teşhisi" : "TV Inspector · Hardware & Panel Diagnostics");
         root.addView(title);
 
         TextView intro = UiKit.label(ctx, 18, UiKit.INK_DIM);
         intro.setText(tr ? "Gelişmiş donanım ve panel standardında ekran, çözücü yetenekleri, bellek ve canlı kumanda dedektörü"
                          : "Advanced hardware and panel display, decoders, memory & remote key diagnostics");
-        intro.setPadding(0, UiKit.px(8), 0, UiKit.px(20));
+        intro.setPadding(0, UiKit.px(6), 0, UiKit.px(18));
         root.addView(intro);
 
+        // Responsive 2-Column Balanced Dashboard
+        LinearLayout twoCols = new LinearLayout(ctx);
+        twoCols.setOrientation(LinearLayout.HORIZONTAL);
+        twoCols.setClipChildren(false);
+        twoCols.setClipToPadding(false);
+
+        LinearLayout col1 = new LinearLayout(ctx);
+        col1.setOrientation(LinearLayout.VERTICAL);
+
+        LinearLayout col2 = new LinearLayout(ctx);
+        col2.setOrientation(LinearLayout.VERTICAL);
+
         // 1. Ekran & Panel
-        root.addView(inspectorHeader(ctx, tr ? "Ekran & Panel Yetenekleri" : "Display & Panel"));
+        col1.addView(inspectorHeader(ctx, tr ? "Ekran & Panel Yetenekleri" : "Display & Panel"));
         WindowManager wm = (WindowManager) ctx.getSystemService(Context.WINDOW_SERVICE);
         Display d = wm != null ? wm.getDefaultDisplay() : null;
         StringBuilder dispSb = new StringBuilder();
@@ -1259,10 +1313,10 @@ public final class Panels {
                 dispSb.append(tr ? "\nGeniş Renk Gamı (WCG): " : "\nWide Color Gamut (WCG): ").append(d.isWideColorGamut() ? (tr ? "Destekleniyor" : "Supported") : (tr ? "Desteklenmiyor" : "Unsupported"));
             }
         }
-        root.addView(inspectorCard(ctx, dispSb.toString()));
+        col1.addView(inspectorCard(ctx, dispSb.toString()));
 
         // 2. Bellek & Depolama
-        root.addView(inspectorHeader(ctx, tr ? "Bellek & Depolama" : "Memory & Storage"));
+        col1.addView(inspectorHeader(ctx, tr ? "Bellek & Depolama" : "Memory & Storage"));
         ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
         ActivityManager.MemoryInfo mem = new ActivityManager.MemoryInfo();
         if (am != null) am.getMemoryInfo(mem);
@@ -1277,10 +1331,22 @@ public final class Panels {
         long freeGb = dataDir.getFreeSpace() / (1024 * 1024 * 1024);
         long totalGb = dataDir.getTotalSpace() / (1024 * 1024 * 1024);
         memSb.append(tr ? "\nDahili Depolama: " : "\nInternal Storage: ").append(freeGb).append(" GB ").append(tr ? "boş / " : "free / ").append(totalGb).append(" GB");
-        root.addView(inspectorCard(ctx, memSb.toString()));
+        col1.addView(inspectorCard(ctx, memSb.toString()));
 
-        // 3. Medya Çözücüler (Video & Audio Decoders)
-        root.addView(inspectorHeader(ctx, tr ? "Donanımsal Medya Çözücüler" : "Hardware Media Decoders"));
+        // 3. Sistem & Anakart
+        col1.addView(inspectorHeader(ctx, tr ? "Sistem & Anakart" : "System & Board"));
+        StringBuilder sysSb = new StringBuilder();
+        sysSb.append(tr ? "Cihaz: " : "Device: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL);
+        sysSb.append(tr ? "\nAnakart: " : "\nBoard: ").append(Build.BOARD).append(" (").append(Build.HARDWARE).append(")");
+        sysSb.append(tr ? "\nAndroid TV: " : "\nAndroid TV: ").append("Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            sysSb.append(tr ? "\nGüvenlik Yaması: " : "\nSecurity Patch: ").append(Build.VERSION.SECURITY_PATCH);
+        }
+        sysSb.append(tr ? "\nİşlemci Mimarisi: " : "\nCPU ABI: ").append(Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "bilinmiyor");
+        col1.addView(inspectorCard(ctx, sysSb.toString()));
+
+        // 4. Medya Çözücüler (Video & Audio Decoders)
+        col2.addView(inspectorHeader(ctx, tr ? "Donanımsal Medya Çözücüler" : "Hardware Media Decoders"));
         String[][] probeCodecs = {
                 {"video/av01", "AV1 (AOMedia)"},
                 {"video/hevc", "HEVC / H.265 (4K/8K HDR)"},
@@ -1316,22 +1382,10 @@ public final class Panels {
         } catch (Throwable t) {
             codecSb.append(t.getMessage());
         }
-        root.addView(inspectorCard(ctx, codecSb.toString().trim()));
-
-        // 4. Sistem & Cihaz
-        root.addView(inspectorHeader(ctx, tr ? "Sistem & Anakart" : "System & Board"));
-        StringBuilder sysSb = new StringBuilder();
-        sysSb.append(tr ? "Cihaz: " : "Device: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL);
-        sysSb.append(tr ? "\nAnakart: " : "\nBoard: ").append(Build.BOARD).append(" (").append(Build.HARDWARE).append(")");
-        sysSb.append(tr ? "\nAndroid TV: " : "\nAndroid TV: ").append("Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            sysSb.append(tr ? "\nGüvenlik Yaması: " : "\nSecurity Patch: ").append(Build.VERSION.SECURITY_PATCH);
-        }
-        sysSb.append(tr ? "\nİşlemci Mimarisi: " : "\nCPU ABI: ").append(Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "bilinmiyor");
-        root.addView(inspectorCard(ctx, sysSb.toString()));
+        col2.addView(inspectorCard(ctx, codecSb.toString().trim()));
 
         // 5. Canlı Kumanda Tuş Dedektörü
-        root.addView(inspectorHeader(ctx, tr ? "Canlı Kumanda Tuş Dedektörü" : "Live Remote Key Inspector"));
+        col2.addView(inspectorHeader(ctx, tr ? "Canlı Kumanda Tuş Dedektörü" : "Live Remote Key Inspector"));
         final FrameLayout keyBox = new FrameLayout(ctx);
         keyBox.setFocusable(true);
         keyBox.setClickable(true);
@@ -1353,7 +1407,15 @@ public final class Panels {
                     kName, keyCode, sc, dev));
             return !HardwareKeys.isNavigation(keyCode);
         });
-        root.addView(keyBox);
+        col2.addView(keyBox);
+
+        LinearLayout.LayoutParams c1lp = new LinearLayout.LayoutParams(UiKit.px(760), ViewGroup.LayoutParams.WRAP_CONTENT);
+        twoCols.addView(col1, c1lp);
+        LinearLayout.LayoutParams c2lp = new LinearLayout.LayoutParams(UiKit.px(760), ViewGroup.LayoutParams.WRAP_CONTENT);
+        c2lp.leftMargin = UiKit.px(32);
+        twoCols.addView(col2, c2lp);
+
+        root.addView(twoCols);
 
         // Kapat Butonu
         final TextView close = Controls.button(ctx, tr ? "Kapat" : "Close", v -> host.close());
@@ -1460,7 +1522,11 @@ public final class Panels {
         buttons.setPadding(0, UiKit.px(16), 0, 0);
 
         buttons.addView(Controls.button(ctx, "Seçilenleri Kur", v -> {
-            Prefs.get(ctx).edit().putBoolean("nuvio_update_prompt_v1_0_0_9b", true).apply();
+            Prefs.get(ctx).edit()
+                    .putBoolean("nuvio_addons_configured", true)
+                    .putBoolean("nuvio_addons_dismissed", true)
+                    .putBoolean("nuvio_update_prompt_v1_0_0_9b", true)
+                    .apply();
             host.back();
             Toast.makeText(ctx, "Seçilen eklentiler Nuvio'ya aktarılıyor...", Toast.LENGTH_SHORT).show();
             new Thread(() -> {
@@ -1486,7 +1552,11 @@ public final class Panels {
         buttons.addView(spacer, new LinearLayout.LayoutParams(UiKit.px(16), 1));
 
         buttons.addView(Controls.button(ctx, "Şimdi Değil", v -> {
-            Prefs.get(ctx).edit().putBoolean("nuvio_update_prompt_v1_0_0_9b", true).apply();
+            Prefs.get(ctx).edit()
+                    .putBoolean("nuvio_addons_configured", true)
+                    .putBoolean("nuvio_addons_dismissed", true)
+                    .putBoolean("nuvio_update_prompt_v1_0_0_9b", true)
+                    .apply();
             host.back();
         }));
 

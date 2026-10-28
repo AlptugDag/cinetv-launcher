@@ -98,38 +98,49 @@ public final class CelebrationOverlay {
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT));
 
-            // 2. Centered celebration card
+            // 2. Centered luxury celebration card
             LinearLayout box = new LinearLayout(targetContext);
             box.setOrientation(LinearLayout.VERTICAL);
             box.setGravity(Gravity.CENTER_HORIZONTAL);
-            int padH = UiKit.px(54), padV = UiKit.px(38);
+            int padH = UiKit.px(64), padV = UiKit.px(44);
             box.setPadding(padH, padV, padH, padV);
 
-            // Card background: dark acrylic glass with subtle crimson glow stroke
+            // Card background: luxury frosted dark acrylic glass with refined ruby-gold bevel stroke
             GradientDrawable boxBg = new GradientDrawable();
-            boxBg.setColor(Color.argb(238, 16, 18, 24));
-            boxBg.setCornerRadius(UiKit.px(22));
-            boxBg.setStroke(UiKit.px(1.5f), Color.argb(100, 227, 10, 23));
+            boxBg.setColor(Color.argb(246, 12, 14, 20));
+            boxBg.setCornerRadius(UiKit.px(24));
+            boxBg.setStroke(UiKit.px(1.5f), Color.argb(140, 227, 10, 23));
             box.setBackground(boxBg);
 
-            // National Emblem / Icon (e.g. Turkish Flag with wave shading)
+            // National Emblem pedestal with subtle gold catchlight
+            FrameLayout badge = new FrameLayout(targetContext);
+            badge.setPadding(UiKit.px(18), UiKit.px(14), UiKit.px(18), UiKit.px(14));
+            GradientDrawable badgeBg = new GradientDrawable();
+            badgeBg.setColor(Color.argb(40, 255, 255, 255));
+            badgeBg.setCornerRadius(UiKit.px(18));
+            badgeBg.setStroke(UiKit.px(1.5f), Color.argb(140, 255, 215, 64)); // subtle gold rim
+            badge.setBackground(badgeBg);
+
             ImageView iconView = new ImageView(targetContext);
             iconView.setImageDrawable(SpecialDayArt.drawable(day.icon, day.accent));
-            int iconW = UiKit.px(Math.round(86 * SpecialDayArt.aspect(day.icon)));
-            int iconH = UiKit.px(86);
-            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(iconW, iconH);
-            ilp.bottomMargin = UiKit.px(24);
-            box.addView(iconView, ilp);
+            int iconW = UiKit.px(Math.round(92 * SpecialDayArt.aspect(day.icon)));
+            int iconH = UiKit.px(92);
+            badge.addView(iconView, new FrameLayout.LayoutParams(iconW, iconH, Gravity.CENTER));
+
+            LinearLayout.LayoutParams blpIcon = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            blpIcon.bottomMargin = UiKit.px(24);
+            box.addView(badge, blpIcon);
 
             // Celebration Title: "Cinetv yapımcısı Alptuğ Dağ ... Bayramınızı Kutlar!"
             TextView titleTv = new TextView(targetContext);
             titleTv.setText(day.celebrationTitle);
-            titleTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.px(23));
+            titleTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.px(25));
             titleTv.setTextColor(Color.WHITE);
             titleTv.setTypeface(FontManager.bold(targetContext));
             titleTv.setGravity(Gravity.CENTER);
-            titleTv.setLineSpacing(UiKit.px(4), 1.15f);
-            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(UiKit.px(740), ViewGroup.LayoutParams.WRAP_CONTENT);
+            titleTv.setLineSpacing(UiKit.px(5), 1.15f);
+            titleTv.setLetterSpacing(0.015f);
+            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(UiKit.px(780), ViewGroup.LayoutParams.WRAP_CONTENT);
             tlp.bottomMargin = UiKit.px(16);
             box.addView(titleTv, tlp);
 
@@ -137,26 +148,26 @@ public final class CelebrationOverlay {
             if (day.celebrationBody != null && !day.celebrationBody.isEmpty()) {
                 TextView bodyTv = new TextView(targetContext);
                 bodyTv.setText(day.celebrationBody);
-                bodyTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.px(17));
+                bodyTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.px(18));
                 bodyTv.setTextColor(Color.parseColor("#E5E7EB"));
                 bodyTv.setTypeface(FontManager.regular(targetContext));
                 bodyTv.setGravity(Gravity.CENTER);
                 LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                blp.bottomMargin = UiKit.px(24);
+                blp.bottomMargin = UiKit.px(26);
                 box.addView(bodyTv, blp);
             }
 
             // Dismiss hint button / pill: "[ OK ] Kapat"
             TextView hintTv = new TextView(targetContext);
             hintTv.setText("[ OK ]  Kapatmak için kumandadan herhangi bir tuşa basın");
-            hintTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.px(12));
+            hintTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.px(14));
             hintTv.setTextColor(Color.parseColor("#CBD5E1"));
-            hintTv.setTypeface(FontManager.regular(targetContext));
-            hintTv.setPadding(UiKit.px(20), UiKit.px(8), UiKit.px(20), UiKit.px(8));
+            hintTv.setTypeface(FontManager.bold(targetContext));
+            hintTv.setPadding(UiKit.px(26), UiKit.px(10), UiKit.px(26), UiKit.px(10));
             GradientDrawable hintBg = new GradientDrawable();
-            hintBg.setColor(Color.argb(35, 255, 255, 255));
-            hintBg.setCornerRadius(UiKit.px(14));
-            hintBg.setStroke(UiKit.px(1f), Color.argb(45, 255, 255, 255));
+            hintBg.setColor(Color.argb(45, 255, 255, 255));
+            hintBg.setCornerRadius(UiKit.px(16));
+            hintBg.setStroke(UiKit.px(1.2f), Color.argb(60, 255, 255, 255));
             hintTv.setBackground(hintBg);
             box.addView(hintTv);
 

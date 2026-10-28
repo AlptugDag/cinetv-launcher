@@ -67,6 +67,11 @@ public class PosterShelf extends FrameLayout {
     private float sway;
     private ValueAnimator swayAnim;
     private final Runnable startSway = this::sway;
+    private final Runnable prefetchRunnable = () -> {
+        if (index >= 0 && index < movies.size()) {
+            MovieCatalog.prefetchTrailer(getContext(), movies.get(index));
+        }
+    };
 
     public PosterShelf(Context ctx) {
         super(ctx);
@@ -230,13 +235,8 @@ public class PosterShelf extends FrameLayout {
         stopSway();
         targetPos += delta;
         index = Math.floorMod(targetPos, n);
-        if (index >= 0 && index < movies.size()) {
-            MovieCatalog.prefetchTrailer(getContext(), movies.get(index));
-            int prevIdx = (index - 1 + n) % n;
-            int nextIdx = (index + 1) % n;
-            if (prevIdx < movies.size()) MovieCatalog.prefetchTrailer(getContext(), movies.get(prevIdx));
-            if (nextIdx < movies.size()) MovieCatalog.prefetchTrailer(getContext(), movies.get(nextIdx));
-        }
+        main.removeCallbacks(prefetchRunnable);
+        main.postDelayed(prefetchRunnable, 450);
         if (anim != null) anim.cancel();
         anim = ValueAnimator.ofFloat(focusPos, targetPos);
         // A light spring: the row glides, slightly overshoots and settles, like boxes sliding on a shelf.

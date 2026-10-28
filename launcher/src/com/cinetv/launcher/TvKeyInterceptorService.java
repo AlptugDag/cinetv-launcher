@@ -67,9 +67,21 @@ public class TvKeyInterceptorService extends AccessibilityService {
     private final BroadcastReceiver celebrationReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            final com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(TvKeyInterceptorService.this);
-            if (day != null) {
-                com.cinetv.launcher.ui.CelebrationOverlay.show(TvKeyInterceptorService.this, day);
+            if (intent == null) return;
+            String toast = intent.getStringExtra("toast");
+            if (toast != null && !toast.trim().isEmpty()) {
+                android.widget.Toast.makeText(context, toast, android.widget.Toast.LENGTH_LONG).show();
+            }
+            if ("com.cinetv.launcher.ACTION_CELEBRATION".equals(intent.getAction())
+                    || intent.getBooleanExtra("force_celebration", false)
+                    || intent.getBooleanExtra("show_celebration", false)) {
+                com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(TvKeyInterceptorService.this);
+                if (day == null && intent.getBooleanExtra("force_celebration", false)) {
+                    day = com.cinetv.launcher.service.SpecialDay.forDate(2026, 10, 29, 12, 0);
+                }
+                if (day != null) {
+                    com.cinetv.launcher.ui.CelebrationOverlay.show(TvKeyInterceptorService.this, day);
+                }
             }
         }
     };
@@ -122,8 +134,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
         try {
             IntentFilter cf = new IntentFilter("com.cinetv.launcher.ACTION_CELEBRATION");
+            cf.addAction("com.cinetv.launcher.ACTION_TOAST");
             if (android.os.Build.VERSION.SDK_INT >= 33) {
-                registerReceiver(celebrationReceiver, cf, Context.RECEIVER_NOT_EXPORTED);
+                registerReceiver(celebrationReceiver, cf, Context.RECEIVER_EXPORTED);
             } else {
                 registerReceiver(celebrationReceiver, cf);
             }
@@ -181,6 +194,18 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (event == null || event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || event.getPackageName() == null) return;
         String pkg = event.getPackageName().toString();
         if ("com.android.systemui".equals(pkg) || "android".equals(pkg)) return;
+
+        CharSequence cls = event.getClassName();
+        if (cls != null) {
+            String cName = cls.toString().toLowerCase(java.util.Locale.US);
+            if ((cName.contains("screensaver") || cName.contains("dream")) && !getPackageName().equals(pkg)) {
+                if (!DeviceTweaks.isMediaPlaying(this)) {
+                    startActivity(new Intent(this, ScreensaverActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+                    return;
+                }
+            }
+        }
 
         if (isStockLauncher(pkg)) {
             // Stock TV launcher (Xiaomi / Google TV) intercepted HOME key or boot: redirect immediately to CineTV
@@ -267,7 +292,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     private void armIdleSaver() {
         handler.removeCallbacks(idleSaver);
-        handler.postDelayed(idleSaver, APP_IDLE_SAVER_MS);
+        long timeout = AppLauncher.NUVIO.equals(lastPackage) ? 45_000L : APP_IDLE_SAVER_MS;
+        handler.postDelayed(idleSaver, timeout);
     }
 
     @Override
