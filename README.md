@@ -1,13 +1,15 @@
 <div align="center">
 
+<br>
+
 <img src="docs/media/wordmark.png" alt="CineTV" width="540">
 
 <br><br>
 
-# Televizyonunuzu unutun.
-# Sinemayı hatırlayın.
+# Televizyonunuzu Unutun. Sinemayı Hatırlayın.
 
-Salondaki siyah camı sponsorlu reklamların, gürültülü önerilerin ve ruhsuz algoritmaların işgalinden kurtarın. CineTV, televizyonunuzu dünyanın en seçkin özel sinema arşivine dönüştüren bağımsız bir sanat ve mühendislik eseridir.
+**Yıllarca size televizyon sattılar ama sinemayı sakladılar.**  
+Salondaki o dev ekranı reklam panolarının, hızı kısıtlanmış yayınların ve ruhsuz menülerin işgalinden kurtarın. CineTV, koltuğunuza yaslandığınız anda televizyonunuzu tam otomatik işleyen özel bir sinema salonuna dönüştüren bağımsız bir sanat ve mühendislik eseridir.
 
 <br>
 
@@ -17,7 +19,7 @@ Salondaki siyah camı sponsorlu reklamların, gürültülü önerilerin ve ruhsu
 
 <br><br>
 
-[CineTV’yi İndirin](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk) &nbsp;·&nbsp; [Kurulum Kılavuzu](KURULUM.md) &nbsp;·&nbsp; [Yapay Zeka Yönergesi](AGENTS.md)
+[**CineTV’yi İndirin**](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk) &nbsp;✦&nbsp; [**Kurulum Kılavuzu**](KURULUM.md) &nbsp;✦&nbsp; [**Yapay Zeka Yönergesi**](AGENTS.md)
 
 <br><br>
 
@@ -31,13 +33,13 @@ Salondaki siyah camı sponsorlu reklamların, gürültülü önerilerin ve ruhsu
 
 <br>
 
-## Bir Başkaldırı Olarak Sinema
+## Manifesto
 
-Evlerimizdeki televizyonlar artık izlemek istediğimiz hikayeleri sunmuyor; izlememiz istenen şeyleri bize dayatıyor. Açılış ekranını kaplayan afiş boyu reklamlar, her köşeden fırlayan abonelik baskıları ve film seçmeyi bir eziyete dönüştüren kalabalık menüler.
-
-CineTV tam bu noktada, sinemanın altın çağına duyulan derin bir tutkuyla doğdu.
-
-Eski bir film arşivcisinin dolabında duran ağır, parlak bir DVD kutusunun yarattığı o fiziksel heyecanı hatırlayın. Kapağı araladığınızda elinize gelen mat kuşe kitapçığı, özenle yazılmış yönetmen notlarını ve kutunun içinden parıldayan diski. CineTV, bu nostaljik ritüeli en ileri dijital teknolojiyle oturma odanıza getiriyor.
+> "Artık nihayet evlerimizde, tv satan dükkanlardaki gibi parlak görüntüler seyredebiliyoruz çünkü önceden bunu yapamamamızın ardındaki sebep hiçbir zaman sadece tv kalitesi değildi, kaynak görüntü format ve kalitesiydi de. Ve sizler, onca para verdiğiniz tvlerinizde kalite görmek için netflix'in en üst planına abone olmaya mecbur bırakıldınız, bense Alptuğ Dağ olarak sizleri bundan sıfır kârla kurtarmaya kendimi adadım!
+>
+> Bugün hem bu sorunu ortadan kaldırıyor, hem de dilediğiniz gibi bir film ararken kaybolan zamana bir son veriyorum. Evet torrenti ben icat etmedim ama onu tvnizin kalbine, yapay zeka film araması ile entegre eden benim. Sadece ne istediğinizi söylemeniz yetecek, sizi anlayacak ve tam istediğiniz türden filmi-diziyi doğrudan önünüze serecek."
+>
+> — **Alptuğ Dağ**
 
 <br><br>
 
@@ -45,11 +47,30 @@ Eski bir film arşivcisinin dolabında duran ağır, parlak bir DVD kutusunun ya
 
 <br>
 
-## Dokunabileceğiniz Kadar Gerçek: 3D Vitrin
+## Büyük İllüzyonun Sonu: Ev Sinemasının Altın Çağı Başlıyor
 
-CineTV ana ekranında filmler basit birer kare resim değildir. Her biri derinliği, poligon yüzeyleri ve ışık kırılmalarıyla modellenmiş gerçek 3D DVD kutularıdır. 
+Bunca zaman kendi salonunuzda müşteri yerine konuldunuz. Küçük bir servet ödeyerek satın aldığınız televizyonu her açtığınızda, ekranınızın en değerli yerini kaplayan sponsorlu afişlerle, izlemediğiniz platformların dayatmalarıyla ve cihazınızı hantal bir kutuya çeviren arka plan yazılımlarıyla karşılaştınız. Paranızın karşılığı olan o saf sinema deneyimi, karmaşık abonelik duvarlarının ve sıkıştırılmış veri paketlerinin ardına hapsedildi.
 
-Kumandanızla rafın üzerinde gezinirken kutular öne doğru süzülür, kılıf aralanır ve sol tarafta sinema tarihçileri tarafından kaleme alınmışçasına edebi bir kitapçık açılır. Sağ taraftaki tepside ise YouTube arayüzü, reklamları ya da gecikmesi olmadan, doğrudan filmin fragmanı kesintisiz olarak dönmeye başlar.
+**CineTV Launcher, hakkınız olan ekranı size geri vermek için tasarlandı.**
+
+Işıklar kısıldığında ve CineTV açıldığında tüm o dijital gürültü bıçak gibi kesilir. Karmaşa yerini mutlak bir konfora, reklam panoları yerini yedinci sanatın asaletine bırakır. CineTV ile oturma odanız, ev sinemasının o özlenen altın çağını bugün yeniden ve en görkemli haliyle yaşamaya başlar.
+
+<br><br>
+
+---
+
+<br>
+
+## Fiziksel Koleksiyonlara Saygı Duruşu: 3D DVD Rafı
+
+Her şeyin buluta yüklendiği, filmlerin soğuk ve düz birer küçük resme indirgendiği, lisans süresi bittiğinde kütüphanenizden sessizce silindiği bu uçucu dijital çağda; gerçek sinemaseverlerin elinden alınan en büyük şey **aidiyet ve ritüel** duygusuydu.
+
+CineTV’nin kalbindeki **3D DVD Kutusu Raf Tasarımı**, fiziksel arşiv kültürüne ve koleksiyonerliğin o dokunsal büyüsüne adanmış bir saygı duruşudur.
+
+Ana ekranınızdaki filmler sıradan birer afiş değildir; her biri gerçek zamanlı poligon yüzeyleri, derinliği ve ışık kırılmalarıyla işlenmiş üç boyutlu birer koleksiyon parçasıdır. Kumandanızla rafınızda gezinirken kutu zarifçe öne süzülür ve kapağı aralanır:
+
+- **Sol İç Kapakta Edebi Kürasyon:** Tıpkı özel basım bir Criterion Collection kutusunu açtığınızda elinize gelen o mat kuşe kitapçık gibi; filmin ruhunu, sinematografik değerini ve perde arkası mirasını anlatan özel notlar sizi karşılar.
+- **Sağ Tepside Kesintisiz Fragman:** Parıldayan diskin hemen ardında; YouTube arayüzü, reklamlar veya yükleme ekranları olmadan doğrudan filmin dünyasına açılan fragman tepsisi canlanır.
 
 <br>
 
@@ -65,11 +86,11 @@ Kumandanızla rafın üzerinde gezinirken kutular öne doğru süzülür, kılı
 
 <br>
 
-## Afişin Ruhu, Odanızın Işığı
+## Afişin Ruhu, Salonunuzun Işığı
 
-Bir filmin renk paleti, yönetmenin seyirciye fısıldadığı en güçlü duygudur. CineTV, seçtiğiniz filmin afişini trigonometrik açısal vektörlerle anlık olarak analiz eder. 
+Bir başyapıtın atmosferi daha ilk kare oynamadan, afişindeki renk paletiyle başlar. CineTV, üzerinde durduğunuz filmin afişini trigonometrik açısal vektörlerle anlık olarak çözümler ve arayüzün tamamını o filmin duygusuyla boyar.
 
-Fargo'nun dondurucu kırmızı tonu, Blade Runner'ın neon moru ya da Amélie'nin sıcak yeşili. Kitapçığın tipografisinden odanızın arkasına vuran ambiyans parıltısına kadar tüm salonunuz, izleyeceğiniz filmin renk dünyasıyla kusursuz bir senkrona girer.
+*Fargo*’nun dondurucu kızılı, *Blade Runner*’ın neon moru ya da *Amélie*’nin masalsı yeşili... Kitapçık tipografisinden televizyonunuzun duvarına vuran ambiyans parıltısına kadar tüm salonunuz, seçtiğiniz eserin görsel diliyle kusursuz bir senkrona girer.
 
 <br>
 
@@ -79,7 +100,7 @@ Fargo'nun dondurucu kırmızı tonu, Blade Runner'ın neon moru ya da Amélie'ni
 
 <br>
 
-Kadife perdeli tarihi opera binalarından fırçalanmış titanyum yüzeylere, 80'ler gece sinemasından ceviz ağacından özel koleksiyon dolaplarına kadar salonunuza en çok yakışan atmosferi tek bir dokunuşla seçebilirsiniz.
+Üstelik tek bir dokunuşla rafınızın mimarisini değiştirebilirsiniz: Kadife perdeli tarihi opera salonlarından fırçalanmış titanyum yüzeylere, 80'ler gece sinemasından ceviz ağacından özel koleksiyon dolaplarına kadar evinizin dekorasyonuna en çok yakışan sahne her an emrinizdedir.
 
 <br><br>
 
@@ -87,11 +108,11 @@ Kadife perdeli tarihi opera binalarından fırçalanmış titanyum yüzeylere, 8
 
 <br>
 
-## Kelimelerle Değil, Duygularla Arayın
+## Bürokratik Arama Çubuklarının Ölümü: Küratörle Diyalog
 
-Film bulmak bir arama motoru sorgusu olmamalı. CineTV, bünyesindeki yapay zeka asistanı sayesinde sizi bir sinema küratörü gibi dinler.
+Standart televizyon arayüzlerinde harf harf kelime tuşlamak, sinema keyfini daha başlamadan öldüren mekanik bir angaryadır. CineTV, arama deneyimini soğuk bir veri tabanı sorgusu olmaktan çıkarıp, özel bir gösterim odasında bilgili bir sinema küratörüyle sohbet etme konforuna taşır.
 
-Kumandanızın mikrofonuna basıp *"Bana 90'larda yağmurlu gecelerde geçen, melankolik bir dedektif filmi bul"* dediğinizde, ekranda beliren organik ses dalgaları sesinizi işler ve vitrininiz saniyeler içinde tam aradığınız ruh halindeki başyapıtlarla donatılır.
+Kumandanızın mikrofonuna konuştuğunuzda ekranda süzülen organik ses dalgaları veya karanlık odada gözünüzü yormamak üzere özel olarak tasarlanmış akustik klavye arayüzü; sizi kategorilerin, filtrelerin ve sonsuz kaydırma ekranlarının esaretinden tamamen kurtarır.
 
 <br>
 
@@ -106,27 +127,19 @@ Kumandanızın mikrofonuna basıp *"Bana 90'larda yağmurlu gecelerde geçen, me
 
 <br>
 
-## Ekranınız Dinlenirken Bile Yaşasın
+## Siz Sadece Koltuğunuza Yaslanın: Sıfır Ayar, Tam Otomasyon
 
-Televizyonunuz boşta kaldığında ekran kararmaz; salonunuz yaşayan bir sinema galerisine dönüşür. Sinema tarihinin kült sahneleri, unutulmaz replikleri ve nostaljik 35 mm film şeridi geçişiyle CineTV, evinizde sürekli nefes alan büyüleyici bir enstalasyon sergiler.
+Üst düzey bir ev sineması deneyimi kurmak bugüne kadar hep teknik bir sınavdı: Kodek paketleri, harici oynatıcılar, karmaşık eklenti adresleri ve bitmek bilmeyen yapılandırma menüleri... CineTV, tüm bu zahmeti tarihe gömer.
 
-<br>
+**Her şey siz farkına bile varmadan, arka planda tam otomatik olarak gerçekleşir.**
 
-<p align="center">
-  <img src="docs/media/screensaver-film-strip.gif" alt="35mm Film Şeridi" width="580">
-</p>
+CineTV kurulduğu ilk saniyede televizyonunuzun işlemci mimarisini tanır ve dünyanın en güçlü açık kaynaklı medya ekosistemini tek bir dokunuşunuza bile gerek kalmadan kendi kendine inşa eder:
+- **Nuvio TV** medya merkezi,
+- Yüksek bit hızlı akışları sıfır takılmayla işleyen **Nova Player** motoru,
+- iPhone ve Mac cihazlarınız için yerleşik **AirPlay** alıcısı,
+- **Alptuğ Dağ** kürasyonuyla önceden yapılandırılmış seçkin sinema kütüphanesi.
 
-<br><br>
-
----
-
-<br>
-
-## Kusursuz Medya Dünyası Hazır Gelir
-
-CineTV bir kabuktan çok daha fazlasıdır. Kurulduğu anda arka planda dünyanın en güçlü açık kaynaklı medya altyapısını televizyonunuza entegre eder:
-
-Nuvio TV medya merkezi, yüksek kaliteli 4K akışlar için Nova Player motoru, iPhone ve Mac cihazlarınız için AirPlay alıcısı ve Alptuğ Dağ kürasyonuyla hazırlanan zengin film kütüphanesi. Siz hiçbir ayarla, eklenti linkiyle veya yapılandırma dosyasıyla uğraşmazsınız; CineTV her şeyi televizyonunuzun işlemcisine özel olarak hazırlar.
+Size düşen tek şey mısırınızı alıp koltuğunuza kurulmaktır.
 
 <br>
 
@@ -140,11 +153,29 @@ Nuvio TV medya merkezi, yüksek kaliteli 4K akışlar için Nova Player motoru, 
 
 <br>
 
-## Telefonunuz: Hem Kumandanız Hem Yansıtıcınız
+## Ekranınız Dinlenirken Bile Yaşayan Bir Sergi
 
-Ek bir uygulama indirmek yok. Sadece televizyonunuzdaki QR kodu telefonunuzun kamerasına gösterin. 
+Film bittiğinde veya televizyonunuz boşta kaldığında salonunuzun ortasında karanlık, ölü bir cam durmaz. CineTV’nin **35mm Film Şeridi** ekran koruyucusu; sinema tarihinin ikonik karelerini, hafızalara kazınan repliklerini ve analog projeksiyon dokusunu bir araya getirerek ekranınızı yaşayan bir modern sanat galerisine dönüştürür.
 
-Telefonunuz anında tepkisel bir dokunmatik kumandaya dönüşür. İnternette gezinirken rastladığınız bir video bağlantısını tek dokunuşla televizyona fırlatabilir, yerli film sitelerindeki yayınları takılmadan büyük ekranda oynatabilir ya da albümünüzdeki en sevdiğiniz fotoğrafı televizyonunuzun duvar kağıdı yapabilirsiniz.
+<br>
+
+<p align="center">
+  <img src="docs/media/screensaver-film-strip.gif" alt="35mm Film Şeridi" width="580">
+</p>
+
+<br><br>
+
+---
+
+<br>
+
+## Telefonunuzla Sıfır Sürtünmeli Entegrasyon
+
+App Store veya Google Play'den ek bir uygulama indirmeye, hesap açmaya ya da eşleştirme kodlarıyla boğuşmaya gerek yok. Telefonunuzun kamerasını televizyonunuzdaki QR koda doğrulttuğunuz anda tüm kontrol avucunuzun içine gelir:
+
+- **Dokunmatik Kumanda:** Telefon ekranınız milisaniyelik tepki süresine sahip pürüzsüz bir izleme dörtgenine (touchpad) dönüşür.
+- **Kesintisiz Web Yayını (Cast):** Tarayıcınızda veya yerli film sitelerinde karşılaştığınız videoları tek dokunuşla televizyonunuza fırlatıp reklam karmaşası olmadan dev ekranda izleyebilirsiniz.
+- **Kişisel Galeri:** Telefonunuzdaki en özel fotoğrafları saniyeler içinde televizyonunuzun ambiyans duvar kağıdı yapabilirsiniz.
 
 <br>
 
@@ -164,13 +195,13 @@ Telefonunuz anında tepkisel bir dokunmatik kumandaya dönüşür. İnternette g
 
 <br>
 
-## Donanımınızın Sınırlarını Zorlayan Mühendislik
+## Televizyonunuzun Gerçek Gücünü Serbest Bırakan Mühendislik
 
-Giriş seviyesi 1 GB RAM'li bir televizyondan en üst düzey OLED panellere kadar CineTV, cihazınızı tanır ve ona göre şekil alır.
+Üreticiler televizyonunuzun işlemcisini ve belleğini, sizin izleme deneyiminiz için değil; kendi veri toplama servislerini ve reklam ağlarını çalıştırmak için tüketir. CineTV, cihazınızın prangalarını çözer ve donanımınızdan son damlasına kadar performans alır:
 
-- **Root Gerektirmeyen 2 GB Z-RAM**: Düşük bellekli televizyonların 4K filmlerde kilitlenmesini engelleyen akıllı sanal bellek motoru.
-- **TV Inspector**: Panelinizin gerçek çözünürlüğünü, 120Hz tazeleme hızını, Dolby Vision ve Dolby Atmos ses desteğini tek ekranda doğrulayan profesyonel donanım teşhisi.
-- **Güvenli Temizlik**: Üreticinin sistemi yavaşlatan reklam servislerini sistem çekirdeğine zarar vermeden durdurur; dilediğiniz an tek bir tuşla fabrika ayarlarına geri döndürme güvencesi sunar.
+- **Root Gerektirmeyen 2 GB Z-RAM Motoru:** Giriş seviyesi 1 GB RAM'li televizyonlarda dahi yüksek boyutlu 4K filmlerin kilitlenmeden, yağ gibi akmasını sağlayan akıllı sanal bellek mimarisi.
+- **TV Inspector (Donanım Müfettişi):** Size "4K" veya "HDR" diye satılan panelin gerçek fiziksel çözünürlüğünü, 120Hz tazeleme hızını, Dolby Vision ve Dolby Atmos kapasitesini laboratuvar hassasiyetiyle doğrulayan şeffaf teşhis ekranı.
+- **Güvenli Arındırma (Safe Debloat):** Cihazınızı yavaşlatan fabrika çıkışlı reklam ve telemetri servislerini sistem çekirdeğine dokunmadan dondurur; üstelik dilediğiniz an tek tuşla fabrika ayarlarına dönme güvencesi sunar.
 
 <br>
 
@@ -186,23 +217,24 @@ Giriş seviyesi 1 GB RAM'li bir televizyondan en üst düzey OLED panellere kada
 
 <br>
 
-## Birkaç Dakika İçinde Salonunuzda
+## Dakikalar İçinde Zahmetsiz Kurulum
 
-CineTV'yi televizyonunuza kurmak için karmaşık adımlarla uğraşmanıza gerek yoktur. İster doğrudan kumandanızla kurun, ister yapay zekaya emanet edin:
+Teknoloji size hizmet etmeli, sizi yormamalı. CineTV’yi salonunuza taşımak için üç zahmetsiz yoldan dilediğinizi seçin; geri kalan tüm ince ayarları sistem kendi kendine tamamlar:
 
-### Doğrudan Televizyondan (En Kolay Yol)
-Televizyonunuzdaki ücretsiz **Downloader** uygulamasına şu bağlantıyı yazıp indirin ve açın:
+### 1. Doğrudan Televizyondan (En Pratik Yöntem)
+Televizyonunuzdaki ücretsiz **Downloader** uygulamasına aşağıdaki adresi girin:
+```text
+[github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk)
 ```
-github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk
-```
-Açılışta izin onayını vermeniz yeterlidir. CineTV geriye kalan tüm uygulamaları, eklentileri, profilleri ve 2 GB bellek artışını arka planda tamamen otomatik kurar.
+İndirme tamamlandığında **Yükle** ve ardından **Aç** seçeneklerini işaretleyin. Açılışta izin onayını vermeniz yeterlidir; CineTV geriye kalan her şeyi arka planda otomatik tamamlar.
 
-### Yapay Zeka Ajanı ile (Tam Otonom)
-Google Antigravity, Claude veya Cursor gibi bir ajana şu cümleyi söyleyin:
-> **github.com/AlptugDag/cinetv-launcher adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur. IP adresim: [TV_IP]**
+### 2. Yapay Zeka Ajanı ile (Tam Otonom)
+Google DeepMind Antigravity, Claude veya Cursor gibi bir ajana şu yönergeyi iletmeniz yeterlidir:
+> **https://github.com/AlptugDag/cinetv-launcher adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur. IP adresim: [TV_IP]**
 
-### Bilgisayarınızdan Tek Tıkla
-Windows kullanıcıları için **[CineTV-Kur.bat](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.bat)** dosyasını indirip çalıştırmak yeterlidir. Mac ve Linux kullanıcıları ise terminalden `./install.sh --tv [TV_IP]` komutunu çalıştırabilir.
+### 3. Bilgisayarınızdan Tek Tıkla
+- **Windows:** **[CineTV-Kur.bat](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.bat)** dosyasını indirip çalıştırın.
+- **Mac / Linux:** Terminalden `./install.sh --tv [TV_IP]` komutunu çalıştırın.
 
 <br><br>
 
