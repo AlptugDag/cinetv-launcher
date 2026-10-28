@@ -280,6 +280,9 @@ public final class Panels {
                 }
             });
         }));
+        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Nuvio Eklentilerini Yönet & Kur" : "Manage & Install Nuvio Addons",
+                "tr".equals(Locale.getDefault().getLanguage()) ? "Eklenti ve profil seçim penceresini aç" : "Select and install curated addons", false,
+                v -> host.push(() -> buildNuvioUpdateAddons(ctx, host))));
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.reboot), null, false, v -> a.reboot()));
         c4.addView(Controls.alarm(ctx, ctx.getString(R.string.destroy), v -> host.push(() -> buildDestroy(ctx, host))));
         return root;
@@ -1224,6 +1227,135 @@ public final class Panels {
         root.addView(close, clp);
 
         root.post(keyBox::requestFocus);
+        return scroll;
+    }
+
+    // ---- Nuvio Addon Update Selection Window ----------------------------------------------------
+
+    public static void nuvioUpdateAddons(final Context ctx, final ModalHost host) {
+        host.push(() -> buildNuvioUpdateAddons(ctx, host));
+    }
+
+    private static View buildNuvioUpdateAddons(final Context ctx, final ModalHost host) {
+        final ScrollView scroll = new ScrollView(ctx);
+        scroll.setVerticalScrollBarEnabled(false);
+        final LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(28), UiKit.px(20), UiKit.px(28), UiKit.px(20));
+        scroll.addView(root);
+
+        TextView title = UiKit.bold(ctx, 30, UiKit.INK);
+        title.setText("Nuvio Eklenti ve Profil Güncellemesi");
+        root.addView(title);
+
+        TextView subtitle = UiKit.label(ctx, 18, UiKit.INK_DIM);
+        subtitle.setText("CineTV güncellendi. Nuvio medya merkezinize aşağıdaki eklenti ve yapılandırmalardan hangilerinin kurulmasını istersiniz?");
+        subtitle.setLineSpacing(UiKit.pxf(6), 1.15f);
+        subtitle.setPadding(0, UiKit.px(12), 0, UiKit.px(20));
+        subtitle.setMaxWidth(UiKit.px(980));
+        root.addView(subtitle);
+
+        final String[][] items = {
+                {"TR Altyazı", "Resmi Türkçe altyazı motoru (AltyaziTR, OpenSubtitles)", "tr-altyazi.altyazi.workers.dev/manifest.json"},
+                {"Anthology", "Türkçe dizi, film ve canlı yayın kanalları", "falsisdev.github.io/anthology/stremio/manifest.json"},
+                {"Netflix Catalog", "Popüler ve güncel streaming katalog düzeni", "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json"},
+                {"Xperience", "Gelişmiş kategori, afiş ve metadata sağlayıcısı", "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json"},
+                {"Alptuğ'un Filmleri & Şablonlar", "Özel seçkin koleksiyon profili ve hazır şablonlar (/sdcard/Download/)", "deploy_configs"}
+        };
+
+        final boolean[] checked = new boolean[items.length];
+        for (int i = 0; i < checked.length; i++) checked[i] = true;
+
+        final LinearLayout list = new LinearLayout(ctx);
+        list.setOrientation(LinearLayout.VERTICAL);
+
+        for (int i = 0; i < items.length; i++) {
+            final int idx = i;
+            final LinearLayout row = new LinearLayout(ctx);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setFocusable(true);
+            row.setClickable(true);
+            row.setPadding(UiKit.px(20), UiKit.px(12), UiKit.px(20), UiKit.px(12));
+
+            final Glass g = new Glass(row, UiKit.pxf(14), Glass.Style.CONTROL);
+            row.setBackground(g);
+
+            final TextView checkIndicator = UiKit.bold(ctx, 22, 0xFF34D399);
+            checkIndicator.setText("[✓]");
+            checkIndicator.setPadding(0, 0, UiKit.px(16), 0);
+            row.addView(checkIndicator);
+
+            LinearLayout textCol = new LinearLayout(ctx);
+            textCol.setOrientation(LinearLayout.VERTICAL);
+
+            TextView itemTitle = UiKit.bold(ctx, 20, UiKit.INK);
+            itemTitle.setText(items[i][0]);
+            textCol.addView(itemTitle);
+
+            TextView itemSub = UiKit.label(ctx, 15, UiKit.INK_DIM);
+            itemSub.setText(items[i][1]);
+            itemSub.setPadding(0, UiKit.px(2), 0, 0);
+            textCol.addView(itemSub);
+
+            row.addView(textCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+            row.setOnFocusChangeListener((v, hasFocus) -> {
+                g.setStyle(hasFocus ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
+                itemTitle.setTextColor(hasFocus ? UiKit.INK_DARK : UiKit.INK);
+                itemSub.setTextColor(hasFocus ? UiKit.withAlpha(UiKit.INK_DARK, 170) : UiKit.INK_DIM);
+                UiKit.lift(v, hasFocus, 1.03f, PerformanceProfile.animationMs(ctx, 120));
+            });
+
+            row.setOnClickListener(v -> {
+                checked[idx] = !checked[idx];
+                checkIndicator.setText(checked[idx] ? "[✓]" : "[  ]");
+                checkIndicator.setTextColor(checked[idx] ? 0xFF34D399 : 0xFF9CA3AF);
+            });
+
+            LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            rlp.bottomMargin = UiKit.px(8);
+            list.addView(row, rlp);
+        }
+        root.addView(list);
+
+        LinearLayout buttons = new LinearLayout(ctx);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+        buttons.setGravity(Gravity.CENTER_VERTICAL);
+        buttons.setPadding(0, UiKit.px(16), 0, 0);
+
+        buttons.addView(Controls.button(ctx, "Seçilenleri Kur", v -> {
+            Prefs.get(ctx).edit().putBoolean("nuvio_update_prompt_v1_0_0_9b", true).apply();
+            host.back();
+            Toast.makeText(ctx, "Seçilen eklentiler Nuvio'ya aktarılıyor...", Toast.LENGTH_SHORT).show();
+            new Thread(() -> {
+                try {
+                    for (int i = 0; i < items.length; i++) {
+                        if (!checked[i]) continue;
+                        if ("deploy_configs".equals(items[i][2])) {
+                            NuvioSetup.deployConfigs(ctx);
+                        } else {
+                            NuvioSetup.addAddon(ctx, items[i][2]);
+                        }
+                    }
+                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                        Toast.makeText(ctx, "Nuvio eklenti kurulumu tamamlandı.", Toast.LENGTH_SHORT).show();
+                    });
+                } catch (Throwable t) {
+                    android.util.Log.w("CineTvNuvio", "addon install error: " + t);
+                }
+            }, "nuvio-addon-installer").start();
+        }));
+
+        View spacer = new View(ctx);
+        buttons.addView(spacer, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+
+        buttons.addView(Controls.button(ctx, "Şimdi Değil", v -> {
+            Prefs.get(ctx).edit().putBoolean("nuvio_update_prompt_v1_0_0_9b", true).apply();
+            host.back();
+        }));
+
+        root.addView(buttons);
         return scroll;
     }
 

@@ -88,7 +88,7 @@ public final class NuvioSetup {
         }
     }
 
-    /** Automatically syncs curated addons and configurations into Nuvio for both new and updating viewers. */
+    /** Automatically syncs curated addons and configurations into Nuvio for fresh installs or forced updates. */
     public static void syncAddonsAndConfigs(Context ctx, boolean force) {
         final Context app = ctx.getApplicationContext();
         if (!force && Prefs.get(app).getBoolean(SYNC_KEY, false)) return;
@@ -111,12 +111,11 @@ public final class NuvioSetup {
     public static boolean installNuvio(Context ctx, boolean force) {
         final Context app = ctx.getApplicationContext();
         if (!force && Prefs.get(app).getBoolean(DONE, false)) {
-            syncAddonsAndConfigs(app, false);
             return true;
         }
         if (AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) {
             Prefs.get(app).edit().putBoolean(DONE, true).apply();
-            syncAddonsAndConfigs(app, force);
+            if (force) syncAddonsAndConfigs(app, true);
             return true;
         }
         try {
@@ -249,7 +248,10 @@ public final class NuvioSetup {
         }
     }
 
-    private static void addAddon(Context app, String manifest) throws InterruptedException {
+    /**
+     * Installs or updates a Nuvio addon through its stremio:// intent.
+     */
+    public static void addAddon(Context app, String manifest) throws InterruptedException {
         AppLauncher.start(app, new Intent(Intent.ACTION_VIEW, Uri.parse("stremio://" + manifest))
                 .setPackage(AppLauncher.NUVIO).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         Thread.sleep(4500);

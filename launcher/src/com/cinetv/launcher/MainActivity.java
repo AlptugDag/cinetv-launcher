@@ -301,6 +301,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 }
             }
         }, 300);
+        checkNuvioUpdatePrompt();
     }
 
     private static boolean inFront;
@@ -1147,6 +1148,22 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             return false;
         });
         container.requestFocus();
+    }
+
+    private void checkNuvioUpdatePrompt() {
+        if (isFinishing() || home == null || home.modal == null || home.modal.isShowing()) return;
+        boolean nuvioInstalled = AppLauncher.isLaunchable(getPackageManager(), AppLauncher.NUVIO);
+        if (!nuvioInstalled) return;
+
+        final String promptKey = "nuvio_update_prompt_v1_0_0_9b";
+        boolean alreadyPrompted = Prefs.get(this).getBoolean(promptKey, false);
+        if (alreadyPrompted) return;
+
+        handler.postDelayed(() -> {
+            if (!isFinishing() && home != null && !home.modal.isShowing() && home.screensaver.getVisibility() != View.VISIBLE) {
+                Panels.nuvioUpdateAddons(this, home.modal);
+            }
+        }, 3000L);
     }
 
     private void checkSpecialDayCelebration() {
