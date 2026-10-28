@@ -247,6 +247,9 @@ if [ "$DEBLOAT" = 1 ]; then
     case "$BRAND" in arcelik|beko|grundig) bash "$DIR/scripts/debloat_arcelik_beko.sh" ;; *) bash "$DIR/scripts/debloat_universal.sh" ;; esac
 fi
 
+bold "Optimizing RAM & Virtual Memory"
+bash "$DIR/scripts/optimize_ram.sh" || warn "RAM optimization completed with non-fatal warnings"
+
 if [ -n "$PROFILE" ]; then
     bold "Setting the TV up for you"
     python3 "$DIR/scripts/personalize.py" --profile "$PROFILE" --out .

@@ -40,43 +40,29 @@ GENRES_NO=$(ask "Genres to hide (comma list)" "")
 COUNTRIES_YES=$(ask "Favourite countries (comma list, empty = any)" "")
 COUNTRIES_NO=$(ask "Countries to hide (comma list)" "")
 
-# Torrentio: languages first, highest quality first, excluded qualities filtered out.
-LANGS="$CONTENT_LANG"
-[ "$CONTENT_LANG" = "english" ] || LANGS="$CONTENT_LANG,english"
-FILTER="$NEVER_QUAL"
-case "$QUALITY" in 1080p) FILTER="$FILTER,4k,brremux" ;; 720p) FILTER="$FILTER,4k,brremux,1080p" ;; esac
-TORRENTIO="torrentio.strem.fun/sort=qualitysize|language=$LANGS|qualityfilter=$FILTER/manifest.json"
-
 install_addon() { # install_addon NAME HOST/PATH/manifest.json
-    # Single quotes for the TV's shell: Torrentio options contain "|".
     adb shell "am start -a android.intent.action.VIEW -d 'stremio://$2' com.nuvio.tv" >/dev/null 2>&1
     echo "  ✓ $1"
     sleep 4
 }
 
-echo "Installing addons in Nuvio"
-install_addon "Torrentio ($LANGS · up to $QUALITY)" "$TORRENTIO"
+echo "Installing curated addons in Nuvio"
 install_addon "TR Altyazı" "tr-altyazi.altyazi.workers.dev/manifest.json"
-if [ "$DEFAULTS" = "tr" ]; then
-    install_addon "Xperience" "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE"
-    install_addon "Netflix Catalog" "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D"
-    install_addon "AIOStreams Nightly" "aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/eyJpIjoiWXlHVnFaUWlDSUFQeXlDWlF3RXNXZz09IiwiZSI6ImJKclJJRWpwRyttbFk5NXE3Ym42UG95TmxxN2xmZktRaXlMclBORFpzOVU9IiwidCI6ImEifQ/manifest.json"
-    install_addon "Anthology" "falsisdev.github.io/anthology/stremio"
-    if [ -f "$(dirname "$0")/assets/aiometadata-config.json" ]; then
-        adb push "$(dirname "$0")/assets/aiometadata-config.json" /sdcard/Download/aiometadata-config-2026-10-27.json >/dev/null 2>&1 || true
-        adb push "$(dirname "$0")/assets/aiometadata-config.json" /sdcard/Download/aiometadata-config.json >/dev/null 2>&1 || true
-        adb shell "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/aiometadata-config-2026-10-27.json" >/dev/null 2>&1 || true
+install_addon "Anthology" "falsisdev.github.io/anthology/stremio/manifest.json"
+install_addon "Netflix Catalog" "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json"
+install_addon "Xperience" "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json"
+install_addon "AIOStreams Nightly" "aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/eyJpIjoiWXlHVnFaUWlDSUFQeXlDWlF3RXNXZz09IiwiZSI6ImJKclJJRWpwRyttbFk5NXE3Ym42UG95TmxxN2xmZktRaXlMclBORFpzOVU9IiwidCI6ImEifQ/manifest.json"
+
+echo "Deploying AIOStreams, Xperience and AIOMetadata configs to /sdcard/Download/"
+ASSETS_DIR="$(dirname "$0")/assets"
+for cfg in "aiostreams-config-2026-10-28.21-05-36.json" "aiostreams-config.json" \
+           "xperience-kategori-setup-profile.json" "xperience-profile.json" \
+           "aiometadata-config-2026-10-28.json" "aiometadata-config.json"; do
+    if [ -f "$ASSETS_DIR/$cfg" ]; then
+        adb push "$ASSETS_DIR/$cfg" "/sdcard/Download/$cfg" >/dev/null 2>&1 || true
+        adb shell "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/$cfg" >/dev/null 2>&1 || true
     fi
-else
-    for name in AIOMetadata Xperience "Kaptain's Collection"; do
-        URL=""
-        if [ -z "$DEFAULTS" ] && [ -t 0 ]; then
-            case "$name" in AIOMetadata) hint=" (create it at https://aiometadata.elfhosted.com/configure)" ;; *) hint="" ;; esac
-            read -r -p "  Paste the $name manifest URL$hint, or Enter to skip: " URL
-        fi
-        if [ -n "$URL" ]; then install_addon "$name" "${URL#*://}"; else echo "  - $name skipped"; fi
-    done
-fi
+done
 
 cat > nuvio-preferences.json <<EOF
 {

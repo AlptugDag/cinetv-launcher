@@ -348,6 +348,14 @@ public class CinemaScreensaverView extends View {
         c.drawText(timeFmt.format(d), cx, clockY, clock);
         date.setTextSize(h * 0.019f);
         c.drawText(dateFmt.format(d).toUpperCase(Locale.getDefault()), cx, clockY + h * 0.04f, date);
+
+        com.cinetv.launcher.service.SpecialDay sDay = com.cinetv.launcher.service.SpecialDay.getToday();
+        if (sDay != null) {
+            android.graphics.Paint sPaint = new android.graphics.Paint(date);
+            sPaint.setTextSize(h * 0.021f);
+            sPaint.setColor(sDay.isMourning ? Color.parseColor("#CBD5E1") : Color.parseColor("#FCA5A5"));
+            c.drawText(sDay.badge + "  " + sDay.title, cx, clockY + h * 0.082f, sPaint);
+        }
     }
 
     private static float easeInOut(float x) {

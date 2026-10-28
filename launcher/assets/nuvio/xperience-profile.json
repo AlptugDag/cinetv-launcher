@@ -1,0 +1,364 @@
+{
+  "exportType": "xperienceProfile",
+  "exportVersion": 1,
+  "name": "Kategori Setup",
+  "config": {
+    "language": "tr",
+    "fallback_language": "tr",
+    "timezone": "",
+    "release_delay_hours": 0,
+    "cast_limit": 0,
+    "series_metadata_source": "tvdb",
+    "anime_metadata_source": "kitsu",
+    "anime_episode_numbering": "absolute",
+    "anime_stream_id_source": "imdb",
+    "anime_filler_marking": "off",
+    "anime_title_language": "default",
+    "scrobble_completion": "auto",
+    "api_keys": {
+      "mdblist": "",
+      "tmdb": ""
+    },
+    "poster_providers": {
+      "order": [
+        "rpdb",
+        "top_posters",
+        "better_posters",
+        "fanart",
+        "omdb",
+        "easy_ratings",
+        "xrdb",
+        "posters_plus",
+        "custom_url"
+      ],
+      "rated": false,
+      "watch_overlay": false,
+      "episode_thumbnails": true,
+      "english_art": false
+    },
+    "home_rows": [
+      {
+        "catalog_id": "recs_movies_for_you",
+        "enabled": true,
+        "position": 0
+      },
+      {
+        "catalog_id": "trending_movies",
+        "enabled": true,
+        "position": 1
+      },
+      {
+        "catalog_id": "snoak_top100_movies",
+        "enabled": true,
+        "position": 2
+      },
+      {
+        "catalog_id": "now_playing_movies",
+        "enabled": true,
+        "position": 3
+      },
+      {
+        "catalog_id": "upcoming_movies",
+        "enabled": true,
+        "position": 4
+      },
+      {
+        "catalog_id": "awards_imdb_top250_movies",
+        "enabled": true,
+        "position": 5
+      },
+      {
+        "catalog_id": "awards_letterboxd_top250",
+        "enabled": true,
+        "position": 6
+      },
+      {
+        "catalog_id": "awards_criterion",
+        "enabled": true,
+        "position": 7
+      },
+      {
+        "catalog_id": "awards_oscars_winners",
+        "enabled": true,
+        "position": 8
+      },
+      {
+        "catalog_id": "studio_a24_movies",
+        "enabled": true,
+        "position": 9
+      },
+      {
+        "catalog_id": "studio_marvel_movies",
+        "enabled": true,
+        "position": 10
+      },
+      {
+        "catalog_id": "themed_mindfuck",
+        "enabled": true,
+        "position": 11
+      },
+      {
+        "catalog_id": "genre_action_movies",
+        "enabled": true,
+        "position": 12
+      },
+      {
+        "catalog_id": "genre_scifi_movies",
+        "enabled": true,
+        "position": 13
+      }
+    ],
+    "imported_catalogs": [],
+    "merged_catalogs": [],
+    "catalog_copies": [],
+    "custom_lists": [],
+    "catalog_name_overrides": {
+      "discover_all_movies": "Filmler",
+      "discover_all_series": "Diziler"
+    },
+    "custom_types": [],
+    "catalog_type_overrides": {},
+    "catalog_overrides": {
+      "trending_movies": {
+        "shuffle": "daily"
+      },
+      "genre_scifi_movies": {
+        "shuffle": "daily"
+      },
+      "genre_action_movies": {
+        "shuffle": "daily"
+      },
+      "snoak_top100_movies": {
+        "shuffle": "daily"
+      },
+      "studio_marvel_movies": {
+        "shuffle": "daily"
+      },
+      "awards_letterboxd_top250": {
+        "shuffle": "daily"
+      },
+      "awards_imdb_top250_movies": {
+        "shuffle": "daily"
+      }
+    },
+    "collections": [],
+    "exclude_categories": [
+      "anime",
+      "reality",
+      "kids",
+      "musical",
+      "news",
+      "horror",
+      "talk_show"
+    ],
+    "stream_bridge": {
+      "enabled": false,
+      "addons": [],
+      "auto_sources": [],
+      "debrid": [],
+      "upstream_keys": {},
+      "proxy": {
+        "enabled": false,
+        "backend": "mediaflow",
+        "url": "",
+        "credentials": ""
+      },
+      "merge_strategy": "concat",
+      "timeout_ms": 5000,
+      "preferences": {
+        "max_results": 20,
+        "cached_only": false,
+        "resolutions": [
+          "2160p",
+          "1440p",
+          "1080p",
+          "720p",
+          "480p",
+          "360p"
+        ],
+        "allow_unknown_resolution": true,
+        "max_per_resolution": 10,
+        "max_per_quality": 0,
+        "max_per_service": 0,
+        "excluded_qualities": [
+          "CAM",
+          "TS",
+          "SCR"
+        ],
+        "allow_unknown_quality": true,
+        "exclude_pre_digital": false,
+        "exclude_mismatched_titles": false,
+        "preferred_languages": [],
+        "excluded_languages": [],
+        "preferred_visual_tags": [],
+        "excluded_visual_tags": [],
+        "preferred_audio_tags": [],
+        "excluded_audio_tags": [],
+        "preferred_subtitle_tags": [],
+        "require_subtitle_tags": false,
+        "allow_unknown_subtitles": true,
+        "excluded_encodes": [],
+        "excluded_audio_channels": [],
+        "excluded_release_groups": [],
+        "excluded_keywords": [],
+        "min_seeders": 0,
+        "size_limits": {
+          "movie_min_gb": 0,
+          "movie_max_gb": 0,
+          "series_min_gb": 0,
+          "series_max_gb": 0
+        },
+        "sort": [
+          {
+            "key": "cached",
+            "direction": "desc"
+          },
+          {
+            "key": "resolution",
+            "direction": "desc"
+          },
+          {
+            "key": "size",
+            "direction": "desc"
+          }
+        ]
+      },
+      "formatter": {
+        "id": "xperience",
+        "custom": {
+          "name": "",
+          "description": ""
+        },
+        "overrides": {}
+      }
+    },
+    "subtitle_bridge": {
+      "enabled": false,
+      "addons": [],
+      "auto_sources": [],
+      "timeout_ms": 5000,
+      "preferences": {
+        "languages": [
+          "English"
+        ],
+        "max_results": 20,
+        "max_per_language": 8,
+        "hearing_impaired": "show",
+        "label": "smart",
+        "prefer_release_match": true,
+        "sort": [
+          {
+            "key": "releaseMatch",
+            "direction": "desc"
+          },
+          {
+            "key": "source",
+            "direction": "desc"
+          },
+          {
+            "key": "downloads",
+            "direction": "desc"
+          }
+        ]
+      }
+    },
+    "jellyfin": {
+      "enabled": false
+    },
+    "ai_recommendations": {
+      "enabled": false
+    },
+    "ai_catalogs": {},
+    "discover_catalogs": {},
+    "ai_search": {
+      "enabled": false
+    },
+    "search": {
+      "enabled": true,
+      "separate_anime": false,
+      "anime_only": false,
+      "separate_ai": true,
+      "separate_collections": true,
+      "min_votes": 0,
+      "sort_by": "relevance"
+    },
+    "discover_browse": {
+      "enabled": true
+    },
+    "discover_order": [],
+    "ai_provider": "gemini",
+    "filters": {
+      "exclude_unreleased": true,
+      "exclude_pre_digital": false,
+      "hide_adult_content": true,
+      "max_rating": "any",
+      "rating_country": "auto",
+      "origin_countries": [],
+      "exclude_origin_countries": [],
+      "exclude_watched": false,
+      "exclude_caught_up": false,
+      "default_quality": "any"
+    },
+    "home_order": [
+      {
+        "kind": "catalog",
+        "id": "recs_movies_for_you"
+      },
+      {
+        "kind": "catalog",
+        "id": "trending_movies"
+      },
+      {
+        "kind": "catalog",
+        "id": "snoak_top100_movies"
+      },
+      {
+        "kind": "catalog",
+        "id": "now_playing_movies"
+      },
+      {
+        "kind": "catalog",
+        "id": "upcoming_movies"
+      },
+      {
+        "kind": "catalog",
+        "id": "awards_imdb_top250_movies"
+      },
+      {
+        "kind": "catalog",
+        "id": "awards_letterboxd_top250"
+      },
+      {
+        "kind": "catalog",
+        "id": "awards_criterion"
+      },
+      {
+        "kind": "catalog",
+        "id": "awards_oscars_winners"
+      },
+      {
+        "kind": "catalog",
+        "id": "studio_a24_movies"
+      },
+      {
+        "kind": "catalog",
+        "id": "studio_marvel_movies"
+      },
+      {
+        "kind": "catalog",
+        "id": "themed_mindfuck"
+      },
+      {
+        "kind": "catalog",
+        "id": "genre_action_movies"
+      },
+      {
+        "kind": "catalog",
+        "id": "genre_scifi_movies"
+      }
+    ],
+    "home_dedupe": {
+      "enabled": false
+    }
+  }
+}

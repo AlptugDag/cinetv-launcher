@@ -33,22 +33,22 @@ public final class NuvioSetup {
     private static final String TAG = "CineTvNuvio";
     private static final String DONE = "nuvio_setup_done";
     private static final String PLAYER_DONE = "player_setup_done";
-    private static final String[] ADDONS = {
-            "opensubtitles-v3.strem.io/manifest.json",
-            "anime-kitsu.strem.fun/manifest.json",
-            "v3-channels.strem.io/manifest.json"};
-    private static final String[] TR_ADDONS = {
-            "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE",
-            "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json",
-            "aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/eyJpIjoiWXlHVnFaUWlDSUFQeXlDWlF3RXNXZz09IiwiZSI6ImJKclJJRWpwRyttbFk5NXE3Ym42UG95TmxxN2xmZktRaXlMclBORFpzOVU9IiwidCI6ImEifQ/manifest.json",
+    private static final String SYNC_KEY = "nuvio_sync_v1_0_0_9b";
+
+    public static final String[] CURATED_ADDONS = {
+            "tr-altyazi.altyazi.workers.dev/manifest.json",
             "falsisdev.github.io/anthology/stremio/manifest.json",
-            "tr-altyazi.altyazi.workers.dev/manifest.json"};
+            "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json",
+            "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json",
+            "aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/eyJpIjoiWXlHVnFaUWlDSUFQeXlDWlF3RXNXZz09IiwiZSI6ImJKclJJRWpwRyttbFk5NXE3Ym42UG95TmxxN2xmZktRaXlMclBORFpzOVU9IiwidCI6ImEifQ/manifest.json"
+    };
 
     private NuvioSetup() {}
 
     /** Off the main thread. */
     public static void runOnce(Context ctx) {
         installNuvio(ctx, false);
+        syncAddonsAndConfigs(ctx, false);
     }
 
     /**
@@ -59,11 +59,61 @@ public final class NuvioSetup {
         installPlayer(ctx, false);
     }
 
+    /** Deploys AIOStreams, Xperience and AIOMetadata configs to /sdcard/Download/ for instant Nuvio import. */
+    public static void deployConfigs(Context app) {
+        try {
+            File dl = new File("/sdcard/Download");
+            if (!dl.exists()) dl.mkdirs();
+            String[][] files = {
+                    {"nuvio/aiostreams-config-2026-10-28.21-05-36.json", "aiostreams-config-2026-10-28.21-05-36.json"},
+                    {"nuvio/aiostreams-config.json", "aiostreams-config.json"},
+                    {"nuvio/xperience-kategori-setup-profile.json", "xperience-kategori-setup-profile.json"},
+                    {"nuvio/xperience-profile.json", "xperience-profile.json"},
+                    {"nuvio/aiometadata-config-2026-10-28.json", "aiometadata-config-2026-10-28.json"},
+                    {"nuvio/aiometadata-config.json", "aiometadata-config.json"}
+            };
+            for (String[] pair : files) {
+                File target = new File(dl, pair[1]);
+                copyAsset(app, pair[0], target);
+                try {
+                    app.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(target)));
+                } catch (Throwable ignored) {
+                }
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "deployConfigs failed: " + t);
+        }
+    }
+
+    /** Automatically syncs curated addons and configurations into Nuvio for both new and updating viewers. */
+    public static void syncAddonsAndConfigs(Context ctx, boolean force) {
+        final Context app = ctx.getApplicationContext();
+        if (!force && Prefs.get(app).getBoolean(SYNC_KEY, false)) return;
+        if (!AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) return;
+
+        new Thread(() -> {
+            try {
+                deployConfigs(app);
+                for (String addon : CURATED_ADDONS) {
+                    addAddon(app, addon);
+                }
+                Prefs.get(app).edit().putBoolean(SYNC_KEY, true).apply();
+                Log.i(TAG, "Nuvio addons and configs successfully synchronized");
+            } catch (Throwable t) {
+                Log.w(TAG, "Nuvio addon sync failed: " + t);
+            }
+        }, "cinetv-nuvio-sync").start();
+    }
+
     public static boolean installNuvio(Context ctx, boolean force) {
         final Context app = ctx.getApplicationContext();
-        if (!force && Prefs.get(app).getBoolean(DONE, false)) return true;
+        if (!force && Prefs.get(app).getBoolean(DONE, false)) {
+            syncAddonsAndConfigs(app, false);
+            return true;
+        }
         if (AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) {
-            Prefs.get(app).edit().putBoolean(DONE, true).apply(); // already there: never touched
+            Prefs.get(app).edit().putBoolean(DONE, true).apply();
+            syncAddonsAndConfigs(app, force);
             return true;
         }
         try {
@@ -82,16 +132,14 @@ public final class NuvioSetup {
             for (int i = 0; i < 20 && !AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO); i++) Thread.sleep(1000);
             if (!AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) return false;
             Prefs.get(app).edit().putBoolean(DONE, true).apply();
-            boolean turkish = "tr".equals(Locale.getDefault().getLanguage());
-            for (String addon : ADDONS) addAddon(app, addon);
-            if (turkish) {
-                for (String trAddon : TR_ADDONS) addAddon(app, trAddon);
-                copyAsset(app, "nuvio/aiometadata-config.json", new File("/sdcard/Download/aiometadata-config-2026-10-27.json"));
-                copyAsset(app, "nuvio/aiometadata-config.json", new File("/sdcard/Download/aiometadata-config.json"));
-            }
+
+            deployConfigs(app);
+            for (String addon : CURATED_ADDONS) addAddon(app, addon);
+            Prefs.get(app).edit().putBoolean(SYNC_KEY, true).apply();
+
             // back to Home when the addons are in
             AppLauncher.start(app, new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            Log.i(TAG, "Nuvio installed with its addons");
+            Log.i(TAG, "Nuvio installed with its curated addons");
             cleanTemporaryFiles(app);
             return true;
         } catch (Throwable t) {

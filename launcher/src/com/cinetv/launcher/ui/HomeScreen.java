@@ -21,6 +21,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.Locale;
 
@@ -75,6 +76,8 @@ public class HomeScreen {
     private final FrameLayout splash;
     public final CinemaScreensaverView screensaverView;
     public final TextView clock, date, weather, shelfLabel, caption, moveHint;
+    public final FrameLayout specialBadge;
+    public final TextView specialBadgeText;
     public final EditText search;
     public final GlassKeyboard keyboard;
     public final VoiceOverlay voice;
@@ -154,6 +157,35 @@ public class HomeScreen {
         sub.addView(date);
         sub.addView(weather);
         timeCol.addView(sub);
+
+        specialBadge = new FrameLayout(ctx);
+        specialBadge.setFocusable(true);
+        specialBadge.setClickable(true);
+        specialBadgeText = UiKit.bold(ctx, 13, Color.WHITE);
+        specialBadgeText.setGravity(Gravity.CENTER_VERTICAL);
+        specialBadgeText.setPadding(UiKit.px(12), UiKit.px(4), UiKit.px(14), UiKit.px(4));
+        specialBadge.addView(specialBadgeText);
+        specialBadge.setVisibility(View.GONE);
+        LinearLayout.LayoutParams sblp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        sblp.topMargin = UiKit.px(4);
+        sblp.bottomMargin = UiKit.px(3);
+        timeCol.addView(specialBadge, sblp);
+
+        specialBadge.setOnFocusChangeListener((v, has) -> {
+            UiKit.lift(v, has, 1.08f, 160);
+            if (has && listener != null) {
+                com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.getToday();
+                listener.onFocusLight(v, day != null ? day.accent : Color.parseColor("#E30A17"));
+            }
+        });
+        specialBadge.setOnClickListener(v -> {
+            com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.getToday();
+            if (day != null) {
+                Toast.makeText(ctx, day.title + "\n" + day.subtitle, Toast.LENGTH_LONG).show();
+            }
+        });
+
         signed = UiKit.bold(ctx, 15, UiKit.INK_DIM);
         signed.setLetterSpacing(0.04f);
         CharSequence credit = Brand.signedWordmark(UiKit.INK_FAINT);
@@ -801,6 +833,34 @@ public class HomeScreen {
      */
     public void showAiCard(CharSequence title, CharSequence query, CharSequence answer) {
         showBubble(answer, false, 9000);
+        updateSpecialDay();
+    }
+
+    public void updateSpecialDay() {
+        com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.getToday();
+        if (day == null) {
+            specialBadge.setVisibility(View.GONE);
+            return;
+        }
+        specialBadge.setVisibility(View.VISIBLE);
+        specialBadgeText.setText(day.badge + "  " + day.title);
+
+        android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
+        gd.setCornerRadius(UiKit.pxf(14));
+        if (day.isMourning) {
+            gd.setColor(Color.argb(210, 24, 24, 27));
+            gd.setStroke(UiKit.px(1), Color.argb(160, 156, 163, 175));
+            specialBadgeText.setTextColor(Color.parseColor("#F3F4F6"));
+            // Solemn tribute lighting
+            clock.setTextColor(Color.parseColor("#E5E7EB"));
+            clock.setShadowLayer(UiKit.pxf(6), 0, UiKit.pxf(2), Color.argb(180, 0, 0, 0));
+            date.setTextColor(Color.parseColor("#9CA3AF"));
+        } else {
+            gd.setColor(Color.argb(190, 185, 28, 28));
+            gd.setStroke(UiKit.px(1), Color.argb(220, 255, 255, 255));
+            specialBadgeText.setTextColor(Color.WHITE);
+        }
+        specialBadge.setBackground(gd);
     }
 
     public void showThinking() {

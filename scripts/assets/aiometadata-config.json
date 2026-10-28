@@ -1,6 +1,6 @@
 {
-  "version": "3.7.0",
-  "exportedAt": "2026-10-27T12:03:09.928Z",
+  "version": "3.8.1",
+  "exportedAt": "2026-10-28T18:10:20.626Z",
   "config": {
     "language": "tr-TR",
     "includeAdult": false,
@@ -1276,15 +1276,15 @@
     "streaming": [
       "cru"
     ],
-    "lastModified": 1793097908422,
-    "configVersion": 1793097908422,
+    "lastModified": 1793102572732,
+    "configVersion": 1793102572733,
     "displayTypeOverrides": {
       "movie": "Film",
       "series": "Dizi"
     },
     "mdblistWatchTracking": true,
     "hideUnreleasedDigitalSearch": true,
-    "configHash": "bebeabb49901bb86",
+    "configHash": "dc31f5f91ed7243c",
     "catalogSetupComplete": true,
     "timezone": "Europe/Istanbul",
     "publicmetadbWatchTracking": false,

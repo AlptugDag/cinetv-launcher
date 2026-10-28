@@ -1,13 +1,20 @@
 package com.cinetv.launcher.ui;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.media.MediaCodecInfo;
+import android.media.MediaCodecList;
+import android.os.Build;
+import android.os.Environment;
 import android.text.InputType;
+import android.view.Display;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -16,6 +23,10 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.cinetv.launcher.HomeGuard;
 import com.cinetv.launcher.R;
@@ -239,6 +250,9 @@ public final class Panels {
                 v -> host.push(() -> buildBenchmark(ctx, host))));
         c4.addView(Controls.tile(ctx, ctx.getString(R.string.remote_keys), ctx.getString(R.string.remote_keys_hint), false,
                 v -> host.push(() -> buildKeyCapture(ctx, host, a))));
+        c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "TV Inspector (Donanım & Panel)" : "TV Inspector (Hardware & Panel)",
+                "tr".equals(Locale.getDefault().getLanguage()) ? "Ekran, HDR, ses çözücüleri, bellek ve canlı tuşlar" : "Display, HDR, audio codecs, memory & live keys", false,
+                v -> host.push(() -> buildTvInspector(ctx, host))));
         String curVer = AppUpdater.currentVersion(ctx);
         c4.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Sürüm & Güncelleme" : "Version & Updates",
                 "v" + curVer + ("tr".equals(Locale.getDefault().getLanguage()) ? " · Güncellemeleri Denetle" : " · Check for Updates"), false, v -> {
@@ -353,18 +367,37 @@ public final class Panels {
 
     // ---- Inputs ------------------------------------------------------------------------------------
 
-    /** The TV's inputs by the names devices give themselves, then the TV's own input menu. */
+    /** The TV's inputs by the names devices give themselves, folding empty ports (CleanYourTV standard). */
     public static void inputs(final Context ctx, final ModalHost host) {
+        inputsView(ctx, host, false);
+    }
+
+    private static void inputsView(final Context ctx, final ModalHost host, final boolean showAll) {
         host.push(() -> {
             LinearLayout root = new LinearLayout(ctx);
             root.setOrientation(LinearLayout.VERTICAL);
             root.addView(Controls.header(ctx, ctx.getString(R.string.inputs)));
-            for (final com.cinetv.launcher.device.TvSources.Source s : com.cinetv.launcher.device.TvSources.list(ctx)) {
+            List<com.cinetv.launcher.device.TvSources.Source> all = com.cinetv.launcher.device.TvSources.list(ctx);
+            List<com.cinetv.launcher.device.TvSources.Source> connected = new ArrayList<>();
+            List<com.cinetv.launcher.device.TvSources.Source> empty = new ArrayList<>();
+            for (com.cinetv.launcher.device.TvSources.Source s : all) {
+                if (s.connected || s.inputId == null) connected.add(s);
+                else empty.add(s);
+            }
+            List<com.cinetv.launcher.device.TvSources.Source> toShow = (showAll || empty.isEmpty()) ? all : connected;
+            for (final com.cinetv.launcher.device.TvSources.Source s : toShow) {
                 String state = s.detail != null ? s.detail : null;
                 if (s.connected && s.inputId != null) state = (state != null ? state + " · " : "") + ctx.getString(R.string.input_connected);
                 root.addView(Controls.tile(ctx, s.name, state, s.connected, v -> {
                     host.close();
                     com.cinetv.launcher.device.TvSources.open(ctx, s);
+                }));
+            }
+            if (!showAll && !empty.isEmpty()) {
+                boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+                root.addView(Controls.tile(ctx, tr ? "Diğer Girişler (" + empty.size() + " Boş Port)" : "Other Inputs (" + empty.size() + " Empty)",
+                        tr ? "Boşta olan portları göster" : "Show unconnected ports", false, v -> {
+                    host.replace(() -> buildInputsRoot(ctx, host, true));
                 }));
             }
             root.addView(Controls.tile(ctx, ctx.getString(R.string.input_menu), null, false, v -> {
@@ -374,6 +407,34 @@ public final class Panels {
             root.setLayoutParams(new LinearLayout.LayoutParams(UiKit.px(640), ViewGroup.LayoutParams.WRAP_CONTENT));
             return root;
         });
+    }
+
+    private static View buildInputsRoot(final Context ctx, final ModalHost host, final boolean showAll) {
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.addView(Controls.header(ctx, ctx.getString(R.string.inputs)));
+        List<com.cinetv.launcher.device.TvSources.Source> all = com.cinetv.launcher.device.TvSources.list(ctx);
+        List<com.cinetv.launcher.device.TvSources.Source> connected = new ArrayList<>();
+        List<com.cinetv.launcher.device.TvSources.Source> empty = new ArrayList<>();
+        for (com.cinetv.launcher.device.TvSources.Source s : all) {
+            if (s.connected || s.inputId == null) connected.add(s);
+            else empty.add(s);
+        }
+        List<com.cinetv.launcher.device.TvSources.Source> toShow = (showAll || empty.isEmpty()) ? all : connected;
+        for (final com.cinetv.launcher.device.TvSources.Source s : toShow) {
+            String state = s.detail != null ? s.detail : null;
+            if (s.connected && s.inputId != null) state = (state != null ? state + " · " : "") + ctx.getString(R.string.input_connected);
+            root.addView(Controls.tile(ctx, s.name, state, s.connected, v -> {
+                host.close();
+                com.cinetv.launcher.device.TvSources.open(ctx, s);
+            }));
+        }
+        root.addView(Controls.tile(ctx, ctx.getString(R.string.input_menu), null, false, v -> {
+            host.close();
+            AppLauncher.openTvInputs(ctx);
+        }));
+        root.setLayoutParams(new LinearLayout.LayoutParams(UiKit.px(640), ViewGroup.LayoutParams.WRAP_CONTENT));
+        return root;
     }
 
     // ---- Sleep timer and quiet hours ----------------------------------------------------------
@@ -922,7 +983,8 @@ public final class Panels {
                         : (turkish ? "Yüklü değil (dokunarak arka planda indirin ve kurun)" : "Not installed (tap to download & install)"),
                 nuvioOk, v -> {
                     if (nuvioOk) {
-                        AppLauncher.launch(ctx, AppLauncher.NUVIO);
+                        Toast.makeText(ctx, turkish ? "Nuvio eklentileri ve profilleri eşitleniyor..." : "Syncing Nuvio addons & configs...", Toast.LENGTH_SHORT).show();
+                        NuvioSetup.syncAddonsAndConfigs(ctx, true);
                     } else {
                         Toast.makeText(ctx, turkish ? "Nuvio ve eklentileri indiriliyor..." : "Installing Nuvio and addons...", Toast.LENGTH_SHORT).show();
                         new Thread(() -> {
@@ -1005,5 +1067,184 @@ public final class Panels {
             if (list.getChildCount() > 0) list.getChildAt(0).requestFocus();
         });
         return root;
+    }
+
+    // ---- TV Inspector (Hardware, Display, Decoders & Remote Key Inspector) -------------------------
+
+    private static View buildTvInspector(final Context ctx, final ModalHost host) {
+        final ScrollView scroll = new ScrollView(ctx);
+        final LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(24), UiKit.px(16), UiKit.px(24), UiKit.px(24));
+        scroll.addView(root, new ViewGroup.LayoutParams(UiKit.px(980), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        TextView title = UiKit.bold(ctx, 32, UiKit.INK);
+        title.setText(tr ? "TV Inspector · Donanım & Panel Bilgisi" : "TV Inspector · Hardware & Panel Diagnostics");
+        root.addView(title);
+
+        TextView intro = UiKit.label(ctx, 18, UiKit.INK_DIM);
+        intro.setText(tr ? "CleanYourTV v3.1 standardında ekran, çözücü yetenekleri, bellek ve canlı kumanda dedektörü"
+                         : "CleanYourTV v3.1 standard display, decoders, memory & remote key diagnostics");
+        intro.setPadding(0, UiKit.px(8), 0, UiKit.px(20));
+        root.addView(intro);
+
+        // 1. Ekran & Panel
+        root.addView(inspectorHeader(ctx, tr ? "Ekran & Panel Yetenekleri" : "Display & Panel"));
+        WindowManager wm = (WindowManager) ctx.getSystemService(Context.WINDOW_SERVICE);
+        Display d = wm != null ? wm.getDefaultDisplay() : null;
+        StringBuilder dispSb = new StringBuilder();
+        if (d != null) {
+            android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+            d.getRealMetrics(dm);
+            float refresh = d.getRefreshRate();
+            dispSb.append(tr ? "Çözünürlük: " : "Resolution: ").append(dm.widthPixels).append(" × ").append(dm.heightPixels);
+            if (dm.widthPixels >= 3840 || dm.heightPixels >= 2160) dispSb.append(" (4K Ultra HD)");
+            else if (dm.widthPixels >= 1920 || dm.heightPixels >= 1080) dispSb.append(" (Full HD)");
+            dispSb.append("\nYenileme Hızı: ").append(String.format(Locale.US, "%.1f Hz", refresh));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                Display.HdrCapabilities hdr = d.getHdrCapabilities();
+                if (hdr != null && hdr.getSupportedHdrTypes() != null && hdr.getSupportedHdrTypes().length > 0) {
+                    List<String> hdrs = new ArrayList<>();
+                    for (int t : hdr.getSupportedHdrTypes()) {
+                        if (t == Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION) hdrs.add("Dolby Vision");
+                        else if (t == Display.HdrCapabilities.HDR_TYPE_HDR10) hdrs.add("HDR10");
+                        else if (t == Display.HdrCapabilities.HDR_TYPE_HLG) hdrs.add("HLG");
+                        else if (t == 4) hdrs.add("HDR10+");
+                    }
+                    dispSb.append(tr ? "\nHDR Formatları: " : "\nHDR Support: ").append(android.text.TextUtils.join(", ", hdrs));
+                } else {
+                    dispSb.append(tr ? "\nHDR Desteği: SDR Panel" : "\nHDR Support: SDR Panel");
+                }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                dispSb.append(tr ? "\nGeniş Renk Gamı (WCG): " : "\nWide Color Gamut (WCG): ").append(d.isWideColorGamut() ? (tr ? "Destekleniyor" : "Supported") : (tr ? "Desteklenmiyor" : "Unsupported"));
+            }
+        }
+        root.addView(inspectorCard(ctx, dispSb.toString()));
+
+        // 2. Bellek & Depolama
+        root.addView(inspectorHeader(ctx, tr ? "Bellek & Depolama" : "Memory & Storage"));
+        ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager.MemoryInfo mem = new ActivityManager.MemoryInfo();
+        if (am != null) am.getMemoryInfo(mem);
+        StringBuilder memSb = new StringBuilder();
+        long totalMb = mem.totalMem / (1024 * 1024);
+        long availMb = mem.availMem / (1024 * 1024);
+        memSb.append(tr ? "Toplam RAM: " : "Total RAM: ").append(totalMb).append(" MB");
+        memSb.append(tr ? "\nKullanılabilir RAM: " : "\nAvailable RAM: ").append(availMb).append(" MB");
+        memSb.append(tr ? "\nDüşük Bellek Cihazı: " : "\nLow RAM Device: ").append(am != null && am.isLowRamDevice() ? (tr ? "Evet" : "Yes") : (tr ? "Hayır" : "No"));
+        memSb.append(tr ? "\nZ-RAM Durumu: " : "\nZ-RAM Status: ").append(MemoryOptimizer.getZramInfo(ctx));
+        File dataDir = Environment.getDataDirectory();
+        long freeGb = dataDir.getFreeSpace() / (1024 * 1024 * 1024);
+        long totalGb = dataDir.getTotalSpace() / (1024 * 1024 * 1024);
+        memSb.append(tr ? "\nDahili Depolama: " : "\nInternal Storage: ").append(freeGb).append(" GB ").append(tr ? "boş / " : "free / ").append(totalGb).append(" GB");
+        root.addView(inspectorCard(ctx, memSb.toString()));
+
+        // 3. Medya Çözücüler (Video & Audio Decoders)
+        root.addView(inspectorHeader(ctx, tr ? "Donanımsal Medya Çözücüler" : "Hardware Media Decoders"));
+        String[][] probeCodecs = {
+                {"video/av01", "AV1 (AOMedia)"},
+                {"video/hevc", "HEVC / H.265 (4K/8K HDR)"},
+                {"video/x-vnd.on2.vp9", "VP9 (YouTube 4K)"},
+                {"video/avc", "AVC / H.264"},
+                {"video/dolby-vision", "Dolby Vision Video"},
+                {"audio/eac3-joc", "Dolby Atmos (E-AC3 JOC)"},
+                {"audio/eac3", "Dolby Digital Plus (E-AC3)"},
+                {"audio/ac3", "Dolby Digital (AC-3)"},
+                {"audio/vnd.dts", "DTS Audio"},
+                {"audio/vnd.dts.hd", "DTS-HD Master Audio"},
+                {"audio/true-hd", "Dolby TrueHD"}
+        };
+        StringBuilder codecSb = new StringBuilder();
+        try {
+            MediaCodecList mcl = new MediaCodecList(MediaCodecList.ALL_CODECS);
+            MediaCodecInfo[] infos = mcl.getCodecInfos();
+            for (String[] pair : probeCodecs) {
+                boolean supported = false;
+                for (MediaCodecInfo info : infos) {
+                    if (info.isEncoder()) continue;
+                    for (String type : info.getSupportedTypes()) {
+                        if (type.equalsIgnoreCase(pair[0])) {
+                            supported = true;
+                            break;
+                        }
+                    }
+                    if (supported) break;
+                }
+                codecSb.append(supported ? "✓ " : "✗ ").append(pair[1])
+                        .append(supported ? (tr ? "  Destekleniyor\n" : "  Supported\n") : (tr ? "  Desteklenmiyor\n" : "  Unsupported\n"));
+            }
+        } catch (Throwable t) {
+            codecSb.append(t.getMessage());
+        }
+        root.addView(inspectorCard(ctx, codecSb.toString().trim()));
+
+        // 4. Sistem & Cihaz
+        root.addView(inspectorHeader(ctx, tr ? "Sistem & Anakart" : "System & Board"));
+        StringBuilder sysSb = new StringBuilder();
+        sysSb.append(tr ? "Cihaz: " : "Device: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL);
+        sysSb.append(tr ? "\nAnakart: " : "\nBoard: ").append(Build.BOARD).append(" (").append(Build.HARDWARE).append(")");
+        sysSb.append(tr ? "\nAndroid TV: " : "\nAndroid TV: ").append("Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            sysSb.append(tr ? "\nGüvenlik Yaması: " : "\nSecurity Patch: ").append(Build.VERSION.SECURITY_PATCH);
+        }
+        sysSb.append(tr ? "\nİşlemci Mimarisi: " : "\nCPU ABI: ").append(Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "bilinmiyor");
+        root.addView(inspectorCard(ctx, sysSb.toString()));
+
+        // 5. Canlı Kumanda Tuş Dedektörü
+        root.addView(inspectorHeader(ctx, tr ? "Canlı Kumanda Tuş Dedektörü" : "Live Remote Key Inspector"));
+        final FrameLayout keyBox = new FrameLayout(ctx);
+        keyBox.setFocusable(true);
+        keyBox.setClickable(true);
+        final TextView keyResult = UiKit.bold(ctx, 20, Color.parseColor("#38BDF8"));
+        keyResult.setText(tr ? "Kumandanızdan bir tuşa basın...\n(Tuş adı, KeyCode, ScanCode ve cihaz bilgisi anlık gösterilir)"
+                             : "Press any remote button...\n(Key name, KeyCode, ScanCode and device info appear live)");
+        keyResult.setLineSpacing(UiKit.pxf(6), 1.2f);
+        keyResult.setPadding(UiKit.px(20), UiKit.px(16), UiKit.px(20), UiKit.px(16));
+        keyBox.addView(keyResult);
+        keyBox.setBackground(Glass.panel(keyBox, 20));
+        keyBox.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+            String kName = KeyEvent.keyCodeToString(keyCode);
+            int sc = event.getScanCode();
+            String dev = event.getDevice() != null ? event.getDevice().getName() : "Remote";
+            keyResult.setText(String.format(Locale.getDefault(),
+                    (tr ? "Tuş: %s\nKeyCode: %d | ScanCode: %d\nCihaz: %s"
+                        : "Key: %s\nKeyCode: %d | ScanCode: %d\nDevice: %s"),
+                    kName, keyCode, sc, dev));
+            return !HardwareKeys.isNavigation(keyCode);
+        });
+        root.addView(keyBox);
+
+        // Kapat Butonu
+        final TextView close = Controls.button(ctx, tr ? "Kapat" : "Close", v -> host.close());
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(UiKit.px(320), ViewGroup.LayoutParams.WRAP_CONTENT);
+        clp.topMargin = UiKit.px(24);
+        root.addView(close, clp);
+
+        root.post(keyBox::requestFocus);
+        return scroll;
+    }
+
+    private static TextView inspectorHeader(Context ctx, String text) {
+        TextView tv = UiKit.bold(ctx, 22, UiKit.INK);
+        tv.setText(text);
+        tv.setPadding(0, UiKit.px(16), 0, UiKit.px(8));
+        return tv;
+    }
+
+    private static View inspectorCard(Context ctx, String text) {
+        FrameLayout fl = new FrameLayout(ctx);
+        fl.setBackground(Glass.panel(fl, 18));
+        fl.setPadding(UiKit.px(20), UiKit.px(14), UiKit.px(20), UiKit.px(14));
+        TextView tv = UiKit.label(ctx, 18, UiKit.INK_DIM);
+        tv.setText(text);
+        tv.setLineSpacing(UiKit.pxf(5), 1.15f);
+        fl.addView(tv);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.bottomMargin = UiKit.px(10);
+        fl.setLayoutParams(lp);
+        return fl;
     }
 }

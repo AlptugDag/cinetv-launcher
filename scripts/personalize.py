@@ -71,16 +71,19 @@ EMOJI = {"films": "🎬", "series": "📺", "anime": "🌸", "sports": "🏆", "
          "9917,209476": "🥊", "579": "🏈", "1480": "⚾", "5605": "🏐", "180491": "🚴", "2702": "⛳", "316": "♟️"}
 
 ADDONS = {
-    "torrentio": "torrentio.strem.fun/{config}manifest.json",
-    "opensubtitles": "opensubtitles-v3.strem.io/manifest.json",
     "tr_altyazi": "tr-altyazi.altyazi.workers.dev/manifest.json",
-    "anime_kitsu": "anime-kitsu.strem.fun/manifest.json",
-    "youtube": "v3-channels.strem.io/manifest.json",
-    "top10": "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/{config}/manifest.json",
-    "channels": "263f84288ddb-nexotv.baby-beamup.club/{config}/manifest.json",
+    "anthology": "falsisdev.github.io/anthology/stremio/manifest.json",
+    "netflix_catalog": "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json",
+    "xperience": "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json",
+    "aiostreams": "aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/eyJpIjoiWXlHVnFaUWlDSUFQeXlDWlF3RXNXZz09IiwiZSI6ImJKclJJRWpwRyttbFk5NXE3Ym42UG95TmxxN2xmZktRaXlMclBORFpzOVU9IiwidCI6ImEifQ/manifest.json",
 }
-ADDON_NAMES = {"torrentio": "Torrentio", "opensubtitles": "OpenSubtitles", "tr_altyazi": "TR Altyazı",
-               "anime_kitsu": "Anime Kitsu", "youtube": "YouTube", "top10": "Netflix Top 10", "channels": "NexoTV"}
+ADDON_NAMES = {
+    "tr_altyazi": "TR Altyazı",
+    "anthology": "Anthology",
+    "netflix_catalog": "Netflix Catalog",
+    "xperience": "Xperience",
+    "aiostreams": "AIOStreams Nightly"
+}
 NEXOTV = "https://263f84288ddb-nexotv.baby-beamup.club"
 ANTHOLOGY = "https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json"
 # Paid channels restreamed without the broadcaster's permission: never switched on
@@ -349,18 +352,11 @@ def plan_for(p, data):
             parts.append("language=" + ",".join(langs))
         if qf:
             parts.append("qualityfilter=" + ",".join(dict.fromkeys(qf)))
-        if p.get("torrentio", "y") != "n":  # an option for setups that stream only through Nuvio's plugins
-            addons.append(("torrentio", ADDONS["torrentio"].format(config="|".join(parts) + "/")))
-        addons.append(("opensubtitles", ADDONS["opensubtitles"]))
-    subs = as_list(p.get("subs")) or [lang]
-    if video and any(s.startswith("tr") for s in subs):
         addons.append(("tr_altyazi", ADDONS["tr_altyazi"]))
-    if "anime" in loves:
-        addons.append(("anime_kitsu", ADDONS["anime_kitsu"]))
-    services = as_list(p.get("services"))
-    if "top10" in services and country:
-        cfg = f"::{country}:{int(time.time())}:0:1:{country}"
-        addons.append(("top10", ADDONS["top10"].format(config=base64.urlsafe_b64encode(cfg.encode()).decode().rstrip("="))))
+        addons.append(("anthology", ADDONS["anthology"]))
+        addons.append(("netflix_catalog", ADDONS["netflix_catalog"]))
+        addons.append(("xperience", ADDONS["xperience"]))
+        addons.append(("aiostreams", ADDONS["aiostreams"]))
     if "youtube" in loves or "music" in loves or "highlights" in as_list(p.get("sports_what")):
         addons.append(("youtube", ADDONS["youtube"]))
         follow = [t.strip() for t in (p.get("teams") or "").split(",") if t.strip()]
@@ -655,6 +651,14 @@ def apply(plan, data, out_dir):
     tv("input", "keyevent", "3")
 
     if "nuvio" in plan["apps"]:
+        assets_dir = os.path.join(os.path.dirname(__file__), "assets")
+        for cfg in ("aiostreams-config-2026-10-28.21-05-36.json", "aiostreams-config.json",
+                    "xperience-kategori-setup-profile.json", "xperience-profile.json",
+                    "aiometadata-config-2026-10-28.json", "aiometadata-config.json"):
+            cfg_path = os.path.join(assets_dir, cfg)
+            if os.path.exists(cfg_path):
+                subprocess.run(["adb", "push", cfg_path, f"/sdcard/Download/{cfg}"], capture_output=True)
+                tv("am", "broadcast", "-a", "android.intent.action.MEDIA_SCANNER_SCAN_FILE", "-d", f"file:///sdcard/Download/{cfg}")
         for name, path in plan["addons"]:
             if name == "channels":
                 try:

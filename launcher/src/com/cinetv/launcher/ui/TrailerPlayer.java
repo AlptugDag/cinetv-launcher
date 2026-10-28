@@ -131,7 +131,7 @@ public final class TrailerPlayer extends FrameLayout {
                         if (my == gen && web == w && getVisibility() != VISIBLE) {
                             setAlpha(0f);
                             setVisibility(VISIBLE);
-                            animate().alpha(1f).setDuration(400).start();
+                            animate().alpha(1f).setDuration(350).start();
                         }
                     });
                 }
@@ -141,14 +141,12 @@ public final class TrailerPlayer extends FrameLayout {
 
             addView(w, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
-            // Safety timeout: reveal after 3.5s if playback callback was delayed
+            // Safety timeout: do NOT prematurely reveal if playback was delayed; give up after 8s so disk tray art stays visible
             main.postDelayed(() -> {
                 if (my == gen && web == w && getVisibility() != VISIBLE) {
-                    setAlpha(0f);
-                    setVisibility(VISIBLE);
-                    animate().alpha(1f).setDuration(500).start();
+                    stop();
                 }
-            }, 3500);
+            }, 8000);
 
             final String origin = "https://" + getContext().getPackageName();
             String html = "<!DOCTYPE html><html><head>"
@@ -157,8 +155,11 @@ public final class TrailerPlayer extends FrameLayout {
                     + "<style>"
                     + "* { margin:0; padding:0; box-sizing:border-box; }"
                     + "html, body { width:100%; height:100%; overflow:hidden; background:#000000; position:fixed; }"
-                    + "#stage { width:100%; height:100%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#000000; }"
-                    + "#player, iframe { width:100% !important; height:100% !important; border:none !important; display:block !important; background:#000000 !important; }"
+                    + "#stage { width:100%; height:100%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#000000; position:relative; }"
+                    + "#player { width:100% !important; height:100% !important; border:none !important; display:block !important; background:#000000 !important; "
+                    + "opacity:0; transition:opacity .4s ease-in-out; transform:scale(1.22); transform-origin:center center; }"
+                    + "#player.on { opacity:1; }"
+                    + "iframe { width:100% !important; height:100% !important; border:none !important; display:block !important; background:#000000 !important; }"
                     + "</style>"
                     + "<script defer src='https://www.youtube.com/iframe_api'></script>"
                     + "</head><body>"
@@ -171,7 +172,7 @@ public final class TrailerPlayer extends FrameLayout {
                     + "    width: '100%',"
                     + "    videoId: '" + key + "',"
                     + "    playerVars: {"
-                    + "      autoplay: 1, mute: 1, controls: 0, loop: 1, playlist: '" + key + "',"
+                    + "      autoplay: 1, mute: 1, controls: 0,"
                     + "      playsinline: 1, rel: 0, iv_load_policy: 3, disablekb: 1, modestbranding: 1, fs: 0,"
                     + "      enablejsapi: 1, origin: '" + origin + "'"
                     + "    },"
@@ -179,7 +180,12 @@ public final class TrailerPlayer extends FrameLayout {
                     + "      'onReady': function(e) { e.target.playVideo(); },"
                     + "      'onStateChange': function(e) {"
                     + "        if (e.data === 1) {"
-                    + "          setTimeout(function() { try { CineTrailer.onVideoPlaying(); } catch(err){} }, 900);"
+                    + "          var el = document.getElementById('player');"
+                    + "          if (el) el.classList.add('on');"
+                    + "          setTimeout(function() { try { CineTrailer.onVideoPlaying(); } catch(err){} }, 300);"
+                    + "        } else if (e.data === 0) {"
+                    + "          e.target.seekTo(0);"
+                    + "          e.target.playVideo();"
                     + "        }"
                     + "      },"
                     + "      'onError': function(e) { console.log('YT Error: ' + e.data); }"

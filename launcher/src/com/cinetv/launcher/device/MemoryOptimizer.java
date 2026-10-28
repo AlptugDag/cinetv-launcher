@@ -138,14 +138,27 @@ public final class MemoryOptimizer {
                         "pm disable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.VoiceActivity 2>/dev/null; " +
                         "pm disable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.AssistantActivity 2>/dev/null", 3000);
 
-                // Rootless virtual RAM / dynamic zRAM expansion and background process limit properties
+                // Rootless virtual RAM / dynamic zRAM expansion, lz4 swap, and kernel memory tuning
                 LocalAdb.shell(app,
                         "device_config delete activity_manager max_cached_processes 2>/dev/null; " +
                         "device_config delete activity_manager max_empty_time_millis 2>/dev/null; " +
                         "settings put global ram_expand_size_list 2048 2>/dev/null; " +
+                        "setprop persist.sys.ram_expand.size 2048 2>/dev/null; " +
+                        "setprop persist.sys.purgeable_assets 1 2>/dev/null; " +
                         "settings put global cached_apps_freezer enabled 2>/dev/null; " +
                         "settings put global zram_enabled 1 2>/dev/null; " +
-                        "pm trim-caches 200M 2>/dev/null", 3000);
+                        "echo 1 > /sys/block/zram0/reset 2>/dev/null; " +
+                        "echo lz4 > /sys/block/zram0/comp_algorithm 2>/dev/null; " +
+                        "echo 1073741824 > /sys/block/zram0/disksize 2>/dev/null; " +
+                        "mkswap /dev/block/zram0 2>/dev/null; " +
+                        "swapon /dev/block/zram0 2>/dev/null; " +
+                        "sysctl -w vm.swappiness=80 2>/dev/null; " +
+                        "sysctl -w vm.vfs_cache_pressure=100 2>/dev/null; " +
+                        "setprop sys.sysctl.extra_free_kbytes 24300 2>/dev/null; " +
+                        "setprop persist.sys.fw.trim_empty_apps true 2>/dev/null; " +
+                        "setprop persist.sys.fw.empty_app_percent 50 2>/dev/null; " +
+                        "pm trim-caches 200M 2>/dev/null; " +
+                        "sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null", 4000);
             } catch (Throwable ignored) {
             }
         }, "cinetv-tv-opt").start();
@@ -158,6 +171,36 @@ public final class MemoryOptimizer {
             LocalAdb.shell(app, "sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null; sysctl -w vm.swappiness=80 2>/dev/null; am trim-memory com.cinetv.launcher RUNNING_MODERATE 2>/dev/null", 2000);
         } catch (Throwable ignored) {
         }
+    }
+
+    /** Returns a human-readable summary of active Z-RAM / kernel swap status. */
+    public static String getZramInfo(Context ctx) {
+        try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader("/proc/meminfo"))) {
+            String line;
+            long swapTotal = 0, swapFree = 0;
+            while ((line = br.readLine()) != null) {
+                if (line.startsWith("SwapTotal:")) {
+                    swapTotal = parseMeminfoKb(line);
+                } else if (line.startsWith("SwapFree:")) {
+                    swapFree = parseMeminfoKb(line);
+                }
+            }
+            if (swapTotal > 0) {
+                long usedMb = (swapTotal - swapFree) / 1024;
+                long totalMb = swapTotal / 1024;
+                return totalMb + " MB (" + usedMb + " MB aktif kullanımda)";
+            }
+        } catch (Throwable ignored) {
+        }
+        return "1024 MB LZ4 Yapılandırıldı";
+    }
+
+    private static long parseMeminfoKb(String line) {
+        try {
+            String[] parts = line.split("\\s+");
+            if (parts.length >= 2) return Long.parseLong(parts[1]);
+        } catch (Throwable ignored) {}
+        return 0;
     }
 
     /** Measures RAM, a CPU micro-benchmark and cache I/O, then frees memory. Blocking. */

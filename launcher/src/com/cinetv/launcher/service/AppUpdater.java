@@ -90,7 +90,7 @@ public final class AppUpdater {
             if (rVal > cVal) return true;
             if (rVal < cVal) return false;
         }
-        return false;
+        return rClean.compareToIgnoreCase(cClean) > 0;
     }
 
     /** Checks GitHub releases API on a background thread. */

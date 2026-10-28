@@ -49,9 +49,10 @@ android {
         versionName ver
         // Numbering restarted at 1.0.0 after 3.2.0: the 1000000 base keeps codes above every older build's, so
         // TVs that had them still take updates (Android refuses a lower code without wiping the app's data).
-        // A fourth part counts small fixes: 1.0.0.1 = 1100001.
+        // A fourth part counts small fixes: 1.0.0.1 = 1100001. Letter suffixes boost code so 1.0.0.9b > 1.0.0.9.
         def part = { i -> parts.size() > i ? parts[i] : 0 }
-        versionCode 1000000 + part(0) * 100000 + part(1) * 1000 + part(2) * 10 + part(3)
+        def suffixBoost = ver.endsWith('b') ? 1 : (ver.endsWith('c') ? 2 : (ver.endsWith('d') ? 3 : 0))
+        versionCode 1000000 + part(0) * 100000 + part(1) * 1000 + part(2) * 10 + part(3) + suffixBoost
     }
 
     sourceSets {
