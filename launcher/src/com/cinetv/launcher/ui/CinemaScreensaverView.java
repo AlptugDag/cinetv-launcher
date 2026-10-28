@@ -349,14 +349,30 @@ public class CinemaScreensaverView extends View {
         date.setTextSize(h * 0.019f);
         c.drawText(dateFmt.format(d).toUpperCase(Locale.getDefault()), cx, clockY + h * 0.04f, date);
 
-        com.cinetv.launcher.service.SpecialDay sDay = com.cinetv.launcher.service.SpecialDay.getToday();
+        if (now - specialAt > 10_000L) {
+            specialAt = now;
+            special = com.cinetv.launcher.service.SpecialDay.today(getContext());
+        }
+        com.cinetv.launcher.service.SpecialDay sDay = special;
         if (sDay != null) {
-            android.graphics.Paint sPaint = new android.graphics.Paint(date);
-            sPaint.setTextSize(h * 0.021f);
-            sPaint.setColor(sDay.isMourning ? Color.parseColor("#CBD5E1") : Color.parseColor("#FCA5A5"));
-            c.drawText(sDay.badge + "  " + sDay.title, cx, clockY + h * 0.082f, sPaint);
+            specialText.set(date);
+            specialText.setTextSize(h * 0.021f);
+            specialText.setColor(sDay.mourning ? 0xFFCBD5E1 : 0xFFFCA5A5);
+            specialText.setTextAlign(Paint.Align.LEFT);
+            float tw = specialText.measureText(sDay.title);
+            float ih = h * 0.026f, iw = ih * SpecialDayArt.aspect(sDay.icon), gap = h * 0.012f;
+            float x0 = cx - (iw + gap + tw) / 2f, base = clockY + h * 0.082f;
+            specialBox.set(x0, base - ih * 0.85f, x0 + iw, base + ih * 0.15f);
+            SpecialDayArt.draw(c, specialIcon, sDay.icon, sDay.accent, specialBox);
+            c.drawText(sDay.title, x0 + iw + gap, base, specialText);
         }
     }
+
+    private final Paint specialText = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint specialIcon = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF specialBox = new RectF();
+    private com.cinetv.launcher.service.SpecialDay special;
+    private long specialAt = -1_000_000L;
 
     private static float easeInOut(float x) {
         return x < 0.5f ? 4 * x * x * x : 1 - (float) Math.pow(-2 * x + 2, 3) / 2;

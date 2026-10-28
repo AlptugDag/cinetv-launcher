@@ -85,6 +85,10 @@ public final class TrailerPlayer extends FrameLayout {
             }
         });
         setClipToOutline(true);
+        // Start invisible (alpha = 0) so the WebView lays out and begins playback immediately without YouTube flash
+        setAlpha(0f);
+        setVisibility(VISIBLE);
+
         final Context app = getContext().getApplicationContext();
         io.execute(() -> {
             final String key = MovieCatalog.trailerKey(app, m);
@@ -128,11 +132,16 @@ public final class TrailerPlayer extends FrameLayout {
                 @android.webkit.JavascriptInterface
                 public void onVideoPlaying() {
                     main.post(() -> {
-                        if (my == gen && web == w && getVisibility() != VISIBLE) {
-                            setAlpha(0f);
-                            setVisibility(VISIBLE);
-                            animate().alpha(1f).setDuration(350).start();
+                        if (my == gen && web == w && getAlpha() < 1f) {
+                            animate().alpha(1f).setDuration(300).start();
                         }
+                    });
+                }
+
+                @android.webkit.JavascriptInterface
+                public void onVideoError() {
+                    main.post(() -> {
+                        if (my == gen) stop();
                     });
                 }
             }, "CineTrailer");
@@ -143,7 +152,7 @@ public final class TrailerPlayer extends FrameLayout {
 
             // Safety timeout: do NOT prematurely reveal if playback was delayed; give up after 8s so disk tray art stays visible
             main.postDelayed(() -> {
-                if (my == gen && web == w && getVisibility() != VISIBLE) {
+                if (my == gen && web == w && getAlpha() < 0.1f) {
                     stop();
                 }
             }, 8000);
@@ -157,7 +166,7 @@ public final class TrailerPlayer extends FrameLayout {
                     + "html, body { width:100%; height:100%; overflow:hidden; background:#000000; position:fixed; }"
                     + "#stage { width:100%; height:100%; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#000000; position:relative; }"
                     + "#player { width:100% !important; height:100% !important; border:none !important; display:block !important; background:#000000 !important; "
-                    + "opacity:0; transition:opacity .4s ease-in-out; transform:scale(1.22); transform-origin:center center; }"
+                    + "opacity:0; transition:opacity .35s ease-in-out; transform:scale(1.24); transform-origin:center center; }"
                     + "#player.on { opacity:1; }"
                     + "iframe { width:100% !important; height:100% !important; border:none !important; display:block !important; background:#000000 !important; }"
                     + "</style>"
@@ -174,21 +183,22 @@ public final class TrailerPlayer extends FrameLayout {
                     + "    playerVars: {"
                     + "      autoplay: 1, mute: 1, controls: 0,"
                     + "      playsinline: 1, rel: 0, iv_load_policy: 3, disablekb: 1, modestbranding: 1, fs: 0,"
-                    + "      enablejsapi: 1, origin: '" + origin + "'"
+                    + "      loop: 1, playlist: '" + key + "',"
+                    + "      origin: '" + origin + "'"
                     + "    },"
                     + "    events: {"
-                    + "      'onReady': function(e) { e.target.playVideo(); },"
+                    + "      'onReady': function(e) { try { e.target.mute(); e.target.playVideo(); } catch(x){} },"
                     + "      'onStateChange': function(e) {"
                     + "        if (e.data === 1) {"
                     + "          var el = document.getElementById('player');"
                     + "          if (el) el.classList.add('on');"
-                    + "          setTimeout(function() { try { CineTrailer.onVideoPlaying(); } catch(err){} }, 300);"
+                    + "          setTimeout(function() { try { CineTrailer.onVideoPlaying(); } catch(err){} }, 180);"
                     + "        } else if (e.data === 0) {"
                     + "          e.target.seekTo(0);"
                     + "          e.target.playVideo();"
                     + "        }"
                     + "      },"
-                    + "      'onError': function(e) { console.log('YT Error: ' + e.data); }"
+                    + "      'onError': function(e) { try { CineTrailer.onVideoError(); } catch(err){} }"
                     + "    }"
                     + "  });"
                     + "}"
@@ -204,6 +214,8 @@ public final class TrailerPlayer extends FrameLayout {
 
     public void stop() {
         gen++;
+        animate().cancel();
+        setAlpha(0f);
         setVisibility(GONE);
         if (web == null) return;
         WebView w = web;

@@ -165,6 +165,16 @@ public class DvdOpeningView extends View {
             Matrix rot = new Matrix();
             rot.postRotate(90);
             coverL = Bitmap.createBitmap(dvd.cover, 0, 0, dvd.cover.getWidth(), dvd.cover.getHeight(), rot, true);
+
+            // Immediate pre-warm & launch of trailer WebView at t = 0 so video is ready and playing without delay
+            if (slot != null && !trailerShown) {
+                trailerShown = true;
+                final float finalLeft = w / 2f;
+                final float finalTop = h / 2f - caseH / 2f;
+                final RectF screen = trayScreen(finalLeft, finalTop, caseW, caseH);
+                final float corner = caseW * 0.012f;
+                post(() -> slot.show(movie, screen, corner));
+            }
         } else {
             float maxW = (w * 0.88f) / 2f;
             float maxH = h * 0.74f;

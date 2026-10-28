@@ -133,4 +133,41 @@ public class LogicTest {
         assertNull(com.cinetv.launcher.ai.VoiceCommands.parse("araba temalı filmler"));
         assertNull(com.cinetv.launcher.ai.VoiceCommands.parse("Türkiye'nin yüz ölçümü kaç"));
     }
+
+    @Test
+    public void specialDaysAreAccurateAndDignified() {
+        // 29 Ekim Cumhuriyet Bayramı
+        com.cinetv.launcher.service.SpecialDay oct29 = com.cinetv.launcher.service.SpecialDay.forDate(2026, 10, 29, 14, 0);
+        org.junit.Assert.assertNotNull(oct29);
+        assertEquals("cumhuriyet", oct29.id);
+        assertEquals(com.cinetv.launcher.service.SpecialDay.Icon.FLAG, oct29.icon);
+        assertFalse(oct29.mourning);
+        assertTrue(oct29.subtitle.contains("103"));
+
+        // 10 Kasım Atatürk'ü Anma Günü (normal hour vs 09:05 saygı duruşu)
+        com.cinetv.launcher.service.SpecialDay nov10Normal = com.cinetv.launcher.service.SpecialDay.forDate(2026, 11, 10, 15, 30);
+        org.junit.Assert.assertNotNull(nov10Normal);
+        assertEquals("10kasim", nov10Normal.id);
+        assertEquals(com.cinetv.launcher.service.SpecialDay.Icon.RIBBON, nov10Normal.icon);
+        assertTrue(nov10Normal.mourning);
+
+        com.cinetv.launcher.service.SpecialDay nov10Minute905 = com.cinetv.launcher.service.SpecialDay.forDate(2026, 11, 10, 9, 5);
+        org.junit.Assert.assertNotNull(nov10Minute905);
+        assertTrue(nov10Minute905.subtitle.contains("09:05"));
+        assertTrue(nov10Minute905.mourning);
+
+        // Other national days
+        org.junit.Assert.assertNotNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 4, 23, 10, 0));
+        org.junit.Assert.assertNotNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 5, 19, 10, 0));
+        org.junit.Assert.assertNotNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 7, 15, 10, 0));
+        org.junit.Assert.assertNotNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 8, 30, 10, 0));
+        org.junit.Assert.assertNotNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 1, 1, 10, 0));
+
+        // Ordinary days and removed religious/arife dates must return null
+        assertNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 10, 28, 10, 0)); // Arife
+        assertNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 3, 18, 10, 0));
+        assertNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 6, 16, 10, 0));
+        assertNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 4, 10, 10, 0));
+        assertNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 11, 11, 10, 0));
+    }
 }

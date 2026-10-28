@@ -11,6 +11,7 @@ import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 
 import com.cinetv.launcher.device.PerformanceProfile;
+import com.cinetv.launcher.service.MovieCatalog;
 import com.cinetv.launcher.service.MovieCatalog.Movie;
 import com.cinetv.launcher.service.PosterCache;
 import com.cinetv.launcher.service.Prefs;
@@ -173,6 +174,9 @@ public class PosterShelf extends FrameLayout {
             });
         }
         post(this::layoutCases);
+        if (!movies.isEmpty() && index < movies.size()) {
+            MovieCatalog.prefetchTrailer(getContext(), movies.get(index));
+        }
     }
 
     @Override
@@ -185,7 +189,10 @@ public class PosterShelf extends FrameLayout {
     protected void onFocusChanged(boolean gained, int direction, android.graphics.Rect previous) {
         super.onFocusChanged(gained, direction, previous);
         stopSway();
-        if (gained) postDelayed(startSway, SWAY_AFTER_MS);
+        if (gained) {
+            postDelayed(startSway, SWAY_AFTER_MS);
+            if (index >= 0 && index < movies.size()) MovieCatalog.prefetchTrailer(getContext(), movies.get(index));
+        }
         layoutCases();
         DvdCaseView v = focusedCase();
         if (gained && v != null && listener != null && v.dvdCase() != null) listener.onFocusCase(v, v.dvdCase().accent);
@@ -223,6 +230,7 @@ public class PosterShelf extends FrameLayout {
         stopSway();
         targetPos += delta;
         index = Math.floorMod(targetPos, n);
+        if (index >= 0 && index < movies.size()) MovieCatalog.prefetchTrailer(getContext(), movies.get(index));
         if (anim != null) anim.cancel();
         anim = ValueAnimator.ofFloat(focusPos, targetPos);
         // A light spring: the row glides, slightly overshoots and settles, like boxes sliding on a shelf.

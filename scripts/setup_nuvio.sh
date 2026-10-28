@@ -80,7 +80,11 @@ cat > nuvio-preferences.json <<EOF
   "plugin_repositories": [
     "https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json",
     "https://raw.githubusercontent.com/Wiojelt/TurkSinema/main/repo.json"
-  ]
+  ],
+  "disabled_addons": [
+    "https://falsisdev.github.io/anthology/stremio"
+  ],
+  "anthology_disabled": true
 }
 EOF
 echo "Saved nuvio-preferences.json"
@@ -90,6 +94,7 @@ Finish in Nuvio (or let an AI agent do it, AGENTS.md › Nuvio):
   Settings › Plugins › Add repository:
      https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json
      https://raw.githubusercontent.com/Wiojelt/TurkSinema/main/repo.json
+  Settings › Addons: Anthology is installed and disabled by default (toggle on anytime in Addons if needed).
   Settings › Playback: subtitles $SUB1 (second: ${SUB2:-none}), autoplay first source: $AUTOPLAY
   Settings › Appearance / Language: $HOME_LANG
 EOF

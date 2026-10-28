@@ -679,6 +679,8 @@ def apply(plan, data, out_dir):
              "plugin_repository": ANTHOLOGY if plan["plugins"] or plan["anthology_all"] else None,
              "plugins_to_enable": "all except plugins_to_leave_off" if plan["anthology_all"] and not plan["plugins"] else plan["plugins"],
              "plugins_to_leave_off": list(ANTHOLOGY_SKIP) if plan["plugins"] or plan["anthology_all"] else [],
+             "disabled_addons": ["https://falsisdev.github.io/anthology/stremio"],
+             "anthology_disabled": True,
              "youtube_follow": plan["follow"], "collections_file": "/sdcard/Download/nuvio-collections.json" if plan["collections"] else None,
              "apps_to_install": still, "notes": plan["notes"]}
     with open(os.path.join(out_dir, "nuvio-preferences.json"), "w", encoding="utf-8") as f:

@@ -21,7 +21,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.Locale;
 
@@ -76,8 +75,10 @@ public class HomeScreen {
     private final FrameLayout splash;
     public final CinemaScreensaverView screensaverView;
     public final TextView clock, date, weather, shelfLabel, caption, moveHint;
-    public final FrameLayout specialBadge;
+    public final LinearLayout specialBadge;
     public final TextView specialBadgeText;
+    public final ImageView specialBadgeIcon;
+    private String specialDayId = "";
     public final EditText search;
     public final GlassKeyboard keyboard;
     public final VoiceOverlay voice;
@@ -158,12 +159,18 @@ public class HomeScreen {
         sub.addView(weather);
         timeCol.addView(sub);
 
-        specialBadge = new FrameLayout(ctx);
-        specialBadge.setFocusable(true);
-        specialBadge.setClickable(true);
+        // A small, non-focusable badge under the date on special days (drawn icon + one line); it never takes the D-pad.
+        specialBadge = new LinearLayout(ctx);
+        specialBadge.setOrientation(LinearLayout.HORIZONTAL);
+        specialBadge.setGravity(Gravity.CENTER_VERTICAL);
+        specialBadge.setFocusable(false);
+        specialBadge.setClickable(false);
+        specialBadge.setPadding(UiKit.px(10), UiKit.px(4), UiKit.px(14), UiKit.px(4));
+        specialBadgeIcon = new ImageView(ctx);
+        specialBadge.addView(specialBadgeIcon, new LinearLayout.LayoutParams(UiKit.px(30), UiKit.px(20)));
         specialBadgeText = UiKit.bold(ctx, 13, Color.WHITE);
-        specialBadgeText.setGravity(Gravity.CENTER_VERTICAL);
-        specialBadgeText.setPadding(UiKit.px(12), UiKit.px(4), UiKit.px(14), UiKit.px(4));
+        specialBadgeText.setSingleLine(true);
+        specialBadgeText.setPadding(UiKit.px(10), 0, 0, 0);
         specialBadge.addView(specialBadgeText);
         specialBadge.setVisibility(View.GONE);
         LinearLayout.LayoutParams sblp = new LinearLayout.LayoutParams(
@@ -171,20 +178,6 @@ public class HomeScreen {
         sblp.topMargin = UiKit.px(4);
         sblp.bottomMargin = UiKit.px(3);
         timeCol.addView(specialBadge, sblp);
-
-        specialBadge.setOnFocusChangeListener((v, has) -> {
-            UiKit.lift(v, has, 1.08f, 160);
-            if (has && listener != null) {
-                com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.getToday();
-                listener.onFocusLight(v, day != null ? day.accent : Color.parseColor("#E30A17"));
-            }
-        });
-        specialBadge.setOnClickListener(v -> {
-            com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.getToday();
-            if (day != null) {
-                Toast.makeText(ctx, day.title + "\n" + day.subtitle, Toast.LENGTH_LONG).show();
-            }
-        });
 
         signed = UiKit.bold(ctx, 15, UiKit.INK_DIM);
         signed.setLetterSpacing(0.04f);
@@ -833,34 +826,43 @@ public class HomeScreen {
      */
     public void showAiCard(CharSequence title, CharSequence query, CharSequence answer) {
         showBubble(answer, false, 9000);
-        updateSpecialDay();
+        updateSpecialDay(true);
     }
 
-    public void updateSpecialDay() {
-        com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.getToday();
+    /** Shows today's special day (if any) beside the clock. {@code force} re-applies colours after a theme change. */
+    public void updateSpecialDay(boolean force) {
+        com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(ctx);
+        String id = day == null ? "" : day.id + "|" + day.subtitle;
+        if (!force && id.equals(specialDayId)) return;
+        specialDayId = id;
         if (day == null) {
             specialBadge.setVisibility(View.GONE);
             return;
         }
-        specialBadge.setVisibility(View.VISIBLE);
-        specialBadgeText.setText(day.badge + "  " + day.title);
-
+        specialBadgeIcon.setImageDrawable(SpecialDayArt.drawable(day.icon, day.accent));
+        specialBadgeText.setText(day.title);
         android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
         gd.setCornerRadius(UiKit.pxf(14));
-        if (day.isMourning) {
-            gd.setColor(Color.argb(210, 24, 24, 27));
-            gd.setStroke(UiKit.px(1), Color.argb(160, 156, 163, 175));
-            specialBadgeText.setTextColor(Color.parseColor("#F3F4F6"));
-            // Solemn tribute lighting
+        if (day.mourning) {
+            gd.setColor(Color.argb(215, 22, 22, 26));
+            gd.setStroke(UiKit.px(1), Color.argb(170, 156, 163, 175));
+            specialBadgeText.setTextColor(Color.parseColor("#E5E7EB"));
+            // a solemn tone for the whole header on 10 Kasım
             clock.setTextColor(Color.parseColor("#E5E7EB"));
             clock.setShadowLayer(UiKit.pxf(6), 0, UiKit.pxf(2), Color.argb(180, 0, 0, 0));
             date.setTextColor(Color.parseColor("#9CA3AF"));
+            weather.setTextColor(Color.parseColor("#9CA3AF"));
         } else {
-            gd.setColor(Color.argb(190, 185, 28, 28));
-            gd.setStroke(UiKit.px(1), Color.argb(220, 255, 255, 255));
+            gd.setColor(Color.argb(200, 160, 18, 28));
+            gd.setStroke(UiKit.px(1), Color.argb(200, 255, 255, 255));
             specialBadgeText.setTextColor(Color.WHITE);
         }
         specialBadge.setBackground(gd);
+        specialBadge.setVisibility(View.VISIBLE);
+    }
+
+    public void updateSpecialDay() {
+        updateSpecialDay(false);
     }
 
     public void showThinking() {

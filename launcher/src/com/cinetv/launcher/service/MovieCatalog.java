@@ -700,6 +700,13 @@ public final class MovieCatalog {
 
     private static final java.util.Map<String, String> trailers = new java.util.concurrent.ConcurrentHashMap<>();
 
+    /** Prefetches the YouTube trailer key in background so opening the DVD has zero network latency. */
+    public static void prefetchTrailer(Context ctx, Movie m) {
+        if (ctx == null || m == null) return;
+        final Context app = ctx.getApplicationContext();
+        resolver.execute(() -> trailerKey(app, m));
+    }
+
     /** The YouTube id of the film's trailer (official, in the TV's language first, then English); null if none. Blocks. */
     public static String trailerKey(Context ctx, Movie m) {
         if (Creator.isSessiz(m)) return Creator.SESSIZ_YOUTUBE_ID;
@@ -751,6 +758,8 @@ public final class MovieCatalog {
             trailers.put(cacheKey, best);
             if (m.imdbId != null && !m.imdbId.isEmpty()) trailers.put(m.type + ":" + m.imdbId, best);
             if (m.tmdbId > 0) trailers.put(m.type + ":" + m.tmdbId, best);
+        } else {
+            trailers.put(cacheKey, "");
         }
         return best;
     }
