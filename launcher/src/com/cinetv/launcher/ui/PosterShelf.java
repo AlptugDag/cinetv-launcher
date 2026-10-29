@@ -368,15 +368,15 @@ public class PosterShelf extends FrameLayout {
             float offset = step1 * near + stepN * far;
             float x = anchor + Math.signum(d) * offset;
             float focusScale = focused ? FOCUS_SCALE : 1.12f;
-            float scale = focusScale + (0.86f - focusScale) * near - Math.min(0.10f, 0.014f * far);
+            float scale = focusScale + (0.86f - focusScale) * near - Math.min(0.08f, 0.012f * far);
             // Further down the shelf: darker and out of focus, like a real room lit at the front.
             float dim = (focused ? 1f : 0.94f) - 0.10f * near - Math.min(0.52f, 0.075f * far);
             // Only a hint of depth of field: soft, never smeared.
             float blur = 0.55f * Math.max(0f, Math.min(1f, (far - 2f) / 4f));
-            float spatialWrap = spatial ? -Math.signum(d) * Math.min(9.5f, far * 2.2f) : 0f;
+            float spatialWrap = spatial ? -Math.signum(d) * Math.min(7.5f, far * 1.8f) : 0f;
             float yaw = Math.signum(d) * SIDE_ANGLE * near + PROFILE_ANGLE * (1f - near) + spatialWrap;
             float lift = focused ? 1f - near : 0f;
-            float tilt = spatial ? (8.2f + Math.min(3.5f, far * 0.7f)) * (1f - lift) : 0f;
+            float tilt = spatial ? 7.0f * (1f - lift) : 0f;
             float turn = 0f, glint = 0f;
             float swaySine = 0f;
             if (i == index && sway > 0f) {
@@ -385,8 +385,11 @@ public class PosterShelf extends FrameLayout {
                 turn = 24f * swaySine;
                 glint = swaySine;
             }
-            // Spatial HUD: the shelf bends slightly away, like a curved wall of discs.
-            float arc = spatial ? UiKit.pxf(6.2f) * far * far * 0.35f : 0f;
+
+            // Continuous subtle architectural bow (apex in center, NO flat zone, NO artificial vertical climb):
+            float norm = Math.min(1f, ad / Math.max(1f, perSide));
+            float bow = spatial ? UiKit.pxf(5f) * (1f - norm * norm) : 0f;
+
             // Smooth edge fade: cases coming from outside the screen fade in gradually instead of popping
             float edgeFade = 1f;
             float leftBound = -caseW * 0.2f, rightBound = w + caseW * 0.2f;
@@ -399,7 +402,8 @@ public class PosterShelf extends FrameLayout {
             v.setVisibility(VISIBLE);
             v.setAlpha(edgeFade);
             v.setTranslationX(x - v.getWidth() / 2f);
-            v.setTranslationY((h - v.getHeight()) / 2f - UiKit.pxf(22) * lift + UiKit.pxf(12) * near - arc);
+            // Grounded shelf baseline: lift lifts hero forward, subtle bow grounds all cases on shelf surface:
+            v.setTranslationY((h - v.getHeight()) / 2f - UiKit.pxf(22) * lift + (UiKit.pxf(5f) - bow));
             v.setTranslationZ(100f - ad * 10f);
             v.setDepthBlur(blur);
             v.setGlint(glint);
@@ -415,7 +419,7 @@ public class PosterShelf extends FrameLayout {
     private final float[] shelfCurveX = new float[40];
     private final float[] shelfCurveY = new float[40];
 
-    private void computeSlotContact(int w, int h, float d, float step1, float stepN, float[] outPt) {
+    private void computeSlotContact(int w, int h, float d, float step1, float stepN, float perSide, float[] outPt) {
         float anchor = w * 0.5f;
         float caseH = caseW / DvdCase.ASPECT;
         float ad = Math.abs(d);
@@ -424,12 +428,14 @@ public class PosterShelf extends FrameLayout {
         float offset = step1 * near + stepN * far;
         float sign = Math.signum(d);
         float x = anchor + sign * offset;
-        float scale = 0.86f - Math.min(0.10f, 0.014f * far);
-        float spatialWrap = spatial ? -sign * Math.min(9.5f, far * 2.2f) : 0f;
+        float scale = 0.86f - Math.min(0.08f, 0.012f * far);
+        float spatialWrap = spatial ? -sign * Math.min(7.5f, far * 1.8f) : 0f;
         float yaw = sign * SIDE_ANGLE * near + spatialWrap;
-        float tilt = spatial ? (8.2f + Math.min(3.5f, far * 0.7f)) : 0f;
-        float arc = spatial ? UiKit.pxf(6.2f) * far * far * 0.35f : 0f;
-        float transY = (h - (caseH + glowPad * 2)) / 2f + UiKit.pxf(12) * near - arc;
+        float tilt = spatial ? 7.0f : 0f;
+
+        float norm = Math.min(1f, ad / Math.max(1f, perSide));
+        float bow = spatial ? UiKit.pxf(5f) * (1f - norm * norm) : 0f;
+        float transY = (h - (caseH + glowPad * 2)) / 2f + (UiKit.pxf(5f) - bow);
 
         float cx = x;
         float cy = transY + (caseH + glowPad * 2) * 0.5f;
@@ -480,24 +486,24 @@ public class PosterShelf extends FrameLayout {
 
         // Sample slots from -maxSlots to -1
         for (int s = -maxSlots; s <= -1; s++) {
-            computeSlotContact(w, h, s, step1, stepN, tmpPt);
+            computeSlotContact(w, h, s, step1, stepN, perSide, tmpPt);
             tmpCaseX[count] = tmpPt[0];
-            tmpCaseY[count] = tmpPt[1];
+            tmpCaseY[count] = tmpPt[1] + UiKit.pxf(3.5f);
             count++;
         }
 
-        // Center apex: continuous smooth parabolic arch peaking at x = anchor
+        // Center apex: continuous parabolic arch peaking smoothly at anchor under hero disc
         float nearY = tmpCaseY[count - 1]; // contact Y of d = -1
-        float centerApexY = nearY + UiKit.pxf(14f);
+        float centerApexY = nearY + UiKit.pxf(2.5f);
         tmpCaseX[count] = anchor;
         tmpCaseY[count] = centerApexY;
         count++;
 
         // Sample slots from +1 to +maxSlots
         for (int s = 1; s <= maxSlots; s++) {
-            computeSlotContact(w, h, s, step1, stepN, tmpPt);
+            computeSlotContact(w, h, s, step1, stepN, perSide, tmpPt);
             tmpCaseX[count] = tmpPt[0];
-            tmpCaseY[count] = tmpPt[1];
+            tmpCaseY[count] = tmpPt[1] + UiKit.pxf(3.5f);
             count++;
         }
 
