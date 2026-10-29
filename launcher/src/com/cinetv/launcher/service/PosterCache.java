@@ -97,7 +97,18 @@ public final class PosterCache {
         if (o.outWidth <= 0) return null;
         o.inSampleSize = sampleSize(o.outWidth, o.outHeight, reqW, reqH);
         o.inJustDecodeBounds = false;
-        return BitmapFactory.decodeFile(f.getAbsolutePath(), o);
+        try {
+            return BitmapFactory.decodeFile(f.getAbsolutePath(), o);
+        } catch (OutOfMemoryError oom) {
+            trimMemory();
+            o.inSampleSize = Math.max(2, o.inSampleSize * 2);
+            o.inPreferredConfig = Bitmap.Config.RGB_565;
+            try {
+                return BitmapFactory.decodeFile(f.getAbsolutePath(), o);
+            } catch (Throwable t) {
+                return null;
+            }
+        }
     }
 
     static int sampleSize(int w, int h, int reqW, int reqH) {

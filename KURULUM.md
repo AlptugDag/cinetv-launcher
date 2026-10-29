@@ -1,7 +1,7 @@
 # CineTV kurulum rehberi
 
 Bu rehber hiç bilgisayar bilmeyen biri için yazıldı. Her adımı sırayla yapın; bir adımda takılırsanız en
-alttaki **Sorun çözme** tablosuna bakın. *(English: [the short version is in the README](README.md#install-in-one-command).)*
+alttaki **Sorun çözme** tablosuna bakın. *(Ana vitrin ve genel tanıtım için: [README.md](README.md).)*
 
 **İndirme bağlantısı (her zaman en son sürüm):**
 `https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk`
@@ -86,23 +86,28 @@ Bilgisayar veya terminal kullanmadan doğrudan televizyonunuzla kurmak isterseni
    (Büyük-küçük harfe dikkat: `AlptugDag` ve `CineTV.apk`.)
 5. İndirme bitince **Yükle** (Install), sonra **Aç** (Open).
 6. Televizyon *"USB hata ayıklamaya izin verilsin mi?"* diye sorarsa: **"Bu bilgisayardan her zaman izin ver"** kutusunu işaretleyin ve **Tamam**'a basın.
-7. **Tam Otomatik Başlatma**: CineTV ilk açıldığında arka planda Nuvio medya merkezini, hazır Türkçe film/dizi kaynaklarını, altyazı eklentilerini (Xperience, Netflix Kataloğu, Anthology, TR-Altyazı), video oynatıcıyı ve 2 GB sanal RAM optimizasyonunu **hiçbir kullanıcı müdahalesi gerektirmeden sessizce tamamlar** ve sinematik karşılama ekranıyla ana ekranınızı açar.
+7. **Akıllı Kurulum Sihirbazı ve Etkileşimli Tur**: CineTV ilk açıldığında **Kurulum Sihirbazı** otomatik olarak karşınıza gelir:
+   - CineTV'yi televizyonunuzun **Varsayılan Ana Ekranı (Home)** yapmanızı sağlar ve hemen kurulum sırasında **Nuvio Medya Merkezi ile Türkçe eklentilerin** (Xperience, Netflix Kataloğu, Anthology, TR-Altyazı) kurulup kurulmayacağını sorar.
+   - **%100 Ücretsiz Gemini ve TMDB Anahtarları** bölümünde bu kodları nereden alabileceğinizi ve ne işe yaradıklarını anlatır; telefonunuzla ekrandaki QR kodu okutup aldığınız anahtarı telefon kumandasından tek dokunuşla TV'ye yapıştırabilirsiniz.
+   - Sihirbazın altındaki **"Otomatik Tamamla"** tuşuna bastığınızda Nuvio, Nova Player, Türkçe eklenti profilleri ve **TV Denetçisi** görüntü/ses/bellek optimizasyonları otomatik uygulanır; **"Geri Dön"** tuşuyla sihirbazdan çıktığınızda ise sinematik karşılama ekranı ve **CineTV Etkileşimli Turu** başlar.
+8. **Sessiz Arka Plan Güncellemeleri**: CineTV kurulduktan sonra yeni bir sürüm yayınlandığında televizyonunuz güncellemeyi arka planda sessizce indirip otomatik olarak uygular.
 
-> Bileşen durumunu kontrol etmek veya elle incelemek isterseniz dilediğiniz zaman CineTV › Ayarlar › TV & Telefon › **Kurulum Sihirbazı & Bileşen Kontrolü** üzerinden tüm bileşenleri görebilirsiniz.
+> Bileşen durumunu kontrol etmek veya istediğiniz zaman yeniden yapılandırmak için CineTV › Ayarlar › TV & Telefon › **Kurulum Sihirbazı & Bileşen Kontrolü** ekranını açabilirsiniz.
 
 ---
 
 ## Kurulumdan sonra
 
-- **Telefon kumandası**: CineTV ana ekranının üstündeki **telefon** düğmesi › telefonla QR kodu okutun › televizyonda **İzin ver**. Telefon ana ekranına eklerseniz uygulama gibi açılır.
+- **Telefon Kumandası (Tüm TV Genelinde Çalışır)**: CineTV ana ekranının üstündeki **Telefon** düğmesine basın › telefonunuzun kamerasıyla QR kodu okutun › televizyonda **İzin ver** deyin. Ek bir uygulama indirmeden çalışan mobil arayüz; **Dokunmatik İzleme Dörtgeni (Touchpad)**, **Hava Faresi (Air Mouse)**, **Klavye / Metin Yapıştırma**, **Sesli Komut** ve **Web Video Cast** özelliklerini sunar. Üstelik telefon kumandası yalnızca CineTV ana ekranında değil; **Nuvio, TizenTube, Nova Player ve sistem menüleri dahil televizyonun her yerinde** kesintisiz çalışır. Telefonunuzda "Ana Ekrana Ekle" diyerek CineTV logosuyla bağımsız bir uygulama gibi kullanabilirsiniz.
 - **YouTube'dan "TV'de izle"**: telefondaki YouTube uygulamasında yayınla (📺) simgesine basın ve **"<televizyonun adı> · YouTube"**'u seçin; video reklamsız TizenTube'da açılır.
-- **Film sitesinden yayınlama (Web Video Cast)**: telefon sayfasında **Yayınla** › sayfanın adresini yapıştırın › **Aç**. Sayfa telefonda açılır; reklamları geçip filmin oynat tuşuna basın, film televizyonda başlar (gerçek iframe Referer ve Origin başlıkları otomatik yakalanıp CDN engelleri aşılır).
+- **Film sitesinden yayınlama (Web Video Cast)**: telefon sayfasında **Yayınla** › sayfanın adresini yapıştırın › **Aç**. Sayfa telefonda açılır; reklamları geçip filmin oynat tuşuna basın, film televizyonda başlar (gerçek iframe Referer, Origin ve Cookie başlıkları otomatik yakalanıp CDN engelleri aşılır).
 - **%100 Ücretsiz Gemini ve TMDB Anahtarları**: İlk kurulum sihirbazında (veya dilediğiniz zaman CineTV › Ayarlar › **Yapay zekâ ve filmler** bölümünde) QR kodlu rehberle kolayca girebilirsiniz. Her iki kod da tamamen ücretsizdir (kredi kartı gerekmez):
   - *Gemini Yapay Zekâ Anahtarı (`aistudio.google.com/apikey`)*: Sesli ve yazılı doğal dil aramalarını (*"Nolan'ın uzay filmini aç"*, *"Yağmurlu gecede izlenecek gerilim filmleri"*), günün saatine ve hava durumuna göre akıllı DVD vitrin küratörlüğünü ve Türkçe sinema asistanını çalıştırır.
   - *TMDB Sinema & Afiş Anahtarı (`themoviedb.org/settings/api`)*: 3B DVD kutularının yüksek çözünürlüklü afişlerini, açılan DVD kutusunun içindeki Türkçe film özetlerini, oyuncu/yönetmen kadrosunu, IMDb puanlarını ve fragman videolarını getirir.
   - *MDBList (`mdblist.com/preferences`)*: IMDb, Rotten Tomatoes ve Letterboxd puanlarını zenginleştirir.
+- **Sıfır YouTube Arayüzlü DVD Fragmanları & Akıllı Dikey Disk Modu**: Açılan 3B DVD kutularının sağ tepsisinde fragmanlar oynarken hiçbir YouTube arayüzü (başlık, kanal ikonu, filigran veya bitiş ekranı) görünmez. Eğer bir filmin fragmanı YouTube'da mevcut değilse veya bulunduğunuz ülkede izlenme kısıtı varsa, o filmin DVD kutusu otomatik olarak **fragmansız ve dikey** açılır ve tepside dönen DVD diski gösterilir.
 - **Bütünleşik Görüntü, Ses, Ağ, DNS & Optimizasyon**: Ayarlar › **Görüntü, Ses, Ağ & Optimizasyon** kutucuğuna bastığınızda TV Denetçisi donanımınızı tarar; 4K/HDR kapasitesini, HDMI eARC/Atmos ses yolunu, şifreli DNS seçimini (Cloudflare, AdGuard, Quad9, Google), hız/gecikme testini, 2 GB sanal RAM'i, performans modunu ve Nuvio akış kalitesini tek adımda otomatik kalibre eder.
-- **Tema**: Ayarlar › Tema: Alptug Default, Sıvı Cam, Metalik, Sinema Salonu, Film Dolabı, Neon Gece, OLED Siyah.
+- **Temalar**: Ayarlar › Tema üzerinden 7 farklı sinematik atmosfer arasında anında geçiş yapabilirsiniz: **Alptug Default**, **Sıvı Cam (Liquid Glass)**, **Metalik (Metallic)**, **Sinema Salonu (Cinema Hall)**, **Kırmızı Halı (Red Carpet)**, **Film Dolabı (Film Closet)** ve **Neon Gece (Neon Night)**.
 
 ---
 
@@ -117,8 +122,8 @@ Bilgisayar veya terminal kullanmadan doğrudan televizyonunuzla kurmak isterseni
 | Downloader "indirilemedi" diyor | Adresi harfi harfine yazın: `github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk` |
 | "Uygulama yüklenmedi" | Eski bir CineTV farklı imzayla kurulu: Ayarlar › Uygulamalar › CineTV › Kaldır, sonra yeniden kurun. |
 | **Android 9 veya 14'te Home / Geri tuşu eski ekrana atıyor veya Erişilebilirlik menüsü bulunamıyor** | Bazı TV üreticileri (Vestel, Philips, TCL vb.) kendi arayüzlerinde Erişilebilirlik veya Varsayılan Uygulama menüsünü gizler. Çözüm: CineTV Ayarlar › TV & Telefon menüsündeki **Ana Başlatıcı Yap** ve **Erişilebilirlik & Tuşlar** kutucuklarına basın; CineTV üretici arayüzünü atlayıp doğrudan sistemin orijinal çekirdek seçicisini tetikler. Ayrıca CineTV'deki dahili `BootReceiver` sayesinde TV fişten çekilip açılsa bile CineTV otomatik olarak uyanır. |
-| **Sadece APK kurdum ama bazı bileşenler eksik kaldı** | CineTV Ayarlar › TV & Telefon › **Kurulum Sihirbazı**'nı açın. Eksik olan satıra dokunarak veya alttaki **"Tümünü Otomatik Tamamla"** butonuna basarak Nuvio, Nova Player, kumanda izinleri ve sanal RAM optimizasyonunu kumandanızla saniyeler içinde tamamlayabilirsiniz. |
-| Telefondaki kumanda tuşları başka uygulamalarda çalışmıyor | Televizyonda çıkan *"hata ayıklamaya izin ver"* sorusuna **Her zaman** demediniz; CineTV'yi kapatıp açın, soru yeniden gelir veya Ayarlar › TV & Telefon › Erişilebilirlik & Tuşlar'ı kontrol edin. |
+| **Sadece APK kurdum ama bazı bileşenler eksik kaldı** | CineTV Ayarlar › TV & Telefon › **Kurulum Sihirbazı**'nı açın. Eksik olan satıra dokunarak veya alttaki **"Otomatik Tamamla"** butonuna basarak Nuvio, Nova Player, Türkçe eklentiler, kumanda izinleri ve TV Denetçisi optimizasyonlarını kumandanızla saniyeler içinde tamamlayabilirsiniz. |
+| Telefondaki kumanda tuşları başka uygulamalarda yanıt vermiyor | CineTV Ayarlar › TV & Telefon › **Erişilebilirlik & Tuşlar**'ın açık olduğundan ve televizyonda çıkan *"hata ayıklamaya izin ver"* sorusuna **Her zaman** dediğinizden emin olun. CineTV hem yerel tuş köprüsü hem de Erişilebilirlik Servisi sayesinde tüm uygulamalarda çalışır. |
 | YouTube'da televizyon listede yok | Telefon ve televizyon aynı Wi-Fi'de mi? YouTube'u kapatıp açın. Yine yoksa: TizenTube › Ayarlar › **TV koduyla bağla**, kodu telefonda YouTube › Ayarlar › **TV'de izle** › **TV kodunu gir**'e yazın. |
 | Film özetleri İngilizce | Televizyonun dili Türkçe mi? (Ayarlar › Cihaz Tercihleri › Dil). TMDB anahtarı girerseniz özetler doğrudan Türkçe gelir. |
 | Bir şey bozuldu, eskiye dönmek istiyorum | CineTV › Ayarlar › en altta kırmızı **CineTV'yi yok et!** Televizyonu hiçbir şey kurulmamış gibi adeta ilk günkü orijinal fabrika haline döndürür. |
@@ -140,8 +145,6 @@ CineTV televizyonunuzda hiçbir zaman kalıcı, geri alınamaz bir hasar veya ki
 
 ---
 
-## Güvenlik notu
+## Güvenlik ve Gizlilik Notu
 
-Kurulum bittikten sonra Geliştirici seçenekleri › **Ağ hata ayıklama**'yı kapatabilirsiniz; ama o zaman
-telefon kumandası yalnızca CineTV'nin içinde çalışır. Açık bırakırsanız sadece sizin izin verdiğiniz cihazlar
-bağlanabilir.
+CineTV yerel ağınızda çalışırken **DNS-rebinding koruması** ve **kriptografik eşleştirme anahtarı** kullanır; televizyonunuzdaki QR kodu okutarak veya televizyon ekranındaki onay penceresine **İzin ver** diyerek eşleştirmediğiniz hiçbir cihaz televizyonunuza komut gönderemez. Dahili tuş köprüsü (`KeyBridge`) ve **CineTV Erişilebilirlik Servisi** sayesinde telefon kumandanız yalnızca CineTV içinde değil, **Nuvio, YouTube, Nova Player ve sistem ayarları dahil televizyonun tüm uygulamalarında** kesintisiz çalışır.

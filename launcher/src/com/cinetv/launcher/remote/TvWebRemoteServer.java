@@ -762,8 +762,6 @@ public final class TvWebRemoteServer {
 
     private static void sendKey(final int code, final boolean longPress) {
         if (code <= 0 || code > 400) return;
-        // A real key press, in whatever app is in front (Nuvio, live TV, the TV's own menus)
-        if (KeyBridge.key(app, code, longPress)) return;
         AudioManager am = (AudioManager) app.getSystemService(Context.AUDIO_SERVICE);
         if (am != null && (code == 24 || code == 25 || code == 164)) {
             int dir = code == 24 ? AudioManager.ADJUST_RAISE : code == 25 ? AudioManager.ADJUST_LOWER : AudioManager.ADJUST_TOGGLE_MUTE;
@@ -774,11 +772,9 @@ public final class TvWebRemoteServer {
             post(() -> AppLauncher.start(app, new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)));
             return;
         }
-        TvKeyInterceptorService keys = TvKeyInterceptorService.getInstance();
-        if (code == 4 && keys != null && keys.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)) return;
-        // Direct 0ms UI-thread dispatch when CineTV is in front (works 100% on APK-only installs without ADB)
+        // Fast 0ms UI-thread dispatch when CineTV is in front (except system power/input keys)
         com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-        if (ma != null && com.cinetv.launcher.MainActivity.isInFront()) {
+        if (ma != null && com.cinetv.launcher.MainActivity.isInFront() && code != 26 && code != 178 && code != 176) {
             post(() -> {
                 try {
                     if (longPress) {
@@ -794,6 +790,23 @@ public final class TvWebRemoteServer {
             });
             return;
         }
+        // System-wide key injection in any foreground app (Nuvio, YouTube, Nova Player, live TV, settings)
+        if (KeyBridge.key(app, code, longPress)) return;
+        // System-wide media transport keys work across all media players via AudioManager even without ADB
+        if (am != null && (code == 85 || code == 86 || code == 87 || code == 88 || code == 89 || code == 90 || code == 126 || code == 127)) {
+            try {
+                long now = android.os.SystemClock.uptimeMillis();
+                am.dispatchMediaKeyEvent(new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_DOWN, code, 0));
+                am.dispatchMediaKeyEvent(new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_UP, code, 0));
+                return;
+            } catch (Throwable ignored) {}
+        }
+        if (code == 176) {
+            post(() -> AppLauncher.start(app, new Intent(android.provider.Settings.ACTION_SETTINGS)));
+            return;
+        }
+        TvKeyInterceptorService keys = TvKeyInterceptorService.getInstance();
+        if (keys != null && keys.dispatchAccessibilityKey(code, longPress)) return;
         try {
             new Instrumentation().sendKeyDownUpSync(code);
         } catch (Throwable ignored) {

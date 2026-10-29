@@ -53,15 +53,36 @@ public final class AirMouse {
             if (view != null) view.pulse();
             keepAlive();
         });
-        new Thread(() -> KeyBridge.tap(ctx, cx, cy), "cinetv-mouse").start();
+        new Thread(() -> {
+            if (KeyBridge.tap(ctx, cx, cy)) return;
+            com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
+            if (svc != null && svc.dispatchTap(cx, cy)) return;
+            final com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+            if (ma != null && com.cinetv.launcher.MainActivity.isInFront()) {
+                main.post(() -> {
+                    long now = android.os.SystemClock.uptimeMillis();
+                    android.view.MotionEvent down = android.view.MotionEvent.obtain(now, now, android.view.MotionEvent.ACTION_DOWN, cx, cy, 0);
+                    android.view.MotionEvent up = android.view.MotionEvent.obtain(now, now + 50, android.view.MotionEvent.ACTION_UP, cx, cy, 0);
+                    ma.dispatchTouchEvent(down);
+                    ma.dispatchTouchEvent(up);
+                    down.recycle();
+                    up.recycle();
+                });
+            }
+        }, "cinetv-mouse").start();
     }
 
     /** Scrolls the page under the pointer: a short swipe (positive dy moves the content up). Any thread. */
     public static void scroll(final Context ctx, final float dy) {
         final int cx = Math.round(x), cy = Math.round(y);
         final int dist = Math.round(Math.max(-height / 3f, Math.min(height / 3f, -dy * (width / 1920f) * 3f)));
+        final int ty = Math.max(1, Math.min(height - 2, cy + dist));
         main.post(AirMouse::keepAlive);
-        new Thread(() -> KeyBridge.swipe(ctx, cx, cy, cx, Math.max(1, Math.min(height - 2, cy + dist)), 180), "cinetv-mouse").start();
+        new Thread(() -> {
+            if (KeyBridge.swipe(ctx, cx, cy, cx, ty, 180)) return;
+            com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
+            if (svc != null) svc.dispatchSwipe(cx, cy, cx, ty, 180);
+        }, "cinetv-mouse").start();
     }
 
     public static void off(Context ctx) {
@@ -76,8 +97,10 @@ public final class AirMouse {
     private static boolean show(Context ctx) {
         if (view != null) return true;
         try {
-            Context app = ctx.getApplicationContext();
-            WindowManager wm = (WindowManager) app.getSystemService(Context.WINDOW_SERVICE);
+            com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
+            boolean canAppOverlay = android.provider.Settings.canDrawOverlays(ctx);
+            Context hostCtx = (!canAppOverlay && svc != null) ? svc : ctx.getApplicationContext();
+            WindowManager wm = (WindowManager) hostCtx.getSystemService(Context.WINDOW_SERVICE);
             DisplayMetrics m = new DisplayMetrics();
             wm.getDefaultDisplay().getRealMetrics(m);
             width = m.widthPixels;
@@ -85,15 +108,17 @@ public final class AirMouse {
             x = width / 2f;
             y = height / 2f;
             int size = Math.round(width / 1920f * 44);
-            lp = new WindowManager.LayoutParams(size, size,
-                    Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE,
+            int winType = (!canAppOverlay && svc != null)
+                    ? WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+                    : (Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE);
+            lp = new WindowManager.LayoutParams(size, size, winType,
                     WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                             | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                     PixelFormat.TRANSLUCENT);
             lp.gravity = Gravity.TOP | Gravity.START;
             lp.x = Math.round(x);
             lp.y = Math.round(y);
-            Pointer p = new Pointer(app);
+            Pointer p = new Pointer(hostCtx);
             wm.addView(p, lp);
             view = p;
             return true;

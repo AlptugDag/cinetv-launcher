@@ -151,8 +151,20 @@ public class DvdOpeningView extends View {
         // trailer moments: the case lies sideways and opens wide, the trailer in its tray (falls back to vertical disc mode if trailer is missing or country-blocked)
         landscape = slot != null && com.cinetv.launcher.service.Prefs.trailerMoments(getContext())
                 && TrailerPlayer.available(getContext())
-                && com.cinetv.launcher.service.MovieCatalog.hasPlayableTrailer(getContext(), movie, 420);
+                && com.cinetv.launcher.service.MovieCatalog.hasPlayableTrailer(getContext(), movie, 0);
         trailerShown = false;
+        if (landscape && movie != null) {
+            final Context appCtx = getContext().getApplicationContext();
+            final Movie targetMovie = movie;
+            new Thread(() -> {
+                String k = com.cinetv.launcher.service.MovieCatalog.trailerKey(appCtx, targetMovie);
+                if (k == null || k.isEmpty()) {
+                    post(() -> {
+                        if (this.movie == targetMovie) switchToVerticalDiscMode();
+                    });
+                }
+            }, "cinetv-dvd-tr-check").start();
+        }
         int w = getWidth(), h = getHeight();
         if (landscape) {
             float maxW = (w * 0.88f) / 2f;

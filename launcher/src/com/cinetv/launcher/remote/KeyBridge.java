@@ -21,7 +21,8 @@ public final class KeyBridge {
     private static Socket socket;
     private static OutputStream out;
     private static InputStream in;
-    private static long lastStartAttempt;
+    private static volatile long lastStartAttempt;
+    private static volatile boolean starting;
 
     private KeyBridge() {}
 
@@ -78,32 +79,44 @@ public final class KeyBridge {
         if (out != null) return true;
         final String secret = secret(ctx);
         if (open(secret)) return true;
-        if (!mayStart || System.currentTimeMillis() - lastStartAttempt < 15_000) return false;
-        lastStartAttempt = System.currentTimeMillis();
-        final String apk = ctx.getApplicationInfo().sourceDir;
-        // its own session (setsid), so it outlives this adb connection
-        final String cmd = "kill $(cat " + KeyInjector.PID_FILE + " 2>/dev/null) 2>/dev/null; CLASSPATH=" + apk
-                + " setsid app_process / com.cinetv.launcher.remote.KeyInjector " + KeyInjector.PORT + " " + secret
-                + " </dev/null >/data/local/tmp/cinetv-keys.log 2>&1 &";
-        // the TV may ask once to allow CineTV; give the viewer time to answer
-        if (!LocalAdb.shell(ctx, cmd, 60_000)) return false;
-        for (int i = 0; i < 20; i++) {
-            if (open(secret)) return true;
-            try {
-                Thread.sleep(150);
-            } catch (InterruptedException e) {
-                return false;
-            }
-        }
+        if (mayStart) ensureDaemonAsync(ctx, secret);
         return false;
+    }
+
+    private static void ensureDaemonAsync(final Context ctx, final String secret) {
+        if (starting || System.currentTimeMillis() - lastStartAttempt < 15_000) return;
+        starting = true;
+        lastStartAttempt = System.currentTimeMillis();
+        final Context app = ctx.getApplicationContext();
+        Thread t = new Thread(() -> {
+            try {
+                final String apk = app.getApplicationInfo().sourceDir;
+                final String cmd = "kill $(cat " + KeyInjector.PID_FILE + " 2>/dev/null) 2>/dev/null; CLASSPATH=" + apk
+                        + " setsid app_process / com.cinetv.launcher.remote.KeyInjector " + KeyInjector.PORT + " " + secret
+                        + " </dev/null >/data/local/tmp/cinetv-keys.log 2>&1 &";
+                if (LocalAdb.shell(app, cmd, 30_000)) {
+                    for (int i = 0; i < 15; i++) {
+                        synchronized (KeyBridge.class) {
+                            if (out != null || open(secret)) break;
+                        }
+                        Thread.sleep(120);
+                    }
+                }
+            } catch (Throwable ignored) {
+            } finally {
+                starting = false;
+            }
+        }, "cinetv-keybridge-init");
+        t.setDaemon(true);
+        t.start();
     }
 
     private static boolean open(String secret) {
         try {
             Socket s = new Socket();
-            s.connect(new InetSocketAddress("127.0.0.1", KeyInjector.PORT), 300);
+            s.connect(new InetSocketAddress("127.0.0.1", KeyInjector.PORT), 80);
             s.setTcpNoDelay(true);
-            s.setSoTimeout(2000);
+            s.setSoTimeout(1200);
             OutputStream o = s.getOutputStream();
             o.write((secret + "\n").getBytes(StandardCharsets.UTF_8));
             o.flush();

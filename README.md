@@ -92,7 +92,7 @@ CineTV’nin kalbindeki **3D DVD Rafı**, fiziksel arşiv kültürüne ve koleks
 Ana ekranınızdaki filmler sıradan afişler değildir; her biri poligon yüzeyleri, derinliği ve ışık kırılmalarıyla işlenmiş gerçek zamanlı 3D koleksiyon parçalarıdır. Kumandanızla gezinirken kutu öne doğru süzülür ve kapağı aralanır:
 
 - **Sol İç Kapakta Edebi Kürasyon:** Özel basım bir Criterion Collection kutusunu aralamışçasına; filmin ruhunu, vizyon mirasını ve sinematografik değerini aktaran edebi sinopsis sizi karşılar.
-- **Sağ Tepside Sıfır Parlama Fragman:** Parıldayan diskin ardında; YouTube arayüzü, reklamlar veya bekleme ekranları olmadan filmin fragmanı tepsisinde kesintisiz dönmeye başlar.
+- **Sağ Tepside Sıfır Arayüzlü Fragman & Akıllı Dikey Disk Modu:** DVD kutusunun sağ tepsisinde fragman oynarken hiçbir YouTube arayüzü (başlık çubuğu, kanal ikonu, filigran veya bitiş ekranı) görünmez. Eğer bir filmin fragmanı YouTube'da bulunmuyorsa veya bulunduğunuz ülkede izlenme kısıtı varsa, o filmin DVD kutusu otomatik olarak **fragmansız ve dikey** açılır; tepsideki dönen DVD diski tüm gerçekçiliğiyle sahneye çıkar.
 
 <br>
 
@@ -231,8 +231,8 @@ Film bittiğinde veya televizyonunuz boşta kaldığında ekran kararmaz; salonu
 
 Uygulama mağazalarından ek yazılım indirmeye, hesap açmaya veya karmaşık kodlar girmeye gerek yok. Kameranızı televizyondaki QR koda doğrulttuğunuz anda tüm güç telefonunuza geçer:
 
-- **Dokunmatik Kumanda:** Milisaniyelik tepki süresine sahip akıcı bir izleme dörtgeni.
-- **Web Cast Köprüsü:** İnternette karşılaştığınız herhangi bir yayını tek dokunuşla televizyona fırlatma imkanı.
+- **Tüm TV Genelinde Dokunmatik Kumanda & Air Mouse:** Milisaniyelik tepki süresine sahip dokunmatik izleme dörtgeni (Touchpad), Hava Faresi (Air Mouse) ve klavye/metin yapıştırma altyapısı yalnızca CineTV içinde değil; Nuvio, YouTube, Nova Player ve sistem menüleri dahil **televizyonun her yerinde** kesintisiz çalışır.
+- **Web Cast Köprüsü:** İnternette karşılaştığınız herhangi bir yayını (iframe Referer, Origin ve Cookie başlıklarını otomatik yakalayarak) tek dokunuşla televizyona fırlatma imkanı.
 - **Kişisel Galeri:** Telefonunuzdaki fotoğrafları anında televizyonun duvar kağıdı yapabilme özgürlüğü.
 
 <br>
@@ -291,7 +291,7 @@ Televizyonunuzdaki ücretsiz **Downloader** uygulamasına şu adresi girin:
 ```text
 https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV.apk
 ```
-İndirme bittiğinde **Yükle** ve **Aç** deyin. İlk açılışta izin onayını vermeniz yeterlidir; CineTV geriye kalan tüm sistemi arka planda otomatik kurar.
+İndirme bittiğinde **Yükle** ve **Aç** deyin. İlk açılışta devreye giren **Kurulum Sihirbazı**; CineTV'yi varsayılan ana ekranınız yapar, **Nuvio Medya Merkezi ile Türkçe eklentilerin** kurulup kurulmayacağını sorar ve **"Otomatik Tamamla"** tuşuyla tüm sistemi, görüntü/ses/ağ optimizasyonlarını arka planda kurar. Üstelik sonraki tüm yeni sürümler televizyonunuzda arka planda sessizce güncellenir.
 
 ### 2. Yapay Zeka Ajanı ile (Tam Otonom)
 Google DeepMind Antigravity, Claude veya Cursor gibi bir ajana şu yönergeyi iletmeniz yeterlidir:

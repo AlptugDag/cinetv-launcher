@@ -243,7 +243,7 @@ public class PosterShelf extends FrameLayout {
         targetPos += delta;
         index = Math.floorMod(targetPos, n);
         main.removeCallbacks(prefetchRunnable);
-        main.postDelayed(prefetchRunnable, 450);
+        main.postDelayed(prefetchRunnable, 150);
         if (anim != null) anim.cancel();
         anim = ValueAnimator.ofFloat(focusPos, targetPos);
         // A light spring: the row glides, slightly overshoots and settles, like boxes sliding on a shelf.

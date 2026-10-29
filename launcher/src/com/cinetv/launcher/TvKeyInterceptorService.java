@@ -117,6 +117,84 @@ public class TvKeyInterceptorService extends AccessibilityService {
         return instance;
     }
 
+    /**
+     * Performs D-pad navigation, click, or global actions in the currently active window via Accessibility
+     * when KeyBridge (ADB) is unavailable.
+     */
+    public boolean dispatchAccessibilityKey(int code, boolean longPress) {
+        try {
+            if (code == KeyEvent.KEYCODE_BACK) return performGlobalAction(GLOBAL_ACTION_BACK);
+            if (code == KeyEvent.KEYCODE_HOME) return performGlobalAction(GLOBAL_ACTION_HOME);
+            if (code == KeyEvent.KEYCODE_APP_SWITCH) return performGlobalAction(GLOBAL_ACTION_RECENTS);
+            android.view.accessibility.AccessibilityNodeInfo focused = findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT);
+            if (focused == null) focused = findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
+            if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) {
+                if (focused != null) {
+                    int action = longPress
+                            ? android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
+                            : android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK;
+                    if (focused.performAction(action)) return true;
+                    android.view.accessibility.AccessibilityNodeInfo p = focused.getParent();
+                    while (p != null) {
+                        if (p.isClickable() && p.performAction(action)) return true;
+                        p = p.getParent();
+                    }
+                }
+                return false;
+            }
+            int dir = 0;
+            if (code == KeyEvent.KEYCODE_DPAD_UP) dir = android.view.View.FOCUS_UP;
+            else if (code == KeyEvent.KEYCODE_DPAD_DOWN) dir = android.view.View.FOCUS_DOWN;
+            else if (code == KeyEvent.KEYCODE_DPAD_LEFT) dir = android.view.View.FOCUS_LEFT;
+            else if (code == KeyEvent.KEYCODE_DPAD_RIGHT) dir = android.view.View.FOCUS_RIGHT;
+            if (dir != 0 && focused != null) {
+                android.view.accessibility.AccessibilityNodeInfo next = focused.focusSearch(dir);
+                if (next != null && next.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS)) {
+                    return true;
+                }
+                android.view.accessibility.AccessibilityNodeInfo p = focused;
+                int scrollAction = (dir == android.view.View.FOCUS_DOWN || dir == android.view.View.FOCUS_RIGHT)
+                        ? android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+                        : android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD;
+                while (p != null) {
+                    if (p.isScrollable() && p.performAction(scrollAction)) return true;
+                    p = p.getParent();
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    /** Injects a screen tap at (x, y) via AccessibilityService gesture API when KeyBridge is unavailable. */
+    public boolean dispatchTap(int x, int y) {
+        if (android.os.Build.VERSION.SDK_INT < 24) return false;
+        try {
+            android.graphics.Path path = new android.graphics.Path();
+            path.moveTo(Math.max(0, x), Math.max(0, y));
+            android.accessibilityservice.GestureDescription.StrokeDescription stroke =
+                    new android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 50);
+            return dispatchGesture(new android.accessibilityservice.GestureDescription.Builder().addStroke(stroke).build(), null, null);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** Injects a swipe gesture from (x1, y1) to (x2, y2) via AccessibilityService when KeyBridge is unavailable. */
+    public boolean dispatchSwipe(int x1, int y1, int x2, int y2, int durationMs) {
+        if (android.os.Build.VERSION.SDK_INT < 24) return false;
+        try {
+            android.graphics.Path path = new android.graphics.Path();
+            path.moveTo(Math.max(0, x1), Math.max(0, y1));
+            path.lineTo(Math.max(0, x2), Math.max(0, y2));
+            android.accessibilityservice.GestureDescription.StrokeDescription stroke =
+                    new android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, Math.max(50, durationMs));
+            return dispatchGesture(new android.accessibilityservice.GestureDescription.Builder().addStroke(stroke).build(), null, null);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();

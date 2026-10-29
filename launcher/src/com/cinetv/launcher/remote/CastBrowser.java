@@ -56,6 +56,9 @@ public final class CastBrowser {
     private static final Handler main = new Handler(Looper.getMainLooper());
     private static final ExecutorService probe = Executors.newFixedThreadPool(2);
     private static WebView web;
+    private static boolean attachedToWindow;
+    private static Bitmap frameBuf;
+    private static Canvas frameCanvas;
     private static Context app;
     private static volatile long lastTap;
     private static volatile String pageUrl = "", pageTitle = "";
@@ -84,13 +87,19 @@ public final class CastBrowser {
         main.post(() -> {
             ensure();
             if (web == null) return;
-            WindowManager.LayoutParams lp = (WindowManager.LayoutParams) web.getLayoutParams();
-            if (lp != null && lp.height != H) {
-                lp.height = H;
-                try {
-                    ((WindowManager) app.getSystemService(Context.WINDOW_SERVICE)).updateViewLayout(web, lp);
-                } catch (Throwable ignored) {
+            if (attachedToWindow) {
+                WindowManager.LayoutParams lp = (WindowManager.LayoutParams) web.getLayoutParams();
+                if (lp != null && lp.height != H) {
+                    lp.height = H;
+                    try {
+                        ((WindowManager) web.getContext().getSystemService(Context.WINDOW_SERVICE)).updateViewLayout(web, lp);
+                    } catch (Throwable ignored) {
+                    }
                 }
+            } else {
+                web.measure(View.MeasureSpec.makeMeasureSpec(W, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(H, View.MeasureSpec.EXACTLY));
+                web.layout(0, 0, W, H);
             }
             if (referrer != null && referrer.startsWith("http")) {
                 java.util.Map<String, String> h = new java.util.HashMap<>();
@@ -115,10 +124,13 @@ public final class CastBrowser {
             try {
                 w.stopLoading();
                 w.loadUrl("about:blank");
-                ((WindowManager) w.getContext().getSystemService(Context.WINDOW_SERVICE)).removeView(w);
+                if (attachedToWindow) {
+                    ((WindowManager) w.getContext().getSystemService(Context.WINDOW_SERVICE)).removeView(w);
+                }
                 w.destroy();
             } catch (Throwable ignored) {
             }
+            attachedToWindow = false;
         });
     }
 
@@ -199,14 +211,32 @@ public final class CastBrowser {
                 }
             });
             // on the TV but out of sight: fully transparent, never touchable, never focused
-            WindowManager.LayoutParams lp = new WindowManager.LayoutParams(W, H,
-                    Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE,
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                            | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-                    PixelFormat.TRANSLUCENT);
-            lp.gravity = Gravity.TOP | Gravity.START;
-            lp.alpha = 0f;
-            ((WindowManager) app.getSystemService(Context.WINDOW_SERVICE)).addView(w, lp);
+            attachedToWindow = false;
+            try {
+                com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
+                boolean canAppOverlay = android.provider.Settings.canDrawOverlays(app);
+                if (canAppOverlay || svc != null) {
+                    Context hostCtx = canAppOverlay ? app : svc;
+                    int winType = canAppOverlay
+                            ? (Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE)
+                            : WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
+                    WindowManager.LayoutParams lp = new WindowManager.LayoutParams(W, H, winType,
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                                    | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                            PixelFormat.TRANSLUCENT);
+                    lp.gravity = Gravity.TOP | Gravity.START;
+                    lp.alpha = 0f;
+                    ((WindowManager) hostCtx.getSystemService(Context.WINDOW_SERVICE)).addView(w, lp);
+                    attachedToWindow = true;
+                }
+            } catch (Throwable ignored) {
+                attachedToWindow = false;
+            }
+            if (!attachedToWindow) {
+                w.measure(View.MeasureSpec.makeMeasureSpec(W, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(H, View.MeasureSpec.EXACTLY));
+                w.layout(0, 0, W, H);
+            }
             web = w;
         } catch (Throwable t) {
             web = null;
@@ -252,14 +282,18 @@ public final class CastBrowser {
         main.post(() -> {
             try {
                 if (web != null) {
-                    Bitmap b = Bitmap.createBitmap(W / 2, H / 2, Bitmap.Config.RGB_565);
-                    Canvas c = new Canvas(b);
-                    c.scale(0.5f, 0.5f);
-                    c.translate(-web.getScrollX(), -web.getScrollY());
-                    web.draw(c);
-                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    b.compress(Bitmap.CompressFormat.JPEG, 62, bos);
-                    b.recycle();
+                    int fw = Math.max(1, W / 2), fh = Math.max(1, H / 2);
+                    if (frameBuf == null || frameBuf.isRecycled() || frameBuf.getWidth() != fw || frameBuf.getHeight() != fh) {
+                        frameBuf = Bitmap.createBitmap(fw, fh, Bitmap.Config.RGB_565);
+                        frameCanvas = new Canvas(frameBuf);
+                    }
+                    int save = frameCanvas.save();
+                    frameCanvas.scale(0.5f, 0.5f);
+                    frameCanvas.translate(-web.getScrollX(), -web.getScrollY());
+                    web.draw(frameCanvas);
+                    frameCanvas.restoreToCount(save);
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream(24 * 1024);
+                    frameBuf.compress(Bitmap.CompressFormat.JPEG, 62, bos);
                     out[0] = bos.toByteArray();
                 }
             } catch (Throwable ignored) {
@@ -314,8 +348,12 @@ public final class CastBrowser {
             if (web == null) return;
             float x = fx * W, y = fy * H;
             long now = SystemClock.uptimeMillis();
-            web.dispatchTouchEvent(MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0));
-            web.dispatchTouchEvent(MotionEvent.obtain(now, now + 70, MotionEvent.ACTION_UP, x, y, 0));
+            MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0);
+            MotionEvent up = MotionEvent.obtain(now, now + 70, MotionEvent.ACTION_UP, x, y, 0);
+            web.dispatchTouchEvent(down);
+            web.dispatchTouchEvent(up);
+            down.recycle();
+            up.recycle();
             readFrames();
         });
     }
@@ -330,16 +368,24 @@ public final class CastBrowser {
             float dist = Math.abs(y1 - y0);
             int steps = Math.max(8, Math.round(dist / 12f));
             long now = SystemClock.uptimeMillis(), t = now;
-            web.dispatchTouchEvent(MotionEvent.obtain(now, t, MotionEvent.ACTION_DOWN, x, y0, 0));
+            MotionEvent down = MotionEvent.obtain(now, t, MotionEvent.ACTION_DOWN, x, y0, 0);
+            web.dispatchTouchEvent(down);
+            down.recycle();
             for (int i = 1; i <= steps; i++) {
                 t += 16;
-                web.dispatchTouchEvent(MotionEvent.obtain(now, t, MotionEvent.ACTION_MOVE, x, y0 + (y1 - y0) * i / (float) steps, 0));
+                MotionEvent move = MotionEvent.obtain(now, t, MotionEvent.ACTION_MOVE, x, y0 + (y1 - y0) * i / (float) steps, 0);
+                web.dispatchTouchEvent(move);
+                move.recycle();
             }
             for (int i = 0; i < 6; i++) {
                 t += 20;
-                web.dispatchTouchEvent(MotionEvent.obtain(now, t, MotionEvent.ACTION_MOVE, x, y1, 0));
+                MotionEvent hold = MotionEvent.obtain(now, t, MotionEvent.ACTION_MOVE, x, y1, 0);
+                web.dispatchTouchEvent(hold);
+                hold.recycle();
             }
-            web.dispatchTouchEvent(MotionEvent.obtain(now, t + 20, MotionEvent.ACTION_UP, x, y1, 0));
+            MotionEvent up = MotionEvent.obtain(now, t + 20, MotionEvent.ACTION_UP, x, y1, 0);
+            web.dispatchTouchEvent(up);
+            up.recycle();
         });
     }
 
