@@ -275,17 +275,17 @@ public final class TvWebRemoteServer {
                 asset(out, "remote/me.html", "text/html; charset=utf-8");
                 return;
             }
-            if (path.equals("/manifest.webmanifest")) {
+            if (path.equals("/manifest.webmanifest") || path.endsWith("/manifest.webmanifest")) {
                 asset(out, "remote/manifest.webmanifest", "application/manifest+json");
                 return;
             }
-            if (path.equals("/favicon.ico") || path.equals("/icon.png")
-                    || path.startsWith("/apple-touch-icon")) {
-                asset(out, "remote/icon.png", "image/png");
+            if (path.equals("/icon-192.png") || path.endsWith("/icon-192.png")) {
+                asset(out, "remote/icon-192.png", "image/png");
                 return;
             }
-            if (path.equals("/icon-192.png")) {
-                asset(out, "remote/icon-192.png", "image/png");
+            if (path.equals("/favicon.ico") || path.equals("/icon.png") || path.endsWith("/icon.png")
+                    || path.contains("apple-touch-icon")) {
+                asset(out, "remote/icon.png", "image/png");
                 return;
             }
             if (path.equals("/sw.js") || path.equals("/static/sw.js")) {

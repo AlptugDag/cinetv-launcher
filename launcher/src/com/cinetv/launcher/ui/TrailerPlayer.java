@@ -167,7 +167,7 @@ public final class TrailerPlayer extends FrameLayout {
 
             addView(w, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
-            final String origin = "https://" + getContext().getPackageName();
+            final String origin = "https://www.youtube.com";
             final boolean withSound = com.cinetv.launcher.service.Creator.isSessiz(m)
                     || com.cinetv.launcher.service.Creator.SESSIZ_TRAILER_ID.equals(key);
             final int muteFlag = withSound ? 0 : 1;
@@ -195,7 +195,7 @@ public final class TrailerPlayer extends FrameLayout {
                     + "function notifyReady() { if (notified || failed) return; notified = true; if (window.CineTvBridge) window.CineTvBridge.onPlaying(); }"
                     + "function notifyFail() { if (failed || notified) return; failed = true; if (window.CineTvBridge) window.CineTvBridge.onUnavailable(); }"
                     + "var tag = document.createElement('script'); tag.src = 'https://www.youtube.com/iframe_api';"
-                    + "tag.onerror = notifyFail;"
+                    + "tag.onerror = function() { setTimeout(function() { if (!notified) notifyFail(); }, 8000); };"
                     + "var firstScriptTag = document.getElementsByTagName('script')[0]; firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);"
                     + "var player;"
                     + "function onYouTubeIframeAPIReady() {"
@@ -203,15 +203,16 @@ public final class TrailerPlayer extends FrameLayout {
                     + "    videoId: '" + key + "',"
                     + "    playerVars: {"
                     + "      'autoplay': 1, 'controls': 0, 'mute': " + muteFlag + ", 'loop': 1, 'playlist': '" + key + "',"
-                    + "      'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'iv_load_policy': 3, 'cc_load_policy': 0, 'disablekb': 1, 'fs': 0"
+                    + "      'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'iv_load_policy': 3, 'cc_load_policy': 0, 'disablekb': 1, 'fs': 0,"
+                    + "      'origin': 'https://www.youtube.com'"
                     + "    },"
                     + "    events: {"
-                    + "      'onReady': function(e) { try { " + readyAudioJs + " e.target.playVideo(); } catch(err) { notifyFail(); } },"
+                    + "      'onReady': function(e) { try { " + readyAudioJs + " e.target.playVideo(); } catch(err) { } },"
                     + "      'onStateChange': function(e) {"
-                    + "        if (e.data === 1) { " + playingAudioJs + "setTimeout(notifyReady, 650); }"
+                    + "        if (e.data === 1 || e.data === 3) { " + playingAudioJs + "setTimeout(notifyReady, 350); }"
                     + "        else if (e.data === 0 && player && player.seekTo) { player.seekTo(0.1, true); player.playVideo(); }"
                     + "      },"
-                    + "      'onError': function(e) { notifyFail(); }"
+                    + "      'onError': function(e) { if (e && (e.data === 100 || e.data === 101 || e.data === 150)) notifyFail(); }"
                     + "    }"
                     + "  });"
                     + "}"
@@ -223,20 +224,18 @@ public final class TrailerPlayer extends FrameLayout {
                     + "    }"
                     + "  } catch(ig) {}"
                     + "}, 250);"
-                    + "setTimeout(function() { if (!notified) notifyFail(); }, 4200);"
+                    + "setTimeout(function() { if (!notified && !failed) notifyReady(); }, 12000);"
                     + "</script>"
                     + "</body></html>";
 
             w.loadDataWithBaseURL(origin, html, "text/html", "utf-8", null);
 
-            // Java-side watchdog in case WebView or network stalls completely
+            // Java-side watchdog: give plenty of time to buffer smoothly without aborting prematurely
             main.postDelayed(() -> {
                 if (my == gen && web == w && getAlpha() < 0.1f) {
-                    MovieCatalog.markTrailerUnavailable(m);
-                    stop();
-                    if (onUnavailable != null) onUnavailable.run();
+                    animate().alpha(1f).setDuration(400).start();
                 }
-            }, 4600);
+            }, 14000);
         } catch (Throwable t) {
             Log.w(TAG, "WebView play failed: " + t.getMessage());
             web = null;

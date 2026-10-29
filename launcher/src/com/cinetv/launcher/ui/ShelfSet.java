@@ -92,14 +92,14 @@ final class ShelfSet {
 
         private float leftBleed() {
             getLocationOnScreen(loc);
-            return Math.max(UiKit.pxf(64), (float) Math.max(0, loc[0]));
+            return Math.max(UiKit.pxf(300), (float) Math.max(0, loc[0]) + UiKit.pxf(160));
         }
 
         private float rightBleed() {
             getLocationOnScreen(loc);
             float screenW = getResources().getDisplayMetrics().widthPixels;
             float r = screenW - (loc[0] + getWidth());
-            return Math.max(UiKit.pxf(64), (float) Math.max(0, r));
+            return Math.max(UiKit.pxf(300), (float) Math.max(0, r) + UiKit.pxf(160));
         }
 
         /** Where the cases beside the focused one stand: their bottom edge. */

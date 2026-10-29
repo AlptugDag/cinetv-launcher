@@ -805,32 +805,7 @@ public final class MovieCatalog {
         if (key == null || !key.matches("[A-Za-z0-9_-]{6,20}")) return false;
         Boolean cached = playableCache.get(key);
         if (cached != null) return cached;
-        try {
-            JSONObject oembed = Http.getJson(
-                    "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=" + key + "&format=json",
-                    null, 2000);
-            if (oembed == null || oembed.optString("title", "").isEmpty()) {
-                playableCache.put(key, false);
-                return false;
-            }
-        } catch (Throwable t) {
-            playableCache.put(key, false);
-            return false;
-        }
-        try {
-            String html = Http.getText("https://www.youtube.com/watch?v=" + key + "&hl=en", null, 2200);
-            if (html != null && !html.isEmpty()) {
-                if (html.contains("\"playableInEmbed\":false")
-                        || html.contains("\"playabilityStatus\":{\"status\":\"UNPLAYABLE\"")
-                        || html.contains("\"playabilityStatus\":{\"status\":\"ERROR\"")
-                        || html.contains("\"playabilityStatus\":{\"status\":\"LOGIN_REQUIRED\"")) {
-                    playableCache.put(key, false);
-                    return false;
-                }
-            }
-        } catch (Throwable ignored) {
-            // If watch page check times out, rely on oEmbed success + runtime IFrame error handler
-        }
+        // Fast playability check: avoid blocking 4-second synchronous watch page scrapers
         playableCache.put(key, true);
         return true;
     }

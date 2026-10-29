@@ -123,6 +123,67 @@ public final class Panels {
         head.addView(navHint);
         root.addView(head);
 
+        final String[] tabTitles = "tr".equals(Locale.getDefault().getLanguage())
+                ? new String[]{"🎨 Temalar & Atmosfer", "🎬 Sinema Deneyimi", "⚡ Yapay Zeka & Ağ", "⚙️ Sistem & TV"}
+                : new String[]{"🎨 Themes & Atmosphere", "🎬 Cinema Experience", "⚡ AI & Network", "⚙️ System & TV"};
+        final LinearLayout tabRow = new LinearLayout(ctx);
+        tabRow.setOrientation(LinearLayout.HORIZONTAL);
+        tabRow.setGravity(Gravity.CENTER_VERTICAL);
+        tabRow.setClipChildren(false);
+        tabRow.setClipToPadding(false);
+        tabRow.setPadding(UiKit.px(48), UiKit.px(10), UiKit.px(48), UiKit.px(8));
+        final View[] tabViews = new View[4];
+        for (int t = 0; t < 4; t++) {
+            final int thisTab = t;
+            final boolean active = (t == pageIndex);
+            final TextView tabPill = UiKit.bold(ctx, 15, active ? Color.WHITE : UiKit.INK_DIM);
+            tabPill.setText(tabTitles[t]);
+            tabPill.setFocusable(true);
+            tabPill.setClickable(true);
+            tabPill.setPadding(UiKit.px(22), UiKit.px(9), UiKit.px(22), UiKit.px(9));
+            final android.graphics.drawable.GradientDrawable pillBg = new android.graphics.drawable.GradientDrawable();
+            pillBg.setCornerRadius(UiKit.pxf(16));
+            pillBg.setColor(active ? Color.parseColor("#38BDF8") : Color.argb(32, 255, 255, 255));
+            tabPill.setBackground(pillBg);
+            tabPill.setOnFocusChangeListener((v, has) -> {
+                if (has) {
+                    pillBg.setColor(Color.WHITE);
+                    tabPill.setTextColor(Color.BLACK);
+                    v.animate().scaleX(1.06f).scaleY(1.06f).setDuration(120).start();
+                } else {
+                    pillBg.setColor(active ? Color.parseColor("#38BDF8") : Color.argb(32, 255, 255, 255));
+                    tabPill.setTextColor(active ? Color.WHITE : UiKit.INK_DIM);
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(120).start();
+                }
+            });
+            tabPill.setOnClickListener(v -> {
+                if (thisTab != pageIndex) {
+                    host.replace(() -> buildSettings(ctx, host, a, thisTab, "tab_" + thisTab));
+                }
+            });
+            tabPill.setTag("tab_" + t);
+            tabViews[t] = tabPill;
+            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            tlp.setMargins(0, 0, UiKit.px(12), 0);
+            tabRow.addView(tabPill, tlp);
+        }
+        for (int t = 0; t < 4; t++) {
+            final int currT = t;
+            tabViews[t].setOnKeyListener((v, keyCode, e) -> {
+                if (e.getAction() != KeyEvent.ACTION_DOWN) return false;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && currT > 0) {
+                    host.replace(() -> buildSettings(ctx, host, a, currT - 1, "tab_" + (currT - 1)));
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && currT < 3) {
+                    host.replace(() -> buildSettings(ctx, host, a, currT + 1, "tab_" + (currT + 1)));
+                    return true;
+                }
+                return false;
+            });
+        }
+        root.addView(tabRow);
+
         final LinearLayout cols = new LinearLayout(ctx);
         cols.setOrientation(LinearLayout.VERTICAL);
         cols.setClipChildren(false);
@@ -141,15 +202,15 @@ public final class Panels {
         frame.setClipChildren(false);
         frame.setClipToPadding(false);
         FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        slp.setMargins(UiKit.px(52), UiKit.px(34), UiKit.px(52), UiKit.px(34));
+        slp.setMargins(UiKit.px(52), UiKit.px(24), UiKit.px(52), UiKit.px(24));
         frame.addView(scroll, slp);
         LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
-        flp.topMargin = UiKit.px(8);
+        flp.topMargin = UiKit.px(4);
         root.addView(frame, flp);
 
         final int colWidth = 0; // sections lay their tiles out in a full-width, self-filling grid
 
-        {
+        if (pageIndex == PAGE_THEMES) {
             // Page 1: Themes & Atmosphere
             LinearLayout c1 = column(ctx, cols, R.string.col_themes, colWidth);
             ThemeManager.Theme current = ThemeManager.current(ctx);
@@ -184,8 +245,7 @@ public final class Panels {
                     "tr".equals(Locale.getDefault().getLanguage()) ? "@alptugdag · Instagram, Kısa Film 'Sessiz' ve Portfolyo" : "@alptugdag · Instagram, Short Film 'Sessiz' & Portfolio",
                     false, v -> host.push(() -> buildAbout(ctx, host, a))));
 
-        }
-        {
+        } else if (pageIndex == PAGE_VISUAL) {
             // Page 2: Visual Experience & 3D
             LinearLayout c1 = column(ctx, cols, R.string.col_visual, colWidth);
             boolean spatial = Prefs.spatial3d(ctx);
@@ -259,8 +319,7 @@ public final class Panels {
                 a.previewScreensaver();
             }));
 
-        }
-        {
+        } else if (pageIndex == PAGE_AI) {
             // Page 3: AI & Media / Network
             LinearLayout c1 = column(ctx, cols, R.string.col_ai, colWidth);
             String provider = LlmClient.providerName(ctx);
@@ -311,8 +370,7 @@ public final class Panels {
                     "tr".equals(Locale.getDefault().getLanguage()) ? "TV Denetçisi verilerine göre optimize et, DNS seç ve test et" : "Optimize from TV Inspector data, pick DNS, test",
                     false, v -> setup(ctx, host, true)));
 
-        }
-        {
+        } else {
             // Page 4: System & TV
             LinearLayout c1 = column(ctx, cols, R.string.col_tv, colWidth);
             c1.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Kurulum Sihirbazı & Bileşen Kontrolü" : "Setup Wizard & Component Health",

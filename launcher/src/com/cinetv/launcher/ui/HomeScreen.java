@@ -371,7 +371,7 @@ public class HomeScreen {
         opening.setTrailerSlot(new DvdOpeningView.TrailerSlot() {
             @Override
             public void show(com.cinetv.launcher.service.MovieCatalog.Movie movie, android.graphics.RectF screen, float corner) {
-                trailer.show(movie, screen, corner, () -> opening.switchToVerticalDiscMode());
+                trailer.show(movie, screen, corner, null);
             }
 
             @Override
@@ -464,7 +464,12 @@ public class HomeScreen {
                     (idx == 0 ? micButton : headerButtons[idx - 1]).requestFocus();
                     return true;
                 }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && idx == headerButtons.length - 1) return true;
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    if (idx < headerButtons.length - 1) {
+                        headerButtons[idx + 1].requestFocus();
+                    }
+                    return true;
+                }
                 return toShelf.onKey(v, keyCode, e);
             });
         }
@@ -781,11 +786,18 @@ public class HomeScreen {
         modal.setSpatial(on);
     }
 
+    private float lastParallaxNx = Float.NaN, lastParallaxNy = Float.NaN;
+
     /** Subtle 3D optical counter-parallax on the curved HUD visor as focus moves across the screen. */
     public void updateVisorParallax(float focusX, float focusY) {
         if (!spatialOn || root.getWidth() <= 0 || root.getHeight() <= 0) return;
         float nx = Math.max(-1f, Math.min(1f, (focusX / root.getWidth() - 0.5f) * 2f));
         float ny = Math.max(-1f, Math.min(1f, (focusY / root.getHeight() - 0.5f) * 2f));
+        if (!Float.isNaN(lastParallaxNx) && Math.abs(nx - lastParallaxNx) < 0.25f && Math.abs(ny - lastParallaxNy) < 0.25f) {
+            return;
+        }
+        lastParallaxNx = nx;
+        lastParallaxNy = ny;
         int ms = PerformanceProfile.animationMs(ctx, 180);
         float pitch = 11f - ny * 1.6f;
         leftGroup.animate().rotationY(24f - nx * 2.4f).rotationX(pitch).setDuration(ms).start();

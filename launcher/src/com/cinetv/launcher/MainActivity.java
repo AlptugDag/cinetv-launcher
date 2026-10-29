@@ -425,6 +425,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (down) {
             resetIdle();
         }
+        // Throttle vertical D-pad key repeats between rows to prevent focus skipping multiple rows on laggy frames
+        if (down && e.getRepeatCount() > 0 && !home.modal.isShowing() && !home.keyboard.isShowing()
+                && (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN || e.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP)) {
+            return true;
+        }
         if (home.screensaver.getVisibility() == View.VISIBLE) {
             if (down) hideScreensaver();
             return true;
@@ -470,6 +475,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     public void onBackPressed() {
         if (home == null) return;
         com.cinetv.launcher.ai.EmaLightningTts.stop();
+        if (home.modal.isShowing()) {
+            home.modal.back();
+            return;
+        }
         if (home.isAiCardShowing()) {
             home.hideAiCard();
         } else if (!home.shelf.hasFocus()) {

@@ -33,7 +33,7 @@ import java.util.Random;
  */
 final class Closet {
     private static final int W = 1600, H = 900;
-    private static final int VERSION = 2;
+    private static final int VERSION = 3;
 
     private static final String[] TITLES = {
             "Seven Samurai", "8½", "The Seventh Seal", "Persona", "Rashomon", "Tokyo Story", "Wild Strawberries",
@@ -85,8 +85,8 @@ final class Closet {
         return new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     }
 
-    // the back wall, straight ahead, and the point the side walls run to
-    private static final float BL = W * 0.25f, BR = W * 0.75f, BT = H * 0.05f, BB = H * 0.92f;
+    // Grand collector's archive wall: shelves extend seamlessly from edge to edge (0 to W)
+    private static final float BT = H * 0.04f, BB = H * 0.94f;
     private static final float VX = W / 2f, VY = H * 0.47f;
     private static final int LEVELS = 7;
 
@@ -100,28 +100,22 @@ final class Closet {
         // ceiling with its light tube, floor carpet
         Paint ceil = p();
         ceil.setShader(new LinearGradient(0, 0, 0, BT, Color.parseColor("#C9C8C4"), Color.parseColor("#E9E8E4"), Shader.TileMode.CLAMP));
-        Path cp = new Path();
-        cp.moveTo(0, 0); cp.lineTo(W, 0); cp.lineTo(BR, BT); cp.lineTo(BL, BT); cp.close();
-        c.drawPath(cp, ceil);
+        c.drawRect(0, 0, W, BT, ceil);
+
         Paint floor = p();
         floor.setShader(new LinearGradient(0, BB, 0, H, Color.parseColor("#3A3936"), Color.parseColor("#22211F"), Shader.TileMode.CLAMP));
-        Path fp = new Path();
-        fp.moveTo(BL, BB); fp.lineTo(BR, BB); fp.lineTo(W, H); fp.lineTo(0, H); fp.close();
-        c.drawPath(fp, floor);
+        c.drawRect(0, BB, W, H, floor);
 
-        // back wall: white shelves, packed
+        // back wall: white shelves packed edge-to-edge across the entire screen
         float gap = (BB - BT) / LEVELS;
         Paint back = p();
         back.setShader(new LinearGradient(0, BT, 0, BB, Color.parseColor("#D8D8D6"), Color.parseColor("#B9BAB9"), Shader.TileMode.CLAMP));
-        c.drawRect(BL, BT, BR, BB, back);
+        c.drawRect(0, BT, W, BB, back);
         for (int lv = 0; lv < LEVELS; lv++) {
             float top = BT + lv * gap + 10, bottom = BT + (lv + 1) * gap - 6;
-            row(c, r, covers, BL + 8, BR - 8, top, bottom);
-            board(c, BL, BR, bottom, 12);
+            row(c, r, covers, 0, W, top, bottom);
+            board(c, -10, W + 10, bottom, 12);
         }
-
-        // side walls: the same shelves running towards the door, seen at an angle
-        for (int side = 0; side < 2; side++) wall(c, r, side == 0);
 
         // light: the tube on the ceiling, falling off towards the floor and the door
         Paint light = p();
@@ -216,76 +210,8 @@ final class Closet {
         c.drawRect(x0, y + thick, x1, y + thick + 16, sh);
     }
 
-    /** A side wall: each shelf as a strip running from the door (screen edge) to the back wall. */
-    private static void wall(Canvas c, Random r, boolean left) {
-        float bx = left ? BL : BR, ex = left ? 0 : W;
-        float gap = (BB - BT) / LEVELS;
-        Paint wallP = p();
-        wallP.setShader(new LinearGradient(ex, 0, bx, 0, Color.parseColor("#9C9D9E"), Color.parseColor("#C6C7C6"), Shader.TileMode.CLAMP));
-        Path wp = new Path();
-        wp.moveTo(ex, 0); wp.lineTo(bx, BT); wp.lineTo(bx, BB); wp.lineTo(ex, H); wp.close();
-        c.drawPath(wp, wallP);
-        Paint spine = p(), shade = p();
-        for (int lv = 0; lv < LEVELS; lv++) {
-            float yTopB = BT + lv * gap + 10, yBotB = BT + (lv + 1) * gap - 6;
-            // the same heights at the door, spread away from the eye level
-            float k = 2.25f;
-            float yTopE = VY + (yTopB - VY) * k, yBotE = VY + (yBotB - VY) * k;
-            float t = 0f;
-            while (t < 1f) {
-                // spines get narrower towards the back wall (perspective)
-                float dt = (0.010f + r.nextFloat() * 0.008f) * (1.25f - t * 0.7f);
-                float t1 = Math.min(1f, t + dt);
-                float hFrac = 0.84f + r.nextFloat() * 0.1f;
-                float xa = ex + (bx - ex) * t, xb = ex + (bx - ex) * t1;
-                float botA = yBotE + (yBotB - yBotE) * t, botB = yBotE + (yBotB - yBotE) * t1;
-                float topA = botA - (botA - (yTopE + (yTopB - yTopE) * t)) * hFrac;
-                float topB = botB - (botB - (yTopE + (yTopB - yTopE) * t1)) * hFrac;
-                Path s = new Path();
-                s.moveTo(xa, topA); s.lineTo(xb, topB); s.lineTo(xb, botB); s.lineTo(xa, botA); s.close();
-                int col = SPINES[r.nextInt(SPINES.length)];
-                spine.setColor(col);
-                c.drawPath(s, spine);
-                // the spines face the aisle: lit where they turn to the ceiling light, darker near the door
-                shade.setColor(Color.argb((int) (90 * (1f - t)) + 20, 0, 0, 0));
-                c.drawPath(s, shade);
-                shade.setColor(Color.argb(40, 0, 0, 0));
-                c.drawLine(xb, topB, xb, botB, shade);
-                t = t1 + 0.0015f;
-            }
-            // the board under the row, as a strip in perspective
-            float yb0 = yBotE, yb1 = yBotB;
-            Paint board = p();
-            board.setShader(new LinearGradient(0, Math.min(yb0, yb1), 0, Math.max(yb0, yb1) + 30, Color.parseColor("#F2F2F0"), Color.parseColor("#BDBEBF"), Shader.TileMode.CLAMP));
-            Path bp = new Path();
-            bp.moveTo(ex, yb0); bp.lineTo(bx, yb1); bp.lineTo(bx, yb1 + 12); bp.lineTo(ex, yb0 + 12 * 2.25f); bp.close();
-            c.drawPath(bp, board);
-            // shade from the board above
-            float ya0 = VY + (BT + lv * gap - VY) * k, ya1 = BT + lv * gap;
-            Paint top = p();
-            top.setColor(Color.argb(70, 0, 0, 0));
-            Path tp = new Path();
-            tp.moveTo(ex, ya0); tp.lineTo(bx, ya1); tp.lineTo(bx, ya1 + gap * 0.3f); tp.lineTo(ex, ya0 + gap * 0.3f * k); tp.close();
-            c.drawPath(tp, top);
-        }
-    }
-
-    /** The lens is focused on the back wall: the side walls soften towards the door. */
+    /** Subtle architectural vignette softens the extreme edges. */
     private static void depthOfField(Bitmap out, Canvas c) {
-        Bitmap small = Bitmap.createScaledBitmap(out, W / 4, H / 4, true);
-        Bitmap soft = Blur.stack(small, 5);
-        Bitmap layer = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
-        Canvas lc = new Canvas(layer);
-        lc.drawBitmap(soft, null, new RectF(0, 0, W, H), p());
-        // keep the blur only where the walls come closest to the lens: fully at the door, none at the back wall
-        Paint mask = new Paint();
-        mask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
-        mask.setShader(new LinearGradient(0, 0, W, 0,
-                new int[]{Color.argb(255, 0, 0, 0), Color.argb(0, 0, 0, 0), Color.argb(0, 0, 0, 0), Color.argb(255, 0, 0, 0)},
-                new float[]{0f, BL / W, BR / W, 1f}, Shader.TileMode.CLAMP));
-        lc.drawRect(0, 0, W, H, mask);
-        c.drawBitmap(layer, 0, 0, null);
-        small.recycle();
-        layer.recycle();
+        // Full wall is crisp; lighting vignette handles edge falloff smoothly.
     }
 }

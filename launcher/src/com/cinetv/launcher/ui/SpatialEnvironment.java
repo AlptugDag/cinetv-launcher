@@ -224,17 +224,11 @@ public class SpatialEnvironment extends View {
             lightPaint.setColorFilter(filter(Color.argb(light ? 42 : 70, r, g, b)));
             dst.set(glowX - core * 1.25f, glowY - core, glowX + core * 1.25f, glowY + core);
             canvas.drawBitmap(lightSprite, null, dst, lightPaint);
-            // Spatial HUD optical visor refraction: subtle anamorphic horizontal streak & top visor horizon reflection
-            if (com.cinetv.launcher.service.Prefs.spatial3d(getContext())) {
-                float streakW = w * 0.48f, streakH = h * 0.085f;
-                lightPaint.setColorFilter(filter(Color.argb(light ? 22 : 38, Math.min(255, r + 35), Math.min(255, g + 35), Math.min(255, b + 35))));
+            // Spatial HUD optical visor refraction: subtle anamorphic horizontal streak
+            if (com.cinetv.launcher.service.Prefs.spatial3d(getContext()) && !PerformanceProfile.lowMemory(getContext())) {
+                float streakW = w * 0.40f, streakH = h * 0.05f;
+                lightPaint.setColorFilter(filter(Color.argb(light ? 20 : 34, Math.min(255, r + 35), Math.min(255, g + 35), Math.min(255, b + 35))));
                 dst.set(glowX - streakW, glowY - streakH, glowX + streakW, glowY + streakH);
-                canvas.drawBitmap(lightSprite, null, dst, lightPaint);
-
-                float browW = w * 0.42f, browH = h * 0.14f;
-                float browX = w * 0.5f + (glowX - w * 0.5f) * 0.65f;
-                lightPaint.setColorFilter(filter(Color.argb(light ? 18 : 30, r, g, b)));
-                dst.set(browX - browW, -browH * 0.55f, browX + browW, browH);
                 canvas.drawBitmap(lightSprite, null, dst, lightPaint);
             }
         }

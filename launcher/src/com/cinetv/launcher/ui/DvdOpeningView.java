@@ -157,12 +157,7 @@ public class DvdOpeningView extends View {
             final Context appCtx = getContext().getApplicationContext();
             final Movie targetMovie = movie;
             new Thread(() -> {
-                String k = com.cinetv.launcher.service.MovieCatalog.trailerKey(appCtx, targetMovie);
-                if (k == null || k.isEmpty()) {
-                    post(() -> {
-                        if (this.movie == targetMovie) switchToVerticalDiscMode();
-                    });
-                }
+                com.cinetv.launcher.service.MovieCatalog.trailerKey(appCtx, targetMovie);
             }, "cinetv-dvd-tr-check").start();
         }
         int w = getWidth(), h = getHeight();

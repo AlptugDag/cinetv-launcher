@@ -227,8 +227,8 @@ public class PosterShelf extends FrameLayout {
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_DPAD_DOWN:
-                if (listener != null && listener.onEdge(keyCode)) return true;
-                break;
+                if (event.getRepeatCount() == 0 && listener != null && listener.onEdge(keyCode)) return true;
+                return true;
             default:
                 break;
         }

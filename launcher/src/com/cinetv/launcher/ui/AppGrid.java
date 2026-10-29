@@ -277,6 +277,9 @@ public class AppGrid {
                 return true;
             }
             if (e.getAction() != KeyEvent.ACTION_DOWN || moving != null) return false;
+            if (e.getRepeatCount() > 0 && (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_UP)) {
+                return true;
+            }
             return navigate(keyCode, inDock, index);
         });
         return frame;
@@ -370,7 +373,13 @@ public class AppGrid {
             if (has) host.onTileFocused(v, neonColor);
         });
         frame.setOnClickListener(v -> host.onAddToDock());
-        frame.setOnKeyListener((v, keyCode, e) -> e.getAction() == KeyEvent.ACTION_DOWN && moving == null && navigate(keyCode, inDock, index));
+        frame.setOnKeyListener((v, keyCode, e) -> {
+            if (e.getAction() != KeyEvent.ACTION_DOWN || moving != null) return false;
+            if (e.getRepeatCount() > 0 && (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_UP)) {
+                return true;
+            }
+            return navigate(keyCode, inDock, index);
+        });
         return frame;
     }
 
