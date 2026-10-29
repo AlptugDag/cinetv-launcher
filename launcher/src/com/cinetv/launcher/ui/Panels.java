@@ -314,6 +314,20 @@ public final class Panels {
             c2.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "TV Denetçisi (Donanım & Panel Analizi)" : "TV Inspector (Hardware & Panel Diagnostics)",
                     "tr".equals(Locale.getDefault().getLanguage()) ? "Ekran, HDR, ses çözücüleri, bellek ve canlı tuşlar" : "Display, HDR, audio codecs, memory & live keys", false,
                     v -> host.push(() -> buildTvInspector(ctx, host))));
+            c2.addView(Controls.tile(ctx,
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "Ekran Yönünü Sıfırla (0° Yatay / Landscape)" : "Reset Screen Orientation (Landscape)",
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "TV kutusu yan dönmüşse ekranı standart yatay konuma kilitler" : "Restores normal landscape orientation if TV box is sideways",
+                    false, v -> {
+                        try {
+                            android.provider.Settings.System.putInt(ctx.getContentResolver(), android.provider.Settings.System.USER_ROTATION, android.view.Surface.ROTATION_0);
+                            android.provider.Settings.System.putInt(ctx.getContentResolver(), android.provider.Settings.System.ACCELEROMETER_ROTATION, 0);
+                        } catch (Throwable ignored) {}
+                        com.cinetv.launcher.remote.LocalAdb.shell(ctx, "settings put system user_rotation 0; settings put system accelerometer_rotation 0; wm set-fix-to-user-rotation disabled", 2000);
+                        if (ctx instanceof android.app.Activity) {
+                            ((android.app.Activity) ctx).setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                        }
+                        Toast.makeText(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Ekran yönü standart yatay olarak sıfırlandı" : "Screen orientation reset to landscape", Toast.LENGTH_SHORT).show();
+                    }));
             c2.addView(Controls.tile(ctx, ctx.getString(R.string.remote_keys), ctx.getString(R.string.remote_keys_hint), false,
                     v -> host.push(() -> buildKeyCapture(ctx, host, a))));
             String curVer = AppUpdater.currentVersion(ctx);
@@ -1213,7 +1227,63 @@ public final class Panels {
     // ---- In-App Setup Wizard: ensures standalone installs are 100% self-sufficient --------------------
 
     public static void wizard(final Context ctx, final ModalHost host) {
-        host.push(() -> buildWizard(ctx, host));
+        if (!Prefs.get(ctx).contains("nuvio_choice_made") && !AppLauncher.isLaunchable(ctx.getPackageManager(), AppLauncher.NUVIO)) {
+            host.push(() -> buildNuvioPrompt(ctx, host));
+        } else {
+            host.push(() -> buildWizard(ctx, host));
+        }
+    }
+
+    private static View buildNuvioPrompt(final Context ctx, final ModalHost host) {
+        final LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setClipChildren(false);
+
+        final boolean turkish = "tr".equals(Locale.getDefault().getLanguage());
+        LinearLayout head = new LinearLayout(ctx);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView logo = new ImageView(ctx);
+        logo.setImageBitmap(Brand.mark(ctx));
+        head.addView(logo, new LinearLayout.LayoutParams(UiKit.px(44), UiKit.px(44)));
+        TextView title = UiKit.bold(ctx, 30, UiKit.INK);
+        title.setText(turkish ? "Nuvio Medya Merkezi Kurulsun mu?" : "Install Nuvio Media Center?");
+        title.setPadding(UiKit.px(16), 0, 0, 0);
+        head.addView(title);
+        root.addView(head);
+
+        TextView subtitle = UiKit.label(ctx, 18, UiKit.INK_DIM);
+        subtitle.setText(turkish
+                ? "CineTV film ve dizi kütüphanesini izleyebilmeniz için Nuvio Medya Merkezi ve Türkçe altyazı eklentileri (Netflix, TR Altyazı, Stremio) arka planda kurulsun mu?"
+                : "Would you like CineTV to automatically install Nuvio and streaming addons in the background?");
+        subtitle.setPadding(0, UiKit.px(14), 0, UiKit.px(24));
+        root.addView(subtitle);
+
+        LinearLayout buttons = new LinearLayout(ctx);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+
+        buttons.addView(Controls.button(ctx, turkish ? "Evet, Kurulsun (Önerilen)" : "Yes, Install (Recommended)", v -> {
+            Prefs.get(ctx).edit().putBoolean("nuvio_choice_made", true).putBoolean("nuvio_install_allowed", true).apply();
+            Toast.makeText(ctx, turkish ? "Nuvio ve Türkçe eklentiler kuruluyor..." : "Installing Nuvio & addons...", Toast.LENGTH_SHORT).show();
+            new Thread(() -> {
+                NuvioSetup.installNuvio(ctx, true);
+                NuvioSetup.installPlayer(ctx, true);
+            }, "cinetv-nuvio-bg").start();
+            host.replace(() -> buildWizard(ctx, host));
+        }));
+
+        View space = new View(ctx);
+        buttons.addView(space, new LinearLayout.LayoutParams(UiKit.px(20), 1));
+
+        buttons.addView(Controls.button(ctx, turkish ? "Hayır, Şimdilik Geç" : "Skip for Now", v -> {
+            Prefs.get(ctx).edit().putBoolean("nuvio_choice_made", true).putBoolean("nuvio_install_allowed", false).apply();
+            host.replace(() -> buildWizard(ctx, host));
+        }));
+
+        root.addView(buttons);
+        root.post(() -> {
+            if (buttons.getChildCount() > 0) buttons.getChildAt(0).requestFocus();
+        });
+        return root;
     }
 
     private static View buildWizard(final Context ctx, final ModalHost host) {
@@ -1315,20 +1385,23 @@ public final class Panels {
                     v.postDelayed(() -> host.replace(() -> buildWizard(ctx, host)), 800);
                 }));
 
-        // Footer buttons
+        // Footer buttons: Otomatik Tamamla & Geri Dön
         LinearLayout buttons = new LinearLayout(ctx);
         buttons.setOrientation(LinearLayout.HORIZONTAL);
         buttons.setPadding(0, UiKit.px(14), 0, 0);
 
-        buttons.addView(Controls.button(ctx, turkish ? "Tümünü Otomatik Tamamla" : "Auto-Setup All", v -> {
+        buttons.addView(Controls.button(ctx, turkish ? "Otomatik Tamamla" : "Auto-Setup All", v -> {
             Toast.makeText(ctx, turkish ? "Kurulum ve optimizasyonlar başlatılıyor..." : "Completing setup...", Toast.LENGTH_SHORT).show();
             new Thread(() -> {
                 if (!HomeGuard.isDefault(ctx)) {
                     v.post(() -> HomeGuard.promptHomeChooser(ctx));
                 }
-                NuvioSetup.installNuvio(ctx, true);
-                NuvioSetup.installPlayer(ctx, true);
+                if (Prefs.get(ctx).getBoolean("nuvio_install_allowed", true)) {
+                    NuvioSetup.installNuvio(ctx, true);
+                    NuvioSetup.installPlayer(ctx, true);
+                }
                 MemoryOptimizer.applyTvOptimizations(ctx);
+                Prefs.get(ctx).edit().putBoolean("wizard_done", true).putBoolean(Prefs.FIRST_SETUP_DONE, true).apply();
                 v.post(() -> {
                     Toast.makeText(ctx, turkish ? "Tüm bileşenler ve ayarlar başarıyla uygulandı!" : "All components & optimizations successfully applied!", Toast.LENGTH_LONG).show();
                     host.replace(() -> buildWizard(ctx, host));
@@ -1339,9 +1412,8 @@ public final class Panels {
         View space = new View(ctx);
         buttons.addView(space, new LinearLayout.LayoutParams(UiKit.px(20), 1));
 
-        buttons.addView(Controls.button(ctx, turkish ? "Tamamla" : "Done", v -> {
-            Prefs.get(ctx).edit().putBoolean("wizard_done", true).apply();
-            Toast.makeText(ctx, turkish ? "CineTV kurulumu tamamlandı. İyi seyirler!" : "CineTV setup complete. Enjoy!", Toast.LENGTH_SHORT).show();
+        buttons.addView(Controls.button(ctx, turkish ? "Geri Dön" : "Back", v -> {
+            Prefs.get(ctx).edit().putBoolean("wizard_done", true).putBoolean(Prefs.FIRST_SETUP_DONE, true).apply();
             host.back();
             if (ctx instanceof com.cinetv.launcher.MainActivity) {
                 ((com.cinetv.launcher.MainActivity) ctx).onWizardFinished();

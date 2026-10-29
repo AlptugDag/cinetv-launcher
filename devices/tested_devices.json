@@ -106,7 +106,7 @@
         "Web DVD Vitrin",
         "Hafif Bellek Tüketimi"
       ],
-      "notes": "free-my-tv mimarisi temel alınarak Python kablosuz SDB kurulumu ve WGT paketi sağlandı."
+      "notes": "Python kablosuz SDB kurulumu ve Tizen WGT paketi sağlandı."
     }
   ]
 }

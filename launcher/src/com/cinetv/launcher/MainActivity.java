@@ -234,30 +234,43 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             PerformanceProfile.watchFrames(this, 6000, () -> home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this)));
         });
         handleIntent(getIntent());
-        handler.postDelayed(tourCheck, 6000);
+
+        // TV box orientation safeguard: ensure landscape orientation without forcing hardware matrix flip
+        try {
+            android.view.Display d = getWindowManager().getDefaultDisplay();
+            android.graphics.Point pt = new android.graphics.Point();
+            d.getRealSize(pt);
+            if (pt.x < pt.y) {
+                // TV box display got stuck in portrait: unstick it back to 0° landscape
+                try {
+                    android.provider.Settings.System.putInt(getContentResolver(), android.provider.Settings.System.USER_ROTATION, android.view.Surface.ROTATION_0);
+                    android.provider.Settings.System.putInt(getContentResolver(), android.provider.Settings.System.ACCELEROMETER_ROTATION, 0);
+                } catch (Throwable ignored) {}
+                setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                LocalAdb.shell(this, "settings put system user_rotation 0; settings put system accelerometer_rotation 0; wm set-fix-to-user-rotation disabled", 2000);
+            }
+        } catch (Throwable ignored) {}
+
         boolean alreadyConfigured = (HomeGuard.isDefault(this) && AppLauncher.isLaunchable(getPackageManager(), AppLauncher.NUVIO))
-                || com.cinetv.launcher.ui.Brand.isPersonal(this) || Prefs.get(this).contains(Prefs.FIRST_SETUP_DONE);
+                || com.cinetv.launcher.ui.Brand.isPersonal(this);
         if (alreadyConfigured && !Prefs.get(this).contains("wizard_done")) {
-            Prefs.get(this).edit().putBoolean("wizard_done", true).apply();
+            Prefs.get(this).edit().putBoolean("wizard_done", true).putBoolean(Prefs.FIRST_SETUP_DONE, true).apply();
         }
+
         if (!Prefs.get(this).getBoolean("wizard_done", false)) {
-            // No wizard to click through: Nuvio, its curated addons, the player and the memory tuning are installed
-            // in the background by HomeGuard (NuvioSetup.runOnce) on every start; the viewer only gets the welcome.
-            Prefs.get(this).edit().putBoolean("wizard_done", true).apply();
+            // Standalone fresh install: present the interactive Kurulum Sihirbazı
             handler.postDelayed(() -> {
-                if (!isFinishing() && home != null && !home.modal.isShowing()) onWizardFinished();
-            }, 3000);
-        } else if (!Prefs.get(this).getBoolean(Prefs.FIRST_SETUP_DONE, false)) {
-            // First start only: tune picture & sound and measure the network once.
-            handler.postDelayed(() -> {
-                if (!isFinishing() && home != null && !home.modal.isShowing()) Panels.setup(this, home.modal, true);
-            }, 4000);
+                if (!isFinishing() && home != null && !home.modal.isShowing()) {
+                    home.modal.setOnClosed(this::onWizardFinished);
+                    Panels.wizard(this, home.modal);
+                }
+            }, 1800);
+        } else if (!Prefs.get(this).getBoolean(Prefs.TOUR_DONE, false)) {
+            handler.postDelayed(tourCheck, 4000);
         }
-        if (!HomeGuard.isDefault(this) && !Prefs.get(this).getBoolean("prompted_default_home", false)) {
-            Prefs.get(this).edit().putBoolean("prompted_default_home", true).apply();
-            handler.postDelayed(() -> {
-                if (!isFinishing() && !HomeGuard.isDefault(this)) HomeGuard.promptHomeChooser(this);
-            }, 8000);
+
+        if (!HomeGuard.isDefault(this)) {
+            HomeGuard.ensureDefaultHome(this);
         }
     }
 
@@ -1173,7 +1186,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         @Override
         public void run() {
             if (home == null || Prefs.get(MainActivity.this).getBoolean(Prefs.TOUR_DONE, false)) return;
-            boolean ready = Prefs.get(MainActivity.this).getBoolean(Prefs.FIRST_SETUP_DONE, false)
+            boolean ready = Prefs.get(MainActivity.this).getBoolean("wizard_done", false)
                     && !home.modal.isShowing() && !home.opening.isPlaying() && inFront
                     && home.screensaver.getVisibility() != View.VISIBLE && home.shelf.count() > 0;
             if (ready) startTour();
@@ -1188,6 +1201,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (home != null && home.modal != null) home.modal.setOnClosed(null);
         if (Prefs.get(this).getBoolean(Prefs.TOUR_DONE, false)) return;
         wizardTransitionTriggered = true;
+        Prefs.get(this).edit().putBoolean("wizard_done", true).putBoolean(Prefs.FIRST_SETUP_DONE, true).apply();
         handler.postDelayed(() -> {
             if (isFinishing() || home == null) return;
             boolean turkish = "tr".equals(java.util.Locale.getDefault().getLanguage());
@@ -1388,8 +1402,15 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             } catch (Throwable ignored) {}
         };
 
-        // Smooth fade-in: stays visible indefinitely until user presses a remote key
+        // Smooth fade-in: stays visible until user presses remote key or auto-advances after 8 seconds
         container.animate().alpha(1f).setDuration(550).start();
+
+        container.postDelayed(() -> {
+            if (container.getParent() != null) {
+                container.animate().cancel();
+                container.animate().alpha(0f).setDuration(240).withEndAction(finishAction).start();
+            }
+        }, 8000);
 
         container.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {

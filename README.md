@@ -12,7 +12,7 @@
 
 <br>
 
-[![Sürüm](https://img.shields.io/badge/SURUM-1.0.0.14-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher/releases/latest)
+[![Sürüm](https://img.shields.io/badge/SURUM-1.0.0.15-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher/releases/latest)
 [![Felsefe](https://img.shields.io/badge/FELSEFE-SIFIR%20KAR%20%7C%20SAF%20SINEMA-E50914?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher)
 [![Mimari](https://img.shields.io/badge/ALTYAPI-BAGIMSIZ%20%26%20NO--ROOT-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher)
 
@@ -97,6 +97,10 @@ Ana ekranınızdaki filmler sıradan afişler değildir; her biri poligon yüzey
 <br>
 
 <p align="center">
+  <img src="docs/media/dvd_open_v14.png" alt="3D Açılan DVD ve Kütüphane Kitapçığı" width="840">
+</p>
+
+<p align="center">
   <img src="docs/media/dvd-note.jpg" alt="DVD İç Kitapçık" width="260">&nbsp;&nbsp;
   <img src="docs/media/dvd-trailer.jpg" alt="Fragman Tepsisi" width="260">&nbsp;&nbsp;
   <img src="docs/media/disc.jpg" alt="Film Diski" width="260">
@@ -117,7 +121,16 @@ Bir başyapıtın duygusu, daha ilk kare akmadan afişindeki renk tonlarıyla ba
 <br>
 
 <p align="center">
-  <img src="docs/media/themes.jpg" alt="CineTV Atmosferleri" width="820">
+  <img src="docs/media/cinema_v14.png" alt="Sinema Salonu Teması" width="410">&nbsp;&nbsp;
+  <img src="docs/media/redcarpet_v14.png" alt="Kırmızı Halı Teması" width="410">
+</p>
+<p align="center">
+  <img src="docs/media/closet_v14.png" alt="Film Dolabı Teması" width="410">&nbsp;&nbsp;
+  <img src="docs/media/glass_v14.png" alt="Safir Cam Teması" width="410">
+</p>
+<p align="center">
+  <img src="docs/media/metal_v14.png" alt="Titanyum Metal Teması" width="410">&nbsp;&nbsp;
+  <img src="docs/media/neon_v14.png" alt="Synthwave Neon Teması" width="410">
 </p>
 
 <br>
@@ -252,18 +265,14 @@ Uygulama mağazalarından ek yazılım indirmeye, hesap açmaya veya karmaşık 
 <br>
 
 <p align="center">
-  <img src="docs/media/tv_inspector_v14.png" alt="TV Denetçisi Donanım Teşhisi" width="780">
+  <img src="docs/media/tv_inspector_v14.png" alt="TV Denetçisi Donanım Teşhisi" width="820">
 </p>
 
 <br>
 
 <p align="center">
-  <img src="docs/media/settings_v14.png" alt="Tek Sayfa Ayarlar" width="380">&nbsp;&nbsp;
-  <img src="docs/media/redcarpet_v14.png" alt="Kırmızı Halı Teması" width="380">
-</p>
-<p align="center">
-  <img src="docs/media/closet_v14.png" alt="Film Dolabı Teması" width="380">&nbsp;&nbsp;
-  <img src="docs/media/celebration_v14.png" alt="Özel Gün Kutlamaları" width="380">
+  <img src="docs/media/settings_v14.png" alt="Tek Sayfa Ayarlar" width="410">&nbsp;&nbsp;
+  <img src="docs/media/celebration_v14.png" alt="Özel Gün Kutlamaları" width="410">
 </p>
 
 <br><br>

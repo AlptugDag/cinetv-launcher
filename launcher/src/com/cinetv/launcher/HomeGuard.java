@@ -40,9 +40,14 @@ public final class HomeGuard {
         });
         new Thread(() -> {
             ensureDefault(app);
+            if (!isDefault(app)) {
+                ensureDefaultHome(app);
+            }
             // installed from the APK alone: Nuvio and its addons come too, plus virtual RAM / zRAM optimization
-            com.cinetv.launcher.device.NuvioSetup.runOnce(app);
-            com.cinetv.launcher.device.NuvioSetup.playerOnce(app);
+            if (com.cinetv.launcher.service.Prefs.get(app).getBoolean("nuvio_install_allowed", true)) {
+                com.cinetv.launcher.device.NuvioSetup.runOnce(app);
+                com.cinetv.launcher.device.NuvioSetup.playerOnce(app);
+            }
             com.cinetv.launcher.device.MemoryOptimizer.applyTvOptimizations(app);
         }, "cinetv-home").start();
     }
@@ -84,6 +89,17 @@ public final class HomeGuard {
         }
     }
 
+    /** Directly sets CineTV as the default Home launcher, falling back to the system chooser. */
+    public static void ensureDefaultHome(Context ctx) {
+        if (isDefault(ctx)) return;
+        String pkg = ctx.getPackageName();
+        com.cinetv.launcher.remote.LocalAdb.shell(ctx,
+                "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity; "
+                + "cmd package set-home-activity " + pkg + "/.MainActivity", 2000);
+        if (isDefault(ctx)) return;
+        promptHomeChooser(ctx);
+    }
+
     /** Directly opens system accessibility settings, bypassing custom OEM TV settings menus. */
     public static void openAccessibilitySettings(Context ctx) {
         try {
@@ -115,6 +131,7 @@ public final class HomeGuard {
                 + "appops set " + pkg + " SYSTEM_ALERT_WINDOW allow; "
                 + "pm grant " + pkg + " android.permission.BLUETOOTH_CONNECT 2>/dev/null; "
                 + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity; "
+                + "cmd package set-home-activity " + pkg + "/.MainActivity; "
                 + (secure ? "" : "s=$(settings get secure enabled_accessibility_services); case \"$s\" in *" + service + "*) ;; "
                 + "null|'') settings put secure enabled_accessibility_services " + service + " ;; "
                 + "*) settings put secure enabled_accessibility_services \"$s:" + service + "\" ;; esac; "

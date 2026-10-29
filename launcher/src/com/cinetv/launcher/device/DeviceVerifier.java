@@ -16,7 +16,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Automates TV hardware verification and compatibility feedback reporting inspired by CleanYourTV.
+ * Automates TV hardware verification and compatibility feedback reporting.
  * When CineTV runs smoothly and passes stability checks on a TV, it gathers hardware telemetry
  * and registers the model in the verified tested devices database.
  */
@@ -52,7 +52,7 @@ public final class DeviceVerifier {
             obj.put("ram_mb", PerformanceProfile.totalRamMb(ctx));
             obj.put("tier", PerformanceProfile.tier(ctx).name());
             obj.put("status", "Verified & Optimal");
-            obj.put("app_version", "1.0.0.14");
+            obj.put("app_version", "1.0.0.15");
         } catch (Throwable t) {
             Log.w(TAG, "Error building hardware profile: " + t.getMessage());
         }

@@ -31,7 +31,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 /**
- * Modern, visionOS-inspired in-app Voice Search Overlay.
+ * Modern, fluid in-app Voice Search Overlay.
  * Replaces the mismatched external Google Assistant dialog with a sleek frosted-glass platter,
  * real-time animated acoustic soundwaves, and guaranteed audio hardware release that prevents
  * the Android 12-14 green microphone privacy indicator dot from getting stuck on screen.
