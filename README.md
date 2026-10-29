@@ -12,7 +12,7 @@
 
 <br>
 
-[![Sürüm](https://img.shields.io/badge/SURUM-1.0.0.15-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher/releases/latest)
+[![Sürüm](https://img.shields.io/badge/SURUM-1.0.0.16-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher/releases/latest)
 [![Felsefe](https://img.shields.io/badge/FELSEFE-SIFIR%20KAR%20%7C%20SAF%20SINEMA-E50914?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher)
 [![Mimari](https://img.shields.io/badge/ALTYAPI-BAGIMSIZ%20%26%20NO--ROOT-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher)
 
@@ -258,7 +258,8 @@ Uygulama mağazalarından ek yazılım indirmeye, hesap açmaya veya karmaşık 
 Üreticiler televizyonunuzun gücünü sizin izleme keyfiniz için değil; kendi veri toplama ve reklam ağlarını beslemek için tüketir. CineTV donanımınızı özgürleştirir:
 
 - **Root Gerektirmeyen 2 GB Z-RAM:** 1 GB RAM'li giriş seviyesi panellerde dahi yüksek boyutlu 4K akışların takılmadan akmasını sağlayan çekirdek bellek optimizasyonu.
-- **TV Denetçisi (Donanım & Panel Teşhisi):** Panelinizin gerçek fiziksel 4K çözünürlüğünü, BT.2020 geniş renk gamını, HDR10/Dolby Vision yeteneklerini ve donanımsal ses kodeklerini şeffafça test eder; desteklenenleri yeşil, desteklenmeyenleri kırmızı olarak net biçimde gösterir.
+- **TV Denetçisi (Donanım & Panel Teşhisi):** Panelinizin gerçek fiziksel 4K çözünürlüğünü, BT.2020 geniş renk gamını, HDR10/HDR10+/Dolby Vision/HLG yeteneklerini ve donanımsal ses kodeklerini şeffafça test eder; desteklenenleri yeşil, desteklenmeyenleri kırmızı olarak net biçimde gösterir.
+- **Bütünleşik Görüntü, Ses, Ağ, DNS ve Nuvio Senkronizasyonu:** "Görüntü, Ses, Ağ & Optimizasyon" ve "Optimize Et ve Test Et" motorları TV Denetçisi verileriyle tek merkezde birleşik çalışır. Panelin HDR kapasitesi, HDMI eARC/Atmos ses yolu, Cloudflare/AdGuard/Quad9 şifreli DNS seçimi, internet hız/gecikme testi, performans modu ve Nuvio içindeki akış/ses/altyazı ayarları TV Denetçisi'nin raporuna göre tam otomatik kalibre edilir.
 - **Tek Sayfa Akıcı Ayarlar Paneli:** Sayfalar arasında kaybolmadan; yön oklarıyla (▲ ▼ ◀ ▶) tek bir responsive ekranda ses, görüntü, DNS seçimi ve performans modlarını yönetin.
 - **Güvenli Arındırma (Safe Debloat):** Televizyonu yavaşlatan fabrika telemetrilerini dondurur; dilediğiniz an tek bir tuşla fabrika ayarlarına dönme güvencesi verir.
 
@@ -307,6 +308,11 @@ python3 tizen/install.py <SAMSUNG_TV_IP>
 ```
 *Tizen Studio gerektirmez; dahili kablosuz SDB protokolü üzerinden doğrudan TV'ye kurulur.*
 
+### 5. %100 Ücretsiz Yapay Zeka (Gemini) ve Sinema Arşivi (TMDB) Anahtarları
+CineTV Kurulum Sihirbazı içerisinde QR kodlu rehberle adım adım anlatıldığı üzere, bu iki anahtar **tamamen ücretsizdir** (kredi kartı gerekmez) ve sinema deneyiminizi zirveye taşır:
+- **Gemini Yapay Zeka Anahtarı (`aistudio.google.com/apikey`):** Sesli ve yazılı doğal dil aramalarını (*"Nolan'ın uzay filmini aç"*, *"Yağmurlu gecede izlenecek gerilim filmleri"*), günün saatine ve hava durumuna göre akıllı DVD vitrin küratörlüğünü ve Türkçe sinema asistanını çalıştırır.
+- **TMDB Sinema & Afiş Anahtarı (`themoviedb.org/settings/api`):** 3B DVD kutularının yüksek çözünürlüklü afişlerini, açılan DVD kutusunun içindeki Türkçe film özetlerini, oyuncu/yönetmen kadrosunu, IMDb puanlarını ve fragman videolarını getirir.
+
 <br><br>
 
 ---
@@ -319,9 +325,9 @@ CineTV, TV Denetçisi üzerinden gönderilen telemetri ve doğrudan laboratuvar 
 
 | Marka | Model & Donanım Ailesi | Çözünürlük & Panel | Bellek (RAM) | Durum |
 | :--- | :--- | :--- | :--- | :--- |
-| **Arçelik** | Arcelik Android TV (MediaTek MT7322 `sinchon`) | 3840×2160 (4K UHD), HDR10, BT.2020 WCG | 1.5 GB | **Doğrulandı · Kusursuz (60 FPS)** |
-| **Beko** | Beko B43B880B Smart TV (MT7322) | 3840×2160 (4K UHD) | 1.5 GB | **Doğrulandı · Kusursuz** |
-| **Grundig** | Grundig 4K Android TV (`sinchon`) | 3840×2160 (4K UHD), HDR10+ | 2.0 GB | **Doğrulandı · Kusursuz** |
+| **Arçelik** | Arcelik Android TV (MediaTek MT7322 `sinchon`, Android 11) | 3840×2160 (4K UHD), HDR10, BT.2020 WCG | 1.5 GB | **Doğrulandı · Kusursuz (60 FPS)** |
+| **Grundig** | Grundig Google UHD TV (MediaTek `merak` / `akropoli`, Google TV 14) | 3840×2160 (4K UHD), Dolby Vision, HDR10+, HDR10, HLG, BT.2020 | 2.0 GB | **Doğrulandı · Kusursuz (60 FPS)** |
+| **Beko** | Beko B43B880B Smart TV (MT7322 `sinchon`) | 3840×2160 (4K UHD) | 1.5 GB | **Doğrulandı · Kusursuz** |
 | **Philips** | The One / OLED Ambilight (MT5895) | 4K UHD 120Hz, Dolby Vision & Atmos | 3.0 GB | **Doğrulandı · Ambilight Senkron** |
 | **Sony** | BRAVIA XR Series (Cognitive XR) | 4K UHD 120Hz, IMAX Enhanced, Dolby Vision | 3.0 GB | **Doğrulandı · Kusursuz (120 FPS)** |
 | **TCL** | TCL C745 / C845 Mini-LED (Realtek RTD2880) | 4K UHD 144Hz, HDR10+, Dolby Vision IQ | 3.0 GB | **Doğrulandı · Yüksek Performans** |

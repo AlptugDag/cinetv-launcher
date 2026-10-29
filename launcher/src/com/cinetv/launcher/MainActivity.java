@@ -296,6 +296,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         loadApps(false);
         MemoryOptimizer.sweepAsync(this);
         PerformanceProfile.noteMemory(this);
+        AppUpdater.checkAndAutoUpdateOnBoot(this);
         resetIdle();
         // Back on Home: refresh shelf if hour/day changed, or after shelf timer
         Calendar c = Calendar.getInstance();
@@ -856,6 +857,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private void setShelf(String title, List<Movie> movies, boolean remember) {
         home.shelfLabel.setText(title.toUpperCase(Locale.getDefault()));
         home.shelf.setMovies(movies);
+        final Context app = getApplicationContext();
+        for (int i = 0; i < Math.min(4, movies.size()); i++) {
+            MovieCatalog.prefetchTrailer(app, movies.get(i));
+        }
         if (!remember) return;
         JSONArray arr = new JSONArray();
         for (Movie m : movies) arr.put(m.toJson());
@@ -970,6 +975,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (m == null) return;
         final Context app = getApplicationContext();
         final int w = home.opening.innerWidth(), h = home.opening.innerHeight();
+        MovieCatalog.prefetchTrailer(app, m);
         background(() -> {
             try {
                 if (m.cast == null || m.cast.isEmpty()) {

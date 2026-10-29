@@ -72,6 +72,10 @@ public final class TrailerPlayer extends FrameLayout {
 
     /** Plays the film's trailer over {@code screen} (the DVD tray's screen, in this view's parent's coordinates). */
     public void show(final MovieCatalog.Movie m, RectF screen, final float corner) {
+        show(m, screen, corner, null);
+    }
+
+    public void show(final MovieCatalog.Movie m, RectF screen, final float corner, final Runnable onUnavailable) {
         stop();
         final int my = ++gen;
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(Math.round(screen.width()), Math.round(screen.height()));
@@ -85,7 +89,7 @@ public final class TrailerPlayer extends FrameLayout {
             }
         });
         setClipToOutline(true);
-        // Start invisible (alpha = 0) so the WebView lays out and begins playback immediately without YouTube flash
+        // Start invisible (alpha = 0) so the WebView never flashes any YouTube UI before video frames play
         setAlpha(0f);
         setVisibility(VISIBLE);
 
@@ -94,16 +98,26 @@ public final class TrailerPlayer extends FrameLayout {
             final String key = MovieCatalog.trailerKey(app, m);
             Log.i(TAG, "Resolved trailer key for " + m.title + " -> " + key);
             main.post(() -> {
-                if (my == gen && key != null && !key.isEmpty()) {
-                    play(key, my);
+                if (my != gen) return;
+                if (key != null && !key.isEmpty()) {
+                    play(key, my, m, onUnavailable);
+                } else {
+                    MovieCatalog.markTrailerUnavailable(m);
+                    stop();
+                    if (onUnavailable != null) onUnavailable.run();
                 }
             });
         });
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private void play(String key, final int my) {
-        if (!key.matches("[A-Za-z0-9_-]{6,20}")) return;
+    private void play(String key, final int my, final MovieCatalog.Movie m, final Runnable onUnavailable) {
+        if (!key.matches("[A-Za-z0-9_-]{6,20}")) {
+            MovieCatalog.markTrailerUnavailable(m);
+            stop();
+            if (onUnavailable != null) onUnavailable.run();
+            return;
+        }
         try {
             final WebView w = new WebView(getContext());
             web = w;
@@ -134,7 +148,18 @@ public final class TrailerPlayer extends FrameLayout {
                 public void onPlaying() {
                     main.post(() -> {
                         if (my == gen && web == w) {
-                            animate().alpha(1f).setDuration(450).start();
+                            animate().alpha(1f).setDuration(420).start();
+                        }
+                    });
+                }
+
+                @android.webkit.JavascriptInterface
+                public void onUnavailable() {
+                    main.post(() -> {
+                        if (my == gen) {
+                            MovieCatalog.markTrailerUnavailable(m);
+                            stop();
+                            if (onUnavailable != null) onUnavailable.run();
                         }
                     });
                 }
@@ -143,20 +168,25 @@ public final class TrailerPlayer extends FrameLayout {
             addView(w, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
             final String origin = "https://" + getContext().getPackageName();
+            // The iframe is sized to 116% width x 300% height at top:-100%, left:-8% inside #stage (overflow:hidden).
+            // Because YouTube centers the 16:9 <video> vertically in the middle 100% of the 300% iframe,
+            // the top title/channel bar (at 0%) and bottom watermark/controls (at 100%) are cropped 100% outside #stage.
             String html = "<!DOCTYPE html><html><head>"
                     + "<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'>"
                     + "<style>"
                     + "* { margin:0; padding:0; box-sizing:border-box; }"
-                    + "html, body { width:100%; height:100%; overflow:hidden; background:#000000; position:fixed; pointer-events:none; }"
-                    + "#stage { width:100%; height:100%; overflow:hidden; position:relative; background:#000000; display:flex; align-items:center; justify-content:center; }"
-                    + "iframe, #player { position:absolute; width:100% !important; height:100% !important; top:0 !important; left:0 !important; border:none !important; pointer-events:none !important; }"
+                    + "html, body { width:100%; height:100%; overflow:hidden; background:#000000; position:fixed; pointer-events:none; user-select:none; }"
+                    + "#stage { width:100%; height:100%; overflow:hidden; position:relative; background:#000000; }"
+                    + "iframe, #player { position:absolute !important; width:116% !important; height:300% !important; top:-100% !important; left:-8% !important; border:none !important; pointer-events:none !important; }"
                     + "</style>"
                     + "</head><body>"
                     + "<div id='stage'><div id='player'></div></div>"
                     + "<script>"
-                    + "var notified = false;"
-                    + "function notifyReady() { if (notified) return; notified = true; if (window.CineTvBridge) window.CineTvBridge.onPlaying(); }"
+                    + "var notified = false, failed = false;"
+                    + "function notifyReady() { if (notified || failed) return; notified = true; if (window.CineTvBridge) window.CineTvBridge.onPlaying(); }"
+                    + "function notifyFail() { if (failed || notified) return; failed = true; if (window.CineTvBridge) window.CineTvBridge.onUnavailable(); }"
                     + "var tag = document.createElement('script'); tag.src = 'https://www.youtube.com/iframe_api';"
+                    + "tag.onerror = notifyFail;"
                     + "var firstScriptTag = document.getElementsByTagName('script')[0]; firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);"
                     + "var player;"
                     + "function onYouTubeIframeAPIReady() {"
@@ -164,29 +194,44 @@ public final class TrailerPlayer extends FrameLayout {
                     + "    videoId: '" + key + "',"
                     + "    playerVars: {"
                     + "      'autoplay': 1, 'controls': 0, 'mute': 1, 'loop': 1, 'playlist': '" + key + "',"
-                    + "      'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'iv_load_policy': 3, 'disablekb': 1, 'fs': 0"
+                    + "      'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'iv_load_policy': 3, 'cc_load_policy': 0, 'disablekb': 1, 'fs': 0"
                     + "    },"
                     + "    events: {"
-                    + "      'onReady': function(e) { e.target.playVideo(); },"
-                    + "      'onStateChange': function(e) { if (e.data === 1) setTimeout(notifyReady, 750); }"
+                    + "      'onReady': function(e) { try { e.target.mute(); e.target.playVideo(); } catch(err) { notifyFail(); } },"
+                    + "      'onStateChange': function(e) {"
+                    + "        if (e.data === 1) { setTimeout(notifyReady, 650); }"
+                    + "        else if (e.data === 0 && player && player.seekTo) { player.seekTo(0.1, true); player.playVideo(); }"
+                    + "      },"
+                    + "      'onError': function(e) { notifyFail(); }"
                     + "    }"
                     + "  });"
                     + "}"
-                    + "setTimeout(notifyReady, 2600);"
+                    + "setInterval(function() {"
+                    + "  try {"
+                    + "    if (player && player.getDuration && player.getCurrentTime) {"
+                    + "      var d = player.getDuration(), c = player.getCurrentTime();"
+                    + "      if (d > 3 && c >= d - 1.3) { player.seekTo(0.1, true); player.playVideo(); }"
+                    + "    }"
+                    + "  } catch(ig) {}"
+                    + "}, 250);"
+                    + "setTimeout(function() { if (!notified) notifyFail(); }, 4200);"
                     + "</script>"
                     + "</body></html>";
 
             w.loadDataWithBaseURL(origin, html, "text/html", "utf-8", null);
 
-            // Fallback smooth fade-in if network or JS interface times out
+            // Java-side watchdog in case WebView or network stalls completely
             main.postDelayed(() -> {
                 if (my == gen && web == w && getAlpha() < 0.1f) {
-                    animate().alpha(1f).setDuration(450).start();
+                    MovieCatalog.markTrailerUnavailable(m);
+                    stop();
+                    if (onUnavailable != null) onUnavailable.run();
                 }
-            }, 2800);
+            }, 4600);
         } catch (Throwable t) {
             Log.w(TAG, "WebView play failed: " + t.getMessage());
             web = null;
+            if (onUnavailable != null) onUnavailable.run();
         }
     }
 

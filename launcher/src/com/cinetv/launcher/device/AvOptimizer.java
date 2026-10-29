@@ -67,6 +67,24 @@ public final class AvOptimizer {
             return "SD";
         }
 
+        public String hdrLine() {
+            List<String> h = new ArrayList<>();
+            if (dolbyVision) h.add("Dolby Vision");
+            if (hdr10Plus) h.add("HDR10+");
+            if (hdr10) h.add("HDR10");
+            if (hlg) h.add("HLG");
+            return h.isEmpty() ? "SDR" : String.join(" / ", h);
+        }
+
+        public String audioLine() {
+            StringBuilder sb = new StringBuilder();
+            if (earc) sb.append("eARC · ");
+            else if (hdmiAudio) sb.append("HDMI ARC · ");
+            if (encodings.isEmpty()) sb.append("Stereo PCM");
+            else sb.append(String.join(", ", encodings));
+            return sb.toString();
+        }
+
         public JSONObject toJson() {
             JSONObject o = new JSONObject();
             try {

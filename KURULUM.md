@@ -97,11 +97,11 @@ Bilgisayar veya terminal kullanmadan doğrudan televizyonunuzla kurmak isterseni
 - **Telefon kumandası**: CineTV ana ekranının üstündeki **telefon** düğmesi › telefonla QR kodu okutun › televizyonda **İzin ver**. Telefon ana ekranına eklerseniz uygulama gibi açılır.
 - **YouTube'dan "TV'de izle"**: telefondaki YouTube uygulamasında yayınla (📺) simgesine basın ve **"<televizyonun adı> · YouTube"**'u seçin; video reklamsız TizenTube'da açılır.
 - **Film sitesinden yayınlama (Web Video Cast)**: telefon sayfasında **Yayınla** › sayfanın adresini yapıştırın › **Aç**. Sayfa telefonda açılır; reklamları geçip filmin oynat tuşuna basın, film televizyonda başlar (gerçek iframe Referer ve Origin başlıkları otomatik yakalanıp CDN engelleri aşılır).
-- **Anahtarlar** (isteğe bağlı, ücretsiz): CineTV › Ayarlar › **Yapay zekâ ve filmler**:
-  - *TMDB*: Türkçe özetler ve afişler. themoviedb.org › hesap aç › Ayarlar › API › anahtar oluştur.
-  - *Yapay zekâ*: "araba temalı filmler" gibi aramalar. En kolayı ücretsiz Gemini: aistudio.google.com › *Get API key*.
-  - *MDBList*: IMDb / Rotten Tomatoes puanları. mdblist.com › Preferences › API.
-- **Performans & Bellek**: Ayarlar › TV & Telefon › **Bellek ve Performans** (bir kez basın, anlık bellek temizliği yapar ve benchmark skorunu gösterir).
+- **%100 Ücretsiz Gemini ve TMDB Anahtarları**: İlk kurulum sihirbazında (veya dilediğiniz zaman CineTV › Ayarlar › **Yapay zekâ ve filmler** bölümünde) QR kodlu rehberle kolayca girebilirsiniz. Her iki kod da tamamen ücretsizdir (kredi kartı gerekmez):
+  - *Gemini Yapay Zekâ Anahtarı (`aistudio.google.com/apikey`)*: Sesli ve yazılı doğal dil aramalarını (*"Nolan'ın uzay filmini aç"*, *"Yağmurlu gecede izlenecek gerilim filmleri"*), günün saatine ve hava durumuna göre akıllı DVD vitrin küratörlüğünü ve Türkçe sinema asistanını çalıştırır.
+  - *TMDB Sinema & Afiş Anahtarı (`themoviedb.org/settings/api`)*: 3B DVD kutularının yüksek çözünürlüklü afişlerini, açılan DVD kutusunun içindeki Türkçe film özetlerini, oyuncu/yönetmen kadrosunu, IMDb puanlarını ve fragman videolarını getirir.
+  - *MDBList (`mdblist.com/preferences`)*: IMDb, Rotten Tomatoes ve Letterboxd puanlarını zenginleştirir.
+- **Bütünleşik Görüntü, Ses, Ağ, DNS & Optimizasyon**: Ayarlar › **Görüntü, Ses, Ağ & Optimizasyon** kutucuğuna bastığınızda TV Denetçisi donanımınızı tarar; 4K/HDR kapasitesini, HDMI eARC/Atmos ses yolunu, şifreli DNS seçimini (Cloudflare, AdGuard, Quad9, Google), hız/gecikme testini, 2 GB sanal RAM'i, performans modunu ve Nuvio akış kalitesini tek adımda otomatik kalibre eder.
 - **Tema**: Ayarlar › Tema: Alptug Default, Sıvı Cam, Metalik, Sinema Salonu, Film Dolabı, Neon Gece, OLED Siyah.
 
 ---

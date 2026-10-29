@@ -642,12 +642,39 @@ public final class TvWebRemoteServer {
                 final boolean enter = "1".equals(q.get("enter"));
 
                 if (delStr != null || add != null) {
-                    int del = delStr != null ? parseInt(delStr) : 0;
-                    if (del > 0) KeyBridge.delete(app, del);
-                    if (add != null && !add.isEmpty()) KeyBridge.text(app, add);
+                    final int del = delStr != null ? parseInt(delStr) : 0;
+                    boolean bridged = false;
+                    if (del > 0) bridged = KeyBridge.delete(app, del);
+                    if (add != null && !add.isEmpty()) bridged = KeyBridge.text(app, add) || bridged;
+                    if (!bridged) {
+                        post(() -> {
+                            com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                            if (ma != null && ma.getCurrentFocus() instanceof android.widget.EditText) {
+                                android.widget.EditText et = (android.widget.EditText) ma.getCurrentFocus();
+                                android.text.Editable ed = et.getText();
+                                if (ed != null) {
+                                    if (del > 0 && ed.length() > 0) {
+                                        ed.delete(Math.max(0, ed.length() - del), ed.length());
+                                    }
+                                    if (add != null && !add.isEmpty()) {
+                                        ed.append(add);
+                                    }
+                                    et.setSelection(ed.length());
+                                }
+                            }
+                        });
+                    }
                 } else if (!text.isEmpty()) {
                     boolean replaced = TvKeyInterceptorService.typeIntoFocused(text);
                     if (!replaced) {
+                        post(() -> {
+                            com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                            if (ma != null && ma.getCurrentFocus() instanceof android.widget.EditText) {
+                                android.widget.EditText et = (android.widget.EditText) ma.getCurrentFocus();
+                                et.setText(text);
+                                et.setSelection(text.length());
+                            }
+                        });
                         String prev = lastTyped;
                         if (prev == null) prev = "";
                         if (text.startsWith(prev)) {
@@ -670,7 +697,15 @@ public final class TvWebRemoteServer {
 
                 if (enter) {
                     lastTyped = "";
-                    KeyBridge.key(app, android.view.KeyEvent.KEYCODE_ENTER, false);
+                    if (!KeyBridge.key(app, android.view.KeyEvent.KEYCODE_ENTER, false)) {
+                        post(() -> {
+                            com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                            if (ma != null && com.cinetv.launcher.MainActivity.isInFront()) {
+                                ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
+                                ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
+                            }
+                        });
+                    }
                     if (!text.isEmpty()) {
                         post(() -> {
                             Controller c = controller;
@@ -741,7 +776,24 @@ public final class TvWebRemoteServer {
         }
         TvKeyInterceptorService keys = TvKeyInterceptorService.getInstance();
         if (code == 4 && keys != null && keys.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)) return;
-        // D-pad and the rest reach the foreground window when it is CineTV itself.
+        // Direct 0ms UI-thread dispatch when CineTV is in front (works 100% on APK-only installs without ADB)
+        com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+        if (ma != null && com.cinetv.launcher.MainActivity.isInFront()) {
+            post(() -> {
+                try {
+                    if (longPress) {
+                        long now = android.os.SystemClock.uptimeMillis();
+                        ma.dispatchKeyEvent(new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_DOWN, code, 0));
+                        ma.dispatchKeyEvent(new android.view.KeyEvent(now, now + 600, android.view.KeyEvent.ACTION_DOWN, code, 1, 0, -1, 0, android.view.KeyEvent.FLAG_LONG_PRESS));
+                        ma.dispatchKeyEvent(new android.view.KeyEvent(now, now + 650, android.view.KeyEvent.ACTION_UP, code, 0));
+                    } else {
+                        ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code));
+                        ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code));
+                    }
+                } catch (Throwable ignored) {}
+            });
+            return;
+        }
         try {
             new Instrumentation().sendKeyDownUpSync(code);
         } catch (Throwable ignored) {

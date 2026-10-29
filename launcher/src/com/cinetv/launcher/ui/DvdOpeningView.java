@@ -148,8 +148,10 @@ public class DvdOpeningView extends View {
         this.callback = cb;
         this.accent = dvd.accent;
         this.movie = movie;
-        // trailer moments: the case lies sideways and opens wide, the trailer in its tray
-        landscape = slot != null && com.cinetv.launcher.service.Prefs.trailerMoments(getContext()) && TrailerPlayer.available(getContext());
+        // trailer moments: the case lies sideways and opens wide, the trailer in its tray (falls back to vertical disc mode if trailer is missing or country-blocked)
+        landscape = slot != null && com.cinetv.launcher.service.Prefs.trailerMoments(getContext())
+                && TrailerPlayer.available(getContext())
+                && com.cinetv.launcher.service.MovieCatalog.hasPlayableTrailer(getContext(), movie, 420);
         trailerShown = false;
         int w = getWidth(), h = getHeight();
         if (landscape) {
@@ -225,7 +227,37 @@ public class DvdOpeningView extends View {
     /** The synopsis arrived (and maybe a backdrop): the note appears inside the open cover. */
     public void setInner(Bitmap baked) {
         if (baked == null || getVisibility() != VISIBLE) return;
-        inner = baked;
+        if (caseW > 0 && caseH > 0 && (baked.getWidth() != caseW || baked.getHeight() != caseH) && dvd != null) {
+            inner = bakeInner(getContext(), caseW, caseH, dvd.cover, null, movie, accent);
+        } else {
+            inner = baked;
+        }
+        invalidate();
+    }
+
+    /** Switches an open or opening case to vertical disc mode when no playable trailer is available. */
+    public void switchToVerticalDiscMode() {
+        if (!landscape || dvd == null || getVisibility() != VISIBLE) return;
+        if (slot != null) slot.hide();
+        landscape = false;
+        trailerShown = false;
+        coverL = null;
+        int w = getWidth() > 0 ? getWidth() : 1920;
+        int h = getHeight() > 0 ? getHeight() : 1080;
+        float maxW = (w * 0.88f) / 2f;
+        float maxH = h * 0.74f;
+        float targetH = h * 0.68f;
+        float targetW = targetH * DvdCase.ASPECT;
+        if (targetW > maxW) { targetW = maxW; targetH = targetW / DvdCase.ASPECT; }
+        if (targetH > maxH) { targetH = maxH; targetW = targetH * DvdCase.ASPECT; }
+        caseH = Math.max(2, Math.round(targetH));
+        caseW = Math.max(2, Math.round(targetW));
+        trayShade = new LinearGradient(0, 0, caseW, caseH, Color.parseColor("#1B1B21"), Color.parseColor("#0A0A0D"), Shader.TileMode.CLAMP);
+        int discSize = Math.round(Math.min(caseW, caseH) * 0.88f);
+        disc = bakeDisc(getContext(), dvd.cover, movie != null ? movie.coverTitle() : "", discSize);
+        discGlowR = discSize * 1.06f * 0.62f;
+        discGlow = new RadialGradient(0, 0, discGlowR, new int[]{UiKit.withAlpha(accent, 120), Color.TRANSPARENT}, null, Shader.TileMode.CLAMP);
+        inner = bakeInner(getContext(), caseW, caseH, dvd.cover, null, movie, accent);
         invalidate();
     }
 

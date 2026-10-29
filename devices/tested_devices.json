@@ -34,15 +34,23 @@
     },
     {
       "brand": "Grundig",
-      "model": "Grundig 4K Android TV",
-      "board": "kunyang / sinchon",
-      "os": "Android TV 10 / 11",
-      "display": "3840×2160 4K UHD, HDR10+",
-      "ram_mb": 2048,
-      "tier": "BALANCED",
-      "status": "Doğrulandı · Kusursuz",
-      "features_verified": ["Tüm CineTV Özellikleri"],
-      "notes": "Dahili tuner ve canlı TV geçişleri anlık."
+      "model": "Grundig Google UHD TV",
+      "board": "akropoli (MediaTek merak)",
+      "os": "Google TV 14 (Android 14 / SDK 34)",
+      "display": "3840×2160 (4K Ultra HD), Dolby Vision, HDR10+, HDR10, HLG, BT.2020 WCG",
+      "ram_mb": 1840,
+      "tier": "LOW_RAM_OPTIMIZED / BALANCED",
+      "status": "Doğrulandı · Kusursuz (60 FPS)",
+      "features_verified": [
+        "DVD Vitrin (3D Cover Flow)",
+        "Dolby Vision & HDR10+ Otomatik Algılama (TV Denetçisi)",
+        "Gelişmiş Sesli Komut & Canlı TV / YouTube Kontrolü",
+        "Nuvio Medya Merkezi & Türkçe Eklenti Otomatik Kurulumu",
+        "Ambilight Arka Plan Işık Senkronizasyonu",
+        "Telefon Web Kumandası & Kalibrasyon",
+        "Özel Gün & Kutlama Balon Animasyonları"
+      ],
+      "notes": "Grundig 4K Google TV (Android 14) üzerinde doğrudan test edilip tam optimizasyon sağlandı. Dolby Vision, HDR10+, HLG ve 4K 60Hz donanım ivmesi kusursuz çalışıyor."
     },
     {
       "brand": "Philips",

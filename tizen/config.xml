@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://cinetv.alptug.dev/tizen" version="1.0.0.15" viewmodes="maximized">
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://cinetv.alptug.dev/tizen" version="1.0.0.16" viewmodes="maximized">
     <tizen:application id="CineTvApp.CineTV" package="CineTvApp" required_version="2.4"/>
     <name>CineTV</name>
-    <author href="https://github.com/alptug/cinetv-launcher">Alptuğ Dağ</author>
+    <author href="https://github.com/AlptugDag/cinetv-launcher">Alptuğ Dağ</author>
     <description>CineTV - Sinematik DVD Vitrini ve Ultra Akıcı TV Deneyimi.</description>
     <content src="index.html"/>
     <icon src="icon.png"/>

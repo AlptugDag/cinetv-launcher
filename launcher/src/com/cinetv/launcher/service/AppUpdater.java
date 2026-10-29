@@ -173,34 +173,37 @@ public final class AppUpdater {
         });
     }
 
-    private static volatile boolean bootCheckDone = false;
+    private static volatile long lastAutoCheckMs = 0L;
+    private static final long AUTO_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000L; // 4 hours
 
     /**
-     * Automatic check on TV boot: if a newer GitHub version exists, automatically
-     * downloads and updates in the background.
+     * Automatic check on TV boot and periodic wakeups: if a newer GitHub version exists,
+     * automatically downloads and updates in the background.
      */
     public static void checkAndAutoUpdateOnBoot(final Context ctx) {
-        if (bootCheckDone || ctx == null) return;
-        bootCheckDone = true;
+        if (ctx == null) return;
+        long now = System.currentTimeMillis();
+        if (now - lastAutoCheckMs < AUTO_CHECK_INTERVAL_MS) return;
+        lastAutoCheckMs = now;
         MAIN_HANDLER.postDelayed(() -> {
             checkForUpdates(ctx, new UpdateCheckCallback() {
                 @Override
                 public void onUpdateAvailable(ReleaseInfo info) {
-                    Log.i(TAG, "Boot update check: newer version found: " + info.tagName + ", downloading in background...");
+                    Log.i(TAG, "Auto-update check: newer version found: " + info.tagName + ", downloading in background...");
                     downloadAndInstallBackground(ctx.getApplicationContext(), info, true);
                 }
 
                 @Override
                 public void onUpToDate(String currentVersion) {
-                    Log.i(TAG, "Boot update check: CineTV is up to date: v" + currentVersion);
+                    Log.i(TAG, "Auto-update check: CineTV is up to date: v" + currentVersion);
                 }
 
                 @Override
                 public void onError(String message) {
-                    Log.w(TAG, "Boot update check error: " + message);
+                    Log.w(TAG, "Auto-update check error: " + message);
                 }
             });
-        }, 12000L); // Allow network to stabilize after boot
+        }, 10000L); // Allow network to stabilize after boot/wake
     }
 
     /**
@@ -259,7 +262,10 @@ public final class AppUpdater {
         }
 
         new Thread(() -> {
-            File target = new File(ctx.getCacheDir(), "cinetv_update.apk");
+            File extDir = ctx.getExternalFilesDir(null);
+            if (extDir == null) extDir = ctx.getExternalCacheDir();
+            if (extDir == null) extDir = ctx.getCacheDir();
+            final File target = new File(extDir, "cinetv_update.apk");
             try {
                 if (target.exists()) target.delete();
 
@@ -271,7 +277,7 @@ public final class AppUpdater {
 
                 int code = conn.getResponseCode();
                 // Follow 302 / 301 redirects from GitHub releases to AWS S3
-                if (code == HttpURLConnection.HTTP_MOVED_TEMP || code == HttpURLConnection.HTTP_MOVED_PERM || code == 307) {
+                if (code == HttpURLConnection.HTTP_MOVED_TEMP || code == HttpURLConnection.HTTP_MOVED_PERM || code == 307 || code == 308) {
                     String redirectUrl = conn.getHeaderField("Location");
                     conn = (HttpURLConnection) new URL(redirectUrl).openConnection();
                     conn.setConnectTimeout(15000);
@@ -288,6 +294,7 @@ public final class AppUpdater {
                 out.flush();
                 out.close();
                 in.close();
+                try { target.setReadable(true, false); } catch (Throwable ignored) {}
 
                 Log.i(TAG, "Update APK downloaded successfully: " + target.length() + " bytes");
                 isDownloading = false;
@@ -296,21 +303,32 @@ public final class AppUpdater {
                     MAIN_HANDLER.post(() -> Toast.makeText(ctx, "İndirme tamamlandı! Güncelleme kuruluyor...", Toast.LENGTH_SHORT).show());
                 }
 
-                // 1. Try silent background install via LocalAdb
-                boolean installed = LocalAdb.shell(ctx, "pm install -r '" + target.getAbsolutePath() + "'", 90_000);
+                // 1. Try silent background install via LocalAdb (stage in /data/local/tmp for Android 11-14 SELinux compatibility)
+                String path = target.getAbsolutePath();
+                String installCmd = "cp '" + path + "' /data/local/tmp/cinetv_update.apk 2>/dev/null && pm install -r /data/local/tmp/cinetv_update.apk && rm -f /data/local/tmp/cinetv_update.apk '" + path + "'";
+                boolean installed = LocalAdb.shell(ctx, installCmd, 90_000);
+                if (!installed) {
+                    installed = LocalAdb.shell(ctx, "pm install -r '" + path + "' && rm -f '" + path + "'", 90_000);
+                }
                 if (installed) {
                     Log.i(TAG, "Silent install successful via LocalAdb!");
                     LocalAdb.shell(ctx, "am start -n " + ctx.getPackageName() + "/.MainActivity", 5000);
                     return;
                 }
 
-                // 2. Fallback: Native system PackageInstaller intent
+                // 2. Fallback: Native system PackageInstaller intent (relax StrictMode for file:// URI on Android 7+)
                 MAIN_HANDLER.post(() -> {
                     try {
-                        Intent prompt = new Intent(Intent.ACTION_VIEW);
-                        prompt.setDataAndType(Uri.fromFile(target), "application/vnd.android.package-archive");
-                        prompt.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        ctx.startActivity(prompt);
+                        android.os.StrictMode.VmPolicy oldPolicy = android.os.StrictMode.getVmPolicy();
+                        android.os.StrictMode.setVmPolicy(new android.os.StrictMode.VmPolicy.Builder().build());
+                        try {
+                            Intent prompt = new Intent(Intent.ACTION_VIEW);
+                            prompt.setDataAndType(Uri.fromFile(target), "application/vnd.android.package-archive");
+                            prompt.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            ctx.startActivity(prompt);
+                        } finally {
+                            android.os.StrictMode.setVmPolicy(oldPolicy);
+                        }
                     } catch (Throwable t) {
                         Log.e(TAG, "Fallback package install failed: " + t.getMessage());
                         if (!silent) Toast.makeText(ctx, "Kurulum başlatılamadı: " + t.getMessage(), Toast.LENGTH_LONG).show();

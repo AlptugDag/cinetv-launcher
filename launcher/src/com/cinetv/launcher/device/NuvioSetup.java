@@ -83,12 +83,38 @@ public final class NuvioSetup {
                 } catch (Throwable ignored) {
                 }
             }
+            // Generate hardware-calibrated nuvio-preferences.json from TV Denetçisi telemetry
+            AvOptimizer.Report av = AvOptimizer.detect(app);
+            PerformanceProfile.Tier tier = PerformanceProfile.tier(app);
+            JSONObject prefs = new JSONObject();
+            prefs.put("calibrated_by", "CineTV TV Denetçisi");
+            prefs.put("preferred_audio_language", "tr");
+            prefs.put("preferred_subtitle_language", "tr");
+            prefs.put("secondary_audio_language", "en");
+            prefs.put("auto_select_subtitle", true);
+            prefs.put("hardware_accelerated_decoding", true);
+            prefs.put("tunneled_video_playback", av.is4kPanel());
+            prefs.put("match_frame_rate", "seamless");
+            prefs.put("max_resolution", av.is4kPanel() ? "2160p" : "1080p");
+            prefs.put("dolby_vision_enabled", av.dolbyVision);
+            prefs.put("hdr10_plus_enabled", av.hdr10Plus);
+            prefs.put("hdr10_enabled", av.hdr10);
+            prefs.put("hlg_enabled", av.hlg);
+            prefs.put("wide_color_gamut_bt2020", av.wideGamut);
+            prefs.put("digital_audio_passthrough", av.hdmiAudio || !av.encodings.isEmpty());
+            prefs.put("hdmi_earc", av.earc);
+            prefs.put("supported_audio_encodings", new JSONArray(av.encodings));
+            prefs.put("stream_buffer_size_mb", tier == PerformanceProfile.Tier.HIGH ? 128 : (tier == PerformanceProfile.Tier.MID ? 64 : 32));
+            File prefFile = new File(dl, "nuvio-preferences.json");
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(prefFile)) {
+                fos.write(prefs.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
         } catch (Throwable t) {
             Log.w(TAG, "deployConfigs failed: " + t);
         }
     }
 
-    /** Automatically syncs curated addons and configurations into Nuvio for fresh installs or forced updates. */
+    /** Automatically syncs curated addons, hardware-matched stream profile, and configurations into Nuvio. */
     public static void syncAddonsAndConfigs(Context ctx, boolean force) {
         final Context app = ctx.getApplicationContext();
         if (!force && Prefs.get(app).getBoolean(SYNC_KEY, false)) return;
@@ -100,8 +126,13 @@ public final class NuvioSetup {
                 for (String addon : CURATED_ADDONS) {
                     addAddon(app, addon);
                 }
+                // Also configure hardware-and-bandwidth-matched stream addon from TV Denetçisi + NetworkProbe
+                AvOptimizer.Report av = AvOptimizer.detect(app);
+                NetworkProbe.Result net = NetworkProbe.run();
+                com.cinetv.launcher.service.StreamProfile sp = com.cinetv.launcher.service.StreamProfile.recommend(net, av);
+                addAddon(app, sp.manifestPath());
                 Prefs.get(app).edit().putBoolean(SYNC_KEY, true).apply();
-                Log.i(TAG, "Nuvio addons and configs successfully synchronized");
+                Log.i(TAG, "Nuvio addons, stream profile and configs successfully synchronized");
             } catch (Throwable t) {
                 Log.w(TAG, "Nuvio addon sync failed: " + t);
             }
@@ -125,7 +156,10 @@ public final class NuvioSetup {
             if (dir == null) return false;
             File apk = new File(dir, "nuvio.apk");
             if (!Http.download(url, apk, 120_000)) return false;
-            boolean ok = LocalAdb.shell(app, "pm install -r '" + apk.getAbsolutePath() + "'", 90_000);
+            try { apk.setReadable(true, false); } catch (Throwable ignored) {}
+            String path = apk.getAbsolutePath();
+            boolean ok = LocalAdb.shell(app, "cp '" + path + "' /data/local/tmp/nuvio.apk 2>/dev/null && pm install -r /data/local/tmp/nuvio.apk && rm -f /data/local/tmp/nuvio.apk", 90_000);
+            if (!ok) ok = LocalAdb.shell(app, "pm install -r '" + path + "'", 90_000);
             if (!ok) {
                 promptInstall(app, apk);
                 return false;
@@ -137,11 +171,17 @@ public final class NuvioSetup {
 
             deployConfigs(app);
             for (String addon : CURATED_ADDONS) addAddon(app, addon);
+            try {
+                AvOptimizer.Report av = AvOptimizer.detect(app);
+                NetworkProbe.Result net = NetworkProbe.run();
+                com.cinetv.launcher.service.StreamProfile sp = com.cinetv.launcher.service.StreamProfile.recommend(net, av);
+                addAddon(app, sp.manifestPath());
+            } catch (Throwable ignored) {}
             Prefs.get(app).edit().putBoolean(SYNC_KEY, true).apply();
 
             // back to Home when the addons are in
             AppLauncher.start(app, new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            Log.i(TAG, "Nuvio installed with its curated addons");
+            Log.i(TAG, "Nuvio installed with its curated addons and hardware stream profile");
             cleanTemporaryFiles(app);
             return true;
         } catch (Throwable t) {
@@ -165,7 +205,10 @@ public final class NuvioSetup {
             if (dir == null) return false;
             File apk = new File(dir, "nova.apk");
             if (!Http.download(url, apk, 180_000)) return false;
-            boolean ok = LocalAdb.shell(app, "pm install -r '" + apk.getAbsolutePath() + "'", 120_000);
+            try { apk.setReadable(true, false); } catch (Throwable ignored) {}
+            String path = apk.getAbsolutePath();
+            boolean ok = LocalAdb.shell(app, "cp '" + path + "' /data/local/tmp/nova.apk 2>/dev/null && pm install -r /data/local/tmp/nova.apk && rm -f /data/local/tmp/nova.apk", 120_000);
+            if (!ok) ok = LocalAdb.shell(app, "pm install -r '" + path + "'", 120_000);
             if (!ok) {
                 promptInstall(app, apk);
                 return false;

@@ -59,6 +59,10 @@ public final class StreamProfile {
         return "https://torrentio.strem.fun/" + torrentioConfig + "/manifest.json";
     }
 
+    public String manifestPath() {
+        return "torrentio.strem.fun/" + torrentioConfig + "/manifest.json";
+    }
+
     /** Opens Nuvio's own addon screen with this configuration (the user confirms there). */
     public boolean openInNuvio(Context ctx) {
         Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio://torrentio.strem.fun/" + torrentioConfig + "/manifest.json"))

@@ -48,15 +48,47 @@ public final class DeviceVerifier {
             int pw = av.panelWidth > 0 ? av.panelWidth : av.uiWidth;
             int ph = av.panelHeight > 0 ? av.panelHeight : av.uiHeight;
             obj.put("display_panel", pw + "×" + ph + " (" + av.panelClass() + ")");
+            obj.put("hdr_formats", av.hdrLine());
+            obj.put("audio_formats", av.audioLine());
             obj.put("color_gamut", av.wideGamut ? "BT.2020 WCG" : "sRGB / Rec.709");
             obj.put("ram_mb", PerformanceProfile.totalRamMb(ctx));
             obj.put("tier", PerformanceProfile.tier(ctx).name());
-            obj.put("status", "Verified & Optimal");
-            obj.put("app_version", "1.0.0.15");
+            obj.put("status", "Verified & Optimal (60 FPS)");
+            obj.put("app_version", com.cinetv.launcher.service.AppUpdater.currentVersion(ctx));
         } catch (Throwable t) {
             Log.w(TAG, "Error building hardware profile: " + t.getMessage());
         }
         return obj;
+    }
+
+    /** Builds a pre-filled GitHub Issue URL so users can submit their verified TV profile via phone QR in one tap. */
+    public static String getVerificationIssueUrl(Context ctx, String notes) {
+        try {
+            JSONObject p = getHardwareProfile(ctx);
+            if (notes != null && !notes.trim().isEmpty()) {
+                p.put("user_notes", notes.trim());
+            }
+            String brand = p.optString("brand", Build.BRAND);
+            String model = p.optString("model", Build.MODEL);
+            String board = p.optString("board", Build.BOARD);
+            String title = "[Verified Device] " + brand + " " + model + " (" + board + ")";
+            String body = "### CineTV Doğrulanmış Cihaz Bildirimi (TV Denetçisi)\n\n"
+                    + "| Özellik | Değer |\n"
+                    + "|---|---|\n"
+                    + "| **Marka / Model** | " + brand + " / " + model + " |\n"
+                    + "| **Anakart / SoC** | `" + board + "` (`" + p.optString("hardware") + "`) |\n"
+                    + "| **Android Sürümü** | Android " + p.optString("android_release") + " (SDK " + p.optInt("android_sdk") + ") |\n"
+                    + "| **Panel & HDR** | " + p.optString("display_panel") + " · " + p.optString("hdr_formats") + " |\n"
+                    + "| **Ses** | " + p.optString("audio_formats") + " |\n"
+                    + "| **RAM & Katman** | " + p.optInt("ram_mb") + " MB (`" + p.optString("tier") + "`) |\n"
+                    + "| **CineTV Sürümü** | `v" + p.optString("app_version") + "` |\n\n"
+                    + "```json\n" + p.toString(2) + "\n```\n";
+            return "https://github.com/AlptugDag/cinetv-launcher/issues/new?title="
+                    + java.net.URLEncoder.encode(title, "UTF-8")
+                    + "&body=" + java.net.URLEncoder.encode(body, "UTF-8");
+        } catch (Throwable t) {
+            return "https://github.com/AlptugDag/cinetv-launcher/issues/new";
+        }
     }
 
     /** Automatically runs stability verification 45 seconds after launch. */
@@ -102,12 +134,18 @@ public final class DeviceVerifier {
 
     private static boolean sendReport(Context ctx, JSONObject profile, String notes) {
         try {
-            // Write to device verified file for persistence
+            byte[] bytes = profile.toString(2).getBytes(StandardCharsets.UTF_8);
             java.io.File dir = ctx.getFilesDir();
             java.io.File file = new java.io.File(dir, "device_verification.json");
             try (java.io.FileOutputStream fos = new java.io.FileOutputStream(file)) {
-                fos.write(profile.toString(2).getBytes(StandardCharsets.UTF_8));
+                fos.write(bytes);
             }
+            try {
+                java.io.File extFile = new java.io.File("/sdcard/Download/cinetv_verified_device.json");
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(extFile)) {
+                    fos.write(bytes);
+                }
+            } catch (Throwable ignored) {}
             return true;
         } catch (Throwable ignored) {
             return false;

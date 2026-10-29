@@ -365,7 +365,7 @@ public class HomeScreen {
         opening.setTrailerSlot(new DvdOpeningView.TrailerSlot() {
             @Override
             public void show(com.cinetv.launcher.service.MovieCatalog.Movie movie, android.graphics.RectF screen, float corner) {
-                trailer.show(movie, screen, corner);
+                trailer.show(movie, screen, corner, () -> opening.switchToVerticalDiscMode());
             }
 
             @Override

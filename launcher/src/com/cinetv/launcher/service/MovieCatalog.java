@@ -526,7 +526,8 @@ public final class MovieCatalog {
             }
             if (id <= 0) return m;
             m.tmdbId = id;
-            JSONObject d = tmdb(ctx, kind + "/" + id + "?append_to_response=credits,external_ids,videos&language=" + language());
+            String vLang = Locale.getDefault().getLanguage();
+            JSONObject d = tmdb(ctx, kind + "/" + id + "?append_to_response=credits,external_ids,videos&include_video_language=" + vLang + ",en,null&language=" + language());
             String overview = d.optString("overview", "").trim();
             JSONObject enData = null;
             if (overview.isEmpty()) {
@@ -610,7 +611,8 @@ public final class MovieCatalog {
             if (vids != null && vids.length() > 0) {
                 String bestKey = selectTrailerKey(vids);
                 if (bestKey != null) {
-                    trailers.put(m.type + ":" + (m.tmdbId > 0 ? m.tmdbId : m.imdbId), bestKey);
+                    if (m.tmdbId > 0) trailers.put(m.type + ":" + m.tmdbId, bestKey);
+                    if (m.imdbId != null && !m.imdbId.isEmpty()) trailers.put(m.type + ":" + m.imdbId, bestKey);
                 }
             }
             // the shelf may hold an original-script title from an older cache
@@ -704,6 +706,7 @@ public final class MovieCatalog {
     }
 
     private static final java.util.Map<String, String> trailers = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<String, Boolean> playableCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** Prefetches the YouTube trailer key in background so opening the DVD has zero network latency. */
     public static void prefetchTrailer(Context ctx, Movie m) {
@@ -712,11 +715,78 @@ public final class MovieCatalog {
         resolver.execute(() -> trailerKey(app, m));
     }
 
+    /** Marks a movie's trailer as unavailable (missing, unembeddable, or country-blocked) so future opens use vertical disc mode. */
+    public static void markTrailerUnavailable(Movie m) {
+        if (m == null) return;
+        if (m.imdbId != null && !m.imdbId.isEmpty()) trailers.put(m.type + ":" + m.imdbId, "");
+        if (m.tmdbId > 0) trailers.put(m.type + ":" + m.tmdbId, "");
+    }
+
+    /**
+     * Checks whether a movie has a playable, non-restricted YouTube trailer.
+     * Uses cached result immediately if available, or waits up to {@code maxWaitMs} for resolution.
+     */
+    public static boolean hasPlayableTrailer(Context ctx, Movie m, long maxWaitMs) {
+        if (m == null) return false;
+        if (Creator.isSessiz(m)) return true;
+        String cached = (m.imdbId != null && !m.imdbId.isEmpty()) ? trailers.get(m.type + ":" + m.imdbId) : null;
+        if (cached == null && m.tmdbId > 0) cached = trailers.get(m.type + ":" + m.tmdbId);
+        if (cached != null) return !cached.isEmpty();
+        if (ctx == null || maxWaitMs <= 0) return true;
+        final Context app = ctx.getApplicationContext();
+        try {
+            Future<String> f = resolver.submit(() -> trailerKey(app, m));
+            String resolved = f.get(maxWaitMs, TimeUnit.MILLISECONDS);
+            return resolved != null && !resolved.isEmpty();
+        } catch (Throwable ignored) {
+            return true;
+        }
+    }
+
+    /**
+     * Verifies from the viewer's own IP/country that a YouTube video exists, is public, allows embedding,
+     * and is not country-restricted or age-gated.
+     */
+    public static boolean isYouTubePlayable(String key) {
+        if (key == null || !key.matches("[A-Za-z0-9_-]{6,20}")) return false;
+        Boolean cached = playableCache.get(key);
+        if (cached != null) return cached;
+        try {
+            JSONObject oembed = Http.getJson(
+                    "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=" + key + "&format=json",
+                    null, 2000);
+            if (oembed == null || oembed.optString("title", "").isEmpty()) {
+                playableCache.put(key, false);
+                return false;
+            }
+        } catch (Throwable t) {
+            playableCache.put(key, false);
+            return false;
+        }
+        try {
+            String html = Http.getText("https://www.youtube.com/watch?v=" + key + "&hl=en", null, 2200);
+            if (html != null && !html.isEmpty()) {
+                if (html.contains("\"playableInEmbed\":false")
+                        || html.contains("\"playabilityStatus\":{\"status\":\"UNPLAYABLE\"")
+                        || html.contains("\"playabilityStatus\":{\"status\":\"ERROR\"")
+                        || html.contains("\"playabilityStatus\":{\"status\":\"LOGIN_REQUIRED\"")) {
+                    playableCache.put(key, false);
+                    return false;
+                }
+            }
+        } catch (Throwable ignored) {
+            // If watch page check times out, rely on oEmbed success + runtime IFrame error handler
+        }
+        playableCache.put(key, true);
+        return true;
+    }
+
     /** The YouTube id of the film's trailer (official, in the TV's language first, then English); null if none. Blocks. */
     public static String trailerKey(Context ctx, Movie m) {
         if (Creator.isSessiz(m)) return Creator.SESSIZ_YOUTUBE_ID;
         String cacheKey = (m.imdbId != null && !m.imdbId.isEmpty()) ? (m.type + ":" + m.imdbId) : (m.type + ":" + m.tmdbId);
         String cached = trailers.get(cacheKey);
+        if (cached == null && m.tmdbId > 0) cached = trailers.get(m.type + ":" + m.tmdbId);
         if (cached != null) return cached.isEmpty() ? null : cached;
         String best = null;
         try {
@@ -724,7 +794,7 @@ public final class MovieCatalog {
                 if (m.tmdbId <= 0) details(ctx, m);
                 String afterDetails = (m.imdbId != null && !m.imdbId.isEmpty()) ? trailers.get(m.type + ":" + m.imdbId) : null;
                 if (afterDetails == null && m.tmdbId > 0) afterDetails = trailers.get(m.type + ":" + m.tmdbId);
-                if (afterDetails != null && !afterDetails.isEmpty()) return afterDetails;
+                if (afterDetails != null) return afterDetails.isEmpty() ? null : afterDetails;
                 if (m.tmdbId > 0) {
                     String kind = "series".equals(m.type) || "tv".equals(m.type) ? "tv" : "movie";
                     String lang = Locale.getDefault().getLanguage();
@@ -746,7 +816,7 @@ public final class MovieCatalog {
                                 JSONObject t = trs.optJSONObject(i);
                                 if (t != null) {
                                     String src = t.optString("source", "");
-                                    if (src.matches("[A-Za-z0-9_-]{6,20}")) {
+                                    if (src.matches("[A-Za-z0-9_-]{6,20}") && isYouTubePlayable(src)) {
                                         best = src;
                                         break;
                                     }
@@ -765,30 +835,44 @@ public final class MovieCatalog {
             if (m.tmdbId > 0) trailers.put(m.type + ":" + m.tmdbId, best);
         } else {
             trailers.put(cacheKey, "");
+            if (m.imdbId != null && !m.imdbId.isEmpty()) trailers.put(m.type + ":" + m.imdbId, "");
+            if (m.tmdbId > 0) trailers.put(m.type + ":" + m.tmdbId, "");
         }
         return best;
     }
 
     private static String selectTrailerKey(JSONArray r) {
-        String best = null;
-        int bestScore = -1;
+        if (r == null || r.length() == 0) return null;
+        List<int[]> scored = new ArrayList<>();
         try {
-            for (int i = 0; r != null && i < r.length(); i++) {
+            String tvLang = Locale.getDefault().getLanguage();
+            for (int i = 0; i < r.length(); i++) {
                 JSONObject v = r.getJSONObject(i);
                 if (!"YouTube".equals(v.optString("site"))) continue;
+                String key = v.optString("key", "");
+                if (!key.matches("[A-Za-z0-9_-]{6,20}")) continue;
                 String type = v.optString("type");
                 int score = ("Trailer".equals(type) ? 40 : "Teaser".equals(type) ? 20 : "Clip".equals(type) ? 10 : -1);
                 if (score < 0) continue;
                 if (v.optBoolean("official")) score += 8;
-                if ("en".equals(v.optString("iso_639_1"))) score += 4; // fewer burnt-in captions than dubbed cuts
-                if (score > bestScore) {
-                    bestScore = score;
-                    best = v.optString("key", null);
+                String iso = v.optString("iso_639_1");
+                if (tvLang.equals(iso)) score += 6;
+                else if ("en".equals(iso)) score += 4;
+                scored.add(new int[]{i, score});
+            }
+            Collections.sort(scored, (a, b) -> Integer.compare(b[1], a[1]));
+            int checked = 0;
+            for (int[] item : scored) {
+                String candidate = r.getJSONObject(item[0]).optString("key", null);
+                if (candidate == null) continue;
+                if (checked < 3) {
+                    checked++;
+                    if (isYouTubePlayable(candidate)) return candidate;
                 }
             }
         } catch (Throwable ignored) {
         }
-        return best;
+        return null;
     }
 
     /** The film's or series' official tagline in the device language, or null when TMDB has none. */

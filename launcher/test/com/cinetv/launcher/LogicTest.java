@@ -58,6 +58,7 @@ public class LogicTest {
         r.uiWidth = 1920;
         r.hdr10 = hdr;
         r.dolbyVision = dv;
+        r.hevc = true;
         return r;
     }
 
@@ -85,7 +86,7 @@ public class LogicTest {
         assertEquals("closet", ThemeManager.byId("dvdstore").id);
         assertEquals(ThemeManager.MODE_AUTO, ThemeManager.nextAppearance(ThemeManager.MODE_DARK));
         assertNull("the signature theme is procedural", ThemeManager.wallpaperNow(ThemeManager.byId("cinetv")));
-        assertEquals("themes/cinema.jpg", ThemeManager.wallpaperNow(ThemeManager.byId("cinema")));
+        assertEquals("themes/cinema.webp", ThemeManager.wallpaperNow(ThemeManager.byId("cinema")));
     }
 
     @Test

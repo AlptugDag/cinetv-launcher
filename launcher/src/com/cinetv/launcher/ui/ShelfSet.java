@@ -120,6 +120,25 @@ final class ShelfSet {
             }
         }
 
+        private void drawEdgeFalloffAndCenterSpotlight(Canvas c, int w, float fl, float lb, float rb, float deckDepth, float nosingH, int spotColor) {
+            // Subtle center spotlight reflection pool on the shelf deck directly beneath the focused DVD case
+            float cx = w / 2f;
+            float spotR = UiKit.pxf(280);
+            p.setShader(new android.graphics.RadialGradient(cx, fl - UiKit.pxf(4), spotR,
+                    spotColor, Color.TRANSPARENT, Shader.TileMode.CLAMP));
+            c.drawRect(cx - spotR, fl - deckDepth, cx + spotR, fl, p);
+
+            // Soft horizontal room vignette at the far left and right edges so the shelf blends organically into the room walls
+            float fadeW = UiKit.pxf(140);
+            p.setShader(new LinearGradient(-lb, 0, -lb + fadeW, 0,
+                    Color.argb(145, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+            c.drawRect(-lb, fl - deckDepth, -lb + fadeW, fl + nosingH, p);
+            p.setShader(new LinearGradient(w + rb - fadeW, 0, w + rb, 0,
+                    Color.TRANSPARENT, Color.argb(145, 0, 0, 0), Shader.TileMode.CLAMP));
+            c.drawRect(w + rb - fadeW, fl - deckDepth, w + rb, fl + nosingH, p);
+            p.setShader(null);
+        }
+
         private void cinemaShelf(Canvas c) {
             int w = getWidth();
             float fl = floor();
@@ -155,11 +174,11 @@ final class ShelfSet {
                     Color.argb(190, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
             c.drawRect(-lb, fl + nosingH, w + rb, fl + nosingH + UiKit.pxf(24), p);
 
-            // 6. Contact shadow under DVD cases
+            // 6. Contact shadow under DVD cases + studio spotlight & edge falloff
             p.setShader(new LinearGradient(0, fl - UiKit.pxf(8), 0, fl,
                     Color.TRANSPARENT, Color.argb(110, 10, 4, 3), Shader.TileMode.CLAMP));
             c.drawRect(-lb, fl - UiKit.pxf(8), w + rb, fl, p);
-            p.setShader(null);
+            drawEdgeFalloffAndCenterSpotlight(c, w, fl, lb, rb, deckDepth, nosingH, Color.argb(42, 245, 194, 107));
         }
 
         private void redCarpetShelf(Canvas c) {
@@ -196,11 +215,11 @@ final class ShelfSet {
                     Color.argb(190, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
             c.drawRect(-lb, fl + nosingH, w + rb, fl + nosingH + UiKit.pxf(24), p);
 
-            // 6. Contact shadow under cases
+            // 6. Contact shadow under cases + gala spotlight & edge falloff
             p.setShader(new LinearGradient(0, fl - UiKit.pxf(8), 0, fl,
                     Color.TRANSPARENT, Color.argb(100, 30, 2, 6), Shader.TileMode.CLAMP));
             c.drawRect(-lb, fl - UiKit.pxf(8), w + rb, fl, p);
-            p.setShader(null);
+            drawEdgeFalloffAndCenterSpotlight(c, w, fl, lb, rb, deckDepth, nosingH, Color.argb(46, 255, 229, 127));
         }
 
         private void closetShelf(Canvas c) {
@@ -208,40 +227,40 @@ final class ShelfSet {
             float fl = floor();
             float lb = leftBleed();
             float rb = rightBleed();
-            float deckDepth = UiKit.pxf(24);
-            float nosingH = UiKit.pxf(12);
+            float deckDepth = UiKit.pxf(22);
+            float nosingH = UiKit.pxf(11);
 
             // 1. Muted, realistic warm grey shelf deck (harmonizes with closet wallpaper, not stark white!)
             p.setShader(new LinearGradient(0, fl - deckDepth, 0, fl,
-                    new int[]{Color.rgb(42, 44, 48), Color.rgb(68, 70, 76), Color.rgb(88, 90, 96)},
+                    new int[]{Color.rgb(38, 40, 44), Color.rgb(58, 60, 66), Color.rgb(74, 76, 82)},
                     new float[]{0f, 0.6f, 1f}, Shader.TileMode.CLAMP));
             c.drawRect(-lb, fl - deckDepth, w + rb, fl, p);
 
             // 2. Soft pearl-grey front edge catch (no harsh glaring white!)
             p.setShader(null);
-            p.setColor(Color.rgb(155, 158, 165));
-            c.drawRect(-lb, fl - UiKit.pxf(1.5f), w + rb, fl, p);
+            p.setColor(Color.rgb(132, 135, 142));
+            c.drawRect(-lb, fl - UiKit.pxf(1.4f), w + rb, fl, p);
 
             // 3. Muted satin fascia face matching the closet lighting
             p.setShader(new LinearGradient(0, fl, 0, fl + nosingH,
-                    new int[]{Color.rgb(96, 98, 104), Color.rgb(74, 76, 82), Color.rgb(54, 56, 60)},
+                    new int[]{Color.rgb(82, 84, 90), Color.rgb(64, 66, 72), Color.rgb(46, 48, 52)},
                     new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
             c.drawRect(-lb, fl, w + rb, fl + nosingH, p);
 
             // 4. Subtle bottom groove
-            p.setColor(Color.rgb(42, 44, 48));
+            p.setColor(Color.rgb(36, 38, 42));
             c.drawRect(-lb, fl + nosingH - UiKit.pxf(1f), w + rb, fl + nosingH, p);
 
             // 5. Natural soft ambient drop shadow onto the lower shelves
             p.setShader(new LinearGradient(0, fl + nosingH, 0, fl + nosingH + UiKit.pxf(16),
-                    Color.argb(120, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+                    Color.argb(130, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
             c.drawRect(-lb, fl + nosingH, w + rb, fl + nosingH + UiKit.pxf(16), p);
 
-            // 6. Contact shadow under DVD cases
+            // 6. Contact shadow under DVD cases + ceiling tube reflection & side wall blend
             p.setShader(new LinearGradient(0, fl - UiKit.pxf(6), 0, fl,
-                    Color.TRANSPARENT, Color.argb(90, 10, 10, 12), Shader.TileMode.CLAMP));
+                    Color.TRANSPARENT, Color.argb(95, 10, 10, 12), Shader.TileMode.CLAMP));
             c.drawRect(-lb, fl - UiKit.pxf(6), w + rb, fl, p);
-            p.setShader(null);
+            drawEdgeFalloffAndCenterSpotlight(c, w, fl, lb, rb, deckDepth, nosingH, Color.argb(30, 245, 245, 244));
         }
 
         private void themedShelf(Canvas c) {
@@ -252,31 +271,35 @@ final class ShelfSet {
             float deckDepth = UiKit.pxf(48);
             float nosingH = UiKit.pxf(22);
 
-            int deckTop, deckBot, rimCol, faceTop, faceBot;
+            int deckTop, deckBot, rimCol, faceTop, faceBot, spotCol;
             if ("metal".equals(scene)) {
                 deckTop = Color.rgb(42, 48, 58);
                 deckBot = Color.rgb(68, 78, 92);
                 rimCol = Color.rgb(226, 232, 240); // laser-etched silver
                 faceTop = Color.rgb(36, 40, 48);
                 faceBot = Color.rgb(20, 24, 30);
+                spotCol = Color.argb(40, 226, 232, 240);
             } else if ("glass".equals(scene)) {
                 deckTop = Color.rgb(14, 22, 38);
                 deckBot = Color.rgb(26, 40, 64);
                 rimCol = Color.rgb(56, 189, 248); // luminous sapphire cyan
                 faceTop = Color.rgb(18, 28, 46);
                 faceBot = Color.rgb(10, 16, 28);
+                spotCol = Color.argb(44, 125, 211, 252);
             } else if ("neon".equals(scene)) {
                 deckTop = Color.rgb(18, 12, 30);
                 deckBot = Color.rgb(32, 16, 48);
                 rimCol = Color.rgb(244, 114, 182); // electric synthwave pink
                 faceTop = Color.rgb(22, 12, 34);
                 faceBot = Color.rgb(12, 8, 20);
+                spotCol = Color.argb(48, 244, 114, 182);
             } else {
                 deckTop = Color.rgb(26, 28, 36);
                 deckBot = Color.rgb(40, 44, 54);
                 rimCol = Color.rgb(210, 220, 235); // solid platinum
                 faceTop = Color.rgb(28, 30, 38);
                 faceBot = Color.rgb(18, 20, 26);
+                spotCol = Color.argb(38, 56, 189, 248);
             }
 
             // 1. Solid opaque top deck plane (100% OPAQUE)
@@ -297,11 +320,11 @@ final class ShelfSet {
                     Color.argb(190, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
             c.drawRect(-lb, fl + nosingH, w + rb, fl + nosingH + UiKit.pxf(24), p);
 
-            // 5. Contact shadow under cases
+            // 5. Contact shadow under cases + center spotlight & edge falloff
             p.setShader(new LinearGradient(0, fl - UiKit.pxf(8), 0, fl,
                     Color.TRANSPARENT, Color.argb(100, 0, 0, 0), Shader.TileMode.CLAMP));
             c.drawRect(-lb, fl - UiKit.pxf(8), w + rb, fl, p);
-            p.setShader(null);
+            drawEdgeFalloffAndCenterSpotlight(c, w, fl, lb, rb, deckDepth, nosingH, spotCol);
         }
     }
 }
