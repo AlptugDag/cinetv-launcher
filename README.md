@@ -160,7 +160,7 @@ Tarihi kadife tiyatro perdelerinden endüstriyel fırçalanmış titanyuma, 80'l
 
 Standart televizyon arayüzlerinde harf harf arama yapmak sinema keyfini başlamadan tüketen mekanik bir angaryadır. CineTV, arama kutularını ortadan kaldırır; deneyimi özel bir gösterim odasında bilge bir sinema küratörüyle konuşma konforuna dönüştürür.
 
-Kumandanızın mikrofonuna konuştuğunuzda ekranda canlanan akustik ses dalgaları, yapay zekanın his ve durum odaklı analiz yeteneğiyle birleşir. *"90'larda yağmurlu gecelerde geçen melankolik dedektif filmleri"* dediğinizde vitrininiz saniyeler içinde o başyapıtlarla donatılır.
+Kumandanızın mikrofonuna konuştuğunuzda televizyon çerçevesinin dört bir yanında canlanan **akustik kromatik ışık şeritleri**, sesinizin frekansına gerçek zamanlı tepki verir ve yapay zekanın his/durum odaklı analiz yeteneğiyle birleşir. *"90'larda yağmurlu gecelerde geçen melankolik dedektif filmleri"* dediğinizde vitrininiz saniyeler içinde o başyapıtlarla donatılır; destekleyen orta ve üst segment televizyonlarda ise **EMA-Lightning Nöral Türkçe Ses Motoru** (`canberkkkkkk/ema-lightning`, 24 kHz) yanıtları stüdyo kalitesinde doğal insan sesiyle seslendirir.
 
 <br>
 
@@ -273,7 +273,7 @@ Uygulama mağazalarından ek yazılım indirmeye, hesap açmaya veya karmaşık 
 
 <p align="center">
   <img src="docs/media/settings_v14.png" alt="Tek Sayfa Ayarlar" width="410">&nbsp;&nbsp;
-  <img src="docs/media/celebration_v14.png" alt="Özel Gün Kutlamaları" width="410">
+  <img src="docs/media/home_v14.png" alt="Alptug Default Sinema Vitrini" width="410">
 </p>
 
 <br><br>
@@ -354,14 +354,29 @@ Hiçbir kişisel verinizi toplamaz, kullanım alışkanlıklarınızı izlemez v
 
 <br>
 
-<div align="center">
+## Yaratıcı Hakkında: Alptuğ Dağ
 
-Sinemaya duyulan tutkuyla **Alptuğ Dağ** tarafından tasarlandı ve hayata geçirildi.  
-Yönetmen, İçerik Üreticisi, Kurgucu
+<div align="center">
 
 <br>
 
-[Instagram](https://instagram.com/alptugdag) &nbsp;·&nbsp; [YouTube](https://youtube.com/@AlptugDag) &nbsp;·&nbsp; [Letterboxd](https://letterboxd.com/AlptugDag/) &nbsp;·&nbsp; [LinkedIn](https://www.linkedin.com/in/AlptugDag/) &nbsp;·&nbsp; [GitHub](https://github.com/AlptugDag) &nbsp;·&nbsp; [TMDB](https://www.themoviedb.org/person/6564105) &nbsp;·&nbsp; [IMDb](https://www.imdb.com/name/nm14913967)
+**CineTV**, ticari bir ürün ya da abonelik servisi değil; sinema tutkusunu herkes için ulaşılabilir kılmak adına **Alptuğ Dağ** tarafından sıfır kâr ve sıfır reklam felsefesiyle tasarlanıp geliştirilmiş bağımsız bir ev sineması projesidir.
+
+**Alptuğ Dağ** — Yönetmen, Senarist, Kurgucu, Seslendirme Sanatçısı & Yaratıcı Teknoloji Geliştiricisi.  
+Kısa filmi **[Sessiz (2023)](https://www.youtube.com/watch?v=bLvdsibrR-I&t=9s)** ([Fragman](https://www.youtube.com/watch?v=jb7BM-NHreg&feature=youtu.be)) başta olmak üzere bağımsız sinema, görsel hikâye anlatımı, kurgu ve sahne sanatları üretimleriyle tanınır.
+
+CineTV salonunuzun başköşesinde yaşarken bu bağımsız vizyona destek olmak, yeni kısa film ve projelerden haberdar olmak ya da **film, reklam, yönetmenlik, kurgu, seslendirme ve yaratıcı teknoloji iş birlikleri** için doğrudan iletişime geçebilirsiniz:
+
+<br>
+
+[![Instagram](https://img.shields.io/badge/INSTAGRAM-%40alptugdag-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://instagram.com/alptugdag) &nbsp;
+[![Kısa Film: Sessiz](https://img.shields.io/badge/KISA%20FILM-SESSIZ%20(2023)-E50914?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=bLvdsibrR-I&t=9s) &nbsp;
+[![Fragman: Sessiz](https://img.shields.io/badge/FRAGMAN-SESSIZ%20(2023)-18181B?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=jb7BM-NHreg&feature=youtu.be) &nbsp;
+[![LinkedIn](https://img.shields.io/badge/LINKEDIN-ALPTUG%20DAG-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/AlptugDag/)
+
+<br>
+
+[Instagram (`@alptugdag`)](https://instagram.com/alptugdag) &nbsp;·&nbsp; [YouTube](https://youtube.com/@AlptugDag) &nbsp;·&nbsp; [Letterboxd](https://letterboxd.com/AlptugDag/) &nbsp;·&nbsp; [LinkedIn](https://www.linkedin.com/in/AlptugDag/) &nbsp;·&nbsp; [GitHub](https://github.com/AlptugDag) &nbsp;·&nbsp; [TMDB](https://www.themoviedb.org/person/6564105) &nbsp;·&nbsp; [IMDb](https://www.imdb.com/name/nm14913967)
 
 <br>
 

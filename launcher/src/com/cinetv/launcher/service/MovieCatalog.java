@@ -325,14 +325,52 @@ public final class MovieCatalog {
         if (!hasTmdb(ctx)) return resolve(ctx, title, year);
         try {
             String kind = tv ? "tv" : "movie";
-            String yearParam = year > 1900 ? (tv ? "&first_air_date_year=" : "&year=") + year : "";
-            List<Movie> list = parseTmdbResults(tmdb(ctx, "search/" + kind + "?language=" + language() + "&query=" + enc(title.trim()) + yearParam),
-                    tv ? "series" : "movie", 1);
-            if (list.isEmpty() && year > 1900) return resolveQuick(ctx, title, 0, tv);
-            return list.isEmpty() ? null : list.get(0);
+            String q = enc(title.trim());
+            if (year > 1900) {
+                String yearParam = (tv ? "&first_air_date_year=" : "&year=") + year;
+                List<Movie> exact = parseTmdbResults(
+                        tmdb(ctx, "search/" + kind + "?include_adult=false&language=" + language() + "&query=" + q + yearParam),
+                        tv ? "series" : "movie", 4);
+                Movie bestExact = pickBestResolved(exact, title, year);
+                if (bestExact != null && bestExact.rating >= 5.0) return bestExact;
+            }
+            List<Movie> broad = parseTmdbResults(
+                    tmdb(ctx, "search/" + kind + "?include_adult=false&language=" + language() + "&query=" + q),
+                    tv ? "series" : "movie", 6);
+            Movie bestBroad = pickBestResolved(broad, title, year);
+            return bestBroad;
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    private static Movie pickBestResolved(List<Movie> list, String queryTitle, int targetYear) {
+        if (list == null || list.isEmpty()) return null;
+        String qNorm = queryTitle == null ? "" : queryTitle.trim().toLowerCase(Locale.ROOT);
+        Movie best = null;
+        double bestScore = -1e9;
+        for (int i = 0; i < list.size(); i++) {
+            Movie m = list.get(i);
+            if (m == null || m.posterUrl == null || m.posterUrl.isEmpty()) continue;
+            double score = (m.rating * 3.0) - (i * 1.5);
+            if (targetYear > 1900 && m.year > 1900) {
+                int diff = Math.abs(m.year - targetYear);
+                if (diff == 0) score += 14.0;
+                else if (diff == 1) score += 9.0;
+                else if (diff == 2) score += 4.0;
+                else score -= Math.min(20.0, diff * 2.0);
+            }
+            if (!qNorm.isEmpty()) {
+                String t1 = m.title != null ? m.title.trim().toLowerCase(Locale.ROOT) : "";
+                String t2 = m.originalTitle != null ? m.originalTitle.trim().toLowerCase(Locale.ROOT) : "";
+                if (qNorm.equals(t1) || qNorm.equals(t2)) score += 8.0;
+            }
+            if (score > bestScore) {
+                bestScore = score;
+                best = m;
+            }
+        }
+        return best != null ? best : list.get(0);
     }
 
     /** The first sentences of a person's TMDB biography in the device language (English if none). */
@@ -624,9 +662,25 @@ public final class MovieCatalog {
                 String imdb = d.optString("imdb_id", ext != null ? ext.optString("imdb_id", "") : "");
                 if (imdb.startsWith("tt")) m.imdbId = imdb;
             }
+            if (Creator.isSessiz(m)) {
+                if (m.director == null || m.director.isEmpty()) m.director = Creator.NAME;
+                if (m.year <= 0) m.year = 2023;
+                if (m.tmdbId > 0) trailers.put(m.type + ":" + m.tmdbId, Creator.SESSIZ_TRAILER_ID);
+                if (m.imdbId != null && !m.imdbId.isEmpty()) trailers.put(m.type + ":" + m.imdbId, Creator.SESSIZ_TRAILER_ID);
+            }
             ratings(ctx, m);
         } catch (Throwable t) {
             Log.w(TAG, "Details failed: " + t.getMessage());
+        }
+        if (Creator.isSessiz(m)) {
+            if (m.director == null || m.director.isEmpty()) m.director = Creator.NAME;
+            if (m.year <= 0) m.year = 2023;
+            if (m.overview == null || m.overview.trim().isEmpty()) {
+                boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+                m.overview = tr
+                        ? "Alptuğ Dağ'ın yönettiği Sessiz (2023), kelimelerin tükendiği yerde bakışların, yalnızlığın ve içsel yankıların konuştuğu sinematografik bir kısa film anlatısıdır."
+                        : "Directed by Alptuğ Dağ, Sessiz (2023) is an atmospheric short film exploring solitude, unspoken emotions, and the quiet resonance of human connection.";
+            }
         }
         return m;
     }
@@ -783,7 +837,7 @@ public final class MovieCatalog {
 
     /** The YouTube id of the film's trailer (official, in the TV's language first, then English); null if none. Blocks. */
     public static String trailerKey(Context ctx, Movie m) {
-        if (Creator.isSessiz(m)) return Creator.SESSIZ_YOUTUBE_ID;
+        if (Creator.isSessiz(m)) return Creator.SESSIZ_TRAILER_ID;
         String cacheKey = (m.imdbId != null && !m.imdbId.isEmpty()) ? (m.type + ":" + m.imdbId) : (m.type + ":" + m.tmdbId);
         String cached = trailers.get(cacheKey);
         if (cached == null && m.tmdbId > 0) cached = trailers.get(m.type + ":" + m.tmdbId);

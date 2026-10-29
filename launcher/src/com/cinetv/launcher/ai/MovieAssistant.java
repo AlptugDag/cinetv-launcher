@@ -231,17 +231,22 @@ public final class MovieAssistant {
             sessiz.title = "Sessiz";
             sessiz.originalTitle = "Sessiz";
             sessiz.year = 2023;
+            sessiz.imdbId = "tt38983576";
+            sessiz.tmdbId = 1124567;
             sessiz.director = Creator.NAME;
             sessiz.posterUrl = "https://i.ytimg.com/vi/" + Creator.SESSIZ_YOUTUBE_ID + "/hqdefault.jpg";
             sessiz.backdropUrl = "https://i.ytimg.com/vi/" + Creator.SESSIZ_YOUTUBE_ID + "/maxresdefault.jpg";
             out.movies.add(sessiz);
         }
-        String q = query.toLowerCase(Locale.getDefault());
-        boolean question = false;
-        for (String w : QUESTION_WORDS) if (q.contains(w)) question = true;
-        if (question) {
-            out.kind = Kind.SHELF;
-            out.answer = MovieCatalog.personBio(ctx, Creator.TMDB_PERSON, 2);
+        out.kind = Kind.SHELF;
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        String tmdbBio = MovieCatalog.personBio(ctx, Creator.TMDB_PERSON, 2);
+        if (tr) {
+            out.answer = (tmdbBio != null && !tmdbBio.isEmpty() ? tmdbBio + " " : "Alptuğ Dağ; yönetmen, kurgucu, seslendirme sanatçısı ve CineTV'nin yaratıcısıdır. ")
+                    + "Kısa filmi Sessiz (2023) vitrinde hazır; yeni projeler ve iş birlikleri için Instagram'da @alptugdag hesabını takip edebilirsiniz.";
+        } else {
+            out.answer = (tmdbBio != null && !tmdbBio.isEmpty() ? tmdbBio + " " : "Alptuğ Dağ is a filmmaker, editor, voice artist and the creator of CineTV. ")
+                    + "His short film Sessiz (2023) is on the shelf; follow @alptugdag on Instagram for new films and collaborations.";
         }
         return out;
     }
@@ -293,15 +298,17 @@ public final class MovieAssistant {
         String recent = getRecentCurated(ctx);
         String recentInstruction = recent.isEmpty() ? ""
                 : " CRITICAL ANTI-REPETITION RULE: DO NOT recommend any of these previously shown titles: [" + recent + "]. ";
+        int askCount = Math.min(24, max + 4);
 
         String request = mood != null && !mood.trim().isEmpty() ? mood.trim() + "." + recentInstruction
                 : "Right now the exact real-world moment is: " + context + "." + recentInstruction
-                + " Pick " + max + " outstanding films or series tailored with surgical precision to this exact moment "
+                + " Pick " + askCount + " outstanding films or series tailored with surgical precision to this exact moment "
                 + "(hour of the day, exact day of month, season, atmospheric weather, and emotional tone). "
-                + "Avoid generic top-250 cliches (e.g. The Godfather, Inception, Pulp Fiction, Interstellar, Shawshank Redemption, Fight Club, Dark Knight). "
-                + "Surprise the viewer with distinct, acclaimed cinema (cult classics, hidden gems, Cannes/Venice/Berlin winners, French, Japanese, Korean, Italian, Turkish, Scandinavian, Latin American cinema). "
-                + "The category title MUST be evocative, concise (max 6 words in " + language().toUpperCase(Locale.ROOT)
-                + "), and explicitly reflect this date/hour/weather mood (e.g. \"28 Ekim Sonbahar Dramları\", \"Gece Yarısı Neo-Noir\", \"Güneşli Sabah Yol Hikayeleri\").";
+                + "Avoid overplayed generic top-250 cliches (e.g. The Godfather, Inception, Pulp Fiction, Interstellar, Shawshank Redemption, Fight Club, Dark Knight). "
+                + "Balance acclaimed world cinema (Criterion Collection, Cannes/Venice/Berlin winners, French, Japanese, Korean, Italian, Turkish, Scandinavian, Latin American auteur cinema) with deeply engaging, high-rated storytelling (IMDb >= 7.2) that has wide availability and official posters. "
+                + "Never include more than one film by the same director in a single shelf. "
+                + "The category title MUST be poetic, evocative, concise (max 6 words in " + language().toUpperCase(Locale.ROOT)
+                + "), and explicitly reflect this date/hour/weather mood (e.g. \"Sonbahar Akşamında Kuzey Sırları\", \"Gece Yarısı Neo-Noir Gerilimler\", \"Yağmurlu İkindi Karakter Dramları\").";
         String system = "You are a world-class film curator and cinema historian. Reply ONLY with JSON, no markdown: "
                 + "{\"category_title\": \"SHORT EVOCATIVE TITLE IN " + language().toUpperCase(Locale.ROOT) + " (max 6 words)\", "
                 + "\"movies\": [{\"title\": \"original or international title\", \"year\": 1999, \"tv\": false}]}";
@@ -312,7 +319,7 @@ public final class MovieAssistant {
             JSONArray arr = o.optJSONArray("movies");
             if (arr == null) return null;
             List<Future<List<Movie>>> jobs = new ArrayList<>();
-            for (int i = 0; i < arr.length() && i < max; i++) {
+            for (int i = 0; i < arr.length() && i < askCount; i++) {
                 final JSONObject m = arr.getJSONObject(i);
                 jobs.add(pool.submit(() -> {
                     List<Movie> one = new ArrayList<>();

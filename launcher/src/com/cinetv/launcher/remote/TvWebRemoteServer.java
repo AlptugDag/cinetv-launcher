@@ -263,16 +263,31 @@ public final class TvWebRemoteServer {
                 return;
             }
 
-            if (path.equals("/") || path.equals("/index.html")) {
+            if (path.equals("/") || path.equals("/index.html")
+                    || path.equals("/static") || path.equals("/static/") || path.equals("/static/index.html")
+                    || path.equals("/remote") || path.equals("/remote/") || path.equals("/remote/index.html")) {
                 asset(out, "remote/index.html", "text/html; charset=utf-8");
                 return;
             }
-            if (path.equals("/me")) {
+            if (path.equals("/me") || path.equals("/me/") || path.equals("/me.html")) {
                 // The author's link page, opened by the single QR code on the TV's About page; public.
                 asset(out, "remote/me.html", "text/html; charset=utf-8");
                 return;
             }
-            if (path.equals("/sw.js")) {
+            if (path.equals("/manifest.webmanifest")) {
+                asset(out, "remote/manifest.webmanifest", "application/manifest+json");
+                return;
+            }
+            if (path.equals("/favicon.ico") || path.equals("/icon.png")
+                    || path.startsWith("/apple-touch-icon")) {
+                asset(out, "remote/icon.png", "image/png");
+                return;
+            }
+            if (path.equals("/icon-192.png")) {
+                asset(out, "remote/icon-192.png", "image/png");
+                return;
+            }
+            if (path.equals("/sw.js") || path.equals("/static/sw.js")) {
                 asset(out, "remote/sw.js", "application/javascript; charset=utf-8");
                 return;
             }
@@ -283,6 +298,7 @@ public final class TvWebRemoteServer {
             }
             if (path.startsWith("/static/")) {
                 String name = path.substring(8);
+                if (name.startsWith("static/")) name = name.substring(7);
                 if (!name.matches("[a-zA-Z0-9_.-]+")) {
                     send(out, 404, "text/plain", new byte[0]);
                     return;

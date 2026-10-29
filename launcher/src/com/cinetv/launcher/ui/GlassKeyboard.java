@@ -47,9 +47,11 @@ public class GlassKeyboard extends FrameLayout {
     /** The last search is still in the bar: the first letter typed starts a new one. */
     private boolean fresh;
     private TextView firstLetter;
+    private boolean spatial;
 
     public GlassKeyboard(Context ctx) {
         super(ctx);
+        spatial = com.cinetv.launcher.service.Prefs.spatial3d(ctx);
         setVisibility(GONE);
         setClipChildren(false);
         locale = Locale.getDefault();
@@ -58,6 +60,7 @@ public class GlassKeyboard extends FrameLayout {
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setGravity(Gravity.CENTER_HORIZONTAL);
         panel.setClipChildren(false);
+        panel.setCameraDistance(ctx.getResources().getDisplayMetrics().density * 3200f);
         panel.setPadding(UiKit.px(26), UiKit.px(24), UiKit.px(26), UiKit.px(24));
         panel.setBackground(Glass.panel(panel, 40));
         for (String row : tr ? ROWS_TR : ROWS_EN) {
@@ -91,6 +94,12 @@ public class GlassKeyboard extends FrameLayout {
         listener = l;
     }
 
+    public void setSpatial(boolean on) {
+        this.spatial = on;
+        panel.setRotationX(on ? -7.5f : 0f);
+        panel.setTranslationZ(on ? UiKit.pxf(38) : 0f);
+    }
+
     public boolean isShowing() {
         return getVisibility() == VISIBLE;
     }
@@ -98,10 +107,14 @@ public class GlassKeyboard extends FrameLayout {
     public void show(EditText into) {
         target = into;
         fresh = into.length() > 0;
+        boolean useSpatial = spatial || com.cinetv.launcher.service.Prefs.spatial3d(getContext());
         setVisibility(VISIBLE);
         panel.setAlpha(0f);
         panel.setTranslationY(UiKit.pxf(60));
-        panel.animate().alpha(1f).translationY(0f).setDuration(PerformanceProfile.animationMs(getContext(), 220)).start();
+        panel.setRotationX(useSpatial ? -14f : 0f);
+        panel.setTranslationZ(useSpatial ? UiKit.pxf(38) : 0f);
+        panel.animate().alpha(1f).translationY(0f).rotationX(useSpatial ? -7.5f : 0f)
+                .setDuration(PerformanceProfile.animationMs(getContext(), 220)).start();
         if (firstLetter != null) firstLetter.requestFocus();
     }
 

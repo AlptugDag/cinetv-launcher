@@ -76,8 +76,18 @@ public final class DvdCase {
         return out;
     }
 
+    private static final android.util.LruCache<Integer, Bitmap> HALO_CACHE = new android.util.LruCache<Integer, Bitmap>(2 * 1024) {
+        @Override
+        protected int sizeOf(Integer key, Bitmap value) {
+            return value.getByteCount() / 1024;
+        }
+    };
+
     /** A soft elliptical light in the film's colour: brightest behind the box, fading to nothing. */
-    static Bitmap bakeHalo(int accent) {
+    static synchronized Bitmap bakeHalo(int accent) {
+        int key = accent & 0xFFF8F8F8;
+        Bitmap cached = HALO_CACHE.get(key);
+        if (cached != null && !cached.isRecycled()) return cached;
         int w = 128, h = 128;
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         float[] hsv = new float[3];
@@ -90,6 +100,7 @@ public final class DvdCase {
                 new int[]{UiKit.withAlpha(c, 150), UiKit.withAlpha(c, 96), UiKit.withAlpha(c, 34), UiKit.withAlpha(c, 8), Color.TRANSPARENT},
                 new float[]{0f, 0.28f, 0.55f, 0.8f, 1f}, Shader.TileMode.CLAMP));
         new Canvas(out).drawRect(0, 0, w, h, p);
+        HALO_CACHE.put(key, out);
         return out;
     }
 

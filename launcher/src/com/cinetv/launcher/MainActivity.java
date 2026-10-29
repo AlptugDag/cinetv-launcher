@@ -340,6 +340,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         home.environment.pause();
         home.trailer.stop();
+        com.cinetv.launcher.ai.EmaLightningTts.stop();
         if (home.voice != null) home.voice.dismiss();
         handler.removeCallbacks(clockTick);
         handler.removeCallbacks(idle);
@@ -468,8 +469,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void onBackPressed() {
         if (home == null) return;
+        com.cinetv.launcher.ai.EmaLightningTts.stop();
         if (home.isAiCardShowing()) {
-                home.hideAiCard();
+            home.hideAiCard();
         } else if (!home.shelf.hasFocus()) {
             home.shelf.requestFocus();
             home.scroll.glideHome();
@@ -584,10 +586,14 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     private static final int REQ_VOICE = 41;
     private int searchGen;
+    private boolean lastSearchFromVoice = false;
 
     @Override
     public void onSearch(final String query) {
         if (query == null || query.trim().isEmpty()) return;
+        final boolean spokenSearch = lastSearchFromVoice;
+        lastSearchFromVoice = false;
+        com.cinetv.launcher.ai.EmaLightningTts.stop();
         home.keyboard.hide();
         home.search.setText(query);
         final int gen = ++searchGen;
@@ -615,16 +621,23 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 if (!r.answer.isEmpty()) {
                     // Stays long enough to read, then leaves by itself.
                     home.showBubble(r.answer, false, Math.max(6000, 2500 + 60L * r.answer.length()));
+                    com.cinetv.launcher.ai.EmaLightningTts.speak(MainActivity.this, r.answer);
                 } else if (r.movies.isEmpty()) {
                     if (question) {
-                        home.showBubble(getString(LlmClient.isConfigured(this) || MovieCatalog.hasTmdb(this)
-                                ? R.string.nothing_found : R.string.ai_err_no_key), false, 6000);
+                        String msg = getString(LlmClient.isConfigured(this) || MovieCatalog.hasTmdb(this)
+                                ? R.string.nothing_found : R.string.ai_err_no_key);
+                        home.showBubble(msg, false, 6000);
+                        com.cinetv.launcher.ai.EmaLightningTts.speak(MainActivity.this, msg);
                     } else {
                         home.shelfLabel.setText(getString(R.string.shelf_nothing, MovieAssistant.cleanShelfName(query)).toUpperCase(Locale.getDefault()));
                         handler.postDelayed(() -> { if (gen == searchGen) restoreShelfLabel(); }, 4000);
                     }
                 } else {
                     home.hideAiCard();
+                    if (spokenSearch) {
+                        String shelfName = r.title.isEmpty() ? MovieAssistant.cleanShelfName(query) : r.title;
+                        com.cinetv.launcher.ai.EmaLightningTts.speak(MainActivity.this, shelfName + " seçkisi vitrine getirildi.");
+                    }
                 }
             });
         });
@@ -635,6 +648,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void onVoice() {
+        com.cinetv.launcher.ai.EmaLightningTts.stop();
         home.keyboard.hide();
         ourVoiceAt = android.os.SystemClock.elapsedRealtime();
 
@@ -700,6 +714,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
             return;
         }
+        lastSearchFromVoice = true;
         onSearch(said);
     }
 
@@ -722,6 +737,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         @Override
         public void say(String text) {
             home.showBubble(text, false, 4000);
+            com.cinetv.launcher.ai.EmaLightningTts.speak(MainActivity.this, text);
         }
 
         @Override
@@ -777,11 +793,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         public void queryRamadan(String city) {
             if (city != null) Prefs.putGlobal(MainActivity.this, Prefs.GLOBAL_CITY, city);
             com.cinetv.launcher.service.RamadanTimes.getStatusAsync(MainActivity.this, status -> {
-                if (status != null && !status.isEmpty()) {
-                    home.showBubble(status, false, 6000);
-                } else {
-                    home.showBubble((city != null ? city : "Bulunduğunuz il") + " için iftar vakti: 18:15 · İmsak: 05:45", false, 5000);
-                }
+                String msg = (status != null && !status.isEmpty())
+                        ? status
+                        : (city != null ? city : "Bulunduğunuz il") + " için iftar vakti: 18:15 · İmsak: 05:45";
+                home.showBubble(msg, false, 6000);
+                com.cinetv.launcher.ai.EmaLightningTts.speak(MainActivity.this, msg);
             });
         }
     };
@@ -910,8 +926,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     /** Plays the DVD opening (when enabled and the TV can afford it), then opens the title in Nuvio. */
     public void openTitle(final Movie m, DvdCaseView from) {
+        com.cinetv.launcher.ai.EmaLightningTts.stop();
         final Context appCtx = getApplicationContext();
         final Runnable launch = () -> {
+            if (com.cinetv.launcher.service.Creator.isSessiz(m)) {
+                AppLauncher.openYouTubeVideo(this, com.cinetv.launcher.service.Creator.SESSIZ_YOUTUBE_URL);
+                return;
+            }
             if (!m.imdbId.isEmpty()) {
                 AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl);
                 return;
@@ -1322,82 +1343,25 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         if (home == null || home.root == null) return;
         final android.widget.FrameLayout container = new android.widget.FrameLayout(this);
-        container.setBackgroundColor(Color.argb(170, 4, 5, 8));
+        container.setBackgroundColor(Color.argb(188, 4, 5, 9));
         container.setAlpha(0f);
         container.setFocusable(true);
         container.setClickable(true);
 
-        android.widget.LinearLayout box = new android.widget.LinearLayout(this);
-        box.setOrientation(android.widget.LinearLayout.VERTICAL);
-        box.setGravity(Gravity.CENTER);
-        box.setPadding(UiKit.px(68), UiKit.px(50), UiKit.px(68), UiKit.px(48));
-
-        // Notification panel card styling
-        android.graphics.drawable.GradientDrawable panelBg = new android.graphics.drawable.GradientDrawable();
-        panelBg.setColor(Color.argb(248, 14, 16, 22));
-        panelBg.setCornerRadius(UiKit.pxf(24));
-        panelBg.setStroke(UiKit.px(2), UiKit.withAlpha(day.accent, 210));
-        box.setBackground(panelBg);
-
-        // Drawn vector badge (Turkish Flag or memorial ribbon)
-        android.widget.ImageView iconView = new android.widget.ImageView(this);
-        int iconW = UiKit.px(day.icon == com.cinetv.launcher.service.SpecialDay.Icon.FLAG ? 96 : 72);
-        int iconH = UiKit.px(day.icon == com.cinetv.launcher.service.SpecialDay.Icon.FLAG ? 64 : 72);
-        iconView.setImageDrawable(com.cinetv.launcher.ui.SpecialDayArt.drawable(day.icon, day.accent));
-        android.widget.LinearLayout.LayoutParams ilp = new android.widget.LinearLayout.LayoutParams(iconW, iconH);
-        ilp.bottomMargin = UiKit.px(22);
-        ilp.gravity = Gravity.CENTER_HORIZONTAL;
-        box.addView(iconView, ilp);
-
-        // Celebration Title: "Cinetv yapımcısı Alptuğ Dağ (BAYRAM ADI) Bayramınızı Kutlar!"
-        android.widget.TextView titleTv = new android.widget.TextView(this);
-        titleTv.setText(day.celebrationTitle);
-        titleTv.setTextColor(Color.WHITE);
-        titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
-        titleTv.setGravity(Gravity.CENTER);
-        titleTv.setTypeface(FontManager.getBold(this));
-        titleTv.setShadowLayer(UiKit.pxf(14), 0, UiKit.pxf(3), Color.argb(190, 0, 0, 0));
-        android.widget.LinearLayout.LayoutParams tlp = new android.widget.LinearLayout.LayoutParams(UiKit.px(900), ViewGroup.LayoutParams.WRAP_CONTENT);
-        tlp.gravity = Gravity.CENTER_HORIZONTAL;
-        box.addView(titleTv, tlp);
-
-        // Celebration Body Message: "İyi seyirler..."
-        android.widget.TextView bodyTv = new android.widget.TextView(this);
-        bodyTv.setText(day.celebrationBody);
-        bodyTv.setTextColor(Color.parseColor(day.mourning ? "#D1D5DB" : "#FDE68A"));
-        bodyTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        bodyTv.setGravity(Gravity.CENTER);
-        bodyTv.setLineSpacing(UiKit.pxf(4), 1.15f);
-        bodyTv.setTypeface(FontManager.getMedium(this));
-        bodyTv.setShadowLayer(UiKit.pxf(10), 0, UiKit.pxf(2), Color.argb(160, 0, 0, 0));
-        android.widget.LinearLayout.LayoutParams blp = new android.widget.LinearLayout.LayoutParams(UiKit.px(880), ViewGroup.LayoutParams.WRAP_CONTENT);
-        blp.topMargin = UiKit.px(16);
-        blp.bottomMargin = UiKit.px(14);
-        blp.gravity = Gravity.CENTER_HORIZONTAL;
-        box.addView(bodyTv, blp);
-
-        // Hint to dismiss
-        android.widget.TextView hintTv = new android.widget.TextView(this);
-        hintTv.setText("Kapatmak için kumandadan (OK) veya herhangi bir tuşa basın");
-        hintTv.setTextColor(Color.parseColor("#9CA3AF"));
-        hintTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        hintTv.setGravity(Gravity.CENTER);
-        android.widget.LinearLayout.LayoutParams hlp = new android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        hlp.topMargin = UiKit.px(14);
-        hlp.gravity = Gravity.CENTER_HORIZONTAL;
-        box.addView(hintTv, hlp);
-
-        // Floating translucent crimson celebratory balloons behind the card
-        container.addView(new com.cinetv.launcher.ui.FloatingBalloonsView(this),
+        // Floating 3D teardrop celebratory balloons (or solemn memorial embers on 10 Kasım)
+        container.addView(new com.cinetv.launcher.ui.FloatingBalloonsView(this, day.mourning),
                 new android.widget.FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT));
 
+        View card = com.cinetv.launcher.ui.CelebrationOverlay.buildCard(this, day);
+        card.setScaleX(0.94f);
+        card.setScaleY(0.94f);
         android.widget.FrameLayout.LayoutParams flp = new android.widget.FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.CENTER);
-        container.addView(box, flp);
+        container.addView(card, flp);
         home.root.addView(container, new android.widget.FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
@@ -1408,15 +1372,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             } catch (Throwable ignored) {}
         };
 
-        // Smooth fade-in: stays visible until user presses remote key or auto-advances after 8 seconds
-        container.animate().alpha(1f).setDuration(550).start();
+        container.animate().alpha(1f).setDuration(420).start();
+        card.animate().scaleX(1f).scaleY(1f).setDuration(460)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
 
         container.postDelayed(() -> {
             if (container.getParent() != null) {
                 container.animate().cancel();
                 container.animate().alpha(0f).setDuration(240).withEndAction(finishAction).start();
             }
-        }, 8000);
+        }, 9000);
 
         container.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {

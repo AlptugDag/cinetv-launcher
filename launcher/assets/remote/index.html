@@ -6,10 +6,13 @@
 <meta name="theme-color" content="#07070c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CineTV">
 <title>CineTV by Alptuğ Dağ</title>
-<link rel="manifest" href="/static/manifest.webmanifest">
-<link rel="icon" type="image/png" href="/static/icon.png">
-<link rel="apple-touch-icon" href="/static/icon.png">
+<link rel="manifest" href="static/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="static/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="static/icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="static/icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="static/icon.png">
 <style>
 :root{
   --bg:#07070c;--ink:#f5f5f7;--dim:rgba(235,235,245,.6);--faint:rgba(235,235,245,.32);
@@ -37,19 +40,39 @@ header{position:sticky;top:0;z-index:5;padding:calc(env(safe-area-inset-top,0px)
 .brand .sig{width:30px;height:30px;object-fit:contain;margin-left:-4px;margin-right:-2px;opacity:.92}
 .brand .st{font-size:12px;color:var(--dim);margin-left:auto;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0}
 .brand em{font-style:normal}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--faint);transition:background .25s,box-shadow .25s}
 .dot.on{background:var(--ok);box-shadow:0 0 10px var(--ok)}
-.search{display:flex;align-items:center;gap:10px;padding:12px 16px}
-.search input{flex:1;background:none;border:0;outline:0;color:var(--ink);font-size:16px}
-.search svg{opacity:.7}
-main{padding:0 16px calc(96px + var(--safe-b))}
-section{display:none}section.on{display:block}
-h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:18px 2px 10px}
+.search{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 16px;transition:border-color .2s,box-shadow .2s}
+.search:focus-within{border-color:rgba(196,181,253,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 0 0 3px rgba(139,92,246,.22),0 10px 30px rgba(0,0,0,.4)}
+.search input{flex:1;background:none;border:0;outline:0;color:var(--ink);font-size:16px;min-width:0}
+.search svg{opacity:.7;flex-shrink:0}
+.qmic{width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:var(--ink);display:grid;place-items:center;padding:0;flex-shrink:0;transition:transform .18s,background .2s}
+.qmic:active{transform:scale(.9)}
+.qmic.on{background:var(--accent);box-shadow:0 0 16px var(--accent)}
+.moods{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:10px 2px 2px;margin:0 -2px}
+.moods::-webkit-scrollbar{display:none}
+.mtag{flex-shrink:0;border:1px solid var(--edge);background:rgba(255,255,255,.06);color:var(--ink);border-radius:999px;padding:7px 13px;font-size:12.5px;font-weight:600;white-space:nowrap;transition:transform .18s,background .2s,border-color .2s}
+.mtag:active{transform:scale(.95)}
+.mtag.creator{background:linear-gradient(135deg,rgba(229,9,20,.22),rgba(139,92,246,.22));border-color:rgba(229,9,20,.42);color:#fff}
+.voice-edge{position:fixed;inset:0;pointer-events:none;z-index:55;opacity:0;transition:opacity .28s ease;
+  box-shadow:inset 0 0 28px 6px rgba(139,92,246,.75),inset 0 0 65px 14px rgba(56,189,248,.45),inset 0 0 110px 20px rgba(229,9,20,.35);
+  animation:edgePulse 1.4s ease-in-out infinite alternate}
+.voice-edge.on{opacity:1}
+@keyframes edgePulse{
+  0%{box-shadow:inset 0 0 24px 5px rgba(56,189,248,.8),inset 0 0 58px 12px rgba(139,92,246,.55),inset 0 0 95px 18px rgba(236,72,153,.35)}
+  100%{box-shadow:inset 0 0 36px 9px rgba(229,9,20,.85),inset 0 0 78px 18px rgba(139,92,246,.65),inset 0 0 120px 26px rgba(56,189,248,.45)}
+}
+main{padding:0 16px calc(96px + var(--safe-b));max-width:960px;margin:0 auto}
+section{display:none;animation:fadeIn .22s cubic-bezier(.22,1,.36,1)}section.on{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:16px 2px 10px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-@media(min-width:560px){.grid{grid-template-columns:repeat(5,1fr)}}
+@media(min-width:520px){.grid{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:740px){.grid{grid-template-columns:repeat(5,1fr);gap:14px}}
+@media(max-width:350px){.grid{grid-template-columns:repeat(2,1fr)}}
 .card{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:2/3;background:var(--glass);
-  box-shadow:0 8px 20px rgba(0,0,0,.45);transform:translateZ(0);transition:transform .25s}
-.card:active{transform:scale(.96)}
+  box-shadow:0 8px 20px rgba(0,0,0,.45);transform:translateZ(0);transition:transform .22s cubic-bezier(.22,1,.36,1),box-shadow .22s;contain:layout paint}
+.card:active{transform:scale(.95)}
 .card img{width:100%;height:100%;object-fit:cover;display:block}
 .card .t{position:absolute;inset:auto 0 0 0;padding:22px 8px 7px;font-size:11.5px;font-weight:600;
   background:linear-gradient(transparent,rgba(0,0,0,.85))}
@@ -160,18 +183,31 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .wait{padding:14px 16px;margin-top:12px;display:flex;gap:12px;align-items:center;font-size:14px}
 .wait i{width:10px;height:10px;border-radius:50%;background:var(--accent2);box-shadow:0 0 12px var(--accent);animation:pulse 1.2s infinite alternate}
 @keyframes pulse{to{opacity:.3;transform:scale(.7)}}
-.about{padding:20px;margin-top:14px;text-align:center}
-.about .sig2{width:120px;height:56px;object-fit:contain;margin:4px auto 0;display:block;opacity:.9}
-.about img.photo{width:132px;height:132px;border-radius:50%;object-fit:cover;object-position:70% 30%;box-shadow:0 10px 30px rgba(139,92,246,.45);border:2px solid rgba(255,255,255,.2)}
-.about h3{margin:14px 0 2px;font-size:22px}
-.about .role{color:var(--accent2);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
-.about p{color:var(--dim);font-size:14px;text-align:left;margin:16px 0}
+.about{padding:22px 18px;margin-top:14px;text-align:center}
+.about .sig2{width:120px;height:52px;object-fit:contain;margin:2px auto 0;display:block;opacity:.92}
+.about .photo-ring{position:relative;display:inline-block}
+.about .photo-ring::after{content:"";position:absolute;inset:-4px;border-radius:50%;
+  background:conic-gradient(from 0deg,#f58529,#dd2a7b,#8134af,#38bdf8,#f58529);
+  z-index:-1;opacity:.85;filter:blur(6px);animation:spinRing 8s linear infinite}
+@keyframes spinRing{to{transform:rotate(360deg)}}
+.about img.photo{width:132px;height:132px;border-radius:50%;object-fit:cover;object-position:70% 30%;box-shadow:0 10px 30px rgba(0,0,0,.55);border:2.5px solid rgba(255,255,255,.28);display:block}
+.about h3{margin:14px 0 2px;font-size:24px;font-weight:800;letter-spacing:-.02em}
+.about .role{color:var(--accent2);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.about p{color:var(--dim);font-size:14px;text-align:left;margin:14px 0 18px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:13px 15px;line-height:1.52}
 .follow{display:grid;gap:10px;margin-top:6px}
-.btn.ig{background:linear-gradient(135deg,#f58529,#dd2a7b 45%,#8134af 75%,#515bd4);box-shadow:0 10px 24px rgba(221,42,123,.4)}
+.follow .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:360px){.follow .row2{grid-template-columns:1fr}}
+@media(max-height:680px){
+  #tab-remote.on{gap:8px;min-height:360px}
+  .rgrid button{width:min(52px,100%)}
+  .rocker button{padding:8px 0;font-size:24px}
+}
+.btn.ig{background:linear-gradient(135deg,#f58529,#dd2a7b 45%,#8134af 75%,#515bd4);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 10px 24px rgba(221,42,123,.4)}
 .btn.lb{background:linear-gradient(90deg,#ff8000,#00e054 50%,#40bcf4);box-shadow:0 10px 24px rgba(0,224,84,.25)}
-.btn.li{background:linear-gradient(180deg,#0a66c2,#004182);box-shadow:0 10px 24px rgba(10,102,194,.35)}
+.btn.li{background:linear-gradient(180deg,#0a66c2,#004182);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 10px 24px rgba(10,102,194,.35)}
 .btn.gh{background:linear-gradient(180deg,#2d333b,#161b22);box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
 .btn.yt{background:linear-gradient(180deg,#ff3b3b,#d40000);box-shadow:0 10px 24px rgba(212,0,0,.4)}
+.btn.tr{background:linear-gradient(135deg,#334155,#0f172a);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 8px 20px rgba(0,0,0,.4)}
 .cast{padding:16px;margin-top:12px}
 .cast textarea{width:100%;min-height:84px;background:rgba(0,0,0,.25);border:1px solid var(--edge);border-radius:14px;color:var(--ink);font:15px/1.4 inherit;padding:12px;resize:vertical;outline:0}
 .found{display:grid;gap:8px;margin-top:12px}
@@ -181,18 +217,28 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 </style>
 </head>
 <body>
+<div class="voice-edge" id="voiceEdge"></div>
 <div id="app">
 <header>
-  <div class="brand"><img class="logo" src="/static/icon.png" alt="CineTV" onerror="this.remove()"><img class="sig" src="/static/signature.png" alt="" onerror="this.remove()"><b>Cine<span class="tv">TV</span></b><small>by Alptuğ Dağ</small><span class="st" id="tvPick"><i id="dot" class="dot"></i><em id="status" data-i="connecting"></em></span></div>
+  <div class="brand"><img class="sig" src="static/signature.png" alt="" style="cursor:pointer" onclick="document.querySelector('[data-tab=about]').click()" onerror="this.remove()"><b>Cine<span class="tv">TV</span></b><small style="cursor:pointer" onclick="document.querySelector('[data-tab=about]').click()">by Alptuğ Dağ</small><span class="st" id="tvPick"><i id="dot" class="dot"></i><em id="status" data-i="connecting"></em></span></div>
   <div class="install glass" id="install" hidden><span id="installText"></span><button id="installGo" hidden></button><button class="x" id="installX">✕</button></div>
   <form class="search glass" id="searchBox" action="javascript:void(0);">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
     <input id="q" type="search" enterkeyhint="search" autocomplete="off" data-ph="searchPh">
+    <button type="button" class="qmic" id="qMic" aria-label="Voice Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 17.5V21" stroke="currentColor" stroke-width="2"/></svg></button>
   </form>
 </header>
 
 <main>
   <section id="tab-search" class="on">
+    <div class="moods" id="moodStrip">
+      <button type="button" class="mtag creator" data-q="Alptuğ Dağ filmleri" data-i="mCreator">✦ Alptuğ Dağ Seçkisi</button>
+      <button type="button" class="mtag" data-q="Gece yarısı neo-noir gerilim filmleri" data-i="mNoir">🌙 Gece Yarısı Neo-Noir</button>
+      <button type="button" class="mtag" data-q="Yağmurlu gecede izlenecek atmosferik filmler" data-i="mRain">🌧️ Yağmurlu Gece</button>
+      <button type="button" class="mtag" data-q="Cannes ve Venedik ödüllü başyapıtlar" data-i="mFest">🏆 Festival Seçkisi</button>
+      <button type="button" class="mtag" data-q="Psikolojik gizem ve gerilim filmleri" data-i="mMind">🧠 Psikolojik Gizem</button>
+      <button type="button" class="mtag" data-q="Ödüllü bağımsız Türk sineması klasikleri" data-i="mTr">🇹🇷 Türk Sineması</button>
+    </div>
     <div class="wait glass" id="waitBox" hidden><i></i><span id="waitText"></span></div>
     <h2 id="listTitle" data-i="trending"></h2>
     <div class="grid" id="results"></div>
@@ -272,18 +318,25 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   <section id="tab-about">
     <div class="about glass">
-      <img class="photo" id="aboutPhoto" src="/static/creator.jpg" alt="Alptuğ Dağ" onerror="this.hidden=true">
+      <div class="photo-ring"><img class="photo" id="aboutPhoto" src="static/creator.jpg" alt="Alptuğ Dağ" onerror="this.parentElement.hidden=true"></div>
       <h3>Alptuğ Dağ</h3>
-      <img class="sig2" src="/static/signature.png" alt="" onerror="this.remove()">
+      <img class="sig2" src="static/signature.png" alt="" onerror="this.remove()">
       <div class="role" data-i="aboutRole"></div>
       <p id="aboutBio" data-i="aboutBio"></p>
       <div class="follow">
         <a class="btn ig" id="igBtn" target="_blank" rel="noopener" data-i="followIg"></a>
-        <a class="btn yt" id="ytBtn" target="_blank" rel="noopener" data-i="followYt"></a>
-        <a class="btn lb" href="https://letterboxd.com/AlptugDag/" target="_blank" rel="noopener">Letterboxd</a>
-        <a class="btn li" href="https://www.linkedin.com/in/AlptugDag/" target="_blank" rel="noopener">LinkedIn</a>
-        <a class="btn gh" href="https://github.com/AlptugDag" target="_blank" rel="noopener">GitHub</a>
+        <div class="row2">
+          <a class="btn" style="background:linear-gradient(135deg,#dc2626,#7f1d1d);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 8px 24px rgba(185,28,28,.38)" href="https://www.youtube.com/watch?v=bLvdsibrR-I&t=9s" target="_blank" rel="noopener" data-i="watchSessiz"></a>
+          <a class="btn tr" href="https://www.youtube.com/watch?v=jb7BM-NHreg&feature=youtu.be" target="_blank" rel="noopener" data-i="watchSessizTr"></a>
+        </div>
+        <button class="btn ghost" id="playSessizTv" data-i="playSessizTv"></button>
         <button class="btn ghost" id="hisFilms" data-i="hisFilms"></button>
+        <a class="btn li" href="https://www.linkedin.com/in/AlptugDag/" target="_blank" rel="noopener" data-i="followLi"></a>
+        <a class="btn yt" id="ytBtn" target="_blank" rel="noopener" data-i="followYt"></a>
+        <div class="row2">
+          <a class="btn lb" href="https://letterboxd.com/AlptugDag/" target="_blank" rel="noopener">Letterboxd</a>
+          <a class="btn gh" href="https://github.com/AlptugDag" target="_blank" rel="noopener">GitHub</a>
+        </div>
       </div>
     </div>
     <p class="note" style="text-align:center;margin-top:14px" data-i="homeHint"></p>
@@ -311,12 +364,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <script>
 (() => {
   const T = {
-    en: {filmFound:"Film found: tap the video, or the button below",playOnTv:"Play on TV",open:"Open",browseHint:"Type or paste the film page’s address above and press Open. The page appears here; tap it as on a phone.",browseTip:"Skip the site’s ads, then press the film’s play button: the film starts on the TV.",airMouse:"🖱 Air mouse",mouseTip:"Move the phone or a finger · Tap = click · Two fingers = scroll",swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ is a filmmaker, storyteller and voice artist, born in Ankara in 2000. He is known for his short film Sessiz (2023). He designed and built CineTV.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgReset:"Restore Theme Background",bgResetDone:"Theme background restored",bgSent:"Now on your TV",bgFail:"Could not send the picture",
+    en: {filmFound:"Film found: tap the video, or the button below",playOnTv:"Play on TV",open:"Open",browseHint:"Type or paste the film page’s address above and press Open. The page appears here; tap it as on a phone.",browseTip:"Skip the site’s ads, then press the film’s play button: the film starts on the TV.",airMouse:"🖱 Air mouse",mouseTip:"Move the phone or a finger · Tap = click · Two fingers = scroll",swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ (b. 2000, Ankara) is an independent film director, creative technologist, editor and voice artist known for his short film Sessiz (2023). He designed and built CineTV from scratch as a free gift to cinema lovers. Follow @alptugdag on Instagram for new film projects, directing/editing collaborations, or just to say hello.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgReset:"Restore Theme Background",bgResetDone:"Theme background restored",bgSent:"Now on your TV",bgFail:"Could not send the picture",
       installAndroid:"Install CineTV on this phone for one-tap access.",installGo:"Install",installIos:"Tap Share, then “Add to Home Screen” to keep CineTV one tap away.",
       otherTvs:"CineTV TVs here",onTv:"On your TV now",waiting:"Allow this phone on your TV with the remote",denied:"Not allowed on the TV. Tap to ask again.",busy:"Another phone is asking. Retrying…",
-      tabCast:"Cast",tabAbout:"About",castTitle:"Play a video on the TV",castPh:"Film page address",paste:"Paste",castPlay:"Play on TV",
+      tabCast:"Cast",tabAbout:"Creator",castTitle:"Play a video on the TV",castPh:"Film page address",paste:"Paste",castPlay:"Play on TV",
       castNote:"Works with direct links (mp4, m3u8…) and film pages: the TV opens the page, presses play itself and skips the ads.",castFinding:"Looking for the film… ads are skipped (up to 45 s)",castNone:"No film found on that page (videos under 3 minutes are skipped as ads).",castPlaying:"Playing on your TV",
-      aboutRole:"Filmmaker · Storyteller",followIg:"Follow on Instagram",followYt:"Subscribe on YouTube",hisFilms:"Show his films on the TV",
+      aboutRole:"Director · Creative Technologist & Editor · Voice Artist",followIg:"📸 Follow on Instagram · @alptugdag",watchSessiz:"▶ Short Film: Sessiz (2023)",watchSessizTr:"🎞️ Official Trailer: Sessiz",playSessizTv:"📺 Play 'Sessiz' on the TV",followLi:"💼 LinkedIn · Collaborations & Career",followYt:"Subscribe on YouTube · @AlptugDag",hisFilms:"🎬 Show His Films on the TV",
+      mCreator:"✦ Alptuğ Dağ Picks",mNoir:"🌙 Midnight Neo-Noir",mRain:"🌧️ Rainy Night",mFest:"🏆 Festival Gems",mMind:"🧠 Mind-Benders",mTr:"🇹🇷 Turkish Cinema",
       homeHint:"Tip: Share › Add to Home Screen keeps CineTV one tap away, full screen.",
       connecting:"Connecting…",connected:"Connected",offline:"TV not reachable",searchPh:"Films, series, people…",trending:"Trending",
       results:"Results",noResults:"Nothing found",openTv:"Open on TV",opening:"Opening on your TV…",movie:"Film",series:"Series",
@@ -327,12 +381,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       p_natural:"Natural",p_cinema:"Cinema",p_night:"Dark room",p_vivid:"Vivid",
       t_off:"Off",t_gray:"Gray ramp",t_bars:"Colour bars",t_black:"Black level",t_white:"White level",t_skin:"Skin tones",
       backlight:"Backlight",brightness:"Brightness",contrast:"Contrast",saturation:"Colour",hue:"Tint",sharpness:"Sharpness",red:"Red gain",green:"Green gain",blue:"Blue gain",done:"Saved"},
-    tr: {filmFound:"Film bulundu: videoya ya da aşağıdaki tuşa dokunun",playOnTv:"TV’de oynat",open:"Aç",browseHint:"Filmin sayfasının adresini yukarı yazın ya da yapıştırın, Aç’a basın. Sayfa burada açılır; telefondaki gibi dokunun.",browseTip:"Sitenin reklamlarını geçin, sonra filmin oynat tuşuna basın: film televizyonda başlar.",airMouse:"🖱 Hava faresi",mouseTip:"Telefonu ya da parmağını oynat · Dokun = tıkla · İki parmak = kaydır",swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ, 2000'de Ankara'da doğmuş bir sinemacı, hikâye anlatıcı ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. CineTV'yi tasarlayıp geliştirdi.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgReset:"Temanın Kendi Arka Planına Dön",bgResetDone:"Temanın arka planına dönüldü",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
+    tr: {filmFound:"Film bulundu: videoya ya da aşağıdaki tuşa dokunun",playOnTv:"TV’de oynat",open:"Aç",browseHint:"Filmin sayfasının adresini yukarı yazın ya da yapıştırın, Aç’a basın. Sayfa burada açılır; telefondaki gibi dokunun.",browseTip:"Sitenin reklamlarını geçin, sonra filmin oynat tuşuna basın: film televizyonda başlar.",airMouse:"🖱 Hava faresi",mouseTip:"Telefonu ya da parmağını oynat · Dokun = tıkla · İki parmak = kaydır",swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ (d. 2000, Ankara); sinemayı, kurguyu ve yaratıcı yazılım mimarisini tek potada buluşturan bağımsız bir yönetmen, içerik üreticisi ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. Ev sinemasını reklamsız ve özgür kılmak için CineTV'yi sıfırdan tasarlayıp ücretsiz olarak armağan etti. Yeni film projeleri, reklam/kurgu yönetmenliği, yaratıcı iş birlikleri veya sadece bir teşekkür için Instagram'da @alptugdag hesabını takip edebilirsiniz.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgReset:"Temanın Kendi Arka Planına Dön",bgResetDone:"Temanın arka planına dönüldü",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
       installAndroid:"CineTV'yi bu telefona uygulama olarak ekleyin, tek dokunuşla açılsın.",installGo:"Ekle",installIos:"Paylaş'a, ardından “Ana Ekrana Ekle”ye dokunun; CineTV tek dokunuşla açılsın.",
       otherTvs:"Bu ağdaki CineTV televizyonları",onTv:"TV'de vitrine geldi",waiting:"Bu telefona TV'den kumandayla izin verin",denied:"TV'de izin verilmedi. Tekrar sormak için dokunun.",busy:"Başka bir telefon soruyor. Tekrar deneniyor…",
-      tabCast:"Yayınla",tabAbout:"Hakkımda",castTitle:"TV'de video oynat",castPh:"Filmin sayfasının adresi",paste:"Yapıştır",castPlay:"TV'de oynat",
+      tabCast:"Yayınla",tabAbout:"Yaratıcı",castTitle:"TV'de video oynat",castPh:"Filmin sayfasının adresi",paste:"Yapıştır",castPlay:"TV'de oynat",
       castNote:"Doğrudan bağlantılarla (mp4, m3u8…) ve film sayfalarıyla çalışır: TV sayfayı açar, oynat tuşuna kendisi basar, reklamları atlar.",castFinding:"Film aranıyor… reklam varsa geçiliyor (en fazla 45 sn)",castNone:"Bu sayfada film bulunamadı (3 dakikadan kısa videolar reklam sayılıp atlanır).",castPlaying:"TV'de oynatılıyor",
-      aboutRole:"Sinemacı · Hikâye anlatıcı",followIg:"Instagram'da takip et",followYt:"YouTube'da abone ol",hisFilms:"Filmlerini TV'de göster",
+      aboutRole:"Yönetmen · Kurgu & Yaratıcı Teknoloji · Seslendirme",followIg:"📸 Instagram'da Takip Et · @alptugdag",watchSessiz:"▶ Kısa Film: Sessiz (2023)",watchSessizTr:"🎞️ Resmi Fragman: Sessiz",playSessizTv:"📺 Kısa Filmi 'Sessiz'i TV'de Oynat",followLi:"💼 LinkedIn · İş Birliği & Kariyer",followYt:"YouTube'da Abone Ol · @AlptugDag",hisFilms:"🎬 Filmlerini TV'de Vitrine Getir",
+      mCreator:"✦ Alptuğ Dağ Seçkisi",mNoir:"🌙 Gece Yarısı Neo-Noir",mRain:"🌧️ Yağmurlu Gece",mFest:"🏆 Festival Seçkisi",mMind:"🧠 Psikolojik Gizem",mTr:"🇹🇷 Türk Sineması",
       homeHint:"İpucu: Paylaş › Ana Ekrana Ekle ile CineTV tam ekran, tek dokunuşla açılır.",
       connecting:"Bağlanıyor…",connected:"Bağlı",offline:"TV'ye ulaşılamıyor",searchPh:"Film, dizi, oyuncu…",trending:"Trend",
       results:"Sonuçlar",noResults:"Bir şey bulunamadı",openTv:"TV'de aç",opening:"TV'de açılıyor…",movie:"Film",series:"Dizi",
@@ -350,6 +405,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   document.querySelectorAll("[data-i]").forEach(e => e.textContent = t(e.dataset.i));
   document.querySelectorAll("[data-ph]").forEach(e => e.placeholder = t(e.dataset.ph));
 
+  if (/\/static(\/index\.html|\/)?$/.test(location.pathname)) {
+    try { history.replaceState(null, "", location.pathname.replace(/\/static(\/index\.html|\/)?$/, "/") + location.search + location.hash); } catch (e) {}
+  }
   const url = new URL(location.href);
   // Opened from GitHub (the QR code): the page reaches the TV over a direct link (WebRTC, introduced by
   // PeerJS's broker), whatever the home network does. #p= is the TV, #k= the pairing token, #s= a tab.
@@ -582,6 +640,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     e.preventDefault();
     submitSearch();
   });
+  document.querySelectorAll("#moodStrip .mtag").forEach(btn => {
+    btn.onclick = () => {
+      navigator.vibrate && navigator.vibrate(8);
+      $("q").value = btn.dataset.q || "";
+      submitSearch();
+    };
+  });
   $("q").addEventListener("keydown", e => {
     if (e.key === "Enter" || e.keyCode === 13 || e.which === 13) {
       e.preventDefault();
@@ -738,19 +803,22 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const ripple = (x, y) => { const r = document.createElement("i"); r.className = "ripple";
     const b = pad.getBoundingClientRect(); r.style.left = (x - b.left) + "px"; r.style.top = (y - b.top) + "px"; pad.appendChild(r); setTimeout(() => r.remove(), 500); };
   // Air mouse: the phone's motion (or a finger) moves a pointer on the TV; tap clicks, two fingers scroll
-  let mouse = false, mx = 0, my = 0, sy = 0, lastX = 0, lastY = 0, fingers = 0, mDown = 0, mMoved = 0;
+  let mouse = false, mx = 0, my = 0, sy = 0, lastX = 0, lastY = 0, fingers = 0, mDown = 0, mMoved = 0, rafPending = false;
   const flush = () => {
+    rafPending = false;
     if (!mouse) return;
     if (Math.abs(mx) >= 1 || Math.abs(my) >= 1) { const dx = Math.round(mx), dy = Math.round(my); mx -= dx; my -= dy; api("mouse", {dx, dy}).catch(() => {}); }
     if (Math.abs(sy) >= 6) { const d = Math.round(sy); sy = 0; api("mouse/scroll", {dy: d}).catch(() => {}); }
   };
-  setInterval(flush, 40);
+  const scheduleFlush = () => { if (!rafPending && mouse) { rafPending = true; requestAnimationFrame(flush); } };
+  setInterval(flush, 32);
   const onMotion = ev => {
     if (!mouse || !ev.rotationRate) return;
     const dt = (ev.interval || 16) / (ev.interval > 1 ? 1000 : 1); // seconds (iOS gives s, Android ms)
     const k = 22; // TV pixels per degree turned
     mx += -(ev.rotationRate.alpha || 0) * dt * k;
     my += -(ev.rotationRate.beta || 0) * dt * k;
+    scheduleFlush();
   };
   $("mouseBtn").addEventListener("pointerdown", e => e.stopPropagation());
   $("mouseBtn").onclick = async e => {
@@ -773,8 +841,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   pad.addEventListener("pointermove", e => {
     if (!mouse || !mDown) return;
     const dx = e.clientX - lastX, dy = e.clientY - lastY; lastX = e.clientX; lastY = e.clientY;
+    const dist = Math.hypot(dx, dy);
+    const accel = Math.min(4.2, 2.2 + dist * 0.045);
     mMoved += Math.abs(dx) + Math.abs(dy);
-    if (fingers >= 2) sy += dy * 2; else { mx += dx * 2.6; my += dy * 2.6; }
+    if (fingers >= 2) sy += dy * 2.2; else { mx += dx * accel; my += dy * accel; }
+    scheduleFlush();
   });
   pad.addEventListener("pointerup", e => {
     if (!mouse) return;
@@ -820,22 +891,35 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   // Microphone: CineTV's assistant answers on the TV; hold or click opens CineTV's voice overlay directly on TV
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const vEdge = $("voiceEdge");
+  const startPhoneVoice = (btn, forSearch) => {
+    if (!SR) { api("tv/voice_overlay").catch(() => {}); toast(t("listening")); return; }
+    const rec = new SR(); rec.lang = navigator.language || "tr-TR"; rec.interimResults = false;
+    btn.classList.add("on"); if (vEdge) vEdge.classList.add("on");
+    toast(t("listening"));
+    rec.onresult = ev => {
+      const q = ev.results[0][0].transcript.trim();
+      if (!q) return;
+      if (forSearch) { $("q").value = q; submitSearch(); }
+      else { api("tv/voice", {q}); toast("“" + q + "”"); }
+    };
+    rec.onend = () => { btn.classList.remove("on"); if (vEdge) vEdge.classList.remove("on"); };
+    rec.onerror = () => { btn.classList.remove("on"); if (vEdge) vEdge.classList.remove("on"); api("tv/voice_overlay").catch(() => {}); };
+    try { rec.start(); } catch (e) { btn.classList.remove("on"); if (vEdge) vEdge.classList.remove("on"); api("tv/voice_overlay").catch(() => {}); }
+  };
   let micHold = null, micLong = false;
   $("micBtn").addEventListener("pointerdown", () => {
     micLong = false;
-    micHold = setTimeout(() => { micLong = true; api("tv/voice_overlay").catch(() => {}); toast(t("listening")); }, 400);
+    micHold = setTimeout(() => { micLong = true; if (vEdge) { vEdge.classList.add("on"); setTimeout(() => vEdge.classList.remove("on"), 3500); } api("tv/voice_overlay").catch(() => {}); toast(t("listening")); }, 400);
   });
   $("micBtn").addEventListener("pointerup", () => {
     clearTimeout(micHold);
     if (micLong) return;
-    if (!SR) { api("tv/voice_overlay").catch(() => {}); return; }
-    const rec = new SR(); rec.lang = navigator.language || "tr-TR"; rec.interimResults = false;
-    $("micBtn").classList.add("on"); toast(t("listening"));
-    rec.onresult = ev => { const q = ev.results[0][0].transcript.trim(); if (q) { api("tv/voice", {q}); toast("“" + q + "”"); } };
-    rec.onend = () => $("micBtn").classList.remove("on");
-    rec.onerror = () => { $("micBtn").classList.remove("on"); api("tv/voice_overlay").catch(() => {}); };
-    try { rec.start(); } catch (e) { api("tv/voice_overlay").catch(() => {}); }
+    startPhoneVoice($("micBtn"), false);
   });
+  if ($("qMic")) {
+    $("qMic").onclick = () => startPhoneVoice($("qMic"), true);
+  }
 
   // Double taps must never zoom the page
   document.addEventListener("dblclick", e => e.preventDefault(), {passive: false});
@@ -915,7 +999,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   // about
   $("igBtn").href = "https://instagram.com/alptugdag";
   $("ytBtn").href = "https://www.youtube.com/@AlptugDag?sub_confirmation=1";
-  $("hisFilms").onclick = () => api("tv/search", {q: "Alptuğ Dağ filmleri"}).then(() => toast(t("done"))).catch(() => {});
+  $("hisFilms").onclick = () => api("tv/search", {q: "Alptuğ Dağ filmleri"}).then(() => toast(t("onTv"))).catch(() => {});
+  if ($("playSessizTv")) {
+    $("playSessizTv").onclick = () => api("open", {imdb: "tt38983576", tmdb: 1124567, type: "movie", title: "Sessiz"}).then(() => toast(t("opening"))).catch(() => {});
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && token) {
+      api("hello").then(() => { $("dot").classList.add("on"); $("status").textContent = $("status").dataset.tv || t("connected"); }).catch(() => {});
+    }
+  });
   open("about").then(a => {
     // Builds without the author's photo file fall back to his TMDB portrait.
     const ph = $("aboutPhoto"); if (a.photo && ph && (ph.hidden || !ph.naturalWidth)) { ph.src = a.photo; ph.hidden = false; }

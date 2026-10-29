@@ -178,6 +178,10 @@ public final class Panels {
             c2.addView(Controls.tile(ctx, ctx.getString(R.string.night_title), nightState(ctx), com.cinetv.launcher.device.NightCare.sleepMinutesLeft(ctx) > 0,
                     v -> host.push(() -> buildNight(ctx, host, a))));
             c2.addView(Controls.tile(ctx, ctx.getString(R.string.tour_title), ctx.getString(R.string.tour_hint), false, v -> a.startTour()));
+            c2.addView(Controls.tile(ctx,
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "Alptuğ Dağ · Yaratıcı & İletişim" : "Alptuğ Dağ · Creator & Contact",
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "@alptugdag · Instagram, Kısa Film 'Sessiz' ve Portfolyo" : "@alptugdag · Instagram, Short Film 'Sessiz' & Portfolio",
+                    false, v -> host.push(() -> buildAbout(ctx, host, a))));
 
         }
         {
@@ -267,6 +271,33 @@ public final class Panels {
             boolean mdb = SecretStore.has(ctx, SecretStore.MDBLIST_KEY);
             c1.addView(Controls.tile(ctx, ctx.getString(R.string.mdblist_key), ctx.getString(mdb ? R.string.state_on : R.string.not_set), mdb,
                     v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.MDBLIST_KEY, R.string.mdblist_key, R.string.mdblist_key_hint))));
+            boolean emaOn = Prefs.emaTts(ctx);
+            boolean emaSupported = com.cinetv.launcher.ai.EmaLightningTts.isSupportedHardware(ctx);
+            String emaTitle = "tr".equals(Locale.getDefault().getLanguage())
+                    ? "Doğal Türkçe Seslendirme (EMA Lightning TTS)"
+                    : "Natural Turkish Voice (EMA Lightning TTS)";
+            String emaSub = emaOn
+                    ? ("tr".equals(Locale.getDefault().getLanguage())
+                            ? "Açık · Orta/Üst cihazlar için nöral Türkçe ses (canberkkkkkk/ema-lightning)"
+                            : "On · Neural Turkish speech for Mid/High TVs (canberkkkkkk/ema-lightning)")
+                    : ("tr".equals(Locale.getDefault().getLanguage())
+                            ? (emaSupported ? "Kapalı · Sesli yanıtları etkinleştirmek için dokunun" : "Kapalı · Yalnızca orta ve üst performans profilinde önerilir")
+                            : "Off · Recommended for Mid and High performance profiles");
+            LinearLayout emaTile = Controls.tile(ctx, emaTitle, emaSub, emaOn, v -> {
+                boolean next = !Prefs.emaTts(ctx);
+                Prefs.setFlag(ctx, Prefs.EMA_TTS, next);
+                if (next) {
+                    com.cinetv.launcher.ai.EmaLightningTts.speak(ctx,
+                            "tr".equals(Locale.getDefault().getLanguage())
+                                    ? "CineTV doğal Türkçe seslendirme aktif."
+                                    : "CineTV natural Turkish voice is active.");
+                } else {
+                    com.cinetv.launcher.ai.EmaLightningTts.stop();
+                }
+                host.replace(() -> buildSettings(ctx, host, a, PAGE_AI, "opt_ema_tts"));
+            });
+            emaTile.setTag("opt_ema_tts");
+            c1.addView(emaTile);
 
             LinearLayout c2 = column(ctx, cols, "Ağ & Ortam", colWidth);
 
@@ -765,11 +796,17 @@ public final class Panels {
 
     /** CineTV's author: photo and bio from TMDB, and QR codes to follow him from a phone. */
     private static View buildAbout(final Context ctx, final ModalHost host, final Actions a) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         LinearLayout root = new LinearLayout(ctx);
         root.setGravity(Gravity.CENTER_VERTICAL);
 
         LinearLayout left = new LinearLayout(ctx);
         left.setOrientation(LinearLayout.VERTICAL);
+
+        LinearLayout headerRow = new LinearLayout(ctx);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+
         final ImageView photo = new ImageView(ctx);
         photo.setScaleType(ImageView.ScaleType.CENTER_CROP);
         photo.setClipToOutline(true);
@@ -779,38 +816,77 @@ public final class Panels {
                 o.setOval(0, 0, v.getWidth(), v.getHeight());
             }
         });
-        photo.setBackground(new Glass(photo, UiKit.pxf(90), Glass.Style.CONTROL));
-        left.addView(photo, new LinearLayout.LayoutParams(UiKit.px(180), UiKit.px(180)));
-        TextView name = UiKit.bold(ctx, 40, UiKit.INK);
+        photo.setBackground(new Glass(photo, UiKit.pxf(72), Glass.Style.CONTROL));
+        try (java.io.InputStream is = ctx.getAssets().open("remote/creator.jpg")) {
+            Bitmap localPortrait = android.graphics.BitmapFactory.decodeStream(is);
+            if (localPortrait != null) photo.setImageBitmap(localPortrait);
+        } catch (Throwable ignored) {}
+        headerRow.addView(photo, new LinearLayout.LayoutParams(UiKit.px(136), UiKit.px(136)));
+
+        LinearLayout titleCol = new LinearLayout(ctx);
+        titleCol.setOrientation(LinearLayout.VERTICAL);
+        titleCol.setPadding(UiKit.px(22), 0, 0, 0);
+
+        TextView name = UiKit.bold(ctx, 36, UiKit.INK);
         name.setText(com.cinetv.launcher.service.Creator.NAME);
-        name.setPadding(0, UiKit.px(22), 0, 0);
-        left.addView(name);
-        TextView role = UiKit.bold(ctx, 17, Color.parseColor("#C4B5FD"));
-        role.setLetterSpacing(0.12f);
+        titleCol.addView(name);
+
+        TextView handlePill = UiKit.bold(ctx, 16, Color.parseColor("#F472B6"));
+        handlePill.setText("Instagram: @" + com.cinetv.launcher.service.Creator.INSTAGRAM + "  ·  YouTube: " + com.cinetv.launcher.service.Creator.YOUTUBE);
+        handlePill.setPadding(0, UiKit.px(4), 0, UiKit.px(4));
+        titleCol.addView(handlePill);
+
+        TextView role = UiKit.bold(ctx, 14, Color.parseColor("#C4B5FD"));
+        role.setLetterSpacing(0.09f);
         role.setText(ctx.getString(R.string.about_role).toUpperCase(Locale.getDefault()));
-        left.addView(role);
-        final TextView bio = UiKit.label(ctx, 20, UiKit.INK_DIM);
+        titleCol.addView(role);
+
+        headerRow.addView(titleCol);
+        left.addView(headerRow);
+
+        final TextView bio = UiKit.label(ctx, 18, UiKit.INK_DIM);
         bio.setText(R.string.about_bio);
-        bio.setLineSpacing(UiKit.pxf(7), 1f);
-        bio.setPadding(0, UiKit.px(18), 0, UiKit.px(24));
-        bio.setMaxWidth(UiKit.px(560));
+        bio.setLineSpacing(UiKit.pxf(6), 1.08f);
+        bio.setPadding(0, UiKit.px(18), 0, UiKit.px(20));
+        bio.setMaxWidth(UiKit.px(620));
         left.addView(bio);
+
         LinearLayout buttons = new LinearLayout(ctx);
+        buttons.setGravity(Gravity.CENTER_VERTICAL);
+        buttons.addView(Controls.button(ctx, tr ? "▶ Kısa Filmi 'Sessiz'i İzle" : "▶ Watch Short Film 'Sessiz'", v -> {
+            host.close();
+            AppLauncher.openYouTubeVideo(ctx, com.cinetv.launcher.service.Creator.SESSIZ_YOUTUBE_URL);
+        }));
+        View sp1 = new View(ctx);
+        buttons.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(12), 1));
         buttons.addView(Controls.button(ctx, ctx.getString(R.string.his_films), v -> {
             host.close();
             a.search(com.cinetv.launcher.service.Creator.NAME + " filmleri");
         }));
-        View sp = new View(ctx);
-        buttons.addView(sp, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+        View sp2 = new View(ctx);
+        buttons.addView(sp2, new LinearLayout.LayoutParams(UiKit.px(12), 1));
         buttons.addView(Controls.button(ctx, ctx.getString(R.string.done), v -> host.back()));
         left.addView(buttons);
-        root.addView(left, new LinearLayout.LayoutParams(UiKit.px(540), ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(left, new LinearLayout.LayoutParams(UiKit.px(630), ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // Scan with a phone: one code opens a page on this TV with every profile.
+        // Dual QR plates: 1) Direct Instagram @alptugdag QR for zero-friction follow, 2) Full Portfolio & Career links
+        LinearLayout qrRow = new LinearLayout(ctx);
+        qrRow.setOrientation(LinearLayout.HORIZONTAL);
+        qrRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        View igQr = followCode(ctx, com.cinetv.launcher.service.Creator.INSTAGRAM_URL,
+                tr ? "Instagram'da Takip Et" : "Follow on Instagram",
+                "@alptugdag · Film & İletişim", 220, 36);
+        qrRow.addView(igQr);
+
         String base = RemotePairing.baseUrl();
-        String page = base == null ? com.cinetv.launcher.service.Creator.GITHUB_URL : base + "/me";
-        root.addView(followCode(ctx, page, ctx.getString(R.string.about_scan),
-                "Instagram · YouTube · Letterboxd · LinkedIn · GitHub"));
+        String page = base == null ? com.cinetv.launcher.service.Creator.LINKEDIN_URL : base + "/me";
+        View allQr = followCode(ctx, page,
+                tr ? "Portfolyo & İş Birliği" : "Portfolio & Career",
+                "LinkedIn · YouTube · Letterboxd", 220, 24);
+        qrRow.addView(allQr);
+
+        root.addView(qrRow);
 
         final Context app = ctx.getApplicationContext();
         new Thread(() -> {
@@ -824,30 +900,34 @@ public final class Panels {
     }
 
     private static View followCode(Context ctx, String url, String site, String handle) {
+        return followCode(ctx, url, site, handle, 280, 48);
+    }
+
+    private static View followCode(Context ctx, String url, String site, String handle, int sizeDp, int leftMarginDp) {
         LinearLayout col = new LinearLayout(ctx);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER_HORIZONTAL);
         FrameLayout plate = new FrameLayout(ctx);
-        plate.setBackground(new Glass(plate, UiKit.pxf(26), Glass.Style.FOCUSED));
-        int size = UiKit.px(300);
+        plate.setBackground(new Glass(plate, UiKit.pxf(24), Glass.Style.FOCUSED));
+        int size = UiKit.px(sizeDp);
         ImageView qr = new ImageView(ctx);
         Bitmap code = RemotePairing.qr(url, size, Color.parseColor("#0B1220"), Color.WHITE);
         if (code != null) qr.setImageBitmap(code);
         plate.addView(qr, new FrameLayout.LayoutParams(size, size, Gravity.CENTER));
-        plate.setPadding(UiKit.px(16), UiKit.px(16), UiKit.px(16), UiKit.px(16));
+        plate.setPadding(UiKit.px(14), UiKit.px(14), UiKit.px(14), UiKit.px(14));
         col.addView(plate, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        TextView label = UiKit.bold(ctx, 21, UiKit.INK);
+        TextView label = UiKit.bold(ctx, 19, UiKit.INK);
         label.setText(site);
         label.setGravity(Gravity.CENTER_HORIZONTAL);
-        label.setPadding(0, UiKit.px(16), 0, 0);
+        label.setPadding(0, UiKit.px(12), 0, 0);
         col.addView(label);
-        TextView h = UiKit.label(ctx, 17, UiKit.INK_DIM);
+        TextView h = UiKit.label(ctx, 15, UiKit.INK_DIM);
         h.setText(handle);
         h.setGravity(Gravity.CENTER_HORIZONTAL);
-        h.setMaxWidth(size + UiKit.px(32));
+        h.setMaxWidth(size + UiKit.px(28));
         col.addView(h);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(UiKit.px(60), 0, 0, 0);
+        lp.setMargins(UiKit.px(leftMarginDp), 0, 0, 0);
         col.setLayoutParams(lp);
         return col;
     }

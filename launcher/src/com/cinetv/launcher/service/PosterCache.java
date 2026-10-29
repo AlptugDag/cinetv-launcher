@@ -119,6 +119,8 @@ public final class PosterCache {
 
     public static void trimMemory() {
         memory().evictAll();
+        com.cinetv.launcher.ui.AppArtwork.clearCache();
+        com.cinetv.launcher.ui.Glow.clear();
     }
 
     /** Keeps the disk cache bounded; oldest-used files go first. Run off the main thread. */

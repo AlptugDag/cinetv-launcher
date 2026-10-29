@@ -78,6 +78,7 @@ final class ShelfSet {
         private final String scene;
         private final float caseH;
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final int[] loc = new int[2];
 
         Layer(Context ctx, String scene, int caseW, float caseH) {
             super(ctx);
@@ -86,16 +87,15 @@ final class ShelfSet {
             setTranslationZ(BACK_Z);
             setFocusable(false);
             setClickable(false);
+            setLayerType(LAYER_TYPE_HARDWARE, null);
         }
 
         private float leftBleed() {
-            int[] loc = new int[2];
             getLocationOnScreen(loc);
             return loc[0] > 0 ? (float) loc[0] : UiKit.pxf(64);
         }
 
         private float rightBleed() {
-            int[] loc = new int[2];
             getLocationOnScreen(loc);
             float screenW = getResources().getDisplayMetrics().widthPixels;
             float r = screenW - (loc[0] + getWidth());

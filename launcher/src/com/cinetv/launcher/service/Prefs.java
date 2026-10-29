@@ -29,6 +29,7 @@ public final class Prefs {
     public static final String GLASS_BEVEL = "pref_chroma_aberration";
     public static final String FIRST_SETUP_DONE = "first_setup_done";
     public static final String TRAILER_MOMENTS = "pref_trailer_moments";
+    public static final String EMA_TTS = "pref_ema_tts";
     public static final String TOUR_DONE = "tour_done";
     public static final String REMOTE_TOKEN = "remote_auth_token";
     public static final String VITRIN_CATEGORY = "vitrin_category_idx";
@@ -69,6 +70,18 @@ public final class Prefs {
 
     public static boolean dvdAnimation(Context ctx) {
         return get(ctx).getBoolean(DVD_ANIMATION, true);
+    }
+
+    /**
+     * Natural Turkish TTS powered by canberkkkkkk/ema-lightning.
+     * Enabled by default only on supported MID and HIGH performance tier devices.
+     */
+    public static boolean emaTts(Context ctx) {
+        SharedPreferences p = get(ctx);
+        if (p.contains(EMA_TTS)) {
+            return p.getBoolean(EMA_TTS, true);
+        }
+        return com.cinetv.launcher.device.PerformanceProfile.tier(ctx) != com.cinetv.launcher.device.PerformanceProfile.Tier.LOW;
     }
 
     public static void setFlag(Context ctx, String key, boolean value) {

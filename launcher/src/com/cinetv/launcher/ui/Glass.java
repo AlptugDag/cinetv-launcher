@@ -41,6 +41,10 @@ public final class Glass extends Drawable {
     private final View host;
     private final Paint accentRim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private String rimFor;
+    private String fillShaderFor;
+    private Shader cachedFillShader;
+    private int lastLocX = Integer.MIN_VALUE, lastLocY = Integer.MIN_VALUE;
+    private float lastScaleX = -1f, lastScaleY = -1f;
     private final float radius;
     private Style style;
     private final boolean frosted;
@@ -48,6 +52,8 @@ public final class Glass extends Drawable {
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint shade = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint focusedRim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private Shader focusedShader;
     private final Matrix matrix = new Matrix();
     private final RectF rect = new RectF();
     private final int[] loc = new int[2];
@@ -60,7 +66,10 @@ public final class Glass extends Drawable {
         this.style = style;
         this.frosted = PerformanceProfile.frostedGlass(host.getContext());
         rim.setStyle(Paint.Style.STROKE);
-        rim.setStrokeWidth(Math.max(1f, UiKit.pxf(1.6f)));
+        rim.setStrokeWidth(Math.max(1.2f, UiKit.pxf(1.8f)));
+        focusedRim.setStyle(Paint.Style.STROKE);
+        focusedRim.setStrokeWidth(Math.max(1.5f, UiKit.pxf(2.2f)));
+        focusedRim.setColor(Color.WHITE);
     }
 
     public static Glass panel(View host, float radiusDesignPx) {
@@ -78,36 +87,97 @@ public final class Glass extends Drawable {
     protected void onBoundsChange(Rect b) {
         rect.set(b);
         rimFor = null;
+        fillShaderFor = null;
+        cachedFillShader = null;
         float h = Math.max(1, b.height());
-        rim.setShader(new LinearGradient(0, b.top, 0, b.top + h * 0.5f,
-                new int[]{Color.argb(150, 255, 255, 255), Color.argb(26, 255, 255, 255), Color.argb(0, 255, 255, 255)},
-                new float[]{0f, 0.35f, 1f}, Shader.TileMode.CLAMP));
-        shade.setShader(new LinearGradient(0, b.top + h * 0.55f, 0, b.bottom,
-                Color.TRANSPARENT, Color.argb(48, 0, 0, 0), Shader.TileMode.CLAMP));
+        float w = Math.max(1, b.width());
+        rim.setShader(new LinearGradient(b.left, b.top, b.left + w * 0.35f, b.bottom,
+                new int[]{
+                        Color.argb(195, 255, 255, 255),
+                        Color.argb(72, 224, 242, 254),
+                        Color.argb(28, 148, 163, 184),
+                        Color.argb(88, 186, 230, 253)
+                },
+                new float[]{0f, 0.28f, 0.68f, 1f}, Shader.TileMode.CLAMP));
+        shade.setShader(new LinearGradient(0, b.top, 0, b.bottom,
+                new int[]{
+                        Color.argb(26, 255, 255, 255),
+                        Color.TRANSPARENT,
+                        Color.argb(58, 0, 0, 0)
+                },
+                new float[]{0f, 0.38f, 1f}, Shader.TileMode.CLAMP));
+        focusedShader = new LinearGradient(0, b.top, 0, b.bottom,
+                new int[]{
+                        Color.argb(252, 255, 255, 255),
+                        Color.argb(244, 244, 247, 252),
+                        Color.argb(236, 226, 232, 242)
+                },
+                new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP);
+    }
+
+    private Shader fillShader(String mat, boolean control) {
+        String key = mat + (control ? "_c" : "_p");
+        if (!key.equals(fillShaderFor) || cachedFillShader == null) {
+            fillShaderFor = key;
+            switch (mat) {
+                case com.cinetv.launcher.service.ThemeManager.MAT_METAL:
+                    cachedFillShader = new LinearGradient(0, rect.top, 0, rect.bottom,
+                            Color.argb(control ? 200 : 170, 92, 99, 110),
+                            Color.argb(control ? 210 : 190, 38, 42, 48), Shader.TileMode.CLAMP);
+                    break;
+                case com.cinetv.launcher.service.ThemeManager.MAT_REDCARPET:
+                    cachedFillShader = new LinearGradient(0, rect.top, 0, rect.bottom,
+                            Color.argb(control ? 185 : 160, 138, 10, 24),
+                            Color.argb(control ? 200 : 180, 22, 2, 6), Shader.TileMode.CLAMP);
+                    break;
+                case com.cinetv.launcher.service.ThemeManager.MAT_WOOD:
+                    cachedFillShader = new LinearGradient(rect.left, 0, rect.right, 0,
+                            Color.argb(190, 92, 58, 30), Color.argb(200, 60, 36, 18), Shader.TileMode.CLAMP);
+                    break;
+                default:
+                    cachedFillShader = null;
+                    break;
+            }
+        }
+        return cachedFillShader;
     }
 
     @Override
     public void draw(Canvas canvas) {
         if (rect.isEmpty()) return;
         if (style == Style.FOCUSED) {
-            fill.setColor(Color.argb(240, 255, 255, 255));
+            fill.setShader(focusedShader);
+            fill.setColor(Color.WHITE);
             canvas.drawRoundRect(rect, radius, radius, fill);
+            fill.setShader(null);
+            float fi = focusedRim.getStrokeWidth() * 0.5f;
+            canvas.drawRoundRect(rect.left + fi, rect.top + fi, rect.right - fi, rect.bottom - fi, radius, radius, focusedRim);
             return;
         }
         SpatialEnvironment env = SpatialEnvironment.current();
         Bitmap blurred = env != null && frosted ? env.blurred() : null;
         if (blurred != null) {
+            boolean rebuildMatrix = false;
             if (blurred != shaderSource) {
                 shaderSource = blurred;
                 shader = new BitmapShader(blurred, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
                 blurPaint.setShader(shader);
+                rebuildMatrix = true;
             }
             host.getLocationOnScreen(loc);
-            float sx = env.getWidth() / (float) blurred.getWidth();
-            float sy = env.getHeight() / (float) blurred.getHeight();
-            matrix.setScale(sx / Math.max(0.01f, host.getScaleX()), sy / Math.max(0.01f, host.getScaleY()));
-            matrix.postTranslate(-loc[0] / host.getScaleX(), -loc[1] / host.getScaleY());
-            shader.setLocalMatrix(matrix);
+            float scaleX = Math.max(0.01f, host.getScaleX());
+            float scaleY = Math.max(0.01f, host.getScaleY());
+            if (rebuildMatrix || loc[0] != lastLocX || loc[1] != lastLocY || scaleX != lastScaleX || scaleY != lastScaleY) {
+                lastLocX = loc[0];
+                lastLocY = loc[1];
+                lastScaleX = scaleX;
+                lastScaleY = scaleY;
+                float sx = env.getWidth() / (float) blurred.getWidth();
+                float sy = env.getHeight() / (float) blurred.getHeight();
+                matrix.setScale(sx / scaleX, sy / scaleY);
+                matrix.postTranslate(-loc[0] / scaleX, -loc[1] / scaleY);
+                shader.setLocalMatrix(matrix);
+            }
             canvas.drawRoundRect(rect, radius, radius, blurPaint);
         }
         String mat = material;
@@ -121,26 +191,15 @@ public final class Glass extends Drawable {
                 canvas.drawRoundRect(rect, radius, radius, fill);
                 break;
             case com.cinetv.launcher.service.ThemeManager.MAT_METAL:
-                fill.setShader(new LinearGradient(0, rect.top, 0, rect.bottom, Color.argb(control ? 200 : 170, 92, 99, 110),
-                        Color.argb(control ? 210 : 190, 38, 42, 48), Shader.TileMode.CLAMP));
+            case com.cinetv.launcher.service.ThemeManager.MAT_REDCARPET:
+            case com.cinetv.launcher.service.ThemeManager.MAT_WOOD:
+                fill.setShader(fillShader(mat, control));
                 canvas.drawRoundRect(rect, radius, radius, fill);
                 fill.setShader(null);
                 break;
             case com.cinetv.launcher.service.ThemeManager.MAT_VELVET:
                 fill.setColor(Color.argb(control ? 165 : 145, 54, 6, 11));
                 canvas.drawRoundRect(rect, radius, radius, fill);
-                break;
-            case com.cinetv.launcher.service.ThemeManager.MAT_REDCARPET:
-                fill.setShader(new LinearGradient(0, rect.top, 0, rect.bottom,
-                        Color.argb(control ? 185 : 160, 138, 10, 24),
-                        Color.argb(control ? 200 : 180, 22, 2, 6), Shader.TileMode.CLAMP));
-                canvas.drawRoundRect(rect, radius, radius, fill);
-                fill.setShader(null);
-                break;
-            case com.cinetv.launcher.service.ThemeManager.MAT_WOOD:
-                fill.setShader(new LinearGradient(rect.left, 0, rect.right, 0, Color.argb(190, 92, 58, 30), Color.argb(200, 60, 36, 18), Shader.TileMode.CLAMP));
-                canvas.drawRoundRect(rect, radius, radius, fill);
-                fill.setShader(null);
                 break;
             case com.cinetv.launcher.service.ThemeManager.MAT_NEON:
                 fill.setColor(Color.argb(control ? 150 : 130, 18, 6, 36));

@@ -39,10 +39,19 @@ public class GlassBevelView extends View {
     private final Paint ambientAuraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint topGlazePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-    // Reusable geometry to guarantee 0 allocations in onDraw()
+    // Reusable geometry and shader caches to guarantee 0 allocations in onDraw()
     private final RectF strokeRect = new RectF();
     private final RectF innerRect = new RectF();
     private final RectF glareRect = new RectF();
+    private final int[] outerColors = new int[5];
+    private static final float[] OUTER_POS = new float[]{0f, 0.22f, 0.58f, 0.82f, 1.0f};
+    private final int[] innerColors = new int[3];
+    private static final float[] INNER_POS = new float[]{0f, 0.45f, 1.0f};
+    private final int[] glazeColors = new int[]{0, 0, 0, 0, 0};
+    private static final float[] GLAZE_POS = new float[]{0f, 0.28f, 0.5f, 0.72f, 1.0f};
+
+    private int cachedW = -1, cachedH = -1, cachedFocusStep = -1;
+    private Shader cachedOuterShader, cachedInnerShader, cachedGlazeShader;
 
     private final float cornerRadius;
     private final boolean isCircle;
@@ -177,89 +186,84 @@ public class GlassBevelView extends View {
         final float outerWidth = 1.8f + focusProgress * 1.0f;
         outerBevelPaint.setStrokeWidth(outerWidth);
 
-        final int apexAlpha = (int) (185 + focusProgress * 70); // 185 at rest -> 255 focused
-        final int facetAlpha = (int) (130 + focusProgress * 95); // 130 at rest -> 225 focused
-        final int shadowAlpha = (int) (80 + focusProgress * 80); // 80 at rest -> 160 focused
-        final int causticAlpha = (int) (150 + focusProgress * 95); // 150 at rest -> 245 focused
+        final float inset = 2.0f;
+        innerRect.set(strokeRect.left + inset, strokeRect.top + inset, strokeRect.right - inset, strokeRect.bottom - inset);
+        final float innerRadius = Math.max(0f, cornerRadius - inset);
+        final float glazeH = Math.min(22f, h * 0.15f);
+        glareRect.set(strokeRect.left + 8f, strokeRect.top + 1.2f, strokeRect.right - 8f, strokeRect.top + glazeH);
 
-        outerBevelPaint.setShader(new LinearGradient(
-                strokeRect.left, strokeRect.top,
-                strokeRect.right, strokeRect.bottom,
-                new int[]{
-                        Color.argb(apexAlpha, 255, 255, 255),       // Top-left apex specular diamond glint
-                        Color.argb(facetAlpha, 224, 242, 254),      // Refracted crystal ice-blue highlight
-                        Color.argb(shadowAlpha, 148, 163, 184),     // Smoked glass metallic horizon
-                        Color.argb(facetAlpha, 186, 230, 253),      // Ambient horizon refraction
-                        Color.argb(causticAlpha, 255, 255, 255)     // Bottom-right caustic catch
-                },
-                new float[]{0f, 0.22f, 0.58f, 0.82f, 1.0f},
-                Shader.TileMode.CLAMP
-        ));
+        final int focusStep = Math.round(focusProgress * 50f);
+        if (w != cachedW || h != cachedH || focusStep != cachedFocusStep || cachedOuterShader == null) {
+            cachedW = w;
+            cachedH = h;
+            cachedFocusStep = focusStep;
 
+            final int apexAlpha = (int) (185 + focusProgress * 70);
+            final int facetAlpha = (int) (130 + focusProgress * 95);
+            final int shadowAlpha = (int) (80 + focusProgress * 80);
+            final int causticAlpha = (int) (150 + focusProgress * 95);
+
+            outerColors[0] = Color.argb(apexAlpha, 255, 255, 255);
+            outerColors[1] = Color.argb(facetAlpha, 224, 242, 254);
+            outerColors[2] = Color.argb(shadowAlpha, 148, 163, 184);
+            outerColors[3] = Color.argb(facetAlpha, 186, 230, 253);
+            outerColors[4] = Color.argb(causticAlpha, 255, 255, 255);
+
+            cachedOuterShader = new LinearGradient(
+                    strokeRect.left, strokeRect.top,
+                    strokeRect.right, strokeRect.bottom,
+                    outerColors, OUTER_POS, Shader.TileMode.CLAMP);
+
+            final int innerTopAlpha = (int) (70 + focusProgress * 95);
+            final int innerBottomAlpha = (int) (20 + focusProgress * 45);
+            innerColors[0] = Color.argb(innerTopAlpha, 255, 255, 255);
+            innerColors[1] = Color.argb(innerBottomAlpha, 203, 213, 225);
+            innerColors[2] = Color.argb(0, 255, 255, 255);
+
+            cachedInnerShader = new LinearGradient(
+                    innerRect.left, innerRect.top,
+                    innerRect.left, innerRect.bottom,
+                    innerColors, INNER_POS, Shader.TileMode.CLAMP);
+
+            if (!isCircle) {
+                final int glazeAlpha = (int) (90 + focusProgress * 150);
+                final int sideAlpha = (int) (glazeAlpha * 0.65f);
+                glazeColors[1] = Color.argb(sideAlpha, 240, 249, 255);
+                glazeColors[2] = Color.argb(glazeAlpha, 255, 255, 255);
+                glazeColors[3] = Color.argb(sideAlpha, 240, 249, 255);
+
+                cachedGlazeShader = new LinearGradient(
+                        glareRect.left, glareRect.top,
+                        glareRect.right, glareRect.top,
+                        glazeColors, GLAZE_POS, Shader.TileMode.CLAMP);
+            }
+        }
+
+        outerBevelPaint.setShader(cachedOuterShader);
         if (isCircle) {
             canvas.drawOval(strokeRect, outerBevelPaint);
         } else {
             canvas.drawRoundRect(strokeRect, cornerRadius, cornerRadius, outerBevelPaint);
         }
-        outerBevelPaint.setShader(null);
 
         // =========================================================================
         // LAYER 3: Inner Refractive Facet (Double-Chamfer 3D Optical Thickness)
         // =========================================================================
-        // Inset by 2.0px to create unmistakable physical thickness of cut crystal
-        final float inset = 2.0f;
-        innerRect.set(strokeRect.left + inset, strokeRect.top + inset, strokeRect.right - inset, strokeRect.bottom - inset);
-        final float innerRadius = Math.max(0f, cornerRadius - inset);
-
-        final int innerTopAlpha = (int) (70 + focusProgress * 95); // 70 at rest -> 165 focused
-        final int innerBottomAlpha = (int) (20 + focusProgress * 45);
-
         innerFacetPaint.setStrokeWidth(1.2f);
-        innerFacetPaint.setShader(new LinearGradient(
-                innerRect.left, innerRect.top,
-                innerRect.left, innerRect.bottom,
-                new int[]{
-                        Color.argb(innerTopAlpha, 255, 255, 255),
-                        Color.argb(innerBottomAlpha, 203, 213, 225),
-                        Color.argb(0, 255, 255, 255)
-                },
-                new float[]{0f, 0.45f, 1.0f},
-                Shader.TileMode.CLAMP
-        ));
-
+        innerFacetPaint.setShader(cachedInnerShader);
         if (isCircle) {
             canvas.drawOval(innerRect, innerFacetPaint);
         } else {
             canvas.drawRoundRect(innerRect, innerRadius, innerRadius, innerFacetPaint);
         }
-        innerFacetPaint.setShader(null);
 
         // =========================================================================
         // LAYER 4: Top Meniscus Specular Glaze Blade (Reflective Meniscus Light Catch)
         // =========================================================================
-        // Visible at rest as subtle overhead light catch; sweeps brilliantly when focused
-        if (!isCircle) {
-            final float glazeH = Math.min(22f, h * 0.15f);
-            glareRect.set(strokeRect.left + 8f, strokeRect.top + 1.2f, strokeRect.right - 8f, strokeRect.top + glazeH);
+        if (!isCircle && cachedGlazeShader != null) {
             topGlazePaint.setStrokeWidth(1.8f + focusProgress * 0.8f);
-
-            final int glazeAlpha = (int) (90 + focusProgress * 150); // 90 at rest -> 240 focused
-
-            topGlazePaint.setShader(new LinearGradient(
-                    glareRect.left, glareRect.top,
-                    glareRect.right, glareRect.top,
-                    new int[]{
-                            Color.argb(0, 255, 255, 255),
-                            Color.argb((int) (glazeAlpha * 0.65f), 240, 249, 255),
-                            Color.argb(glazeAlpha, 255, 255, 255),
-                            Color.argb((int) (glazeAlpha * 0.65f), 240, 249, 255),
-                            Color.argb(0, 255, 255, 255)
-                    },
-                    new float[]{0f, 0.28f, 0.5f, 0.72f, 1.0f},
-                    Shader.TileMode.CLAMP
-            ));
+            topGlazePaint.setShader(cachedGlazeShader);
             canvas.drawLine(glareRect.left + 6f, strokeRect.top + 1.4f, glareRect.right - 6f, strokeRect.top + 1.4f, topGlazePaint);
-            topGlazePaint.setShader(null);
         }
     }
 }

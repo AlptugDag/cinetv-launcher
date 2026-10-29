@@ -82,7 +82,12 @@ public class AppGrid {
         if (apps > 19) c = Math.max(c, 6);
         return c;
     }
-    public void setSpatial(boolean on) { spatial = on; }
+    public void setSpatial(boolean on) {
+        if (this.spatial != on) {
+            this.spatial = on;
+            if (dock != null) render();
+        }
+    }
 
     public void setApps(List<AppTileItem> dock, List<AppTileItem> grid) {
         this.dock = dock;
@@ -97,10 +102,12 @@ public class AppGrid {
         item.label = AppArtwork.getCleanLabel(item.packageName, item.label);
         item.neonColor = AppArtwork.getAppNeonColor(item.packageName);
         android.graphics.drawable.Drawable icon = null, banner = null;
-        try {
-            banner = ctx.getPackageManager().getApplicationBanner(item.packageName);
-            icon = ctx.getPackageManager().getApplicationIcon(item.packageName);
-        } catch (Throwable ignored) {
+        if (!AppArtwork.hasCustomVectorCard(item.packageName)
+                && !AppArtwork.isCardCached(item.packageName, item.label, true)) {
+            try {
+                icon = ctx.getPackageManager().getApplicationIcon(item.packageName);
+            } catch (Throwable ignored) {
+            }
         }
         item.bannerDrawable = AppArtwork.createDesignerLogoCard(ctx, item.packageName, item.label, banner, icon, true);
     }
@@ -171,7 +178,7 @@ public class AppGrid {
 
     /** Resting pose on the cylinder: the outer tiles turn in towards the viewer. */
     private float[] restPose(boolean inDock, int index, int count) {
-        if (!spatial) return new float[]{0, 0, 0};
+        if (!spatial) return new float[]{0, 0, 0, 0};
         // the curve is measured on the tiles actually in this row (a short row is centred), so both ends of
         // every row lean the same way and by the same amount: the Spatial HUD's full curve, never lopsided
         int col = inDock ? index : index % columns;
@@ -182,7 +189,8 @@ public class AppGrid {
         float rotY = -norm * 24f;
         float rotX = -11f - row * 2.5f;
         float z = (1f - norm * norm) * 14f - 12f;
-        return new float[]{rotY, Math.max(-18f, rotX), z};
+        float yArc = -norm * norm * UiKit.pxf(5.5f);
+        return new float[]{rotY, Math.max(-18f, rotX), z, yArc};
     }
 
     /** How many tiles (apps and the "Add" tile) the row of this tile holds. */
@@ -224,6 +232,7 @@ public class AppGrid {
         frame.setRotationY(rest[0]);
         frame.setRotationX(rest[1]);
         frame.setTranslationZ(rest[2]);
+        frame.setTranslationY(rest[3]);
         boolean carried = moving != null && moving.packageName.equals(item.packageName);
         if (carried) {
             applyFocus(frame, bloom, face, item, true, rest);
@@ -277,7 +286,7 @@ public class AppGrid {
         pushNeighbours(frame, has, ms);
         frame.animate().scaleX(has ? 1.10f : 1f).scaleY(has ? 1.10f : 1f)
                 .rotationY(has ? 0f : rest[0]).rotationX(has ? 0f : rest[1])
-                .translationY(has ? -UiKit.pxf(12) : 0f).translationZ(has ? UiKit.pxf(55) : rest[2])
+                .translationY(has ? -UiKit.pxf(12) : rest[3]).translationZ(has ? UiKit.pxf(55) : rest[2])
                 .setDuration(ms).start();
     }
 
@@ -324,6 +333,7 @@ public class AppGrid {
         frame.setRotationY(rest[0]);
         frame.setRotationX(rest[1]);
         frame.setTranslationZ(rest[2]);
+        frame.setTranslationY(rest[3]);
 
         final int neonColor = Color.parseColor("#CBD5E1");
 
@@ -340,7 +350,7 @@ public class AppGrid {
             pushNeighbours(frame, has, ms);
             frame.animate().scaleX(has ? 1.10f : 1f).scaleY(has ? 1.10f : 1f)
                     .rotationY(has ? 0f : rest[0]).rotationX(has ? 0f : rest[1])
-                    .translationY(has ? -UiKit.pxf(12) : 0f).translationZ(has ? UiKit.pxf(55) : rest[2])
+                    .translationY(has ? -UiKit.pxf(12) : rest[3]).translationZ(has ? UiKit.pxf(55) : rest[2])
                     .setDuration(ms).start();
             if (has) host.onTileFocused(v, neonColor);
         });

@@ -233,7 +233,7 @@ public final class AllApps {
                 grid.addView(row);
             }
             final AppCatalog.Entry e = apps.get(i);
-            FrameLayout tile = tile(ctx, e, l, host);
+            FrameLayout tile = tile(ctx, e, i, l, host);
             arts[i] = (ImageView) ((ViewGroup) tile.getChildAt(1)).getChildAt(0);
             row.addView(tile);
         }
@@ -261,12 +261,19 @@ public final class AllApps {
         }, "cinetv-drawer").start();
     }
 
-    private static FrameLayout tile(final Context ctx, final AppCatalog.Entry e, final Listener l, final ModalHost host) {
+    private static FrameLayout tile(final Context ctx, final AppCatalog.Entry e, final int index, final Listener l, final ModalHost host) {
         final FrameLayout frame = new FrameLayout(ctx);
         frame.setFocusable(true);
         frame.setClickable(true);
         frame.setClipChildren(false);
+        frame.setCameraDistance(ctx.getResources().getDisplayMetrics().density * 3200f);
         final int color = AppArtwork.getAppNeonColor(e.packageName);
+        final boolean spatial = com.cinetv.launcher.service.Prefs.spatial3d(ctx);
+        final float norm = ((index % COLS) - (COLS - 1) * 0.5f) / ((COLS - 1) * 0.5f);
+        final float restRotY = spatial ? -norm * 16f : 0f;
+        final float restRotX = spatial ? -5.5f : 0f;
+        frame.setRotationY(restRotY);
+        frame.setRotationX(restRotX);
 
         final ImageView bloom = new ImageView(ctx);
         bloom.setScaleType(ImageView.ScaleType.FIT_XY);
@@ -290,12 +297,16 @@ public final class AllApps {
             if (has) {
                 bloom.setImageBitmap(Glow.bloom(UiKit.px(TILE_W), UiKit.px(TILE_H), bp, UiKit.pxf(30), color));
                 bloom.animate().alpha(1f).setDuration(ms).start();
+                SpatialEnvironment env = SpatialEnvironment.current();
+                if (env != null) env.focusOn(v, color);
             } else {
                 bloom.animate().alpha(0f).setDuration(ms).withEndAction(() -> bloom.setImageDrawable(null)).start();
             }
             bevel.setFocusedState(has);
             face.animate().alpha(has ? 1f : 0.9f).setDuration(ms).start();
-            v.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).translationZ(has ? UiKit.pxf(40) : 0f).setDuration(ms).start();
+            v.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f)
+                    .rotationY(has ? 0f : restRotY).rotationX(has ? 0f : restRotX)
+                    .translationZ(has ? UiKit.pxf(40) : 0f).setDuration(ms).start();
         });
         frame.setOnClickListener(v -> {
             host.close();

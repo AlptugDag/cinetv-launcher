@@ -168,6 +168,15 @@ public final class TrailerPlayer extends FrameLayout {
             addView(w, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
             final String origin = "https://" + getContext().getPackageName();
+            final boolean withSound = com.cinetv.launcher.service.Creator.isSessiz(m)
+                    || com.cinetv.launcher.service.Creator.SESSIZ_TRAILER_ID.equals(key);
+            final int muteFlag = withSound ? 0 : 1;
+            final String readyAudioJs = withSound
+                    ? "e.target.unMute(); e.target.setVolume(100);"
+                    : "e.target.mute();";
+            final String playingAudioJs = withSound
+                    ? "try { e.target.unMute(); e.target.setVolume(100); } catch(ig) {} "
+                    : "";
             // The iframe is sized to 116% width x 300% height at top:-100%, left:-8% inside #stage (overflow:hidden).
             // Because YouTube centers the 16:9 <video> vertically in the middle 100% of the 300% iframe,
             // the top title/channel bar (at 0%) and bottom watermark/controls (at 100%) are cropped 100% outside #stage.
@@ -193,13 +202,13 @@ public final class TrailerPlayer extends FrameLayout {
                     + "  player = new YT.Player('player', {"
                     + "    videoId: '" + key + "',"
                     + "    playerVars: {"
-                    + "      'autoplay': 1, 'controls': 0, 'mute': 1, 'loop': 1, 'playlist': '" + key + "',"
+                    + "      'autoplay': 1, 'controls': 0, 'mute': " + muteFlag + ", 'loop': 1, 'playlist': '" + key + "',"
                     + "      'playsinline': 1, 'rel': 0, 'modestbranding': 1, 'iv_load_policy': 3, 'cc_load_policy': 0, 'disablekb': 1, 'fs': 0"
                     + "    },"
                     + "    events: {"
-                    + "      'onReady': function(e) { try { e.target.mute(); e.target.playVideo(); } catch(err) { notifyFail(); } },"
+                    + "      'onReady': function(e) { try { " + readyAudioJs + " e.target.playVideo(); } catch(err) { notifyFail(); } },"
                     + "      'onStateChange': function(e) {"
-                    + "        if (e.data === 1) { setTimeout(notifyReady, 650); }"
+                    + "        if (e.data === 1) { " + playingAudioJs + "setTimeout(notifyReady, 650); }"
                     + "        else if (e.data === 0 && player && player.seekTo) { player.seekTo(0.1, true); player.playVideo(); }"
                     + "      },"
                     + "      'onError': function(e) { notifyFail(); }"

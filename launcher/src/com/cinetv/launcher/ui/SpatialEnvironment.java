@@ -80,6 +80,18 @@ public class SpatialEnvironment extends View {
         return blurred;
     }
 
+    public float glowX() {
+        return glowX;
+    }
+
+    public float glowY() {
+        return glowY;
+    }
+
+    public int glowColor() {
+        return glowColor;
+    }
+
     public void apply(ThemeManager.Theme theme, boolean light) {
         this.theme = theme;
         this.light = light;
@@ -140,15 +152,28 @@ public class SpatialEnvironment extends View {
 
     // ---- focus light & parallax -----------------------------------------------------------------
 
+    public interface ParallaxListener {
+        void onFocusParallax(float focusX, float focusY);
+    }
+
+    private ParallaxListener parallaxListener;
+    private final int[] focusLoc = new int[2];
+
+    public void setParallaxListener(ParallaxListener l) {
+        this.parallaxListener = l;
+    }
+
     /** Glides the light field behind the focused view, in the view's colour. */
     public void focusOn(View v, int rawColor) {
         if (v == null) return;
+        v.getLocationOnScreen(focusLoc);
+        final float tx = focusLoc[0] + v.getWidth() * v.getScaleX() * 0.5f;
+        final float ty = focusLoc[1] + v.getHeight() * v.getScaleY() * 0.5f;
+        if (parallaxListener != null) {
+            parallaxListener.onFocusParallax(tx, ty);
+        }
         final int color = neon(rawColor);
         if (!focusLight) return;
-        int[] loc = new int[2];
-        v.getLocationOnScreen(loc);
-        final float tx = loc[0] + v.getWidth() * v.getScaleX() * 0.5f;
-        final float ty = loc[1] + v.getHeight() * v.getScaleY() * 0.5f;
         final float sx = glowX, sy = glowY;
         final int sc = glowColor;
         if (focusAnimator != null) focusAnimator.cancel();
@@ -191,14 +216,27 @@ public class SpatialEnvironment extends View {
             int r = Color.red(glowColor), g = Color.green(glowColor), b = Color.blue(glowColor);
             // Wide spill, slightly flattened like light on a wall...
             float rx = Math.max(w, h) * 0.56f, ry = rx * 0.78f;
-            lightPaint.setColorFilter(filter(Color.argb(light ? 34 : 52, r, g, b)));
+            lightPaint.setColorFilter(filter(Color.argb(light ? 34 : 54, r, g, b)));
             dst.set(glowX - rx, glowY - ry, glowX + rx, glowY + ry);
             canvas.drawBitmap(lightSprite, null, dst, lightPaint);
             // ...and the brighter neon core right behind the focused item.
             float core = Math.max(w, h) * 0.19f;
-            lightPaint.setColorFilter(filter(Color.argb(light ? 40 : 66, r, g, b)));
+            lightPaint.setColorFilter(filter(Color.argb(light ? 42 : 70, r, g, b)));
             dst.set(glowX - core * 1.25f, glowY - core, glowX + core * 1.25f, glowY + core);
             canvas.drawBitmap(lightSprite, null, dst, lightPaint);
+            // Spatial HUD optical visor refraction: subtle anamorphic horizontal streak & top visor horizon reflection
+            if (com.cinetv.launcher.service.Prefs.spatial3d(getContext())) {
+                float streakW = w * 0.48f, streakH = h * 0.085f;
+                lightPaint.setColorFilter(filter(Color.argb(light ? 22 : 38, Math.min(255, r + 35), Math.min(255, g + 35), Math.min(255, b + 35))));
+                dst.set(glowX - streakW, glowY - streakH, glowX + streakW, glowY + streakH);
+                canvas.drawBitmap(lightSprite, null, dst, lightPaint);
+
+                float browW = w * 0.42f, browH = h * 0.14f;
+                float browX = w * 0.5f + (glowX - w * 0.5f) * 0.65f;
+                lightPaint.setColorFilter(filter(Color.argb(light ? 18 : 30, r, g, b)));
+                dst.set(browX - browW, -browH * 0.55f, browX + browW, browH);
+                canvas.drawBitmap(lightSprite, null, dst, lightPaint);
+            }
         }
     }
 
@@ -297,6 +335,7 @@ public class SpatialEnvironment extends View {
                     c.restore();
                 }
             }
+            if (tileBmp != mark && !tileBmp.isRecycled()) tileBmp.recycle();
             return out;
         } catch (OutOfMemoryError e) {
             return null;

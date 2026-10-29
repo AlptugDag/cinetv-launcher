@@ -99,6 +99,7 @@ public class HomeScreen {
     private final ImageView searchIcon;
     private final ImageView micIcon;
     private ThemeManager.Theme currentTheme;
+    private boolean spatialOn;
 
     public HomeScreen(Context ctx, Listener listener, AppGrid.Host appHost) {
         this.ctx = ctx;
@@ -107,6 +108,7 @@ public class HomeScreen {
         root.setBackgroundColor(Color.BLACK);
 
         environment = new SpatialEnvironment(ctx);
+        environment.setParallaxListener(this::updateVisorParallax);
         root.addView(environment, match());
 
         scroll = new GlideScrollView(ctx);
@@ -743,18 +745,49 @@ public class HomeScreen {
         logoButton.requestFocus();
     }
 
-    /** Applies or removes the HUD visor curvature of the header. */
+    /** Applies or removes the HUD visor curvature of the header and spreads spatial 3D across overlays. */
     public void applySpatial(boolean on) {
-        float cam = ctx.getResources().getDisplayMetrics().density * (on ? 2800f : 8500f);
+        this.spatialOn = on;
+        float cam = ctx.getResources().getDisplayMetrics().density * (on ? 3200f : 8500f);
         View[] groups = {leftGroup, searchBox, rightGroup, shelfLabel};
         float[][] rot = {{24f, 11f}, {0f, 11f}, {-24f, 11f}, {18f, 6f}};
+        float[] z = {UiKit.pxf(18), UiKit.pxf(26), UiKit.pxf(18), UiKit.pxf(14)};
         for (int i = 0; i < groups.length; i++) {
             groups[i].setCameraDistance(cam);
-            groups[i].animate().rotationY(on ? rot[i][0] : 0f).rotationX(on ? rot[i][1] : 0f)
+            groups[i].animate()
+                    .rotationY(on ? rot[i][0] : 0f)
+                    .rotationX(on ? rot[i][1] : 0f)
+                    .translationZ(on ? z[i] : 0f)
                     .setDuration(PerformanceProfile.animationMs(ctx, 240)).start();
         }
+        aiCard.setCameraDistance(cam);
+        aiCard.setRotationX(on ? 7.5f : 0f);
+        aiCard.setTranslationZ(on ? UiKit.pxf(38) : 0f);
+        if (buttonHint != null) {
+            buttonHint.setCameraDistance(cam);
+            buttonHint.setRotationX(on ? 8f : 0f);
+            buttonHint.setTranslationZ(on ? UiKit.pxf(32) : 0f);
+        }
+        moveHint.setCameraDistance(cam);
+        moveHint.setRotationX(on ? -8f : 0f);
+        moveHint.setTranslationZ(on ? UiKit.pxf(34) : 0f);
         shelf.setSpatial(on);
         apps.setSpatial(on);
+        keyboard.setSpatial(on);
+        modal.setSpatial(on);
+    }
+
+    /** Subtle 3D optical counter-parallax on the curved HUD visor as focus moves across the screen. */
+    public void updateVisorParallax(float focusX, float focusY) {
+        if (!spatialOn || root.getWidth() <= 0 || root.getHeight() <= 0) return;
+        float nx = Math.max(-1f, Math.min(1f, (focusX / root.getWidth() - 0.5f) * 2f));
+        float ny = Math.max(-1f, Math.min(1f, (focusY / root.getHeight() - 0.5f) * 2f));
+        int ms = PerformanceProfile.animationMs(ctx, 180);
+        float pitch = 11f - ny * 1.6f;
+        leftGroup.animate().rotationY(24f - nx * 2.4f).rotationX(pitch).setDuration(ms).start();
+        searchBox.animate().rotationY(-nx * 2.8f).rotationX(pitch).setDuration(ms).start();
+        rightGroup.animate().rotationY(-24f - nx * 2.4f).rotationX(pitch).setDuration(ms).start();
+        shelfLabel.animate().rotationY(18f - nx * 2.0f).rotationX(6f - ny * 1.2f).setDuration(ms).start();
     }
 
     /** Updates all UI elements (vitrin title, clock, signature, search bar, icons) to perfectly match each room's aesthetic. */
@@ -945,12 +978,16 @@ public class HomeScreen {
         a.setLineSpacing(UiKit.pxf(7), 1f);
         card.addView(a, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         aiCard.addView(card, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        GlassBevelView aiBevel = new GlassBevelView(ctx, UiKit.pxf(34), false);
+        aiBevel.setFocusedState(!thinking);
+        aiCard.addView(aiBevel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         if (aiCard.getVisibility() != View.VISIBLE) {
             aiCard.setVisibility(View.VISIBLE);
             aiCard.setAlpha(0f);
             aiCard.setTranslationY(-UiKit.pxf(24));
             aiCard.setScaleX(0.96f);
-            aiCard.animate().alpha(1f).translationY(0).scaleX(1f).setDuration(240).start();
+            aiCard.setRotationX(spatialOn ? 18f : 0f);
+            aiCard.animate().alpha(1f).translationY(0).scaleX(1f).rotationX(spatialOn ? 7.5f : 0f).setDuration(240).start();
         }
         aiCard.removeCallbacks(hideAi);
         aiCard.postDelayed(hideAi, staysMs);

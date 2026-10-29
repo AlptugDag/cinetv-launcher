@@ -26,7 +26,7 @@ public final class Http {
         for (int i = 0; i <= MAX_REDIRECTS; i++) {
             HttpURLConnection conn = (HttpURLConnection) new URL(current).openConnection();
             conn.setRequestProperty("User-Agent", USER_AGENT);
-            conn.setRequestProperty("Accept-Encoding", "identity");
+            conn.setRequestProperty("Accept-Encoding", "gzip");
             if (headers != null) {
                 for (Map.Entry<String, String> h : headers.entrySet()) conn.setRequestProperty(h.getKey(), h.getValue());
             }
@@ -50,7 +50,8 @@ public final class Http {
         HttpURLConnection conn = open(url, headers, timeoutMs);
         try {
             if (conn.getResponseCode() != 200) throw new IOException("HTTP " + conn.getResponseCode() + " for " + redact(url));
-            try (InputStream in = conn.getInputStream()) {
+            try (InputStream raw = conn.getInputStream();
+                 InputStream in = "gzip".equalsIgnoreCase(conn.getContentEncoding()) ? new java.util.zip.GZIPInputStream(raw) : raw) {
                 return new String(readAll(in), StandardCharsets.UTF_8);
             }
         } finally {
@@ -69,7 +70,9 @@ public final class Http {
             HttpURLConnection conn = open(url, null, timeoutMs);
             try {
                 if (conn.getResponseCode() != 200) return false;
-                try (InputStream in = conn.getInputStream(); OutputStream out = new FileOutputStream(tmp)) {
+                try (InputStream raw = conn.getInputStream();
+                     InputStream in = "gzip".equalsIgnoreCase(conn.getContentEncoding()) ? new java.util.zip.GZIPInputStream(raw) : raw;
+                     OutputStream out = new FileOutputStream(tmp)) {
                     byte[] buf = new byte[16 * 1024];
                     int n;
                     while ((n = in.read(buf)) != -1) out.write(buf, 0, n);

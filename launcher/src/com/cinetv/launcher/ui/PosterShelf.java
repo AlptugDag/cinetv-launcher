@@ -366,9 +366,10 @@ public class PosterShelf extends FrameLayout {
             float dim = (focused ? 1f : 0.94f) - 0.10f * near - Math.min(0.52f, 0.075f * far);
             // Only a hint of depth of field: soft, never smeared.
             float blur = 0.55f * Math.max(0f, Math.min(1f, (far - 2f) / 4f));
-            float yaw = Math.signum(d) * SIDE_ANGLE * near + PROFILE_ANGLE * (1f - near);
+            float spatialWrap = spatial ? -Math.signum(d) * Math.min(9.5f, far * 2.2f) : 0f;
+            float yaw = Math.signum(d) * SIDE_ANGLE * near + PROFILE_ANGLE * (1f - near) + spatialWrap;
             float lift = focused ? 1f - near : 0f;
-            float tilt = spatial ? 7.5f * (1f - lift) : 0f;
+            float tilt = spatial ? (8.2f + Math.min(3.5f, far * 0.7f)) * (1f - lift) : 0f;
             float turn = 0f, glint = 0f;
             float swaySine = 0f;
             if (i == index && sway > 0f) {
@@ -378,7 +379,7 @@ public class PosterShelf extends FrameLayout {
                 glint = swaySine;
             }
             // Spatial HUD: the shelf bends slightly away, like a curved wall of discs.
-            float arc = spatial ? UiKit.pxf(5) * far * far * 0.35f : 0f;
+            float arc = spatial ? UiKit.pxf(6.2f) * far * far * 0.35f : 0f;
             // Smooth edge fade: cases coming from outside the screen fade in gradually instead of popping
             float edgeFade = 1f;
             float leftBound = -caseW * 0.2f, rightBound = w + caseW * 0.2f;

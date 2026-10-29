@@ -85,6 +85,16 @@ public class DvdCaseView extends View {
      * the shrink-wrap reflections slide.
      */
     public void setPose(float yaw, float tilt, float scale, float lift, float extraYaw, float dim, boolean spineRight, float drift) {
+        if (Math.abs(this.yaw - yaw) < 0.005f
+                && Math.abs(this.tilt - tilt) < 0.005f
+                && Math.abs(this.scale - scale) < 0.001f
+                && Math.abs(this.lift - lift) < 0.002f
+                && Math.abs(this.spatialYaw - extraYaw) < 0.005f
+                && Math.abs(this.dim - dim) < 0.002f
+                && this.spineRight == spineRight
+                && Math.abs(this.drift - drift) < 0.002f) {
+            return;
+        }
         this.yaw = yaw;
         this.tilt = tilt;
         this.scale = scale;
@@ -105,6 +115,7 @@ public class DvdCaseView extends View {
 
     /** Extra shrink-wrap reflection while the focused case turns on its own (0..1). */
     public void setGlint(float glint) {
+        if (Math.abs(this.glint - glint) < 0.002f) return;
         this.glint = glint;
         invalidate();
     }
@@ -174,17 +185,19 @@ public class DvdCaseView extends View {
      * falling back-right, away from the light. The case lifting off the floor softens it.
      */
     private void drawShadow(Canvas canvas, float cx, float cy) {
+        float shadowVisibility = Math.max(0f, 1f - lift * 1.4f);
+        if (shadowVisibility <= 0.01f) return;
         Bitmap sh = DvdCase.shadow();
         float hw = caseW / 2f, hh = caseH / 2f;
         float hd = dvd != null && dvd.spine == null ? caseW * 0.05f : depth / 2f;
         float up = lift * caseH * 0.05f;
         // Wide penumbra.
         footprint(cx, cy, -hw * 1.10f + hw * 0.10f, hw * 1.10f + hw * 0.16f, -hd - caseW * 0.10f, hd + caseW * 0.34f, hh + up);
-        fxPaint.setAlpha((int) ((120 - lift * 50) * dim));
+        fxPaint.setAlpha((int) (120 * shadowVisibility * dim));
         drawQuad(canvas, sh, floor, fxPaint);
         // Tight core right under the box.
         footprint(cx, cy, -hw * 1.03f, hw * 1.03f, -hd - caseW * 0.03f, hd + caseW * 0.06f, hh + up);
-        fxPaint.setAlpha((int) ((200 - lift * 120) * dim));
+        fxPaint.setAlpha((int) (200 * shadowVisibility * dim));
         drawQuad(canvas, sh, floor, fxPaint);
     }
 

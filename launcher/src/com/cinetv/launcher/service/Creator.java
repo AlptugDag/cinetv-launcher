@@ -16,14 +16,17 @@ public final class Creator {
     public static final String LINKEDIN_URL = "https://www.linkedin.com/in/AlptugDag/";
     public static final String LETTERBOXD_URL = "https://letterboxd.com/AlptugDag/";
     public static final String GITHUB_URL = "https://github.com/AlptugDag";
+    public static final String SESSIZ_TRAILER_ID = "jb7BM-NHreg";
+    public static final String SESSIZ_TRAILER_URL = "https://www.youtube.com/watch?v=" + SESSIZ_TRAILER_ID + "&feature=youtu.be";
     public static final String SESSIZ_YOUTUBE_ID = "bLvdsibrR-I";
-    public static final String SESSIZ_YOUTUBE_URL = "https://www.youtube.com/watch?v=" + SESSIZ_YOUTUBE_ID;
+    public static final String SESSIZ_YOUTUBE_URL = "https://www.youtube.com/watch?v=" + SESSIZ_YOUTUBE_ID + "&t=9s";
 
     private Creator() {}
 
     /** True when the movie is Alptuğ Dağ's short film "Sessiz" (2023). */
     public static boolean isSessiz(MovieCatalog.Movie m) {
         if (m == null) return false;
+        if ("tt38983576".equals(m.imdbId) || m.tmdbId == 1124567) return true;
         String t = fold(m.title);
         String orig = fold(m.originalTitle);
         if (!"sessiz".equals(t) && !"sessiz".equals(orig)) return false;
@@ -33,9 +36,12 @@ public final class Creator {
         return true;
     }
 
-    /** True when a query is about the author ("Alptuğ Dağ kimdir", "alptug dag filmleri"...). */
+    /** True when a query is about the author ("Alptuğ Dağ kimdir", "alptug dag filmleri", "CineTV'yi kim yaptı"...). */
     public static boolean mentioned(String query) {
-        return fold(query).contains("alptug dag");
+        String f = fold(query);
+        return f.contains("alptug dag")
+                || f.contains("alptug")
+                || (f.contains("cinetv") && (f.contains("kim ") || f.contains("yapimci") || f.contains("yaratici") || f.contains("yapti") || f.contains("gelistir")));
     }
 
     static String fold(String s) {

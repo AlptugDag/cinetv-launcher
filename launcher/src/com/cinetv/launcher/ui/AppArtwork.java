@@ -24,6 +24,7 @@ import android.graphics.Shader;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.util.LruCache;
 
 /**
  * Apple tvOS / visionOS Liquid Glass & Chromatic Diversity Engine:
@@ -38,7 +39,43 @@ public final class AppArtwork {
     public static final int CARD_H = 360;
     private static final float CORNER = 36f;
 
+    private static final LruCache<String, Bitmap> CARD_CACHE = new LruCache<String, Bitmap>(6 * 1024) {
+        @Override
+        protected int sizeOf(String key, Bitmap value) {
+            return value.getByteCount() / 1024;
+        }
+    };
+    private static Bitmap cachedAddCard;
+
     private AppArtwork() {}
+
+    public static synchronized void clearCache() {
+        CARD_CACHE.evictAll();
+        cachedAddCard = null;
+    }
+
+    public static synchronized boolean isCardCached(String pkg, String label, boolean darkMode) {
+        String key = (pkg != null ? pkg : "") + "|" + (label != null ? label : "") + "|" + darkMode;
+        Bitmap b = CARD_CACHE.get(key);
+        return b != null && !b.isRecycled();
+    }
+
+    public static boolean hasCustomVectorCard(String pkg) {
+        if (pkg == null) return false;
+        if (AppLauncher.LIVE_TV.equals(pkg) || AppCatalog.isTizenTube(pkg)) return true;
+        String lower = pkg.toLowerCase();
+        return lower.contains("turkcell.ott") || lower.contains("tvplus")
+                || lower.contains("instantbits.cast")
+                || lower.contains("nuvio") || lower.contains("alptugflix")
+                || lower.contains("stremio")
+                || lower.contains("dizipal") || lower.contains("lipter")
+                || lower.contains("courville.nova")
+                || lower.equals("com.android.vending")
+                || lower.contains("airplay") || lower.contains("airscreen")
+                || lower.contains("mediaplayer")
+                || lower.contains("cloudstream") || lower.contains("turksinema")
+                || lower.contains("chrome") || lower.contains("cromite");
+    }
 
     public static String getCleanLabel(String pkg, String originalLabel) {
         if (pkg == null) return "";
@@ -116,9 +153,9 @@ public final class AppArtwork {
      * Draws an authentic visionOS / tvOS Liquid Glass card base:
      * - Neutral smoked translucent crystal body (zero artificial blue cast!) allowing background to refract cleanly.
      * - Always-on internal volumetric neon pool right behind the logo glyph.
-     * - hwyuanzi/LiquidGlass-UI Optical meniscus: Top specular lens bevel sheen with sharp caustic crest.
-     * - ybouane/liquidglass Chromatic Aberration: Double tangential spectral dispersion rim (spectral red & cyan).
-     * - seangeng/argent Liquid Chrome caustic rim with varying luminance and high-specular highlights.
+     * - Optical meniscus: Top specular lens bevel sheen with sharp caustic crest.
+     * - Chromatic dispersion: Double tangential spectral dispersion rim.
+     * - Liquid chrome caustic rim with varying luminance and high-specular highlights.
      */
     private static void drawLiquidGlassCardBase(Canvas canvas, int neonColor, float glowCenterX, float glowCenterY) {
         int r = Color.red(neonColor);
@@ -156,7 +193,7 @@ public final class AppArtwork {
         ));
         canvas.drawRoundRect(cardRect, CORNER, CORNER, internalNeon);
 
-        // 3. LiquidGlass-UI Meniscus Top Specular Lens Sheen (Apple visionOS & hwyuanzi/LiquidGlass-UI)
+        // 3. Meniscus Top Specular Lens Sheen
         Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG);
         sheen.setShader(new LinearGradient(
                 0f, 0f, 0f, CARD_H * 0.44f,
@@ -343,59 +380,63 @@ public final class AppArtwork {
         return Color.HSVToColor(new float[]{avgHue, avgSat, avgVal});
     }
 
-    public static Drawable createDesignerLogoCard(Context ctx, String pkg, String rawLabel,
+    public static synchronized Drawable createDesignerLogoCard(Context ctx, String pkg, String rawLabel,
                                                   Drawable rawBanner, Drawable rawIcon, boolean darkMode) {
+        String cleanLabel = getCleanLabel(pkg, rawLabel);
+        String cacheKey = (pkg != null ? pkg : "") + "|" + cleanLabel + "|" + darkMode;
+        Bitmap cached = CARD_CACHE.get(cacheKey);
+        if (cached != null && !cached.isRecycled()) {
+            return new BitmapDrawable(ctx.getResources(), cached);
+        }
+
         String lower = pkg != null ? pkg.toLowerCase() : "";
+        Bitmap rawCard;
 
         if (AppLauncher.LIVE_TV.equals(pkg)) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createLiveTvCard(ctx, rawLabel)));
-        }
-        if (AppCatalog.isTizenTube(pkg)) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createYouTubeCard(ctx)));
-        }
-        if (lower.contains("turkcell.ott") || lower.contains("tvplus")) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createTvPlusCard(ctx)));
-        }
-        if (lower.contains("instantbits.cast")) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createWebVideoCasterCard(ctx)));
-        }
-        if (lower.contains("nuvio") || lower.contains("alptugflix")) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createNuvioCard(ctx)));
-        }
-        if (lower.contains("stremio")) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createStremioCard(ctx)));
-        }
-        if (lower.contains("dizipal") || lower.contains("lipter")) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createDizipalCard(ctx)));
-        }
-        if (lower.contains("courville.nova")) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createNovaCard(ctx)));
-        }
-        if (lower.equals("com.android.vending")) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createPlayStoreCard(ctx)));
-        }
-        if (lower.contains("airplay") || lower.contains("airscreen")) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createAirPlayCard(ctx)));
-        }
-        if (lower.contains("mediaplayer")) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createUsbMediaCard(ctx)));
-        }
-        if (lower.contains("cloudstream") || lower.contains("turksinema")) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createTurkSinemaCard(ctx)));
-        }
-        if (lower.contains("chrome") || lower.contains("cromite")) {
-            return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(createChromeCard(ctx)));
+            rawCard = createLiveTvCard(ctx, rawLabel);
+        } else if (AppCatalog.isTizenTube(pkg)) {
+            rawCard = createYouTubeCard(ctx);
+        } else if (lower.contains("turkcell.ott") || lower.contains("tvplus")) {
+            rawCard = createTvPlusCard(ctx);
+        } else if (lower.contains("instantbits.cast")) {
+            rawCard = createWebVideoCasterCard(ctx);
+        } else if (lower.contains("nuvio") || lower.contains("alptugflix")) {
+            rawCard = createNuvioCard(ctx);
+        } else if (lower.contains("stremio")) {
+            rawCard = createStremioCard(ctx);
+        } else if (lower.contains("dizipal") || lower.contains("lipter")) {
+            rawCard = createDizipalCard(ctx);
+        } else if (lower.contains("courville.nova")) {
+            rawCard = createNovaCard(ctx);
+        } else if (lower.equals("com.android.vending")) {
+            rawCard = createPlayStoreCard(ctx);
+        } else if (lower.contains("airplay") || lower.contains("airscreen")) {
+            rawCard = createAirPlayCard(ctx);
+        } else if (lower.contains("mediaplayer")) {
+            rawCard = createUsbMediaCard(ctx);
+        } else if (lower.contains("cloudstream") || lower.contains("turksinema")) {
+            rawCard = createTurkSinemaCard(ctx);
+        } else if (lower.contains("chrome") || lower.contains("cromite")) {
+            rawCard = createChromeCard(ctx);
+        } else {
+            rawCard = createGenericProportionalCard(ctx, cleanLabel, rawIcon, getAppNeonColor(pkg));
         }
 
-        return new BitmapDrawable(ctx.getResources(),
-                scaleDownToTargetCard(createGenericProportionalCard(ctx, getCleanLabel(pkg, rawLabel), rawIcon, getAppNeonColor(pkg))));
+        Bitmap scaled = scaleDownToTargetCard(rawCard);
+        if (scaled != null) {
+            CARD_CACHE.put(cacheKey, scaled);
+        }
+        return new BitmapDrawable(ctx.getResources(), scaled);
     }
 
     /**
      * Builds a translucent visionOS / tvOS Liquid Glass card for the "Ekle" (+) add tile,
      * perfectly matching the translucent crystal cards of installed apps.
      */
-    public static Drawable createAddCard(Context ctx) {
+    public static synchronized Drawable createAddCard(Context ctx) {
+        if (cachedAddCard != null && !cachedAddCard.isRecycled()) {
+            return new BitmapDrawable(ctx.getResources(), cachedAddCard);
+        }
         Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
 
@@ -425,11 +466,12 @@ public final class AppArtwork {
         String label = ctx.getString(R.string.add);
         canvas.drawText(label, cx, CARD_H * 0.74f, textPaint);
 
-        return new BitmapDrawable(ctx.getResources(), scaleDownToTargetCard(bmp));
+        cachedAddCard = scaleDownToTargetCard(bmp);
+        return new BitmapDrawable(ctx.getResources(), cachedAddCard);
     }
 
     /**
-     * Argent Molten Chrome Gradient Paint (seangeng/argent):
+     * Molten Chrome Gradient Paint:
      * Reflective liquid mercury specular gradient with bright platinum horizons.
      */
     public static Paint createArgentChromePaint(float x0, float y0, float x1, float y1) {
@@ -708,12 +750,125 @@ public final class AppArtwork {
         return bmp;
     }
 
-    /** 4. Alptugflix (Nuvio) Liquid Glass Card: Liquid Glass crystal + Authentic Netflix Red ALPTUGFLIX Wordmark & Signature */
+    /**
+     * Renders a true multi-pass volumetric neon halo and 3D elevation drop-shadow behind an ARGB_8888 bitmap
+     * on software Canvas (where Paint.setShadowLayer is ignored for color bitmaps).
+     */
+    private static void drawBitmapNeonGlow(Canvas canvas, Bitmap src, float left, float top,
+                                           int glowColor, float outerRadius, float innerRadius) {
+        if (src == null || src.isRecycled()) return;
+        Bitmap alpha = src.extractAlpha();
+        if (alpha == null) return;
+
+        int r = Color.red(glowColor);
+        int g = Color.green(glowColor);
+        int b = Color.blue(glowColor);
+
+        // Pass 1: Wide atmospheric neon bloom
+        Paint outer = new Paint(Paint.ANTI_ALIAS_FLAG);
+        outer.setColor(Color.argb(210, r, g, b));
+        outer.setMaskFilter(new BlurMaskFilter(Math.max(1f, outerRadius), BlurMaskFilter.Blur.NORMAL));
+        canvas.drawBitmap(alpha, left, top, outer);
+
+        // Pass 2: Intense core neon corona
+        Paint inner = new Paint(Paint.ANTI_ALIAS_FLAG);
+        inner.setColor(Color.argb(245, Math.min(255, r + 35), Math.min(255, g + 35), Math.min(255, b + 35)));
+        inner.setMaskFilter(new BlurMaskFilter(Math.max(1f, innerRadius), BlurMaskFilter.Blur.NORMAL));
+        canvas.drawBitmap(alpha, left, top, inner);
+
+        // Pass 3: Subtle 3D elevation contact shadow so the emblem floats above the crystal surface
+        Paint drop = new Paint(Paint.ANTI_ALIAS_FLAG);
+        drop.setColor(Color.argb(150, 0, 0, 0));
+        drop.setMaskFilter(new BlurMaskFilter(5f, BlurMaskFilter.Blur.NORMAL));
+        canvas.drawBitmap(alpha, left, top + 2.5f, drop);
+
+        alpha.recycle();
+    }
+
+    /**
+     * Upgrades the raw ALPTUGFLIX wordmark bitmap:
+     * - Left "ALPTUG" glyphs are forged into high-contrast Liquid Platinum / Argent Chrome with 3D specular bevels.
+     * - Right "FLIX" glyphs are forged into vibrant Electric Cinema Ruby (#FF1423 -> #E50914) with metallic depth.
+     * - Applies top-lit meniscus glaze and diagonal anisotropic metallic luster sweep.
+     */
+    private static Bitmap enhanceAlptugflixWordmark(Bitmap src) {
+        if (src == null || src.isRecycled()) return src;
+        int w = src.getWidth();
+        int h = src.getHeight();
+        int[] pixels = new int[w * h];
+        src.getPixels(pixels, 0, w, 0, 0, w, h);
+
+        int splitX = Math.round(w * 0.635f);
+        for (int y = 0; y < h; y++) {
+            float ny = y / (float) Math.max(1, h - 1);
+            // Vertical anisotropic metallic reflection curve (bright crest at top & upper-mid, deep horizon, bright lower rim)
+            float metallicCurve = (ny < 0.35f)
+                    ? (1.18f - ny * 0.45f)
+                    : (ny < 0.65f ? (0.94f + (ny - 0.35f) * 0.55f) : (1.10f - (ny - 0.65f) * 0.35f));
+
+            for (int x = 0; x < w; x++) {
+                int idx = y * w + x;
+                int c = pixels[idx];
+                int a = (c >>> 24) & 0xFF;
+                if (a < 8) continue;
+
+                int r = (c >> 16) & 0xFF;
+                int g = (c >> 8) & 0xFF;
+                int b = c & 0xFF;
+
+                boolean isRedPart = (x >= splitX) || (r > g + 22 && r > b + 22);
+                if (!isRedPart) {
+                    // ALPTUG: Boost muted grey into gleaming Liquid Platinum / White Chrome while preserving 3D edge bevels
+                    float lum = (0.299f * r + 0.587f * g + 0.114f * b) / 255f;
+                    // S-curve contrast boost for the 3D bevel highlights
+                    float boosted = Math.min(1f, Math.max(0f, (lum - 0.42f) * 1.65f + 0.84f)) * metallicCurve;
+                    int nr = Math.min(255, Math.max(185, Math.round(boosted * 252f)));
+                    int ng = Math.min(255, Math.max(192, Math.round(boosted * 254f)));
+                    int nb = Math.min(255, Math.max(205, Math.round(boosted * 255f)));
+                    pixels[idx] = (a << 24) | (nr << 16) | (ng << 8) | nb;
+                } else {
+                    // FLIX: Transform dull brownish-red (#9E4B4B) into electric metallic Cinema Ruby (#FF1E2E -> #E50914)
+                    float lum = (0.55f * r + 0.25f * g + 0.20f * b) / 180f;
+                    float bevel = Math.min(1.25f, Math.max(0.75f, lum)) * metallicCurve;
+                    // Top specular crest gets hot ruby-coral highlight; body is pure electric crimson
+                    float topCrest = Math.max(0f, 1f - ny * 2.4f);
+                    int nr = Math.min(255, Math.max(215, Math.round(242f * bevel + topCrest * 30f)));
+                    int ng = Math.min(115, Math.max(6, Math.round(14f * bevel + topCrest * 58f)));
+                    int nb = Math.min(125, Math.max(12, Math.round(22f * bevel + topCrest * 64f)));
+                    pixels[idx] = (a << 24) | (nr << 16) | (ng << 8) | nb;
+                }
+            }
+        }
+
+        Bitmap vivid = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        vivid.setPixels(pixels, 0, w, 0, 0, w, h);
+        Bitmap lustered = applySubtleMetallicLusterToBitmap(vivid);
+        if (lustered != vivid && !vivid.isRecycled()) {
+            vivid.recycle();
+        }
+        return lustered;
+    }
+
+    /** 4. Alptugflix (Nuvio) Liquid Glass Card: Liquid Glass crystal + Metallic Chrome & Electric Ruby ALPTUGFLIX Wordmark */
     public static Bitmap createNuvioCard(Context ctx) {
         Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
-        int neon = Color.parseColor("#E50914"); // Authentic Netflix Signature Red
-        drawLiquidGlassCardBase(canvas, neon, CARD_W / 2f, CARD_H / 2f);
+        int neon = Color.parseColor("#FF1423"); // Electric Cinema Ruby Neon
+        drawLiquidGlassCardBase(canvas, neon, CARD_W * 0.58f, CARD_H / 2f);
+
+        // Secondary internal platinum-silver volumetric crystal glow under the "ALPTUG" side
+        Paint platGlow = new Paint(Paint.ANTI_ALIAS_FLAG);
+        platGlow.setShader(new RadialGradient(
+                CARD_W * 0.34f, CARD_H / 2f, 220f,
+                new int[]{
+                    Color.argb(64, 241, 245, 249),
+                    Color.argb(28, 226, 232, 240),
+                    Color.argb(0, 226, 232, 240)
+                },
+                new float[]{0f, 0.50f, 1f},
+                Shader.TileMode.CLAMP
+        ));
+        canvas.drawRoundRect(new RectF(2f, 2f, CARD_W - 2f, CARD_H - 2f), CORNER, CORNER, platGlow);
 
         Drawable wordmark = null;
         try {
@@ -725,21 +880,38 @@ public final class AppArtwork {
             int w = wordmark.getIntrinsicWidth();
             int h = wordmark.getIntrinsicHeight();
             if (w <= 0 || h <= 0) { w = 540; h = 200; }
-            float maxW = 390f;
-            float maxH = 142f;
+            float maxW = 408f;
+            float maxH = 150f;
             float scale = Math.min(maxW / w, maxH / h);
             int targetW = Math.max(1, Math.round(w * scale));
             int targetH = Math.max(1, Math.round(h * scale));
             int left = (CARD_W - targetW) / 2;
             int top = (CARD_H - targetH) / 2;
-            Bitmap wmBmp = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888);
-            Canvas wmCanvas = new Canvas(wmBmp);
+            Bitmap rawBmp = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888);
+            Canvas wmCanvas = new Canvas(rawBmp);
             wordmark.setBounds(0, 0, targetW, targetH);
             wordmark.draw(wmCanvas);
 
+            Bitmap wmBmp = enhanceAlptugflixWordmark(rawBmp);
+            if (wmBmp != rawBmp && !rawBmp.isRecycled()) rawBmp.recycle();
+
+            int splitScreenX = left + Math.round(targetW * 0.635f);
+
+            // 1. Dual-zone volumetric neon halo: Platinum-Crimson on "ALPTUG", Intense Electric Ruby on "FLIX"
+            canvas.save();
+            canvas.clipRect(0, 0, splitScreenX, CARD_H);
+            drawBitmapNeonGlow(canvas, wmBmp, left, top, Color.parseColor("#E2E8F0"), 26f, 10f);
+            canvas.restore();
+
+            canvas.save();
+            canvas.clipRect(splitScreenX, 0, CARD_W, CARD_H);
+            drawBitmapNeonGlow(canvas, wmBmp, left, top, neon, 34f, 14f);
+            canvas.restore();
+
+            // 2. Crisp metallic & specular wordmark on top
             Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-            p.setShadowLayer(36f, 0f, 0f, Color.argb(230, 229, 9, 20));
             canvas.drawBitmap(wmBmp, left, top, p);
+            wmBmp.recycle();
         } else {
             Paint text = createCrispTextPaint(ctx, 64f, neon);
             text.setLetterSpacing(0.06f);
@@ -984,11 +1156,13 @@ public final class AppArtwork {
             rawIcon.setBounds(0, 0, iconSize, iconSize);
             rawIcon.draw(icCanvas);
 
-            // Apply subtle metallic luster over authentic app icon colors (zero grayscale desaturation!)
+            // Apply subtle metallic luster over authentic app icon colors + real volumetric neon glow
             Bitmap lusterIcon = applySubtleMetallicLusterToBitmap(iconBmp);
+            drawBitmapNeonGlow(canvas, lusterIcon, left, top, neon, 28f, 11f);
             Paint icPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-            icPaint.setShadowLayer(32f, 0f, 0f, Color.argb(235, Color.red(neon), Color.green(neon), Color.blue(neon)));
             canvas.drawBitmap(lusterIcon, left, top, icPaint);
+            if (lusterIcon != iconBmp && !lusterIcon.isRecycled()) lusterIcon.recycle();
+            if (!iconBmp.isRecycled()) iconBmp.recycle();
 
             Paint text = createCrispTextPaint(ctx, label.length() > 12 ? 38f : 48f, neon);
             Paint.FontMetrics fm = text.getFontMetrics();

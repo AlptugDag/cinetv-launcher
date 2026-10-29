@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07070c">
+<title>Alptuğ Dağ · Yönetmen & Yaratıcı Teknoloji</title>
+<link rel="icon" type="image/png" href="static/icon.png">
+<link rel="apple-touch-icon" href="static/icon.png">
+<style>
+:root{
+  --bg:#07070c;--ink:#f8fafc;--dim:rgba(235,235,245,.72);--edge:rgba(255,255,255,.16);
+  --accent:#c4b5fd;--crimson:#e50914;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);
+  font:15.5px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",Roboto,sans-serif;
+  overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none;
+  background:radial-gradient(42% 38% at 20% 10%,rgba(139,92,246,.38),transparent 70%),
+             radial-gradient(38% 32% at 85% 28%,rgba(229,9,20,.22),transparent 70%),
+             radial-gradient(45% 40% at 50% 100%,rgba(56,189,248,.18),transparent 70%);
+  filter:blur(14px);transform:translateZ(0)}
+main{max-width:460px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 28px) 18px calc(env(safe-area-inset-bottom,0px) + 44px);text-align:center}
+.hero-card{position:relative;background:linear-gradient(165deg,rgba(255,255,255,.10),rgba(255,255,255,.04));
+  border:1px solid var(--edge);border-radius:28px;padding:26px 20px 22px;
+  -webkit-backdrop-filter:blur(28px) saturate(170%);backdrop-filter:blur(28px) saturate(170%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 20px 50px rgba(0,0,0,.5)}
+.photo-wrap{position:relative;display:inline-block}
+.photo-wrap::after{content:"";position:absolute;inset:-5px;border-radius:50%;
+  background:conic-gradient(from 0deg,#f58529,#dd2a7b,#8134af,#38bdf8,#f58529);
+  z-index:-1;opacity:.85;filter:blur(6px);animation:spinGlow 8s linear infinite}
+@keyframes spinGlow{to{transform:rotate(360deg)}}
+.photo{width:132px;height:132px;border-radius:50%;object-fit:cover;object-position:70% 30%;
+  border:2.5px solid rgba(255,255,255,.3);box-shadow:0 12px 34px rgba(0,0,0,.55);display:block}
+h1{margin:14px 0 2px;font-size:clamp(24px,6vw,30px);letter-spacing:-.02em;font-weight:800}
+.sig{width:116px;height:48px;object-fit:contain;margin:2px auto 0;display:block;opacity:.94}
+.role{color:var(--accent);font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-top:4px}
+.pill{display:inline-block;margin-top:10px;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;
+  background:rgba(196,181,253,.14);border:1px solid rgba(196,181,253,.32);color:#e9d5ff}
+p{color:var(--dim);margin:14px 0 0;font-size:14.2px;text-align:left;background:rgba(0,0,0,.26);
+  border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:14px 16px;line-height:1.55}
+.links{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:360px){.row2{grid-template-columns:1fr}}
+a{display:block;padding:14px 16px;border-radius:18px;color:#fff;text-decoration:none;font-weight:700;font-size:15.5px;
+  border:1px solid var(--edge);transition:transform .2s cubic-bezier(.22,1,.36,1),box-shadow .2s;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22)}
+a:active{transform:scale(.96)}
+.ig{background:linear-gradient(135deg,#f58529,#dd2a7b 45%,#8134af 75%,#515bd4);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 12px 28px rgba(221,42,123,.42)}
+.film{background:linear-gradient(135deg,#dc2626,#7f1d1d);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 10px 26px rgba(220,38,38,.38)}
+.trailer{background:linear-gradient(135deg,#334155,#0f172a);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 8px 20px rgba(0,0,0,.4)}
+.yt{background:linear-gradient(180deg,#ff3b3b,#c80000)}
+.li{background:linear-gradient(180deg,#0a66c2,#004182);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 22px rgba(10,102,194,.35)}
+.lb{background:linear-gradient(90deg,#ff8000,#00e054 50%,#40bcf4)}
+.gh{background:linear-gradient(180deg,#2d333b,#161b22)}
+.cine{background:rgba(255,255,255,.08)}
+.cine b{color:#ff2d2d}
+small{display:block;margin-top:3px;color:rgba(255,255,255,.82);font-weight:400;font-size:11.8px}
+</style>
+</head>
+<body>
+<main>
+  <div class="hero-card">
+    <div class="photo-wrap">
+      <img class="photo" src="static/creator.jpg" alt="Alptuğ Dağ" onerror="this.parentElement.hidden=true">
+    </div>
+    <h1>Alptuğ Dağ</h1>
+    <img class="sig" src="static/signature.png" alt="" onerror="this.remove()">
+    <div class="role" id="role">Yönetmen · Kurgu & Yaratıcı Teknoloji · Seslendirme</div>
+    <div class="pill" id="collab">✦ Film, Reklam, Kurgu & Yaratıcı Projeler İçin İletişime Geçin</div>
+    <p id="bio">Alptuğ Dağ (d. 2000, Ankara); sinemayı, kurguyu ve yaratıcı yazılım mimarisini tek potada buluşturan bağımsız bir yönetmen, içerik üreticisi ve seslendirme sanatçısıdır. Yönettiği kısa film <i>Sessiz</i> (2023) ile tanınır. Ev sinemasını reklamsız ve özgür kılmak için CineTV'yi sıfırdan tasarlayıp ücretsiz olarak armağan etti.</p>
+  </div>
+  <div class="links">
+    <a class="ig" href="https://instagram.com/alptugdag" target="_blank" rel="noopener" id="igLink">📸 Instagram'da Takip Et · @alptugdag<small>Yeni Film Projeleri, Kamera Arkası & Doğrudan İletişim (DM)</small></a>
+    <div class="row2">
+      <a class="film" href="https://www.youtube.com/watch?v=bLvdsibrR-I&t=9s" target="_blank" rel="noopener" id="sessizBtn">▶ Kısa Film: Sessiz<small>2023 · Filmi İzle</small></a>
+      <a class="trailer" href="https://www.youtube.com/watch?v=jb7BM-NHreg&feature=youtu.be" target="_blank" rel="noopener" id="sessizTrBtn">🎞️ Resmi Fragman<small>Sessiz (2023) · Fragman</small></a>
+    </div>
+    <a class="li" href="https://www.linkedin.com/in/AlptugDag/" target="_blank" rel="noopener" id="liLink">💼 LinkedIn · İş Birliği & Kariyer<small>Yönetmenlik, Kurgu, Seslendirme & Yaratıcı Teknoloji</small></a>
+    <a class="yt" href="https://youtube.com/@AlptugDag?sub_confirmation=1" target="_blank" rel="noopener">YouTube Kanalı<small>@AlptugDag · Abone Ol</small></a>
+    <div class="row2">
+      <a class="lb" href="https://letterboxd.com/AlptugDag/" target="_blank" rel="noopener">Letterboxd<small>Film Günlüğü</small></a>
+      <a class="gh" href="https://github.com/AlptugDag" target="_blank" rel="noopener">GitHub<small>Açık Kaynak</small></a>
+    </div>
+    <a class="cine" href="https://github.com/AlptugDag/cinetv-launcher" target="_blank" rel="noopener">Cine<b>TV</b> Bağımsız Ev Sineması<small>Designed & Built by Alptuğ Dağ</small></a>
+  </div>
+</main>
+<script>
+if (!(navigator.language || "tr").toLowerCase().startsWith("tr")) {
+  document.documentElement.lang = "en";
+  document.getElementById("role").textContent = "Director · Creative Technologist & Editor · Voice Artist";
+  document.getElementById("collab").textContent = "✦ Available for Directing, Editing & Creative Tech Projects";
+  document.getElementById("bio").innerHTML = "Alptuğ Dağ (b. 2000, Ankara) is an independent film director, creative technologist, editor and voice artist known for his short film <i>Sessiz</i> (2023). He designed and built CineTV from scratch as a free gift to cinema lovers.";
+  document.getElementById("igLink").innerHTML = "📸 Follow on Instagram · @alptugdag<small>Upcoming Films, Behind the Scenes & Direct Message</small>";
+  document.getElementById("sessizBtn").innerHTML = "▶ Short Film: Sessiz<small>2023 · Watch Full Film</small>";
+  document.getElementById("sessizTrBtn").innerHTML = "🎞️ Official Trailer<small>Sessiz (2023) · Watch Trailer</small>";
+  document.getElementById("liLink").innerHTML = "💼 LinkedIn · Collaborations & Career<small>Directing, Editing, Voice & Creative Technology</small>";
+}
+</script>
+</body>
+</html>

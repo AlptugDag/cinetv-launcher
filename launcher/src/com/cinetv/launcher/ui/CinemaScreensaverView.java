@@ -386,22 +386,38 @@ public class CinemaScreensaverView extends View {
     private void drawClock(Canvas c, int w, int h, long now) {
         float cx = w / 2f, cy = h * 0.30f;
         float logoSize = Math.min(w, h) * 0.15f;
-        int hue = Color.HSVToColor(new float[]{(now % 48_000L) / 48_000f * 360f, 0.6f, 0.9f});
-        aura.setShader(new RadialGradient(cx, cy, logoSize * 1.4f,
-                new int[]{UiKit.withAlpha(hue, 0x30), UiKit.withAlpha(hue, 0x10), Color.TRANSPARENT},
-                new float[]{0f, 0.6f, 1f}, Shader.TileMode.CLAMP));
+        int hueBucket = (int) ((now % 48_000L) / 250L);
+        if (hueBucket != cachedHueBucket || cachedAuraShader == null || cachedAuraW != w || cachedAuraH != h) {
+            cachedHueBucket = hueBucket;
+            cachedAuraW = w;
+            cachedAuraH = h;
+            clockHsv[0] = (now % 48_000L) / 48_000f * 360f;
+            clockHsv[1] = 0.6f;
+            clockHsv[2] = 0.9f;
+            cachedHue = Color.HSVToColor(clockHsv);
+            cachedAuraShader = new RadialGradient(cx, cy, logoSize * 1.4f,
+                    new int[]{UiKit.withAlpha(cachedHue, 0x30), UiKit.withAlpha(cachedHue, 0x10), Color.TRANSPARENT},
+                    new float[]{0f, 0.6f, 1f}, Shader.TileMode.CLAMP);
+            aura.setShader(cachedAuraShader);
+        }
         c.drawCircle(cx, cy, logoSize * 1.4f, aura);
         mark.setAlpha((int) ((Math.sin(now * 0.001) * 0.08 + 0.52) * 255));
         dst.set(cx - logoSize / 2f, cy - logoSize / 2f, cx + logoSize / 2f, cy + logoSize / 2f);
         c.drawBitmap(signature, null, dst, mark);
 
-        Date d = new Date();
+        long wallSec = System.currentTimeMillis() / 1000L;
+        if (wallSec != cachedWallSec || cachedTimeStr == null || cachedDateStr == null) {
+            cachedWallSec = wallSec;
+            clockDate.setTime(wallSec * 1000L);
+            cachedTimeStr = timeFmt.format(clockDate);
+            cachedDateStr = dateFmt.format(clockDate).toUpperCase(Locale.getDefault());
+        }
         clock.setTextSize(h * 0.075f);
-        clock.setShadowLayer(26f, 0, 4f, UiKit.withAlpha(hue, 0x77));
+        clock.setShadowLayer(26f, 0, 4f, UiKit.withAlpha(cachedHue, 0x77));
         float clockY = cy + logoSize / 2f + h * 0.085f;
-        c.drawText(timeFmt.format(d), cx, clockY, clock);
+        c.drawText(cachedTimeStr, cx, clockY, clock);
         date.setTextSize(h * 0.019f);
-        c.drawText(dateFmt.format(d).toUpperCase(Locale.getDefault()), cx, clockY + h * 0.04f, date);
+        c.drawText(cachedDateStr, cx, clockY + h * 0.04f, date);
 
         if (now - specialAt > 10_000L) {
             specialAt = now;
@@ -422,6 +438,12 @@ public class CinemaScreensaverView extends View {
         }
     }
 
+    private final float[] clockHsv = new float[3];
+    private final Date clockDate = new Date();
+    private int cachedHueBucket = -1, cachedAuraW = -1, cachedAuraH = -1, cachedHue = Color.WHITE;
+    private RadialGradient cachedAuraShader;
+    private long cachedWallSec = -1L;
+    private String cachedTimeStr, cachedDateStr;
     private final Paint specialText = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint specialIcon = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF specialBox = new RectF();

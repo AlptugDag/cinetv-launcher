@@ -193,7 +193,7 @@ public final class AppLauncher {
 
     /** Opens a title on Nuvio's detail/stream page; falls back to Nuvio's start screen. */
     public static boolean openInNuvio(Context ctx, String title, String imdbId, String type, String posterUrl) {
-        if (title != null && "sessiz".equals(Creator.fold(title))) {
+        if ((title != null && "sessiz".equals(Creator.fold(title))) || "tt38983576".equals(imdbId)) {
             return openYouTubeVideo(ctx, Creator.SESSIZ_YOUTUBE_URL);
         }
         if (imdbId != null && (imdbId.startsWith("tv:") || "tv".equals(type) || "channel".equals(type))) {
