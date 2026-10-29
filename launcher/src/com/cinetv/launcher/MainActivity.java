@@ -226,6 +226,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         TvWebRemoteServer.start(this);
         AppUpdater.checkAndAutoUpdateOnBoot(this);
         MemoryOptimizer.ensureAirPlayReceiver(this);
+        com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
 
         if (!Prefs.get(this).getBoolean("tv_opt_auto_applied", false)) {
             Prefs.get(this).edit().putBoolean("tv_opt_auto_applied", true).apply();
@@ -314,6 +315,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         refreshWeather();
         loadApps(false);
         MemoryOptimizer.ensureAirPlayReceiver(this);
+        com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
         MemoryOptimizer.sweepAsync(this);
         PerformanceProfile.noteMemory(this);
         AppUpdater.checkAndAutoUpdateOnBoot(this);
@@ -540,6 +542,23 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             return true;
         }
         if (down && e.getRepeatCount() == 0) {
+            int code = e.getKeyCode();
+            if (code == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || code == KeyEvent.KEYCODE_HEADSETHOOK) {
+                if (home.shelf != null) {
+                    home.shelf.onKeyDown(KeyEvent.KEYCODE_DPAD_CENTER, e);
+                    return true;
+                }
+            } else if (code == KeyEvent.KEYCODE_MEDIA_NEXT) {
+                if (home.shelf != null) {
+                    home.shelf.step(1);
+                    return true;
+                }
+            } else if (code == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
+                if (home.shelf != null) {
+                    home.shelf.step(-1);
+                    return true;
+                }
+            }
             String action = HardwareKeys.actionFor(this, e.getKeyCode(), e.getScanCode());
             if (action != null) {
                 if (!HardwareKeys.perform(this, action)) onAllApps();

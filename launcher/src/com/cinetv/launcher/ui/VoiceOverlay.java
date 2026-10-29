@@ -262,6 +262,7 @@ public class VoiceOverlay extends FrameLayout {
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag());
             intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
             intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
+            startBluetoothScoIfConnected();
             recognizer.startListening(intent);
         } catch (Throwable t) {
             cleanup();
@@ -283,7 +284,36 @@ public class VoiceOverlay extends FrameLayout {
         }).start();
     }
 
+    private boolean scoActive = false;
+
+    private void startBluetoothScoIfConnected() {
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+            if (am != null && (am.isBluetoothA2dpOn() || am.isBluetoothScoAvailableOffCall())) {
+                am.startBluetoothSco();
+                am.setBluetoothScoOn(true);
+                scoActive = true;
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("CineTvVoice", "Bluetooth SCO initiation: " + t);
+        }
+    }
+
+    private void stopBluetoothSco() {
+        if (!scoActive) return;
+        scoActive = false;
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                am.stopBluetoothSco();
+                am.setBluetoothScoOn(false);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     private void cleanup() {
+        stopBluetoothSco();
         if (recognizer != null) {
             try {
                 recognizer.stopListening();

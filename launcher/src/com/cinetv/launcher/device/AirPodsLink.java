@@ -33,6 +33,15 @@ public final class AirPodsLink {
     private static final String TAG = "CineTvAirPods";
     private static final long EVERY_MS = 30_000L;
 
+    private static AirPodsLink instance;
+
+    public static synchronized void ensureStarted(Context ctx) {
+        if (instance == null) {
+            instance = new AirPodsLink(ctx);
+        }
+        instance.start();
+    }
+
     private final Context ctx;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private BluetoothA2dp a2dp;
@@ -54,10 +63,15 @@ public final class AirPodsLink {
     private final BroadcastReceiver connected = new BroadcastReceiver() {
         @Override
         public void onReceive(Context c, Intent i) {
-            if (i.getIntExtra(BluetoothProfile.EXTRA_STATE, -1) != BluetoothProfile.STATE_CONNECTED) return;
+            int state = i.getIntExtra(BluetoothProfile.EXTRA_STATE, -1);
             BluetoothDevice d = i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-            if (d != null && isHeadphones(d)) {
-                Toast.makeText(ctx, ctx.getString(R.string.airpods_connected, name(d)), Toast.LENGTH_SHORT).show();
+            if (state == BluetoothProfile.STATE_CONNECTED) {
+                if (d != null && isHeadphones(d)) {
+                    Toast.makeText(ctx, ctx.getString(R.string.airpods_connected, name(d)), Toast.LENGTH_SHORT).show();
+                    applyHeadphoneSpatialAudio(ctx, true);
+                }
+            } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
+                applyHeadphoneSpatialAudio(ctx, false);
             }
         }
     };
@@ -80,6 +94,17 @@ public final class AirPodsLink {
                 @Override
                 public void onServiceConnected(int profile, BluetoothProfile proxy) {
                     a2dp = (BluetoothA2dp) proxy;
+                    try {
+                        if (a2dp != null) {
+                            for (BluetoothDevice d : a2dp.getConnectedDevices()) {
+                                if (isHeadphones(d)) {
+                                    applyHeadphoneSpatialAudio(ctx, true);
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                    }
                 }
 
                 @Override
@@ -141,6 +166,25 @@ public final class AirPodsLink {
             return n == null ? "" : n;
         } catch (Throwable t) {
             return "";
+        }
+    }
+
+    /**
+     * Activates or disables TV's internal virtual surround and binaural 3D stage for headphones.
+     * When enabled, multichannel 5.1/7.1 film tracks in Nuvio or Nova Player are spatialized
+     * across stereo headphones instead of flat stereo downmixing.
+     */
+    public static void applyHeadphoneSpatialAudio(Context ctx, boolean enable) {
+        try {
+            android.content.ContentResolver cr = ctx.getContentResolver();
+            int val = enable ? 1 : 0;
+            android.provider.Settings.Global.putInt(cr, "sound_advanced_surround_virtualizer", val);
+            android.provider.Settings.Global.putInt(cr, "sound_surround_virtualizer", val);
+            android.provider.Settings.Global.putInt(cr, "virtual_surround", val);
+            android.provider.Settings.Global.putInt(cr, "sound_dts_virtual_x", val);
+            Log.i(TAG, "Headphone spatial binaural virtualizer set to " + enable);
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed setting spatial audio virtualizer: " + t);
         }
     }
 }

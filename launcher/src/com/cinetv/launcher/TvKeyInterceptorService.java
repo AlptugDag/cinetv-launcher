@@ -244,8 +244,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
             MemoryOptimizer.applyTvOptimizations(this);
         } catch (Throwable ignored) {}
         try {
-            airPods = new com.cinetv.launcher.device.AirPodsLink(this);
-            airPods.start();
+            com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
         } catch (Throwable t) {
             android.util.Log.w("CineTvKeyService", "AirPodsLink start failed: " + t.getMessage());
         }
