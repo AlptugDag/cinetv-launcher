@@ -463,6 +463,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (toastMsg != null && !toastMsg.trim().isEmpty()) {
             Toast.makeText(this, toastMsg, Toast.LENGTH_LONG).show();
         }
+        String bannerTitle = intent.getStringExtra("banner_title");
+        if (bannerTitle != null && !bannerTitle.isEmpty()) {
+            String bannerMsg = intent.getStringExtra("banner_msg");
+            handler.postDelayed(() -> {
+                if (home != null) home.showUpdateBanner(bannerTitle, bannerMsg, false);
+            }, 300);
+        }
         String theme = intent.getStringExtra("theme");
         if (theme != null && !theme.isEmpty()) applyTheme(theme);
         String action = intent.getStringExtra("action");
