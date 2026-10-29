@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CineTV by Alptuğ Dağ - Windows PC</title>
+<link rel="icon" type="image/png" href="assets/icon.png">
+<style>
+:root {
+  --bg: #07070C;
+  --ink: #F5F5F7;
+  --ink-dim: rgba(235, 235, 245, 0.6);
+  --ink-faint: rgba(235, 235, 245, 0.32);
+  --glass: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.16);
+  --glass-panel: rgba(22, 22, 28, 0.75);
+  --accent: #38BDF8;
+  --accent-glow: rgba(56, 189, 248, 0.35);
+  --nuvio: #A855F7;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  user-select: none;
+}
+
+/* Window Titlebar for Frameless Electron */
+.titlebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 100;
+  -webkit-app-region: drag;
+  background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, transparent 100%);
+}
+.titlebar .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.titlebar .brand img.logo { width: 20px; height: 20px; border-radius: 4px; }
+.titlebar .brand img.sig { height: 18px; opacity: 0.85; }
+.titlebar .window-controls {
+  display: flex;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+.titlebar .window-controls button {
+  background: none;
+  border: none;
+  color: var(--ink-dim);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+.titlebar .window-controls button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink);
+}
+.titlebar .window-controls button.close:hover {
+  background: #EF4444;
+  color: #FFF;
+}
+
+/* Stage & Environment Background */
+#stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  perspective: 1200px;
+}
+
+.environment {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+/* Film Closet 3D Room Background */
+.env-closet {
+  background: 
+    radial-gradient(circle at 50% 12%, rgba(255, 255, 250, 0.25) 0%, transparent 60%),
+    linear-gradient(180deg, #1C1B19 0%, #11100F 100%);
+}
+.env-closet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: 
+    repeating-linear-gradient(90deg, #2A2926 0px, #2A2926 2px, transparent 2px, transparent 40px),
+    repeating-linear-gradient(0deg, #383733 0px, #383733 8px, transparent 8px, transparent 140px);
+  opacity: 0.18;
+}
+/* Side walls perspective */
+.closet-wall-left {
+  position: absolute;
+  left: 0; top: 0; bottom: 0; width: 22%;
+  background: linear-gradient(90deg, rgba(0,0,0,0.85) 0%, transparent 100%);
+  transform-origin: left;
+  transform: rotateY(45deg);
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+.closet-wall-right {
+  position: absolute;
+  right: 0; top: 0; bottom: 0; width: 22%;
+  background: linear-gradient(-90deg, rgba(0,0,0,0.85) 0%, transparent 100%);
+  transform-origin: right;
+  transform: rotateY(-45deg);
+  border-left: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Proscenium Curtains (Cinema Hall Theme) */
+.cinema-curtain {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 140px;
+  z-index: 25;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s;
+  background: repeating-linear-gradient(90deg, #3A030A 0px, #6B0813 18px, #2D0207 36px);
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.7);
+}
+.cinema-curtain.left { left: 0; border-right: 2px solid #850B19; }
+.cinema-curtain.right { right: 0; border-left: 2px solid #850B19; }
+.theme-cinema .cinema-curtain { opacity: 0.92; }
+
+/* HUD Visor Header */
+header.hud {
+  position: relative;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 48px 64px 16px;
+  transform-style: preserve-3d;
+}
+.hud-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transform: rotateY(18deg) translateZ(16px);
+  transform-origin: left center;
+}
+.hud-clock {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.hud-date-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hud-date {
+  font-size: 16px;
+  color: var(--ink-dim);
+  font-weight: 500;
+}
+.hud-sig-line {
+  font-size: 12px;
+  color: var(--ink-faint);
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.hud-search-box {
+  flex: 1;
+  max-width: 620px;
+  margin: 0 48px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--glass-panel);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(24px) saturate(160%);
+  padding: 12px 20px;
+  border-radius: 999px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.45);
+  transform: translateZ(26px);
+  transition: all 0.25s;
+}
+.hud-search-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow), 0 16px 48px rgba(0,0,0,0.55);
+}
+.hud-search-box svg { opacity: 0.6; flex-shrink: 0; }
+.hud-search-box input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+}
+.hud-search-box .mic-btn {
+  background: none;
+  border: none;
+  color: var(--ink-dim);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  padding: 6px;
+  transition: all 0.2s;
+}
+.hud-search-box .mic-btn:hover {
+  background: rgba(255,255,255,0.15);
+  color: var(--accent);
+}
+
+.hud-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: rotateY(-18deg) translateZ(16px);
+  transform-origin: right center;
+}
+.hud-icon-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--glass-panel);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+.hud-icon-btn:hover {
+  transform: scale(1.12);
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+/* Tooltip Balloon matching HUD visor curvature */
+.hud-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(18, 20, 26, 0.88);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  backdrop-filter: blur(24px) saturate(180%);
+  color: #FFF;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 8px 18px;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 16px rgba(56, 189, 248, 0.25);
+  opacity: 0;
+  transform-origin: center top;
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.2, 0.9, 0.2, 1);
+  z-index: 500;
+  white-space: nowrap;
+}
+.hud-tooltip.visible {
+  opacity: 1;
+}
+
+/* 3D Vitrin Shelf Area */
+.shelf-area {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  perspective: 1400px;
+  z-index: 20;
+}
+.shelf-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 24px;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+}
+
+/* The Shelf Furniture Plank */
+.shelf-plank {
+  position: absolute;
+  bottom: 22%;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background: linear-gradient(180deg, #4A3A2C 0%, #2A1F16 70%, #150F0A 100%);
+  box-shadow: 0 14px 35px rgba(0,0,0,0.85), inset 0 2px 0 rgba(255,255,255,0.18);
+  border-top: 1px solid rgba(255,255,255,0.12);
+  z-index: 5;
+}
+.shelf-plank::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0; right: 0;
+  height: 45px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+}
+
+/* 3D DVD Carousel */
+.shelf-track {
+  position: relative;
+  width: 100%;
+  height: 380px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transform-style: preserve-3d;
+}
+
+.dvd-case {
+  position: absolute;
+  width: 220px;
+  height: 325px;
+  border-radius: 6px 12px 12px 6px;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform 0.56s cubic-bezier(0.12, 0.85, 0.25, 1), filter 0.4s ease;
+  will-change: transform;
+}
+.dvd-case:hover {
+  filter: brightness(1.12);
+}
+.dvd-case .box-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px 12px 12px 6px;
+  overflow: hidden;
+  box-shadow: 0 16px 38px rgba(0,0,0,0.75), -8px 0 22px rgba(0,0,0,0.5);
+  background: #111;
+}
+.dvd-case img.cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* Specular clear sleeve plastic sheen */
+.dvd-case .sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px 12px 12px 6px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0.06) 35%, transparent 55%, rgba(255,255,255,0.18) 100%);
+  pointer-events: none;
+  box-shadow: inset 2px 0 4px rgba(255,255,255,0.45), inset -1px 0 3px rgba(0,0,0,0.6);
+}
+/* DVD case spine highlight */
+.dvd-case .spine {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 9px;
+  border-radius: 6px 0 0 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.3), rgba(0,0,0,0.55));
+  pointer-events: none;
+}
+.dvd-case .badge-4k {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #FFF;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+}
+
+/* Bottom Glass Dock */
+.dock {
+  position: relative;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 32px;
+}
+.dock-card {
+  width: 175px;
+  height: 90px;
+  background: var(--glass-panel);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.24s cubic-bezier(0.2, 0.9, 0.2, 1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+.dock-card:hover {
+  transform: translateY(-8px) scale(1.05);
+  border-color: var(--accent);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.6), 0 0 25px var(--accent-glow);
+}
+.dock-card.nuvio-card {
+  border-color: rgba(168, 85, 247, 0.4);
+}
+.dock-card.nuvio-card:hover {
+  border-color: #C084FC;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.6), 0 0 25px rgba(168, 85, 247, 0.5);
+}
+.dock-card span.label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================
+   DVD OPENING VIEW MODAL (Exact Physical Booklet & Tray)
+   ============================================================ */
+#modal-dvd {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(25px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  perspective: 1600px;
+}
+#modal-dvd.active { display: flex; }
+
+.dvd-open-stage {
+  position: relative;
+  width: 980px;
+  height: 600px;
+  display: flex;
+  transform-style: preserve-3d;
+  animation: dvdAppear 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes dvdAppear {
+  0% { transform: scale(0.85) translateZ(-150px); opacity: 0; }
+  100% { transform: scale(1) translateZ(0); opacity: 1; }
+}
+
+/* Left Page: Archival Parchment Booklet with Watermark */
+.dvd-booklet {
+  position: relative;
+  flex: 1;
+  background: #EEE8DC;
+  border-radius: 12px 4px 4px 12px;
+  overflow: hidden;
+  box-shadow: -15px 20px 45px rgba(0,0,0,0.85), inset -2px 0 6px rgba(0,0,0,0.25);
+  padding: 38px 42px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+/* Authentic Film Image Watermark (Barely visible, laid into pulp) */
+.booklet-watermark {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: saturate(0.08) brightness(1.25);
+  opacity: 0.12;
+  pointer-events: none;
+}
+/* Tactile Vergé Paper Laid Lines */
+.booklet-laid-lines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(60, 50, 40, 0.04) 0px, rgba(60, 50, 40, 0.04) 1px, transparent 1px, transparent 6px);
+  pointer-events: none;
+}
+.booklet-content {
+  position: relative;
+  z-index: 2;
+  color: #1A1A1E;
+}
+.booklet-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  font-family: Georgia, serif;
+}
+.booklet-meta {
+  font-size: 14px;
+  font-weight: 700;
+  color: #4A4A52;
+  margin-bottom: 18px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.booklet-meta span.rating {
+  background: #D5CEBF;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 800;
+  color: #18181B;
+}
+.booklet-overview {
+  font-size: 15px;
+  line-height: 1.55;
+  color: #2D2D35;
+  font-family: Georgia, serif;
+  margin-bottom: 20px;
+}
+.booklet-director {
+  font-size: 14px;
+  font-style: italic;
+  color: #4B4B55;
+}
+
+/* Right Page: Disc Tray & Trailer Player */
+.dvd-tray {
+  position: relative;
+  flex: 1;
+  background: #18181D;
+  border-radius: 4px 12px 12px 4px;
+  border-left: 2px solid #0D0D10;
+  box-shadow: 15px 20px 45px rgba(0,0,0,0.85);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+}
+.tray-video-slot {
+  width: 100%;
+  height: 250px;
+  border-radius: 10px;
+  background: #000;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 8px 24px rgba(0,0,0,0.5);
+}
+.tray-video-slot iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+/* Disc Tray with Holographic Rainbow Disc */
+.disc-holder {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  margin-top: 14px;
+}
+.optical-disc {
+  width: 175px;
+  height: 175px;
+  border-radius: 50%;
+  background: 
+    radial-gradient(circle at center, transparent 18px, #333 19px, #222 28px, transparent 29px),
+    conic-gradient(from 45deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4, #FFEEAD, #FF6B6B);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.7), inset 0 0 15px rgba(255,255,255,0.4);
+  position: relative;
+  display: grid;
+  place-items: center;
+  animation: discSpin 16s linear infinite;
+}
+@keyframes discSpin { to { transform: rotate(360deg); } }
+.disc-center {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  border: 4px solid #111;
+}
+
+/* Actions inside DVD */
+.dvd-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+}
+.btn-nuvio-play {
+  flex: 1;
+  background: linear-gradient(135deg, #9333EA 0%, #7E22CE 100%);
+  color: #FFF;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 8px 20px rgba(147, 51, 234, 0.4);
+  transition: all 0.2s;
+}
+.btn-nuvio-play:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(147, 51, 234, 0.6);
+  background: linear-gradient(135deg, #A855F7 0%, #9333EA 100%);
+}
+.btn-close-modal {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ink);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 14px 22px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-close-modal:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Gamze Voice Assistant Floating Bubble */
+.gamze-bubble {
+  position: fixed;
+  bottom: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+  background: rgba(18, 18, 24, 0.92);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  backdrop-filter: blur(28px);
+  border-radius: 20px;
+  padding: 18px 26px;
+  max-width: 620px;
+  box-shadow: 0 16px 45px rgba(0,0,0,0.65), 0 0 30px rgba(168, 85, 247, 0.25);
+  display: none;
+  align-items: center;
+  gap: 16px;
+  animation: bubblePop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes bubblePop {
+  0% { transform: translateX(-50%) translateY(20px); opacity: 0; }
+  100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+.gamze-bubble.active { display: flex; }
+.gamze-orb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: conic-gradient(#F472B6, #A78BFA, #22D3EE, #F472B6);
+  animation: orbPulse 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1); filter: blur(0px); }
+  50% { transform: scale(1.15); filter: blur(2px); }
+}
+.gamze-text {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+/* Notification Toast / Banner */
+.tv-banner {
+  position: fixed;
+  top: 48px;
+  right: 48px;
+  z-index: 300;
+  background: rgba(24, 24, 30, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(24px);
+  border-radius: 18px;
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 14px 35px rgba(0,0,0,0.6);
+  transform: translateY(-40px);
+  opacity: 0;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.tv-banner.show {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.tv-banner .icon {
+  width: 26px; height: 26px; border-radius: 50%; background: #22C55E; display: grid; place-items: center; color: #FFF; font-weight: 800; font-size: 13px;
+}
+.tv-banner .texts b { display: block; font-size: 15px; }
+.tv-banner .texts span { font-size: 13px; color: var(--ink-dim); }
+</style>
+</head>
+<body class="theme-closet">
+
+<div class="titlebar">
+  <div class="brand">
+    <img class="logo" src="assets/icon.png" alt="CineTV">
+    <img class="sig" src="assets/signature.png" alt="Alptuğ Dağ">
+    <span>CineTV · Windows PC</span>
+  </div>
+  <div class="window-controls">
+    <button onclick="windowControl('minimize')">&#8722;</button>
+    <button onclick="windowControl('fullscreen')">&#9633;</button>
+    <button class="close" onclick="windowControl('close')">&#10005;</button>
+  </div>
+</div>
+
+<div id="stage">
+  <div class="environment env-closet" id="env">
+    <div class="closet-wall-left"></div>
+    <div class="closet-wall-right"></div>
+  </div>
+
+  <div class="cinema-curtain left"></div>
+  <div class="cinema-curtain right"></div>
+
+  <!-- HUD Visor Header -->
+  <header class="hud">
+    <div class="hud-left">
+      <div class="hud-clock" id="clock">00:00</div>
+      <div class="hud-date-col">
+        <div class="hud-date" id="date">Yükleniyor...</div>
+        <div class="hud-sig-line">CineTV by Alptuğ Dağ</div>
+      </div>
+    </div>
+
+    <form class="hud-search-box" id="searchForm" onsubmit="return handleSearch(event)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="text" id="searchInput" placeholder="Film, yönetmen ara veya Gamze'ye sor..." autocomplete="off">
+      <button type="button" class="mic-btn" onclick="toggleGamzeVoice()" title="Gamze ile Sesli Arama">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 17.5V21" stroke="currentColor" stroke-width="2"/></svg>
+      </button>
+    </form>
+
+    <div class="hud-right">
+      <button class="hud-icon-btn" onclick="toggleTheme()" onmouseenter="showHint(this, 'Tema Değiştir')" onmouseleave="hideHint()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
+      </button>
+      <button class="hud-icon-btn" onclick="openNuvioDirect()" onmouseenter="showHint(this, 'Nuvio Uygulamasını Başlat')" onmouseleave="hideHint()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      </button>
+      <button class="hud-icon-btn" onclick="showSettings()" onmouseenter="showHint(this, 'Ayarlar · Gamze & Eklentiler')" onmouseleave="hideHint()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 3D Shelf Area -->
+  <div class="shelf-area">
+    <div class="shelf-title" id="shelfCategoryTitle">SONBAHAR GECE YARISI PSİKOLOJİK SIRLAR</div>
+    <div class="shelf-track" id="shelfTrack"></div>
+    <div class="shelf-plank"></div>
+  </div>
+
+  <!-- Bottom Dock -->
+  <div class="dock">
+    <div class="dock-card nuvio-card" onclick="openNuvioDirect()">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="#A855F7"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span class="label">Nuvio PC</span>
+    </div>
+    <div class="dock-card" onclick="switchCategory('curated')">
+      <span style="font-size:22px">🎬</span>
+      <span class="label">Alptuğflix</span>
+    </div>
+    <div class="dock-card" onclick="switchCategory('popular')">
+      <span style="font-size:22px">🔥</span>
+      <span class="label">Popüler Filmler</span>
+    </div>
+    <div class="dock-card" onclick="switchCategory('turkish')">
+      <span style="font-size:22px">🇹🇷</span>
+      <span class="label">Türk Sineması</span>
+    </div>
+    <div class="dock-card" onclick="toggleGamzeVoice()">
+      <span style="font-size:22px">✨</span>
+      <span class="label">Gamze Asistan</span>
+    </div>
+  </div>
+</div>
+
+<!-- Dynamic Tooltip -->
+<div class="hud-tooltip" id="hudTooltip"></div>
+
+<!-- Gamze Assistant Speech Bubble -->
+<div class="gamze-bubble" id="gamzeBubble">
+  <div class="gamze-orb"></div>
+  <div class="gamze-text" id="gamzeText">Merhaba! Ben Gamze, CineTV film asistanınız. Hangi türde bir film keşfetmek istersiniz?</div>
+</div>
+
+<!-- Corner Update Banner -->
+<div class="tv-banner" id="cornerBanner">
+  <div class="icon">✓</div>
+  <div class="texts">
+    <b>CineTV Windows Aktif</b>
+    <span>Nuvio, TMDB & Gamze AI entegrasyonu hazır.</span>
+  </div>
+</div>
+
+<!-- 3D DVD OPENING MODAL -->
+<div id="modal-dvd" onclick="closeDvdModal(event)">
+  <div class="dvd-open-stage" onclick="event.stopPropagation()">
+    <!-- Left Booklet Note -->
+    <div class="dvd-booklet">
+      <div class="booklet-watermark" id="bookletWatermark"></div>
+      <div class="booklet-laid-lines"></div>
+      <div class="booklet-content">
+        <h2 class="booklet-title" id="bookletTitle">Persona</h2>
+        <div class="booklet-meta">
+          <span class="rating" id="bookletRating">★ 8.2</span>
+          <span id="bookletYear">1966</span>
+          <span>·</span>
+          <span id="bookletRuntime">84 dk</span>
+        </div>
+        <p class="booklet-overview" id="bookletOverview">Film özeti yükleniyor...</p>
+        <div class="booklet-director" id="bookletDirector">Yönetmen: Ingmar Bergman</div>
+      </div>
+    </div>
+
+    <!-- Right Tray with Disc & Trailer -->
+    <div class="dvd-tray">
+      <div class="tray-video-slot" id="trayVideoSlot">
+        <!-- Trailer iframe will be dynamically mounted here -->
+      </div>
+      <div class="disc-holder">
+        <div class="optical-disc">
+          <div class="disc-center"></div>
+        </div>
+      </div>
+      <div class="dvd-actions">
+        <button class="btn-nuvio-play" onclick="playInNuvio()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Nuvio'da Filmi Başlat
+        </button>
+        <button class="btn-close-modal" onclick="closeDvdModal()">Kapat</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// CineTV Windows Application Core Controller
+// ==========================================
+
+const TMDB_KEY = "94f0e53a3e6f9a0c7ce2bc9e2363f533"; // TMDB API v3 key
+let currentIndex = 0;
+let movies = [];
+let currentTheme = 'closet';
+let activeMovie = null;
+
+// Default Curated Fallback Collection (matching CineTV Vitrin)
+const DEFAULT_MOVIES = [
+  { id: 797, title: "Persona", year: 1966, director: "Ingmar Bergman", rating: 8.2, runtime: 84, imdbId: "tt0060827", trailer: "0q_gY9bTz5Y", poster: "https://image.tmdb.org/t/p/w500/bdkQ47Z7yQ37UjI20G2C5mX806k.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/9y2zO0c7F41X2s2xG8X0F41Z5.jpg", overview: "Konuşmayı aniden bırakan bir tiyatro aktrisi ve ona bakmakla görevlendirilen genç bir hemşirenin ıssız bir sahil evinde kimliklerinin iç içe geçtiği psikolojik başyapıt." },
+  { id: 346, title: "Seven Samurai", year: 1954, director: "Akira Kurosawa", rating: 8.5, runtime: 207, imdbId: "tt0047478", trailer: "wJ1TOratCTo", poster: "https://image.tmdb.org/t/p/w500/8OKm79bmOPUv6H4o8k4i49z2G7w.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/ySaikPjD8B37sP1g8C4yP0.jpg", overview: "Haydutların saldırısına uğrayan bir köyün kendilerini korumak için yedi usta samurayı işe almasını konu alan sinema tarihinin en etkileyici destanlarından biri." },
+  { id: 422, title: "Blow Out", year: 1981, director: "Brian De Palma", rating: 7.4, runtime: 108, imdbId: "tt0082085", trailer: "q5qC1Bq7o80", poster: "https://image.tmdb.org/t/p/w500/1sZ87T9w2qD1p2G9zC4x7o8k.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/p9y2Z0c7F41X2s2xG8X0F41.jpg", overview: "Bir ses kayıt teknisyeninin gece rüzgar sesi kaydederken şahit olduğu ölümcül araba kazasının aslında bir suikast olduğunu fark etmesiyle gelişen paranoyak gerilim." },
+  { id: 510, title: "Tokyo Story", year: 1953, director: "Yasujiro Ozu", rating: 8.2, runtime: 136, imdbId: "tt0046438", trailer: "5z7uqRHYzC4", poster: "https://image.tmdb.org/t/p/w500/A3zbkgtH8c4k8q2Z9x1y2.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/t8q2Z9x1y2A3zbkgtH8c4k.jpg", overview: "Taşradan çocuklarını ziyaret etmek için Tokyo'ya gelen yaşlı bir çiftin, modern hayatın koşturmacasında çocukları tarafından ihmal edilişini anlatan insani bir başyapıt." },
+  { id: 439, title: "La Notte", year: 1961, director: "Michelangelo Antonioni", rating: 7.8, runtime: 122, imdbId: "tt0055230", trailer: "K5Z1A7xY98E", poster: "https://image.tmdb.org/t/p/w500/q2Z9x1y2A3zbkgtH8c4k.jpg", backdrop: "https://image.tmdb.org/t/p/w1280/8c4k8q2Z9x1y2A3zbkgtH.jpg", overview: "Milano'da geçen tek bir gün ve gece boyunca bir yazar ve eşinin tükenmekte olan evlilikleri ve yabancılaşmalarının portresi." }
+];
+
+// Initialize
+window.addEventListener('DOMContentLoaded', () => {
+  initClock();
+  movies = [...DEFAULT_MOVIES];
+  renderShelf();
+  fetchTrendingMovies();
+  showCornerBanner();
+
+  // Keyboard navigation
+  window.addEventListener('keydown', (e) => {
+    if (document.getElementById('modal-dvd').classList.contains('active')) {
+      if (e.key === 'Escape') closeDvdModal();
+      if (e.key === 'Enter') playInNuvio();
+      return;
+    }
+    if (e.key === 'ArrowLeft') stepShelf(-1);
+    else if (e.key === 'ArrowRight') stepShelf(1);
+    else if (e.key === 'Enter' || e.key === ' ') openFocusedDvd();
+    else if (e.key === 'f' || e.key === 'F11') windowControl('fullscreen');
+  });
+});
+
+function initClock() {
+  const update = () => {
+    const d = new Date();
+    document.getElementById('clock').innerText = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('date').innerText = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' });
+  };
+  update();
+  setInterval(update, 1000);
+}
+
+// Render 3D Shelf Cases
+function renderShelf() {
+  const track = document.getElementById('shelfTrack');
+  track.innerHTML = '';
+  const n = movies.length;
+  if (n === 0) return;
+
+  movies.forEach((m, i) => {
+    const el = document.createElement('div');
+    el.className = 'dvd-case';
+    el.id = `dvd-case-${i}`;
+    el.innerHTML = `
+      <div class="box-inner">
+        <img class="cover" src="${m.poster}" alt="${m.title}" loading="lazy">
+        <div class="sheen"></div>
+        <div class="spine"></div>
+        <div class="badge-4k">4K UHD</div>
+      </div>
+    `;
+    el.onclick = () => {
+      if (i === currentIndex) openFocusedDvd();
+      else {
+        currentIndex = i;
+        layoutShelf();
+      }
+    };
+    track.appendChild(el);
+  });
+
+  layoutShelf();
+}
+
+// 3D Perspective Layout with organic curve
+function layoutShelf() {
+  const n = movies.length;
+  if (n === 0) return;
+
+  movies.forEach((m, i) => {
+    const el = document.getElementById(`dvd-case-${i}`);
+    if (!el) return;
+
+    let delta = i - currentIndex;
+    // Circular wrap for infinite ring
+    if (delta > n / 2) delta -= n;
+    if (delta < -n / 2) delta += n;
+
+    const abs = Math.abs(delta);
+    const spacing = 185;
+    const x = delta * spacing;
+    const z = -abs * 110;
+    const rotY = -delta * 22;
+    const scale = Math.max(0.72, 1.15 - abs * 0.12);
+    const zIndex = 100 - abs;
+
+    el.style.transform = `translateX(${x}px) translateZ(${z}px) rotateY(${rotY}deg) scale(${scale})`;
+    el.style.zIndex = zIndex;
+    el.style.opacity = abs > 4 ? 0 : (abs > 2 ? 0.6 : 1);
+  });
+
+  // Update shelf label
+  const cur = movies[currentIndex];
+  if (cur) {
+    document.getElementById('shelfCategoryTitle').innerText = `${cur.title} (${cur.year}) · ${cur.director || 'CineTV Seçkisi'}`;
+  }
+}
+
+function stepShelf(dir) {
+  currentIndex = (currentIndex + dir + movies.length) % movies.length;
+  layoutShelf();
+}
+
+function openFocusedDvd() {
+  const m = movies[currentIndex];
+  if (!m) return;
+  activeMovie = m;
+
+  document.getElementById('bookletTitle').innerText = m.title;
+  document.getElementById('bookletRating').innerText = `★ ${m.rating || 8.0}`;
+  document.getElementById('bookletYear').innerText = m.year || 2024;
+  document.getElementById('bookletRuntime').innerText = m.runtime ? `${m.runtime} dk` : '110 dk';
+  document.getElementById('bookletOverview').innerText = m.overview || 'Film detayları arşivleniyor...';
+  document.getElementById('bookletDirector').innerText = `Yönetmen: ${m.director || 'Bilinmiyor'}`;
+
+  // Watermark backdrop
+  const bgImg = m.backdrop || m.poster;
+  document.getElementById('bookletWatermark').style.backgroundImage = `url('${bgImg}')`;
+
+  // Trailer slot
+  const slot = document.getElementById('trayVideoSlot');
+  slot.innerHTML = '';
+  if (m.trailer) {
+    const ifr = document.createElement('iframe');
+    ifr.src = `https://www.youtube-nocookie.com/embed/${m.trailer}?autoplay=1&mute=1&controls=0&modestbranding=1&loop=1&playlist=${m.trailer}`;
+    ifr.allow = "autoplay; encrypted-media";
+    slot.appendChild(ifr);
+  }
+
+  document.getElementById('modal-dvd').classList.add('active');
+}
+
+function closeDvdModal(e) {
+  if (e && e.target !== e.currentTarget && !e.target.classList.contains('btn-close-modal')) return;
+  document.getElementById('modal-dvd').classList.remove('active');
+  document.getElementById('trayVideoSlot').innerHTML = '';
+}
+
+// Launch Nuvio for PC (Deep Link or Web Player)
+function playInNuvio() {
+  if (!activeMovie) return;
+  const imdb = activeMovie.imdbId || 'tt0060827';
+  
+  // Try Nuvio Desktop protocol, fallback to Stremio or Web stream
+  const nuvioUri = `nuvio://detail/movie/${imdb}`;
+  const stremioUri = `stremio://detail/movie/${imdb}`;
+  const webPlayerUri = `http://localhost:11470/detail/movie/${imdb}`;
+
+  // In Electron environment:
+  if (window.require) {
+    try {
+      const { ipcRenderer } = window.require('electron');
+      ipcRenderer.send('launch-nuvio', nuvioUri);
+    } catch (e) {
+      window.location.href = nuvioUri;
+    }
+  } else {
+    // In Browser / Windows Edge WebView
+    const win = window.open(nuvioUri, '_self');
+    setTimeout(() => {
+      // Fallback
+      window.open(stremioUri, '_blank');
+    }, 500);
+  }
+}
+
+function openNuvioDirect() {
+  const nuvioUri = 'nuvio://';
+  window.location.href = nuvioUri;
+}
+
+// TMDB Dynamic Fetching
+async function fetchTrendingMovies() {
+  try {
+    const res = await fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=${TMDB_KEY}&language=tr-TR`);
+    const data = await res.json();
+    if (data.results && data.results.length > 0) {
+      const live = data.results.slice(0, 15).map(r => ({
+        id: r.id,
+        title: r.title,
+        year: r.release_date ? parseInt(r.release_date.split('-')[0]) : 2024,
+        rating: Math.round(r.vote_average * 10) / 10,
+        overview: r.overview,
+        poster: r.poster_path ? `https://image.tmdb.org/t/p/w500${r.poster_path}` : DEFAULT_MOVIES[0].poster,
+        backdrop: r.backdrop_path ? `https://image.tmdb.org/t/p/w1280${r.backdrop_path}` : DEFAULT_MOVIES[0].backdrop,
+        trailer: "dQw4w9WgXcQ"
+      }));
+      // Merge with classic defaults
+      movies = [...DEFAULT_MOVIES, ...live];
+      renderShelf();
+    }
+  } catch (err) {
+    console.warn("TMDB Live Catalog fallback to curated classics:", err);
+  }
+}
+
+// Gamze Voice Assistant Interaction
+function toggleGamzeVoice() {
+  const bubble = document.getElementById('gamzeBubble');
+  const text = document.getElementById('gamzeText');
+  bubble.classList.toggle('active');
+
+  if (bubble.classList.contains('active')) {
+    text.innerText = "Gamze dinliyor... 'Bana bir gerilim filmi öner' ya da 'Bergman filmleri' diyebilirsiniz.";
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const rec = new SpeechRecognition();
+      rec.lang = 'tr-TR';
+      rec.start();
+      rec.onresult = (e) => {
+        const query = e.results[0][0].transcript;
+        text.innerText = `Gamze: "${query}" için vitrini güncelliyorum...`;
+        handleSearchQuery(query);
+        setTimeout(() => bubble.classList.remove('active'), 5000);
+      };
+      rec.onerror = () => {
+        text.innerText = "Gamze: Sesinizi duyamadım. Arama kutusunu kullanarak da sorabilirsiniz.";
+        setTimeout(() => bubble.classList.remove('active'), 4000);
+      };
+    }
+  }
+}
+
+function handleSearch(e) {
+  e.preventDefault();
+  const q = document.getElementById('searchInput').value.trim();
+  if (q) handleSearchQuery(q);
+  return false;
+}
+
+async function handleSearchQuery(q) {
+  try {
+    const res = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_KEY}&language=tr-TR&query=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    if (data.results && data.results.length > 0) {
+      movies = data.results.map(r => ({
+        id: r.id,
+        title: r.title,
+        year: r.release_date ? parseInt(r.release_date.split('-')[0]) : 2024,
+        rating: Math.round(r.vote_average * 10) / 10,
+        overview: r.overview,
+        poster: r.poster_path ? `https://image.tmdb.org/t/p/w500${r.poster_path}` : DEFAULT_MOVIES[0].poster,
+        backdrop: r.backdrop_path ? `https://image.tmdb.org/t/p/w1280${r.backdrop_path}` : DEFAULT_MOVIES[0].backdrop
+      }));
+      currentIndex = 0;
+      renderShelf();
+    }
+  } catch (err) {
+    console.warn("Search error:", err);
+  }
+}
+
+// Category Switcher
+function switchCategory(cat) {
+  if (cat === 'curated') {
+    movies = [...DEFAULT_MOVIES];
+    currentIndex = 0;
+    renderShelf();
+  } else if (cat === 'popular') {
+    fetchTrendingMovies();
+  } else if (cat === 'turkish') {
+    handleSearchQuery("Nuri Bilge Ceylan Zeki Demirkubuz");
+  }
+}
+
+// Theme Switcher
+function toggleTheme() {
+  const themes = ['closet', 'cinema', 'glass'];
+  const curIdx = themes.indexOf(currentTheme);
+  currentTheme = themes[(curIdx + 1) % themes.length];
+  document.body.className = `theme-${currentTheme}`;
+  const env = document.getElementById('env');
+  if (currentTheme === 'closet') {
+    env.className = 'environment env-closet';
+    env.style.display = 'block';
+  } else if (currentTheme === 'cinema') {
+    env.style.display = 'none';
+  } else {
+    env.style.display = 'none';
+  }
+}
+
+// Tooltip helper
+function showHint(el, text) {
+  const tip = document.getElementById('hudTooltip');
+  tip.innerText = text;
+  const rect = el.getBoundingClientRect();
+  tip.style.left = `${rect.left + rect.width / 2 - tip.offsetWidth / 2}px`;
+  tip.style.top = `${rect.bottom + 12}px`;
+  tip.classList.add('visible');
+}
+function hideHint() {
+  document.getElementById('hudTooltip').classList.remove('visible');
+}
+
+function showCornerBanner() {
+  const b = document.getElementById('cornerBanner');
+  b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), 10000);
+}
+
+function windowControl(action) {
+  if (window.require) {
+    try {
+      const { ipcRenderer } = window.require('electron');
+      ipcRenderer.send('window-control', action);
+      return;
+    } catch(e) {}
+  }
+  if (action === 'fullscreen') {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  } else if (action === 'close') {
+    window.close();
+  }
+}
+</script>
+</body>
+</html>

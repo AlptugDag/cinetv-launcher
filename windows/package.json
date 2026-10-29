@@ -1,0 +1,24 @@
+{
+  "name": "cinetv-desktop",
+  "version": "1.0.0",
+  "description": "CineTV by Alptuğ Dağ - Windows PC Native Cinematic Launcher",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "author": "Alptuğ Dağ",
+  "license": "Proprietary",
+  "devDependencies": {
+    "electron": "^29.1.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.cinetv.desktop",
+    "productName": "CineTV",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    }
+  }
+}
