@@ -483,7 +483,7 @@ public class HomeScreen {
                     .setDuration(350)
                     .setInterpolator(new android.view.animation.DecelerateInterpolator())
                     .start();
-            root.postDelayed(dismissUpdateBannerRunnable, 10_000L); // Exactly 10 seconds!
+            root.postDelayed(dismissUpdateBannerRunnable, 25_000L); // 25 seconds popup
         });
     }
 
