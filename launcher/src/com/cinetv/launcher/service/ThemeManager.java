@@ -89,7 +89,7 @@ public final class ThemeManager {
             // a real hall (Lichtburg, Essen): the cases take its warm light, the curtains stand in front of them
             new Theme("cinema", "Cinema Hall",
                     colors("#1A0406", "#260509", "#120204", "#1E0407"),
-                    new String[]{"themes/cinema.jpg"}, 4, false, Color.parseColor("#E5A93C"), true, false)
+                    new String[]{"themes/cinema.webp"}, 4, false, Color.parseColor("#E5A93C"), true, false)
                     .drawn(null, MAT_VELVET).furnished("cinema"),
             // a film closet: floor-to-ceiling white shelves of films; Home's cases are one of its shelves
             new Theme("closet", "Film Closet",
@@ -100,7 +100,7 @@ public final class ThemeManager {
                     new String[0], 5, false, Color.parseColor("#F472B6"), true, false).drawn("neon", MAT_NEON),
             new Theme("redcarpet", "Red Carpet",
                     colors("#2C0207", "#44040E", "#160103", "#35030A"),
-                    new String[]{"themes/redcarpet.jpg"}, 4, false, Color.parseColor("#FFE57F"), true, false)
+                    new String[]{"themes/redcarpet.webp"}, 4, false, Color.parseColor("#FFE57F"), true, false)
                     .drawn(null, MAT_REDCARPET).furnished("redcarpet"),
     };
 
@@ -131,6 +131,14 @@ public final class ThemeManager {
 
     public static void useCustomWallpaper(Context ctx, boolean on) {
         Prefs.get(ctx).edit().putBoolean(Prefs.CUSTOM_WALLPAPER, on).apply();
+    }
+
+    public static void resetCustomWallpaper(Context ctx) {
+        Prefs.get(ctx).edit().putBoolean(Prefs.CUSTOM_WALLPAPER, false).apply();
+        try {
+            java.io.File f = customWallpaper(ctx);
+            if (f.exists()) f.delete();
+        } catch (Throwable ignored) {}
     }
 
     public static Theme current(Context ctx) {

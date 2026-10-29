@@ -133,9 +133,9 @@
     <string name="tour_shelf_t">A new shelf every time</string>
     <string name="tour_shelf">These films are picked for this moment: the hour, the day, your city and the weather. Move left and right; the room lights up in the film\'s colour.</string>
     <string name="tour_dvd_t">Open a DVD</string>
-    <string name="tour_dvd">OK on a case: it comes off the shelf and opens, with the story handwritten inside the cover. OK again: the disc spins up and the film starts in Nuvio.</string>
+    <string name="tour_dvd">OK on a case: it comes off the shelf and opens, with the story inside the cover and the film\'s trailer playing automatically. OK again: the film starts straight in Nuvio.</string>
     <string name="tour_trailers_t">Trailer moments</string>
-    <string name="tour_trailers">Settings › Trailer moments: an opened DVD turns sideways and plays the film\'s trailer in its tray, muted, with the story across the other side. Off, the DVD opens as usual.</string>
+    <string name="tour_trailers">Trailer moments are on by default: an opened DVD turns sideways and its trailer plays automatically and muted, with the story across the other side. Switch it off with the Trailer moments tile in Settings.</string>
     <string name="tour_search_t">Search the way you talk</string>
     <string name="tour_search">“car films”, “Nolan films”, “a father whose daughter is kidnapped”, or any question. The shelf fills with the answer.</string>
     <string name="tour_voice_t">Just say it</string>
@@ -149,7 +149,7 @@
     <string name="tour_apps_t">Your apps</string>
     <string name="tour_apps">Hold OK (or Menu) on an app to move, hide or uninstall it. The last tile shows every app.</string>
     <string name="tour_settings_t">Make it yours</string>
-    <string name="tour_settings">Settings: themes (Cinema Hall, Film Closet, Metallic, Neon Night…), performance with “Determine automatically”, sleep timer and quiet hours, picture and sound tuning. Hold the gear for the TV\'s own settings.</string>
+    <string name="tour_settings">Settings is one scrollable page: themes, visual experience, AI &amp; network, picture-sound-network tuning and system &amp; TV inspector, one under another; arrows at the edges show where you can scroll. Hold the gear for the TV\'s own settings.</string>
     <string name="tour_saver_t">A cinema when you rest</string>
     <string name="tour_saver">After 5 idle minutes, scenes and lines from films fill the screen like a 35 mm reel. The TV sleeps by itself later.</string>
     <string name="tour_done_t">That\'s it. Enjoy the film</string>

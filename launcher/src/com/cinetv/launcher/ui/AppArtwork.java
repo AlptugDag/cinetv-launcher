@@ -208,13 +208,13 @@ public final class AppArtwork {
 
 
     /**
-     * Downsamples 640x360 designer cards to exact 380x214 1080p layout dimensions,
-     * reducing memory consumption from 921 KB to 325 KB (65% reduction) and immediately recycling the intermediate bitmap.
+     * Downsamples 640x360 designer cards to exact 320x180 16:9 layout dimensions,
+     * reducing memory consumption from 921 KB to 230 KB (75% reduction) and immediately recycling the intermediate bitmap.
      */
     public static Bitmap scaleDownToTargetCard(Bitmap rawCard) {
         if (rawCard == null) return null;
-        int targetW = 380;
-        int targetH = 214;
+        int targetW = 320;
+        int targetH = 180;
         if (rawCard.getWidth() == targetW && rawCard.getHeight() == targetH) {
             return rawCard;
         }

@@ -196,6 +196,11 @@ public final class AppLauncher {
         if (title != null && "sessiz".equals(Creator.fold(title))) {
             return openYouTubeVideo(ctx, Creator.SESSIZ_YOUTUBE_URL);
         }
+        if (imdbId != null && (imdbId.startsWith("tv:") || "tv".equals(type) || "channel".equals(type))) {
+            Intent tvIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/tv/" + imdbId)).setPackage(NUVIO);
+            tvIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            if (start(ctx, tvIntent)) return true;
+        }
         if (imdbId != null && imdbId.startsWith("tt") && "series".equals(type)) {
             // Series open on their detail page (season and episode picker), not on an episode's streams.
             Intent detail = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/series/" + imdbId)).setPackage(NUVIO);

@@ -86,12 +86,12 @@ public class SpatialEnvironment extends View {
         composited = PerformanceProfile.compositedBackdrop(getContext());
         focusLight = PerformanceProfile.focusLight(getContext()) && theme.wash && !theme.pureBlack;
         if (ThemeManager.usesCustomWallpaper(getContext())) {
-            wallpaper = android.graphics.BitmapFactory.decodeFile(ThemeManager.customWallpaper(getContext()).getPath());
+            wallpaper = PosterCache.decodeFile(ThemeManager.customWallpaper(getContext()), wallW(), wallH());
         } else if (theme.scene != null) {
             wallpaper = ThemeArt.render(getContext(), theme.scene);
         } else {
             String wp = ThemeManager.wallpaperNow(theme);
-            wallpaper = wp == null ? null : PosterCache.decodeAsset(getContext(), wp, 1280, 720);
+            wallpaper = wp == null ? null : PosterCache.decodeAsset(getContext(), wp, wallW(), wallH());
         }
         Glass.material = theme.material;
         pattern = null;
@@ -106,6 +106,15 @@ public class SpatialEnvironment extends View {
         if (theme != null) rebuild(w, h);
     }
 
+    /** Wallpapers are decoded no bigger than the screen needs; tight TVs get 960x540. */
+    private int wallW() {
+        return PerformanceProfile.lowMemory(getContext()) ? 960 : 1280;
+    }
+
+    private int wallH() {
+        return PerformanceProfile.lowMemory(getContext()) ? 540 : 720;
+    }
+
     private void rebuild(int w, int h) {
         if (theme.signaturePattern && !theme.pureBlack && pattern == null) pattern = buildPattern(w, h);
         int down = PerformanceProfile.blurDownscale(getContext());
@@ -116,7 +125,8 @@ public class SpatialEnvironment extends View {
         blurred = Blur.stack(small, 6);
         if (composited) {
             // Half resolution is plenty for a soft backdrop and quarters the memory and fill cost.
-            int cw = Math.round(w * OVERSIZE / 2f), ch = Math.round(h * OVERSIZE / 2f);
+            int shrink = PerformanceProfile.lowMemory(getContext()) ? 3 : 2;
+            int cw = Math.round(w * OVERSIZE / shrink), ch = Math.round(h * OVERSIZE / shrink);
             // Full colour: 16-bit caches turn the soft gradients into visible bands.
             Bitmap cache = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888);
             Canvas cc = new Canvas(cache);

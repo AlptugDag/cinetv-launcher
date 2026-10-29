@@ -16,12 +16,21 @@ public final class PosterCache {
 
     private static final long MAX_DISK_BYTES = 60L * 1024 * 1024;
     private static LruCache<String, Bitmap> memory;
+    /** Set once by CineTvApp: tight TVs keep fewer, 16-bit pictures. */
+    private static volatile boolean lowMemory;
+    private static volatile boolean sixteenBit;
+
+    public static void configure(boolean low) {
+        lowMemory = low;
+        sixteenBit = low;
+    }
 
     private PosterCache() {}
 
     private static synchronized LruCache<String, Bitmap> memory() {
         if (memory == null) {
-            int maxKb = (int) (Runtime.getRuntime().maxMemory() / 1024 / 6);
+            // Small on purpose: decoded pictures are the biggest part of Home's memory, and the disk cache is cheap to re-read.
+            int maxKb = (int) Math.min(lowMemory ? 8 * 1024 : 20 * 1024, Runtime.getRuntime().maxMemory() / 1024 / 10);
             memory = new LruCache<String, Bitmap>(maxKb) {
                 @Override
                 protected int sizeOf(String key, Bitmap value) {
@@ -68,6 +77,7 @@ public final class PosterCache {
             BitmapFactory.decodeStream(probe, null, o);
             o.inSampleSize = sampleSize(o.outWidth, o.outHeight, reqW, reqH);
             o.inJustDecodeBounds = false;
+            if (sixteenBit && !path.endsWith(".png")) o.inPreferredConfig = Bitmap.Config.RGB_565;
             try (InputStream in = ctx.getAssets().open(path)) {
                 Bitmap bmp = BitmapFactory.decodeStream(in, null, o);
                 if (bmp != null) memory().put(key, bmp);
@@ -80,6 +90,8 @@ public final class PosterCache {
 
     public static Bitmap decodeFile(File f, int reqW, int reqH) {
         BitmapFactory.Options o = new BitmapFactory.Options();
+        // Photos have no alpha: 16-bit halves their memory. Logos (PNG) keep full colour.
+        if (sixteenBit && !f.getName().endsWith(".png")) o.inPreferredConfig = Bitmap.Config.RGB_565;
         o.inJustDecodeBounds = true;
         BitmapFactory.decodeFile(f.getAbsolutePath(), o);
         if (o.outWidth <= 0) return null;

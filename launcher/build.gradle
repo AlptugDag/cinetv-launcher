@@ -44,7 +44,7 @@ android {
         minSdk 26
         targetSdk 34
         // Release builds take the version from the git tag (CI passes -PcineTvVersion=1.0.0).
-        def ver = (project.findProperty('cineTvVersion') ?: '1.0.0.13').toString().replaceFirst('^v', '')
+        def ver = (project.findProperty('cineTvVersion') ?: '1.0.0.14').toString().replaceFirst('^v', '')
         def parts = ver.tokenize('.').collect { it.replaceAll('[^0-9]', '') as int }
         versionName ver
         // Numbering restarted at 1.0.0 after 3.2.0: the 1000000 base keeps codes above every older build's, so

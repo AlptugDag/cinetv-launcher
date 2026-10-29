@@ -29,7 +29,7 @@ final class ThemeArt {
     static Bitmap render(Context ctx, String scene) {
         if ("closet".equals(scene)) return Closet.render(ctx);
         try {
-            Bitmap b = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
+            Bitmap b = Bitmap.createBitmap(W, H, com.cinetv.launcher.device.PerformanceProfile.opaqueConfig(ctx));
             Canvas c = new Canvas(b);
             switch (scene) {
                 case "glass": glass(ctx, c); break;
@@ -55,7 +55,8 @@ final class ThemeArt {
 
     /** Liquid glass: refractive fluid droplets with caustics, depth shadows and chromatic dispersion. */
     private static void glass(Context ctx, Canvas c) {
-        Bitmap base = PosterCache.decodeAsset(ctx, "themes/glass.jpg", W, H);
+        Bitmap base = PosterCache.decodeAsset(ctx, "themes/glass.webp", W, H);
+        if (base == null) base = PosterCache.decodeAsset(ctx, "themes/glass.jpg", W, H);
         if (base != null) c.drawBitmap(base, null, new RectF(0, 0, W, H), p());
         else c.drawColor(Color.parseColor("#0B1628"));
 

@@ -58,7 +58,13 @@ public final class Prefs {
 
     /** Home shows looping trailer moments inside opened DVD cases. Default on. */
     public static boolean trailerMoments(Context ctx) {
-        return get(ctx).getBoolean(TRAILER_MOMENTS, true);
+        SharedPreferences p = get(ctx);
+        if (!p.getBoolean("trailer_default_v2", false)) {
+            // One-time: trailer moments are on by default for everyone, including earlier installs that stored "off".
+            p.edit().putBoolean(TRAILER_MOMENTS, true).putBoolean("trailer_default_v2", true).apply();
+            return true;
+        }
+        return p.getBoolean(TRAILER_MOMENTS, true);
     }
 
     public static boolean dvdAnimation(Context ctx) {

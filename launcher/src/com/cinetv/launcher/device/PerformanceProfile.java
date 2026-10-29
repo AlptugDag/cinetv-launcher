@@ -101,20 +101,50 @@ public final class PerformanceProfile {
         if (next != now) Prefs.get(ctx).edit().putInt(KEY_LIMITS, next).apply();
     }
 
-    static Tier detect(Context ctx) {
+    /** Hardware facts are read once: RAM, cores and clock never change while the TV runs. */
+    private static Tier detectedCache;
+    private static long totalRamMbCache = -1;
+    private static int maxMhzCache = -1;
+
+    /** Total RAM in MB, read once. */
+    public static synchronized long totalRamMb(Context ctx) {
+        if (totalRamMbCache < 0) {
+            ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+            ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+            if (am != null) am.getMemoryInfo(mi);
+            totalRamMbCache = mi.totalMem / (1024 * 1024);
+        }
+        return totalRamMbCache;
+    }
+
+    /** A TV that needs every megabyte: under 2 GB, flagged low-RAM, or the Low mode. Decides bitmap formats and cache sizes. */
+    public static boolean lowMemory(Context ctx) {
+        ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+        return totalRamMb(ctx) < 2000 || (am != null && am.isLowRamDevice()) || tier(ctx) == Tier.LOW || limited(ctx, LIMIT_RAM);
+    }
+
+    /** Opaque art (wallpapers, backdrops, posters) is stored as RGB_565 on tight TVs: half the memory. */
+    public static android.graphics.Bitmap.Config opaqueConfig(Context ctx) {
+        return lowMemory(ctx) ? android.graphics.Bitmap.Config.RGB_565 : android.graphics.Bitmap.Config.ARGB_8888;
+    }
+
+    static synchronized Tier detect(Context ctx) {
+        if (detectedCache != null) return detectedCache;
         ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
         ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
         if (am != null) am.getMemoryInfo(mi);
         long ramMb = mi.totalMem / (1024 * 1024);
         int cores = Runtime.getRuntime().availableProcessors();
         boolean lowRam = am != null && am.isLowRamDevice();
-        return classify(ramMb, cores, maxCpuMhz(), lowRam);
+        if (maxMhzCache < 0) maxMhzCache = maxCpuMhz();
+        detectedCache = classify(ramMb, cores, maxMhzCache, lowRam);
+        return detectedCache;
     }
 
     /** Pure function so it can be unit-tested off-device. */
     public static Tier classify(long ramMb, int cores, int maxMhz, boolean lowRamFlag) {
-        if (lowRamFlag || ramMb < 1400 || cores <= 2) return Tier.LOW;
-        if (ramMb >= 3000 && cores >= 4 && maxMhz >= 1800) return Tier.HIGH;
+        if (lowRamFlag || ramMb < 2000 || cores <= 2) return Tier.LOW;
+        if (ramMb >= 4000 && cores >= 4 && maxMhz >= 2000) return Tier.HIGH;
         return Tier.MID;
     }
 
@@ -154,7 +184,7 @@ public final class PerformanceProfile {
         r.freeRamMb = (int) (mi.availMem / (1024 * 1024));
         boolean lowRam = am != null && am.isLowRamDevice();
         r.tier = pick(r.cpuScore, r.drawScore, r.totalRamMb, r.freeRamMb, lowRam);
-        r.limits = (r.drawScore < 60 ? LIMIT_GPU : 0) | (lowRam || r.freeRamMb < 450 ? LIMIT_RAM : 0) | (r.cpuScore < 90 ? LIMIT_CPU : 0);
+        r.limits = (r.drawScore < 60 ? LIMIT_GPU : 0) | (lowRam || r.freeRamMb < 550 ? LIMIT_RAM : 0) | (r.cpuScore < 90 ? LIMIT_CPU : 0);
         setMode(ctx, modeFor(r.tier));
         Prefs.get(ctx).edit().putInt(KEY_LIMITS, r.limits).apply();
         Log.i(TAG, "Benchmark cpu " + r.cpuScore + " draw " + r.drawScore + " ram " + r.freeRamMb + "/" + r.totalRamMb + " -> " + r.tier);
@@ -163,10 +193,10 @@ public final class PerformanceProfile {
 
     /** Pure function so it can be unit-tested off-device. Scores are roughly 100 for a mid-range 2020 TV. */
     public static Tier pick(int cpu, int draw, int totalRamMb, int freeRamMb, boolean lowRam) {
-        if (lowRam || totalRamMb < 1400 || freeRamMb < 250) return Tier.LOW;
+        if (lowRam || totalRamMb < 2000 || freeRamMb < 300) return Tier.LOW;
         int weakest = Math.min(cpu, draw);
-        if (weakest < 60) return Tier.LOW;
-        if (weakest >= 160 && totalRamMb >= 2800 && freeRamMb >= 700) return Tier.HIGH;
+        if (weakest < 70) return Tier.LOW;
+        if (weakest >= 180 && totalRamMb >= 3500 && freeRamMb >= 900) return Tier.HIGH;
         return Tier.MID;
     }
 
@@ -236,7 +266,7 @@ public final class PerformanceProfile {
             ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
             if (am == null) return;
             am.getMemoryInfo(mi);
-            boolean tight = am.isLowRamDevice() || mi.lowMemory || mi.availMem < 350L * 1024 * 1024;
+            boolean tight = am.isLowRamDevice() || mi.lowMemory || mi.availMem < 450L * 1024 * 1024;
             boolean before = limited(ctx, LIMIT_RAM);
             if (tight != before) {
                 setLimit(ctx, LIMIT_RAM, tight);
@@ -263,21 +293,21 @@ public final class PerformanceProfile {
         return limited(ctx, LIMIT_GPU) ? ms * 4 / 5 : ms;
     }
 
-    /** Films on the shelf: 14 / 18 / 20 by mode, four fewer when memory or the processor is short. */
+    /** Films on the shelf: 10 / 14 / 18 by mode, three fewer when memory or the processor is short. */
     public static int shelfSize(Context ctx) {
         int n;
         switch (tier(ctx)) {
-            case LOW: n = 14; break;
-            case MID: n = 18; break;
-            default: n = 20;
+            case LOW: n = 10; break;
+            case MID: n = 14; break;
+            default: n = 18;
         }
-        if (limited(ctx, LIMIT_RAM) || limited(ctx, LIMIT_CPU)) n -= 4;
+        if (limited(ctx, LIMIT_RAM) || limited(ctx, LIMIT_CPU)) n -= 3;
         return n;
     }
 
     /** Downscale factor for the blurred environment bitmap: coarser when graphics are the bottleneck. */
     public static int blurDownscale(Context ctx) {
-        int d = tier(ctx) == Tier.HIGH ? 8 : tier(ctx) == Tier.MID ? 12 : 16;
+        int d = tier(ctx) == Tier.HIGH ? 10 : tier(ctx) == Tier.MID ? 14 : 20;
         return limited(ctx, LIMIT_GPU) ? d + 4 : d;
     }
 

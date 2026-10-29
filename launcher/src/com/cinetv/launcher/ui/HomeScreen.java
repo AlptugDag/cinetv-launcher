@@ -64,6 +64,7 @@ public class HomeScreen {
     public final SpatialEnvironment environment;
     public final GlideScrollView scroll;
     public final PosterShelf shelf;
+    public final CinemaCurtainsView cinemaCurtains;
     /** Trailer moments (Settings): the trailer in the opened DVD's tray. */
     public final TrailerPlayer trailer;
     public final TourView tour;
@@ -85,6 +86,7 @@ public class HomeScreen {
 
     private final Context ctx;
     private final Listener listener;
+    private final LinearLayout content;
     private final LinearLayout leftGroup, rightGroup;
     private final FrameLayout searchBox;
     private final FrameLayout logoButton;
@@ -112,13 +114,18 @@ public class HomeScreen {
         scroll.setClipChildren(false);
         scroll.setClipToPadding(false);
         scroll.setFillViewport(true);
-        LinearLayout content = new LinearLayout(ctx);
+        content = new LinearLayout(ctx);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setClipChildren(false);
         content.setClipToPadding(false);
         content.setPadding(UiKit.px(64), UiKit.px(22), UiKit.px(64), UiKit.px(80));
         scroll.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(scroll, match());
+
+        // Full-height proscenium velvet curtains framing the TV screen
+        cinemaCurtains = new CinemaCurtainsView(ctx);
+        cinemaCurtains.setVisibility(View.GONE);
+        root.addView(cinemaCurtains, match());
 
         // ---- header
         LinearLayout header = new LinearLayout(ctx);
@@ -294,16 +301,19 @@ public class HomeScreen {
         header.addView(rightGroup);
         // The header only changes on focus or each minute: keep it as a GPU texture between frames.
         header.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        header.setTranslationZ(200f);
         content.addView(header);
 
         // ---- shelf
         shelfLabel = UiKit.bold(ctx, 20, UiKit.INK_DIM);
         shelfLabel.setLetterSpacing(0.14f);
+        shelfLabel.setTranslationZ(200f);
         LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         llp.setMargins(UiKit.px(80), UiKit.px(30), 0, 0);
         content.addView(shelfLabel, llp);
 
         shelf = new PosterShelf(ctx);
+        shelf.setMotionListener(cinemaCurtains::setMotion);
         content.addView(shelf, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, shelf.shelfHeight()));
 
         // ---- apps
@@ -721,6 +731,10 @@ public class HomeScreen {
                 }).start();
     }
 
+    public boolean isSearchOrInputFocused() {
+        return (search != null && search.hasFocus()) || (keyboard != null && keyboard.isShowing());
+    }
+
     public void focusHeader() {
         search.requestFocus();
     }
@@ -747,6 +761,13 @@ public class HomeScreen {
     public void applyTheme(ThemeManager.Theme t) {
         if (t == null) return;
         this.currentTheme = t;
+
+        boolean isCinema = "cinema".equals(t.id);
+        if (cinemaCurtains != null) {
+            cinemaCurtains.setVisibility(isCinema ? View.VISIBLE : View.GONE);
+        }
+        int sidePad = isCinema ? UiKit.px(148) : UiKit.px(64);
+        content.setPadding(sidePad, UiKit.px(22), sidePad, UiKit.px(80));
 
         // 1. Vitrin Başlığı (shelfLabel) - specifically red with dark drop shadow in redcarpet theme
         boolean isRedCarpet = "redcarpet".equals(t.id);

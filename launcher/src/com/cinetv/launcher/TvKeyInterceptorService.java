@@ -291,6 +291,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
     }
 
     private void armIdleSaver() {
+        com.cinetv.launcher.ui.CinemaScreensaverView.warmUp(this);
         handler.removeCallbacks(idleSaver);
         long timeout = AppLauncher.NUVIO.equals(lastPackage) ? 45_000L : APP_IDLE_SAVER_MS;
         handler.postDelayed(idleSaver, timeout);

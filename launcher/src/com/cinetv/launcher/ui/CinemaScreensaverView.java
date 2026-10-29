@@ -125,13 +125,67 @@ public class CinemaScreensaverView extends View {
         }
     }
 
+    /** A frame loaded ahead of time so the screensaver opens with its picture already there. */
+    private static volatile Frame warm;
+    private static volatile boolean warming;
+
+    /** Loads the first frame of the next screensaver in the background (call while the TV is still in use). */
+    public static void warmUp(final Context context) {
+        if (warm != null || warming) return;
+        warming = true;
+        final Context ctx = context.getApplicationContext();
+        new Thread(() -> {
+            try {
+                List<CinemaMoments.Moment> list = CinemaMoments.load(ctx);
+                if (!list.isEmpty()) {
+                    Random r = new Random();
+                    warm = build(ctx, list.get(r.nextInt(list.size())), r);
+                }
+            } catch (Throwable ignored) {
+            } finally {
+                warming = false;
+            }
+        }, "cinetv-saver-warm").start();
+    }
+
+    private static Frame build(Context ctx, CinemaMoments.Moment m, Random random) {
+        Frame f = new Frame();
+        f.moment = m;
+        try {
+            int tmdb = MovieCatalog.tmdbIdFromImdb(ctx, m.imdbId);
+            String tag = MovieCatalog.taglineFor(ctx, tmdb);
+            if (tag == null && "en".equals(Locale.getDefault().getLanguage()) && !m.fallbackTagline.isEmpty()) tag = m.fallbackTagline;
+            f.tagline = tag;
+            String logoUrl = MovieCatalog.logoFor(ctx, tmdb);
+            if (logoUrl != null) f.logo = PosterCache.load(ctx, logoUrl, 900, 360);
+            f.still = PosterCache.load(ctx, MovieCatalog.backdropFor(ctx, m.imdbId, tmdb, random.nextInt(5)), 1280, 720);
+        } catch (Throwable ignored) {
+        }
+        return f;
+    }
+
     public void start() {
         running = true;
         momentIndex = random.nextInt(Math.max(1, moments.size()));
         current = previous = null;
         incoming = null;
         rollStart = -1;
-        prepare(momentIndex);
+        Frame w = warm;
+        if (w != null && w.still != null) {
+            // Pre-loaded: the picture is on screen at once; the next one is warmed for the next idle.
+            warm = null;
+            incoming = w;
+            for (int i = 0; i < moments.size(); i++) {
+                if (moments.get(i) == w.moment) {
+                    momentIndex = i;
+                    break;
+                }
+            }
+        } else {
+            warm = null;
+            prepare(momentIndex);
+        }
+        warmUp(getContext());
         invalidate();
     }
 

@@ -40,8 +40,31 @@ public final class AvOptimizer {
         public final List<String> encodings = new ArrayList<>();
         public final List<String> applied = new ArrayList<>();
 
+        /** True panel pixels (vendor property first, then the biggest mode the display lists). */
+        public int panelWidth, panelHeight;
+        /** BT.2020-capable chain: HDR signalling or a wide colour mode on the display. */
+        public boolean wideGamut;
+        public boolean supportsDolbyAtmos;
+        /** Hardware-decoder presence, read from the same codec list the TV Inspector shows. */
+        public boolean hevc, av1, vp9;
+
         public boolean is4kPanel() {
-            return panelSize.startsWith("3840") || panelSize.startsWith("4096") || uiWidth >= 3840;
+            return panelWidth >= 3840 || panelSize.startsWith("3840") || panelSize.startsWith("4096") || uiWidth >= 3840;
+        }
+
+        public boolean isHdr() {
+            return hdr10 || hlg || hdr10Plus || dolbyVision;
+        }
+
+        /** "4K UHD", "Full HD"... from the true panel, not from the 1080p UI plane. */
+        public String panelClass() {
+            int w = Math.max(panelWidth, uiWidth);
+            if (w >= 7680) return "8K UHD";
+            if (w >= 3840) return "4K UHD";
+            if (w >= 2560) return "QHD";
+            if (w >= 1920) return "Full HD";
+            if (w >= 1280) return "HD";
+            return "SD";
         }
 
         public JSONObject toJson() {
@@ -90,6 +113,22 @@ public final class AvOptimizer {
         }
         r.panelSize = systemProperty("vendor.display-size");
         if (r.panelSize.isEmpty()) r.panelSize = systemProperty("sys.display-size");
+        parsePanel(r);
+        probeDecoders(r);
+        try {
+            Display d2 = ((WindowManager) ctx.getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
+            for (Display.Mode m : d2.getSupportedModes()) {
+                if (m.getPhysicalWidth() * (long) m.getPhysicalHeight() > (long) r.panelWidth * r.panelHeight) {
+                    r.panelWidth = m.getPhysicalWidth();
+                    r.panelHeight = m.getPhysicalHeight();
+                }
+            }
+            boolean wideMode = false;
+            if (android.os.Build.VERSION.SDK_INT >= 26) wideMode = d2.isWideColorGamut();
+            r.wideGamut = wideMode || r.hdr10 || r.hlg || r.hdr10Plus || r.dolbyVision;
+        } catch (Throwable t) {
+            Log.w(TAG, "Panel probe failed: " + t.getMessage());
+        }
         if (!r.hdr10Plus) r.hdr10Plus = globalInt(ctx, "tv_picture_hdr10_plus", -1) >= 0;
 
         try {
@@ -109,6 +148,32 @@ public final class AvOptimizer {
             Log.w(TAG, "Audio probe failed: " + t.getMessage());
         }
         return r;
+    }
+
+    private static void probeDecoders(Report r) {
+        try {
+            for (android.media.MediaCodecInfo info : new android.media.MediaCodecList(android.media.MediaCodecList.ALL_CODECS).getCodecInfos()) {
+                if (info.isEncoder()) continue;
+                for (String type : info.getSupportedTypes()) {
+                    if ("video/hevc".equalsIgnoreCase(type)) r.hevc = true;
+                    else if ("video/av01".equalsIgnoreCase(type)) r.av1 = true;
+                    else if ("video/x-vnd.on2.vp9".equalsIgnoreCase(type)) r.vp9 = true;
+                    else if ("audio/eac3-joc".equalsIgnoreCase(type)) r.supportsDolbyAtmos = true;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void parsePanel(Report r) {
+        try {
+            String[] p = r.panelSize.toLowerCase(java.util.Locale.US).split("x");
+            if (p.length == 2) {
+                r.panelWidth = Integer.parseInt(p[0].trim());
+                r.panelHeight = Integer.parseInt(p[1].trim());
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     /**
@@ -160,6 +225,9 @@ public final class AvOptimizer {
         snapshot(ctx);
         ContentResolver cr = ctx.getContentResolver();
         for (String[] row : FILMMAKER) {
+            // TV Inspector data decides: HDR rows only on an HDR panel, Atmos rows only where a decoder exists.
+            if (row[1].contains("hdr") && !r.isHdr()) continue;
+            if (row[1].contains("atmos") && !r.supportsDolbyAtmos && !r.hdmiAudio) continue;
             String current = read(cr, false, row[1]);
             if (current == null || current.equals(row[2])) continue;
             if (putGlobal(cr, row[1], Integer.parseInt(row[2]))) r.applied.add(row[1]);

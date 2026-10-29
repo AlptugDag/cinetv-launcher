@@ -16,7 +16,7 @@ public final class Blur {
         int[] px = new int[w * h];
         int[] tmp = new int[w * h];
         bmp.getPixels(px, 0, w, 0, 0, w, h);
-        for (int pass = 0; pass < 3; pass++) {
+        for (int pass = 0; pass < 2; pass++) {
             boxH(px, tmp, w, h, radius);
             boxV(tmp, px, w, h, radius);
         }

@@ -63,11 +63,13 @@ final class Closet {
     static Bitmap render(Context ctx) {
         File cached = new File(ctx.getCacheDir(), "closet-v" + VERSION + ".jpg");
         if (cached.isFile()) {
-            Bitmap b = BitmapFactory.decodeFile(cached.getPath());
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inPreferredConfig = com.cinetv.launcher.device.PerformanceProfile.opaqueConfig(ctx);
+            Bitmap b = BitmapFactory.decodeFile(cached.getPath(), o);
             if (b != null) return b;
         }
         try {
-            Bitmap out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
+            Bitmap out = Bitmap.createBitmap(W, H, com.cinetv.launcher.device.PerformanceProfile.opaqueConfig(ctx));
             draw(ctx, out);
             try (FileOutputStream f = new FileOutputStream(cached)) {
                 out.compress(Bitmap.CompressFormat.JPEG, 88, f);

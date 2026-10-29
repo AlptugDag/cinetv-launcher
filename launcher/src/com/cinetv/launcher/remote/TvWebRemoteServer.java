@@ -29,6 +29,7 @@ import java.net.Socket;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,7 @@ public final class TvWebRemoteServer {
         void searchOnTv(String query);
         /** Spoken on the phone: a TV command, or a voice search. */
         void voiceOnTv(String said);
+        void triggerVoiceOverlay();
         void showScreensaver();
         void showCalibrationPattern(String pattern);
         void onPhoneConnected();
@@ -59,6 +61,7 @@ public final class TvWebRemoteServer {
         void mirrorSearch(String text);
         /** A new backdrop arrived from the phone. */
         void onWallpaperChanged();
+        void resetBackground();
         /** Someone is using the phone page: the TV is not idle. */
         void onPhoneActivity();
     }
@@ -467,39 +470,64 @@ public final class TvWebRemoteServer {
         JSONObject ok = new JSONObject().put("ok", true);
         switch (path) {
             case "/api/status":
-                return ok.put("inputFocused", TvKeyInterceptorService.isInputFocused());
+                return ok.put("inputFocused", TvKeyInterceptorService.isInputFocused() || com.cinetv.launcher.MainActivity.isTvInputActive());
             case "/api/hello":
                 post(() -> {
                     Controller c = controller;
                     if (c != null) c.onPhoneConnected();
                 });
                 return ok.put("tmdb", MovieCatalog.hasTmdb(app)).put("calibration", PictureCalibration.capabilities(app))
-                        .put("inputFocused", TvKeyInterceptorService.isInputFocused());
+                        .put("inputFocused", TvKeyInterceptorService.isInputFocused() || com.cinetv.launcher.MainActivity.isTvInputActive());
             case "/api/catalog/trending":
                 return ok.put("results", toJson(MovieCatalog.trending(app, 24)));
             case "/api/catalog/search": {
                 // The same assistant as the TV: people, themes, plots, series, or an answer.
                 String text = clip(q.get("q"), 200);
                 if (text.isEmpty()) return ok.put("results", new JSONArray());
+                List<MovieCatalog.Movie> live = com.cinetv.launcher.service.AnthologyLiveChannels.search(text, 6);
                 // While typing: a quick title search. On Enter (ai=1): the assistant, once.
-                if (!"1".equals(q.get("ai"))) return ok.put("results", toJson(MovieCatalog.search(app, text, 30)));
+                if (!"1".equals(q.get("ai"))) {
+                    List<MovieCatalog.Movie> found = new ArrayList<>(live);
+                    found.addAll(MovieCatalog.search(app, text, 30));
+                    return ok.put("results", toJson(found));
+                }
                 com.cinetv.launcher.ai.MovieAssistant.Reply r = com.cinetv.launcher.ai.MovieAssistant.ask(app, text, 30);
                 if (r.movies.isEmpty() && r.answer.isEmpty()) r.movies = MovieCatalog.search(app, text, 30);
-                return ok.put("results", toJson(r.movies)).put("title", r.title).put("answer", r.answer);
+                List<MovieCatalog.Movie> merged = new ArrayList<>(live);
+                merged.addAll(r.movies);
+                return ok.put("results", toJson(merged)).put("title", r.title).put("answer", r.answer);
             }
             case "/api/open": {
                 final MovieCatalog.Movie m = new MovieCatalog.Movie();
-                m.imdbId = clip(q.get("imdb"), 16);
+                m.imdbId = clip(q.get("imdb"), 64);
                 m.tmdbId = parseInt(q.get("tmdb"));
-                m.type = "series".equals(q.get("type")) ? "series" : "movie";
+                m.type = "series".equals(q.get("type")) ? "series" : ("tv".equals(q.get("type")) ? "tv" : "movie");
                 m.title = clip(q.get("title"), 200);
                 m.posterUrl = safeUrl(q.get("poster"));
-                if (!m.imdbId.startsWith("tt")) m.imdbId = MovieCatalog.imdbFor(app, m.tmdbId, m.type);
-                if (!m.imdbId.startsWith("tt")) return new JSONObject().put("ok", false).put("error", "no_imdb");
+                if (!m.imdbId.startsWith("tt") && !m.imdbId.startsWith("tv:")) m.imdbId = MovieCatalog.imdbFor(app, m.tmdbId, m.type);
+                if (!m.imdbId.startsWith("tt") && !m.imdbId.startsWith("tv:")) return new JSONObject().put("ok", false).put("error", "no_imdb");
                 post(() -> {
                     Controller c = controller;
                     if (c != null) c.openTitle(m);
                     else AppLauncher.openInNuvio(app, m.title, m.imdbId, m.type, m.posterUrl);
+                });
+                return ok;
+            }
+            case "/api/tv/voice_overlay": {
+                post(() -> {
+                    Controller c = controller;
+                    if (c != null) c.triggerVoiceOverlay();
+                });
+                return ok;
+            }
+            case "/api/wallpaper/reset": {
+                com.cinetv.launcher.service.ThemeManager.resetCustomWallpaper(app);
+                post(() -> {
+                    Controller c = controller;
+                    if (c != null) {
+                        c.resetBackground();
+                        c.onWallpaperChanged();
+                    }
                 });
                 return ok;
             }

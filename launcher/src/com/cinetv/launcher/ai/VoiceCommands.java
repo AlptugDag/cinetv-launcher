@@ -30,7 +30,9 @@ import java.util.regex.Pattern;
 public final class VoiceCommands {
 
     public enum Kind { APP, LIVE_TV, HDMI, VOL_UP, VOL_DOWN, VOL_SET, MUTE, CHANNEL, CH_UP, CH_DOWN, KEY, SLEEP, POWER_OFF,
-        SCREENSAVER, SETTINGS, INPUTS, OPTIMIZE, REBOOT }
+        SCREENSAVER, SETTINGS, INPUTS, OPTIMIZE, REBOOT,
+        SETTING_TRAILER, SETTING_SPATIAL, SETTING_GLASS, SETTING_DVD, SETTING_AMBILIGHT,
+        SETTING_PERF, SETTING_DNS, SETTING_RESET_BG, SETTING_THEME, RAMADAN_TIME }
 
     public static final class Command {
         public final Kind kind;
@@ -49,6 +51,16 @@ public final class VoiceCommands {
         void openSettings();
         void openInputs();
         void say(String text);
+        void applyTheme(String themeId);
+        void setTrailerMoments(boolean on);
+        void setSpatial(boolean on);
+        void setGlass(boolean on);
+        void setDvdCases(boolean on);
+        void setAmbilight(boolean on);
+        void setPerformanceMode(String mode);
+        void setDns(String dns);
+        void resetBackground();
+        void queryRamadan(String city);
     }
 
     private static final String OPEN = "(?:a[cç]|başlat|baslat|gir|git|ge[cç]|open|start|launch|go to|switch to)";
@@ -108,6 +120,66 @@ public final class VoiceCommands {
         if (s.matches("^(geri|geri d[oö]n|go back|back)$")) return new Command(Kind.KEY, "4");
         if (s.matches(".*\\b(ekran koruyucu|screensaver|screen saver)\\b.*")) return new Command(Kind.SCREENSAVER, null);
         if (s.matches("^(ayarlar|ayarlar[ıi] a[cç]|settings|open settings)$")) return new Command(Kind.SETTINGS, null);
+
+        // Settings via voice
+        if (s.matches(".*\\b(fragman|trailer|fragmanlar[ıi]?)\\b.*\\b(kapat|durdur|kapal[ıi]|off|disable)\\b.*"))
+            return new Command(Kind.SETTING_TRAILER, "0");
+        if (s.matches(".*\\b(fragman|trailer|fragmanlar[ıi]?)\\b.*\\b(a[cç]|ba[sş]lat|a[cç][ıi]k|on|enable|modu)\\b.*"))
+            return new Command(Kind.SETTING_TRAILER, "1");
+
+        if (s.matches(".*\\b(3d|uzamsal|spatial)\\b.*\\b(kapat|durdur|kapal[ıi]|off|disable)\\b.*"))
+            return new Command(Kind.SETTING_SPATIAL, "0");
+        if (s.matches(".*\\b(3d|uzamsal|spatial)\\b.*\\b(a[cç]|ba[sş]lat|a[cç][ıi]k|on|enable|modu)\\b.*"))
+            return new Command(Kind.SETTING_SPATIAL, "1");
+
+        if (s.matches(".*\\b(cam|glass|buzlu cam)\\b.*\\b(kapat|durdur|kapal[ıi]|off|disable)\\b.*"))
+            return new Command(Kind.SETTING_GLASS, "0");
+        if (s.matches(".*\\b(cam|glass|buzlu cam)\\b.*\\b(a[cç]|ba[sş]lat|a[cç][ıi]k|on|enable|efekti)\\b.*"))
+            return new Command(Kind.SETTING_GLASS, "1");
+
+        if (s.matches(".*\\b(dvd|dvdler|dvd kutular[ıi]?)\\b.*\\b(kapat|durdur|kapal[ıi]|off|disable|afi[sş])\\b.*"))
+            return new Command(Kind.SETTING_DVD, "0");
+        if (s.matches(".*\\b(dvd|dvdler|dvd kutular[ıi]?)\\b.*\\b(a[cç]|ba[sş]lat|a[cç][ıi]k|on|enable|modu|kutular[ıi])\\b.*"))
+            return new Command(Kind.SETTING_DVD, "1");
+
+        if (s.matches(".*\\b(ambilight|arka plan [ıi][sş][ıi][gğ][ıi]|[ıi][sş][ıi]k|led)\\b.*\\b(kapat|durdur|kapal[ıi]|off|disable)\\b.*"))
+            return new Command(Kind.SETTING_AMBILIGHT, "0");
+        if (s.matches(".*\\b(ambilight|arka plan [ıi][sş][ıi][gğ][ıi]|[ıi][sş][ıi]k|led)\\b.*\\b(a[cç]|ba[sş]lat|a[cç][ıi]k|on|enable)\\b.*"))
+            return new Command(Kind.SETTING_AMBILIGHT, "1");
+
+        if (s.matches(".*\\b(performans modu|y[uü]ksek performans|h[ıi]zl[ıi] mod|boost mode)\\b.*"))
+            return new Command(Kind.SETTING_PERF, "high");
+        if (s.matches(".*\\b(eko mod|tasarruf modu|enerji tasarrufu|eco mode)\\b.*"))
+            return new Command(Kind.SETTING_PERF, "low");
+        if (s.matches(".*\\b(dengeli mod|normal mod|balanced mode)\\b.*"))
+            return new Command(Kind.SETTING_PERF, "balanced");
+
+        if (s.matches(".*\\badguard\\b.*")) return new Command(Kind.SETTING_DNS, "adguard");
+        if (s.matches(".*\\bgoogle dns\\b.*")) return new Command(Kind.SETTING_DNS, "google");
+        if (s.matches(".*\\bcloudflare dns\\b.*")) return new Command(Kind.SETTING_DNS, "cloudflare");
+        if (s.matches(".*\\b(dns kapat|varsay[ıi]lan dns)\\b.*")) return new Command(Kind.SETTING_DNS, "default");
+
+        if (s.matches(".*\\b(arka plan[ıi]?\\s*(s[ıi]f[ıi]rla|eski haline d[oö]nd[uü]r)|teman[ıi]n arka plan[ıi]na d[oö]n)\\b.*"))
+            return new Command(Kind.SETTING_RESET_BG, null);
+
+        if (s.matches(".*\\bk[ıi]rm[ıi]z[ıi] hal[ıi]\\b.*")) return new Command(Kind.SETTING_THEME, "redcarpet");
+        if (s.matches(".*\\bsinema salonu\\b.*")) return new Command(Kind.SETTING_THEME, "cinema");
+        if (s.matches(".*\\b(film dolab[ıi]|dolap teması)\\b.*")) return new Command(Kind.SETTING_THEME, "closet");
+        if (s.matches(".*\\bneon teması\\b.*")) return new Command(Kind.SETTING_THEME, "neon");
+        if (s.matches(".*\\bmetal teması\\b.*")) return new Command(Kind.SETTING_THEME, "metal");
+        if (s.matches(".*\\bcam teması\\b.*")) return new Command(Kind.SETTING_THEME, "glass");
+
+        if (s.matches(".*\\b(iftar|sahur|imsak|ramazan)\\b.*")) {
+            String city = null;
+            if (s.contains("istanbul")) city = "İstanbul";
+            else if (s.contains("ankara")) city = "Ankara";
+            else if (s.contains("izmir")) city = "İzmir";
+            else if (s.contains("bursa")) city = "Bursa";
+            else if (s.contains("antalya")) city = "Antalya";
+            else if (s.contains("konya")) city = "Konya";
+            else if (s.contains("adana")) city = "Adana";
+            return new Command(Kind.RAMADAN_TIME, city);
+        }
 
         // "<app> aç" / "open <app>": the name, without its Turkish suffix ('yu, 'u, 'i…)
         Matcher tr = Pattern.compile("^(.+?)\\s+" + OPEN + "\\w*$").matcher(s);
@@ -226,6 +298,60 @@ public final class VoiceCommands {
             case SETTINGS:
                 host.openSettings();
                 return true;
+            case SETTING_TRAILER: {
+                boolean on = "1".equals(c.arg);
+                host.setTrailerMoments(on);
+                host.say(on ? "Fragman modu açıldı" : "Fragman modu kapatıldı");
+                return true;
+            }
+            case SETTING_SPATIAL: {
+                boolean on = "1".equals(c.arg);
+                host.setSpatial(on);
+                host.say(on ? "Uzamsal 3D açıldı" : "Uzamsal 3D kapatıldı");
+                return true;
+            }
+            case SETTING_GLASS: {
+                boolean on = "1".equals(c.arg);
+                host.setGlass(on);
+                host.say(on ? "Cam efekti açıldı" : "Cam efekti kapatıldı");
+                return true;
+            }
+            case SETTING_DVD: {
+                boolean on = "1".equals(c.arg);
+                host.setDvdCases(on);
+                host.say(on ? "DVD kutuları açıldı" : "DVD kutuları kapatıldı");
+                return true;
+            }
+            case SETTING_AMBILIGHT: {
+                boolean on = "1".equals(c.arg);
+                host.setAmbilight(on);
+                host.say(on ? "Arka plan ışığı açıldı" : "Arka plan ışığı kapatıldı");
+                return true;
+            }
+            case SETTING_PERF: {
+                host.setPerformanceMode(c.arg);
+                host.say("high".equals(c.arg) ? "Yüksek performans modu açıldı" : ("low".equals(c.arg) ? "Eko tasarruf modu açıldı" : "Dengeli mod açıldı"));
+                return true;
+            }
+            case SETTING_DNS: {
+                host.setDns(c.arg);
+                host.say("DNS ayarı güncellendi");
+                return true;
+            }
+            case SETTING_RESET_BG: {
+                host.resetBackground();
+                host.say("Temanın orijinal arka planına dönüldü");
+                return true;
+            }
+            case SETTING_THEME: {
+                host.applyTheme(c.arg);
+                host.say("Tema değiştirildi");
+                return true;
+            }
+            case RAMADAN_TIME: {
+                host.queryRamadan(c.arg);
+                return true;
+            }
             default:
                 return false;
         }

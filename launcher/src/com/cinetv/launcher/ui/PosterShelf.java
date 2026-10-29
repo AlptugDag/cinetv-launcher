@@ -38,6 +38,12 @@ public class PosterShelf extends FrameLayout {
         boolean onEdge(int keyCode);
     }
 
+    public interface MotionListener {
+        void onMotion(float lean);
+    }
+    private MotionListener motionListener;
+    public void setMotionListener(MotionListener l) { this.motionListener = l; }
+
     private static final ExecutorService baker = Executors.newFixedThreadPool(Math.max(3, Runtime.getRuntime().availableProcessors()));
     private static final int VISIBLE_RANGE = 10;
     private static final float SIDE_ANGLE = 62f;
@@ -90,13 +96,14 @@ public class PosterShelf extends FrameLayout {
 
     /** The theme's furniture around the row (curtains, a wooden shelf) and tailored cinematic lighting grade. */
     public void setTheme(String themeId, String furniture) {
-        if (!(furniture == null ? this.scene == null : furniture.equals(this.scene))) {
-            this.scene = furniture;
+        String targetScene = (furniture != null && !furniture.isEmpty()) ? furniture : (themeId != null ? themeId : "cinetv");
+        if (!targetScene.equals(this.scene)) {
+            this.scene = targetScene;
             if (setBack != null) removeView(setBack);
             if (setFront != null) removeView(setFront);
             float caseH = caseW / DvdCase.ASPECT;
-            setBack = ShelfSet.back(getContext(), furniture, caseW, caseH);
-            setFront = ShelfSet.front(getContext(), furniture, caseW, caseH);
+            setBack = ShelfSet.back(getContext(), targetScene, caseW, caseH);
+            setFront = ShelfSet.front(getContext(), targetScene, caseW, caseH);
             if (setBack != null) addView(setBack, 0, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
             if (setFront != null) addView(setFront, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         }
@@ -251,10 +258,14 @@ public class PosterShelf extends FrameLayout {
                 float dt = Math.max(0.008f, (now - lastFrameNs) / 1e9f);
                 float target = Math.max(-14f, Math.min(14f, -(focusPos - lastPos) / dt * 2.2f));
                 lean += (target - lean) * 0.35f;
+                if (motionListener != null) motionListener.onMotion(lean);
             }
             lastFrameNs = now;
             lastPos = focusPos;
-            if (a.getAnimatedFraction() >= 1f) lean = 0f;
+            if (a.getAnimatedFraction() >= 1f) {
+                lean = 0f;
+                if (motionListener != null) motionListener.onMotion(0f);
+            }
             layoutCases();
         });
         anim.start();
@@ -323,11 +334,10 @@ public class PosterShelf extends FrameLayout {
             float d = i - focusPos;
             d = d - n * (float) Math.floor((d + n / 2f) / n);
             float ad = Math.abs(d);
-            if (ad > range) {
+            if (ad > range + 0.8f) {
                 v.setVisibility(INVISIBLE);
                 continue;
             }
-            v.setVisibility(VISIBLE);
             if (!asCases) {
                 // The original poster vitrin: overlapping posters, depth steps 1.30 / 0.94 / 0.80 / 0.68,
                 // fading back and, with Spatial HUD, turning 18 / 25 / 30 degrees towards the focus.
@@ -360,20 +370,33 @@ public class PosterShelf extends FrameLayout {
             float lift = focused ? 1f - near : 0f;
             float tilt = spatial ? 7.5f * (1f - lift) : 0f;
             float turn = 0f, glint = 0f;
+            float swaySine = 0f;
             if (i == index && sway > 0f) {
-                // Idle turn: from its slight profile round to face the light, then back.
-                float s = (float) Math.sin(Math.PI * sway);
-                turn = 24f * s;
-                glint = s;
+                // Idle turn: perfectly continuous sine wave (0 -> 1 -> 0) with zero position jump at the end
+                swaySine = (float) Math.sin(Math.PI * sway);
+                turn = 24f * swaySine;
+                glint = swaySine;
             }
             // Spatial HUD: the shelf bends slightly away, like a curved wall of discs.
             float arc = spatial ? UiKit.pxf(5) * far * far * 0.35f : 0f;
+            // Smooth edge fade: cases coming from outside the screen fade in gradually instead of popping
+            float edgeFade = 1f;
+            float leftBound = -caseW * 0.2f, rightBound = w + caseW * 0.2f;
+            if (x < leftBound) edgeFade = Math.max(0f, 1f - (leftBound - x) / (caseW * 0.75f));
+            else if (x > rightBound) edgeFade = Math.max(0f, 1f - (x - rightBound) / (caseW * 0.75f));
+            if (edgeFade <= 0f) {
+                v.setVisibility(INVISIBLE);
+                continue;
+            }
+            v.setVisibility(VISIBLE);
+            v.setAlpha(edgeFade);
             v.setTranslationX(x - v.getWidth() / 2f);
             v.setTranslationY((h - v.getHeight()) / 2f - UiKit.pxf(22) * lift + UiKit.pxf(12) * near - arc);
             v.setTranslationZ(100f - ad * 10f);
             v.setDepthBlur(blur);
             v.setGlint(glint);
-            v.setPose(yaw + turn, tilt, scale, lift, lean * (0.5f + 0.5f * near), dim, d > 0.5f, focusPos + sway * 1.5f);
+            // Continuous drift without discontinuity: uses swaySine so it returns exactly to 0 at animation end
+            v.setPose(yaw + turn, tilt, scale, lift, lean * (0.5f + 0.5f * near), dim, d > 0.5f, focusPos + swaySine * 0.8f);
         }
     }
 

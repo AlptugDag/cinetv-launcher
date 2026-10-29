@@ -26,7 +26,7 @@ public final class StreamProfile {
 
     public static StreamProfile recommend(NetworkProbe.Result net, AvOptimizer.Report av) {
         double mbps = net != null && net.ok ? net.downloadMbps : 25;
-        boolean uhd = av == null || av.is4kPanel();
+        boolean uhd = av == null || (av.is4kPanel() && (av.hevc || av.av1 || av.vp9));
         boolean hdr = av == null || av.hdr10 || av.hlg;
         boolean dv = av != null && av.dolbyVision;
 

@@ -129,9 +129,9 @@
     <string name="tour_shelf_t">Her açılışta yeni bir raf</string>
     <string name="tour_shelf">Bu filmler tam bu an için seçildi: saate, güne, şehrine ve havaya göre. Sağa sola git; oda filmin rengiyle aydınlanır.</string>
     <string name="tour_dvd_t">Bir DVD aç</string>
-    <string name="tour_dvd">Bir kutuda OK: raftan çıkar ve açılır, iç kapağında konusu el yazısıyla yazar. Bir daha OK: disk döner ve film Nuvio\'da başlar.</string>
+    <string name="tour_dvd">Bir kutuda OK: raftan çıkar ve açılır, iç kapağında konusu yazar; filmin fragmanı otomatik olarak oynar. Bir daha OK: film doğrudan Nuvio\'da başlar.</string>
     <string name="tour_trailers_t">Fragman anları</string>
-    <string name="tour_trailers">Ayarlar › 2. Görsel Deneyim sayfasında Fragman Anları: açılan DVD yan yatar, filmin fragmanı diskin yerinde sessizce oynar, konusu diğer iç kapakta yazar. Kapalıyken DVD dikey açılır.</string>
+    <string name="tour_trailers">Fragman anları varsayılan olarak açıktır: açılan DVD yan yatar ve filmin fragmanı kendiliğinden, sessizce oynar; konusu diğer iç kapakta yazar. Ayarlar sayfasındaki Fragman Anları düğmesiyle kapatabilirsin.</string>
     <string name="tour_search_t">Konuşur gibi ara</string>
     <string name="tour_search">“araba temalı filmler”, “Nolan filmleri”, “kızı kaçırılan baba filmleri” ya da herhangi bir soru. Raf cevapla dolar.</string>
     <string name="tour_voice_t">Söylemen yeter</string>
@@ -144,8 +144,8 @@
     <string name="tour_inputs">Cihazların kendi adlarıyla: “PlayStation 5”, “Digiturk”. En başta Canlı TV.</string>
     <string name="tour_apps_t">Uygulamaların</string>
     <string name="tour_apps">Bir uygulamada OK\'a basılı tut (ya da Menü): taşı, gizle, kaldır. Son kutucuk bütün uygulamaları gösterir.</string>
-    <string name="tour_settings_t">4 Sayfalı Yeni Ayarlar Menüsü</string>
-    <string name="tour_settings">Ayarlar 4 sayfaya ayrılmıştır: 1. Temalar (Sinema, Dolap, Metalik, Neon), 2. Görsel Deneyim (3D Spatial, Fragmanlar, Ambilight), 3. Yapay Zeka &amp; Ağ, 4. Sistem &amp; TV Denetçisi. Dişliye basılı tutarsan televizyonun kendi ayarları açılır.</string>
+    <string name="tour_settings_t">Tek Sayfalık Ayarlar</string>
+    <string name="tour_settings">Ayarlar tek, kaydırılabilir bir sayfadır: Temalar, Görsel Deneyim, Yapay Zeka &amp; Ağ, Görüntü-Ses-Ağ Optimizasyonu ve Sistem &amp; TV Denetçisi bölümleri alt alta durur; aşağı/yukarı kaydırırken kenardaki oklar yönü gösterir. Dişliye basılı tutarsan televizyonun kendi ayarları açılır.</string>
     <string name="tour_saver_t">Dinlenirken bir sinema</string>
     <string name="tour_saver">5 dakika boşta kalınca filmlerin sahneleri ve replikleri 35 mm film şeridi gibi ekranı doldurur. Bir süre sonra televizyon kendiliğinden uyur.</string>
     <string name="tour_done_t">Bu kadar. İyi seyirler</string>

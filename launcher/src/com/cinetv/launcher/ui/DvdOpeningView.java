@@ -233,6 +233,11 @@ public class DvdOpeningView extends View {
     private void startPlay() {
         if (play >= 0 || dvd == null) return;
         removeCallbacks(autoPlay);
+        if (landscape) {
+            // Trailer mode: the trailer is already playing in the tray, so no disc spin-up; just open the film.
+            if (!launched) launch();
+            return;
+        }
         if (slot != null) slot.hide();
         if (anim != null) anim.cancel();
         t = OPEN_END;

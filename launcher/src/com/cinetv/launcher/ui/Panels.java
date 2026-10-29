@@ -4,6 +4,7 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.os.Build;
@@ -94,175 +95,92 @@ public final class Panels {
     }
 
     private static View buildSettings(final Context ctx, final ModalHost host, final Actions a, final int pageIndex, final String focusTag) {
+        // One scrollable page (the old tab pages are now sections), sized from the real screen, not a fixed design box.
+        final android.util.DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
+        final int settingsW = Math.round(dm.widthPixels * 0.76f);
+        final int settingsH = Math.round(dm.heightPixels * 0.80f);
+        final boolean wide = settingsW >= UiKit.px(1100);
+
         LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setClipChildren(false);
         root.setClipToPadding(false);
-
-        // Occupy ~90% of screen width and height for expansive, luxurious TV experience
-        final int settingsW = UiKit.px(1728);
-        final int settingsH = UiKit.px(950);
         root.setLayoutParams(new LinearLayout.LayoutParams(settingsW, settingsH));
-        root.setMinimumWidth(settingsW);
-        root.setMinimumHeight(settingsH);
 
-        // Header: Logo, Title & Tab Bar Navigation
         LinearLayout head = new LinearLayout(ctx);
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.setClipChildren(false);
-        head.setClipToPadding(false);
-
         ImageView logo = new ImageView(ctx);
         logo.setImageBitmap(Brand.mark(ctx));
         head.addView(logo, new LinearLayout.LayoutParams(UiKit.px(48), UiKit.px(48)));
-
         TextView title = UiKit.bold(ctx, 32, UiKit.INK);
         title.setText(R.string.settings_title);
         title.setPadding(UiKit.px(18), 0, UiKit.px(36), 0);
-        head.addView(title);
-
-        // Paginated Tabs: 1. Temalar, 2. Görsel Deneyim, 3. Yapay Zeka & Ağ, 4. Sistem & TV
-        final String[] tabLabels = "tr".equals(Locale.getDefault().getLanguage())
-                ? new String[]{"1. Temalar", "2. Görsel Deneyim", "3. Yapay Zeka & Ağ", "4. Sistem & TV"}
-                : new String[]{"1. Themes", "2. Visual Experience", "3. AI & Network", "4. System & TV"};
-
-        // Distinct vibrant glass tints per page category
-        final int[] tabAccentColors = {
-                Color.parseColor("#F59E0B"), // Page 0: Warm Amber / Gold
-                Color.parseColor("#38BDF8"), // Page 1: Electric Neon Cyan
-                Color.parseColor("#C084FC"), // Page 2: Amethyst Orchid
-                Color.parseColor("#34D399")  // Page 3: Emerald Mint
-        };
-
-        LinearLayout tabsBar = new LinearLayout(ctx);
-        tabsBar.setOrientation(LinearLayout.HORIZONTAL);
-        tabsBar.setClipChildren(false);
-        tabsBar.setClipToPadding(false);
-
-        for (int i = 0; i < tabLabels.length; i++) {
-            final int targetPage = i;
-            final boolean isSelected = (targetPage == pageIndex);
-            final int tabColor = tabAccentColors[targetPage];
-            final TextView tabBtn = new TextView(ctx);
-            tabBtn.setText(tabLabels[i]);
-            tabBtn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.px(19));
-            tabBtn.setTypeface(FontManager.bold(ctx));
-            tabBtn.setTextColor(isSelected ? Color.WHITE : Color.parseColor("#9CA3AF"));
-            tabBtn.setPadding(UiKit.px(24), UiKit.px(11), UiKit.px(24), UiKit.px(11));
-            tabBtn.setFocusable(true);
-            tabBtn.setClickable(true);
-            tabBtn.setTag("tab_" + targetPage);
-
-            final android.graphics.drawable.GradientDrawable tabBg = new android.graphics.drawable.GradientDrawable();
-            tabBg.setCornerRadius(UiKit.px(16));
-            if (isSelected) {
-                tabBg.setColor(Color.argb(85, Color.red(tabColor), Color.green(tabColor), Color.blue(tabColor)));
-                tabBg.setStroke(UiKit.px(2f), Color.argb(220, Color.red(tabColor), Color.green(tabColor), Color.blue(tabColor)));
-            } else {
-                tabBg.setColor(Color.argb(20, 255, 255, 255));
-                tabBg.setStroke(UiKit.px(1f), Color.argb(30, 255, 255, 255));
-            }
-            tabBtn.setBackground(tabBg);
-
-            tabBtn.setOnFocusChangeListener((v, hasFocus) -> {
-                if (hasFocus) {
-                    tabBtn.setTextColor(Color.WHITE);
-                    tabBg.setColor(Color.argb(125, Color.red(tabColor), Color.green(tabColor), Color.blue(tabColor)));
-                    tabBg.setStroke(UiKit.px(2.5f), Color.WHITE);
-                } else {
-                    tabBtn.setTextColor(isSelected ? Color.WHITE : Color.parseColor("#9CA3AF"));
-                    if (isSelected) {
-                        tabBg.setColor(Color.argb(85, Color.red(tabColor), Color.green(tabColor), Color.blue(tabColor)));
-                        tabBg.setStroke(UiKit.px(2f), Color.argb(220, Color.red(tabColor), Color.green(tabColor), Color.blue(tabColor)));
-                    } else {
-                        tabBg.setColor(Color.argb(20, 255, 255, 255));
-                        tabBg.setStroke(UiKit.px(1f), Color.argb(30, 255, 255, 255));
-                    }
-                }
-            });
-
-            tabBtn.setOnClickListener(v -> host.replace(() -> buildSettings(ctx, host, a, targetPage, null)));
-
-            tabBtn.setOnKeyListener((v, keyCode, event) -> {
-                if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                    if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && targetPage < tabLabels.length - 1) {
-                        host.replace(() -> buildSettings(ctx, host, a, targetPage + 1, "tab_" + (targetPage + 1)));
-                        return true;
-                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && targetPage > 0) {
-                        host.replace(() -> buildSettings(ctx, host, a, targetPage - 1, "tab_" + (targetPage - 1)));
-                        return true;
-                    }
-                }
-                return false;
-            });
-
-            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            tlp.rightMargin = UiKit.px(14);
-            tabsBar.addView(tabBtn, tlp);
-        }
-        head.addView(tabsBar);
+        head.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView navHint = UiKit.label(ctx, 16, UiKit.INK_DIM);
+        navHint.setText("tr".equals(Locale.getDefault().getLanguage()) ? "▲ ▼ ◀ ▶ gezin · Geri: kapat" : "▲ ▼ ◀ ▶ navigate · Back: close");
+        head.addView(navHint);
         root.addView(head);
 
-        LinearLayout cols = new LinearLayout(ctx);
-        cols.setOrientation(LinearLayout.HORIZONTAL);
+        final LinearLayout cols = new LinearLayout(ctx);
+        cols.setOrientation(LinearLayout.VERTICAL);
         cols.setClipChildren(false);
         cols.setClipToPadding(false);
+        cols.setPadding(UiKit.px(10), UiKit.px(10), UiKit.px(10), UiKit.px(10));
 
-        LinearLayout.LayoutParams colsLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        colsLp.topMargin = UiKit.px(22);
-        colsLp.leftMargin = UiKit.px(8);
-
-        ScrollView scroll = new ScrollView(ctx);
+        final ScrollView scroll = new ScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setClipChildren(false);
         scroll.setClipToPadding(false);
         scroll.setFillViewport(true);
-        scroll.addView(cols, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(scroll, colsLp);
+        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        scroll.addView(cols, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        final int colWidth = 790; // Symmetrical 2-column layout filling 90% modal footprint
+        final FrameLayout frame = new FrameLayout(ctx);
+        frame.setClipChildren(false);
+        frame.setClipToPadding(false);
+        FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        slp.setMargins(UiKit.px(52), UiKit.px(34), UiKit.px(52), UiKit.px(34));
+        frame.addView(scroll, slp);
+        LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        flp.topMargin = UiKit.px(8);
+        root.addView(frame, flp);
 
-        if (pageIndex == PAGE_THEMES) {
+        final int colWidth = 0; // sections lay their tiles out in a full-width, self-filling grid
+
+        {
             // Page 1: Themes & Atmosphere
             LinearLayout c1 = column(ctx, cols, R.string.col_themes, colWidth);
             ThemeManager.Theme current = ThemeManager.current(ctx);
-            for (int i = 0; i < ThemeManager.THEMES.length; i += 2) {
-                LinearLayout pair = new LinearLayout(ctx);
-                pair.setOrientation(LinearLayout.HORIZONTAL);
-                pair.setWeightSum(2f);
-                pair.setClipChildren(false);
-                pair.setClipToPadding(false);
-                for (int k = i; k < Math.min(i + 2, ThemeManager.THEMES.length); k++) {
-                    final ThemeManager.Theme t = ThemeManager.THEMES[k];
-                    final String themeTag = "theme_" + t.id;
-                    LinearLayout tile = Controls.tile(ctx, themeName(ctx, t), null, t.id.equals(current.id), v -> {
-                        a.applyTheme(t.id);
-                        host.replace(() -> buildSettings(ctx, host, a, PAGE_THEMES, themeTag));
-                    });
-                    tile.setTag(themeTag);
-                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-                    lp.setMargins(k == i ? 0 : UiKit.px(8), 0, k == i ? UiKit.px(8) : 0, UiKit.px(10));
-                    pair.addView(tile, lp);
-                }
-                if (i + 1 >= ThemeManager.THEMES.length) {
-                    View dummy = new View(ctx);
-                    LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-                    dlp.setMargins(UiKit.px(8), 0, 0, UiKit.px(10));
-                    pair.addView(dummy, dlp);
-                }
-                c1.addView(pair);
+            for (int k = 0; k < ThemeManager.THEMES.length; k++) {
+                final ThemeManager.Theme t = ThemeManager.THEMES[k];
+                final String themeTag = "theme_" + t.id;
+                LinearLayout tile = Controls.tile(ctx, themeName(ctx, t), null, t.id.equals(current.id), v -> {
+                    a.applyTheme(t.id);
+                    host.replace(() -> buildSettings(ctx, host, a, PAGE_THEMES, themeTag));
+                });
+                tile.setTag(themeTag);
+                c1.addView(tile);
             }
             boolean customBg = ThemeManager.usesCustomWallpaper(ctx);
             c1.addView(Controls.tile(ctx, ctx.getString(R.string.background), ctx.getString(customBg ? R.string.background_custom : R.string.background_hint), customBg,
                     v -> host.push(() -> buildPairing(ctx, host, "background"))));
+            if (customBg) {
+                c1.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Temanın Arka Planına Dön" : "Restore Theme Background",
+                        "tr".equals(Locale.getDefault().getLanguage()) ? "Gönderdiğin resmi kaldırıp temanın kendi arka planını geri getir" : "Remove your picture and bring back the theme's own background", false,
+                        v -> {
+                            a.applyTheme(ThemeManager.current(ctx).id);
+                            host.replace(() -> buildSettings(ctx, host, a, PAGE_THEMES, "theme_" + ThemeManager.current(ctx).id));
+                        }));
+            }
 
-            LinearLayout c2 = column(ctx, cols, "Atmosfer & Dinlenme", colWidth);
+            LinearLayout c2 = column(ctx, cols, "tr".equals(Locale.getDefault().getLanguage()) ? "Atmosfer & Dinlenme" : "Atmosphere & Rest", colWidth);
             c2.addView(Controls.tile(ctx, ctx.getString(R.string.night_title), nightState(ctx), com.cinetv.launcher.device.NightCare.sleepMinutesLeft(ctx) > 0,
                     v -> host.push(() -> buildNight(ctx, host, a))));
             c2.addView(Controls.tile(ctx, ctx.getString(R.string.tour_title), ctx.getString(R.string.tour_hint), false, v -> a.startTour()));
 
-        } else if (pageIndex == PAGE_VISUAL) {
+        }
+        {
             // Page 2: Visual Experience & 3D
             LinearLayout c1 = column(ctx, cols, R.string.col_visual, colWidth);
             boolean spatial = Prefs.spatial3d(ctx);
@@ -336,7 +254,8 @@ public final class Panels {
                 a.previewScreensaver();
             }));
 
-        } else if (pageIndex == PAGE_AI) {
+        }
+        {
             // Page 3: AI & Media / Network
             LinearLayout c1 = column(ctx, cols, R.string.col_ai, colWidth);
             String provider = LlmClient.providerName(ctx);
@@ -350,30 +269,18 @@ public final class Panels {
                     v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.MDBLIST_KEY, R.string.mdblist_key, R.string.mdblist_key_hint))));
 
             LinearLayout c2 = column(ctx, cols, "Ağ & Ortam", colWidth);
-            final String dnsChoice = com.cinetv.launcher.device.NetworkOptimizer.choice(ctx);
-            LinearLayout dnsTile = Controls.tile(ctx, ctx.getString(R.string.dns_title), ctx.getString(dnsRes(dnsChoice)),
-                    !com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(dnsChoice), v -> {
-                        final String next = com.cinetv.launcher.device.NetworkOptimizer.next(com.cinetv.launcher.device.NetworkOptimizer.choice(ctx));
-                        new Thread(() -> {
-                            boolean ok = com.cinetv.launcher.device.NetworkOptimizer.apply(ctx, next);
-                            v.post(() -> {
-                                if (!ok && !com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(next)) {
-                                    Toast.makeText(ctx, R.string.dns_blocked, Toast.LENGTH_LONG).show();
-                                }
-                                host.replace(() -> buildSettings(ctx, host, a, PAGE_AI, "opt_dns"));
-                            });
-                        }, "cinetv-dns").start();
-                    });
-            dnsTile.setTag("opt_dns");
-            c2.addView(dnsTile);
 
             String city = Prefs.city(ctx);
             c2.addView(Controls.tile(ctx, ctx.getString(R.string.weather_city), city != null ? city : ctx.getString(R.string.weather_auto), city != null,
                     v -> host.push(() -> buildCityInput(ctx, host, a))));
-            c2.addView(Controls.tile(ctx, ctx.getString(R.string.setup_tune), ctx.getString(R.string.setup_tune_hint), false,
-                    v -> setup(ctx, host, false)));
 
-        } else if (pageIndex == PAGE_SYSTEM) {
+            LinearLayout c3 = column(ctx, cols, "tr".equals(Locale.getDefault().getLanguage()) ? "Optimizasyon" : "Optimization", colWidth);
+            c3.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Görüntü, Ses, Ağ & Optimizasyon" : "Picture, Sound, Network & Optimization",
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "TV Denetçisi verilerine göre ayarla, DNS seç, test et" : "Tune from TV Inspector data, pick DNS, test",
+                    false, v -> setup(ctx, host, false)));
+
+        }
+        {
             // Page 4: System & TV
             LinearLayout c1 = column(ctx, cols, R.string.col_tv, colWidth);
             c1.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Kurulum Sihirbazı & Bileşen Kontrolü" : "Setup Wizard & Component Health",
@@ -407,8 +314,6 @@ public final class Panels {
             c2.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "TV Denetçisi (Donanım & Panel Analizi)" : "TV Inspector (Hardware & Panel Diagnostics)",
                     "tr".equals(Locale.getDefault().getLanguage()) ? "Ekran, HDR, ses çözücüleri, bellek ve canlı tuşlar" : "Display, HDR, audio codecs, memory & live keys", false,
                     v -> host.push(() -> buildTvInspector(ctx, host))));
-            c2.addView(Controls.tile(ctx, ctx.getString(R.string.optimize), ctx.getString(R.string.optimize_hint), false,
-                    v -> host.push(() -> buildBenchmark(ctx, host))));
             c2.addView(Controls.tile(ctx, ctx.getString(R.string.remote_keys), ctx.getString(R.string.remote_keys_hint), false,
                     v -> host.push(() -> buildKeyCapture(ctx, host, a))));
             String curVer = AppUpdater.currentVersion(ctx);
@@ -445,6 +350,12 @@ public final class Panels {
             c2.addView(Controls.alarm(ctx, ctx.getString(R.string.destroy), v -> host.push(() -> buildDestroy(ctx, host))));
         }
 
+        final int gridCols = wide ? 3 : 2;
+        for (int i = 0; i < cols.getChildCount(); i++) {
+            if (cols.getChildAt(i) instanceof LinearLayout) gridify(ctx, (LinearLayout) cols.getChildAt(i), gridCols, i);
+        }
+        attachScrollArrows(ctx, frame, scroll, cols);
+
         if (focusTag != null) {
             root.post(() -> {
                 View target = root.findViewWithTag(focusTag);
@@ -466,10 +377,135 @@ public final class Panels {
         c.setClipChildren(false);
         c.setClipToPadding(false);
         c.addView(Controls.header(ctx, titleStr));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiKit.px(widthDesign), ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(cols.getChildCount() == 0 ? UiKit.px(8) : UiKit.px(36), 0, 0, 0);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = cols.getChildCount() == 0 ? 0 : UiKit.px(28);
         cols.addView(c, lp);
         return c;
+    }
+
+    private static final int[] SECTION_TINTS = {0xFFF59E0B, 0xFF38BDF8, 0xFFC084FC, 0xFF34D399, 0xFFFB7185, 0xFF60A5FA, 0xFFFBBF24, 0xFF2DD4BF, 0xFFA78BFA};
+
+    /** Lays a section's tiles into full rows (no orphan gaps) that stretch to fill the width, tinted per section. */
+    private static void gridify(Context ctx, LinearLayout section, int gridCols, int index) {
+        int tint = SECTION_TINTS[index % SECTION_TINTS.length];
+        View header = section.getChildAt(0);
+        if (header instanceof TextView) {
+            ((TextView) header).setTextColor(tint);
+            ((TextView) header).setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.px(19));
+            header.setPadding(UiKit.px(6), 0, 0, UiKit.px(12));
+        }
+        List<View> tiles = new ArrayList<>();
+        for (int i = 1; i < section.getChildCount(); i++) tiles.add(section.getChildAt(i));
+        section.removeViews(1, section.getChildCount() - 1);
+        int n = tiles.size();
+        if (n == 0) return;
+        int rows = (n + gridCols - 1) / gridCols;
+        int base = n / rows, extra = n % rows, at = 0;
+        final int gap = UiKit.px(14);
+        for (int r = 0; r < rows; r++) {
+            int count = base + (r < extra ? 1 : 0);
+            LinearLayout row = new LinearLayout(ctx);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setClipChildren(false);
+            row.setClipToPadding(false);
+            for (int k = 0; k < count; k++) {
+                View tile = tiles.get(at++);
+                tile.setMinimumHeight(UiKit.px(104));
+                if (tile instanceof LinearLayout) {
+                    ((LinearLayout) tile).setGravity(Gravity.CENTER_VERTICAL);
+                    View st = ((LinearLayout) tile).getChildCount() > 1 ? ((LinearLayout) tile).getChildAt(1) : null;
+                    if (st instanceof TextView) {
+                        ((TextView) st).setSingleLine(false);
+                        ((TextView) st).setMaxLines(2);
+                        ((TextView) st).setEllipsize(android.text.TextUtils.TruncateAt.END);
+                    }
+                }
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+                lp.rightMargin = k < count - 1 ? gap : 0;
+                row.addView(tile, lp);
+            }
+            LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            rlp.bottomMargin = gap;
+            section.addView(row, rlp);
+        }
+    }
+
+    /** Arrows around the page: up/down while it scrolls, left/right where focus can still move sideways. */
+    private static void attachScrollArrows(final Context ctx, final FrameLayout frame, final ScrollView scroll, final LinearLayout content) {
+        final TextView up = arrow(ctx, "▲", Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        final TextView down = arrow(ctx, "▼", Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        final TextView left = arrow(ctx, "◀", Gravity.START | Gravity.CENTER_VERTICAL);
+        final TextView right = arrow(ctx, "▶", Gravity.END | Gravity.CENTER_VERTICAL);
+        frame.addView(up);
+        frame.addView(down);
+        frame.addView(left);
+        frame.addView(right);
+        final Runnable update = () -> {
+            up.setAlpha(scroll.canScrollVertically(-1) ? 1f : 0.18f);
+            down.setAlpha(scroll.canScrollVertically(1) ? 1f : 0.18f);
+            View f = frame.findFocus();
+            boolean l = false, r = false;
+            if (f != null) {
+                View ln = f.focusSearch(View.FOCUS_LEFT), rn = f.focusSearch(View.FOCUS_RIGHT);
+                l = ln != null && ln != f && isDescendant(content, ln);
+                r = rn != null && rn != f && isDescendant(content, rn);
+            }
+            left.setAlpha(l ? 1f : 0.18f);
+            right.setAlpha(r ? 1f : 0.18f);
+        };
+        scroll.getViewTreeObserver().addOnScrollChangedListener(update::run);
+        frame.getViewTreeObserver().addOnGlobalFocusChangeListener((o, n) -> update.run());
+        frame.addOnLayoutChangeListener((v, a, b, c, d, e, f, g, h) -> {
+            // Content shorter than the window: grow the tile rows so the page has no empty bottom.
+            int viewport = scroll.getHeight();
+            int used = content.getHeight();
+            if (viewport > 0 && used > 0 && used < viewport && content.getTag() == null) {
+                content.setTag("stretched");
+                int rowsCount = 0;
+                for (int i = 0; i < content.getChildCount(); i++) {
+                    View s = content.getChildAt(i);
+                    if (s instanceof LinearLayout) rowsCount += Math.max(0, ((LinearLayout) s).getChildCount() - 1);
+                }
+                if (rowsCount > 0) {
+                    int add = (viewport - used) / rowsCount;
+                    for (int i = 0; i < content.getChildCount(); i++) {
+                        View s = content.getChildAt(i);
+                        if (!(s instanceof LinearLayout)) continue;
+                        LinearLayout sec = (LinearLayout) s;
+                        for (int k = 1; k < sec.getChildCount(); k++) {
+                            View row = sec.getChildAt(k);
+                            if (row instanceof LinearLayout) {
+                                for (int t = 0; t < ((LinearLayout) row).getChildCount(); t++) {
+                                    View tile = ((LinearLayout) row).getChildAt(t);
+                                    tile.setMinimumHeight(tile.getMinimumHeight() + add);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            update.run();
+        });
+        frame.post(update);
+    }
+
+    private static boolean isDescendant(View ancestor, View v) {
+        for (android.view.ViewParent p = v.getParent(); p != null; p = p.getParent()) {
+            if (p == ancestor) return true;
+        }
+        return false;
+    }
+
+    private static TextView arrow(Context ctx, String glyph, int gravity) {
+        TextView t = UiKit.bold(ctx, 24, UiKit.INK);
+        t.setText(glyph);
+        t.setGravity(Gravity.CENTER);
+        t.setBackground(new Glass(t, UiKit.pxf(22), Glass.Style.CONTROL));
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(UiKit.px(44), UiKit.px(32), gravity);
+        if ((gravity & Gravity.VERTICAL_GRAVITY_MASK) == Gravity.CENTER_VERTICAL) lp.height = UiKit.px(44);
+        t.setLayoutParams(lp);
+        t.setAlpha(0.18f);
+        return t;
     }
 
     public static String themeName(Context ctx, ThemeManager.Theme t) {
@@ -645,6 +681,9 @@ public final class Panels {
     // ---- Remove CineTV ------------------------------------------------------------------------------
 
     private static View buildDestroy(final Context ctx, final ModalHost host) {
+        // First layer: red alarm glow along the screen edges, blinking; then a second "Are you sure?" layer.
+        host.setAlarm(true);
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
         TextView title = UiKit.bold(ctx, 34, Brand.TV_RED);
@@ -660,7 +699,34 @@ public final class Panels {
         row.addView(Controls.button(ctx, ctx.getString(R.string.destroy_cancel), v -> host.back()));
         View sp = new View(ctx);
         row.addView(sp, new LinearLayout.LayoutParams(UiKit.px(16), 1));
-        row.addView(Controls.alarmButton(ctx, ctx.getString(R.string.destroy_confirm), v -> {
+        row.addView(Controls.alarmButton(ctx, ctx.getString(R.string.destroy_confirm), v -> host.push(() -> buildDestroyAreYouSure(ctx, host, tr))));
+        root.addView(row);
+        return root;
+    }
+
+    /** The second layer of Remove CineTV: "Emin misin?" with Yes / No. */
+    private static View buildDestroyAreYouSure(final Context ctx, final ModalHost host, boolean tr) {
+        host.setAlarm(true);
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        TextView title = UiKit.bold(ctx, 46, Brand.TV_RED);
+        title.setText(tr ? "Emin misin?" : "Are you sure?");
+        title.setGravity(Gravity.CENTER);
+        root.addView(title);
+        TextView body = UiKit.label(ctx, 22, UiKit.INK_DIM);
+        body.setText(tr ? "CineTV bu televizyondan kaldırılacak. Bu işlem geri alınamaz."
+                : "CineTV will be removed from this TV. This cannot be undone.");
+        body.setGravity(Gravity.CENTER);
+        body.setPadding(0, UiKit.px(14), 0, UiKit.px(30));
+        body.setMaxWidth(UiKit.px(680));
+        root.addView(body);
+        LinearLayout row = new LinearLayout(ctx);
+        final TextView no = Controls.button(ctx, tr ? "Hayır" : "No", v -> host.back());
+        row.addView(no);
+        View sp = new View(ctx);
+        row.addView(sp, new LinearLayout.LayoutParams(UiKit.px(24), 1));
+        row.addView(Controls.alarmButton(ctx, tr ? "Evet, Yok Et" : "Yes, Remove", v -> {
             final Context app = ctx.getApplicationContext();
             new Thread(() -> {
                 String problem = com.cinetv.launcher.device.Uninstaller.run(app);
@@ -671,6 +737,8 @@ public final class Panels {
             }, "cinetv-remove").start();
         }));
         root.addView(row);
+        // Safe default: focus lands on "No".
+        root.post(no::requestFocus);
         return root;
     }
 
@@ -999,6 +1067,23 @@ public final class Panels {
             final boolean dnsOk = applyAv ? com.cinetv.launcher.device.NetworkOptimizer.apply(ctx, dns)
                     : com.cinetv.launcher.device.NetworkOptimizer.privateDnsActive(ctx, String.valueOf(com.cinetv.launcher.device.NetworkOptimizer.host(dns)));
             final String dnsLabel = ctx.getString(dnsRes(dns));
+            // Optimize & test, merged: RAM/disk tuning and the benchmark run together with the picture/sound/network step.
+            final MemoryOptimizer.Benchmark bench;
+            final int tuned;
+            if (applyAv) {
+                tuned = MemoryOptimizer.tuneSystem(ctx);
+                com.cinetv.launcher.service.PosterCache.trimDisk(ctx);
+                bench = MemoryOptimizer.runBenchmark(ctx);
+                com.cinetv.launcher.service.PosterCache.trimMemory();
+                Glow.clear();
+                // The performance mode follows the hardware the TV Inspector reports, unless the viewer chose one.
+                if (PerformanceProfile.MODE_AUTO.equals(PerformanceProfile.mode(ctx))) {
+                    PerformanceProfile.setMode(ctx, PerformanceProfile.modeFor(PerformanceProfile.detectedTier(ctx)));
+                }
+            } else {
+                tuned = 0;
+                bench = null;
+            }
             final com.cinetv.launcher.device.NetworkProbe.Result net = com.cinetv.launcher.device.NetworkProbe.run();
             final com.cinetv.launcher.service.StreamProfile profile = com.cinetv.launcher.service.StreamProfile.recommend(net, av);
             Prefs.get(ctx).edit().putString("setup_report", av.toJson().toString())
@@ -1006,7 +1091,7 @@ public final class Panels {
             main.post(() -> {
                 StringBuilder sb = new StringBuilder();
                 String hdr = (av.hdr10 ? "HDR10 " : "") + (av.hlg ? "HLG " : "") + (av.hdr10Plus ? "HDR10+ " : "") + (av.dolbyVision ? "Dolby Vision" : "");
-                sb.append(ctx.getString(R.string.setup_picture, av.is4kPanel() ? "4K UHD" : av.uiWidth + "×" + av.uiHeight,
+                sb.append(ctx.getString(R.string.setup_picture, av.panelWidth > 0 ? av.panelClass() : av.uiWidth + "×" + av.uiHeight,
                         hdr.trim().isEmpty() ? "SDR" : hdr.trim(), Math.round(av.peakNits))).append('\n');
                 sb.append(ctx.getString(R.string.setup_sound, av.hdmiAudio
                         ? (av.earc ? "HDMI eARC" : "HDMI ARC") + (av.encodings.isEmpty() ? "" : " · " + android.text.TextUtils.join(", ", av.encodings))
@@ -1015,6 +1100,12 @@ public final class Panels {
                 sb.append(net.ok ? ctx.getString(R.string.setup_network, Math.round(net.downloadMbps), net.latencyMs, net.jitterMs)
                         : ctx.getString(R.string.setup_network_failed)).append('\n');
                 if (!av.applied.isEmpty()) sb.append(ctx.getString(R.string.setup_applied, android.text.TextUtils.join(", ", av.applied))).append('\n');
+                if (bench != null) {
+                    sb.append('\n').append(ctx.getString(R.string.optimize_result, bench.freeRamMb, bench.totalRamMb, bench.freedRamMb, bench.killed,
+                            String.format(Locale.US, "%.1f", bench.cpuMs), String.format(Locale.US, "%.0f", bench.diskMBs),
+                            ctx.getString(tierRes(PerformanceProfile.tier(ctx))))).append('\n')
+                            .append(ctx.getString(R.string.optimize_system, tuned)).append('\n');
+                }
                 sb.append('\n').append(ctx.getString(R.string.setup_recommend, ctx.getString(profile.labelRes)));
                 if (av.is4kPanel() && av.uiWidth < 3840) sb.append('\n').append(ctx.getString(R.string.setup_ui_note));
                 if (!"mediatek".equals(PictureCalibration.engine(ctx))) {
@@ -1039,6 +1130,22 @@ public final class Panels {
                 }));
                 View sp3 = new View(ctx);
                 buttons.addView(sp3, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+                View sp4 = new View(ctx);
+                buttons.addView(sp4, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+                final TextView dnsBtn = Controls.button(ctx, ctx.getString(R.string.dns_title) + ": " + ctx.getString(dnsRes(com.cinetv.launcher.device.NetworkOptimizer.choice(ctx))), null);
+                dnsBtn.setOnClickListener(v -> {
+                    final String next = com.cinetv.launcher.device.NetworkOptimizer.next(com.cinetv.launcher.device.NetworkOptimizer.choice(ctx));
+                    new Thread(() -> {
+                        boolean ok = com.cinetv.launcher.device.NetworkOptimizer.apply(ctx, next);
+                        v.post(() -> {
+                            if (!ok && !com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(next)) Toast.makeText(ctx, R.string.dns_blocked, Toast.LENGTH_LONG).show();
+                            dnsBtn.setText(ctx.getString(R.string.dns_title) + ": " + ctx.getString(dnsRes(com.cinetv.launcher.device.NetworkOptimizer.choice(ctx))));
+                        });
+                    }, "cinetv-dns").start();
+                });
+                buttons.addView(dnsBtn);
+                View sp5 = new View(ctx);
+                buttons.addView(sp5, new LinearLayout.LayoutParams(UiKit.px(16), 1));
                 buttons.addView(Controls.button(ctx, ctx.getString(R.string.done), v -> host.back()));
                 buttons.setVisibility(View.VISIBLE);
                 buttons.getChildAt(0).requestFocus();
@@ -1286,33 +1393,29 @@ public final class Panels {
         WindowManager wm = (WindowManager) ctx.getSystemService(Context.WINDOW_SERVICE);
         Display d = wm != null ? wm.getDefaultDisplay() : null;
         StringBuilder dispSb = new StringBuilder();
-        if (d != null) {
-            android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
-            d.getRealMetrics(dm);
-            float refresh = d.getRefreshRate();
-            dispSb.append(tr ? "Çözünürlük: " : "Resolution: ").append(dm.widthPixels).append(" × ").append(dm.heightPixels);
-            if (dm.widthPixels >= 3840 || dm.heightPixels >= 2160) dispSb.append(" (4K Ultra HD)");
-            else if (dm.widthPixels >= 1920 || dm.heightPixels >= 1080) dispSb.append(" (Full HD)");
-            dispSb.append("\nYenileme Hızı: ").append(String.format(Locale.US, "%.1f Hz", refresh));
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                Display.HdrCapabilities hdr = d.getHdrCapabilities();
-                if (hdr != null && hdr.getSupportedHdrTypes() != null && hdr.getSupportedHdrTypes().length > 0) {
-                    List<String> hdrs = new ArrayList<>();
-                    for (int t : hdr.getSupportedHdrTypes()) {
-                        if (t == Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION) hdrs.add("Dolby Vision");
-                        else if (t == Display.HdrCapabilities.HDR_TYPE_HDR10) hdrs.add("HDR10");
-                        else if (t == Display.HdrCapabilities.HDR_TYPE_HLG) hdrs.add("HLG");
-                        else if (t == 4) hdrs.add("HDR10+");
-                    }
-                    dispSb.append(tr ? "\nHDR Formatları: " : "\nHDR Support: ").append(android.text.TextUtils.join(", ", hdrs));
-                } else {
-                    dispSb.append(tr ? "\nHDR Desteği: SDR Panel" : "\nHDR Support: SDR Panel");
-                }
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                dispSb.append(tr ? "\nGeniş Renk Gamı (WCG): " : "\nWide Color Gamut (WCG): ").append(d.isWideColorGamut() ? (tr ? "Destekleniyor" : "Supported") : (tr ? "Desteklenmiyor" : "Unsupported"));
-            }
+        final com.cinetv.launcher.device.AvOptimizer.Report av = com.cinetv.launcher.device.AvOptimizer.detect(ctx);
+        int pw = av.panelWidth > 0 ? av.panelWidth : av.uiWidth, ph = av.panelHeight > 0 ? av.panelHeight : av.uiHeight;
+        dispSb.append(tr ? "Panel Çözünürlüğü: " : "Panel Resolution: ").append(pw).append(" × ").append(ph).append(" (").append(av.panelClass()).append(")");
+        if (av.uiWidth > 0 && (av.uiWidth != pw || av.uiHeight != ph)) {
+            dispSb.append(tr ? "\nArayüz Katmanı: " : "\nUI Plane: ").append(av.uiWidth).append(" × ").append(av.uiHeight)
+                    .append(tr ? " (video 4K panele doğrudan gider)" : " (video goes straight to the 4K panel)");
         }
+        dispSb.append(tr ? "\nYenileme Hızı: " : "\nRefresh Rate: ").append(String.format(Locale.US, "%.0f Hz", av.maxRefresh));
+        List<String> hdrs = new ArrayList<>();
+        if (av.dolbyVision) hdrs.add("Dolby Vision");
+        if (av.hdr10) hdrs.add("HDR10");
+        if (av.hdr10Plus) hdrs.add("HDR10+");
+        if (av.hlg) hdrs.add("HLG");
+        if (!hdrs.isEmpty()) {
+            dispSb.append(tr ? "\nHDR Formatları: " : "\nHDR Formats: ").append(android.text.TextUtils.join(", ", hdrs));
+            if (av.peakNits > 0) dispSb.append(String.format(Locale.US, " · ~%.0f nit", av.peakNits));
+        } else {
+            dispSb.append(tr ? "\nHDR Desteği: Desteklenmiyor (SDR panel)" : "\nHDR Support: Unsupported (SDR panel)");
+        }
+        dispSb.append(tr ? "\nGeniş Renk Gamı (BT.2020): " : "\nWide Color Gamut (BT.2020): ")
+                .append(av.wideGamut ? (tr ? "Destekleniyor" : "Supported") : (tr ? "Desteklenmiyor" : "Unsupported"));
+        dispSb.append(tr ? "\nHDMI Ses: " : "\nHDMI Audio: ")
+                .append(av.hdmiAudio ? (av.earc ? "eARC " : "ARC ") + (tr ? "Destekleniyor" : "Supported") : (tr ? "Desteklenmiyor (TV hoparlörü)" : "Unsupported (TV speakers)"));
         col1.addView(inspectorCard(ctx, dispSb.toString()));
 
         // 2. Bellek & Depolama
@@ -1416,6 +1519,22 @@ public final class Panels {
         twoCols.addView(col2, c2lp);
 
         root.addView(twoCols);
+
+        // Verification & Community Tested Device Feedback
+        col2.addView(inspectorHeader(ctx, tr ? "Cihaz Uyumluluğu & Onay" : "Device Compatibility & Verification"));
+        final TextView feedbackBtn = Controls.button(ctx, tr ? "✓ Uyumluluk Raporu Gönder (Topluluk Listesine Ekle)" : "✓ Submit Device Compatibility Report", v -> {
+            com.cinetv.launcher.device.DeviceVerifier.submitFeedback(ctx, "Verified & Running Smoothly", new com.cinetv.launcher.device.DeviceVerifier.Callback() {
+                @Override
+                public void onSuccess(String msg) {
+                    Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show();
+                }
+                @Override
+                public void onError(String err) {
+                    Toast.makeText(ctx, "Hata: " + err, Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+        col2.addView(feedbackBtn);
 
         // Kapat Butonu
         final TextView close = Controls.button(ctx, tr ? "Kapat" : "Close", v -> host.close());
@@ -1576,12 +1695,35 @@ public final class Panels {
         fl.setBackground(Glass.panel(fl, 18));
         fl.setPadding(UiKit.px(20), UiKit.px(14), UiKit.px(20), UiKit.px(14));
         TextView tv = UiKit.label(ctx, 18, UiKit.INK_DIM);
-        tv.setText(text);
+        tv.setText(colorSupport(text));
         tv.setLineSpacing(UiKit.pxf(5), 1.15f);
         fl.addView(tv);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.bottomMargin = UiKit.px(10);
         fl.setLayoutParams(lp);
         return fl;
+    }
+
+    /** "Destekleniyor"/"Supported" in green, "Desteklenmiyor"/"Unsupported" in red (the check marks too). */
+    private static CharSequence colorSupport(String text) {
+        android.text.SpannableString sp = new android.text.SpannableString(text);
+        int red = Color.parseColor("#F87171"), green = Color.parseColor("#34D399");
+        String[] bad = {"Desteklenmiyor", "Unsupported", "✗", "SDR Panel"};
+        String[] good = {"Destekleniyor", "Supported", "✓"};
+        for (String w : bad) paint(sp, text, w, red, null);
+        for (String w : good) paint(sp, text, w, green, "Unsupported");
+        return sp;
+    }
+
+    private static void paint(android.text.SpannableString sp, String text, String word, int color, String notInside) {
+        int from = 0;
+        while ((from = text.indexOf(word, from)) >= 0) {
+            boolean inside = notInside != null && from >= 2 && text.regionMatches(true, from - 2, notInside, 0, notInside.length());
+            if (!inside) {
+                sp.setSpan(new android.text.style.ForegroundColorSpan(color), from, from + word.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sp.setSpan(new android.text.style.StyleSpan(Typeface.BOLD), from, from + word.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            from += word.length();
+        }
     }
 }

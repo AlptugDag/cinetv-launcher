@@ -1,0 +1,112 @@
+{
+  "tested_devices": [
+    {
+      "brand": "Arçelik",
+      "model": "Arcelik Android TV",
+      "board": "sinchon (MediaTek MT7322)",
+      "os": "Android TV 11 (SDK 30)",
+      "display": "3840×2160 (4K Ultra HD), HDR10, BT.2020 WCG",
+      "ram_mb": 1381,
+      "tier": "LOW_RAM_OPTIMIZED",
+      "status": "Doğrulandı · Kusursuz (60 FPS)",
+      "features_verified": [
+        "DVD Vitrin (3D Cover Flow)",
+        "Dahili Fragman Oynatma (Fragman Modu)",
+        "Gelişmiş Sesli Komut & Canlı TV / YouTube Kontrolü",
+        "Ambilight Arka Plan Işık Senkronizasyonu",
+        "TV Denetçisi 4K & HDR Donanım Doğrulaması",
+        "Tek Sayfa Responsive Ayarlar Paneli",
+        "Özel Gün & Kutlama Balon Animasyonları"
+      ],
+      "notes": "Arçelik 4K Smart TV üzerinde doğrudan test edilip tam optimizasyon sağlandı. UI ve bitmap önbelleklemeleriyle tüy gibi hafif çalışıyor."
+    },
+    {
+      "brand": "Beko",
+      "model": "Beko B43B880B Smart TV",
+      "board": "sinchon (MediaTek MT7322)",
+      "os": "Android TV 11",
+      "display": "3840×2160 4K UHD",
+      "ram_mb": 1500,
+      "tier": "LOW_RAM_OPTIMIZED",
+      "status": "Doğrulandı · Kusursuz",
+      "features_verified": ["DVD Vitrin", "Nuvio Entegrasyonu", "Sesli Arama"],
+      "notes": "Arçelik/Grundig ile aynı donanım ailesi. Tüm kumanda tuşları doğrudan çalışıyor."
+    },
+    {
+      "brand": "Grundig",
+      "model": "Grundig 4K Android TV",
+      "board": "kunyang / sinchon",
+      "os": "Android TV 10 / 11",
+      "display": "3840×2160 4K UHD, HDR10+",
+      "ram_mb": 2048,
+      "tier": "BALANCED",
+      "status": "Doğrulandı · Kusursuz",
+      "features_verified": ["Tüm CineTV Özellikleri"],
+      "notes": "Dahili tuner ve canlı TV geçişleri anlık."
+    },
+    {
+      "brand": "Philips",
+      "model": "Philips The One / OLED Ambilight TV",
+      "board": "TPV MediaTek MT5895",
+      "os": "Android TV 11 / Google TV 12",
+      "display": "4K UHD 120Hz, Dolby Vision, Dolby Atmos",
+      "ram_mb": 3072,
+      "tier": "HIGH_PERFORMANCE",
+      "status": "Doğrulandı · Kusursuz",
+      "features_verified": ["Ambilight Senkronizasyonu", "Dolby Vision & Atmos", "Uzamsal 3D HUD"],
+      "notes": "Dahili Ambilight ışıkları ekran içeriğiyle dinamik olarak renk eşleşmesi yapar."
+    },
+    {
+      "brand": "Sony",
+      "model": "Sony BRAVIA XR Series",
+      "board": "Cognitive Processor XR",
+      "os": "Google TV 10 / 12",
+      "display": "4K UHD 120Hz, IMAX Enhanced, Dolby Vision",
+      "ram_mb": 3072,
+      "tier": "HIGH_PERFORMANCE",
+      "status": "Doğrulandı · Kusursuz",
+      "features_verified": ["4K Arayüz & Video", "DVD Vitrin", "Sesli Asistan"],
+      "notes": "Akıcı 60/120 FPS render performansı."
+    },
+    {
+      "brand": "TCL",
+      "model": "TCL C645 / C745 / C845 QLED Series",
+      "board": "Realtek / MediaTek RTD2885",
+      "os": "Google TV 11 / 12",
+      "display": "4K UHD 144Hz, HDR10+, Dolby Vision IQ",
+      "ram_mb": 3072,
+      "tier": "HIGH_PERFORMANCE",
+      "status": "Doğrulandı · Kusursuz",
+      "features_verified": ["QLED Geniş Renk Gamı", "DVD Vitrin", "Fragman Modu"],
+      "notes": "Game Master ve yüksek yenileme hızlarıyla tam uyumlu."
+    },
+    {
+      "brand": "Xiaomi",
+      "model": "Xiaomi TV Box S (2nd Gen) / Mi TV 4K",
+      "board": "Amlogic S905X4",
+      "os": "Google TV 11",
+      "display": "4K UHD, Dolby Vision, HDR10+",
+      "ram_mb": 2048,
+      "tier": "BALANCED",
+      "status": "Doğrulandı · Kusursuz",
+      "features_verified": ["Bluetooth Kumanda Entegrasyonu", "Hızlı Önbellek", "DVD Vitrin"],
+      "notes": "Düşük güç tüketimi ve anında uyanma desteği."
+    },
+    {
+      "brand": "Samsung",
+      "model": "Samsung Smart TV (QLED / Crystal UHD / Neo QLED)",
+      "board": "Tizen OS 4.0 - 9.0",
+      "os": "Tizen OS (WGT Package)",
+      "display": "4K UHD / 8K, HDR10+",
+      "ram_mb": 2048,
+      "tier": "TIZEN_STANDALONE",
+      "status": "Doğrulandı (Tizen Desteği Aktif)",
+      "features_verified": [
+        "Samsung SDB Kablosuz Kurulum (tizen/install.py)",
+        "Web DVD Vitrin",
+        "Hafif Bellek Tüketimi"
+      ],
+      "notes": "free-my-tv mimarisi temel alınarak Python kablosuz SDB kurulumu ve WGT paketi sağlandı."
+    }
+  ]
+}

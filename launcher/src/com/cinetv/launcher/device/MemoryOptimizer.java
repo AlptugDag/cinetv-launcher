@@ -34,7 +34,8 @@ public final class MemoryOptimizer {
             "com.google.android.tts", "com.google.android.apps.mediashell", "com.google.android.tv.remote.service",
             "com.android.bluetooth", "com.waxrain.airplaydmr", "com.waxrain.airplaydmr2", "io.github.jqssun.airplay",
             "com.github.jqssun.airplay", "com.ionitech.airscreen", "com.apowersoft.mirror.tv",
-            "com.nuvio.tv"));
+            "com.nuvio.tv", "com.android.providers.tv", "com.android.tv", "com.google.android.tvrecommendations",
+            "com.google.android.leanbacklauncher", "com.google.android.inputmethod.latin", "com.android.inputmethod.latin"));
 
     private static final String[] AIRPLAY_RECEIVERS = {
             "com.github.jqssun.airplay", "com.waxrain.airplaydmr", "com.waxrain.airplaydmr2", "com.ionitech.airscreen"};
@@ -49,7 +50,8 @@ public final class MemoryOptimizer {
         return l.contains("airplay") || l.contains("airscreen") || l.contains("airpin") || l.contains("mediashell")
                 || l.contains("chromecast") || l.contains("bluetooth") || l.contains("inputmethod")
                 || l.contains("katniss") || l.contains("tv.settings") || l.startsWith("com.mediatek.wwtv")
-                || l.startsWith("com.mediatek.tv.oneworld");
+                || l.startsWith("com.mediatek.tv.oneworld") || l.contains("tvinput") || l.contains("inputservice")
+                || l.contains("tvservice") || l.startsWith("com.android.providers.") || l.startsWith("com.mediatek.");
     }
 
     public static void kill(Context ctx, String pkg) {
@@ -84,13 +86,28 @@ public final class MemoryOptimizer {
         return cleaned;
     }
 
-    /** Background sweep when Home comes back, at most every 15 s. Never on the main thread. */
+    /**
+     * Background sweep when Home comes back: at most every 45 s, and only while memory is really tight
+     * (under a third of RAM free); killing healthy apps only makes the next launch slower. Never on the main thread.
+     */
     public static void sweepAsync(Context ctx) {
         long now = System.currentTimeMillis();
-        if (now - lastSweep < 15_000L) return;
+        if (now - lastSweep < 45_000L) return;
         lastSweep = now;
         final Context app = ctx.getApplicationContext();
         new Thread(() -> {
+            try {
+                ActivityManager am = (ActivityManager) app.getSystemService(Context.ACTIVITY_SERVICE);
+                ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+                if (am != null) {
+                    am.getMemoryInfo(mi);
+                    if (mi.availMem * 3 > mi.totalMem) {
+                        ensureAirPlayReceiver(app);
+                        return;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
             cleanBackground(app, app.getPackageName());
             ensureAirPlayReceiver(app);
         }, "cinetv-sweep").start();

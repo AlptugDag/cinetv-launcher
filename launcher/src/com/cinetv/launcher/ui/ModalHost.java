@@ -29,6 +29,8 @@ public class ModalHost extends FrameLayout {
     /** When set, the top window is a small bar attached to this view instead of a centred window. */
     private View anchor;
     private Runnable onClosed;
+    /** Set by a window while it is being built: a blinking red edge glow stays over it (e.g. Remove CineTV). */
+    private boolean alarmOn;
 
     public ModalHost(Context ctx) {
         super(ctx);
@@ -72,6 +74,7 @@ public class ModalHost extends FrameLayout {
     }
 
     public void close() {
+        alarmOn = false;
         stack.clear();
         anchor = null;
         animate().alpha(0f).setDuration(PerformanceProfile.animationMs(getContext(), 160)).withEndAction(() -> {
@@ -81,8 +84,14 @@ public class ModalHost extends FrameLayout {
         }).start();
     }
 
+    /** Called by a window's builder: keep the red alarm glow around this window. */
+    public void setAlarm(boolean on) {
+        alarmOn = on;
+    }
+
     private void showTop() {
         removeAllViews();
+        alarmOn = false;
         View content = stack.peek().build();
         LinearLayout card = new LinearLayout(getContext());
         card.setOrientation(LinearLayout.VERTICAL);
@@ -101,6 +110,9 @@ public class ModalHost extends FrameLayout {
         LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                 near != null ? Gravity.TOP | Gravity.START : Gravity.CENTER);
         addView(card, lp);
+        if (alarmOn) {
+            addView(new AlarmGlowView(getContext()), new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
         if (near != null) {
             // Place it once measured: centred under the tile, above it when the screen ends.
             card.setVisibility(INVISIBLE);

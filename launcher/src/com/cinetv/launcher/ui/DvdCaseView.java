@@ -277,7 +277,10 @@ public class DvdCaseView extends View {
             float facing = Math.max(0f, -z2);
             float slide = (x1 * 0.5f + 0.5f) * 0.55f + drift * 0.08f + glint * 0.6f;
             int win = wrap.getWidth() / 3;
-            int off = (int) ((slide - Math.floor(slide)) * (wrap.getWidth() - win));
+            // Continuous ping-pong triangle wrap: eliminates hard seam snaps completely
+            float phase = (float) (slide - Math.floor(slide));
+            float smooth = phase <= 0.5f ? phase * 2f : (1f - phase) * 2f;
+            int off = (int) (smooth * (wrap.getWidth() - win));
             mapTo(tex, 0, tex.getWidth());
             wrapPaint.setAlpha((int) (255 * Math.min(1f, (0.45f + 0.55f * lift + 1.4f * glint) * (0.6f + 0.4f * facing)) * dim));
             sliceSrc.set(off, 0, off + win, wrap.getHeight());
@@ -286,8 +289,10 @@ public class DvdCaseView extends View {
             canvas.concat(matrix);
             canvas.drawBitmap(wrap, sliceSrc, rect, wrapPaint);
             if (glint > 0.05f) {
-                // Turning towards the light: a second, offset pass makes the sleeve flare as it passes.
-                int off2 = (int) ((slide * 1.7f + 0.3f - Math.floor(slide * 1.7f + 0.3f)) * (wrap.getWidth() - win));
+                // Turning towards the light: smooth second flare pass without snap
+                float phase2 = (float) (slide * 1.7f + 0.3f - Math.floor(slide * 1.7f + 0.3f));
+                float smooth2 = phase2 <= 0.5f ? phase2 * 2f : (1f - phase2) * 2f;
+                int off2 = (int) (smooth2 * (wrap.getWidth() - win));
                 sliceSrc.set(off2, 0, off2 + win, wrap.getHeight());
                 wrapPaint.setAlpha((int) (255 * glint * dim));
                 canvas.drawBitmap(wrap, sliceSrc, rect, wrapPaint);

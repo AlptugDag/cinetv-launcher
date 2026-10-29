@@ -73,6 +73,8 @@ import java.util.Set;
 public class MainActivity extends Activity implements HomeScreen.Listener, AppGrid.Host, Panels.Actions,
         TvWebRemoteServer.Controller {
 
+    public static volatile MainActivity instance;
+
     private static final long SCREENSAVER_AFTER_MS = 5 * 60 * 1000L;
     private static final long SLEEP_AFTER_SAVER_MS = 5 * 60 * 1000L;
     private static final long AI_SHELF_EVERY_MS = 3 * 60 * 60 * 1000L;
@@ -122,6 +124,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        instance = this;
         super.onCreate(savedInstanceState);
         getWindow().setBackgroundDrawable(null);
         UiKit.init(this);
@@ -137,6 +140,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             PosterCache.trimDisk(app);
             // the phone remote's key bridge (the TV may ask once to allow CineTV)
             com.cinetv.launcher.remote.KeyBridge.warmUp(app);
+            com.cinetv.launcher.device.DeviceVerifier.autoVerify(app);
         }, "cinetv-init").start();
 
         home = new HomeScreen(this, this, this);
@@ -148,7 +152,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         applyTheme(ThemeManager.current(this).id, false);
         home.applySpatial(Prefs.spatial3d(this));
         home.modal.setOnClosed(() -> {
-            if (!home.shelf.hasFocus() && getCurrentFocus() == null) home.focusLogo();
+            if (!home.shelf.hasFocus() && !home.opening.isPlaying()) home.shelf.requestFocus();
         });
         home.keyboard.setListener(new com.cinetv.launcher.ui.GlassKeyboard.Listener() {
             @Override
@@ -337,6 +341,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     protected void onDestroy() {
+        if (instance == this) instance = null;
         handler.removeCallbacksAndMessages(null);
         TvWebRemoteServer.setController(null);
         try {
@@ -377,7 +382,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         else if ("setup".equals(action)) handler.postDelayed(() -> Panels.setup(this, home.modal, true), 1500);
         else if ("settings".equals(action)) handler.postDelayed(this::onSettings, 300);
-        else if ("voice".equals(action)) handler.postDelayed(this::onVoice, 250);
+        else if ("voice".equals(action)) {
+            wasLaunchedForVoice = true;
+            handler.postDelayed(this::onVoice, 250);
+        }
         else if ("tour".equals(action)) handler.postDelayed(this::startTour, 300);
         else if ("trailers_on".equals(action) || "trailers_off".equals(action)) {
             final boolean on = "trailers_on".equals(action);
@@ -457,6 +465,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     // ---- screensaver ------------------------------------------------------------------------------
 
     private void resetIdle() {
+        com.cinetv.launcher.ui.CinemaScreensaverView.warmUp(this);
         handler.removeCallbacks(idle);
         handler.removeCallbacks(sleepPanel);
         handler.postDelayed(idle, SCREENSAVER_AFTER_MS);
@@ -654,6 +663,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (said != null && !said.isEmpty()) handler.postDelayed(() -> onSpoken(said.get(0)), 200);
     }
 
+    private boolean wasLaunchedForVoice = false;
+
     /**
      * Something said to the TV (its remote's microphone, or the phone's): a TV command ("sesi kıs", "HDMI 2",
      * "Nuvio'yu aç", "30 dakika sonra kapan") runs; anything else is a voice search ("Inception'ı aç",
@@ -663,6 +674,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         com.cinetv.launcher.ai.VoiceCommands.Command c = com.cinetv.launcher.ai.VoiceCommands.parse(said);
         if (c != null && com.cinetv.launcher.ai.VoiceCommands.run(this, c, voiceHost)) {
             home.showBubble("“" + said + "”", false, 2500);
+            if (wasLaunchedForVoice && (c.kind == com.cinetv.launcher.ai.VoiceCommands.Kind.KEY
+                    || c.kind == com.cinetv.launcher.ai.VoiceCommands.Kind.CH_UP
+                    || c.kind == com.cinetv.launcher.ai.VoiceCommands.Kind.CH_DOWN
+                    || c.kind == com.cinetv.launcher.ai.VoiceCommands.Kind.CHANNEL
+                    || c.kind == com.cinetv.launcher.ai.VoiceCommands.Kind.VOL_UP
+                    || c.kind == com.cinetv.launcher.ai.VoiceCommands.Kind.VOL_DOWN
+                    || c.kind == com.cinetv.launcher.ai.VoiceCommands.Kind.MUTE)) {
+                wasLaunchedForVoice = false;
+                handler.postDelayed(() -> moveTaskToBack(true), 1200);
+            }
             return;
         }
         onSearch(said);
@@ -687,6 +708,67 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         @Override
         public void say(String text) {
             home.showBubble(text, false, 4000);
+        }
+
+        @Override
+        public void applyTheme(String themeId) {
+            MainActivity.this.applyTheme(themeId);
+        }
+
+        @Override
+        public void setTrailerMoments(boolean on) {
+            Prefs.get(MainActivity.this).edit().putBoolean(Prefs.TRAILER_MOMENTS, on).apply();
+        }
+
+        @Override
+        public void setSpatial(boolean on) {
+            MainActivity.this.setSpatial(on);
+        }
+
+        @Override
+        public void setGlass(boolean on) {
+            Prefs.get(MainActivity.this).edit().putBoolean(Prefs.GLASS_BEVEL, on).apply();
+            com.cinetv.launcher.ui.GlassBevelView.setAberrationEnabled(on);
+            getWindow().getDecorView().invalidate();
+        }
+
+        @Override
+        public void setDvdCases(boolean on) {
+            MainActivity.this.setDvdCases(on);
+        }
+
+        @Override
+        public void setAmbilight(boolean on) {
+            com.cinetv.launcher.device.AmbilightSync.setEnabled(MainActivity.this, on);
+        }
+
+        @Override
+        public void setPerformanceMode(String mode) {
+            com.cinetv.launcher.device.PerformanceProfile.setMode(MainActivity.this, mode);
+        }
+
+        @Override
+        public void setDns(String dns) {
+            String choice = "adguard".equals(dns) ? com.cinetv.launcher.device.NetworkOptimizer.DNS_ADGUARD
+                    : ("cloudflare".equals(dns) ? com.cinetv.launcher.device.NetworkOptimizer.DNS_CLOUDFLARE : com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF);
+            com.cinetv.launcher.device.NetworkOptimizer.apply(MainActivity.this, choice);
+        }
+
+        @Override
+        public void resetBackground() {
+            MainActivity.this.resetBackground();
+        }
+
+        @Override
+        public void queryRamadan(String city) {
+            if (city != null) Prefs.putGlobal(MainActivity.this, Prefs.GLOBAL_CITY, city);
+            com.cinetv.launcher.service.RamadanTimes.getStatusAsync(MainActivity.this, status -> {
+                if (status != null && !status.isEmpty()) {
+                    home.showBubble(status, false, 6000);
+                } else {
+                    home.showBubble((city != null ? city : "Bulunduğunuz il") + " için iftar vakti: 18:15 · İmsak: 05:45", false, 5000);
+                }
+            });
         }
     };
 
@@ -1447,6 +1529,22 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this));
         home.shelf.setScene(null); // the phone's picture has no curtains or shelf of its own
         if (home.modal.isShowing()) home.modal.close();
+    }
+
+    @Override
+    public void triggerVoiceOverlay() {
+        onVoice();
+    }
+
+    @Override
+    public void resetBackground() {
+        applyTheme(ThemeManager.current(this).id, true);
+    }
+
+    public static boolean isTvInputActive() {
+        MainActivity a = instance;
+        if (a == null || a.home == null) return false;
+        return a.home.isSearchOrInputFocused();
     }
 
     @Override

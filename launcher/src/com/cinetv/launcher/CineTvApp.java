@@ -21,6 +21,7 @@ public class CineTvApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        com.cinetv.launcher.service.PosterCache.configure(com.cinetv.launcher.device.PerformanceProfile.lowMemory(this));
         HomeGuard.install(this);
         // The phone remote works whatever is on screen: its server and key bridge live with the process
         // (kept alive by the remote-button service), not with the home screen.
@@ -41,6 +42,16 @@ public class CineTvApp extends Application {
                 } catch (Throwable ignored) {
                 }
             }, delay);
+        }
+    }
+
+    /** Home is behind another app, or memory is short: drop every decoded picture; they reload from disk when needed. */
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= TRIM_MEMORY_UI_HIDDEN) {
+            com.cinetv.launcher.service.PosterCache.trimMemory();
+            com.cinetv.launcher.ui.Glow.clear();
         }
     }
 }

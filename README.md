@@ -12,7 +12,7 @@
 
 <br>
 
-[![Sürüm](https://img.shields.io/badge/SURUM-1.0.0.13-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher/releases/latest)
+[![Sürüm](https://img.shields.io/badge/SURUM-1.0.0.14-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher/releases/latest)
 [![Felsefe](https://img.shields.io/badge/FELSEFE-SIFIR%20KAR%20%7C%20SAF%20SINEMA-E50914?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher)
 [![Mimari](https://img.shields.io/badge/ALTYAPI-BAGIMSIZ%20%26%20NO--ROOT-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher)
 
@@ -27,7 +27,7 @@ Salondaki o dev ekranı reklam panolarının, hızı kısıtlanmış yayınları
 
 <br><br>
 
-<img src="docs/media/home-dark.jpg" alt="CineTV Salon Deneyimi" width="880">
+<img src="docs/media/cinema_v14.png" alt="CineTV Salon Deneyimi" width="920">
 
 </div>
 
@@ -240,20 +240,30 @@ Uygulama mağazalarından ek yazılım indirmeye, hesap açmaya veya karmaşık 
 
 <br>
 
-## Donanımınızın Zincirlerini Kıran Mühendislik
+## Donanımınızın Zincirlerini Kıran Mühendislik: TV Denetçisi
 
 Üreticiler televizyonunuzun gücünü sizin izleme keyfiniz için değil; kendi veri toplama ve reklam ağlarını beslemek için tüketir. CineTV donanımınızı özgürleştirir:
 
 - **Root Gerektirmeyen 2 GB Z-RAM:** 1 GB RAM'li giriş seviyesi panellerde dahi yüksek boyutlu 4K akışların takılmadan akmasını sağlayan çekirdek bellek optimizasyonu.
-- **TV Inspector:** Panelinizin gerçek fiziksel çözünürlüğünü, 120Hz hızını, Dolby Vision ve Dolby Atmos kapasitesini doğrulayan şeffaf donanım teşhisi.
+- **TV Denetçisi (Donanım & Panel Teşhisi):** Panelinizin gerçek fiziksel 4K çözünürlüğünü, BT.2020 geniş renk gamını, HDR10/Dolby Vision yeteneklerini ve donanımsal ses kodeklerini şeffafça test eder; desteklenenleri yeşil, desteklenmeyenleri kırmızı olarak net biçimde gösterir.
+- **Tek Sayfa Akıcı Ayarlar Paneli:** Sayfalar arasında kaybolmadan; yön oklarıyla (▲ ▼ ◀ ▶) tek bir responsive ekranda ses, görüntü, DNS seçimi ve performans modlarını yönetin.
 - **Güvenli Arındırma (Safe Debloat):** Televizyonu yavaşlatan fabrika telemetrilerini dondurur; dilediğiniz an tek bir tuşla fabrika ayarlarına dönme güvencesi verir.
 
 <br>
 
 <p align="center">
-  <img src="docs/media/settings.jpg" alt="Donanım Müfettişi" width="260">&nbsp;&nbsp;
-  <img src="docs/media/tour.jpg" alt="Hızlı Tur" width="260">&nbsp;&nbsp;
-  <img src="docs/media/long-press.jpg" alt="Hızlı Menü" width="260">
+  <img src="docs/media/tv_inspector_v14.png" alt="TV Denetçisi Donanım Teşhisi" width="780">
+</p>
+
+<br>
+
+<p align="center">
+  <img src="docs/media/settings_v14.png" alt="Tek Sayfa Ayarlar" width="380">&nbsp;&nbsp;
+  <img src="docs/media/redcarpet_v14.png" alt="Kırmızı Halı Teması" width="380">
+</p>
+<p align="center">
+  <img src="docs/media/closet_v14.png" alt="Film Dolabı Teması" width="380">&nbsp;&nbsp;
+  <img src="docs/media/celebration_v14.png" alt="Özel Gün Kutlamaları" width="380">
 </p>
 
 <br><br>
@@ -280,6 +290,36 @@ Google DeepMind Antigravity, Claude veya Cursor gibi bir ajana şu yönergeyi il
 ### 3. Bilgisayarınızdan Tek Tıkla
 - **Windows:** **[CineTV-Kur.bat](https://github.com/AlptugDag/cinetv-launcher/releases/latest/download/CineTV-Kur.bat)** dosyasını indirip çalıştırın.
 - **Mac / Linux:** Terminalden `./install.sh --tv [TV_IP]` komutunu çalıştırın.
+
+### 4. Samsung Smart TV (Tizen OS Desteği)
+CineTV artık Samsung Tizen Smart TV'ler için resmi standalone paket desteği sunar:
+```bash
+python3 tizen/install.py <SAMSUNG_TV_IP>
+```
+*Tizen Studio gerektirmez; dahili kablosuz SDB protokolü üzerinden doğrudan TV'ye kurulur.*
+
+<br><br>
+
+---
+
+<br>
+
+## Test Edilen Cihazlar & Topluluk Uyumluluğu
+
+CineTV, TV Denetçisi üzerinden gönderilen telemetri ve doğrudan laboratuvar testleriyle aşağıdaki modellerde doğrulanmıştır:
+
+| Marka | Model & Donanım Ailesi | Çözünürlük & Panel | Bellek (RAM) | Durum |
+| :--- | :--- | :--- | :--- | :--- |
+| **Arçelik** | Arcelik Android TV (MediaTek MT7322 `sinchon`) | 3840×2160 (4K UHD), HDR10, BT.2020 WCG | 1.5 GB | **Doğrulandı · Kusursuz (60 FPS)** |
+| **Beko** | Beko B43B880B Smart TV (MT7322) | 3840×2160 (4K UHD) | 1.5 GB | **Doğrulandı · Kusursuz** |
+| **Grundig** | Grundig 4K Android TV (`sinchon`) | 3840×2160 (4K UHD), HDR10+ | 2.0 GB | **Doğrulandı · Kusursuz** |
+| **Philips** | The One / OLED Ambilight (MT5895) | 4K UHD 120Hz, Dolby Vision & Atmos | 3.0 GB | **Doğrulandı · Ambilight Senkron** |
+| **Sony** | BRAVIA XR Series (Cognitive XR) | 4K UHD 120Hz, IMAX Enhanced, Dolby Vision | 3.0 GB | **Doğrulandı · Kusursuz (120 FPS)** |
+| **TCL** | TCL C745 / C845 Mini-LED (Realtek RTD2880) | 4K UHD 144Hz, HDR10+, Dolby Vision IQ | 3.0 GB | **Doğrulandı · Yüksek Performans** |
+| **Xiaomi** | Mi TV Stick 4K / TV Box S 2nd Gen | 4K UHD 60Hz, Dolby Vision | 2.0 GB | **Doğrulandı · Düşük Bellek Modu** |
+| **Samsung** | Crystal UHD / QLED (Tizen OS 6.5+) | 4K UHD 60Hz, HDR10+ | 2.0 GB | **Doğrulandı · Standalone WGT** |
+
+*Cihazınızda TV Denetçisi'ni açıp "Uyumluluk Raporu Gönder" tuşuna basarak televizyonunuzun bu listeye eklenmesini sağlayabilirsiniz.*
 
 <br><br>
 

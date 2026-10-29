@@ -263,6 +263,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       <h2 style="margin-top:0" data-i="bgTitle"></h2>
       <p class="note" data-i="bgNote"></p>
       <label class="btn" style="margin-top:12px"><input type="file" id="bgFile" accept="image/*" hidden><span data-i="bgPick"></span></label>
+      <button class="btn" id="bgReset" style="margin-top:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);width:100%"><span data-i="bgReset"></span></button>
       <img id="bgPreview" alt="" style="width:100%;border-radius:14px;margin-top:12px" hidden>
     </div>
   </section>
@@ -308,7 +309,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <script>
 (() => {
   const T = {
-    en: {filmFound:"Film found: tap the video, or the button below",playOnTv:"Play on TV",open:"Open",browseHint:"Type or paste the film page’s address above and press Open. The page appears here; tap it as on a phone.",browseTip:"Skip the site’s ads, then press the film’s play button: the film starts on the TV.",airMouse:"🖱 Air mouse",mouseTip:"Move the phone or a finger · Tap = click · Two fingers = scroll",swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ is a filmmaker, storyteller and voice artist, born in Ankara in 2000. He is known for his short film Sessiz (2023). He designed and built CineTV.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgSent:"Now on your TV",bgFail:"Could not send the picture",
+    en: {filmFound:"Film found: tap the video, or the button below",playOnTv:"Play on TV",open:"Open",browseHint:"Type or paste the film page’s address above and press Open. The page appears here; tap it as on a phone.",browseTip:"Skip the site’s ads, then press the film’s play button: the film starts on the TV.",airMouse:"🖱 Air mouse",mouseTip:"Move the phone or a finger · Tap = click · Two fingers = scroll",swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ is a filmmaker, storyteller and voice artist, born in Ankara in 2000. He is known for his short film Sessiz (2023). He designed and built CineTV.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgReset:"Restore Theme Background",bgResetDone:"Theme background restored",bgSent:"Now on your TV",bgFail:"Could not send the picture",
       installAndroid:"Install CineTV on this phone for one-tap access.",installGo:"Install",installIos:"Tap Share, then “Add to Home Screen” to keep CineTV one tap away.",
       otherTvs:"CineTV TVs here",onTv:"On your TV now",waiting:"Allow this phone on your TV with the remote",denied:"Not allowed on the TV. Tap to ask again.",busy:"Another phone is asking. Retrying…",
       tabCast:"Cast",tabAbout:"About",castTitle:"Play a video on the TV",castPh:"Film page address",paste:"Paste",castPlay:"Play on TV",
@@ -324,7 +325,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       p_natural:"Natural",p_cinema:"Cinema",p_night:"Dark room",p_vivid:"Vivid",
       t_off:"Off",t_gray:"Gray ramp",t_bars:"Colour bars",t_black:"Black level",t_white:"White level",t_skin:"Skin tones",
       backlight:"Backlight",brightness:"Brightness",contrast:"Contrast",saturation:"Colour",hue:"Tint",sharpness:"Sharpness",red:"Red gain",green:"Green gain",blue:"Blue gain",done:"Saved"},
-    tr: {filmFound:"Film bulundu: videoya ya da aşağıdaki tuşa dokunun",playOnTv:"TV’de oynat",open:"Aç",browseHint:"Filmin sayfasının adresini yukarı yazın ya da yapıştırın, Aç’a basın. Sayfa burada açılır; telefondaki gibi dokunun.",browseTip:"Sitenin reklamlarını geçin, sonra filmin oynat tuşuna basın: film televizyonda başlar.",airMouse:"🖱 Hava faresi",mouseTip:"Telefonu ya da parmağını oynat · Dokun = tıkla · İki parmak = kaydır",swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ, 2000'de Ankara'da doğmuş bir sinemacı, hikâye anlatıcı ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. CineTV'yi tasarlayıp geliştirdi.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
+    tr: {filmFound:"Film bulundu: videoya ya da aşağıdaki tuşa dokunun",playOnTv:"TV’de oynat",open:"Aç",browseHint:"Filmin sayfasının adresini yukarı yazın ya da yapıştırın, Aç’a basın. Sayfa burada açılır; telefondaki gibi dokunun.",browseTip:"Sitenin reklamlarını geçin, sonra filmin oynat tuşuna basın: film televizyonda başlar.",airMouse:"🖱 Hava faresi",mouseTip:"Telefonu ya da parmağını oynat · Dokun = tıkla · İki parmak = kaydır",swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ, 2000'de Ankara'da doğmuş bir sinemacı, hikâye anlatıcı ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. CineTV'yi tasarlayıp geliştirdi.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgReset:"Temanın Kendi Arka Planına Dön",bgResetDone:"Temanın arka planına dönüldü",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
       installAndroid:"CineTV'yi bu telefona uygulama olarak ekleyin, tek dokunuşla açılsın.",installGo:"Ekle",installIos:"Paylaş'a, ardından “Ana Ekrana Ekle”ye dokunun; CineTV tek dokunuşla açılsın.",
       otherTvs:"Bu ağdaki CineTV televizyonları",onTv:"TV'de vitrine geldi",waiting:"Bu telefona TV'den kumandayla izin verin",denied:"TV'de izin verilmedi. Tekrar sormak için dokunun.",busy:"Başka bir telefon soruyor. Tekrar deneniyor…",
       tabCast:"Yayınla",tabAbout:"Hakkımda",castTitle:"TV'de video oynat",castPh:"Filmin sayfasının adresi",paste:"Yapıştır",castPlay:"TV'de oynat",
@@ -718,7 +719,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       }
       lastFocusState = !!(s && s.inputFocused);
     } catch (e) {}
-  }, 2000);
+  }, 450);
 
   // Pages of the remote: touchpad, more keys, numbers
   const deck = $("deck"), dots = [...$("dots").children];
@@ -815,19 +816,23 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     api("power/off").then(() => toast(t("powerOff"))).catch(() => {});
   };
 
-  // Microphone: the phone listens and CineTV's assistant answers on the TV; hold for the TV's own assistant
+  // Microphone: CineTV's assistant answers on the TV; hold or click opens CineTV's voice overlay directly on TV
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let micHold = null, micLong = false;
-  $("micBtn").addEventListener("pointerdown", () => { micLong = false; micHold = setTimeout(() => { micLong = true; press(231); }, 500); });
+  $("micBtn").addEventListener("pointerdown", () => {
+    micLong = false;
+    micHold = setTimeout(() => { micLong = true; api("tv/voice_overlay").catch(() => {}); toast(t("listening")); }, 400);
+  });
   $("micBtn").addEventListener("pointerup", () => {
-    clearTimeout(micHold); if (micLong) return;
-    if (!SR) { press(231); return; }
+    clearTimeout(micHold);
+    if (micLong) return;
+    if (!SR) { api("tv/voice_overlay").catch(() => {}); return; }
     const rec = new SR(); rec.lang = navigator.language || "tr-TR"; rec.interimResults = false;
     $("micBtn").classList.add("on"); toast(t("listening"));
     rec.onresult = ev => { const q = ev.results[0][0].transcript.trim(); if (q) { api("tv/voice", {q}); toast("“" + q + "”"); } };
     rec.onend = () => $("micBtn").classList.remove("on");
-    rec.onerror = () => { $("micBtn").classList.remove("on"); press(231); };
-    try { rec.start(); } catch (e) { press(231); }
+    rec.onerror = () => { $("micBtn").classList.remove("on"); api("tv/voice_overlay").catch(() => {}); };
+    try { rec.start(); } catch (e) { api("tv/voice_overlay").catch(() => {}); }
   });
 
   // Double taps must never zoom the page
@@ -934,6 +939,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       toast((await r.json()).ok ? t("bgSent") : t("bgFail"));
     } catch (err) { toast(t("bgFail")); }
   };
+  const bgResetBtn = $("bgReset");
+  if (bgResetBtn) {
+    bgResetBtn.onclick = async () => {
+      try {
+        await api("wallpaper/reset");
+        $("bgPreview").hidden = true;
+        toast(t("bgResetDone"));
+      } catch (e) { toast(t("offline")); }
+    };
+  }
 
   // "Add to Home Screen": a real prompt on Android, a hint on iPhone; never once it is installed
   const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
