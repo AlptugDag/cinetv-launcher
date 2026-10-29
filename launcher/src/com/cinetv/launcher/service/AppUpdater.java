@@ -303,12 +303,12 @@ public final class AppUpdater {
                     MAIN_HANDLER.post(() -> Toast.makeText(ctx, "İndirme tamamlandı! Güncelleme kuruluyor...", Toast.LENGTH_SHORT).show());
                 }
 
-                // 1. Try silent background install via LocalAdb (stage in /data/local/tmp for Android 11-14 SELinux compatibility)
+                // 1. Try silent background install via LocalAdb (stage in /data/local/tmp for Android 11-14 SELinux compatibility, with --dont-kill to never disrupt active playback)
                 String path = target.getAbsolutePath();
-                String installCmd = "cp '" + path + "' /data/local/tmp/cinetv_update.apk 2>/dev/null && pm install -r /data/local/tmp/cinetv_update.apk && rm -f /data/local/tmp/cinetv_update.apk '" + path + "'";
+                String installCmd = "cp '" + path + "' /data/local/tmp/cinetv_update.apk 2>/dev/null && (pm install -r --dont-kill /data/local/tmp/cinetv_update.apk || pm install -r /data/local/tmp/cinetv_update.apk) && rm -f /data/local/tmp/cinetv_update.apk '" + path + "'";
                 boolean installed = LocalAdb.shell(ctx, installCmd, 90_000);
                 if (!installed) {
-                    installed = LocalAdb.shell(ctx, "pm install -r '" + path + "' && rm -f '" + path + "'", 90_000);
+                    installed = LocalAdb.shell(ctx, "(pm install -r --dont-kill '" + path + "' || pm install -r '" + path + "') && rm -f '" + path + "'", 90_000);
                 }
                 if (installed) {
                     Log.i(TAG, "Silent install successful via LocalAdb!");

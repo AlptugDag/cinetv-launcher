@@ -124,8 +124,14 @@ public final class Panels {
         root.addView(head);
 
         final String[] tabTitles = "tr".equals(Locale.getDefault().getLanguage())
-                ? new String[]{"🎨 Temalar & Atmosfer", "🎬 Sinema Deneyimi", "⚡ Yapay Zeka & Ağ", "⚙️ Sistem & TV"}
-                : new String[]{"🎨 Themes & Atmosphere", "🎬 Cinema Experience", "⚡ AI & Network", "⚙️ System & TV"};
+                ? new String[]{"Temalar & Atmosfer", "Sinema Deneyimi", "Yapay Zeka & Ağ", "Sistem & TV"}
+                : new String[]{"Themes & Atmosphere", "Cinema Experience", "AI & Network", "System & TV"};
+        final int[] tabIcons = {
+                R.drawable.ic_tab_palette,
+                R.drawable.ic_tab_cinema,
+                R.drawable.ic_tab_ai,
+                R.drawable.ic_settings_gear
+        };
         final LinearLayout tabRow = new LinearLayout(ctx);
         tabRow.setOrientation(LinearLayout.HORIZONTAL);
         tabRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -136,23 +142,41 @@ public final class Panels {
         for (int t = 0; t < 4; t++) {
             final int thisTab = t;
             final boolean active = (t == pageIndex);
-            final TextView tabPill = UiKit.bold(ctx, 15, active ? Color.WHITE : UiKit.INK_DIM);
-            tabPill.setText(tabTitles[t]);
+
+            final LinearLayout tabPill = new LinearLayout(ctx);
+            tabPill.setOrientation(LinearLayout.HORIZONTAL);
+            tabPill.setGravity(Gravity.CENTER_VERTICAL);
             tabPill.setFocusable(true);
             tabPill.setClickable(true);
-            tabPill.setPadding(UiKit.px(22), UiKit.px(9), UiKit.px(22), UiKit.px(9));
+            tabPill.setPadding(UiKit.px(18), UiKit.px(9), UiKit.px(22), UiKit.px(9));
+
+            final ImageView tabIcon = new ImageView(ctx);
+            android.graphics.drawable.Drawable icD = ctx.getDrawable(tabIcons[t]).mutate();
+            icD.setTint(active ? Color.WHITE : UiKit.INK_DIM);
+            tabIcon.setImageDrawable(icD);
+            LinearLayout.LayoutParams icLp = new LinearLayout.LayoutParams(UiKit.px(20), UiKit.px(20));
+            icLp.setMargins(0, 0, UiKit.px(10), 0);
+            tabPill.addView(tabIcon, icLp);
+
+            final TextView tabText = UiKit.bold(ctx, 15, active ? Color.WHITE : UiKit.INK_DIM);
+            tabText.setText(tabTitles[t]);
+            tabPill.addView(tabText);
+
             final android.graphics.drawable.GradientDrawable pillBg = new android.graphics.drawable.GradientDrawable();
             pillBg.setCornerRadius(UiKit.pxf(16));
             pillBg.setColor(active ? Color.parseColor("#38BDF8") : Color.argb(32, 255, 255, 255));
             tabPill.setBackground(pillBg);
+
             tabPill.setOnFocusChangeListener((v, has) -> {
                 if (has) {
                     pillBg.setColor(Color.WHITE);
-                    tabPill.setTextColor(Color.BLACK);
+                    tabText.setTextColor(Color.BLACK);
+                    icD.setTint(Color.BLACK);
                     v.animate().scaleX(1.06f).scaleY(1.06f).setDuration(120).start();
                 } else {
                     pillBg.setColor(active ? Color.parseColor("#38BDF8") : Color.argb(32, 255, 255, 255));
-                    tabPill.setTextColor(active ? Color.WHITE : UiKit.INK_DIM);
+                    tabText.setTextColor(active ? Color.WHITE : UiKit.INK_DIM);
+                    icD.setTint(active ? Color.WHITE : UiKit.INK_DIM);
                     v.animate().scaleX(1f).scaleY(1f).setDuration(120).start();
                 }
             });
@@ -1310,18 +1334,28 @@ public final class Panels {
     private static View buildSetup(final Context ctx, final ModalHost host, final boolean applyAv) {
         final LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
-        TextView title = UiKit.bold(ctx, 32, UiKit.INK);
+        TextView title = UiKit.bold(ctx, 24, UiKit.INK);
         title.setText(R.string.setup_tune);
         root.addView(title);
-        final TextView body = UiKit.label(ctx, 21, UiKit.INK_DIM);
+
+        final android.widget.ScrollView scroller = new android.widget.ScrollView(ctx);
+        scroller.setVerticalScrollBarEnabled(false);
+        final LinearLayout scrollContent = new LinearLayout(ctx);
+        scrollContent.setOrientation(LinearLayout.VERTICAL);
+
+        final TextView body = UiKit.label(ctx, 16, UiKit.INK_DIM);
         body.setText(R.string.setup_running);
-        body.setLineSpacing(UiKit.pxf(9), 1f);
-        body.setPadding(0, UiKit.px(18), 0, UiKit.px(24));
+        body.setLineSpacing(UiKit.pxf(4), 1f);
+        body.setPadding(0, UiKit.px(10), 0, UiKit.px(14));
         body.setMaxWidth(UiKit.px(980));
-        root.addView(body, new LinearLayout.LayoutParams(UiKit.px(980), ViewGroup.LayoutParams.WRAP_CONTENT));
+        scrollContent.addView(body, new LinearLayout.LayoutParams(UiKit.px(980), ViewGroup.LayoutParams.WRAP_CONTENT));
+
         final LinearLayout buttons = new LinearLayout(ctx);
         buttons.setVisibility(View.INVISIBLE);
-        root.addView(buttons);
+        scrollContent.addView(buttons);
+
+        scroller.addView(scrollContent, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(scroller, new LinearLayout.LayoutParams(UiKit.px(980), UiKit.px(440)));
         final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
         new Thread(() -> {
           try {

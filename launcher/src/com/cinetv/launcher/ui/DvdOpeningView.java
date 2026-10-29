@@ -64,6 +64,7 @@ public class DvdOpeningView extends View {
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint hintPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+    private final TextPaint hintKeyPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix m = new Matrix();
     private final RectF r = new RectF();
     private final float[] src = new float[8], dst = new float[8];
@@ -100,7 +101,10 @@ public class DvdOpeningView extends View {
         setVisibility(INVISIBLE);
         hintPaint.setTypeface(FontManager.getMedium(ctx));
         hintPaint.setTextSize(UiKit.pxf(22));
-        hintPaint.setColor(Color.argb(210, 255, 255, 255));
+        hintPaint.setColor(Color.argb(220, 240, 240, 245));
+        hintKeyPaint.setTypeface(FontManager.getBold(ctx));
+        hintKeyPaint.setTextSize(UiKit.pxf(22));
+        hintKeyPaint.setColor(Color.parseColor("#38BDF8"));
     }
 
     public boolean isPlaying() {
@@ -409,18 +413,38 @@ public class DvdOpeningView extends View {
     }
 
     private void drawHint(Canvas c, int w, int h) {
-        String s = getContext().getString(R.string.dvd_play_hint);
-        float tw = hintPaint.measureText(s);
-        float ph = UiKit.pxf(54), pw = tw + UiKit.pxf(56);
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        String k1 = "OK";
+        String l1 = tr ? "  Filmi oynat    ·    " : "  Play movie    ·    ";
+        String k2 = tr ? "Geri" : "Back";
+        String l2 = tr ? "  Kutuyu kapat" : "  Close case";
+
+        hintKeyPaint.setColor(accent != 0 ? accent : Color.parseColor("#38BDF8"));
+        float wK1 = hintKeyPaint.measureText(k1);
+        float wL1 = hintPaint.measureText(l1);
+        float wK2 = hintKeyPaint.measureText(k2);
+        float wL2 = hintPaint.measureText(l2);
+        float tw = wK1 + wL1 + wK2 + wL2;
+
+        float ph = UiKit.pxf(54), pw = tw + UiKit.pxf(60);
         r.set(w / 2f - pw / 2f, h - UiKit.pxf(64), w / 2f + pw / 2f, h - UiKit.pxf(64) + ph);
-        fill.setColor(Color.argb(120, 20, 20, 28));
+        fill.setColor(Color.argb(140, 16, 16, 24));
         c.drawRoundRect(r, ph / 2f, ph / 2f, fill);
         fill.setStyle(Paint.Style.STROKE);
         fill.setStrokeWidth(Math.max(1f, UiKit.pxf(1.5f)));
-        fill.setColor(Color.argb(60, 255, 255, 255));
+        fill.setColor(Color.argb(70, 255, 255, 255));
         c.drawRoundRect(r, ph / 2f, ph / 2f, fill);
         fill.setStyle(Paint.Style.FILL);
-        c.drawText(s, w / 2f - tw / 2f, r.centerY() - (hintPaint.ascent() + hintPaint.descent()) / 2f, hintPaint);
+
+        float textY = r.centerY() - (hintPaint.ascent() + hintPaint.descent()) / 2f;
+        float curX = w / 2f - tw / 2f;
+        c.drawText(k1, curX, textY, hintKeyPaint);
+        curX += wK1;
+        c.drawText(l1, curX, textY, hintPaint);
+        curX += wL1;
+        c.drawText(k2, curX, textY, hintKeyPaint);
+        curX += wK2;
+        c.drawText(l2, curX, textY, hintPaint);
     }
 
     private void drawTray(Canvas c, float l, float t, float w, float h) {
@@ -488,13 +512,13 @@ public class DvdOpeningView extends View {
 
     /** The 16:9 screen inside the sideways tray. */
     private static RectF trayScreen(float l, float t, float w, float h) {
-        float sw = w * 0.74f, sh = sw * 9f / 16f;
-        if (sh > h * 0.68f) {
-            sh = h * 0.68f;
+        float sw = w * 0.90f, sh = sw * 9f / 16f;
+        if (sh > h * 0.82f) {
+            sh = h * 0.82f;
             sw = sh * 16f / 9f;
         }
         float cx = l + w / 2f;
-        float cy = t + h * 0.535f;
+        float cy = t + h * 0.52f;
         return new RectF(cx - sw / 2f, cy - sh / 2f, cx + sw / 2f, cy + sh / 2f);
     }
 

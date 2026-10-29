@@ -293,16 +293,13 @@ public final class PerformanceProfile {
         return limited(ctx, LIMIT_GPU) ? ms * 4 / 5 : ms;
     }
 
-    /** Films on the shelf: 10 / 14 / 18 by mode, three fewer when memory or the processor is short. */
+    /** Films on the shelf: 20 / 24 / 28 by mode, so the shelf is richly populated across the entire screen. */
     public static int shelfSize(Context ctx) {
-        int n;
         switch (tier(ctx)) {
-            case LOW: n = 10; break;
-            case MID: n = 14; break;
-            default: n = 18;
+            case LOW: return 20;
+            case MID: return 24;
+            default: return 28;
         }
-        if (limited(ctx, LIMIT_RAM) || limited(ctx, LIMIT_CPU)) n -= 3;
-        return n;
     }
 
     /** Downscale factor for the blurred environment bitmap: coarser when graphics are the bottleneck. */

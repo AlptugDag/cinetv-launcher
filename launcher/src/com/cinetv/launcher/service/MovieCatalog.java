@@ -571,10 +571,9 @@ public final class MovieCatalog {
             if (overview.isEmpty()) {
                 enData = tmdb(ctx, kind + "/" + id + "?language=en-US");
                 overview = enData.optString("overview", "").trim();
+                if (!overview.isEmpty()) overview = localized(overview);
             }
             if (!overview.isEmpty()) m.overview = overview;
-            // TMDB has no synopsis in this language for many films: the English one, translated
-            m.overview = localized(m.overview);
             String tag = d.optString("tagline", "").trim();
             if (tag.isEmpty() && enData != null) tag = enData.optString("tagline", "").trim();
             if (!tag.isEmpty()) {
@@ -706,6 +705,36 @@ public final class MovieCatalog {
         String key = lang + ":" + text;
         String done = translated.get(key);
         if (done != null) return done;
+
+        // If the text has multiple sentences and is long, translate sentence by sentence to guarantee no sentence is truncated
+        if (text.length() > 320 && text.contains(".")) {
+            String[] sentences = text.split("(?<=[.!?])\\s+");
+            if (sentences.length > 1) {
+                StringBuilder full = new StringBuilder();
+                for (String s : sentences) {
+                    String part = s.trim();
+                    if (part.isEmpty()) continue;
+                    String tr = translateSingleChunk(part, lang);
+                    if (full.length() > 0) full.append(" ");
+                    full.append(tr != null && !tr.isEmpty() ? tr : part);
+                }
+                String out = cleanNfc(full.toString());
+                if (!out.isEmpty()) {
+                    translated.put(key, out);
+                    return out;
+                }
+            }
+        }
+
+        String res = translateSingleChunk(text, lang);
+        if (res != null && !res.isEmpty()) {
+            translated.put(key, res);
+            return res;
+        }
+        return cleanNfc(text);
+    }
+
+    private static String translateSingleChunk(String text, String lang) {
         try {
             String url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=" + lang + "&dt=t&q=" + enc(text);
             JSONArray parts = new JSONArray(Http.getText(url, null, TIMEOUT)).getJSONArray(0);
@@ -714,12 +743,9 @@ public final class MovieCatalog {
                 JSONArray p = parts.optJSONArray(i);
                 if (p != null && !p.isNull(0)) b.append(p.optString(0));
             }
-            String out = cleanNfc(b.toString());
-            if (out.isEmpty()) return cleanNfc(text);
-            translated.put(key, out);
-            return out;
+            return cleanNfc(b.toString());
         } catch (Throwable t) {
-            return cleanNfc(text);
+            return null;
         }
     }
 

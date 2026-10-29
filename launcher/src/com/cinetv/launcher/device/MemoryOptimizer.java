@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.provider.Settings;
 
 import com.cinetv.launcher.remote.LocalAdb;
@@ -38,7 +39,7 @@ public final class MemoryOptimizer {
             "com.google.android.leanbacklauncher", "com.google.android.inputmethod.latin", "com.android.inputmethod.latin"));
 
     private static final String[] AIRPLAY_RECEIVERS = {
-            "com.github.jqssun.airplay", "com.waxrain.airplaydmr", "com.waxrain.airplaydmr2", "com.ionitech.airscreen"};
+            "io.github.jqssun.airplay", "com.github.jqssun.airplay", "com.waxrain.airplaydmr", "com.waxrain.airplaydmr2", "com.ionitech.airscreen"};
 
     private static long lastSweep;
 
@@ -118,7 +119,12 @@ public final class MemoryOptimizer {
         for (String pkg : AIRPLAY_RECEIVERS) {
             try {
                 pm.getPackageInfo(pkg, 0);
-                ctx.startService(new Intent().setClassName(pkg, pkg + ".service.AirPlayService"));
+                Intent svc = new Intent().setClassName(pkg, pkg + ".service.AirPlayService");
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    ctx.startForegroundService(svc);
+                } else {
+                    ctx.startService(svc);
+                }
                 return;
             } catch (Throwable ignored) {
             }

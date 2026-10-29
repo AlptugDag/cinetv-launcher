@@ -108,7 +108,6 @@ public class HomeScreen {
         root.setBackgroundColor(Color.BLACK);
 
         environment = new SpatialEnvironment(ctx);
-        environment.setParallaxListener(this::updateVisorParallax);
         root.addView(environment, match());
 
         scroll = new GlideScrollView(ctx);

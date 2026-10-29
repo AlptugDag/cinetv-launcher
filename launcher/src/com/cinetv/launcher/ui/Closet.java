@@ -33,7 +33,7 @@ import java.util.Random;
  */
 final class Closet {
     private static final int W = 1600, H = 900;
-    private static final int VERSION = 3;
+    private static final int VERSION = 4;
 
     private static final String[] TITLES = {
             "Seven Samurai", "8½", "The Seventh Seal", "Persona", "Rashomon", "Tokyo Story", "Wild Strawberries",
@@ -93,8 +93,7 @@ final class Closet {
     private static void draw(Context ctx, Bitmap out) {
         Canvas c = new Canvas(out);
         Random r = new Random(1937);
-        Bitmap[] covers = new Bitmap[8];
-        for (int i = 0; i < covers.length; i++) covers[i] = PosterCache.decodeAsset(ctx, "posters/poster_" + (i + 1) + ".png", 200, 300);
+        Bitmap[] covers = new Bitmap[0];
 
         c.drawColor(Color.parseColor("#2A2B2E"));
         // ceiling with its light tube, floor carpet
@@ -150,7 +149,7 @@ final class Closet {
         txt.setTypeface(Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD));
         float x = x0;
         while (x < x1) {
-            if (r.nextInt(23) == 0 && x + 90 < x1) {
+            if (covers != null && covers.length > 0 && r.nextInt(23) == 0 && x + 90 < x1) {
                 Bitmap cover = covers[r.nextInt(covers.length)];
                 if (cover != null) {
                     float ch = (bottom - top) * 0.9f, cw = ch * 0.7f;

@@ -209,6 +209,10 @@ public class SpatialEnvironment extends View {
             paint.setShader(null);
             paint.setAlpha(255);
             canvas.drawBitmap(baseCache, null, dst, paint);
+            if (pattern != null) {
+                patternPaint.setAlpha(light ? 18 : 28);
+                canvas.drawBitmap(pattern, px - pxPad(), py - pxPad(), patternPaint);
+            }
         } else {
             drawBase(canvas, w, h, true);
         }
@@ -273,7 +277,7 @@ public class SpatialEnvironment extends View {
             paint.setShader(null);
         }
 
-        if (pattern != null) {
+        if (pattern != null && !composited) {
             patternPaint.setAlpha(light ? 18 : 28);
             canvas.drawBitmap(pattern, px - pxPad(), py - pxPad(), patternPaint);
         }

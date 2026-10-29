@@ -8,6 +8,8 @@ import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Temperature line for the header, from wttr.in (no key needed). Cached for ten minutes. */
 public final class WeatherService {
@@ -17,6 +19,7 @@ public final class WeatherService {
     }
 
     private static final long MIN_INTERVAL_MS = 10 * 60 * 1000L;
+    private static final Pattern TEMP_PATTERN = Pattern.compile("([+-]?\\d+)");
     private static long lastFetch;
     private static String lastText;
 
@@ -34,14 +37,26 @@ public final class WeatherService {
         new Thread(() -> {
             try {
                 String city = Prefs.city(app);
-                String url = city != null
-                        ? "https://wttr.in/" + URLEncoder.encode(city, "UTF-8") + "?format=%t"
-                        : "https://wttr.in/?format=%l:+%t";
+                String url = (city != null && !city.trim().isEmpty())
+                        ? "https://wttr.in/" + URLEncoder.encode(city.trim(), "UTF-8") + "?format=%t"
+                        : "https://wttr.in/?format=%t";
                 Map<String, String> headers = Collections.singletonMap("Accept-Language", Locale.getDefault().getLanguage());
                 String line = Http.getText(url, headers, 6000).trim();
                 line = line.replaceAll("[\\p{So}\\p{Cn}\\p{Cs}]", "").trim();
-                if (line.isEmpty() || line.length() > 60 || line.contains("<")) return;
-                final String text = city != null ? city + " · " + line : line;
+                if (line.isEmpty() || line.length() > 30 || line.contains("<")) return;
+
+                String tempStr;
+                Matcher m = TEMP_PATTERN.matcher(line);
+                if (m.find()) {
+                    String num = m.group(1).replace("+", "");
+                    tempStr = num + "°";
+                } else {
+                    tempStr = line.replace("+", "").replace("C", "").trim();
+                    if (!tempStr.endsWith("°")) tempStr = tempStr + "°";
+                }
+
+                if (tempStr.equals("°") || tempStr.length() > 6) return;
+                final String text = tempStr;
                 lastText = text;
                 main.post(() -> cb.onWeather(text));
             } catch (Throwable ignored) {

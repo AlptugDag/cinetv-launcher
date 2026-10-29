@@ -866,20 +866,24 @@ public final class AppArtwork {
             Bitmap wmBmp = processAlptugflixWordmark(rawBmp, focused);
             if (wmBmp != rawBmp && !rawBmp.isRecycled()) rawBmp.recycle();
 
-            int splitScreenX = left + Math.round(targetW * 0.638f);
 
             // 1. 3D Bevel Drop Shadow underneath the entire wordmark (pop off the glass surface)
             Paint shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
             shadowPaint.setColorFilter(new PorterDuffColorFilter(Color.argb(200, 0, 0, 0), PorterDuff.Mode.SRC_IN));
             canvas.drawBitmap(wmBmp, left, top + 4f, shadowPaint);
 
-            // 2. Focused mode: Add vivid crimson neon glow directly behind the semi-transparent FLIX letters
+            // 2. Focused mode: Add vivid crimson neon glow directly behind the semi-transparent FLIX letters (smooth 360 radial glow, no hard cutoff)
             if (focused) {
-                canvas.save();
-                canvas.clipRect(splitScreenX, 0, CARD_W, CARD_H);
-                drawBitmapNeonGlow(canvas, wmBmp, left, top, Color.parseColor("#FF1423"), 32f, 14f);
-                drawBitmapNeonGlow(canvas, wmBmp, left, top, Color.parseColor("#FF002B"), 16f, 8f);
-                canvas.restore();
+                int splitX = Math.round(targetW * 0.638f);
+                Bitmap flixBmp = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888);
+                Canvas fc = new Canvas(flixBmp);
+                fc.save();
+                fc.clipRect(splitX, 0, targetW, targetH);
+                fc.drawBitmap(wmBmp, 0, 0, null);
+                fc.restore();
+                drawBitmapNeonGlow(canvas, flixBmp, left, top, Color.parseColor("#FF1423"), 32f, 14f);
+                drawBitmapNeonGlow(canvas, flixBmp, left, top, Color.parseColor("#FF002B"), 16f, 8f);
+                flixBmp.recycle();
             }
 
             // 3. Crisp authentic metallic wordmark on top

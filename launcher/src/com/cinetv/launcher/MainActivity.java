@@ -82,14 +82,26 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private static final String SHELF_TITLE = "shelf_title";
 
     private static final String[][] BUNDLED = {
-            {"posters/poster_1.png", "tt15239678", "Dune: Part Two", "2024"},
-            {"posters/poster_2.png", "tt15398776", "Oppenheimer", "2023"},
-            {"posters/poster_3.png", "tt0816692", "Interstellar", "2014"},
-            {"posters/poster_4.png", "tt1877830", "The Batman", "2022"},
-            {"posters/poster_5.png", "tt1856101", "Blade Runner 2049", "2017"},
-            {"posters/poster_6.png", "tt1375666", "Inception", "2010"},
-            {"posters/poster_7.png", "tt9218128", "Gladiator II", "2024"},
-            {"posters/poster_8.png", "tt1392190", "Mad Max: Fury Road", "2015"},
+            {"https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg", "tt15239678", "Dune: Part Two", "2024"},
+            {"https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg", "tt15398776", "Oppenheimer", "2023"},
+            {"https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg", "tt0816692", "Interstellar", "2014"},
+            {"https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg", "tt1877830", "The Batman", "2022"},
+            {"https://image.tmdb.org/t/p/w500/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg", "tt1856101", "Blade Runner 2049", "2017"},
+            {"https://image.tmdb.org/t/p/w500/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg", "tt1375666", "Inception", "2010"},
+            {"https://image.tmdb.org/t/p/w500/2cxhvwyEwRlysAmRH4iodkvo0z5.jpg", "tt9218128", "Gladiator II", "2024"},
+            {"https://image.tmdb.org/t/p/w500/hA2ple9q4qnwxp3hKVNhroipsir.jpg", "tt1392190", "Mad Max: Fury Road", "2015"},
+            {"https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg", "tt0468569", "The Dark Knight", "2008"},
+            {"https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg", "tt0068646", "The Godfather", "1972"},
+            {"https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg", "tt0110912", "Pulp Fiction", "1994"},
+            {"https://image.tmdb.org/t/p/w500/bptfVGEQuv6vDTIMVCHjJ9Dz8PX.jpg", "tt0137523", "Fight Club", "1999"},
+            {"https://image.tmdb.org/t/p/w500/6oom5QYQ2yQTMJIbnvbkBL9cDK6.jpg", "tt0111161", "The Shawshank Redemption", "1994"},
+            {"https://image.tmdb.org/t/p/w500/7WsyChQLEftFiDOVTGkv3hFpyyt.jpg", "tt0109830", "Forrest Gump", "1994"},
+            {"https://image.tmdb.org/t/p/w500/fIE3lAGcZDV1G6XM5KmuWnNsPp1.jpg", "tt0133093", "The Matrix", "1999"},
+            {"https://image.tmdb.org/t/p/w500/6FfCtAuVAW8XJjZ7eWeLibRLWTw.jpg", "tt0076759", "Star Wars", "1977"},
+            {"https://image.tmdb.org/t/p/w500/velWPhVMQeQKcxggNEU8YmIo52R.jpg", "tt0120737", "The Fellowship of the Ring", "2001"},
+            {"https://image.tmdb.org/t/p/w500/rCzpDGLbOoPwLjy3OAm5NUPOTrC.jpg", "tt0167260", "The Return of the King", "2003"},
+            {"https://image.tmdb.org/t/p/w500/kOVEVeg59E0wsnXmF9nBYW2669O.jpg", "tt0102926", "The Silence of the Lambs", "1991"},
+            {"https://image.tmdb.org/t/p/w500/saHP97rTPS5eLmrLQEcANmKrsFl.jpg", "tt0114814", "The Usual Suspects", "1995"}
     };
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -213,6 +225,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         TvWebRemoteServer.setController(this);
         TvWebRemoteServer.start(this);
         AppUpdater.checkAndAutoUpdateOnBoot(this);
+        MemoryOptimizer.ensureAirPlayReceiver(this);
+
+        if (!Prefs.get(this).getBoolean("tv_opt_auto_applied", false)) {
+            Prefs.get(this).edit().putBoolean("tv_opt_auto_applied", true).apply();
+            MemoryOptimizer.applyTvOptimizations(this);
+            com.cinetv.launcher.device.AvOptimizer.optimize(this);
+        }
 
         packageReceiver = new BroadcastReceiver() {
             @Override
@@ -294,6 +313,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         handler.post(clockTick);
         refreshWeather();
         loadApps(false);
+        MemoryOptimizer.ensureAirPlayReceiver(this);
         MemoryOptimizer.sweepAsync(this);
         PerformanceProfile.noteMemory(this);
         AppUpdater.checkAndAutoUpdateOnBoot(this);
@@ -529,7 +549,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void refreshWeather() {
-        WeatherService.fetch(this, false, text -> home.weather.setText(text));
+        WeatherService.fetch(this, false, text -> home.weather.setText((text != null && !text.isEmpty()) ? "· " + text : ""));
     }
 
     @Override
@@ -865,7 +885,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (cached.isEmpty()) {
             for (String[] b : BUNDLED) {
                 Movie m = new Movie();
-                m.posterUrl = "asset:" + b[0];
+                m.posterUrl = b[0];
                 m.imdbId = b[1];
                 m.title = b[2];
                 m.year = Integer.parseInt(b[3]);
@@ -873,6 +893,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
         }
         setShelf(Prefs.get(this).getString(SHELF_TITLE, getString(R.string.cat_trending)), cached, false);
+        if (cached.size() < 14) {
+            refreshShelf();
+        }
     }
 
     private void restoreShelfLabel() {
@@ -905,7 +928,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
      */
     private void refreshShelf() {
         if (isCurating) return;
-        if (home != null && home.shelf != null && home.shelf.hasFocus()) return;
         lastShelfAt = android.os.SystemClock.elapsedRealtime();
         if (LlmClient.isConfigured(this)) curate(null);
         else categoryShelf();
