@@ -109,7 +109,8 @@ public class AppGrid {
             } catch (Throwable ignored) {
             }
         }
-        item.bannerDrawable = AppArtwork.createDesignerLogoCard(ctx, item.packageName, item.label, banner, icon, true);
+        item.bannerDrawable = AppArtwork.createDesignerLogoCard(ctx, item.packageName, item.label, banner, icon, true, false);
+        item.bannerFocusedDrawable = AppArtwork.createDesignerLogoCard(ctx, item.packageName, item.label, banner, icon, true, true);
     }
 
     public void focusDock(int index) {
@@ -222,6 +223,14 @@ public class AppGrid {
         art.setScaleType(ImageView.ScaleType.FIT_XY);
         art.setImageDrawable(item.bannerDrawable);
         face.addView(art, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        if (item.bannerFocusedDrawable != null && item.bannerFocusedDrawable != item.bannerDrawable) {
+            final ImageView artFocused = new ImageView(ctx);
+            artFocused.setTag("art_focused");
+            artFocused.setScaleType(ImageView.ScaleType.FIT_XY);
+            artFocused.setImageDrawable(item.bannerFocusedDrawable);
+            artFocused.setAlpha(0f);
+            face.addView(artFocused, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
         final GlassBevelView bevel = new GlassBevelView(ctx, UiKit.pxf(22), false);
         face.addView(bevel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         face.setLayerType(View.LAYER_TYPE_HARDWARE, null);
@@ -283,6 +292,12 @@ public class AppGrid {
             bloom.animate().alpha(0f).setDuration(ms).withEndAction(() -> bloom.setImageDrawable(null)).start();
         }
         art.animate().alpha(has ? 1f : 0.92f).setDuration(ms).start();
+        if (art instanceof ViewGroup) {
+            View focusedArt = ((ViewGroup) art).findViewWithTag("art_focused");
+            if (focusedArt != null) {
+                focusedArt.animate().alpha(has ? 1f : 0f).setDuration(ms).start();
+            }
+        }
         pushNeighbours(frame, has, ms);
         frame.animate().scaleX(has ? 1.10f : 1f).scaleY(has ? 1.10f : 1f)
                 .rotationY(has ? 0f : rest[0]).rotationX(has ? 0f : rest[1])

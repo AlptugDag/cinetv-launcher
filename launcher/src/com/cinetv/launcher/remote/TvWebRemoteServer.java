@@ -265,7 +265,8 @@ public final class TvWebRemoteServer {
 
             if (path.equals("/") || path.equals("/index.html")
                     || path.equals("/static") || path.equals("/static/") || path.equals("/static/index.html")
-                    || path.equals("/remote") || path.equals("/remote/") || path.equals("/remote/index.html")) {
+                    || path.equals("/remote") || path.equals("/remote/") || path.equals("/remote/index.html")
+                    || path.startsWith("/cinetv-launcher")) {
                 asset(out, "remote/index.html", "text/html; charset=utf-8");
                 return;
             }

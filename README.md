@@ -363,14 +363,14 @@ Hiçbir kişisel verinizi toplamaz, kullanım alışkanlıklarınızı izlemez v
 **CineTV**, ticari bir ürün ya da abonelik servisi değil; sinema tutkusunu herkes için ulaşılabilir kılmak adına **Alptuğ Dağ** tarafından sıfır kâr ve sıfır reklam felsefesiyle tasarlanıp geliştirilmiş bağımsız bir ev sineması projesidir.
 
 **Alptuğ Dağ** — Yönetmen, Senarist, Kurgucu, Seslendirme Sanatçısı & Yaratıcı Teknoloji Geliştiricisi.  
-Kısa filmi **[Sessiz (2023)](https://www.youtube.com/watch?v=bLvdsibrR-I&t=9s)** ([Fragman](https://www.youtube.com/watch?v=jb7BM-NHreg&feature=youtu.be)) başta olmak üzere bağımsız sinema, görsel hikâye anlatımı, kurgu ve sahne sanatları üretimleriyle tanınır.
+Kısa filmi **[Sessiz (2023)](https://www.youtube.com/watch?v=bLvdsibrR-I)** ([Fragman](https://www.youtube.com/watch?v=jb7BM-NHreg&feature=youtu.be)) başta olmak üzere bağımsız sinema, görsel hikâye anlatımı, kurgu ve sahne sanatları üretimleriyle tanınır.
 
 CineTV salonunuzun başköşesinde yaşarken bu bağımsız vizyona destek olmak, yeni kısa film ve projelerden haberdar olmak ya da **film, reklam, yönetmenlik, kurgu, seslendirme ve yaratıcı teknoloji iş birlikleri** için doğrudan iletişime geçebilirsiniz:
 
 <br>
 
 [![Instagram](https://img.shields.io/badge/INSTAGRAM-%40alptugdag-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://instagram.com/alptugdag) &nbsp;
-[![Kısa Film: Sessiz](https://img.shields.io/badge/KISA%20FILM-SESSIZ%20(2023)-E50914?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=bLvdsibrR-I&t=9s) &nbsp;
+[![Kısa Film: Sessiz](https://img.shields.io/badge/KISA%20FILM-SESSIZ%20(2023)-E50914?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=bLvdsibrR-I) &nbsp;
 [![Fragman: Sessiz](https://img.shields.io/badge/FRAGMAN-SESSIZ%20(2023)-18181B?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=jb7BM-NHreg&feature=youtu.be) &nbsp;
 [![LinkedIn](https://img.shields.io/badge/LINKEDIN-ALPTUG%20DAG-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/AlptugDag/)
 

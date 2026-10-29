@@ -19,7 +19,7 @@ public final class Creator {
     public static final String SESSIZ_TRAILER_ID = "jb7BM-NHreg";
     public static final String SESSIZ_TRAILER_URL = "https://www.youtube.com/watch?v=" + SESSIZ_TRAILER_ID + "&feature=youtu.be";
     public static final String SESSIZ_YOUTUBE_ID = "bLvdsibrR-I";
-    public static final String SESSIZ_YOUTUBE_URL = "https://www.youtube.com/watch?v=" + SESSIZ_YOUTUBE_ID + "&t=9s";
+    public static final String SESSIZ_YOUTUBE_URL = "https://www.youtube.com/watch?v=" + SESSIZ_YOUTUBE_ID;
 
     private Creator() {}
 

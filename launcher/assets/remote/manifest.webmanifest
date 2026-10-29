@@ -1,8 +1,8 @@
 {
   "name": "CineTV by Alptuğ Dağ",
   "short_name": "CineTV",
-  "start_url": "../",
-  "scope": "../",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#07070c",
   "theme_color": "#07070c",

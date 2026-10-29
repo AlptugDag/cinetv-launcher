@@ -185,6 +185,7 @@ public class DvdCaseView extends View {
      * falling back-right, away from the light. The case lifting off the floor softens it.
      */
     private void drawShadow(Canvas canvas, float cx, float cy) {
+        if (lift > 0.01f) return; // Vitrinde bir dvd kutusu odakta ise kutunun altında gölge olmasın
         float shadowVisibility = Math.max(0f, 1f - lift * 1.4f);
         if (shadowVisibility <= 0.01f) return;
         Bitmap sh = DvdCase.shadow();

@@ -316,7 +316,11 @@ public class HomeScreen {
 
         shelf = new PosterShelf(ctx);
         shelf.setMotionListener(cinemaCurtains::setMotion);
-        content.addView(shelf, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, shelf.shelfHeight()));
+        // Extend shelf furniture edge-to-edge across the full screen width, counteracting content horizontal padding
+        LinearLayout.LayoutParams shelfLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, shelf.shelfHeight());
+        shelfLp.leftMargin = -UiKit.px(64);
+        shelfLp.rightMargin = -UiKit.px(64);
+        content.addView(shelf, shelfLp);
 
         // ---- apps
         apps = new AppGrid(ctx, appHost);

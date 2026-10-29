@@ -2,6 +2,7 @@ package com.cinetv.launcher.ui;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -388,6 +389,35 @@ public final class Panels {
                     }
                 });
             }));
+            boolean adbActive = false;
+            try {
+                adbActive = android.provider.Settings.Global.getInt(ctx.getContentResolver(), android.provider.Settings.Global.ADB_ENABLED, 0) == 1;
+            } catch (Throwable ignored) {}
+            final boolean finalAdb = adbActive;
+            LinearLayout adbTile = Controls.tile(ctx,
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "Geliştirici & Hata Ayıklama Güvenliği" : "Developer & Debugging Security",
+                    finalAdb ? ("tr".equals(Locale.getDefault().getLanguage()) ? "Açık (Ağda aktif) · Kapatıp TV'yi izole etmek için dokunun" : "Active (Enabled on network) · Tap to disable & isolate TV")
+                             : ("tr".equals(Locale.getDefault().getLanguage()) ? "Kapalı (Güvenli) · Mobil kumanda güvenle çalışır" : "Disabled (Secure) · Mobile remote works securely"),
+                    finalAdb, v -> {
+                        if (finalAdb) {
+                            try {
+                                android.provider.Settings.Global.putInt(ctx.getContentResolver(), android.provider.Settings.Global.ADB_ENABLED, 0);
+                            } catch (Throwable ignored) {}
+                            com.cinetv.launcher.remote.LocalAdb.shell(ctx, "settings put global adb_enabled 0", 1500);
+                            Toast.makeText(ctx, "tr".equals(Locale.getDefault().getLanguage())
+                                    ? "USB Hata ayıklama kapatıldı. TV'niz güvenli modda."
+                                    : "USB debugging disabled. TV is secured.", Toast.LENGTH_SHORT).show();
+                            host.replace(() -> buildSettings(ctx, host, a, PAGE_SYSTEM, "opt_adb_sec"));
+                        } else {
+                            try {
+                                ctx.startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+                            } catch (Throwable t) {
+                                AppLauncher.openSystemSettings(ctx);
+                            }
+                        }
+                    });
+            adbTile.setTag("opt_adb_sec");
+            c2.addView(adbTile);
             c2.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Nuvio Eklentilerini Yönet & Kur" : "Manage & Install Nuvio Addons",
                     "tr".equals(Locale.getDefault().getLanguage()) ? "Eklenti ve profil seçim penceresini aç" : "Select and install curated addons", false,
                     v -> host.push(() -> buildNuvioUpdateAddons(ctx, host))));

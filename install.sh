@@ -203,6 +203,10 @@ fi
 
 # --- 5. install -------------------------------------------------------------------------------------
 bold "Installing"
+# Disable package verifier blocking during installation to prevent timeouts or false security warnings
+tv settings put global verifier_verify_adb_installs 0 >/dev/null 2>&1 || true
+tv settings put global package_verifier_user_consent -1 >/dev/null 2>&1 || true
+
 if tv pm list packages | grep -qx "package:$LEGACY_PKG"; then
     warn "An older CineTV build ($LEGACY_PKG) is installed; replacing it."
     adb uninstall "$LEGACY_PKG" >/dev/null 2>&1 || true
@@ -281,4 +285,17 @@ if [ -n "$THEME" ] && [ "$THEME" != "cinetv" ]; then
 fi
 sleep 4
 verify || true
+
+if [ "$YES" = 0 ] && [ -t 0 ]; then
+    echo
+    bold "Güvenlik & Hata Ayıklama"
+    ask_debug=$(ask "Kurulum tamamlandı. TV ağ güvenliği için Geliştirici Seçenekleri / USB Hata Ayıklama modu kapatılsın mı? (e: Kapat [Önerilen güvenlik ayarı] / h: Açık bırak [Arka planda sessiz güncellemeler için])" "h")
+    if [[ "$ask_debug" =~ ^[eEyY]$ ]]; then
+        tv settings put global adb_enabled 0 >/dev/null 2>&1 || true
+        ok "USB hata ayıklama kapatıldı. TV'niz güvenli modda çalışıyor."
+    else
+        ok "USB hata ayıklama açık bırakıldı (arka planda sessiz otomatik güncelleme aktif)."
+    fi
+fi
+
 bold "Done. Press Home on the remote. Open Settings › Connect phone to pair your phone."

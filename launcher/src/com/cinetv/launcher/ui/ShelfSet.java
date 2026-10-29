@@ -87,19 +87,19 @@ final class ShelfSet {
             setTranslationZ(BACK_Z);
             setFocusable(false);
             setClickable(false);
-            setLayerType(LAYER_TYPE_HARDWARE, null);
+            setLayerType(LAYER_TYPE_NONE, null);
         }
 
         private float leftBleed() {
             getLocationOnScreen(loc);
-            return loc[0] > 0 ? (float) loc[0] : UiKit.pxf(64);
+            return Math.max(UiKit.pxf(64), (float) Math.max(0, loc[0]));
         }
 
         private float rightBleed() {
             getLocationOnScreen(loc);
             float screenW = getResources().getDisplayMetrics().widthPixels;
             float r = screenW - (loc[0] + getWidth());
-            return r > 0 ? r : UiKit.pxf(64);
+            return Math.max(UiKit.pxf(64), (float) Math.max(0, r));
         }
 
         /** Where the cases beside the focused one stand: their bottom edge. */
@@ -127,15 +127,6 @@ final class ShelfSet {
             p.setShader(new android.graphics.RadialGradient(cx, fl - UiKit.pxf(4), spotR,
                     spotColor, Color.TRANSPARENT, Shader.TileMode.CLAMP));
             c.drawRect(cx - spotR, fl - deckDepth, cx + spotR, fl, p);
-
-            // Soft horizontal room vignette at the far left and right edges so the shelf blends organically into the room walls
-            float fadeW = UiKit.pxf(140);
-            p.setShader(new LinearGradient(-lb, 0, -lb + fadeW, 0,
-                    Color.argb(145, 0, 0, 0), Color.TRANSPARENT, Shader.TileMode.CLAMP));
-            c.drawRect(-lb, fl - deckDepth, -lb + fadeW, fl + nosingH, p);
-            p.setShader(new LinearGradient(w + rb - fadeW, 0, w + rb, 0,
-                    Color.TRANSPARENT, Color.argb(145, 0, 0, 0), Shader.TileMode.CLAMP));
-            c.drawRect(w + rb - fadeW, fl - deckDepth, w + rb, fl + nosingH, p);
             p.setShader(null);
         }
 

@@ -7,5 +7,6 @@ public class AppTileItem {
     public String packageName;
     public String label;
     public Drawable bannerDrawable;
+    public Drawable bannerFocusedDrawable;
     public int neonColor;
 }

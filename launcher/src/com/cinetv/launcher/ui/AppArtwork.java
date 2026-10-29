@@ -16,6 +16,7 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RadialGradient;
 import android.graphics.Rect;
@@ -382,8 +383,13 @@ public final class AppArtwork {
 
     public static synchronized Drawable createDesignerLogoCard(Context ctx, String pkg, String rawLabel,
                                                   Drawable rawBanner, Drawable rawIcon, boolean darkMode) {
+        return createDesignerLogoCard(ctx, pkg, rawLabel, rawBanner, rawIcon, darkMode, false);
+    }
+
+    public static synchronized Drawable createDesignerLogoCard(Context ctx, String pkg, String rawLabel,
+                                                  Drawable rawBanner, Drawable rawIcon, boolean darkMode, boolean focused) {
         String cleanLabel = getCleanLabel(pkg, rawLabel);
-        String cacheKey = (pkg != null ? pkg : "") + "|" + cleanLabel + "|" + darkMode;
+        String cacheKey = (pkg != null ? pkg : "") + "|" + cleanLabel + "|" + darkMode + "|" + focused;
         Bitmap cached = CARD_CACHE.get(cacheKey);
         if (cached != null && !cached.isRecycled()) {
             return new BitmapDrawable(ctx.getResources(), cached);
@@ -401,7 +407,7 @@ public final class AppArtwork {
         } else if (lower.contains("instantbits.cast")) {
             rawCard = createWebVideoCasterCard(ctx);
         } else if (lower.contains("nuvio") || lower.contains("alptugflix")) {
-            rawCard = createNuvioCard(ctx);
+            rawCard = createNuvioCard(ctx, focused);
         } else if (lower.contains("stremio")) {
             rawCard = createStremioCard(ctx);
         } else if (lower.contains("dizipal") || lower.contains("lipter")) {
@@ -786,89 +792,54 @@ public final class AppArtwork {
     }
 
     /**
-     * Upgrades the raw ALPTUGFLIX wordmark bitmap:
-     * - Left "ALPTUG" glyphs are forged into high-contrast Liquid Platinum / Argent Chrome with 3D specular bevels.
-     * - Right "FLIX" glyphs are forged into vibrant Electric Cinema Ruby (#FF1423 -> #E50914) with metallic depth.
-     * - Applies top-lit meniscus glaze and diagonal anisotropic metallic luster sweep.
+     * Authentic Alptugflix Wordmark processor:
+     * - Preserves the authentic high-contrast 3D Argent Chrome / Liquid Platinum "ALPTUG" glyphs with deep shadow bevels (no wash-out).
+     * - When focused, ignites the semi-transparent "FLIX" glyphs into incandescent Cinema Crimson Ruby (#FF1423 / #FF002B).
      */
-    private static Bitmap enhanceAlptugflixWordmark(Bitmap src) {
+    private static Bitmap processAlptugflixWordmark(Bitmap src, boolean focused) {
         if (src == null || src.isRecycled()) return src;
         int w = src.getWidth();
         int h = src.getHeight();
         int[] pixels = new int[w * h];
         src.getPixels(pixels, 0, w, 0, 0, w, h);
 
-        int splitX = Math.round(w * 0.635f);
-        for (int y = 0; y < h; y++) {
-            float ny = y / (float) Math.max(1, h - 1);
-            // Vertical anisotropic metallic reflection curve (bright crest at top & upper-mid, deep horizon, bright lower rim)
-            float metallicCurve = (ny < 0.35f)
-                    ? (1.18f - ny * 0.45f)
-                    : (ny < 0.65f ? (0.94f + (ny - 0.35f) * 0.55f) : (1.10f - (ny - 0.65f) * 0.35f));
+        int splitX = Math.round(w * 0.638f);
+        if (focused) {
+            for (int y = 0; y < h; y++) {
+                for (int x = splitX; x < w; x++) {
+                    int idx = y * w + x;
+                    int c = pixels[idx];
+                    int a = (c >>> 24) & 0xFF;
+                    if (a < 8) continue;
 
-            for (int x = 0; x < w; x++) {
-                int idx = y * w + x;
-                int c = pixels[idx];
-                int a = (c >>> 24) & 0xFF;
-                if (a < 8) continue;
+                    int r = (c >> 16) & 0xFF;
+                    int g = (c >> 8) & 0xFF;
+                    int b = c & 0xFF;
 
-                int r = (c >> 16) & 0xFF;
-                int g = (c >> 8) & 0xFF;
-                int b = c & 0xFF;
-
-                boolean isRedPart = (x >= splitX) || (r > g + 22 && r > b + 22);
-                if (!isRedPart) {
-                    // ALPTUG: Boost muted grey into gleaming Liquid Platinum / White Chrome while preserving 3D edge bevels
-                    float lum = (0.299f * r + 0.587f * g + 0.114f * b) / 255f;
-                    // S-curve contrast boost for the 3D bevel highlights
-                    float boosted = Math.min(1f, Math.max(0f, (lum - 0.42f) * 1.65f + 0.84f)) * metallicCurve;
-                    int nr = Math.min(255, Math.max(185, Math.round(boosted * 252f)));
-                    int ng = Math.min(255, Math.max(192, Math.round(boosted * 254f)));
-                    int nb = Math.min(255, Math.max(205, Math.round(boosted * 255f)));
-                    pixels[idx] = (a << 24) | (nr << 16) | (ng << 8) | nb;
-                } else {
-                    // FLIX: Transform dull brownish-red (#9E4B4B) into electric metallic Cinema Ruby (#FF1E2E -> #E50914)
-                    float lum = (0.55f * r + 0.25f * g + 0.20f * b) / 180f;
-                    float bevel = Math.min(1.25f, Math.max(0.75f, lum)) * metallicCurve;
-                    // Top specular crest gets hot ruby-coral highlight; body is pure electric crimson
-                    float topCrest = Math.max(0f, 1f - ny * 2.4f);
-                    int nr = Math.min(255, Math.max(215, Math.round(242f * bevel + topCrest * 30f)));
-                    int ng = Math.min(115, Math.max(6, Math.round(14f * bevel + topCrest * 58f)));
-                    int nb = Math.min(125, Math.max(12, Math.round(22f * bevel + topCrest * 64f)));
-                    pixels[idx] = (a << 24) | (nr << 16) | (ng << 8) | nb;
+                    int nr = Math.min(255, (int) (r * 1.6f + 115));
+                    int ng = Math.min(40, (int) (g * 0.35f));
+                    int nb = Math.min(50, (int) (b * 0.35f));
+                    int na = Math.min(255, (int) (a * 1.5f + 50));
+                    pixels[idx] = (na << 24) | (nr << 16) | (ng << 8) | nb;
                 }
             }
         }
 
-        Bitmap vivid = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        vivid.setPixels(pixels, 0, w, 0, 0, w, h);
-        Bitmap lustered = applySubtleMetallicLusterToBitmap(vivid);
-        if (lustered != vivid && !vivid.isRecycled()) {
-            vivid.recycle();
-        }
-        return lustered;
+        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        out.setPixels(pixels, 0, w, 0, 0, w, h);
+        return out;
     }
 
-    /** 4. Alptugflix (Nuvio) Liquid Glass Card: Liquid Glass crystal + Metallic Chrome & Electric Ruby ALPTUGFLIX Wordmark */
     public static Bitmap createNuvioCard(Context ctx) {
+        return createNuvioCard(ctx, false);
+    }
+
+    /** 4. Alptugflix (Nuvio) Liquid Glass Card: Liquid Glass crystal + Authentic 3D Chrome ALPTUG & Crimson Ruby FLIX Wordmark */
+    public static Bitmap createNuvioCard(Context ctx, boolean focused) {
         Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
-        int neon = Color.parseColor("#FF1423"); // Electric Cinema Ruby Neon
-        drawLiquidGlassCardBase(canvas, neon, CARD_W * 0.58f, CARD_H / 2f);
-
-        // Secondary internal platinum-silver volumetric crystal glow under the "ALPTUG" side
-        Paint platGlow = new Paint(Paint.ANTI_ALIAS_FLAG);
-        platGlow.setShader(new RadialGradient(
-                CARD_W * 0.34f, CARD_H / 2f, 220f,
-                new int[]{
-                    Color.argb(64, 241, 245, 249),
-                    Color.argb(28, 226, 232, 240),
-                    Color.argb(0, 226, 232, 240)
-                },
-                new float[]{0f, 0.50f, 1f},
-                Shader.TileMode.CLAMP
-        ));
-        canvas.drawRoundRect(new RectF(2f, 2f, CARD_W - 2f, CARD_H - 2f), CORNER, CORNER, platGlow);
+        int neon = Color.parseColor("#E50914"); // Authentic Netflix / Cinema Ruby
+        drawLiquidGlassCardBase(canvas, neon, CARD_W * 0.64f, CARD_H / 2f);
 
         Drawable wordmark = null;
         try {
@@ -880,8 +851,8 @@ public final class AppArtwork {
             int w = wordmark.getIntrinsicWidth();
             int h = wordmark.getIntrinsicHeight();
             if (w <= 0 || h <= 0) { w = 540; h = 200; }
-            float maxW = 408f;
-            float maxH = 150f;
+            float maxW = 396f;
+            float maxH = 146f;
             float scale = Math.min(maxW / w, maxH / h);
             int targetW = Math.max(1, Math.round(w * scale));
             int targetH = Math.max(1, Math.round(h * scale));
@@ -892,23 +863,26 @@ public final class AppArtwork {
             wordmark.setBounds(0, 0, targetW, targetH);
             wordmark.draw(wmCanvas);
 
-            Bitmap wmBmp = enhanceAlptugflixWordmark(rawBmp);
+            Bitmap wmBmp = processAlptugflixWordmark(rawBmp, focused);
             if (wmBmp != rawBmp && !rawBmp.isRecycled()) rawBmp.recycle();
 
-            int splitScreenX = left + Math.round(targetW * 0.635f);
+            int splitScreenX = left + Math.round(targetW * 0.638f);
 
-            // 1. Dual-zone volumetric neon halo: Platinum-Crimson on "ALPTUG", Intense Electric Ruby on "FLIX"
-            canvas.save();
-            canvas.clipRect(0, 0, splitScreenX, CARD_H);
-            drawBitmapNeonGlow(canvas, wmBmp, left, top, Color.parseColor("#E2E8F0"), 26f, 10f);
-            canvas.restore();
+            // 1. 3D Bevel Drop Shadow underneath the entire wordmark (pop off the glass surface)
+            Paint shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+            shadowPaint.setColorFilter(new PorterDuffColorFilter(Color.argb(200, 0, 0, 0), PorterDuff.Mode.SRC_IN));
+            canvas.drawBitmap(wmBmp, left, top + 4f, shadowPaint);
 
-            canvas.save();
-            canvas.clipRect(splitScreenX, 0, CARD_W, CARD_H);
-            drawBitmapNeonGlow(canvas, wmBmp, left, top, neon, 34f, 14f);
-            canvas.restore();
+            // 2. Focused mode: Add vivid crimson neon glow directly behind the semi-transparent FLIX letters
+            if (focused) {
+                canvas.save();
+                canvas.clipRect(splitScreenX, 0, CARD_W, CARD_H);
+                drawBitmapNeonGlow(canvas, wmBmp, left, top, Color.parseColor("#FF1423"), 32f, 14f);
+                drawBitmapNeonGlow(canvas, wmBmp, left, top, Color.parseColor("#FF002B"), 16f, 8f);
+                canvas.restore();
+            }
 
-            // 2. Crisp metallic & specular wordmark on top
+            // 3. Crisp authentic metallic wordmark on top
             Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
             canvas.drawBitmap(wmBmp, left, top, p);
             wmBmp.recycle();
