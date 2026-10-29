@@ -166,6 +166,8 @@ public final class TrailerPlayer extends FrameLayout {
             s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
             s.setAllowFileAccess(true);
             s.setAllowContentAccess(true);
+            s.setAllowFileAccessFromFileURLs(true);
+            s.setAllowUniversalAccessFromFileURLs(true);
             w.setBackgroundColor(Color.BLACK);
             w.setFocusable(false);
             w.setFocusableInTouchMode(false);
@@ -188,6 +190,7 @@ public final class TrailerPlayer extends FrameLayout {
 
                 @Override
                 public void onPageFinished(WebView view, String url) {
+                    view.evaluateJavascript("if (typeof killChrome === 'function') killChrome();", null);
                 }
             });
 
@@ -245,13 +248,47 @@ public final class TrailerPlayer extends FrameLayout {
                     + "<script>"
                     + "var notified = false, playing = false, yt;"
                     + "function log(m){ try{ console.log('CTV ' + m); }catch(e){} }"
-                    + "function notifyReady() { notified = true; if (window.CineTvBridge) window.CineTvBridge.onPlaying(); }"
+                    + "function notifyReady() { if (notified) return; notified = true; if (window.CineTvBridge) window.CineTvBridge.onPlaying(); }"
+                    + "function killChrome() {"
+                    + "  try {"
+                    + "    var iframes = document.querySelectorAll('iframe');"
+                    + "    for (var i = 0; i < iframes.length; i++) {"
+                    + "      var doc = iframes[i].contentDocument || iframes[i].contentWindow.document;"
+                    + "      if (doc && !doc.getElementById('ctv-hide-ui')) {"
+                    + "        var s = doc.createElement('style');"
+                    + "        s.id = 'ctv-hide-ui';"
+                    + "        s.textContent = '.ytp-chrome-top, .ytp-gradient-top, .ytp-chrome-bottom, .ytp-gradient-bottom, '"
+                    + "          + '.ytp-watermark, .branding-img, .branding-context-container, .ytp-pause-overlay, '"
+                    + "          + '.ytp-title, .ytp-title-link, .ytp-title-channel, .ytp-share-button, .ytp-overflow-button, '"
+                    + "          + '.ytp-show-cards-title, .ytp-contextmenu, .ytp-ce-element, .ytp-cards-teaser, '"
+                    + "          + '.ytp-paid-content-overlay, .ytp-impression-link, .ytp-bezel, .ytp-ce-covering-overlay, '"
+                    + "          + '.ytp-ce-element-shadow, .ytp-button { display: none !important; opacity: 0 !important; '"
+                    + "          + 'visibility: hidden !important; pointer-events: none !important; }';"
+                    + "        (doc.head || doc.documentElement).appendChild(s);"
+                    + "        log('killChrome applied');"
+                    + "      }"
+                    + "    }"
+                    + "  } catch(e) { log('killChrome err: ' + e); }"
+                    + "}"
+                    + "setInterval(killChrome, 35);"
                     + "function onYouTubeIframeAPIReady() {"
                     + "  yt = new YT.Player('player', { videoId:'" + key + "', host:'https://www.youtube-nocookie.com',"
                     + "    playerVars:{ autoplay:1, mute:" + muteFlag + ", controls:0, disablekb:1, fs:0, iv_load_policy:3, loop:1, playlist:'" + key + "', playsinline:1, rel:0, modestbranding:1, cc_load_policy:0 },"
                     + "    events:{"
                     + "      onReady:function(e){ log('ready'); try{ if(" + muteFlag + "==1) e.target.mute(); e.target.playVideo(); }catch(x){} },"
-                    + "      onStateChange:function(e){ log('state ' + e.data); if (e.data === 1) { playing = true; setTimeout(function(){ if (playing) notifyReady(); }, 2600); } else if (e.data === 3 || e.data === 2 || e.data === 0) { playing = false; if (window.CineTvBridge) window.CineTvBridge.onHold(); if (e.data !== 3) { try{ e.target.playVideo(); }catch(x){} } } if (e.data === -1 || e.data === 5) { try{ e.target.playVideo(); }catch(x){} } },"
+                    + "      onStateChange:function(e){"
+                    + "        log('state ' + e.data);"
+                    + "        if (e.data === 1) {"
+                    + "          playing = true;"
+                    + "          killChrome();"
+                    + "          setTimeout(function(){ if (playing) notifyReady(); }, 80);"
+                    + "        } else if (e.data === 3 || e.data === 2 || e.data === 0) {"
+                    + "          playing = false;"
+                    + "          if (window.CineTvBridge) window.CineTvBridge.onHold();"
+                    + "          if (e.data !== 3) { try{ e.target.playVideo(); }catch(x){} }"
+                    + "        }"
+                    + "        if (e.data === -1 || e.data === 5) { try{ e.target.playVideo(); }catch(x){} }"
+                    + "      },"
                     + "      onError:function(e){ log('error ' + e.data); if (window.CineTvBridge) window.CineTvBridge.onUnavailable(); }"
                     + "    } });"
                     + "}"

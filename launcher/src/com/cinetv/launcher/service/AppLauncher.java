@@ -264,8 +264,11 @@ public final class AppLauncher {
 
     public static boolean start(Context ctx, Intent intent) {
         try {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
             ctx.startActivity(intent);
+            if (ctx instanceof android.app.Activity) {
+                ((android.app.Activity) ctx).overridePendingTransition(0, 0);
+            }
             return true;
         } catch (Throwable t) {
             Log.d(TAG, "Cannot start " + intent + ": " + t.getMessage());

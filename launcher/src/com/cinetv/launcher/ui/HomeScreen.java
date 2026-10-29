@@ -257,7 +257,13 @@ public class HomeScreen {
             micDisc.setColor(has ? Color.WHITE : Color.TRANSPARENT);
             md.setTint(has ? UiKit.INK_DARK : UiKit.INK_DIM);
             v.animate().scaleX(has ? 1.12f : 1f).scaleY(has ? 1.12f : 1f).setDuration(140).start();
-            if (has) listener.onFocusLight(v, currentTheme != null ? currentTheme.accent : Color.parseColor("#A78BFA"));
+            if (has) {
+                listener.onFocusLight(v, currentTheme != null ? currentTheme.accent : Color.parseColor("#A78BFA"));
+                showButtonHint(v, ctx.getString(R.string.voice_search));
+            } else if (buttonHint != null) {
+                buttonHint.animate().cancel();
+                buttonHint.setVisibility(View.GONE);
+            }
         });
         micButton.setOnClickListener(v -> listener.onVoice());
         LinearLayout.LayoutParams mlp0 = new LinearLayout.LayoutParams(UiKit.px(48), UiKit.px(48));
@@ -347,10 +353,13 @@ public class HomeScreen {
         alp.setMargins(0, UiKit.px(118), 0, 0);
         root.addView(aiCard, alp);
 
-        buttonHint = UiKit.label(ctx, 17, UiKit.INK);
+        buttonHint = UiKit.bold(ctx, 15, Color.WHITE);
         buttonHint.setSingleLine(true);
-        buttonHint.setPadding(UiKit.px(20), UiKit.px(10), UiKit.px(20), UiKit.px(10));
+        buttonHint.setLetterSpacing(0.03f);
+        buttonHint.setShadowLayer(UiKit.pxf(4), 0, UiKit.pxf(2), Color.argb(180, 0, 0, 0));
+        buttonHint.setPadding(UiKit.px(22), UiKit.px(10), UiKit.px(22), UiKit.px(10));
         buttonHint.setBackground(new Glass(buttonHint, UiKit.pxf(22), Glass.Style.PANEL));
+        buttonHint.setTranslationZ(500f);
         buttonHint.setVisibility(View.GONE);
         root.addView(buttonHint, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));
 
@@ -426,27 +435,53 @@ public class HomeScreen {
                 listener.onFocusLight(v, currentTheme != null ? currentTheme.accent : Color.parseColor("#38BDF8"));
                 showButtonHint(v, ctx.getString(hint));
             } else if (buttonHint != null) {
+                buttonHint.animate().cancel();
                 buttonHint.setVisibility(View.GONE);
             }
         });
         return b;
     }
 
-    /** Shows the icon's name just under it, kept inside the screen. */
+    /** Shows the icon's name just under it, kept inside the screen with exact HUD visor curvature and high Z-depth. */
     private void showButtonHint(View button, CharSequence text) {
         if (buttonHint == null) return;
+        buttonHint.animate().cancel();
         buttonHint.setText(text);
         buttonHint.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int[] at = new int[2], origin = new int[2];
         button.getLocationInWindow(at);
         root.getLocationInWindow(origin);
-        float x = at[0] - origin[0] + button.getWidth() / 2f - buttonHint.getMeasuredWidth() / 2f;
+        float centerX = at[0] - origin[0] + button.getWidth() / 2f;
+        float x = centerX - buttonHint.getMeasuredWidth() / 2f;
         x = Math.max(UiKit.px(24), Math.min(x, root.getWidth() - buttonHint.getMeasuredWidth() - UiKit.px(24)));
         buttonHint.setTranslationX(x);
         buttonHint.setTranslationY(at[1] - origin[1] + button.getHeight() + UiKit.px(14));
+
+        // Always sit at HUD floating plane (500f Z) above curtains (95f) and header (200f)
+        buttonHint.setTranslationZ(500f);
+
+        // Exact HUD visor cylindrical perspective curvature matching its horizontal location on screen
+        float cam = ctx.getResources().getDisplayMetrics().density * (spatialOn ? 3200f : 8500f);
+        buttonHint.setCameraDistance(cam);
+        float nx = Math.max(-1f, Math.min(1f, (centerX / (float) Math.max(1, root.getWidth()) - 0.5f) * 2f));
+        float pNx = Float.isNaN(lastParallaxNx) ? 0f : lastParallaxNx;
+        float pNy = Float.isNaN(lastParallaxNy) ? 0f : lastParallaxNy;
+        float rotY = spatialOn ? (-nx * 24f - pNx * 2.4f) : 0f;
+        float rotX = spatialOn ? (11f - pNy * 1.6f) : 0f;
+        buttonHint.setRotationY(rotY);
+        buttonHint.setRotationX(rotX);
+
+        buttonHint.setScaleX(0.92f);
+        buttonHint.setScaleY(0.92f);
         buttonHint.setAlpha(0f);
         buttonHint.setVisibility(View.VISIBLE);
-        buttonHint.animate().alpha(1f).setStartDelay(250).setDuration(PerformanceProfile.animationMs(ctx, 180)).start();
+        buttonHint.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setStartDelay(180)
+                .setDuration(PerformanceProfile.animationMs(ctx, 180))
+                .start();
     }
 
     /**
@@ -871,8 +906,8 @@ public class HomeScreen {
         aiCard.setTranslationZ(on ? UiKit.pxf(38) : 0f);
         if (buttonHint != null) {
             buttonHint.setCameraDistance(cam);
-            buttonHint.setRotationX(on ? 8f : 0f);
-            buttonHint.setTranslationZ(on ? UiKit.pxf(32) : 0f);
+            buttonHint.setRotationX(on ? 11f : 0f);
+            buttonHint.setTranslationZ(on ? 500f : 250f);
         }
         moveHint.setCameraDistance(cam);
         moveHint.setRotationX(on ? -8f : 0f);
@@ -901,6 +936,11 @@ public class HomeScreen {
         searchBox.animate().rotationY(-nx * 2.8f).rotationX(pitch).setDuration(ms).start();
         rightGroup.animate().rotationY(-24f - nx * 2.4f).rotationX(pitch).setDuration(ms).start();
         shelfLabel.animate().rotationY(18f - nx * 2.0f).rotationX(6f - ny * 1.2f).setDuration(ms).start();
+        if (buttonHint != null && buttonHint.getVisibility() == View.VISIBLE) {
+            float hintCenterX = buttonHint.getTranslationX() + buttonHint.getWidth() / 2f;
+            float hnx = Math.max(-1f, Math.min(1f, (hintCenterX / (float) Math.max(1, root.getWidth()) - 0.5f) * 2f));
+            buttonHint.animate().rotationY(-hnx * 24f - nx * 2.4f).rotationX(11f - ny * 1.6f).setDuration(ms).start();
+        }
     }
 
     /** Updates all UI elements (vitrin title, clock, signature, search bar, icons) to perfectly match each room's aesthetic. */

@@ -138,7 +138,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     protected void onCreate(Bundle savedInstanceState) {
         instance = this;
         super.onCreate(savedInstanceState);
-        getWindow().setBackgroundDrawable(null);
+        getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.BLACK));
+        overridePendingTransition(0, 0);
         UiKit.init(this);
 
         com.cinetv.launcher.ui.GlassBevelView.setAberrationEnabled(Prefs.glassBevel(this));
@@ -304,6 +305,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     protected void onResume() {
         super.onResume();
+        overridePendingTransition(0, 0);
         TvWebRemoteServer.setController(this);
         if (home == null) return;
         inFront = true;

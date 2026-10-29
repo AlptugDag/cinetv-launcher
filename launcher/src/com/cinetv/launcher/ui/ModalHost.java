@@ -47,10 +47,10 @@ public class ModalHost extends FrameLayout {
     public void setSpatial(boolean on) {
         this.spatial = on;
         if (activeCard != null) {
-            float cam = getResources().getDisplayMetrics().density * (on ? 3400f : 8500f);
+            float cam = getResources().getDisplayMetrics().density * (on ? 3200f : 8500f);
             activeCard.setCameraDistance(cam);
-            activeCard.animate().rotationX(on ? 3.2f : 0f).rotationY(0f)
-                    .translationZ(on ? UiKit.pxf(42) : 0f)
+            activeCard.animate().rotationX(0f).rotationY(0f)
+                    .translationZ(0f)
                     .setDuration(PerformanceProfile.animationMs(getContext(), 200)).start();
         }
     }
@@ -157,12 +157,8 @@ public class ModalHost extends FrameLayout {
         }
         card.setScaleX(0.95f);
         card.setScaleY(0.95f);
-        if (useSpatial) {
-            card.setRotationX(near != null ? -8f : 9.5f);
-            card.setTranslationZ(UiKit.pxf(42));
-        }
         card.animate().scaleX(1f).scaleY(1f)
-                .rotationX(useSpatial ? (near != null ? -3.5f : 3.2f) : 0f)
+                .rotationX(0f)
                 .rotationY(0f)
                 .setDuration(PerformanceProfile.animationMs(getContext(), 220)).start();
         post(() -> {
@@ -180,22 +176,7 @@ public class ModalHost extends FrameLayout {
         if (env != null) {
             env.focusOn(target, env.glowColor());
         }
-        boolean useSpatial = spatial || com.cinetv.launcher.service.Prefs.spatial3d(getContext());
-        if (!useSpatial || activeCard.getWidth() <= 0 || activeCard.getHeight() <= 0) return;
-        target.getLocationOnScreen(focusLoc);
-        activeCard.getLocationOnScreen(cardLoc);
-        float fx = focusLoc[0] + target.getWidth() * 0.5f;
-        float fy = focusLoc[1] + target.getHeight() * 0.5f;
-        float cx = cardLoc[0] + activeCard.getWidth() * 0.5f;
-        float cy = cardLoc[1] + activeCard.getHeight() * 0.5f;
-        float nx = Math.max(-1f, Math.min(1f, (fx - cx) / (activeCard.getWidth() * 0.5f)));
-        float ny = Math.max(-1f, Math.min(1f, (fy - cy) / (activeCard.getHeight() * 0.5f)));
-        float basePitch = anchor != null ? -3.5f : 3.2f;
-        activeCard.animate()
-                .rotationY(nx * 3.6f)
-                .rotationX(basePitch - ny * 2.2f)
-                .setDuration(PerformanceProfile.animationMs(getContext(), 160))
-                .start();
+        // Identical to system HUD visor: stays rock-solid on the HUD plane without extra dynamic card warping
     }
 
     /** Called from the activity's key dispatch while visible. */

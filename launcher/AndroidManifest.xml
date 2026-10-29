@@ -50,7 +50,7 @@
         android:allowBackup="false"
         android:supportsRtl="true"
         android:localeConfig="@xml/locales_config"
-        android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+        android:theme="@style/Theme.CineTV">
 
         <!-- MediaTek picture-quality API (Arçelik/Beko/Grundig and other MT9xxx TVs). Optional: absent elsewhere. -->
         <uses-library android:name="com.mediatek.twoworlds.tv" android:required="false" />

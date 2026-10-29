@@ -75,7 +75,18 @@ public class PosterShelf extends FrameLayout {
     private final Runnable startSway = this::sway;
     private final Runnable prefetchRunnable = () -> {
         if (index >= 0 && index < movies.size()) {
-            MovieCatalog.prefetchTrailer(getContext(), movies.get(index));
+            final Movie m = movies.get(index);
+            final Context app = getContext().getApplicationContext();
+            new Thread(() -> {
+                try {
+                    MovieCatalog.prefetchTrailer(app, m);
+                    MovieCatalog.details(app, m);
+                    if (m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
+                        PosterCache.load(app, m.backdropUrl, 800, 450);
+                    }
+                } catch (Throwable ignored) {
+                }
+            }, "cinetv-shelf-prefetch").start();
         }
     };
 
@@ -253,9 +264,9 @@ public class PosterShelf extends FrameLayout {
         main.postDelayed(prefetchRunnable, 150);
         if (anim != null) anim.cancel();
         anim = ValueAnimator.ofFloat(focusPos, targetPos);
-        // A light spring: the row glides, slightly overshoots and settles, like boxes sliding on a shelf.
-        anim.setDuration(PerformanceProfile.animationMs(getContext(), 420));
-        anim.setInterpolator(new android.view.animation.OvershootInterpolator(0.9f));
+        // Natural, organic weighted glide: decelerates smoothly into the focal slot
+        anim.setDuration(PerformanceProfile.animationMs(getContext(), 560));
+        anim.setInterpolator(new android.view.animation.DecelerateInterpolator(1.85f));
         lastPos = focusPos;
         lastFrameNs = 0;
         anim.addUpdateListener(a -> {

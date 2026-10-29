@@ -27,6 +27,7 @@ import android.view.animation.LinearInterpolator;
 import com.cinetv.launcher.FontManager;
 import com.cinetv.launcher.R;
 import com.cinetv.launcher.service.MovieCatalog.Movie;
+import com.cinetv.launcher.service.PosterCache;
 
 import java.util.Locale;
 
@@ -194,7 +195,11 @@ public class DvdOpeningView extends View {
 
             coverL = null;
         }
-        inner = bakeInner(getContext(), caseW, caseH, dvd.cover, null, movie);
+        Bitmap still = null;
+        if (movie != null && movie.backdropUrl != null && !movie.backdropUrl.isEmpty()) {
+            still = PosterCache.getFast(movie.backdropUrl);
+        }
+        inner = bakeInner(getContext(), caseW, caseH, dvd.cover, still, movie, accent);
         int discSize = Math.round(Math.min(caseW, caseH) * 0.88f);
         disc = bakeDisc(getContext(), dvd.cover, movie.coverTitle(), discSize);
         roomGlow = new RadialGradient(w / 2f, h / 2f, h * 0.75f,
@@ -629,6 +634,41 @@ public class DvdOpeningView extends View {
         // Paper: authentic archival matte parchment paper with rock-solid consistency (never flashes or pops)
         p.setColor(Color.parseColor("#EEE8DC"));
         c.drawRoundRect(paper, w * 0.01f, w * 0.01f, p);
+
+        // Archival film image overlay: barely visible watermark embedded into parchment paper pulp
+        Bitmap watermarkBmp = (still != null) ? still : cover;
+        if (watermarkBmp != null && !watermarkBmp.isRecycled()) {
+            c.save();
+            c.clipRect(paper);
+            Matrix wm = new Matrix();
+            float bw = watermarkBmp.getWidth(), bh = watermarkBmp.getHeight();
+            float scale = Math.max(paper.width() / bw, paper.height() / bh);
+            float dx = paper.left + (paper.width() - bw * scale) * 0.5f;
+            float dy = paper.top + (paper.height() - bh * scale) * 0.5f;
+            wm.setScale(scale, scale);
+            wm.postTranslate(dx, dy);
+
+            Paint wp = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+            ColorMatrix cm = new ColorMatrix();
+            cm.setSaturation(0.08f);
+            float[] mat = cm.getArray();
+            mat[4] = 75f;
+            mat[9] = 75f;
+            mat[14] = 75f;
+            wp.setColorFilter(new ColorMatrixColorFilter(cm));
+            wp.setAlpha(26); // Barely visible archival watermark (~10% opacity)
+            c.drawBitmap(watermarkBmp, wm, wp);
+
+            // Archival vergé paper texture: tactile laid lines running horizontally across the page
+            Paint laid = new Paint(Paint.ANTI_ALIAS_FLAG);
+            laid.setColor(Color.argb(7, 45, 35, 25));
+            laid.setStrokeWidth(Math.max(1f, UiKit.pxf(0.8f)));
+            float lineStep = UiKit.pxf(6f);
+            for (float ly = paper.top + lineStep; ly < paper.bottom; ly += lineStep) {
+                c.drawLine(paper.left, ly, paper.right, ly, laid);
+            }
+            c.restore();
+        }
 
         // Subtle warm accent wash based on the film's glow
         if (filmAccent != 0) {

@@ -1157,13 +1157,13 @@ public final class Panels {
         root.setPadding(UiKit.px(36), UiKit.px(28), UiKit.px(36), UiKit.px(28));
 
         TextView title = UiKit.bold(ctx, 28, UiKit.INK);
-        title.setText(tr ? "Jarvis Sesli Asistan (Gemini AI & EMA TTS)" : "Jarvis Voice Assistant (Gemini AI & EMA TTS)");
+        title.setText(tr ? "Gamze Sesli Asistan (Gemini AI & EMA TTS)" : "Gamze Voice Assistant (Gemini AI & EMA TTS)");
         root.addView(title);
 
         TextView sub = UiKit.label(ctx, 14, UiKit.INK_DIM);
         sub.setText(tr
-                ? "AI anahtarı (Gemini) üzerinden çalışan ölçülü, ağırbaşlı ve zeki sinematik asistan. Yalnızca ihtiyaç anında konuşur, asla bunaltıcı olmaz."
-                : "A laconic, dignified cinematic assistant powered by your Gemini AI key. Speaks only when asked, never overwhelming.");
+                ? "AI anahtarı (Gemini) üzerinden çalışan ölçülü, ağırbaşlı ve zeki sinematik asistanınız Gamze. Yalnızca ihtiyaç anında konuşur, asla bunaltıcı olmaz."
+                : "A laconic, dignified cinematic assistant Gamze powered by your Gemini AI key. Speaks only when asked, never overwhelming.");
         LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         subLp.topMargin = UiKit.px(6);
         subLp.bottomMargin = UiKit.px(16);
@@ -1173,15 +1173,15 @@ public final class Panels {
         int currentLevel = Prefs.ttsLevel(ctx);
 
         // 1. Master Switch
-        String masterTitle = tr ? "Jarvis Asistanı Etkinleştir" : "Enable Jarvis Assistant";
+        String masterTitle = tr ? "Gamze Asistanı Etkinleştir" : "Enable Gamze Assistant";
         String masterSub = enabled
-                ? (tr ? "Açık · Asistan seçtiğiniz düzeyde konuşur" : "On · Assistant speaks according to your chosen activity level")
-                : (tr ? "Kapalı · Asistan tamamen sessizdir" : "Off · Assistant is completely silent");
+                ? (tr ? "Açık · Gamze seçtiğiniz düzeyde konuşur" : "On · Gamze speaks according to your chosen activity level")
+                : (tr ? "Kapalı · Gamze tamamen sessizdir" : "Off · Gamze is completely silent");
         root.addView(Controls.tile(ctx, masterTitle, masterSub, enabled, v -> {
             boolean next = !Prefs.emaTts(ctx);
             Prefs.setFlag(ctx, Prefs.EMA_TTS, next);
             if (next) {
-                com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, tr ? "Jarvis sinematik asistanınız hazır." : "Jarvis cinema assistant is ready.");
+                com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, tr ? "Merhaba, ben Gamze. Sinematik asistanınız hazır." : "Hello, I am Gamze. Your cinema assistant is ready.");
             } else {
                 com.cinetv.launcher.ai.EmaLightningTts.stop();
             }
@@ -1212,16 +1212,16 @@ public final class Panels {
             host.replace(() -> buildTtsSettings(ctx, host, a));
         }));
 
-        // Level 2: Balanced / Jarvis Mode (Recommended)
+        // Level 2: Balanced / Gamze Mode (Recommended)
         boolean isL2 = enabled && currentLevel == Prefs.TTS_LEVEL_BALANCED;
-        String l2Title = (isL2 ? "✓ " : "") + (tr ? "Jarvis Modu: Akıllı Arama & AI (Önerilen)" : "Jarvis Mode: Smart Search & AI (Recommended)");
+        String l2Title = (isL2 ? "✓ " : "") + (tr ? "Gamze Modu: Akıllı Arama & AI (Önerilen)" : "Gamze Mode: Smart Search & AI (Recommended)");
         String l2Sub = tr
                 ? "Hem sesli hem TV/telefon kumandasından yapılan yazılı aramalarda ve AI sorularında ölçülü, zeki geri bildirim verir."
                 : "Provides concise, smart spoken feedback for voice, TV and phone remote searches, and answers AI queries.";
         root.addView(Controls.tile(ctx, l2Title, l2Sub, isL2, v -> {
             Prefs.setFlag(ctx, Prefs.EMA_TTS, true);
             Prefs.setTtsLevel(ctx, Prefs.TTS_LEVEL_BALANCED);
-            com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, tr ? "Jarvis modu devrede." : "Jarvis mode active.");
+            com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, tr ? "Gamze modu devrede." : "Gamze mode active.");
             host.replace(() -> buildTtsSettings(ctx, host, a));
         }));
 
@@ -1245,10 +1245,10 @@ public final class Panels {
         sepLp2.setMargins(0, UiKit.px(12), 0, UiKit.px(12));
         root.addView(sep2, sepLp2);
 
-        root.addView(Controls.button(ctx, tr ? "Jarvis Sesini Test Et" : "Test Voice", v -> {
+        root.addView(Controls.button(ctx, tr ? "Gamze'nin Sesini Test Et" : "Test Gamze's Voice", v -> {
             com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, tr
-                    ? "CineTV Jarvis asistanınız emrinizde."
-                    : "CineTV Jarvis assistant is at your service.");
+                    ? "Merhaba, ben Gamze. CineTV sinematik asistanınız emrinizde."
+                    : "Hello, I am Gamze. Your CineTV cinema assistant is at your service.");
         }));
 
         return root;

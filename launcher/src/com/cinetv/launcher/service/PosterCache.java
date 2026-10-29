@@ -41,6 +41,20 @@ public final class PosterCache {
         return memory;
     }
 
+    /** Fast non-blocking memory lookup: returns bitmap if already in RAM cache without touching disk/network. */
+    public static Bitmap getFast(String url) {
+        if (url == null || url.isEmpty()) return null;
+        try {
+            for (String k : memory().snapshot().keySet()) {
+                if (k.startsWith(url)) {
+                    Bitmap b = memory().get(k);
+                    if (b != null && !b.isRecycled()) return b;
+                }
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
     public static File fileFor(Context ctx, String url) {
         File dir = new File(ctx.getCacheDir(), "posters");
         if (!dir.exists()) dir.mkdirs();
