@@ -550,6 +550,7 @@ public final class MovieCatalog {
     public static Movie details(Context ctx, Movie m) {
         if (!hasTmdb(ctx)) {
             m.overview = localized(m.overview); // Cinemeta writes in English only
+            m.overview = curatedPlot(ctx, m);
             ratings(ctx, m);
             return m;
         }
@@ -588,6 +589,7 @@ public final class MovieCatalog {
             m.title = cleanNfc(m.title);
             m.originalTitle = cleanNfc(m.originalTitle);
             m.overview = cleanNfc(m.overview);
+            m.overview = curatedPlot(ctx, m);
             m.tagline = cleanNfc(m.tagline);
             int rt = d.optInt("runtime", 0);
             if (rt <= 0) {
@@ -682,6 +684,54 @@ public final class MovieCatalog {
             }
         }
         return m;
+    }
+
+    /**
+     * The booklet's synopsis rewritten by the viewer's AI as a spoiler-free hook: who, where, what is at stake,
+     * ending on the question that makes one press play. Cached per film and language; the original text
+     * stays when no AI key is set, the call fails or the answer looks wrong.
+     */
+    static String curatedPlot(final Context ctx, final Movie m) {
+        final String base = m.overview == null ? "" : m.overview.trim();
+        Future<String> f = resolver.submit(() -> curatedPlotNow(ctx, m, base));
+        try {
+            // The booklet opens with the original text if the AI is slow; the rewrite is cached for the next opening
+            return f.get(7, TimeUnit.SECONDS);
+        } catch (Throwable t) {
+            return base;
+        }
+    }
+
+    private static String curatedPlotNow(Context ctx, Movie m, String base) {
+        if (base.length() < 40 || Creator.isSessiz(m) || !com.cinetv.launcher.ai.LlmClient.isConfigured(ctx)) return base;
+        String lang = Locale.getDefault().getLanguage();
+        String ck = "plot_v2_" + lang + "_" + m.type + "_" + (m.tmdbId > 0 ? m.tmdbId : m.imdbId);
+        String saved = Prefs.get(ctx).getString(ck, null);
+        if (saved != null && !saved.isEmpty()) return saved;
+        try {
+            boolean tr = "tr".equals(lang);
+            String system = tr
+                    ? "Sen ödüllü bir senarist ve fragman anlatıcısısın. Verilen film bilgisinden, filmi izleyeceğin akşamın hevesini uyandıran, SİNEMATİK BİR ANLATI yaz: 3-4 kısa cümle, Türkçe, kusursuz imla. "
+                    + "Üslup: şimdiki zaman, üçüncü tekil kişi, bir romanın ilk sayfası ya da fragman sesi gibi akıcı ve görsel. Ansiklopedi, ders kitabı ya da 'film ... anlatır / konu alır' kalıbı YOK. "
+                    + "Yapı: (1) bir an, bir yer ve bir görüntüyle aç (ışık, sokak, ses, hava); (2) ana karakteri ADIYLA ve içindeki eksiklik ya da arzuyla tanıt; (3) hayatını değiştiren olayı ya da çatışmayı somut bir ayrıntıyla ver; (4) bedel ya da cevapsız bir soruyla bitir, çözümü verme. "
+                    + "KESİN KURAL: Spoiler yok; ilk perdenin ötesine geçme, sonu, sürprizleri, ölümleri, kimin kötü olduğunu ya da finali asla söyleme. Cümleleri yarım bırakma; tırnak, başlık, madde işareti, yorum ekleme; yalnızca metni yaz."
+                    : "You are an award-winning screenwriter and trailer narrator. From the film info, write a CINEMATIC NARRATIVE in the viewer's language (" + lang + "): 3-4 short sentences, flawless grammar. "
+                    + "Voice: present tense, third person, like the first page of a novel or a trailer voice-over: visual and flowing. No encyclopedic phrasing, no 'the film tells/follows' framing. "
+                    + "Shape: (1) open on a moment, a place and an image (light, street, sound, weather); (2) introduce the lead BY NAME with what they lack or want; (3) the event or clash that upends their life, with one concrete detail; (4) end on the cost or an unanswered question, never the answer. "
+                    + "HARD RULE: no spoilers; stay inside the first act, never reveal the ending, twists, deaths or who the villain really is. Never leave a sentence unfinished; no quotes, headings, bullets or commentary: output only the text.";
+            String user = "Title: " + m.title + (m.originalTitle != null && !m.originalTitle.isEmpty() ? " (" + m.originalTitle + ")" : "")
+                    + (m.year > 0 ? " [" + m.year + "]" : "") + "\nOfficial synopsis: " + base;
+            com.cinetv.launcher.ai.LlmClient.Result r = com.cinetv.launcher.ai.LlmClient.generate(ctx, system, user, 500, true);
+            if (!r.success) return base;
+            String out = cleanNfc(r.text.replaceAll("^[\"'“”\\s]+|[\"'“”\\s]+$", "").replaceAll("\\s*\\n+\\s*", " "));
+            char last = out.isEmpty() ? ' ' : out.charAt(out.length() - 1);
+            boolean complete = last == '.' || last == '?' || last == '!' || last == '…';
+            if (out.length() < 60 || out.length() > 640 || !complete) return base;
+            Prefs.get(ctx).edit().putString(ck, out).apply();
+            return out;
+        } catch (Throwable t) {
+            return base;
+        }
     }
 
     private static final java.util.Map<String, String> translated = java.util.Collections.synchronizedMap(
