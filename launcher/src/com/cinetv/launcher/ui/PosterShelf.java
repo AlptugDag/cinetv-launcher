@@ -104,8 +104,12 @@ public class PosterShelf extends FrameLayout {
             float caseH = caseW / DvdCase.ASPECT;
             setBack = ShelfSet.back(getContext(), targetScene, caseW, caseH);
             setFront = ShelfSet.front(getContext(), targetScene, caseW, caseH);
+            if (setBack instanceof ShelfSet.Layer) {
+                ((ShelfSet.Layer) setBack).setSpatial(spatial);
+            }
             if (setBack != null) addView(setBack, 0, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
             if (setFront != null) addView(setFront, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+            layoutCases();
         }
         // Hardware layer on a dynamic scrolling shelf causes heavy offscreen texture overhead on TV GPUs;
         // keeping LAYER_TYPE_NONE ensures direct zero-overhead drawing of cases at 60 FPS.
@@ -128,6 +132,9 @@ public class PosterShelf extends FrameLayout {
 
     public void setSpatial(boolean on) {
         spatial = on;
+        if (setBack instanceof ShelfSet.Layer) {
+            ((ShelfSet.Layer) setBack).setSpatial(on);
+        }
         layoutCases();
     }
 
@@ -399,6 +406,129 @@ public class PosterShelf extends FrameLayout {
             // Continuous drift without discontinuity: uses swaySine so it returns exactly to 0 at animation end
             v.setPose(yaw + turn, tilt, scale, lift, lean * (0.5f + 0.5f * near), dim, d > 0.5f, focusPos + swaySine * 0.8f);
         }
+        updateShelfFurniture(w, h);
+    }
+
+    private final float[] tmpPt = new float[2];
+    private final float[] tmpCaseX = new float[36];
+    private final float[] tmpCaseY = new float[36];
+    private final float[] shelfCurveX = new float[40];
+    private final float[] shelfCurveY = new float[40];
+
+    private void computeSlotContact(int w, int h, float d, float step1, float stepN, float[] outPt) {
+        float anchor = w * 0.5f;
+        float caseH = caseW / DvdCase.ASPECT;
+        float ad = Math.abs(d);
+        float near = Math.min(ad, 1f);
+        float far = Math.max(0f, ad - 1f);
+        float offset = step1 * near + stepN * far;
+        float sign = Math.signum(d);
+        float x = anchor + sign * offset;
+        float scale = 0.86f - Math.min(0.10f, 0.014f * far);
+        float spatialWrap = spatial ? -sign * Math.min(9.5f, far * 2.2f) : 0f;
+        float yaw = sign * SIDE_ANGLE * near + spatialWrap;
+        float tilt = spatial ? (8.2f + Math.min(3.5f, far * 0.7f)) : 0f;
+        float arc = spatial ? UiKit.pxf(6.2f) * far * far * 0.35f : 0f;
+        float transY = (h - (caseH + glowPad * 2)) / 2f + UiKit.pxf(12) * near - arc;
+
+        float cx = x;
+        float cy = transY + (caseH + glowPad * 2) * 0.5f;
+
+        double a = Math.toRadians(yaw);
+        double b = Math.toRadians(tilt);
+        float ca = (float) Math.cos(a), sa = (float) Math.sin(a);
+        float cb = (float) Math.cos(b), sb = (float) Math.sin(b);
+        float persp = caseH * 2.2f;
+        float hw = caseW * 0.5f, hh = caseH * 0.5f;
+        float hd = asCases ? caseW * DvdCase.DEPTH * 0.5f : 0f;
+
+        float maxPy = -Float.MAX_VALUE;
+        float bestPx = cx;
+        for (int k = 0; k < 4; k++) {
+            float bx = (k == 0 || k == 3) ? -hw : hw;
+            float bz = (k < 2) ? -hd : hd;
+            float x1 = bx * ca + bz * sa;
+            float z1 = -bx * sa + bz * ca;
+            float y2 = hh * cb - z1 * sb;
+            float z2 = hh * sb + z1 * cb;
+            float f = persp / (persp + z2) * scale;
+            float py = cy + y2 * f;
+            float px = cx + x1 * f;
+            if (py > maxPy) {
+                maxPy = py;
+                bestPx = px;
+            }
+        }
+        outPt[0] = bestPx;
+        outPt[1] = maxPy;
+    }
+
+    private void updateShelfFurniture(int w, int h) {
+        if (!(setBack instanceof ShelfSet.Layer)) return;
+        ShelfSet.Layer shelf = (ShelfSet.Layer) setBack;
+        int n = cases.size();
+        if (n == 0 || w == 0 || h == 0) return;
+
+        float anchor = w * 0.5f;
+        boolean focused = hasFocus();
+        float step1 = caseW * (focused ? 1.14f : 0.98f);
+        int perSide = Math.max(1, (n - 1) / 2);
+        float stepN = Math.max(caseW * 0.30f, Math.min(caseW * 0.48f, (w * 0.47f - step1) / Math.max(1, perSide - 1)));
+
+        int maxSlots = Math.min(7, perSide + 1);
+        int count = 0;
+
+        // Sample slots from -maxSlots to -1
+        for (int s = -maxSlots; s <= -1; s++) {
+            computeSlotContact(w, h, s, step1, stepN, tmpPt);
+            tmpCaseX[count] = tmpPt[0];
+            tmpCaseY[count] = tmpPt[1];
+            count++;
+        }
+
+        // Center apex: continuous smooth parabolic arch peaking at x = anchor
+        float nearY = tmpCaseY[count - 1]; // contact Y of d = -1
+        float centerApexY = nearY + UiKit.pxf(14f);
+        tmpCaseX[count] = anchor;
+        tmpCaseY[count] = centerApexY;
+        count++;
+
+        // Sample slots from +1 to +maxSlots
+        for (int s = 1; s <= maxSlots; s++) {
+            computeSlotContact(w, h, s, step1, stepN, tmpPt);
+            tmpCaseX[count] = tmpPt[0];
+            tmpCaseY[count] = tmpPt[1];
+            count++;
+        }
+
+        // Extrapolate to left and right bleed edges
+        float leftBleed = UiKit.pxf(340);
+        float rightBleed = UiKit.pxf(340);
+        int outCount = 0;
+
+        // 1. Left bleed edge
+        float slopeL = (tmpCaseY[1] - tmpCaseY[0]) / Math.max(1f, tmpCaseX[1] - tmpCaseX[0]);
+        float yEdgeL = tmpCaseY[0] + slopeL * (-leftBleed - tmpCaseX[0]);
+        shelfCurveX[outCount] = -leftBleed;
+        shelfCurveY[outCount] = yEdgeL;
+        outCount++;
+
+        // 2. Interior points
+        for (int i = 0; i < count; i++) {
+            shelfCurveX[outCount] = tmpCaseX[i];
+            shelfCurveY[outCount] = tmpCaseY[i];
+            outCount++;
+        }
+
+        // 3. Right bleed edge
+        int last = count - 1;
+        float slopeR = (tmpCaseY[last] - tmpCaseY[last - 1]) / Math.max(1f, tmpCaseX[last] - tmpCaseX[last - 1]);
+        float yEdgeR = tmpCaseY[last] + slopeR * ((w + rightBleed) - tmpCaseX[last]);
+        shelfCurveX[outCount] = w + rightBleed;
+        shelfCurveY[outCount] = yEdgeR;
+        outCount++;
+
+        shelf.setCurvePoints(shelfCurveX, shelfCurveY, outCount);
     }
 
     private static float interp(float t, float a0, float a1, float a2, float a3) {

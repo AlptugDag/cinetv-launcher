@@ -31,8 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.cinetv.launcher.FontManager;
-
 import com.cinetv.launcher.HomeGuard;
+import com.cinetv.launcher.MainActivity;
 import com.cinetv.launcher.R;
 import com.cinetv.launcher.TvKeyInterceptorService;
 import com.cinetv.launcher.ai.LlmClient;
@@ -357,28 +357,24 @@ public final class Panels {
                     v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.MDBLIST_KEY, R.string.mdblist_key, R.string.mdblist_key_hint))));
             boolean emaOn = Prefs.emaTts(ctx);
             boolean emaSupported = com.cinetv.launcher.ai.EmaLightningTts.isSupportedHardware(ctx);
+            int level = Prefs.ttsLevel(ctx);
+            String levelLabel = level == Prefs.TTS_LEVEL_SEARCH_ONLY
+                    ? ("tr".equals(Locale.getDefault().getLanguage()) ? "Sadece Arama" : "Search Only")
+                    : level == Prefs.TTS_LEVEL_PROACTIVE
+                    ? ("tr".equals(Locale.getDefault().getLanguage()) ? "Tam Proaktif" : "Full Proactive")
+                    : ("tr".equals(Locale.getDefault().getLanguage()) ? "Dengeli" : "Balanced");
             String emaTitle = "tr".equals(Locale.getDefault().getLanguage())
-                    ? "Doğal Türkçe Seslendirme (EMA Lightning TTS)"
-                    : "Natural Turkish Voice (EMA Lightning TTS)";
+                    ? "Doğal Seslendirme & Asistan (EMA Lightning)"
+                    : "Natural Voice & Assistant (EMA Lightning)";
             String emaSub = emaOn
                     ? ("tr".equals(Locale.getDefault().getLanguage())
-                            ? "Açık · Orta/Üst cihazlar için nöral Türkçe ses (canberkkkkkk/ema-lightning)"
-                            : "On · Neural Turkish speech for Mid/High TVs (canberkkkkkk/ema-lightning)")
+                            ? "Açık · " + levelLabel + " · Aktiflik düzeyini ayarlamak için dokunun"
+                            : "On · " + levelLabel + " · Tap to adjust activity level")
                     : ("tr".equals(Locale.getDefault().getLanguage())
-                            ? (emaSupported ? "Kapalı · Sesli yanıtları etkinleştirmek için dokunun" : "Kapalı · Yalnızca orta ve üst performans profilinde önerilir")
+                            ? (emaSupported ? "Kapalı · Sesli yanıtları ve asistanı etkinleştirmek için dokunun" : "Kapalı · Yalnızca orta ve üst performans profilinde önerilir")
                             : "Off · Recommended for Mid and High performance profiles");
             LinearLayout emaTile = Controls.tile(ctx, emaTitle, emaSub, emaOn, v -> {
-                boolean next = !Prefs.emaTts(ctx);
-                Prefs.setFlag(ctx, Prefs.EMA_TTS, next);
-                if (next) {
-                    com.cinetv.launcher.ai.EmaLightningTts.speak(ctx,
-                            "tr".equals(Locale.getDefault().getLanguage())
-                                    ? "CineTV doğal Türkçe seslendirme aktif."
-                                    : "CineTV natural Turkish voice is active.");
-                } else {
-                    com.cinetv.launcher.ai.EmaLightningTts.stop();
-                }
-                host.replace(() -> buildSettings(ctx, host, a, PAGE_AI, "opt_ema_tts"));
+                host.push(() -> buildTtsSettings(ctx, host, a));
             });
             emaTile.setTag("opt_ema_tts");
             c1.addView(emaTile);
@@ -1151,6 +1147,110 @@ public final class Panels {
             onSave.onClick(v);
             return true;
         });
+        return root;
+    }
+
+    static View buildTtsSettings(final Context ctx, final ModalHost host, final Actions a) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(28), UiKit.px(36), UiKit.px(28));
+
+        TextView title = UiKit.bold(ctx, 28, UiKit.INK);
+        title.setText(tr ? "Jarvis Sesli Asistan (Gemini AI & EMA TTS)" : "Jarvis Voice Assistant (Gemini AI & EMA TTS)");
+        root.addView(title);
+
+        TextView sub = UiKit.label(ctx, 14, UiKit.INK_DIM);
+        sub.setText(tr
+                ? "AI anahtarı (Gemini) üzerinden çalışan ölçülü, ağırbaşlı ve zeki sinematik asistan. Yalnızca ihtiyaç anında konuşur, asla bunaltıcı olmaz."
+                : "A laconic, dignified cinematic assistant powered by your Gemini AI key. Speaks only when asked, never overwhelming.");
+        LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        subLp.topMargin = UiKit.px(6);
+        subLp.bottomMargin = UiKit.px(16);
+        root.addView(sub, subLp);
+
+        boolean enabled = Prefs.emaTts(ctx);
+        int currentLevel = Prefs.ttsLevel(ctx);
+
+        // 1. Master Switch
+        String masterTitle = tr ? "Jarvis Asistanı Etkinleştir" : "Enable Jarvis Assistant";
+        String masterSub = enabled
+                ? (tr ? "Açık · Asistan seçtiğiniz düzeyde konuşur" : "On · Assistant speaks according to your chosen activity level")
+                : (tr ? "Kapalı · Asistan tamamen sessizdir" : "Off · Assistant is completely silent");
+        root.addView(Controls.tile(ctx, masterTitle, masterSub, enabled, v -> {
+            boolean next = !Prefs.emaTts(ctx);
+            Prefs.setFlag(ctx, Prefs.EMA_TTS, next);
+            if (next) {
+                com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, tr ? "Jarvis sinematik asistanınız hazır." : "Jarvis cinema assistant is ready.");
+            } else {
+                com.cinetv.launcher.ai.EmaLightningTts.stop();
+            }
+            host.replace(() -> buildTtsSettings(ctx, host, a));
+        }));
+
+        // Divider
+        View sep = new View(ctx);
+        sep.setBackgroundColor(Color.argb(35, 255, 255, 255));
+        LinearLayout.LayoutParams sepLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiKit.px(1));
+        sepLp.setMargins(0, UiKit.px(12), 0, UiKit.px(12));
+        root.addView(sep, sepLp);
+
+        TextView levelHeader = UiKit.bold(ctx, 18, UiKit.INK);
+        levelHeader.setText(tr ? "Aktiflik Düzeyi" : "Activity Level");
+        root.addView(levelHeader);
+
+        // Level 1: Search only
+        boolean isL1 = enabled && currentLevel == Prefs.TTS_LEVEL_SEARCH_ONLY;
+        String l1Title = (isL1 ? "✓ " : "") + (tr ? "Sadece Sesli Arama (Minimal)" : "Voice Search Only (Minimal)");
+        String l1Sub = tr
+                ? "Yalnızca mikrofonla arama yaptığınızda arama sonuçlarını ve cevapları seslendirir."
+                : "Only speaks when you search via the microphone.";
+        root.addView(Controls.tile(ctx, l1Title, l1Sub, isL1, v -> {
+            Prefs.setFlag(ctx, Prefs.EMA_TTS, true);
+            Prefs.setTtsLevel(ctx, Prefs.TTS_LEVEL_SEARCH_ONLY);
+            com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, tr ? "Aktiflik düzeyi: Sadece sesli arama." : "Level set to Voice search only.");
+            host.replace(() -> buildTtsSettings(ctx, host, a));
+        }));
+
+        // Level 2: Balanced / Jarvis Mode (Recommended)
+        boolean isL2 = enabled && currentLevel == Prefs.TTS_LEVEL_BALANCED;
+        String l2Title = (isL2 ? "✓ " : "") + (tr ? "Jarvis Modu: Akıllı Arama & AI (Önerilen)" : "Jarvis Mode: Smart Search & AI (Recommended)");
+        String l2Sub = tr
+                ? "Hem sesli hem TV/telefon kumandasından yapılan yazılı aramalarda ve AI sorularında ölçülü, zeki geri bildirim verir."
+                : "Provides concise, smart spoken feedback for voice, TV and phone remote searches, and answers AI queries.";
+        root.addView(Controls.tile(ctx, l2Title, l2Sub, isL2, v -> {
+            Prefs.setFlag(ctx, Prefs.EMA_TTS, true);
+            Prefs.setTtsLevel(ctx, Prefs.TTS_LEVEL_BALANCED);
+            com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, tr ? "Jarvis modu devrede." : "Jarvis mode active.");
+            host.replace(() -> buildTtsSettings(ctx, host, a));
+        }));
+
+        // Level 3: Proactive Assistant
+        boolean isL3 = enabled && currentLevel == Prefs.TTS_LEVEL_PROACTIVE;
+        String l3Title = (isL3 ? "✓ " : "") + (tr ? "Gelişmiş Asistan (Proaktif)" : "Advanced Assistant (Proactive)");
+        String l3Sub = tr
+                ? "Aramalar ve AI yanıtlarına ek olarak TV açılışında kısa ve sıcak bir selamlama."
+                : "Search & AI responses plus a brief greeting when the TV wakes.";
+        root.addView(Controls.tile(ctx, l3Title, l3Sub, isL3, v -> {
+            Prefs.setFlag(ctx, Prefs.EMA_TTS, true);
+            Prefs.setTtsLevel(ctx, Prefs.TTS_LEVEL_PROACTIVE);
+            com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, tr ? "Gelişmiş asistan devrede." : "Advanced assistant active.");
+            host.replace(() -> buildTtsSettings(ctx, host, a));
+        }));
+
+        // Divider
+        View sep2 = new View(ctx);
+        sep2.setBackgroundColor(Color.argb(35, 255, 255, 255));
+        LinearLayout.LayoutParams sepLp2 = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiKit.px(1));
+        sepLp2.setMargins(0, UiKit.px(12), 0, UiKit.px(12));
+        root.addView(sep2, sepLp2);
+
+        root.addView(Controls.button(ctx, tr ? "Jarvis Sesini Test Et" : "Test Voice", v -> {
+            com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, tr
+                    ? "CineTV Jarvis asistanınız emrinizde."
+                    : "CineTV Jarvis assistant is at your service.");
+        }));
+
         return root;
     }
 

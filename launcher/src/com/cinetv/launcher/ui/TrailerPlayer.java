@@ -29,6 +29,12 @@ public final class TrailerPlayer extends FrameLayout {
     private final Handler main = new Handler(Looper.getMainLooper());
     private WebView web;
     private int gen;
+    /** Preloading: the trailer starts buffering, hidden, while the case is still opening. */
+    private MovieCatalog.Movie preparedFor;
+    private boolean shown, ready;
+    private Runnable unavail;
+    /** The last film whose trailer cannot play (no trailer, embedding blocked, never started): its case opens as a disc. */
+    private MovieCatalog.Movie failedFor;
 
     public TrailerPlayer(Context ctx) {
         super(ctx);
@@ -72,18 +78,53 @@ public final class TrailerPlayer extends FrameLayout {
         show(m, screen, corner, null);
     }
 
-    public void show(final MovieCatalog.Movie m, RectF screen, final float corner, final Runnable onUnavailable) {
+    /** Starts loading and buffering the trailer invisibly (call as the case begins to open); {@link #show} then reveals it in place. */
+    public void prepare(final MovieCatalog.Movie m) {
         stop();
+        failedFor = null;
+        preparedFor = m;
+        shown = false;
+        ready = false;
+        unavail = null;
         final int my = ++gen;
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(1280, 720);
+        setLayoutParams(lp);
+        setAlpha(0f);
+        setVisibility(VISIBLE);
+        resolveAndPlay(m, my);
+    }
+
+    public void show(final MovieCatalog.Movie m, RectF screen, final float corner, final Runnable onUnavailable) {
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(Math.round(screen.width()), Math.round(screen.height()));
         lp.leftMargin = Math.round(screen.left);
         lp.topMargin = Math.round(screen.top);
+        if (failedFor == m) {
+            if (onUnavailable != null) onUnavailable.run();
+            return;
+        }
+        if (preparedFor == m && getVisibility() == VISIBLE) {
+            // already loading (or playing) behind the scenes: just move it into the tray and reveal when it is ready
+            setLayoutParams(lp);
+            unavail = onUnavailable;
+            shown = true;
+            if (ready) animate().alpha(1f).setDuration(350).start();
+            return;
+        }
+        stop();
+        final int my = ++gen;
         setLayoutParams(lp);
+        preparedFor = m;
+        shown = true;
+        ready = false;
+        unavail = onUnavailable;
 
         // Start invisible (alpha = 0) so the WebView never flashes any loading background
         setAlpha(0f);
         setVisibility(VISIBLE);
+        resolveAndPlay(m, my);
+    }
 
+    private void resolveAndPlay(final MovieCatalog.Movie m, final int my) {
         final Context app = getContext().getApplicationContext();
         io.execute(() -> {
             final String key = MovieCatalog.trailerKey(app, m);
@@ -91,13 +132,19 @@ public final class TrailerPlayer extends FrameLayout {
             main.post(() -> {
                 if (my != gen) return;
                 if (key != null && !key.isEmpty()) {
-                    play(key, my, m, onUnavailable);
+                    play(key, my, m, null);
                 } else {
-                    stop();
-                    if (onUnavailable != null) onUnavailable.run();
+                    failAndFallback();
                 }
             });
         });
+    }
+
+    private void failAndFallback() {
+        Runnable r = unavail;
+        failedFor = preparedFor;
+        stop();
+        if (r != null) r.run();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -149,7 +196,8 @@ public final class TrailerPlayer extends FrameLayout {
                 public void onPlaying() {
                     main.post(() -> {
                         if (my == gen && web == w) {
-                            animate().alpha(1f).setDuration(350).start();
+                            ready = true;
+                            if (shown) animate().alpha(1f).setDuration(350).start();
                         }
                     });
                 }
@@ -157,7 +205,10 @@ public final class TrailerPlayer extends FrameLayout {
                 @android.webkit.JavascriptInterface
                 public void onHold() {
                     main.post(() -> {
-                        if (my == gen && web == w) animate().alpha(0f).setDuration(120).start();
+                        if (my == gen && web == w) {
+                            ready = false;
+                            animate().alpha(0f).setDuration(120).start();
+                        }
                     });
                 }
 
@@ -165,8 +216,7 @@ public final class TrailerPlayer extends FrameLayout {
                 public void onUnavailable() {
                     main.post(() -> {
                         if (my == gen) {
-                            stop();
-                            if (onUnavailable != null) onUnavailable.run();
+                            failAndFallback();
                         }
                     });
                 }
@@ -201,7 +251,7 @@ public final class TrailerPlayer extends FrameLayout {
                     + "    playerVars:{ autoplay:1, mute:" + muteFlag + ", controls:0, disablekb:1, fs:0, iv_load_policy:3, loop:1, playlist:'" + key + "', playsinline:1, rel:0, modestbranding:1, cc_load_policy:0 },"
                     + "    events:{"
                     + "      onReady:function(e){ log('ready'); try{ if(" + muteFlag + "==1) e.target.mute(); e.target.playVideo(); }catch(x){} },"
-                    + "      onStateChange:function(e){ log('state ' + e.data); if (e.data === 1) { playing = true; setTimeout(function(){ if (playing) notifyReady(); }, 3600); } else if (e.data === 3 || e.data === 2 || e.data === 0) { playing = false; if (window.CineTvBridge) window.CineTvBridge.onHold(); if (e.data !== 3) { try{ e.target.playVideo(); }catch(x){} } } if (e.data === -1 || e.data === 5) { try{ e.target.playVideo(); }catch(x){} } },"
+                    + "      onStateChange:function(e){ log('state ' + e.data); if (e.data === 1) { playing = true; setTimeout(function(){ if (playing) notifyReady(); }, 2600); } else if (e.data === 3 || e.data === 2 || e.data === 0) { playing = false; if (window.CineTvBridge) window.CineTvBridge.onHold(); if (e.data !== 3) { try{ e.target.playVideo(); }catch(x){} } } if (e.data === -1 || e.data === 5) { try{ e.target.playVideo(); }catch(x){} } },"
                     + "      onError:function(e){ log('error ' + e.data); if (window.CineTvBridge) window.CineTvBridge.onUnavailable(); }"
                     + "    } });"
                     + "}"
@@ -220,6 +270,9 @@ public final class TrailerPlayer extends FrameLayout {
 
     public void stop() {
         gen++;
+        preparedFor = null;
+        shown = false;
+        ready = false;
         animate().cancel();
         setAlpha(0f);
         setVisibility(GONE);

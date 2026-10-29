@@ -100,6 +100,11 @@ public class HomeScreen {
     private final ImageView micIcon;
     private ThemeManager.Theme currentTheme;
     private boolean spatialOn;
+    private LinearLayout updateBanner;
+    private TextView updateBannerTitle;
+    private TextView updateBannerMessage;
+    private ImageView updateBannerIcon;
+    private final Runnable dismissUpdateBannerRunnable = this::hideUpdateBanner;
 
     public HomeScreen(Context ctx, Listener listener, AppGrid.Host appHost) {
         this.ctx = ctx;
@@ -370,7 +375,12 @@ public class HomeScreen {
         opening.setTrailerSlot(new DvdOpeningView.TrailerSlot() {
             @Override
             public void show(com.cinetv.launcher.service.MovieCatalog.Movie movie, android.graphics.RectF screen, float corner) {
-                trailer.show(movie, screen, corner, null);
+                trailer.show(movie, screen, corner, () -> opening.switchToVerticalDiscMode());
+            }
+
+            @Override
+            public void prepare(com.cinetv.launcher.service.MovieCatalog.Movie movie) {
+                trailer.prepare(movie);
             }
 
             @Override
@@ -437,6 +447,94 @@ public class HomeScreen {
         buttonHint.setAlpha(0f);
         buttonHint.setVisibility(View.VISIBLE);
         buttonHint.animate().alpha(1f).setStartDelay(250).setDuration(PerformanceProfile.animationMs(ctx, 180)).start();
+    }
+
+    /**
+     * Top-right VisionOS floating banner: notifies user of silent background updates or errors.
+     * Automatically disappears after 10 seconds.
+     */
+    public void showUpdateBanner(final String title, final String message, final boolean isError) {
+        if (root == null) return;
+        root.post(() -> {
+            if (updateBanner == null) {
+                buildUpdateBanner();
+            }
+            root.removeCallbacks(dismissUpdateBannerRunnable);
+            updateBannerTitle.setText(title);
+            if (message != null && !message.isEmpty()) {
+                updateBannerMessage.setText(message);
+                updateBannerMessage.setVisibility(View.VISIBLE);
+            } else {
+                updateBannerMessage.setVisibility(View.GONE);
+            }
+            if (isError) {
+                updateBannerIcon.setImageResource(android.R.drawable.ic_dialog_alert);
+                updateBannerIcon.setColorFilter(Color.parseColor("#FF453A"), PorterDuff.Mode.SRC_IN);
+            } else {
+                updateBannerIcon.setImageResource(android.R.drawable.stat_sys_upload_done);
+                updateBannerIcon.setColorFilter(Color.parseColor("#30D158"), PorterDuff.Mode.SRC_IN);
+            }
+            updateBanner.setVisibility(View.VISIBLE);
+            updateBanner.setAlpha(0f);
+            updateBanner.setTranslationY(-UiKit.pxf(30));
+            updateBanner.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(350)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+            root.postDelayed(dismissUpdateBannerRunnable, 10_000L); // Exactly 10 seconds!
+        });
+    }
+
+    public void hideUpdateBanner() {
+        if (updateBanner == null || updateBanner.getVisibility() != View.VISIBLE) return;
+        updateBanner.animate()
+                .alpha(0f)
+                .translationY(-UiKit.pxf(30))
+                .setDuration(300)
+                .withEndAction(() -> {
+                    if (updateBanner != null) updateBanner.setVisibility(View.GONE);
+                })
+                .start();
+    }
+
+    private void buildUpdateBanner() {
+        updateBanner = new LinearLayout(ctx);
+        updateBanner.setOrientation(LinearLayout.HORIZONTAL);
+        updateBanner.setGravity(Gravity.CENTER_VERTICAL);
+        int padH = UiKit.px(22);
+        int padV = UiKit.px(14);
+        updateBanner.setPadding(padH, padV, padH, padV);
+        updateBanner.setBackground(new Glass(updateBanner, UiKit.pxf(20), Glass.Style.PANEL));
+        updateBanner.setTranslationZ(800f);
+        updateBanner.setElevation(UiKit.pxf(24));
+        updateBanner.setClickable(true);
+        updateBanner.setOnClickListener(v -> hideUpdateBanner());
+
+        updateBannerIcon = new ImageView(ctx);
+        int iconSize = UiKit.px(26);
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(iconSize, iconSize);
+        iconLp.rightMargin = UiKit.px(14);
+        updateBanner.addView(updateBannerIcon, iconLp);
+
+        LinearLayout textCol = new LinearLayout(ctx);
+        textCol.setOrientation(LinearLayout.VERTICAL);
+        textCol.setGravity(Gravity.CENTER_VERTICAL);
+
+        updateBannerTitle = UiKit.bold(ctx, 16, UiKit.INK);
+        textCol.addView(updateBannerTitle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        updateBannerMessage = UiKit.label(ctx, 13, UiKit.INK_DIM);
+        LinearLayout.LayoutParams msgLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        msgLp.topMargin = UiKit.px(3);
+        textCol.addView(updateBannerMessage, msgLp);
+
+        updateBanner.addView(textCol, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
+        flp.setMargins(0, UiKit.px(28), UiKit.px(36), 0);
+        root.addView(updateBanner, flp);
     }
 
     /** Header → shelf → dock, with the search field reachable from both sides. */
@@ -967,16 +1065,17 @@ public class HomeScreen {
         LinearLayout card = new LinearLayout(ctx);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(UiKit.px(30), UiKit.px(22), UiKit.px(34), UiKit.px(24));
-        card.setBackground(Glass.panel(card, 34));
+        card.setPadding(UiKit.px(24), UiKit.px(14), UiKit.px(28), UiKit.px(16));
+        card.setBackground(new Glass(card, UiKit.pxf(24), Glass.Style.PANEL));
         View orb = new View(ctx);
         android.graphics.drawable.GradientDrawable od = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
                 new int[]{Color.parseColor("#F472B6"), Color.parseColor("#A78BFA"), Color.parseColor("#22D3EE")});
         od.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         orb.setBackground(od);
-        LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(UiKit.px(34), UiKit.px(34));
-        olp.setMargins(0, 0, UiKit.px(22), 0);
+        int orbSize = UiKit.px(24);
+        LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(orbSize, orbSize);
+        olp.setMargins(0, 0, UiKit.px(16), 0);
         card.addView(orb, olp);
         if (thinking) {
             orb.animate().scaleX(0.7f).scaleY(0.7f).setDuration(600).withEndAction(new Runnable() {
@@ -988,21 +1087,17 @@ public class HomeScreen {
                 }
             }).start();
         }
-        TextView a = UiKit.label(ctx, 23, thinking ? UiKit.INK_DIM : UiKit.INK);
+        TextView a = UiKit.label(ctx, 16, thinking ? UiKit.INK_DIM : UiKit.INK);
         a.setText(text);
-        a.setLineSpacing(UiKit.pxf(7), 1f);
+        a.setLineSpacing(UiKit.pxf(4), 1f);
         card.addView(a, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         aiCard.addView(card, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        GlassBevelView aiBevel = new GlassBevelView(ctx, UiKit.pxf(34), false);
-        aiBevel.setFocusedState(!thinking);
-        aiCard.addView(aiBevel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        aiCard.setTranslationZ(900f);
         if (aiCard.getVisibility() != View.VISIBLE) {
             aiCard.setVisibility(View.VISIBLE);
             aiCard.setAlpha(0f);
-            aiCard.setTranslationY(-UiKit.pxf(24));
-            aiCard.setScaleX(0.96f);
-            aiCard.setRotationX(spatialOn ? 18f : 0f);
-            aiCard.animate().alpha(1f).translationY(0).scaleX(1f).rotationX(spatialOn ? 7.5f : 0f).setDuration(240).start();
+            aiCard.setTranslationY(-UiKit.pxf(14));
+            aiCard.animate().alpha(1f).translationY(0).setDuration(220).start();
         }
         aiCard.removeCallbacks(hideAi);
         aiCard.postDelayed(hideAi, staysMs);

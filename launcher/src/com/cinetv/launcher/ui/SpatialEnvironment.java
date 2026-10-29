@@ -118,13 +118,13 @@ public class SpatialEnvironment extends View {
         if (theme != null) rebuild(w, h);
     }
 
-    /** Wallpapers are decoded no bigger than the screen needs; tight TVs get 960x540. */
+    /** Wallpapers are decoded in full pristine native resolution (1080p / 4K). */
     private int wallW() {
-        return PerformanceProfile.lowMemory(getContext()) ? 960 : 1280;
+        return Math.max(1920, getResources().getDisplayMetrics().widthPixels);
     }
 
     private int wallH() {
-        return PerformanceProfile.lowMemory(getContext()) ? 540 : 720;
+        return Math.max(1080, getResources().getDisplayMetrics().heightPixels);
     }
 
     private void rebuild(int w, int h) {
@@ -136,10 +136,8 @@ public class SpatialEnvironment extends View {
         drawBase(c, w, h, false);
         blurred = Blur.stack(small, 6);
         if (composited) {
-            // Half resolution is plenty for a soft backdrop and quarters the memory and fill cost.
-            int shrink = PerformanceProfile.lowMemory(getContext()) ? 3 : 2;
-            int cw = Math.round(w * OVERSIZE / shrink), ch = Math.round(h * OVERSIZE / shrink);
-            // Full colour: 16-bit caches turn the soft gradients into visible bands.
+            // Full resolution: crystal-clear, uncompressed visual fidelity with zero shrink artifacts
+            int cw = Math.round(w * OVERSIZE), ch = Math.round(h * OVERSIZE);
             Bitmap cache = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888);
             Canvas cc = new Canvas(cache);
             cc.scale(cw / (float) w, ch / (float) h);

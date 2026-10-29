@@ -113,6 +113,30 @@ public class DvdCaseView extends View {
         invalidate();
     }
 
+    /** Returns the exact lowest Y offset of the projected box inside this view. */
+    public float getBaseY() {
+        float cy = (caseH + glowPad * 2) * 0.5f;
+        double a = Math.toRadians(yaw + spatialYaw), b = Math.toRadians(tilt);
+        float ca = (float) Math.cos(a), sa = (float) Math.sin(a);
+        float cb = (float) Math.cos(b), sb = (float) Math.sin(b);
+        float persp = caseH * 2.2f;
+        float hw = caseW * 0.5f, hh = caseH * 0.5f;
+        float hd = (dvd != null && dvd.spine == null) ? 0f : depth * 0.5f;
+        float maxBottom = cy;
+        for (int i = 0; i < 4; i++) {
+            float bx = (i == 1 || i == 3) ? -hw : hw;
+            float bz = (i < 2) ? -hd : hd;
+            float x1 = bx * ca + bz * sa;
+            float z1 = -bx * sa + bz * ca;
+            float y2 = hh * cb - z1 * sb;
+            float z2 = hh * sb + z1 * cb;
+            float f = persp / (persp + z2) * scale;
+            float py = cy + y2 * f;
+            if (py > maxBottom) maxBottom = py;
+        }
+        return maxBottom;
+    }
+
     /** Extra shrink-wrap reflection while the focused case turns on its own (0..1). */
     public void setGlint(float glint) {
         if (Math.abs(this.glint - glint) < 0.002f) return;

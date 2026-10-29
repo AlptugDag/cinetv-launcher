@@ -92,6 +92,33 @@ public final class EmaLightningTts {
         return Prefs.emaTts(ctx);
     }
 
+    public enum ProactiveMoment {
+        SEARCH,       // Level >= 1: Voice & written searches (TV & phone remote)
+        SYSTEM,       // Level >= 2: Background update completion
+        GREETING      // Level >= 3: TV wakeup greeting (only in Full Proactive mode)
+    }
+
+    public static boolean allowsMoment(Context ctx, ProactiveMoment moment) {
+        if (!isEnabled(ctx)) return false;
+        int level = Prefs.ttsLevel(ctx);
+        switch (moment) {
+            case SEARCH:
+                return level >= Prefs.TTS_LEVEL_SEARCH_ONLY;
+            case SYSTEM:
+                return level >= Prefs.TTS_LEVEL_BALANCED;
+            case GREETING:
+                return level >= Prefs.TTS_LEVEL_PROACTIVE;
+            default:
+                return false;
+        }
+    }
+
+    /** Speaks proactively only if the user's configured activity level permits this moment. */
+    public static void speakMoment(final Context ctx, final ProactiveMoment moment, final CharSequence rawText) {
+        if (!allowsMoment(ctx, moment)) return;
+        speak(ctx, rawText);
+    }
+
     /**
      * Speaks the given Turkish response aloud using {@code canberkkkkkk/ema-lightning} on supported
      * MID/HIGH performance devices. Immediately cancels any previous speech in progress.

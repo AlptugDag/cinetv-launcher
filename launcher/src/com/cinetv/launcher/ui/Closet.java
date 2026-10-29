@@ -32,8 +32,8 @@ import java.util.Random;
  * It is drawn once, 1600x900, then kept as a JPEG in the app's cache.
  */
 final class Closet {
-    private static final int W = 1600, H = 900;
-    private static final int VERSION = 4;
+    private static final int W = 1920, H = 1080;
+    private static final int VERSION = 5;
 
     private static final String[] TITLES = {
             "Seven Samurai", "8½", "The Seventh Seal", "Persona", "Rashomon", "Tokyo Story", "Wild Strawberries",
@@ -64,15 +64,15 @@ final class Closet {
         File cached = new File(ctx.getCacheDir(), "closet-v" + VERSION + ".jpg");
         if (cached.isFile()) {
             BitmapFactory.Options o = new BitmapFactory.Options();
-            o.inPreferredConfig = com.cinetv.launcher.device.PerformanceProfile.opaqueConfig(ctx);
+            o.inPreferredConfig = Bitmap.Config.ARGB_8888;
             Bitmap b = BitmapFactory.decodeFile(cached.getPath(), o);
             if (b != null) return b;
         }
         try {
-            Bitmap out = Bitmap.createBitmap(W, H, com.cinetv.launcher.device.PerformanceProfile.opaqueConfig(ctx));
+            Bitmap out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
             draw(ctx, out);
             try (FileOutputStream f = new FileOutputStream(cached)) {
-                out.compress(Bitmap.CompressFormat.JPEG, 88, f);
+                out.compress(Bitmap.CompressFormat.JPEG, 96, f);
             } catch (Throwable ignored) {
             }
             return out;

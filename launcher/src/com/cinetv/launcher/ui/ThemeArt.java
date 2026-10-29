@@ -22,14 +22,14 @@ import java.util.Random;
  * Optimized per performance tier (LOW, MID, HIGH) for 60fps fluidity and realistic UI depth.
  */
 final class ThemeArt {
-    static final int W = 960, H = 540;
+    static final int W = 1920, H = 1080;
 
     private ThemeArt() {}
 
     static Bitmap render(Context ctx, String scene) {
         if ("closet".equals(scene)) return Closet.render(ctx);
         try {
-            Bitmap b = Bitmap.createBitmap(W, H, com.cinetv.launcher.device.PerformanceProfile.opaqueConfig(ctx));
+            Bitmap b = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);
             Canvas c = new Canvas(b);
             switch (scene) {
                 case "glass": glass(ctx, c); break;

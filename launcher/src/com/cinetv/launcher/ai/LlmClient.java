@@ -39,10 +39,10 @@ public final class LlmClient {
     static final String DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
     static final String FAST_CLAUDE_MODEL = "claude-haiku-5-5";
     static final String FALLBACK_CLAUDE_MODEL = "claude-haiku-5-5";
-    static final String DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
+    static final String DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
     /** Search and spoken answers: about a second, which a remote in hand needs. */
-    static final String FAST_GEMINI_MODEL = "gemini-3.5-flash-lite";
-    static final String FALLBACK_GEMINI_MODEL = "gemini-2.5-flash";
+    static final String FAST_GEMINI_MODEL = "gemini-flash-lite-latest";
+    static final String FALLBACK_GEMINI_MODEL = "gemini-flash-latest";
 
     private static final String TAG = "CineTvLlm";
 
@@ -118,13 +118,17 @@ public final class LlmClient {
                 : Prefs.get(ctx).getString(claude ? "ai_claude_model" : "ai_gemini_model", claude ? DEFAULT_CLAUDE_MODEL : DEFAULT_GEMINI_MODEL);
         // Busy (429/5xx), missing for this key (404) or slow: walk down a short chain of models.
         String[] chain = claude ? new String[]{first, FALLBACK_CLAUDE_MODEL}
-                : fast ? new String[]{first, "gemini-flash-lite-latest", "gemini-3.5-flash", "gemini-2.5-flash"}
-                : new String[]{first, "gemini-flash-latest", "gemini-3.5-flash-lite", "gemini-2.5-flash"};
+                : fast ? new String[]{first, "gemini-flash-lite-latest", "gemini-flash-latest", "gemini-3.1-flash-lite"}
+                : new String[]{first, "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.1-flash-lite"};
         Result r = null;
         java.util.Set<String> tried = new java.util.HashSet<>();
         for (String model : chain) {
             if (!tried.add(model)) continue;
             r = call(ctx, claude, model, key, system, user, maxTokens);
+            if (r.status == 503 || r.status == 429) {
+                try { Thread.sleep(400); } catch (Throwable ignored) {}
+                r = call(ctx, claude, model, key, system, user, maxTokens);
+            }
             int st = r.status;
             if (r.success || !(st == 400 || st == 404 || st == 408 || st == 429 || st >= 500 || st == -1)) return r;
             Log.w(TAG, "Model " + model + " failed (" + st + "), trying the next one");
@@ -153,11 +157,11 @@ public final class LlmClient {
                 }
                 body.put("contents", new JSONArray().put(new JSONObject().put("role", "user")
                         .put("parts", new JSONArray().put(new JSONObject().put("text", user)))));
-                // Little or no "thinking": these are short, factual jobs and the viewer is waiting.
-                JSONObject thinking = model.startsWith("gemini-2")
-                        ? new JSONObject().put("thinkingBudget", 0)
-                        : new JSONObject().put("thinkingLevel", model.contains("lite") ? "minimal" : "low");
-                body.put("generationConfig", new JSONObject().put("maxOutputTokens", maxTokens).put("thinkingConfig", thinking));
+                JSONObject genCfg = new JSONObject().put("maxOutputTokens", maxTokens);
+                if (model.contains("3.8") || model.contains("2.5")) {
+                    try { genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", 0)); } catch (Throwable ignored) {}
+                }
+                body.put("generationConfig", genCfg);
             }
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
@@ -169,7 +173,9 @@ public final class LlmClient {
             }
             int status = conn.getResponseCode();
             if (status != 200) {
-                Log.w(TAG, "LLM HTTP " + status + " for " + model);
+                String errBody = "";
+                try { if (conn.getErrorStream() != null) errBody = read(conn.getErrorStream()); } catch (Throwable ignored) {}
+                Log.w(TAG, "LLM HTTP " + status + " for " + model + " -> " + errBody);
                 return new Result(false, errorText(ctx, status), status);
             }
             JSONObject resp = new JSONObject(read(conn.getInputStream()));
@@ -220,7 +226,9 @@ public final class LlmClient {
             }
             int status = conn.getResponseCode();
             if (status != 200) {
-                Log.w(TAG, "LLM HTTP " + status + " for " + model);
+                String errBody = "";
+                try { if (conn.getErrorStream() != null) errBody = read(conn.getErrorStream()); } catch (Throwable ignored) {}
+                Log.w(TAG, "LLM HTTP " + status + " for " + model + " -> " + errBody);
                 return new Result(false, errorText(ctx, status), status);
             }
             JSONObject resp = new JSONObject(read(conn.getInputStream()));

@@ -341,6 +341,64 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
         }, 300);
         checkNuvioUpdatePrompt();
+        checkPendingUpdateBanner();
+        maybeSpeakStartupGreeting();
+    }
+
+    private static long lastGreetingMs = 0L;
+    private static final long GREETING_INTERVAL_MS = 3 * 3600 * 1000L;
+
+    private void maybeSpeakStartupGreeting() {
+        long now = System.currentTimeMillis();
+        if (now - lastGreetingMs < GREETING_INTERVAL_MS) return;
+        lastGreetingMs = now;
+
+        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        String greeting;
+        if (tr) {
+            if (hour >= 5 && hour < 12) {
+                greeting = "Günaydın. CineTV'ye hoş geldiniz.";
+            } else if (hour >= 12 && hour < 18) {
+                greeting = "İyi günler. Bugün sizin için harika filmler seçtik.";
+            } else if (hour >= 18 && hour < 23) {
+                greeting = "İyi akşamlar. Keyifli bir sinema akşamı dileriz.";
+            } else {
+                greeting = "İyi geceler. Gece kuşağı seçkisi vitrinde hazır.";
+            }
+        } else {
+            greeting = "Welcome to CineTV.";
+        }
+
+        handler.postDelayed(() -> {
+            if (!isFinishing() && inFront) {
+                com.cinetv.launcher.ai.EmaLightningTts.speakMoment(this, com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.GREETING, greeting);
+            }
+        }, 1500L);
+    }
+
+    private void checkPendingUpdateBanner() {
+        android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(this);
+        String updatedVer = p.getString("just_updated_version", null);
+        if (updatedVer != null) {
+            p.edit().remove("just_updated_version").apply();
+            if (home != null) {
+                home.showUpdateBanner("CineTV " + updatedVer + " Sürümüne Güncellendi!", "Yeniliklerin keyfini çıkarın.", false);
+            }
+        }
+        String updateErr = p.getString("update_error_message", null);
+        if (updateErr != null) {
+            p.edit().remove("update_error_message").apply();
+            if (home != null) {
+                home.showUpdateBanner(updateErr, "Lütfen Ayarlar › Sistem › Sürüm menüsünden manuel güncellemeyi deneyin.", true);
+            }
+        }
+    }
+
+    public void showUpdateBanner(String title, String message, boolean isError) {
+        if (home != null) {
+            home.showUpdateBanner(title, message, isError);
+        }
     }
 
     private static boolean inFront;
@@ -620,12 +678,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void onSearch(final String query) {
         if (query == null || query.trim().isEmpty()) return;
-        final boolean spokenSearch = lastSearchFromVoice;
         lastSearchFromVoice = false;
         com.cinetv.launcher.ai.EmaLightningTts.stop();
         home.keyboard.hide();
         home.search.setText(query);
         final int gen = ++searchGen;
+
+        // Immediate verbal acknowledgment for all searches (voice, TV keyboard, or phone remote)
+        String ack = MovieAssistant.acknowledgmentPhrase(query);
+        com.cinetv.launcher.ai.EmaLightningTts.speakMoment(this,
+                com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SEARCH, ack);
+
         // Questions get the answer bubble; film, people and theme searches only change the shelf.
         final boolean question = MovieAssistant.isQuestion(query);
         if (question) home.showThinking();
@@ -650,23 +713,28 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 if (!r.answer.isEmpty()) {
                     // Stays long enough to read, then leaves by itself.
                     home.showBubble(r.answer, false, Math.max(6000, 2500 + 60L * r.answer.length()));
-                    com.cinetv.launcher.ai.EmaLightningTts.speak(MainActivity.this, r.answer);
+                    com.cinetv.launcher.ai.EmaLightningTts.speakMoment(MainActivity.this,
+                            com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SEARCH, r.answer);
                 } else if (r.movies.isEmpty()) {
                     if (question) {
                         String msg = getString(LlmClient.isConfigured(this) || MovieCatalog.hasTmdb(this)
                                 ? R.string.nothing_found : R.string.ai_err_no_key);
                         home.showBubble(msg, false, 6000);
-                        com.cinetv.launcher.ai.EmaLightningTts.speak(MainActivity.this, msg);
+                        com.cinetv.launcher.ai.EmaLightningTts.speakMoment(MainActivity.this,
+                                com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SEARCH, msg);
                     } else {
                         home.shelfLabel.setText(getString(R.string.shelf_nothing, MovieAssistant.cleanShelfName(query)).toUpperCase(Locale.getDefault()));
                         handler.postDelayed(() -> { if (gen == searchGen) restoreShelfLabel(); }, 4000);
+                        com.cinetv.launcher.ai.EmaLightningTts.speakMoment(MainActivity.this,
+                                com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SEARCH,
+                                MovieAssistant.cleanShelfName(query) + " için film bulunamadı.");
                     }
                 } else {
-                    home.hideAiCard();
-                    if (spokenSearch) {
-                        String shelfName = r.title.isEmpty() ? MovieAssistant.cleanShelfName(query) : r.title;
-                        com.cinetv.launcher.ai.EmaLightningTts.speak(MainActivity.this, shelfName + " seçkisi vitrine getirildi.");
-                    }
+                    String voiceSpeech = (r.voice != null && !r.voice.isEmpty()) ? r.voice
+                            : ((r.title.isEmpty() ? MovieAssistant.cleanShelfName(query) : r.title) + " seçkisi vitrine getirildi.");
+                    home.showBubble(voiceSpeech, false, Math.max(6500, 2500 + 65L * voiceSpeech.length()));
+                    com.cinetv.launcher.ai.EmaLightningTts.speakMoment(MainActivity.this,
+                            com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SEARCH, voiceSpeech);
                 }
             });
         });

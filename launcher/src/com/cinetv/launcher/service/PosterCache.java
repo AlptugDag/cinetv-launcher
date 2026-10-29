@@ -77,7 +77,7 @@ public final class PosterCache {
             BitmapFactory.decodeStream(probe, null, o);
             o.inSampleSize = sampleSize(o.outWidth, o.outHeight, reqW, reqH);
             o.inJustDecodeBounds = false;
-            if (sixteenBit && !path.endsWith(".png")) o.inPreferredConfig = Bitmap.Config.RGB_565;
+            if (sixteenBit && !path.endsWith(".png") && reqW < 1200) o.inPreferredConfig = Bitmap.Config.RGB_565;
             try (InputStream in = ctx.getAssets().open(path)) {
                 Bitmap bmp = BitmapFactory.decodeStream(in, null, o);
                 if (bmp != null) memory().put(key, bmp);
@@ -90,8 +90,8 @@ public final class PosterCache {
 
     public static Bitmap decodeFile(File f, int reqW, int reqH) {
         BitmapFactory.Options o = new BitmapFactory.Options();
-        // Photos have no alpha: 16-bit halves their memory. Logos (PNG) keep full colour.
-        if (sixteenBit && !f.getName().endsWith(".png")) o.inPreferredConfig = Bitmap.Config.RGB_565;
+        // Photos have no alpha: 16-bit halves their memory for small posters. Full wallpapers (>=1200) keep 32-bit ARGB_8888.
+        if (sixteenBit && !f.getName().endsWith(".png") && reqW < 1200) o.inPreferredConfig = Bitmap.Config.RGB_565;
         o.inJustDecodeBounds = true;
         BitmapFactory.decodeFile(f.getAbsolutePath(), o);
         if (o.outWidth <= 0) return null;

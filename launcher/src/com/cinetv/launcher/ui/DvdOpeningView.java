@@ -53,6 +53,9 @@ public class DvdOpeningView extends View {
 
     /** Where the trailer plays: told the tray's screen once the case is open, and when to stop. */
     public interface TrailerSlot {
+        /** The case begins to open: start loading the trailer out of sight. */
+        default void prepare(Movie movie) {}
+
         void show(Movie movie, RectF screen, float corner);
         void hide();
     }
@@ -160,6 +163,7 @@ public class DvdOpeningView extends View {
         if (landscape && movie != null) {
             final Context appCtx = getContext().getApplicationContext();
             final Movie targetMovie = movie;
+            slot.prepare(movie);
             new Thread(() -> {
                 com.cinetv.launcher.service.MovieCatalog.trailerKey(appCtx, targetMovie);
             }, "cinetv-dvd-tr-check").start();
@@ -300,6 +304,7 @@ public class DvdOpeningView extends View {
     }
 
     public void dismiss() {
+        com.cinetv.launcher.ai.EmaLightningTts.stop();
         if (slot != null) slot.hide();
         if (anim != null) anim.cancel();
         removeCallbacks(autoPlay);
@@ -311,6 +316,7 @@ public class DvdOpeningView extends View {
 
     private void launch() {
         launched = true;
+        com.cinetv.launcher.ai.EmaLightningTts.stop();
         if (callback != null) callback.onLaunch();
     }
 

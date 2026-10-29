@@ -84,6 +84,19 @@ public final class Prefs {
         return com.cinetv.launcher.device.PerformanceProfile.tier(ctx) != com.cinetv.launcher.device.PerformanceProfile.Tier.LOW;
     }
 
+    public static final String EMA_TTS_LEVEL = "ema_tts_level";
+    public static final int TTS_LEVEL_SEARCH_ONLY = 1;
+    public static final int TTS_LEVEL_BALANCED = 2;   // Recommended default: search + greeting + dvd hook
+    public static final int TTS_LEVEL_PROACTIVE = 3;  // Full assistant: search + greeting + dvd + shelves
+
+    public static int ttsLevel(Context ctx) {
+        return get(ctx).getInt(EMA_TTS_LEVEL, TTS_LEVEL_BALANCED);
+    }
+
+    public static void setTtsLevel(Context ctx, int level) {
+        get(ctx).edit().putInt(EMA_TTS_LEVEL, level).apply();
+    }
+
     public static void setFlag(Context ctx, String key, boolean value) {
         get(ctx).edit().putBoolean(key, value).apply();
     }

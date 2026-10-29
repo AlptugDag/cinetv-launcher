@@ -42,20 +42,27 @@ public class GlideScrollView extends ScrollView {
         } catch (IllegalArgumentException e) {
             return;
         }
-        int margin = UiKit.px(90);
         int top = getScrollY(), height = getHeight();
+        if (height <= 0) return;
         int max = Math.max(0, getChildAt(0).getHeight() - height);
-        int target = top;
-        if (rect.bottom + margin > top + height) target = rect.bottom + margin - height;
-        else if (rect.top - margin < top) target = rect.top - margin;
-        // The header and shelf live at the top: going back up returns the page to its start.
-        if (rect.top < height * 0.6f) target = 0;
+
+        // If the focused view fits within the screen height (e.g. single-row dock, shelf, or header),
+        // we NEVER scroll down; the entire page remains anchored at target = 0 so the clock
+        // and top UI elements never clip or shift out of view.
+        int target = 0;
+        int margin = UiKit.px(24);
+        if (rect.bottom + margin > height) {
+            // Only scroll when an item actually extends below the bottom fold (e.g. expanded multi-row grid)
+            target = rect.bottom + margin - height;
+        } else {
+            target = 0;
+        }
         target = Math.max(0, Math.min(max, target));
-        if (Math.abs(target - top) < 3) return;
+        if (Math.abs(target - top) < 2) return;
         if (anim != null) anim.cancel();
         anim = ValueAnimator.ofInt(top, target);
-        anim.setDuration(PerformanceProfile.animationMs(getContext(), 420));
-        anim.setInterpolator(new DecelerateInterpolator(1.8f));
+        anim.setDuration(PerformanceProfile.animationMs(getContext(), 520));
+        anim.setInterpolator(new DecelerateInterpolator(2.2f));
         anim.addUpdateListener(a -> scrollTo(0, (int) a.getAnimatedValue()));
         anim.start();
     }

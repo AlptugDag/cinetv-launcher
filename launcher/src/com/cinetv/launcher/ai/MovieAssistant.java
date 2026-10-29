@@ -44,6 +44,7 @@ public final class MovieAssistant {
         public String title = "";
         public List<Movie> movies = new ArrayList<>();
         public String answer = "";
+        public String voice = "";
     }
 
     public static final class Shelf {
@@ -87,6 +88,38 @@ public final class MovieAssistant {
         return false;
     }
 
+    /**
+     * Immediate verbal response sentence as soon as any search is entered (voice, TV keyboard, or phone remote).
+     * E.g. "Takeshi Kitano filmleri derleniyor..."
+     */
+    public static String acknowledgmentPhrase(String query) {
+        if (query == null || query.trim().isEmpty()) return "Aranıyor...";
+        String q = query.trim().toLowerCase(Locale.getDefault());
+        boolean tr = "tr".equals(language());
+        String name = cleanShelfName(query);
+        if (name.isEmpty()) name = query.trim();
+
+        if (!tr) {
+            if (isQuestion(query)) return "Checking for you...";
+            return "Searching for " + name + "...";
+        }
+
+        if (q.startsWith("aç") || q.startsWith("oynat") || q.startsWith("izle")
+                || q.endsWith("aç") || q.endsWith("oynat") || q.endsWith("izle")) {
+            return name + " başlatılıyor...";
+        }
+        if (isQuestion(query)) {
+            return "Hemen bakıyorum...";
+        }
+        if (q.contains("dizi") || q.contains("dizileri")) {
+            return name + " dizileri derleniyor...";
+        }
+        if (q.contains("filmleri") || q.contains("filmler") || q.contains("sineması") || q.contains("film")) {
+            return name + " filmleri derleniyor...";
+        }
+        return name + " seçkisi derleniyor...";
+    }
+
     /** Understands the request and fetches its shelf or answer. */
     public static Reply ask(Context ctx, String query, int max) {
         String q = query.trim();
@@ -102,26 +135,32 @@ public final class MovieAssistant {
 
     private static Reply planned(Context ctx, String query, int max) {
         String lang = language();
-        String system = "You are the search brain of CineTV, a film launcher on a living-room TV. "
-                + "Turn the viewer's request into ONE minified JSON object, nothing else:\n"
-                + "{\"intent\":\"shelf|play|answer\",\"title\":\"short shelf title in " + lang + "\","
-                + "\"answer\":\"\",\"person\":\"\",\"role\":\"director|actor|any\",\"query\":\"\","
-                + "\"keywords\":[],\"genres\":[],\"type\":\"movie|tv|any\",\"country\":\"\",\"from\":0,\"to\":0,"
-                + "\"titles\":[{\"t\":\"original title\",\"y\":1999,\"tv\":false}]}\n"
+        String system = "You are CineTV's cultured, charming AI cinema companion and voice assistant (like an articulate cinephile Jarvis for a living-room TV). "
+                + "The viewer communicates with you naturally through voice or typing (e.g. 'Takeshi Kitano filmleri', 'canım sıkkın ne izlesem', 'Scorsese kimdir'). "
+                + "Turn their request into ONE minified JSON object with recommendations and an articulate conversational response:\n"
+                + "{\n"
+                + "  \"intent\": \"shelf|play|answer\",\n"
+                + "  \"title\": \"short uppercase shelf title in " + lang + "\",\n"
+                + "  \"voice\": \"1-2 sentences of natural, cultured conversational Turkish to speak aloud (e.g. 'Takeshi Kitano\\'nun melankoli ve şiddet dolu sinema evrenini vitrine taşıdım. Sonatine veya Hana-bi ile başlamak harika bir tercih olur.', 'Ruhunu tazeleyecek sıcacık bir seçki hazırladım.')\",\n"
+                + "  \"answer\": \"conversational answer if intent is answer or trivia question\",\n"
+                + "  \"person\": \"\",\n"
+                + "  \"role\": \"director|actor|any\",\n"
+                + "  \"query\": \"\",\n"
+                + "  \"keywords\": [],\n"
+                + "  \"genres\": [],\n"
+                + "  \"type\": \"movie|tv|any\",\n"
+                + "  \"country\": \"\",\n"
+                + "  \"from\": 0,\n"
+                + "  \"to\": 0,\n"
+                + "  \"titles\": [{\"t\":\"original title\",\"y\":1999,\"tv\":false}]\n"
+                + "}\n"
                 + "Rules:\n"
-                + "- A person's films/series (\"X filmleri\", \"films with X\"): intent shelf, person = exact full name, "
-                + "role director if they are mainly a director, actor if mainly an actor.\n"
-                + "- A bare title (\"Inception\", \"Kuzu\"): intent shelf, query = that title (we list every work with that name).\n"
-                + "- \"aç/izle/oynat/play X\": intent play, query = X.\n"
-                + "- Themes or plots (\"car themed films\", \"films where a father's daughter is kidnapped\"): intent shelf, "
-                + "keywords = up to 3 short English TMDB keywords, and titles = up to 16 well-known works you are SURE match. "
-                + "For plots rely on titles.\n"
-                + "- Series requested (dizi, series, show): type tv. Genres from: action, adventure, animation, comedy, crime, "
-                + "documentary, drama, family, fantasy, history, horror, music, mystery, romance, science fiction, thriller, war, western.\n"
-                + "- Anything that is not a request for films or series (facts, numbers, markets, people, places, the weather, "
-                + "chit-chat): intent answer, answer = 1-2 short, correct sentences (under 30 words) in " + lang + " that read "
-                + "well on a TV screen, no markdown, no lists. If you cannot know a live value (stock prices, today's rates), say so briefly.\n"
-                + "- title: always fill, in " + lang + ", at most 5 words, e.g. \"TAKESHI KITANO\", \"Araba tutkusu\".";
+                + "- CONVERSATIONAL DIALOGUE: Never speak like a robotic screen reader. Talk warmly and conversationally to the viewer with cinephile taste, context, and a personal recommendation touch.\n"
+                + "- A person's films ('Takeshi Kitano', 'Nolan filmleri'): intent shelf, person = exact full name. In voice, briefly characterize their cinematic style and suggest a standout work.\n"
+                + "- Mood / theme / recommendation queries ('akşam için gerilim', 'canım sıkkın'): intent shelf, titles = up to 14 famous matching masterpieces. In voice, empathize and present the mood.\n"
+                + "- Trivia, chat or open questions ('Scorsese neden Marvel sevmez?'): intent answer, answer & voice = 1-2 insightful, elegant sentences in " + lang + ".\n"
+                + "- 'aç/izle/oynat X': intent play, query = X. Voice = e.g. 'Harika seçim, filmi başlatıyorum.'\n"
+                + "- Keep voice concise: 1-2 spoken sentences (under 32 words), clean natural Turkish without symbols or markdown.";
         LlmClient.Result r = LlmClient.generate(ctx, system, query, 1800, true);
         if (!r.success) return null;
         JSONObject plan;
@@ -133,6 +172,7 @@ public final class MovieAssistant {
         Reply out = new Reply();
         String intent = plan.optString("intent", "shelf");
         out.title = plan.optString("title", "").trim();
+        out.voice = plan.optString("voice", "").trim();
         if ("answer".equals(intent)) {
             out.kind = Kind.ANSWER;
             out.answer = plan.optString("answer", "").trim();

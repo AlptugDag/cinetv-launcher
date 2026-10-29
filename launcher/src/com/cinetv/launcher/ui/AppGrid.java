@@ -254,21 +254,43 @@ public class AppGrid {
             bevel.setFocusedState(has);
             if (has) host.onTileFocused(v, item.neonColor);
         });
-        frame.setOnClickListener(v -> host.onLaunch(item));
-
         final boolean[] longPressed = {false};
         final Runnable longPress = () -> {
             longPressed[0] = true;
             host.showActions(item, inDock, index, frame);
         };
+        frame.setOnLongClickListener(v -> {
+            longPressed[0] = true;
+            host.showActions(item, inDock, index, frame);
+            return true;
+        });
+        frame.setOnClickListener(v -> {
+            if (longPressed[0]) {
+                longPressed[0] = false;
+                return;
+            }
+            host.onLaunch(item);
+        });
+
         frame.setOnKeyListener((v, keyCode, e) -> {
             if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-                if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) {
-                    longPressed[0] = false;
-                    handler.postDelayed(longPress, 900);
+                if (e.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (e.getRepeatCount() == 0) {
+                        longPressed[0] = false;
+                        handler.postDelayed(longPress, 450);
+                    } else if (e.getRepeatCount() >= 4 || (e.getFlags() & KeyEvent.FLAG_LONG_PRESS) != 0) {
+                        if (!longPressed[0]) {
+                            handler.removeCallbacks(longPress);
+                            longPress.run();
+                        }
+                        return true;
+                    }
                 } else if (e.getAction() == KeyEvent.ACTION_UP) {
                     handler.removeCallbacks(longPress);
-                    if (longPressed[0]) return true;
+                    if (longPressed[0]) {
+                        handler.postDelayed(() -> longPressed[0] = false, 250);
+                        return true;
+                    }
                 }
                 return longPressed[0];
             }

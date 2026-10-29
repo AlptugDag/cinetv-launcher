@@ -705,20 +705,26 @@ public final class MovieCatalog {
     private static String curatedPlotNow(Context ctx, Movie m, String base) {
         if (base.length() < 40 || Creator.isSessiz(m) || !com.cinetv.launcher.ai.LlmClient.isConfigured(ctx)) return base;
         String lang = Locale.getDefault().getLanguage();
-        String ck = "plot_v2_" + lang + "_" + m.type + "_" + (m.tmdbId > 0 ? m.tmdbId : m.imdbId);
+        String ck = "plot_v3_" + lang + "_" + m.type + "_" + (m.tmdbId > 0 ? m.tmdbId : m.imdbId);
         String saved = Prefs.get(ctx).getString(ck, null);
         if (saved != null && !saved.isEmpty()) return saved;
         try {
             boolean tr = "tr".equals(lang);
             String system = tr
-                    ? "Sen ödüllü bir senarist ve fragman anlatıcısısın. Verilen film bilgisinden, filmi izleyeceğin akşamın hevesini uyandıran, SİNEMATİK BİR ANLATI yaz: 3-4 kısa cümle, Türkçe, kusursuz imla. "
-                    + "Üslup: şimdiki zaman, üçüncü tekil kişi, bir romanın ilk sayfası ya da fragman sesi gibi akıcı ve görsel. Ansiklopedi, ders kitabı ya da 'film ... anlatır / konu alır' kalıbı YOK. "
-                    + "Yapı: (1) bir an, bir yer ve bir görüntüyle aç (ışık, sokak, ses, hava); (2) ana karakteri ADIYLA ve içindeki eksiklik ya da arzuyla tanıt; (3) hayatını değiştiren olayı ya da çatışmayı somut bir ayrıntıyla ver; (4) bedel ya da cevapsız bir soruyla bitir, çözümü verme. "
-                    + "KESİN KURAL: Spoiler yok; ilk perdenin ötesine geçme, sonu, sürprizleri, ölümleri, kimin kötü olduğunu ya da finali asla söyleme. Cümleleri yarım bırakma; tırnak, başlık, madde işareti, yorum ekleme; yalnızca metni yaz."
-                    : "You are an award-winning screenwriter and trailer narrator. From the film info, write a CINEMATIC NARRATIVE in the viewer's language (" + lang + "): 3-4 short sentences, flawless grammar. "
-                    + "Voice: present tense, third person, like the first page of a novel or a trailer voice-over: visual and flowing. No encyclopedic phrasing, no 'the film tells/follows' framing. "
-                    + "Shape: (1) open on a moment, a place and an image (light, street, sound, weather); (2) introduce the lead BY NAME with what they lack or want; (3) the event or clash that upends their life, with one concrete detail; (4) end on the cost or an unanswered question, never the answer. "
-                    + "HARD RULE: no spoilers; stay inside the first act, never reveal the ending, twists, deaths or who the villain really is. Never leave a sentence unfinished; no quotes, headings, bullets or commentary: output only the text.";
+                    ? "Sen saygın bir sinema dramaturgu ve auteur film eleştirmenisin. Verilen film bilgisinden yola çıkarak, izleyicide filmi hemen izleme tutkusu uyandıran, SİNEMA SANATINA YAKIŞIR DERİN VE ETKİLEYİCİ BİR HİKAYE GİRİŞİ (premise hook) yaz. "
+                    + "TEMEL KURALLAR:\n"
+                    + "1. Asla 'film ... anlatıyor', 'bu yapım', 'hikaye ... konu alır', 'izleyiciye sunar' gibi ansiklopedik veya dış gözlemci kalıpları KULLANMA. Doğrudan filmin atmosferine, mekanına ve karakterin dünyasına gir.\n"
+                    + "2. Ana karakteri ve karşılaştığı temel çıkmazı/olayı güçlü, edebi ve akıcı bir sinematik üslupla ver (3-4 kısa, vurucu ve pürüzsüz cümle).\n"
+                    + "3. KESİNLİKLE SPOILER VERME: Yalnızca hikayenin ilk perdesini ve fitili ateşleyen olayı aktar; sürprizleri, finalleri, ölümleri veya gizemin çözümünü asla ifşa etme.\n"
+                    + "4. Son cümleyi karakterin karşı karşıya olduğu büyük bedeli ya da çözülmesi güç ahlaki/psikolojik ikilemi hissettiren merak dolu bir gerilimle bitir.\n"
+                    + "5. Yalnızca Türkçe anlatı metnini ver; tırnak, başlık, tire, madde işareti veya yorum ekleme."
+                    : "You are a distinguished film dramaturg and auteur cinema critic. From the film info, write a deeply compelling, atmospheric cinematic narrative hook that makes the viewer eager to press play. "
+                    + "RULES:\n"
+                    + "1. Never use meta-framing like 'the film follows', 'this story tells', 'the plot explores'. Plunge directly into the world and atmosphere.\n"
+                    + "2. Introduce the protagonist and their core dilemma in 3-4 vivid, impactful sentences.\n"
+                    + "3. STRICTLY NO SPOILERS: Stay within the inciting incident / first act. Never reveal twists, deaths, solutions or endings.\n"
+                    + "4. End with a lingering, high-stakes question or dilemma that sparks immense curiosity.\n"
+                    + "5. Return only the pure narrative text with no quotes, headings, or bullets.";
             String user = "Title: " + m.title + (m.originalTitle != null && !m.originalTitle.isEmpty() ? " (" + m.originalTitle + ")" : "")
                     + (m.year > 0 ? " [" + m.year + "]" : "") + "\nOfficial synopsis: " + base;
             com.cinetv.launcher.ai.LlmClient.Result r = com.cinetv.launcher.ai.LlmClient.generate(ctx, system, user, 500, true);
@@ -838,11 +844,14 @@ public final class MovieCatalog {
     private static final java.util.Map<String, String> trailers = new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.Map<String, Boolean> playableCache = new java.util.concurrent.ConcurrentHashMap<>();
 
-    /** Prefetches the YouTube trailer key in background so opening the DVD has zero network latency. */
+    /** Prefetches the YouTube trailer key and cinematic booklet details in background so opening the DVD has zero latency. */
     public static void prefetchTrailer(Context ctx, Movie m) {
         if (ctx == null || m == null) return;
         final Context app = ctx.getApplicationContext();
-        resolver.execute(() -> trailerKey(app, m));
+        resolver.execute(() -> {
+            trailerKey(app, m);
+            if (m.cast.isEmpty() || m.overview.isEmpty()) details(app, m);
+        });
     }
 
     /** Marks a movie's trailer as unavailable (missing, unembeddable, or country-blocked) so future opens use vertical disc mode. */
