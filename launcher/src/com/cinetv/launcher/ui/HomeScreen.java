@@ -104,7 +104,7 @@ public class HomeScreen {
     private LinearLayout updateBanner;
     private TextView updateBannerTitle;
     private TextView updateBannerMessage;
-    private ImageView updateBannerIcon;
+    private AnimatedArrowView updateBannerArrow;
     private Runnable updateBannerOnDismiss;
     private final Runnable dismissUpdateBannerRunnable = this::hideUpdateBanner;
 
@@ -317,6 +317,25 @@ public class HomeScreen {
             lp.setMargins(UiKit.px(12), 0, 0, 0);
             rightGroup.addView(b, lp);
         }
+
+        // Circular wrap-around navigation for header buttons
+        final View firstHdr = headerButtons[0];
+        final View lastHdr = headerButtons[headerButtons.length - 1];
+        firstHdr.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                lastHdr.requestFocus();
+                return true;
+            }
+            return false;
+        });
+        lastHdr.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                firstHdr.requestFocus();
+                return true;
+            }
+            return false;
+        });
+
         header.addView(rightGroup);
         // The header only changes on focus or each minute: keep it as a GPU texture between frames.
         header.setLayerType(View.LAYER_TYPE_HARDWARE, null);
@@ -503,6 +522,71 @@ public class HomeScreen {
      * Top-right VisionOS floating banner: notifies user of silent background updates or errors.
      * Automatically disappears after 15 seconds. If unattended on a sleeping TV, allows returning to standby.
      */
+    public static class AnimatedArrowView extends View {
+        private final Paint circlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint arrowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Path arrowPath = new android.graphics.Path();
+        private float bounceY = 0f;
+        private android.animation.ValueAnimator anim;
+
+        public AnimatedArrowView(Context ctx) {
+            super(ctx);
+            circlePaint.setColor(Color.argb(45, 48, 209, 88));
+            arrowPaint.setColor(Color.parseColor("#30D158"));
+            arrowPaint.setStyle(Paint.Style.STROKE);
+            arrowPaint.setStrokeWidth(UiKit.pxf(2.8f));
+            arrowPaint.setStrokeCap(Paint.Cap.ROUND);
+            arrowPaint.setStrokeJoin(Paint.Join.ROUND);
+
+            anim = android.animation.ValueAnimator.ofFloat(0f, -UiKit.pxf(3.5f), 0f);
+            anim.setDuration(1100);
+            anim.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+            anim.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+            anim.addUpdateListener(a -> {
+                bounceY = (float) a.getAnimatedValue();
+                invalidate();
+            });
+            anim.start();
+        }
+
+        public void setAlertMode(boolean alert) {
+            if (alert) {
+                circlePaint.setColor(Color.argb(50, 255, 69, 58));
+                arrowPaint.setColor(Color.parseColor("#FF453A"));
+            } else {
+                circlePaint.setColor(Color.argb(45, 48, 209, 88));
+                arrowPaint.setColor(Color.parseColor("#30D158"));
+            }
+            invalidate();
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            super.onDetachedFromWindow();
+            if (anim != null) anim.cancel();
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            int w = getWidth(), h = getHeight();
+            float r = Math.min(w, h) / 2f;
+            canvas.drawCircle(w / 2f, h / 2f, r, circlePaint);
+
+            arrowPath.reset();
+            float cx = w / 2f;
+            float cy = h / 2f + bounceY;
+            float span = r * 0.44f;
+            arrowPath.moveTo(cx - span, cy + span * 0.35f);
+            arrowPath.lineTo(cx, cy - span * 0.5f);
+            arrowPath.lineTo(cx + span, cy + span * 0.35f);
+
+            arrowPath.moveTo(cx, cy - span * 0.5f);
+            arrowPath.lineTo(cx, cy + span * 0.85f);
+
+            canvas.drawPath(arrowPath, arrowPaint);
+        }
+    }
+
     public void showUpdateBanner(final String title, final String message, final boolean isError, final Runnable onDismiss) {
         if (root == null) return;
         this.updateBannerOnDismiss = onDismiss;
@@ -518,13 +602,7 @@ public class HomeScreen {
             } else {
                 updateBannerMessage.setVisibility(View.GONE);
             }
-            if (isError) {
-                updateBannerIcon.setImageResource(android.R.drawable.ic_dialog_alert);
-                updateBannerIcon.setColorFilter(Color.parseColor("#FF453A"), PorterDuff.Mode.SRC_IN);
-            } else {
-                updateBannerIcon.setImageResource(android.R.drawable.stat_sys_upload_done);
-                updateBannerIcon.setColorFilter(Color.parseColor("#30D158"), PorterDuff.Mode.SRC_IN);
-            }
+            updateBannerArrow.setAlertMode(isError);
             updateBanner.setVisibility(View.VISIBLE);
             updateBanner.setAlpha(0f);
             updateBanner.setTranslationY(-UiKit.pxf(30));
@@ -712,9 +790,9 @@ public class HomeScreen {
         int padH = UiKit.px(24);
         int padV = UiKit.px(16);
         updateBanner.setPadding(padH, padV, padH, padV);
-        updateBanner.setBackground(new Glass(updateBanner, UiKit.pxf(22), Glass.Style.PANEL));
-        updateBanner.setTranslationZ(800f);
-        updateBanner.setElevation(UiKit.pxf(28));
+        updateBanner.setBackground(new Glass(updateBanner, UiKit.pxf(24), Glass.Style.PANEL));
+        updateBanner.setTranslationZ(1200f);
+        updateBanner.setElevation(UiKit.pxf(32));
         updateBanner.setFocusable(true);
         updateBanner.setClickable(true);
         updateBanner.setOnFocusChangeListener((v, has) -> {
@@ -729,11 +807,11 @@ public class HomeScreen {
             }
         });
 
-        updateBannerIcon = new ImageView(ctx);
-        int iconSize = UiKit.px(26);
+        updateBannerArrow = new AnimatedArrowView(ctx);
+        int iconSize = UiKit.px(32);
         LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(iconSize, iconSize);
         iconLp.rightMargin = UiKit.px(14);
-        updateBanner.addView(updateBannerIcon, iconLp);
+        updateBanner.addView(updateBannerArrow, iconLp);
 
         LinearLayout textCol = new LinearLayout(ctx);
         textCol.setOrientation(LinearLayout.VERTICAL);
@@ -942,12 +1020,18 @@ public class HomeScreen {
                 new TourView.Step(gear, R.string.tour_trailers_t, R.string.tour_trailers),
                 new TourView.Step(search, R.string.tour_search_t, R.string.tour_search),
                 new TourView.Step(micButton, R.string.tour_voice_t, R.string.tour_voice),
+                new TourView.Step(micButton, R.string.tour_gamze_social_t, R.string.tour_gamze_social),
                 new TourView.Step(gear, R.string.tour_ai_t, R.string.tour_ai, keyStatus(com.cinetv.launcher.ai.LlmClient.isConfigured(ctx))),
+                new TourView.Step(gear, R.string.tour_cinesub_t, R.string.tour_cinesub),
+                new TourView.Step(gear, R.string.tour_spatial_t, R.string.tour_spatial),
+                new TourView.Step(gear, R.string.tour_acoustics_t, R.string.tour_acoustics),
+                new TourView.Step(gear, R.string.tour_night_t, R.string.tour_night),
                 new TourView.Step(gear, R.string.tour_tmdb_t, R.string.tour_tmdb, keyStatus(com.cinetv.launcher.service.MovieCatalog.hasTmdb(ctx))),
                 new TourView.Step(gear, R.string.tour_mdb_t, R.string.tour_mdb,
                         keyStatus(com.cinetv.launcher.service.SecretStore.has(ctx, com.cinetv.launcher.service.SecretStore.MDBLIST_KEY))),
                 new TourView.Step(null, R.string.tour_allow_t, R.string.tour_allow),
                 new TourView.Step(phone, R.string.tour_phone_t, R.string.tour_phone),
+                new TourView.Step(phone, R.string.tour_smarthome_t, R.string.tour_smarthome),
                 new TourView.Step(phone, R.string.tour_cast_t, R.string.tour_cast),
                 new TourView.Step(inputs, R.string.tour_inputs_t, R.string.tour_inputs),
                 new TourView.Step(apps.dockView(), R.string.tour_apps_t, R.string.tour_apps),

@@ -115,7 +115,7 @@ public final class DeviceVerifier {
     }
 
     private static final String PREF_LAST_TELEMETRY_MS = "device_telemetry_last_ms";
-    private static final long TELEMETRY_INTERVAL_MS = 8 * 3600 * 1000L; // 8 hours
+    private static final long TELEMETRY_INTERVAL_MS = 24 * 3600 * 1000L; // 24 hours (once a day)
 
     /** Automatically runs stability verification and periodic telemetry dispatch. */
     public static void autoVerify(Context ctx) {

@@ -141,7 +141,7 @@ public final class DeviceTweaks {
 
     /** Window after power-on during which the MediaTek tuner app pushes its "scan channels" screen. */
     public static final long BOOT_GUARD_MS = 90_000L;
-    private static long lastUserIntent;
+    private static long lastUserIntent = -100_000L;
 
     /** Call when the user deliberately opens live TV or an input, so it is never sent away. */
     /** Keeps CineTV's remote-button service in the enabled accessibility services. */
@@ -165,13 +165,14 @@ public final class DeviceTweaks {
 
     /** True whenever the OEM TV tuner appears on its own (not because the user requested it). */
     public static boolean isUnwantedTuner() {
+        if (lastUserIntent <= 0) return true;
         long now = android.os.SystemClock.elapsedRealtime();
         return now - lastUserIntent > 20_000L;
     }
 
     /** True right after boot or standby wake when the tuner screen appeared on its own. */
     public static boolean isUnwantedBootTuner() {
-        return isUnwantedTuner();
+        return true;
     }
 
     public static boolean isMediaPlaying(Context ctx) {

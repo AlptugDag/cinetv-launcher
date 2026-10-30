@@ -609,7 +609,6 @@ public final class MovieCatalog {
     public static Movie details(Context ctx, Movie m) {
         if (!hasTmdb(ctx)) {
             m.overview = localized(m.overview); // Cinemeta writes in English only
-            m.overview = curatedPlot(ctx, m);
             ratings(ctx, m);
             return m;
         }
@@ -648,7 +647,6 @@ public final class MovieCatalog {
             m.title = cleanNfc(m.title);
             m.originalTitle = cleanNfc(m.originalTitle);
             m.overview = cleanNfc(m.overview);
-            m.overview = curatedPlot(ctx, m);
             m.tagline = cleanNfc(m.tagline);
             int rt = d.optInt("runtime", 0);
             if (rt <= 0) {

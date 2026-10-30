@@ -147,6 +147,26 @@ public class AppGrid {
         // a short list: "Add" sits right after the last app in the first row
         if (grid.isEmpty() && dock.size() < columns) dockRow.addView(addTile(dock.size(), true), tileParams(1f));
 
+        // Circular wrap-around navigation for dock row
+        if (dockRow.getChildCount() > 1) {
+            final View first = dockRow.getChildAt(0);
+            final View last = dockRow.getChildAt(dockRow.getChildCount() - 1);
+            first.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    last.requestFocus();
+                    return true;
+                }
+                return false;
+            });
+            last.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    first.requestFocus();
+                    return true;
+                }
+                return false;
+            });
+        }
+
         // The grid always ends with the "Add" tile, right after the last app.
         gridBox.removeAllViews();
         LinearLayout row = null;
@@ -161,6 +181,32 @@ public class AppGrid {
                 gridBox.addView(row);
             }
             row.addView(i < grid.size() ? tile(grid.get(i), false, i, columns) : addTile(i, false), tileParams(1f));
+        }
+
+        // Circular wrap-around for each grid row
+        for (int r = 0; r < gridBox.getChildCount(); r++) {
+            View child = gridBox.getChildAt(r);
+            if (child instanceof LinearLayout) {
+                LinearLayout rRow = (LinearLayout) child;
+                if (rRow.getChildCount() > 1) {
+                    final View f = rRow.getChildAt(0);
+                    final View l = rRow.getChildAt(rRow.getChildCount() - 1);
+                    f.setOnKeyListener((v, keyCode, event) -> {
+                        if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                            l.requestFocus();
+                            return true;
+                        }
+                        return false;
+                    });
+                    l.setOnKeyListener((v, keyCode, event) -> {
+                        if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                            f.requestFocus();
+                            return true;
+                        }
+                        return false;
+                    });
+                }
+            }
         }
     }
 

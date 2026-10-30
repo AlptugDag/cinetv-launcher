@@ -47,12 +47,18 @@ public final class NuvioSetup {
     /** Off the main thread. */
     public static void runOnce(Context ctx) {
         if (AppLauncher.isLaunchable(ctx.getPackageManager(), AppLauncher.NUVIO)) {
-            Log.i(TAG, "Existing Nuvio installation found on TV. Preserving user's Nuvio and syncing curated addons & configs.");
-            syncAddonsAndConfigs(ctx, true);
+            Log.i(TAG, "Existing Nuvio installation found on TV. Preserving user's Nuvio completely.");
+            Prefs.get(ctx).edit()
+                    .putBoolean(DONE, true)
+                    .putBoolean(SYNC_KEY, true)
+                    .putBoolean("nuvio_choice_made", true)
+                    .putBoolean("nuvio_addons_configured", true)
+                    .putBoolean("nuvio_addons_dismissed", true)
+                    .putBoolean("nuvio_update_prompt_v1_0_0_9b", true)
+                    .apply();
             return;
         }
         installNuvio(ctx, false);
-        syncAddonsAndConfigs(ctx, false);
     }
 
     /**
@@ -138,6 +144,12 @@ public final class NuvioSetup {
                 addAddon(app, sp.manifestPath());
                 Prefs.get(app).edit().putBoolean(SYNC_KEY, true).apply();
                 Log.i(TAG, "Nuvio addons, stream profile and configs successfully synchronized");
+                // Restore CineTV Launcher to front so Nuvio is never left stranded in foreground
+                try {
+                    Intent home = new Intent(app, com.cinetv.launcher.MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                    app.startActivity(home);
+                } catch (Throwable ignored) {}
             } catch (Throwable t) {
                 Log.w(TAG, "Nuvio addon sync failed: " + t);
             }
@@ -150,9 +162,8 @@ public final class NuvioSetup {
             return true;
         }
         if (AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) {
-            Log.i(TAG, "Nuvio is already installed on TV. Skipping Nuvio APK install, syncing curated addons and configs into existing Nuvio.");
-            Prefs.get(app).edit().putBoolean(DONE, true).apply();
-            syncAddonsAndConfigs(app, true);
+            Log.i(TAG, "Nuvio is already installed on TV. Skipping Nuvio APK install, preserving existing addons.");
+            Prefs.get(app).edit().putBoolean(DONE, true).putBoolean(SYNC_KEY, true).apply();
             return true;
         }
         try {

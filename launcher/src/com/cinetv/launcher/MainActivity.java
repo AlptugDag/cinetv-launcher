@@ -1588,19 +1588,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private void checkNuvioUpdatePrompt() {
         if (isFinishing() || home == null || home.modal == null || home.modal.isShowing()) return;
         boolean nuvioInstalled = AppLauncher.isLaunchable(getPackageManager(), AppLauncher.NUVIO);
-        if (!nuvioInstalled) return;
-
-        boolean alreadyPrompted = Prefs.get(this).getBoolean("nuvio_addons_configured", false)
-                || Prefs.get(this).getBoolean("nuvio_addons_dismissed", false)
-                || Prefs.get(this).getBoolean("nuvio_update_prompt_v1_0_0_9b", false)
-                || Prefs.get(this).getBoolean("nuvio_setup_done", false);
-        if (alreadyPrompted) return;
-
-        handler.postDelayed(() -> {
-            if (!isFinishing() && home != null && !home.modal.isShowing() && home.screensaver.getVisibility() != View.VISIBLE) {
-                Panels.nuvioUpdateAddons(this, home.modal);
-            }
-        }, 3000L);
+        if (nuvioInstalled) {
+            // Existing Nuvio found: mark configured and preserve user addons without interruption
+            Prefs.get(this).edit()
+                    .putBoolean("nuvio_addons_configured", true)
+                    .putBoolean("nuvio_addons_dismissed", true)
+                    .putBoolean("nuvio_update_prompt_v1_0_0_9b", true)
+                    .putBoolean("nuvio_setup_done", true)
+                    .apply();
+            return;
+        }
     }
 
     private void checkSpecialDayCelebration() {

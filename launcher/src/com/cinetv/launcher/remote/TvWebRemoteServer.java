@@ -297,6 +297,28 @@ public final class TvWebRemoteServer {
                 asset(out, "remote/sw.js", "application/javascript; charset=utf-8");
                 return;
             }
+            if (path.equals("/companion.apk") || path.equals("/cinetv-companion.apk") || path.equals("/cinetv.apk")) {
+                try {
+                    java.io.File apkFile = new java.io.File(app.getApplicationInfo().sourceDir);
+                    if (apkFile.exists()) {
+                        byte[] bytes = java.nio.file.Files.readAllBytes(apkFile.toPath());
+                        String head = "HTTP/1.1 200 OK\r\nContent-Type: application/vnd.android.package-archive\r\n"
+                                + "Content-Disposition: attachment; filename=\"CineTV-Companion.apk\"\r\n"
+                                + "Content-Length: " + bytes.length + "\r\nConnection: close\r\n\r\n";
+                        out.write(head.getBytes(StandardCharsets.UTF_8));
+                        out.write(bytes);
+                        out.flush();
+                        return;
+                    }
+                } catch (Throwable t) {
+                    Log.w(TAG, "Cannot serve companion APK: " + t);
+                }
+            }
+            if (path.equals("/api/siri") || path.equals("/api/google/smarthome") || path.equals("/api/alexa")) {
+                JSONObject res = handleSmartHome(path, q);
+                sendCors(out, res.toString(), origin);
+                return;
+            }
             if (path.equals("/api/ping")) {
                 // The plain page asks whether the secure one is reachable from this phone; only that is shared.
                 sendCors(out, "{\"ok\":true}", origin);
@@ -397,12 +419,87 @@ public final class TvWebRemoteServer {
 
     private static void sendCors(OutputStream out, String body, String origin) throws Exception {
         byte[] b = body.getBytes(StandardCharsets.UTF_8);
-        String allow = origin != null && origin.startsWith("http://") ? origin : "null";
+        String allow = origin != null && origin.startsWith("http://") ? origin : "*";
         String head = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + b.length
                 + "\r\nAccess-Control-Allow-Origin: " + allow + "\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n";
         out.write(head.getBytes(StandardCharsets.UTF_8));
         out.write(b);
         out.flush();
+    }
+
+    private static JSONObject handleSmartHome(String path, Map<String, String> q) {
+        JSONObject r = new JSONObject();
+        try {
+            String act = q.get("action");
+            if (act == null) act = q.get("command");
+            if (act == null) act = "status";
+            act = act.toLowerCase().trim();
+
+            switch (act) {
+                case "play":
+                case "pause":
+                case "play_pause":
+                    sendKey(85, false); // KEYCODE_MEDIA_PLAY_PAUSE
+                    break;
+                case "stop":
+                    sendKey(86, false);
+                    break;
+                case "next":
+                    sendKey(87, false);
+                    break;
+                case "prev":
+                case "previous":
+                    sendKey(88, false);
+                    break;
+                case "vol_up":
+                case "volume_up":
+                    sendKey(24, false);
+                    break;
+                case "vol_down":
+                case "volume_down":
+                    sendKey(25, false);
+                    break;
+                case "mute":
+                case "unmute":
+                    sendKey(164, false);
+                    break;
+                case "power":
+                case "power_off":
+                case "sleep":
+                    sendKey(26, false);
+                    break;
+                case "home":
+                    sendKey(3, false);
+                    break;
+                case "back":
+                    sendKey(4, false);
+                    break;
+                case "nuvio":
+                case "open_nuvio":
+                    AppLauncher.launchFirst(app, AppLauncher.NUVIO_PACKAGES);
+                    break;
+                case "youtube":
+                case "open_youtube":
+                    AppLauncher.launchFirst(app, AppLauncher.YOUTUBE_PACKAGES);
+                    break;
+                case "search":
+                    String query = q.get("q");
+                    if (query != null && !query.trim().isEmpty()) {
+                        post(() -> {
+                            com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                            if (ma != null) ma.onSearch(query.trim());
+                        });
+                    }
+                    break;
+            }
+            r.put("ok", true);
+            r.put("endpoint", path);
+            r.put("action", act);
+            r.put("device", "CineTV");
+        } catch (Throwable t) {
+            try { r.put("ok", false).put("error", t.getMessage()); } catch (Throwable ignored) {}
+        }
+        return r;
     }
 
     /** Calls that work before pairing: asking to pair, and the About page. Null for everything else. */

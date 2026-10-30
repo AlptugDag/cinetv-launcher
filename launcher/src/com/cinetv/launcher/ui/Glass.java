@@ -155,7 +155,8 @@ public final class Glass extends Drawable {
             return;
         }
         SpatialEnvironment env = SpatialEnvironment.current();
-        Bitmap blurred = env != null && frosted ? env.blurred() : null;
+        boolean allowBlur = env != null && frosted && com.cinetv.launcher.device.PerformanceProfile.tier(env.getContext()) != com.cinetv.launcher.device.PerformanceProfile.Tier.LOW;
+        Bitmap blurred = allowBlur ? env.blurred() : null;
         if (blurred != null) {
             boolean rebuildMatrix = false;
             if (blurred != shaderSource) {

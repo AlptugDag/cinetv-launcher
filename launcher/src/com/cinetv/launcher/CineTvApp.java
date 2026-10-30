@@ -17,7 +17,7 @@ import com.cinetv.launcher.device.DeviceTweaks;
 public class CineTvApp extends Application {
 
     private static volatile CineTvApp appInstance;
-    private static final long[] BOOT_RESCUES_MS = {1500, 3500, 6000, 9000, 13000};
+    private static final long[] BOOT_RESCUES_MS = {150, 450, 900, 1600, 3000, 5000, 8500, 13000};
 
     public static CineTvApp get() {
         return appInstance;
@@ -43,8 +43,9 @@ public class CineTvApp extends Application {
             h.postDelayed(() -> {
                 if (!DeviceTweaks.isUnwantedBootTuner() || MainActivity.isInFront()) return;
                 try {
+                    com.cinetv.launcher.remote.LocalAdb.shell(this, "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null; am force-stop com.arcelik.smartremoteservice 2>/dev/null", 300);
                     startActivity(new Intent(this, MainActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
                 } catch (Throwable ignored) {
                 }
             }, delay);

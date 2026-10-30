@@ -1,7 +1,5 @@
 <div align="center">
 
-<br>
-
 <img src="docs/media/wordmark.png" alt="CineTV" width="560">
 
 <br><br>
@@ -12,7 +10,7 @@
 
 <br>
 
-[![Sürüm](https://img.shields.io/badge/SURUM-1.0.0.16-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher/releases/latest)
+[![Sürüm](https://img.shields.io/badge/SURUM-1.0.0.18-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher/releases/latest)
 [![Felsefe](https://img.shields.io/badge/FELSEFE-SIFIR%20KAR%20%7C%20SAF%20SINEMA-E50914?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher)
 [![Mimari](https://img.shields.io/badge/ALTYAPI-BAGIMSIZ%20%26%20NO--ROOT-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher)
 
@@ -319,6 +317,21 @@ CineTV Kurulum Sihirbazı içerisinde QR kodlu rehberle adım adım anlatıldı�
 
 <br>
 
+
+---
+
+<br>
+
+## 🪟 Windows PC Masaüstü Sürümü (Companion App)
+
+CineTV, Android TV'nin yanı sıra salonunuzdaki veya çalışma odanızdaki Windows bilgisayarınızda da kusursuz bir sinema salonu kurabilmeniz için özel bir masaüstü sürümüne sahiptir:
+
+- **Birebir Aynı Sinema Felsefesi & Kaynaklar:** 3B açılan DVD kutuları, TMDB yüksek çözünürlüklü afişler, Türkçe özetler, fragmanlar ve Gamze AI asistanı Windows sürümünde de birebir aynı tasarım diliyle çalışır.
+- **Senkronize Nuvio & Eklenti Mimarisi:** TV'nizde kullandığınız tüm Nuvio katalogları ve eklentileri masaüstü sürümünde de aktiftir.
+- **Kararlı Refakatçi Modeli (Ayrı Geliştirme Yok):** Windows sürümünde Android sürümünden hariç ayrı bir geliştirme süreci olmayacak ve sık güncelleme gelmeyecektir. Amaç, masaüstünde tamamen kararlı ve uzun ömürlü bir refakatçi deneyimi sunmaktır.
+- **Çalıştırma:** Tarayıcınızda veya Electron kabuğunda `windows/index.html` dosyasını açmanız yeterlidir; hiçbir karmaşık kuruluma veya harici sürücüye ihtiyaç duymaz.
+
+<br><br>
 ## Test Edilen Cihazlar & Topluluk Uyumluluğu
 
 CineTV, TV Denetçisi üzerinden gönderilen telemetri ve doğrudan laboratuvar testleriyle aşağıdaki modellerde doğrulanmıştır:

@@ -112,27 +112,19 @@ public final class Panels {
         LinearLayout head = new LinearLayout(ctx);
         head.setOrientation(LinearLayout.HORIZONTAL);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.setPadding(UiKit.px(44), UiKit.px(16), UiKit.px(44), UiKit.px(8));
+        head.setPadding(UiKit.px(44), UiKit.px(8), UiKit.px(44), UiKit.px(6));
 
         ImageView logo = new ImageView(ctx);
         logo.setImageBitmap(Brand.mark(ctx));
-        head.addView(logo, new LinearLayout.LayoutParams(UiKit.px(48), UiKit.px(48)));
+        head.addView(logo, new LinearLayout.LayoutParams(UiKit.px(36), UiKit.px(36)));
 
-        LinearLayout titleCol = new LinearLayout(ctx);
-        titleCol.setOrientation(LinearLayout.VERTICAL);
-        titleCol.setPadding(UiKit.px(18), 0, UiKit.px(24), 0);
-        TextView title = UiKit.bold(ctx, 30, UiKit.INK);
-        title.setText(R.string.settings_title);
-        titleCol.addView(title);
-
-        TextView sub = UiKit.label(ctx, 14, UiKit.INK_DIM);
+        TextView sub = UiKit.label(ctx, 13, UiKit.INK_DIM);
         ThemeManager.Theme curTheme = ThemeManager.current(ctx);
-        sub.setText((tr ? "Atmosfer: " : "Theme: ") + themeName(ctx, curTheme) + " · CineTV v" + AppUpdater.currentVersion(ctx));
-        titleCol.addView(sub);
-        head.addView(titleCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        sub.setText("   " + (tr ? "Atmosfer: " : "Theme: ") + themeName(ctx, curTheme) + "  ·  v" + AppUpdater.currentVersion(ctx));
+        head.addView(sub, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        TextView navHint = UiKit.label(ctx, 15, UiKit.INK_DIM);
-        navHint.setText(tr ? "▲ ▼ Dairesel Gezin · Geri: Kapat" : "▲ ▼ Circular Scroll · Back: Close");
+        TextView navHint = UiKit.label(ctx, 13, UiKit.INK_DIM);
+        navHint.setText(tr ? "▲ ▼ Dairesel Gezin  ·  Geri: Kapat" : "▲ ▼ Circular Scroll  ·  Back: Close");
         head.addView(navHint);
         root.addView(head);
 
@@ -150,11 +142,86 @@ public final class Panels {
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.addView(cols, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
+        // Quick Category Jump Bar: instantly smooth-scrolls to each major section
+        final LinearLayout jumpBar = new LinearLayout(ctx);
+        jumpBar.setOrientation(LinearLayout.HORIZONTAL);
+        jumpBar.setGravity(Gravity.CENTER_VERTICAL);
+        jumpBar.setPadding(UiKit.px(44), 0, UiKit.px(44), UiKit.px(10));
+        jumpBar.setClipChildren(false);
+
+        final String[][] categories = {
+                {tr ? "🎨 Temalar" : "🎨 Themes", "sec_themes"},
+                {tr ? "🌙 Atmosfer" : "🌙 Atmosphere", "sec_atmosphere"},
+                {tr ? "🎬 Görünüm & 3D" : "🎬 Visual & 3D", "sec_visual"},
+                {tr ? "🤖 Yapay Zekâ" : "🤖 AI & Voice", "sec_ai"},
+                {tr ? "⚙️ Sistem" : "⚙️ System", "sec_system"}
+        };
+        final View[] jumpPills = new View[categories.length];
+        for (int i = 0; i < categories.length; i++) {
+            final int pillIdx = i;
+            final String secTag = categories[i][1];
+            final TextView pill = UiKit.bold(ctx, 14, UiKit.INK);
+            pill.setText(categories[i][0]);
+            pill.setGravity(Gravity.CENTER);
+            pill.setFocusable(true);
+            pill.setClickable(true);
+            pill.setPadding(UiKit.px(16), UiKit.px(7), UiKit.px(16), UiKit.px(7));
+            final Glass pg = new Glass(pill, UiKit.pxf(14), Glass.Style.CONTROL);
+            pill.setBackground(pg);
+
+            pill.setOnFocusChangeListener((v, has) -> {
+                if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
+                pg.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
+                pill.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
+                UiKit.lift(v, has, 1.05f, 120);
+            });
+
+            pill.setOnClickListener(v -> {
+                com.cinetv.launcher.device.SystemAudio.click(ctx);
+                View targetSec = cols.findViewWithTag(secTag);
+                if (targetSec != null) {
+                    scroll.smoothScrollTo(0, targetSec.getTop());
+                }
+            });
+
+            pill.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        View targetSec = cols.findViewWithTag(secTag);
+                        if (targetSec != null) {
+                            scroll.smoothScrollTo(0, targetSec.getTop());
+                            targetSec.post(() -> {
+                                View next = targetSec.findFocus();
+                                if (next == null) next = targetSec.focusSearch(View.FOCUS_DOWN);
+                                if (next != null) next.requestFocus();
+                            });
+                            return true;
+                        }
+                    }
+                    if (pillIdx == 0 && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                        jumpPills[jumpPills.length - 1].requestFocus();
+                        return true;
+                    }
+                    if (pillIdx == categories.length - 1 && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        jumpPills[0].requestFocus();
+                        return true;
+                    }
+                }
+                return false;
+            });
+
+            LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (i > 0) plp.leftMargin = UiKit.px(10);
+            jumpBar.addView(pill, plp);
+            jumpPills[i] = pill;
+        }
+        root.addView(jumpBar);
+
         final FrameLayout frame = new FrameLayout(ctx);
         frame.setClipChildren(false);
         frame.setClipToPadding(false);
         FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        slp.setMargins(UiKit.px(44), UiKit.px(12), UiKit.px(44), UiKit.px(18));
+        slp.setMargins(UiKit.px(44), UiKit.px(10), UiKit.px(44), UiKit.px(18));
         frame.addView(scroll, slp);
         LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         flp.topMargin = UiKit.px(2);
@@ -166,6 +233,7 @@ public final class Panels {
         // 1. SECTION: TEMALAR & ATMOSFER (THEMES & ATMOSPHERE)
         // =========================================================================
         LinearLayout c1 = column(ctx, cols, R.string.col_themes, colWidth);
+        c1.setTag("sec_themes");
         ThemeManager.Theme current = ThemeManager.current(ctx);
         for (int k = 0; k < ThemeManager.THEMES.length; k++) {
             final ThemeManager.Theme t = ThemeManager.THEMES[k];
@@ -189,67 +257,68 @@ public final class Panels {
                     }));
         }
 
-        LinearLayout c2 = column(ctx, cols, "tr".equals(Locale.getDefault().getLanguage()) ? "Atmosfer & Dinlenme" : "Atmosphere & Rest", colWidth);
+        LinearLayout c2 = column(ctx, cols, tr ? "🌙 Gece İzleme & Atmosfer" : "🌙 Night Viewing & Atmosphere", colWidth);
+        c2.setTag("sec_atmosphere");
         boolean nightViewActive = com.cinetv.launcher.device.NightCare.isNightViewingModeActive(ctx);
+        boolean visualPref = com.cinetv.launcher.device.NightCare.isVisualPrefEnabled(ctx);
+        boolean audioPref = com.cinetv.launcher.device.NightCare.isAudioPrefEnabled(ctx);
+
+        final LinearLayout visualTile = Controls.toggleTile(ctx,
+                tr ? "↳ Gece Göz Koruma Filtresi (Sıcak Amber Ton)" : "↳ Night Eye-Care Warm Tone",
+                visualPref ? (tr ? "Açık · Sıcak amber ton" : "On · Warm amber tone") : (tr ? "Kapalı" : "Off"),
+                visualPref, (newActive, subLabel, sw) -> {
+                    com.cinetv.launcher.device.NightCare.setVisualActive(ctx, newActive);
+                    subLabel.setText(newActive ? (tr ? "Açık · Sıcak amber ton" : "On · Warm amber tone") : (tr ? "Kapalı" : "Off"));
+                    a.applyAppearance();
+                });
+        visualTile.setTag("opt_night_visual");
+
+        final LinearLayout audioTileNight = Controls.toggleTile(ctx,
+                tr ? "↳ Gece Dinamik Ses Dengeleme (Fısıltı Seviyesi)" : "↳ Night Dynamic Audio Leveling",
+                audioPref ? (tr ? "Açık · Fısıltı & ses sınırı aktif" : "On · Volume capped & leveled") : (tr ? "Kapalı" : "Off"),
+                audioPref, (newActive, subLabel, sw) -> {
+                    com.cinetv.launcher.device.NightCare.setAudioActive(ctx, newActive);
+                    subLabel.setText(newActive ? (tr ? "Açık · Fısıltı & ses sınırı aktif" : "On · Volume capped & leveled") : (tr ? "Kapalı" : "Off"));
+                });
+        audioTileNight.setTag("opt_night_audio");
+
         LinearLayout nightTile = Controls.toggleTile(ctx,
                 tr ? "Gece İzleme Modu (23:00 - 05:00)" : "Night Viewing Mode (23:00 - 05:00)",
                 nightViewActive
                         ? (tr ? "Açık · 23:00-05:00 saatleri aktif" : "On · Active 23:00-05:00")
                         : (tr ? "Kapalı · 23:00-05:00 arası ekran açılınca sorulur" : "Off · Prompted between 23:00 and 05:00"),
-                nightViewActive, v -> {
-                    boolean next = !com.cinetv.launcher.device.NightCare.isNightViewingModeActive(ctx);
-                    com.cinetv.launcher.device.NightCare.setNightViewingMode(ctx, next);
+                nightViewActive, (newActive, subLabel, sw) -> {
+                    com.cinetv.launcher.device.NightCare.setNightViewingMode(ctx, newActive);
+                    subLabel.setText(newActive
+                            ? (tr ? "Açık · 23:00-05:00 saatleri aktif" : "On · Active 23:00-05:00")
+                            : (tr ? "Kapalı · 23:00-05:00 arası ekran açılınca sorulur" : "Off · Prompted between 23:00 and 05:00"));
+                    visualTile.setAlpha(newActive ? 1.0f : 0.5f);
+                    audioTileNight.setAlpha(newActive ? 1.0f : 0.5f);
                     a.applyAppearance();
-                    host.replace(() -> buildSettings(ctx, host, a, "opt_night_view_mode"));
                 });
         nightTile.setTag("opt_night_view_mode");
+        visualTile.setAlpha(nightViewActive ? 1.0f : 0.5f);
+        audioTileNight.setAlpha(nightViewActive ? 1.0f : 0.5f);
         c2.addView(nightTile);
-
-        boolean nightVisual = com.cinetv.launcher.device.NightCare.isVisualActive(ctx);
-        LinearLayout nightVisualTile = Controls.toggleTile(ctx,
-                tr ? "Gece Göz Koruma Filtresi" : "Night Eye-Care Warm Tone",
-                nightVisual ? (tr ? "Açık · Sıcak amber ton" : "On · Warm amber tone") : (tr ? "Kapalı" : "Off"),
-                nightVisual, v -> {
-                    boolean next = !com.cinetv.launcher.device.NightCare.isVisualActive(ctx);
-                    com.cinetv.launcher.device.NightCare.setVisualActive(ctx, next);
-                    a.applyAppearance();
-                    host.replace(() -> buildSettings(ctx, host, a, "opt_night_visual"));
-                });
-        nightVisualTile.setTag("opt_night_visual");
-        c2.addView(nightVisualTile);
-
-        boolean nightAudio = com.cinetv.launcher.device.NightCare.isAudioActive(ctx);
-        LinearLayout nightAudioTile = Controls.toggleTile(ctx,
-                tr ? "Gece Dinamik Ses Dengeleme" : "Night Dynamic Audio Leveling",
-                nightAudio ? (tr ? "Açık · Fısıltı & ses sınırı aktif" : "On · Volume capped & leveled") : (tr ? "Kapalı" : "Off"),
-                nightAudio, v -> {
-                    boolean next = !com.cinetv.launcher.device.NightCare.isAudioActive(ctx);
-                    com.cinetv.launcher.device.NightCare.setAudioActive(ctx, next);
-                    host.replace(() -> buildSettings(ctx, host, a, "opt_night_audio"));
-                });
-        nightAudioTile.setTag("opt_night_audio");
-        c2.addView(nightAudioTile);
+        c2.addView(visualTile);
+        c2.addView(audioTileNight);
 
         c2.addView(Controls.tile(ctx, ctx.getString(R.string.night_title), nightState(ctx), com.cinetv.launcher.device.NightCare.sleepMinutesLeft(ctx) > 0,
                 v -> host.push(() -> buildNight(ctx, host, a))));
         c2.addView(Controls.tile(ctx, ctx.getString(R.string.tour_title), ctx.getString(R.string.tour_hint), false, v -> a.startTour()));
-        c2.addView(Controls.tile(ctx,
-                "tr".equals(Locale.getDefault().getLanguage()) ? "Alptuğ Dağ · Yaratıcı & İletişim" : "Alptuğ Dağ · Creator & Contact",
-                "tr".equals(Locale.getDefault().getLanguage()) ? "@alptugdag · Instagram, Kısa Film 'Sessiz' ve Portfolyo" : "@alptugdag · Instagram, Short Film 'Sessiz' & Portfolio",
-                false, v -> host.push(() -> buildAbout(ctx, host, a))));
 
         // =========================================================================
         // 2. SECTION: SİNEMA DENEYİMİ & 3D (CINEMA & 3D EXPERIENCE)
         // =========================================================================
         LinearLayout cVisual = column(ctx, cols, R.string.col_visual, colWidth);
+        cVisual.setTag("sec_visual");
         boolean spatial = Prefs.spatial3d(ctx);
         LinearLayout spatialTile = Controls.toggleTile(ctx, ctx.getString(R.string.spatial_hud),
                 spatial ? (tr ? "Açık · 3D Derinlik, Vizör Kırılması & Akustik" : "On · 3D Depth, Visor Refraction & Acoustics") : ctx.getString(R.string.state_off),
-                spatial, v -> {
-            boolean next = !Prefs.spatial3d(ctx);
-            Prefs.setFlag(ctx, Prefs.SPATIAL_3D, next);
-            a.setSpatial(next);
-            host.replace(() -> buildSettings(ctx, host, a, "opt_spatial"));
+                spatial, (newActive, subLabel, sw) -> {
+            Prefs.setFlag(ctx, Prefs.SPATIAL_3D, newActive);
+            subLabel.setText(newActive ? (tr ? "Açık · 3D Derinlik, Vizör Kırılması & Akustik" : "On · 3D Depth, Visor Refraction & Acoustics") : ctx.getString(R.string.state_off));
+            a.setSpatial(newActive);
         });
         spatialTile.setTag("opt_spatial");
         cVisual.addView(spatialTile);
@@ -257,11 +326,10 @@ public final class Panels {
         boolean bevel = Prefs.glassBevel(ctx);
         LinearLayout bevelTile = Controls.toggleTile(ctx, ctx.getString(R.string.glass_bevel),
                 bevel ? (tr ? "Açık · Prizmatik Cam Kenarları" : "On · Prismatic Glass Bevel") : ctx.getString(R.string.state_off),
-                bevel, v -> {
-            boolean next = !Prefs.glassBevel(ctx);
-            Prefs.setFlag(ctx, Prefs.GLASS_BEVEL, next);
-            GlassBevelView.setAberrationEnabled(next);
-            host.replace(() -> buildSettings(ctx, host, a, "opt_bevel"));
+                bevel, (newActive, subLabel, sw) -> {
+            Prefs.setFlag(ctx, Prefs.GLASS_BEVEL, newActive);
+            subLabel.setText(newActive ? (tr ? "Açık · Prizmatik Cam Kenarları" : "On · Prismatic Glass Bevel") : ctx.getString(R.string.state_off));
+            GlassBevelView.setAberrationEnabled(newActive);
         });
         bevelTile.setTag("opt_bevel");
         cVisual.addView(bevelTile);
@@ -269,11 +337,10 @@ public final class Panels {
         boolean cases = Prefs.dvdCases(ctx);
         LinearLayout casesTile = Controls.toggleTile(ctx, ctx.getString(R.string.dvd_cases),
                 cases ? ctx.getString(R.string.dvd_cases_on) : ctx.getString(R.string.dvd_cases_off),
-                cases, v -> {
-            boolean next = !Prefs.dvdCases(ctx);
-            Prefs.setFlag(ctx, Prefs.DVD_CASES, next);
-            a.setDvdCases(next);
-            host.replace(() -> buildSettings(ctx, host, a, "opt_cases"));
+                cases, (newActive, subLabel, sw) -> {
+            Prefs.setFlag(ctx, Prefs.DVD_CASES, newActive);
+            subLabel.setText(newActive ? ctx.getString(R.string.dvd_cases_on) : ctx.getString(R.string.dvd_cases_off));
+            a.setDvdCases(newActive);
         });
         casesTile.setTag("opt_cases");
         cVisual.addView(casesTile);
@@ -283,10 +350,9 @@ public final class Panels {
                 tr ? "Ambilight & Arka Işık Senkronu" : "Ambilight & Backlight Sync",
                 ambilight ? (tr ? "Açık · Ortam ışıkları vitrin renkleriyle senkronize" : "On · Synced with poster colors")
                           : (tr ? "Kapalı" : "Off"),
-                ambilight, v -> {
-                    boolean next = !com.cinetv.launcher.device.AmbilightSync.isEnabled(ctx);
-                    com.cinetv.launcher.device.AmbilightSync.setEnabled(ctx, next);
-                    host.replace(() -> buildSettings(ctx, host, a, "opt_ambilight"));
+                ambilight, (newActive, subLabel, sw) -> {
+                    com.cinetv.launcher.device.AmbilightSync.setEnabled(ctx, newActive);
+                    subLabel.setText(newActive ? (tr ? "Açık · Ortam ışıkları vitrin renkleriyle senkronize" : "On · Synced with poster colors") : (tr ? "Kapalı" : "Off"));
                 });
         ambilightTile.setTag("opt_ambilight");
         cVisual.addView(ambilightTile);
@@ -294,11 +360,10 @@ public final class Panels {
         boolean trailers = Prefs.trailerMoments(ctx);
         LinearLayout trailersTile = Controls.toggleTile(ctx, ctx.getString(R.string.trailer_moments),
                 trailers ? ctx.getString(R.string.trailer_moments_on) : ctx.getString(R.string.state_off),
-                trailers, v -> {
-            boolean next = !Prefs.trailerMoments(ctx);
-            Prefs.setFlag(ctx, Prefs.TRAILER_MOMENTS, next);
-            a.setTrailerMoments(next);
-            host.replace(() -> buildSettings(ctx, host, a, "opt_trailers"));
+                trailers, (newActive, subLabel, sw) -> {
+            Prefs.setFlag(ctx, Prefs.TRAILER_MOMENTS, newActive);
+            subLabel.setText(newActive ? ctx.getString(R.string.trailer_moments_on) : ctx.getString(R.string.state_off));
+            a.setTrailerMoments(newActive);
         });
         trailersTile.setTag("opt_trailers");
         cVisual.addView(trailersTile);
@@ -307,9 +372,9 @@ public final class Panels {
         LinearLayout audioTile = Controls.toggleTile(ctx,
                 tr ? "Fragman Sesi" : "Trailer Audio",
                 Prefs.trailerAudioLabel(ctx),
-                trailerAudio, v -> {
-                    Prefs.setTrailerAudio(ctx, !Prefs.trailerAudio(ctx));
-                    host.replace(() -> buildSettings(ctx, host, a, "opt_trailer_audio"));
+                trailerAudio, (newActive, subLabel, sw) -> {
+                    Prefs.setTrailerAudio(ctx, newActive);
+                    subLabel.setText(Prefs.trailerAudioLabel(ctx));
                 });
         audioTile.setTag("opt_trailer_audio");
         cVisual.addView(audioTile);
@@ -318,9 +383,9 @@ public final class Panels {
         boolean dvd = Prefs.dvdAnimation(ctx);
         LinearLayout dvdTile = Controls.toggleTile(ctx, ctx.getString(R.string.dvd_animation),
                 dvd ? (tr ? "Açık · 3D Kapak Açılışı & Disk" : "On · 3D Case Opening & Disc") : ctx.getString(R.string.state_off),
-                dvd, v -> {
-            Prefs.setFlag(ctx, Prefs.DVD_ANIMATION, !Prefs.dvdAnimation(ctx));
-            host.replace(() -> buildSettings(ctx, host, a, "opt_dvd"));
+                dvd, (newActive, subLabel, sw) -> {
+            Prefs.setFlag(ctx, Prefs.DVD_ANIMATION, newActive);
+            subLabel.setText(newActive ? (tr ? "Açık · 3D Kapak Açılışı & Disk" : "On · 3D Case Opening & Disc") : ctx.getString(R.string.state_off));
         });
         dvdTile.setTag("opt_dvd");
         cAnim.addView(dvdTile);
@@ -335,21 +400,10 @@ public final class Panels {
         }));
 
         cAnim.addView(Controls.tile(ctx,
-                tr ? "Arayüz Ölçeği" : "UI Scale",
-                Prefs.uiScaleLabel(ctx), false, v -> {
-                    Prefs.setUiScaleLevel(ctx, Prefs.uiScaleLevel(ctx) + 1);
-                    UiKit.init(ctx);
-                    a.applyAppearance();
-                    host.replace(() -> buildSettings(ctx, host, a, "opt_ui_scale"));
-                }));
-        cAnim.addView(Controls.tile(ctx,
-                tr ? "Yazı Boyutu" : "Font Size",
-                Prefs.fontScaleLabel(ctx), false, v -> {
-                    Prefs.setFontScaleLevel(ctx, Prefs.fontScaleLevel(ctx) + 1);
-                    UiKit.init(ctx);
-                    a.applyAppearance();
-                    host.replace(() -> buildSettings(ctx, host, a, "opt_font_scale"));
-                }));
+                tr ? "Arayüz Ölçeği & Yazı Boyutu" : "UI Scale & Typography Size",
+                tr ? (Prefs.uiScaleLabel(ctx) + " · " + Prefs.fontScaleLabel(ctx) + " (Canlı Önizlemeli)")
+                   : (Prefs.uiScaleLabel(ctx) + " · " + Prefs.fontScaleLabel(ctx) + " (Live Preview)"),
+                false, v -> host.push(() -> buildScalePreviewModal(ctx, host, a))));
 
         java.util.List<String> nuvioPkgs = AppLauncher.installedNuvioPackages(ctx);
         if (nuvioPkgs.size() > 1) {
@@ -369,6 +423,7 @@ public final class Panels {
         // 3. SECTION: YAPAY ZEKA & AĞ (AI & NETWORK)
         // =========================================================================
         LinearLayout cAi = column(ctx, cols, R.string.col_ai, colWidth);
+        cAi.setTag("sec_ai");
         String provider = LlmClient.providerName(ctx);
         cAi.addView(Controls.tile(ctx, ctx.getString(R.string.ai_key), provider != null ? provider : ctx.getString(R.string.not_set),
                 provider != null, v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.AI_KEY, R.string.ai_key, R.string.ai_key_hint))));
@@ -415,6 +470,16 @@ public final class Panels {
         // 4. SECTION: SİSTEM & TV DONANIMI (SYSTEM & TV HARDWARE)
         // =========================================================================
         LinearLayout cTv = column(ctx, cols, R.string.col_tv, colWidth);
+        cTv.setTag("sec_system");
+        cTv.addView(Controls.tile(ctx,
+                tr ? "Oda Akustiği & Hoparlör Testi" : "Room Acoustics & Speaker Sweep",
+                tr ? "40 Hz - 14 kHz logaritmik akustik sinyal ile hoparlörleri test et" : "Run 4-second audio sweep to test speaker response & reverb",
+                false, v -> {
+                    Toast.makeText(ctx, tr ? "Akustik test sinyali çalınıyor..." : "Playing acoustic test sweep...", Toast.LENGTH_SHORT).show();
+                    com.cinetv.launcher.device.AcousticsCalibrator.playSweep(ctx, () -> {
+                        Toast.makeText(ctx, tr ? "Akustik testi tamamlandı." : "Acoustics sweep finished.", Toast.LENGTH_SHORT).show();
+                    });
+                }));
         cTv.addView(Controls.tile(ctx, tr ? "Kurulum Sihirbazı & Bileşen Kontrolü" : "Setup Wizard & Component Health",
                 tr ? "Eksik bileşenleri kontrol et ve kur" : "Check and setup components", false,
                 v -> wizard(ctx, host)));
@@ -438,11 +503,11 @@ public final class Panels {
             boolean liveTv = AppCatalog.liveTvShown(ctx);
             LinearLayout liveTvTile = Controls.toggleTile(ctx, ctx.getString(R.string.live_tv_tile),
                     liveTv ? ctx.getString(R.string.live_tv_tile_on) : ctx.getString(R.string.state_off),
-                    liveTv, v -> {
-                if (AppCatalog.liveTvShown(ctx)) AppCatalog.hide(ctx, AppLauncher.LIVE_TV);
+                    liveTv, (newActive, subLabel, sw) -> {
+                if (!newActive) AppCatalog.hide(ctx, AppLauncher.LIVE_TV);
                 else AppCatalog.addToHome(ctx, AppLauncher.LIVE_TV);
+                subLabel.setText(newActive ? ctx.getString(R.string.live_tv_tile_on) : ctx.getString(R.string.state_off));
                 a.onAppsChanged();
-                host.replace(() -> buildSettings(ctx, host, a, "opt_livetv"));
             });
             liveTvTile.setTag("opt_livetv");
             cTv.addView(liveTvTile);
@@ -452,20 +517,6 @@ public final class Panels {
         cMaint.addView(Controls.tile(ctx, tr ? "TV Denetçisi (Donanım, Panel & Telemetri)" : "TV Inspector (Hardware, Panel & Telemetry)",
                 tr ? "Ekran, HDR, ses çözücüleri, GitHub telemetrisi ve canlı tuşlar" : "Display, HDR, audio codecs, GitHub telemetry & live keys", false,
                 v -> host.push(() -> buildTvInspector(ctx, host))));
-        cMaint.addView(Controls.tile(ctx,
-                tr ? "Ekran Yönünü Sıfırla (0° Yatay / Landscape)" : "Reset Screen Orientation (Landscape)",
-                tr ? "TV kutusu yan dönmüşse ekranı standart yatay konuma kilitler" : "Restores normal landscape orientation if TV box is sideways",
-                false, v -> {
-                    try {
-                        android.provider.Settings.System.putInt(ctx.getContentResolver(), android.provider.Settings.System.USER_ROTATION, android.view.Surface.ROTATION_0);
-                        android.provider.Settings.System.putInt(ctx.getContentResolver(), android.provider.Settings.System.ACCELEROMETER_ROTATION, 0);
-                    } catch (Throwable ignored) {}
-                    com.cinetv.launcher.remote.LocalAdb.shell(ctx, "settings put system user_rotation 0; settings put system accelerometer_rotation 0; wm set-fix-to-user-rotation disabled", 2000);
-                    if (ctx instanceof android.app.Activity) {
-                        ((android.app.Activity) ctx).setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-                    }
-                    Toast.makeText(ctx, tr ? "Ekran yönü standart yatay olarak sıfırlandı" : "Screen orientation reset to landscape", Toast.LENGTH_SHORT).show();
-                }));
         cMaint.addView(Controls.tile(ctx, ctx.getString(R.string.remote_keys), ctx.getString(R.string.remote_keys_hint), false,
                 v -> host.push(() -> buildKeyCapture(ctx, host, a))));
         String curVer = AppUpdater.currentVersion(ctx);
@@ -504,23 +555,17 @@ public final class Panels {
                 tr ? "Geliştirici & Hata Ayıklama Güvenliği" : "Developer & Debugging Security",
                 finalAdb ? (tr ? "Açık (Ağda aktif) · Kapatıp TV'yi izole etmek için dokunun" : "Active (Enabled on network) · Tap to disable & isolate TV")
                          : (tr ? "Kapalı (Güvenli) · Mobil kumanda güvenle çalışır" : "Disabled (Secure) · Mobile remote works securely"),
-                finalAdb, v -> {
-                    if (finalAdb) {
-                        try {
-                            android.provider.Settings.Global.putInt(ctx.getContentResolver(), android.provider.Settings.Global.ADB_ENABLED, 0);
-                        } catch (Throwable ignored) {}
-                        com.cinetv.launcher.remote.LocalAdb.shell(ctx, "settings put global adb_enabled 0", 1500);
-                        Toast.makeText(ctx, tr
-                                ? "USB Hata ayıklama kapatıldı. TV'niz güvenli modda."
-                                : "USB debugging disabled. TV is secured.", Toast.LENGTH_SHORT).show();
-                        host.replace(() -> buildSettings(ctx, host, a, "opt_adb_sec"));
-                    } else {
-                        try {
-                            ctx.startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
-                        } catch (Throwable t) {
-                            AppLauncher.openSystemSettings(ctx);
-                        }
-                    }
+                finalAdb, (newActive, subLabel, sw) -> {
+                    try {
+                        android.provider.Settings.Global.putInt(ctx.getContentResolver(), android.provider.Settings.Global.ADB_ENABLED, newActive ? 1 : 0);
+                    } catch (Throwable ignored) {}
+                    com.cinetv.launcher.remote.LocalAdb.shell(ctx, "settings put global adb_enabled " + (newActive ? "1" : "0"), 1500);
+                    subLabel.setText(newActive
+                            ? (tr ? "Açık (Ağda aktif) · Kapatıp TV'yi izole etmek için dokunun" : "Active (Enabled on network) · Tap to disable & isolate TV")
+                            : (tr ? "Kapalı (Güvenli) · Mobil kumanda güvenle çalışır" : "Disabled (Secure) · Mobile remote works securely"));
+                    Toast.makeText(ctx, newActive
+                            ? (tr ? "Ağda hata ayıklama etkinleştirildi" : "Debugging enabled")
+                            : (tr ? "USB Hata ayıklama kapatıldı. TV'niz güvenli modda." : "USB debugging disabled. TV is secured."), Toast.LENGTH_SHORT).show();
                 });
         adbTile.setTag("opt_adb_sec");
         cMaint.addView(adbTile);
@@ -538,43 +583,50 @@ public final class Panels {
                 gridify(ctx, (LinearLayout) cols.getChildAt(i), gridCols, i, allRows);
             }
         }
-        attachScrollArrows(ctx, frame, scroll, cols);
 
         // Circular Navigation: Seamless loop from bottom-most tiles to top-most tiles and vice versa
         if (!allRows.isEmpty()) {
             final LinearLayout firstRow = allRows.get(0);
             final LinearLayout lastRow = allRows.get(allRows.size() - 1);
 
-            for (int k = 0; k < firstRow.getChildCount(); k++) {
-                final View topTile = firstRow.getChildAt(k);
-                final int colIdx = k;
-                topTile.setOnKeyListener((v, keyCode, event) -> {
-                    if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                        scroll.post(() -> {
-                            scroll.fullScroll(ScrollView.FOCUS_DOWN);
-                            int targetIdx = Math.min(colIdx, lastRow.getChildCount() - 1);
-                            lastRow.getChildAt(targetIdx).requestFocus();
-                        });
-                        return true;
-                    }
-                    return false;
-                });
-            }
+            for (int r = 0; r < allRows.size(); r++) {
+                final LinearLayout row = allRows.get(r);
+                final boolean isFirstRow = (r == 0);
+                final boolean isLastRow = (r == allRows.size() - 1);
+                final int rowCount = row.getChildCount();
 
-            for (int k = 0; k < lastRow.getChildCount(); k++) {
-                final View btmTile = lastRow.getChildAt(k);
-                final int colIdx = k;
-                btmTile.setOnKeyListener((v, keyCode, event) -> {
-                    if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                        scroll.post(() -> {
-                            scroll.fullScroll(ScrollView.FOCUS_UP);
-                            int targetIdx = Math.min(colIdx, firstRow.getChildCount() - 1);
-                            firstRow.getChildAt(targetIdx).requestFocus();
-                        });
-                        return true;
-                    }
-                    return false;
-                });
+                for (int c = 0; c < rowCount; c++) {
+                    final View tile = row.getChildAt(c);
+                    final int colIdx = c;
+                    final boolean isFirstCol = (c == 0);
+                    final boolean isLastCol = (c == rowCount - 1);
+
+                    tile.setOnKeyListener((v, keyCode, event) -> {
+                        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                            if (isFirstRow && keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                                scroll.scrollTo(0, cols.getBottom());
+                                int target = Math.min(colIdx, lastRow.getChildCount() - 1);
+                                lastRow.getChildAt(target).post(() -> lastRow.getChildAt(target).requestFocus());
+                                return true;
+                            }
+                            if (isLastRow && keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                                scroll.scrollTo(0, 0);
+                                int target = Math.min(colIdx, firstRow.getChildCount() - 1);
+                                firstRow.getChildAt(target).post(() -> firstRow.getChildAt(target).requestFocus());
+                                return true;
+                            }
+                            if (isFirstCol && rowCount > 1 && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                                row.getChildAt(rowCount - 1).requestFocus();
+                                return true;
+                            }
+                            if (isLastCol && rowCount > 1 && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                                row.getChildAt(0).requestFocus();
+                                return true;
+                            }
+                        }
+                        return false;
+                    });
+                }
             }
         }
 
@@ -659,28 +711,15 @@ public final class Panels {
         }
     }
 
-    /** Arrows around the page: up/down while it scrolls, left/right where focus can still move sideways. */
+    /** Arrows around the page: up/down while it scrolls. Left/right removed for clean single-page UX. */
     private static void attachScrollArrows(final Context ctx, final FrameLayout frame, final ScrollView scroll, final LinearLayout content) {
         final TextView up = arrow(ctx, "▲", Gravity.TOP | Gravity.CENTER_HORIZONTAL);
         final TextView down = arrow(ctx, "▼", Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        final TextView left = arrow(ctx, "◀", Gravity.START | Gravity.CENTER_VERTICAL);
-        final TextView right = arrow(ctx, "▶", Gravity.END | Gravity.CENTER_VERTICAL);
         frame.addView(up);
         frame.addView(down);
-        frame.addView(left);
-        frame.addView(right);
         final Runnable update = () -> {
-            up.setAlpha(scroll.canScrollVertically(-1) ? 1f : 0.18f);
-            down.setAlpha(scroll.canScrollVertically(1) ? 1f : 0.18f);
-            View f = frame.findFocus();
-            boolean l = false, r = false;
-            if (f != null) {
-                View ln = f.focusSearch(View.FOCUS_LEFT), rn = f.focusSearch(View.FOCUS_RIGHT);
-                l = ln != null && ln != f && isDescendant(content, ln);
-                r = rn != null && rn != f && isDescendant(content, rn);
-            }
-            left.setAlpha(l ? 1f : 0.18f);
-            right.setAlpha(r ? 1f : 0.18f);
+            up.setAlpha(scroll.canScrollVertically(-1) ? 1f : 0f);
+            down.setAlpha(scroll.canScrollVertically(1) ? 1f : 0f);
         };
         scroll.getViewTreeObserver().addOnScrollChangedListener(update::run);
         frame.getViewTreeObserver().addOnGlobalFocusChangeListener((o, n) -> update.run());
@@ -1191,18 +1230,19 @@ public final class Panels {
     }
 
     private static View buildChangelog(Context ctx, ModalHost host) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         LinearLayout outer = new LinearLayout(ctx);
         outer.setOrientation(LinearLayout.VERTICAL);
-        outer.setPadding(UiKit.px(36), UiKit.px(28), UiKit.px(36), UiKit.px(28));
+        outer.setPadding(UiKit.px(44), UiKit.px(32), UiKit.px(44), UiKit.px(32));
         outer.setBackground(new Glass(outer, UiKit.pxf(24), Glass.Style.PANEL));
 
-        TextView title = UiKit.bold(ctx, 22, UiKit.INK);
-        title.setText("✨ CineTV v1.0.0.17 — Yenilikler ve Değişiklikler");
+        TextView title = UiKit.bold(ctx, 24, UiKit.INK);
+        title.setText(tr ? "✨ CineTV v1.0.0.18 — Yenilikler ve Değişiklikler" : "✨ CineTV v1.0.0.18 — What's New");
         outer.addView(title);
 
-        TextView sub = UiKit.label(ctx, 13, UiKit.INK_DIM);
-        sub.setText("Alptuğ Dağ İmzasıyla En Son CineTV Sürümündeki Geliştirmeler");
-        sub.setPadding(0, UiKit.px(4), 0, UiKit.px(16));
+        TextView sub = UiKit.label(ctx, 14, UiKit.INK_DIM);
+        sub.setText(tr ? "Alptuğ Dağ İmzasıyla En Son CineTV Sürümündeki Geliştirmeler" : "Latest updates crafted by Alptuğ Dağ");
+        sub.setPadding(0, UiKit.px(6), 0, UiKit.px(16));
         outer.addView(sub);
 
         ScrollView sv = new ScrollView(ctx);
@@ -1211,47 +1251,73 @@ public final class Panels {
         list.setOrientation(LinearLayout.VERTICAL);
 
         String[][] items = {
-            {"🟢 Tek Sayfa Ayarlar & iOS Switchler", "Tüm ayarlar bölümlere ayrılmadan tek sayfada toplandı. iOS stili yeşil/kırmızı switchler ve dairesel wrap-around gezinme eklendi."},
-            {"🌙 Akıllı Gece İzleme Modu (23:00 - 05:00)", "Gece saatlerinde kenarda beliren onay sorgusu ile sıcak amber göz koruma tonu ve fısıltı ses dengelemesi ayrı ayrı kontrol edilebilir."},
-            {"👥 'Kiminle İzliyorsun?' Modu", "Gamze AI; ailece, arkadaşlarla, sevgiliyle veya tek başına izleme durumuna göre anlık sosyal bağlama duyarlı vitrin kürasyonu yapar."},
-            {"🌌 'Vibe Seeker' (Duygu Eşleştirici)", "Interstellar uzay yalnızlığı veya Blade Runner yağmurlu neon hüznü gibi derin atmosferik duyguları analiz edip vitrine eşleştirir."},
-            {"📱 16:9 Akıllı Odak Kırpma Aracı", "Telefondan fotoğraf yüklerken dikey resimleri 16:9 TV çerçevesinde kaydırıp odaklayarak sıfır bulanıklıkla arka plan yapar."},
-            {"🍿 Ev İçi Ortak İzleme Listesi (Watch Party)", "Evdekiler kumandaya bağlanıp 'Bunu İzleyelim!' tuşu ile televizyon vitrinine ve ortak listeye anında öneri gönderebilir."},
-            {"🎮 3D Gyro Lazer Hava Kumandası", "Telefonun gyro sensörleri ile televizyonda profesyonel bir lazer işaretçi gibi 3D kontrol ve DVD kutusu odaklama."},
-            {"🔴 HDMI-CEC Renkli Tuş Kısayolları", "Kumandanın kırmızı tuşuna Alptuğflix, yeşil tuşuna YouTube, sarı tuşuna Benzer Filmler doğrudan atandı."},
-            {"🔔 Sıvı Cam Uyanma Garantili Güncelleme Bildirimi", "TV kapalıyken bile ekranı açıp güncellemeyi bildirir, etkileşim olmazsa TV'yi standby uykusuna geri döndürür."},
-            {"🪟 Windows PC Sürümü Entegrasyonu", "Tüm 3D DVD rafları, Gamze AI ve Nuvio motoru masaüstü Windows uygulaması ile senkronize edildi."}
+            {"🟢 " + (tr ? "Tek Sayfa Ayarlar & Tema Uyumlu iOS Switchler" : "Single-Page Settings & Theme-Adaptive iOS Switches"),
+             tr ? "Tüm ayarlar bölümlere ayrılmadan tek sayfada toplandı. Üst hızlı kategori hapları, tema rengine bürünen iOS switchler ve dairesel gezinme eklendi."
+                : "All settings unified on a single continuous page with top category jump pills, theme-matched switches and wrap-around navigation."},
+            {"🎬 " + (tr ? "Nuvio & YouTube Geri Tuşu Doğrudan Eve Dönüş" : "Direct Home Navigation on Back in Nuvio & YouTube"),
+             tr ? "Nuvio veya YouTube'dan çıkarken eski izleme geçmişi pencerelerinin ardı ardına ekrana gelmesi engellendi, tek dokunuşla doğrudan ana ekrana döner."
+                : "Back key in Nuvio/YouTube instantly returns to CineTV Home without rewinding video/screen history."},
+            {"📱 " + (tr ? "Android & iOS Bağımsız Web Uygulaması (PWA / APK)" : "Android & iOS Standalone App (PWA / APK)"),
+             tr ? "QR kod ile açılan mobil kumanda, hem iPhone hem Android'de tarayıcı çerçevesi olmadan tam ekran bağımsız CineTV uygulaması olarak ana ekrana yüklenir."
+                : "The mobile remote can now be installed as a full-screen standalone application on both iOS & Android with CineTV icon."},
+            {"🏠 " + (tr ? "Apple Siri, Google Home & Amazon Alexa Entegrasyonu" : "Apple Siri, Google Home & Alexa Integration"),
+             tr ? "Siri Kestirmeleri, Google Home ve Alexa üzerinden CineTV ses açma, film arama, kapatma ve oynatma komutları tam yerel çalışır."
+                : "Control CineTV through Siri Shortcuts, Google Home and Alexa via local zero-cloud API endpoints."},
+            {"🔊 " + (tr ? "Apple TV Tarzı Sıfır Gecikmeli Akustik Sistem Sesleri" : "Apple-Style Zero-Latency Synthesized UI Audio"),
+             tr ? "Kumandayla menüde gezinirken, switch açıp kapatırken ve vitrinde odak değişirken Apple TV hissiyatında tatlı tık ve dokunuş sesleri."
+                : "Subtle, synthesized low-latency audio feedback on focus movements, tile clicks, switch toggles and modals."},
+            {"⚡ " + (tr ? "Cihaz Donanım Seviyelerine Göre Akıllı Optimizasyon (Low / Mid / High)" : "Smart Hardware Tier Optimization (Low / Mid / High)"),
+             tr ? "RAM ve GPU gücüne göre shader efektleri otomatik ölçeklenir; düşük donanımlı cihazlarda dahi takılmasız, sıfır kasmayla sabit 60 FPS sinema keyfi."
+                : "Dynamic visual scaling for Low (<=1.5GB), Mid (2GB) and High (>2.5GB) hardware tiers guaranteeing fluid 60 FPS."},
+            {"🌐 " + (tr ? "5 Dilde Tam Uluslararası Yerelleştirme" : "Full Multilingual Localization in 5 Languages"),
+             tr ? "Türkçe, İngilizce, Almanca, Fransızca ve İspanyolca dillerinde eksiksiz arayüz ve ayrı ayrı GitHub dokümantasyon sayfaları."
+                : "Full localization across English, Turkish, German, French and Spanish with dedicated READMEs."},
+            {"🌙 " + (tr ? "Akıllı Gece İzleme Modu (23:00 - 05:00)" : "Smart Night Viewing Mode (23:00 - 05:00)"),
+             tr ? "Gece saatlerinde beliren onay sorgusu ile sıcak amber göz koruma tonu ve fısıltı ses seviyesi ayrı ayrı açılıp kapatılabilir."
+                : "Separate warm amber visual tone and dynamic volume whisper leveling during night hours."},
+            {"👥 " + (tr ? "Gamze AI: Sosyal Bağlam ve Nüktedan Diyaloglar" : "Gamze AI: Witty Social Context & Couple Recommendations"),
+             tr ? "Kiminle izlediğinize duyarlı, esprili ve zeki film önerileri; ailece, sevgiliyle veya tek başına izleme durumuna göre anlık kürasyon."
+                : "Clever, socially aware recommendations tailored to family, couple or solo viewing moments."},
+            {"🔔 " + (tr ? "Sıvı Cam Uyanma Garantili Güncelleme Bildirimi" : "Liquid Glass Floating Update Banner"),
+             tr ? "TV kapalıyken ekranı uyararak güncellemeyi haber verir, dokunulmazsa TV'yi tekrar standby uykusuna alır; yanıp sönen yeşil ok ile dikkat çeker."
+                : "Floating liquid glass banner with animated pulsing green arrow and guaranteed wake-to-display."}
         };
 
-        for (String[] it : items) {
-            LinearLayout card = new LinearLayout(ctx);
-            card.setOrientation(LinearLayout.VERTICAL);
-            card.setPadding(UiKit.px(18), UiKit.px(12), UiKit.px(18), UiKit.px(12));
-            card.setBackground(new Glass(card, UiKit.pxf(14), Glass.Style.CONTROL));
-            LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            clp.bottomMargin = UiKit.px(10);
-            card.setLayoutParams(clp);
+        for (int i = 0; i < items.length; i++) {
+            String[] it = items[i];
+            LinearLayout row = new LinearLayout(ctx);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setPadding(UiKit.px(6), UiKit.px(10), UiKit.px(6), UiKit.px(10));
 
-            TextView h = UiKit.bold(ctx, 15, Color.parseColor("#F59E0B"));
+            TextView h = UiKit.bold(ctx, 16, Color.parseColor("#F59E0B"));
             h.setText(it[0]);
-            card.addView(h);
+            row.addView(h);
 
             TextView d = UiKit.label(ctx, 13, UiKit.INK);
             d.setText(it[1]);
             d.setPadding(0, UiKit.px(3), 0, 0);
-            card.addView(d);
+            row.addView(d);
 
-            list.addView(card);
+            list.addView(row);
+
+            // Clean hairline divider between items - NO nested boxes!
+            if (i < items.length - 1) {
+                View divider = new View(ctx);
+                divider.setBackgroundColor(Color.argb(25, 255, 255, 255));
+                LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiKit.px(1));
+                dlp.setMargins(0, UiKit.px(4), 0, UiKit.px(4));
+                list.addView(divider, dlp);
+            }
         }
 
         sv.addView(list);
-        LinearLayout.LayoutParams svLp = new LinearLayout.LayoutParams(UiKit.px(740), UiKit.px(380));
+        LinearLayout.LayoutParams svLp = new LinearLayout.LayoutParams(UiKit.px(760), UiKit.px(420));
         svLp.bottomMargin = UiKit.px(16);
         outer.addView(sv, svLp);
 
-        View btnClose = Controls.button(ctx, "Tamam, Sinemaya Dön", v -> host.back());
+        View btnClose = Controls.button(ctx, tr ? "Tamam, Sinemaya Dön" : "Done, Return to Cinema", v -> host.back());
         btnClose.setFocusable(true);
-        outer.addView(btnClose);
+        outer.addView(btnClose, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiKit.px(54)));
         btnClose.requestFocus();
 
         return outer;
@@ -1531,43 +1597,333 @@ public final class Panels {
         return root;
     }
 
+    // ---- UI Scale & Font Size Modal with Live Preview -----------------------------------------------
+
+    public static View buildScalePreviewModal(final Context ctx, final ModalHost host, final Actions a) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        final android.util.DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
+        final int modalW = Math.round(dm.widthPixels * 0.84f);
+        final int modalH = Math.round(dm.heightPixels * 0.82f);
+
+        final LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
+        root.setLayoutParams(new LinearLayout.LayoutParams(modalW, modalH));
+        root.setBackground(new Glass(root, UiKit.pxf(24), Glass.Style.PANEL));
+
+        // Header
+        LinearLayout header = new LinearLayout(ctx);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = UiKit.bold(ctx, 24, UiKit.INK);
+        title.setText(tr ? "📐 Arayüz Ölçeği ve Yazı Boyutu Ayarı" : "📐 UI Scale & Typography Size");
+        header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView closeHint = UiKit.label(ctx, 13, UiKit.INK_DIM);
+        closeHint.setText(tr ? "Geri: İptal · Seç: Canlı İzle" : "Back: Cancel · Select: Live Preview");
+        header.addView(closeHint);
+        root.addView(header);
+
+        // Body: Two columns
+        LinearLayout body = new LinearLayout(ctx);
+        body.setOrientation(LinearLayout.HORIZONTAL);
+        body.setPadding(0, UiKit.px(16), 0, UiKit.px(14));
+        LinearLayout.LayoutParams bodyLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        root.addView(body, bodyLp);
+
+        final int[] curUi = new int[]{Prefs.uiScaleLevel(ctx)};
+        final int[] curFont = new int[]{Prefs.fontScaleLevel(ctx)};
+
+        // Right column: Live Interactive Preview Card
+        final FrameLayout previewBox = new FrameLayout(ctx);
+        previewBox.setBackground(new Glass(previewBox, UiKit.pxf(20), Glass.Style.CONTROL));
+        previewBox.setPadding(UiKit.px(24), UiKit.px(20), UiKit.px(24), UiKit.px(20));
+        LinearLayout.LayoutParams rightLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.15f);
+        rightLp.leftMargin = UiKit.px(24);
+
+        final Runnable updatePreview = () -> {
+            previewBox.removeAllViews();
+            float uiMultiplier = curUi[0] == 0 ? 0.88f : (curUi[0] == 2 ? 1.14f : (curUi[0] == 3 ? 1.28f : 1.0f));
+            float fontMultiplier = curFont[0] == 0 ? 0.90f : (curFont[0] == 2 ? 1.15f : (curFont[0] == 3 ? 1.30f : 1.0f));
+
+            LinearLayout card = new LinearLayout(ctx);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setGravity(Gravity.CENTER_VERTICAL);
+            card.setPadding(Math.round(UiKit.px(18) * uiMultiplier), Math.round(UiKit.px(14) * uiMultiplier), Math.round(UiKit.px(18) * uiMultiplier), Math.round(UiKit.px(14) * uiMultiplier));
+
+            TextView prevBadge = UiKit.bold(ctx, Math.round(12 * fontMultiplier), Color.parseColor("#34C759"));
+            prevBadge.setText(tr ? "CANLI ÖNİZLEME · 60 FPS SİNEMA" : "LIVE PREVIEW · 60 FPS CINEMA");
+            card.addView(prevBadge);
+
+            TextView prevTitle = UiKit.bold(ctx, Math.round(26 * fontMultiplier), UiKit.INK);
+            prevTitle.setText("Interstellar");
+            prevTitle.setPadding(0, Math.round(UiKit.px(6) * uiMultiplier), 0, 0);
+            card.addView(prevTitle);
+
+            TextView prevMeta = UiKit.label(ctx, Math.round(14 * fontMultiplier), UiKit.INK_DIM);
+            prevMeta.setText("2014 · 2s 49dk · IMDb 8.7 · 4K HDR · Dolby Atmos");
+            prevMeta.setPadding(0, Math.round(UiKit.px(4) * uiMultiplier), 0, Math.round(UiKit.px(8) * uiMultiplier));
+            card.addView(prevMeta);
+
+            TextView prevPlot = UiKit.label(ctx, Math.round(14 * fontMultiplier), UiKit.INK);
+            prevPlot.setLineSpacing(UiKit.pxf(3) * fontMultiplier, 1f);
+            prevPlot.setText(tr ? "İnsanlığın geleceği tehlikeye girdiğinde, bir grup astronot yaşanabilir yeni bir gezegen bulmak için solucan deliğinden geçer."
+                                : "When human survival is at stake, a team of explorers undertakes the most important mission in history: traveling beyond this galaxy.");
+            card.addView(prevPlot);
+
+            LinearLayout btnRow = new LinearLayout(ctx);
+            btnRow.setOrientation(LinearLayout.HORIZONTAL);
+            btnRow.setPadding(0, Math.round(UiKit.px(14) * uiMultiplier), 0, 0);
+
+            TextView btn1 = UiKit.bold(ctx, Math.round(14 * fontMultiplier), UiKit.INK);
+            btn1.setText(tr ? "▶ Filmi Başlat" : "▶ Play Film");
+            btn1.setPadding(Math.round(UiKit.px(16) * uiMultiplier), Math.round(UiKit.px(8) * uiMultiplier), Math.round(UiKit.px(16) * uiMultiplier), Math.round(UiKit.px(8) * uiMultiplier));
+            btn1.setBackground(new Glass(btn1, UiKit.pxf(12), Glass.Style.CONTROL));
+            btnRow.addView(btn1);
+
+            TextView btn2 = UiKit.label(ctx, Math.round(14 * fontMultiplier), UiKit.INK);
+            btn2.setText(tr ? "Fragman" : "Trailer");
+            btn2.setPadding(Math.round(UiKit.px(16) * uiMultiplier), Math.round(UiKit.px(8) * uiMultiplier), Math.round(UiKit.px(16) * uiMultiplier), Math.round(UiKit.px(8) * uiMultiplier));
+            btn2.setBackground(new Glass(btn2, UiKit.pxf(12), Glass.Style.CONTROL));
+            LinearLayout.LayoutParams b2Lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            b2Lp.leftMargin = Math.round(UiKit.px(10) * uiMultiplier);
+            btnRow.addView(btn2, b2Lp);
+
+            card.addView(btnRow);
+            previewBox.addView(card, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
+        };
+
+        // Left column: Scrollable Options
+        ScrollView optScroll = new ScrollView(ctx);
+        optScroll.setVerticalScrollBarEnabled(false);
+        LinearLayout leftCol = new LinearLayout(ctx);
+        leftCol.setOrientation(LinearLayout.VERTICAL);
+
+        // Section A: Arayüz Ölçeği
+        TextView lblUi = UiKit.bold(ctx, 16, UiKit.INK);
+        lblUi.setText(tr ? "1. Arayüz Ölçeği" : "1. UI Scale");
+        leftCol.addView(lblUi);
+
+        final String[][] uiChoices = {
+                {tr ? "Küçük (%88) · Kompakt" : "Small (88%) · Compact", "0"},
+                {tr ? "Standart (%100) · Varsayılan" : "Standard (100%) · Default", "1"},
+                {tr ? "Büyük (%114) · Rahat Okuma" : "Large (114%) · Comfy", "2"},
+                {tr ? "Çok Büyük (%128) · Uzak Ekran" : "Extra Large (128%) · Living Room", "3"}
+        };
+        final View[] uiButtons = new View[4];
+        for (int i = 0; i < uiChoices.length; i++) {
+            final int idx = i;
+            final TextView chip = UiKit.bold(ctx, 14, curUi[0] == idx ? Color.parseColor("#34C759") : UiKit.INK);
+            chip.setText((curUi[0] == idx ? "● " : "○ ") + uiChoices[i][0]);
+            chip.setFocusable(true);
+            chip.setClickable(true);
+            chip.setPadding(UiKit.px(14), UiKit.px(8), UiKit.px(14), UiKit.px(8));
+            final Glass cg = new Glass(chip, UiKit.pxf(14), curUi[0] == idx ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
+            chip.setBackground(cg);
+            chip.setOnFocusChangeListener((v, has) -> {
+                if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
+                cg.setStyle(has ? Glass.Style.FOCUSED : (curUi[0] == idx ? Glass.Style.FOCUSED : Glass.Style.CONTROL));
+                chip.setTextColor(has ? UiKit.INK_DARK : (curUi[0] == idx ? Color.parseColor("#34C759") : UiKit.INK));
+                UiKit.lift(v, has, 1.04f, 120);
+            });
+            chip.setOnClickListener(v -> {
+                com.cinetv.launcher.device.SystemAudio.click(ctx);
+                curUi[0] = idx;
+                for (int j = 0; j < 4; j++) {
+                    ((TextView) uiButtons[j]).setText((curUi[0] == j ? "● " : "○ ") + uiChoices[j][0]);
+                    ((TextView) uiButtons[j]).setTextColor(curUi[0] == j ? Color.parseColor("#34C759") : UiKit.INK);
+                }
+                updatePreview.run();
+            });
+            LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            clp.topMargin = UiKit.px(5);
+            leftCol.addView(chip, clp);
+            uiButtons[i] = chip;
+        }
+
+        // Section B: Yazı Boyutu
+        TextView lblFont = UiKit.bold(ctx, 16, UiKit.INK);
+        lblFont.setText(tr ? "2. Yazı Boyutu" : "2. Font Size");
+        lblFont.setPadding(0, UiKit.px(14), 0, 0);
+        leftCol.addView(lblFont);
+
+        final String[][] fontChoices = {
+                {tr ? "Küçük (%90)" : "Small (90%)", "0"},
+                {tr ? "Normal (%100)" : "Normal (100%)", "1"},
+                {tr ? "Büyük (%115)" : "Large (115%)", "2"},
+                {tr ? "Çok Büyük (%130)" : "Extra Large (130%)", "3"}
+        };
+        final View[] fontButtons = new View[4];
+        for (int i = 0; i < fontChoices.length; i++) {
+            final int idx = i;
+            final TextView chip = UiKit.bold(ctx, 14, curFont[0] == idx ? Color.parseColor("#34C759") : UiKit.INK);
+            chip.setText((curFont[0] == idx ? "● " : "○ ") + fontChoices[i][0]);
+            chip.setFocusable(true);
+            chip.setClickable(true);
+            chip.setPadding(UiKit.px(14), UiKit.px(8), UiKit.px(14), UiKit.px(8));
+            final Glass cg = new Glass(chip, UiKit.pxf(14), curFont[0] == idx ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
+            chip.setBackground(cg);
+            chip.setOnFocusChangeListener((v, has) -> {
+                if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
+                cg.setStyle(has ? Glass.Style.FOCUSED : (curFont[0] == idx ? Glass.Style.FOCUSED : Glass.Style.CONTROL));
+                chip.setTextColor(has ? UiKit.INK_DARK : (curFont[0] == idx ? Color.parseColor("#34C759") : UiKit.INK));
+                UiKit.lift(v, has, 1.04f, 120);
+            });
+            chip.setOnClickListener(v -> {
+                com.cinetv.launcher.device.SystemAudio.click(ctx);
+                curFont[0] = idx;
+                for (int j = 0; j < 4; j++) {
+                    ((TextView) fontButtons[j]).setText((curFont[0] == j ? "● " : "○ ") + fontChoices[j][0]);
+                    ((TextView) fontButtons[j]).setTextColor(curFont[0] == j ? Color.parseColor("#34C759") : UiKit.INK);
+                }
+                updatePreview.run();
+            });
+            LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            clp.topMargin = UiKit.px(5);
+            leftCol.addView(chip, clp);
+            fontButtons[i] = chip;
+        }
+
+        optScroll.addView(leftCol);
+        body.addView(optScroll, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        body.addView(previewBox, rightLp);
+
+        // Footer buttons: Save & Cancel
+        LinearLayout footer = new LinearLayout(ctx);
+        footer.setOrientation(LinearLayout.HORIZONTAL);
+        footer.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        footer.setPadding(0, UiKit.px(8), 0, 0);
+
+        View btnCancel = Controls.button(ctx, tr ? "İptal" : "Cancel", v -> host.back());
+        footer.addView(btnCancel, new LinearLayout.LayoutParams(UiKit.px(150), UiKit.px(46)));
+
+        View btnSave = Controls.button(ctx, tr ? "✓ Uygula ve Kaydet" : "✓ Apply & Save", v -> {
+            Prefs.setUiScaleLevel(ctx, curUi[0]);
+            Prefs.setFontScaleLevel(ctx, curFont[0]);
+            UiKit.init(ctx);
+            a.applyAppearance();
+            Toast.makeText(ctx, tr ? "Arayüz ölçeği başarıyla uygulandı" : "UI scale successfully applied", Toast.LENGTH_SHORT).show();
+            host.back();
+        });
+        LinearLayout.LayoutParams saveLp = new LinearLayout.LayoutParams(UiKit.px(210), UiKit.px(46));
+        saveLp.leftMargin = UiKit.px(16);
+        footer.addView(btnSave, saveLp);
+
+        root.addView(footer);
+
+        updatePreview.run();
+        uiButtons[curUi[0]].requestFocus();
+        return root;
+    }
+
     // ---- Remote keys --------------------------------------------------------------------------------
 
     private static View buildKeyCapture(final Context ctx, final ModalHost host, final Actions a) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         final LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setFocusable(true);
-        TextView title = UiKit.bold(ctx, 32, UiKit.INK);
-        title.setText(R.string.remote_keys);
+        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
+
+        TextView title = UiKit.bold(ctx, 28, UiKit.INK);
+        title.setText(tr ? "🎮 Kumanda Tuşlarını Özelleştir" : "🎮 Customize Remote Buttons");
         root.addView(title);
-        final TextView body = UiKit.label(ctx, 22, UiKit.INK_DIM);
-        body.setText(R.string.remote_keys_press);
-        body.setPadding(0, UiKit.px(16), 0, UiKit.px(16));
-        body.setMaxWidth(UiKit.px(700));
+
+        final TextView body = UiKit.label(ctx, 16, UiKit.INK_DIM);
+        body.setText(tr ? "Aşağıdaki renkli tuşlardan birini seçin veya kumandanızdaki herhangi bir tuşa doğrudan basın:"
+                        : "Select one of the color keys below, or press any button on your remote:");
+        body.setPadding(0, UiKit.px(10), 0, UiKit.px(16));
+        body.setMaxWidth(UiKit.px(760));
         root.addView(body);
+
         final LinearLayout choices = new LinearLayout(ctx);
         choices.setOrientation(LinearLayout.VERTICAL);
+
+        final String[][] actions = {
+                {HardwareKeys.NUVIO, tr ? "🎬 Nuvio (Film & Dizi İzle)" : "🎬 Nuvio (Movies & TV)"},
+                {HardwareKeys.YOUTUBE, tr ? "📺 YouTube (Reklamsız Akış)" : "📺 YouTube (Ad-free)"},
+                {HardwareKeys.SIMILAR_MOVIES, tr ? "🤖 Gamze AI (Yapay Zekâ Sinema Sohbeti)" : "🤖 Gamze AI (Cinema Assistant)"},
+                {HardwareKeys.SCENE_INSPECTOR, tr ? "🔍 CineSub & AI Sahne Dedektifi (Ne Bu?)" : "🔍 CineSub & Scene Inspector"},
+                {HardwareKeys.CLEAN_RAM, tr ? "⚡ RAM Temizle & TV'yi Hızlandır" : "⚡ Optimize Memory & RAM"},
+                {HardwareKeys.NIGHT_MODE, tr ? "🌙 Gece İzleme Modu (Aç / Kapat)" : "🌙 Toggle Night Viewing Mode"},
+                {HardwareKeys.WEB_VIDEO, tr ? "📱 Telefondan Web Video / Cast" : "📱 Cast from Phone"},
+                {HardwareKeys.ALL_APPS, tr ? "📦 Tüm Uygulamalar" : "📦 All Applications"}
+        };
+
+        final java.util.function.BiConsumer<Integer, Integer> showActionChooser = (kc, sc) -> {
+            choices.removeAllViews();
+            TextView subH = UiKit.bold(ctx, 18, Color.parseColor("#34C759"));
+            subH.setText(tr ? "Bu tuş basıldığında ne açılsın?" : "What should this button open?");
+            subH.setPadding(0, 0, 0, UiKit.px(10));
+            choices.addView(subH);
+
+            for (final String[] act : actions) {
+                choices.addView(Controls.tile(ctx, act[1], null, false, c -> {
+                    HardwareKeys.bind(ctx, kc, sc, act[0]);
+                    Toast.makeText(ctx, tr ? (act[1] + " tuşa atandı!") : ("Assigned to " + act[1]), Toast.LENGTH_SHORT).show();
+                    a.onKeysChanged();
+                    host.back();
+                }), new LinearLayout.LayoutParams(UiKit.px(580), ViewGroup.LayoutParams.WRAP_CONTENT));
+            }
+            if (choices.getChildCount() > 1) choices.getChildAt(1).requestFocus();
+        };
+
+        // Preset 4-Color Keys Bar
+        LinearLayout colorKeysRow = new LinearLayout(ctx);
+        colorKeysRow.setOrientation(LinearLayout.HORIZONTAL);
+        colorKeysRow.setPadding(0, 0, 0, UiKit.px(16));
+
+        final Object[][] presets = {
+                {"🔴 " + (tr ? "Kırmızı" : "Red"), KeyEvent.KEYCODE_PROG_RED, 183},
+                {"🟢 " + (tr ? "Yeşil" : "Green"), KeyEvent.KEYCODE_PROG_GREEN, 184},
+                {"🟡 " + (tr ? "Sarı" : "Yellow"), KeyEvent.KEYCODE_PROG_YELLOW, 185},
+                {"🔵 " + (tr ? "Mavi" : "Blue"), KeyEvent.KEYCODE_PROG_BLUE, 186}
+        };
+
+        for (int i = 0; i < presets.length; i++) {
+            final String name = (String) presets[i][0];
+            final int pkc = (Integer) presets[i][1];
+            final int psc = (Integer) presets[i][2];
+
+            final TextView btn = UiKit.bold(ctx, 14, UiKit.INK);
+            btn.setText(name);
+            btn.setFocusable(true);
+            btn.setClickable(true);
+            btn.setPadding(UiKit.px(16), UiKit.px(10), UiKit.px(16), UiKit.px(10));
+            final Glass bg = new Glass(btn, UiKit.pxf(14), Glass.Style.CONTROL);
+            btn.setBackground(bg);
+            btn.setOnFocusChangeListener((v, has) -> {
+                if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
+                bg.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
+                btn.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
+                UiKit.lift(v, has, 1.05f, 120);
+            });
+            btn.setOnClickListener(v -> {
+                com.cinetv.launcher.device.SystemAudio.click(ctx);
+                body.setText(name + (tr ? " tuşu seçildi. Yeni görevini belirleyin:" : " selected. Choose action:"));
+                colorKeysRow.setVisibility(View.GONE);
+                showActionChooser.accept(pkc, psc);
+            });
+            LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (i > 0) blp.leftMargin = UiKit.px(12);
+            colorKeysRow.addView(btn, blp);
+        }
+        root.addView(colorKeysRow);
         root.addView(choices);
+
         root.setOnKeyListener((v, keyCode, e) -> {
             if (e.getAction() != KeyEvent.ACTION_DOWN || HardwareKeys.isNavigation(keyCode) || choices.getChildCount() > 0) return false;
             final int kc = keyCode, sc = e.getScanCode();
             body.setText(ctx.getString(R.string.remote_keys_captured, kc, sc));
-            String[][] actions = {
-                    {HardwareKeys.NUVIO, "Nuvio"}, {HardwareKeys.YOUTUBE, "YouTube"}, {HardwareKeys.WEB_VIDEO, ctx.getString(R.string.cast_from_phone)},
-                    {HardwareKeys.TV_PLUS, "TV+"}, {HardwareKeys.CLEAN_RAM, ctx.getString(R.string.optimize)},
-                    {HardwareKeys.ALL_APPS, ctx.getString(R.string.all_apps)}};
-            for (final String[] act : actions) {
-                choices.addView(Controls.tile(ctx, act[1], null, false, c -> {
-                    HardwareKeys.bind(ctx, kc, sc, act[0]);
-                    Toast.makeText(ctx, ctx.getString(R.string.remote_keys_bound, act[1]), Toast.LENGTH_SHORT).show();
-                    a.onKeysChanged();
-                    host.back();
-                }), new LinearLayout.LayoutParams(UiKit.px(560), ViewGroup.LayoutParams.WRAP_CONTENT));
-            }
-            choices.getChildAt(0).requestFocus();
+            colorKeysRow.setVisibility(View.GONE);
+            showActionChooser.accept(kc, sc);
             return true;
         });
-        root.post(root::requestFocus);
+
+        root.post(() -> {
+            if (colorKeysRow.getChildCount() > 0) colorKeysRow.getChildAt(0).requestFocus();
+            else root.requestFocus();
+        });
         return root;
     }
 

@@ -978,43 +978,41 @@ public class DvdOpeningView extends View {
         if (text == null || text.trim().isEmpty()) return "";
         String clean = java.text.Normalizer.normalize(text.trim(), java.text.Normalizer.Form.NFC);
 
-        // We NEVER cut mid-sentence with ellipsis like "Bir gün Travis kardeşinin…".
-        // Every synopsis MUST consist of complete, grammatically closed sentences (plot premise).
+        // Spoiler-free, punchy hook: 1 complete sentence (or 2 short sentences up to ~220 chars)
         int end1 = findSentenceEnd(clean, 0);
         if (end1 > 0) {
-            int end2 = findSentenceEnd(clean, end1 + 1);
-            if (end2 > end1 && end2 <= 480) {
-                int end3 = findSentenceEnd(clean, end2 + 1);
-                if (end3 > end2 && end3 <= 520) {
-                    return clean.substring(0, end3).trim();
-                }
-                return clean.substring(0, end2).trim();
+            if (end1 >= 75 && end1 <= 240) {
+                return clean.substring(0, end1).trim();
             }
-            if (end1 <= 380) {
+            if (end1 < 75) {
+                int end2 = findSentenceEnd(clean, end1 + 1);
+                if (end2 > end1 && end2 <= 220) {
+                    return clean.substring(0, end2).trim();
+                }
+            }
+            if (end1 <= 260) {
                 return clean.substring(0, end1).trim();
             }
         }
 
-        // If no standard sentence punctuation before 380, look for a clause:
+        // If sentence is longer, try finding a natural semicolon / clause break under 220 chars
         int clause = clean.indexOf("; ");
-        if (clause > 45 && clause <= 380) {
+        if (clause > 45 && clause <= 220) {
             return clean.substring(0, clause).trim() + ".";
         }
         int firstSentence = end1 > 0 ? end1 : clean.length();
-        if (firstSentence <= 450) {
+        if (firstSentence <= 240) {
             return clean.substring(0, firstSentence).trim();
         }
-        int lastEnd = -1;
-        for (int i = 0; i < Math.min(clean.length() - 1, 480); i++) {
+        for (int i = Math.min(clean.length() - 1, 220); i >= 60; i--) {
             char c = clean.charAt(i);
             if ((c == '.' || c == '!' || c == '?') && (i == clean.length() - 1 || Character.isWhitespace(clean.charAt(i + 1)))) {
-                lastEnd = i + 1;
+                return clean.substring(0, i + 1).trim();
             }
         }
-        if (lastEnd > 30) {
-            return clean.substring(0, lastEnd).trim();
-        }
-        return clean.trim() + (clean.endsWith(".") ? "" : ".");
+        int sp = clean.lastIndexOf(' ', 200);
+        if (sp > 60) return clean.substring(0, sp).trim() + "…";
+        return clean.substring(0, Math.min(clean.length(), 200)).trim();
     }
 
     private static int findSentenceEnd(String s, int from) {

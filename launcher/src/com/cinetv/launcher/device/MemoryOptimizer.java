@@ -41,6 +41,8 @@ public final class MemoryOptimizer {
     private static final String[] AIRPLAY_RECEIVERS = {
             "io.github.jqssun.airplay", "com.github.jqssun.airplay", "com.waxrain.airplaydmr", "com.waxrain.airplaydmr2", "com.ionitech.airscreen"};
 
+    private static android.net.wifi.WifiManager.MulticastLock airPlayMulticastLock;
+    private static android.net.wifi.WifiManager.WifiLock airPlayWifiLock;
     private static long lastSweep;
 
     private MemoryOptimizer() {}
@@ -115,16 +117,49 @@ public final class MemoryOptimizer {
     }
 
     public static void ensureAirPlayReceiver(Context ctx) {
-        PackageManager pm = ctx.getPackageManager();
+        final Context app = ctx.getApplicationContext();
+        try {
+            android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) app.getSystemService(Context.WIFI_SERVICE);
+            if (wm != null) {
+                if (airPlayMulticastLock == null) {
+                    airPlayMulticastLock = wm.createMulticastLock("cinetv-airplay-mdns");
+                    airPlayMulticastLock.setReferenceCounted(false);
+                }
+                if (!airPlayMulticastLock.isHeld()) {
+                    airPlayMulticastLock.acquire();
+                }
+                if (airPlayWifiLock == null) {
+                    airPlayWifiLock = wm.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "cinetv-airplay-wifi");
+                    airPlayWifiLock.setReferenceCounted(false);
+                }
+                if (!airPlayWifiLock.isHeld()) {
+                    airPlayWifiLock.acquire();
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
+        PackageManager pm = app.getPackageManager();
         for (String pkg : AIRPLAY_RECEIVERS) {
             try {
                 pm.getPackageInfo(pkg, 0);
-                Intent svc = new Intent().setClassName(pkg, pkg + ".service.AirPlayService");
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    ctx.startForegroundService(svc);
-                } else {
-                    ctx.startService(svc);
-                }
+                // Keep AirPlay service permanently active via local ADB (bypasses non-exported service restriction)
+                new Thread(() -> {
+                    String setupCmd = "cmd deviceidle whitelist +" + pkg + " 2>/dev/null; "
+                            + "dumpsys deviceidle whitelist +" + pkg + " 2>/dev/null; "
+                            + "appops set " + pkg + " RUN_IN_BACKGROUND allow 2>/dev/null; "
+                            + "appops set " + pkg + " RUN_ANY_IN_BACKGROUND allow 2>/dev/null; ";
+                    if ("io.github.jqssun.airplay".equals(pkg) || "com.github.jqssun.airplay".equals(pkg)) {
+                        setupCmd += "am broadcast -a io.github.jqssun.airplay.SET_SETTING -n " + pkg + "/.SettingsReceiver --es key run_in_background --es value true 2>/dev/null; "
+                                + "am broadcast -a io.github.jqssun.airplay.SET_SETTING -n " + pkg + "/.SettingsReceiver --es key boot_auto_start --es value true 2>/dev/null; "
+                                + "am broadcast -a io.github.jqssun.airplay.SET_SETTING -n " + pkg + "/.SettingsReceiver --es key auto_start --es value true 2>/dev/null; "
+                                + "am broadcast -a android.intent.action.QUICKBOOT_POWERON -n " + pkg + "/.BootReceiver 2>/dev/null; "
+                                + "am broadcast -a android.intent.action.BOOT_COMPLETED -n " + pkg + "/.BootReceiver 2>/dev/null; ";
+                    }
+                    setupCmd += "am start-foreground-service --user 0 -a io.github.jqssun.airplay.START_SERVER -n " + pkg + "/.service.AirPlayService 2>/dev/null || "
+                            + "am startservice --user 0 -n " + pkg + "/.service.AirPlayService 2>/dev/null";
+                    LocalAdb.shell(app, setupCmd, 3000);
+                }, "cinetv-airplay-keepalive").start();
                 return;
             } catch (Throwable ignored) {
             }

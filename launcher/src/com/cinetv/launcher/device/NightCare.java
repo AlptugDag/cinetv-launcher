@@ -107,26 +107,33 @@ public final class NightCare {
     }
 
     /**
-     * Night viewing mode: default is OFF.
-     * Between 05:00 and 23:00, it automatically deactivates.
+     * True when the user has enabled Night Viewing Mode in Settings.
      */
-    public static boolean isNightViewingModeActive(Context ctx) {
-        if (!isNightViewingHours()) {
-            if (Prefs.get(ctx).getBoolean(PREF_NIGHT_VIEW_MODE, false)) {
-                // Auto-disable when daytime arrives (05:00 - 23:00)
-                Prefs.get(ctx).edit().putBoolean(PREF_NIGHT_VIEW_MODE, false).apply();
-            }
-            return false;
-        }
+    public static boolean isNightViewingModeEnabled(Context ctx) {
         return Prefs.get(ctx).getBoolean(PREF_NIGHT_VIEW_MODE, false);
     }
 
+    /**
+     * Night viewing mode is active when enabled by user, with primary engagement during night hours.
+     */
+    public static boolean isNightViewingModeActive(Context ctx) {
+        return isNightViewingModeEnabled(ctx);
+    }
+
+    public static boolean isVisualPrefEnabled(Context ctx) {
+        return Prefs.get(ctx).getBoolean(PREF_NIGHT_VISUAL, true);
+    }
+
+    public static boolean isAudioPrefEnabled(Context ctx) {
+        return Prefs.get(ctx).getBoolean(PREF_NIGHT_AUDIO, true);
+    }
+
     public static boolean isVisualActive(Context ctx) {
-        return isNightViewingModeActive(ctx) && Prefs.get(ctx).getBoolean(PREF_NIGHT_VISUAL, true);
+        return isNightViewingModeEnabled(ctx) && isVisualPrefEnabled(ctx);
     }
 
     public static boolean isAudioActive(Context ctx) {
-        return isNightViewingModeActive(ctx) && Prefs.get(ctx).getBoolean(PREF_NIGHT_AUDIO, true);
+        return isNightViewingModeEnabled(ctx) && isAudioPrefEnabled(ctx);
     }
 
     public static void setVisualActive(Context ctx, boolean on) {

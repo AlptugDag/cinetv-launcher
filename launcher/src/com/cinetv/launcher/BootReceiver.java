@@ -21,6 +21,8 @@ public class BootReceiver extends BroadcastReceiver {
                 || Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
                 || "android.intent.action.QUICKBOOT_POWERON".equals(action)
                 || "com.htc.intent.action.QUICKBOOT_POWERON".equals(action)) {
+            // Suppress unwanted OEM tuner immediately before it can steal the screen
+            new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(context, "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.mediatek.tv.oneworld.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null; am force-stop com.arcelik.smartremoteservice 2>/dev/null", 600)).start();
             Intent launch = new Intent(context, MainActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
             try {

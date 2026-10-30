@@ -64,6 +64,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
         @Override
         public void onReceive(Context c, Intent i) {
             DeviceTweaks.syncNightMode(TvKeyInterceptorService.this);
+            MemoryOptimizer.ensureAirPlayReceiver(TvKeyInterceptorService.this);
         }
     };
 
@@ -297,10 +298,14 @@ public class TvKeyInterceptorService extends AccessibilityService {
         switch (pkg) {
             case "com.mediatek.wwtv.tvcenter":
             case "com.mediatek.tv.oneworld.tvcenter": // Grundig
-                // The OEM tuner MediaTek TVs push on boot/wake: suppress immediately and stay in CineTV
+            case "com.arcelik.tv.livetv":
+            case "com.arcelik.smartremoteservice":
+            case "com.android.tv":
+            case "com.google.android.tv":
+                // The OEM tuner MediaTek/Arçelik TVs push on boot/wake: suppress immediately and stay in CineTV
                 // If user deliberately pressed Inputs / Live TV, it is left alone.
                 if (DeviceTweaks.isUnwantedTuner()) {
-                    new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(this, "am force-stop " + pkg + " 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null", 800)).start();
+                    new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(this, "am force-stop " + pkg + " 2>/dev/null; am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null; am force-stop com.arcelik.smartremoteservice 2>/dev/null", 800)).start();
                     performGlobalAction(GLOBAL_ACTION_HOME);
                     startActivity(new Intent(this, MainActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
@@ -397,6 +402,22 @@ public class TvKeyInterceptorService extends AccessibilityService {
         handler.postDelayed(idleSaver, timeout);
     }
 
+    private boolean isNuvioApp(String pkg) {
+        if (pkg == null) return false;
+        for (String p : AppLauncher.NUVIO_PACKAGES) {
+            if (pkg.equals(p)) return true;
+        }
+        return pkg.contains("nuvio") || pkg.contains("stremio");
+    }
+
+    private boolean isYouTubeApp(String pkg) {
+        if (pkg == null) return false;
+        for (String p : AppLauncher.YOUTUBE_PACKAGES) {
+            if (pkg.equals(p)) return true;
+        }
+        return pkg.contains("youtube") || pkg.contains("smarttube");
+    }
+
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
         if (instance == null) return false;
@@ -413,25 +434,45 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (code == KeyEvent.KEYCODE_HOME) {
             if (event.getAction() == KeyEvent.ACTION_UP) {
                 startActivity(new Intent(this, MainActivity.class)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION));
                 return true;
             }
             return true;
         }
-        int source = event.getSource();
-        boolean gamepad = (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
-                || (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
-        if (gamepad || HardwareKeys.isNavigation(code)) return false;
+
+        // Dedicated Settings / Menu key: always opens CineTV settings
+        if (code == KeyEvent.KEYCODE_SETTINGS || code == 176 || code == 268) {
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                startActivity(new Intent(this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                        .putExtra("action", "settings"));
+                return true;
+            }
+            return true;
+        }
+
         // Direct return to CineTV: when exiting Nuvio or YouTube, Back returns straight to CineTV Launcher Home
-        if ((launchedYouTubeFromCineTv || launchedNuvioFromCineTv) && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
+        // Intercept BOTH ACTION_DOWN and ACTION_UP BEFORE navigation check so Nuvio NEVER unwinds its internal history stack!
+        boolean inNuvio = isNuvioApp(lastPackage) || launchedNuvioFromCineTv;
+        boolean inYouTube = isYouTubeApp(lastPackage) || launchedYouTubeFromCineTv;
+        if ((inNuvio || inYouTube) && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                return true; // absorb DOWN so Nuvio does not pop backstack fragments
+            }
             if (event.getAction() == KeyEvent.ACTION_UP) {
                 launchedYouTubeFromCineTv = false;
                 launchedNuvioFromCineTv = false;
                 startActivity(new Intent(this, MainActivity.class)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION));
                 return true;
             }
+            return true;
         }
+
+        int source = event.getSource();
+        boolean gamepad = (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
+                || (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
+        if (gamepad || HardwareKeys.isNavigation(code)) return false;
         // The remote's microphone: pause playing content and launch CineTV voice search overlay
         if (code == KeyEvent.KEYCODE_SEARCH || code == KeyEvent.KEYCODE_VOICE_ASSIST || code == KeyEvent.KEYCODE_ASSIST) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
