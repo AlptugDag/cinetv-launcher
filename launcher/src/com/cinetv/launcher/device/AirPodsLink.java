@@ -187,6 +187,25 @@ public final class AirPodsLink {
         }
     }
 
+    public static boolean isHeadphoneConnected(Context ctx) {
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                android.media.AudioDeviceInfo[] devices = am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS);
+                for (android.media.AudioDeviceInfo d : devices) {
+                    int t = d.getType();
+                    if (t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                        t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                        t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                        t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
     /**
      * Activates or disables TV's internal virtual surround and binaural 3D stage for headphones.
      * When enabled, multichannel 5.1/7.1 film tracks in Nuvio or Nova Player are spatialized

@@ -39,6 +39,112 @@ public final class Controls {
         return b;
     }
 
+    /**
+     * Authentic Apple iOS-style switch:
+     * - Pill-shaped track: iOS Green (#34C759) when active, iOS Red (#FF3B30) when inactive.
+     * - Pure white circular knob with soft elevation shadow.
+     */
+    public static class IosSwitchView extends View {
+        private boolean active;
+        private final android.graphics.Paint trackPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint thumbPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint shadowPaint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.RectF trackRect = new android.graphics.RectF();
+
+        public IosSwitchView(Context ctx, boolean active) {
+            super(ctx);
+            this.active = active;
+            thumbPaint.setColor(android.graphics.Color.WHITE);
+            shadowPaint.setColor(android.graphics.Color.argb(60, 0, 0, 0));
+        }
+
+        public void setActive(boolean active) {
+            this.active = active;
+            invalidate();
+        }
+
+        public boolean isActive() {
+            return active;
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            setMeasuredDimension(UiKit.px(54), UiKit.px(30));
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas canvas) {
+            int w = getWidth();
+            int h = getHeight();
+            float r = h / 2f;
+            trackRect.set(0, 0, w, h);
+            // Green when on (#34C759), Red when off (#FF3B30)
+            trackPaint.setColor(active ? android.graphics.Color.parseColor("#34C759") : android.graphics.Color.parseColor("#FF3B30"));
+            canvas.drawRoundRect(trackRect, r, r, trackPaint);
+
+            // Thumb
+            float thumbR = (h - UiKit.pxf(4)) / 2f;
+            float cx = active ? (w - thumbR - UiKit.pxf(3)) : (thumbR + UiKit.pxf(3));
+            float cy = h / 2f;
+
+            // Subtle drop shadow behind thumb
+            canvas.drawCircle(cx, cy + UiKit.pxf(1), thumbR + UiKit.pxf(0.5f), shadowPaint);
+            // White circle knob
+            canvas.drawCircle(cx, cy, thumbR, thumbPaint);
+        }
+    }
+
+    /**
+     * A settings tile for on/off toggle options, featuring an authentic iOS-style switch
+     * that glows Green (#34C759) when ON and Red (#FF3B30) when OFF.
+     */
+    public static LinearLayout toggleTile(Context ctx, CharSequence title, CharSequence state, boolean active, View.OnClickListener onClick) {
+        final LinearLayout box = new LinearLayout(ctx);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setFocusable(true);
+        box.setClickable(true);
+        box.setPadding(UiKit.px(18), UiKit.px(10), UiKit.px(18), UiKit.px(10));
+        final Glass g = new Glass(box, UiKit.pxf(16), Glass.Style.CONTROL);
+        box.setBackground(g);
+
+        LinearLayout top = new LinearLayout(ctx);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+
+        final TextView t = UiKit.bold(ctx, 20, UiKit.INK);
+        t.setText(title);
+        t.setSingleLine(true);
+        t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        final IosSwitchView sw = new IosSwitchView(ctx, active);
+        LinearLayout.LayoutParams swLp = new LinearLayout.LayoutParams(UiKit.px(54), UiKit.px(30));
+        swLp.setMargins(UiKit.px(12), 0, 0, 0);
+        top.addView(sw, swLp);
+
+        box.addView(top);
+
+        final TextView s = UiKit.label(ctx, 15, UiKit.INK_DIM);
+        s.setText(state);
+        s.setSingleLine(true);
+        s.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        s.setPadding(0, UiKit.px(4), 0, 0);
+        if (state == null || state.length() == 0) s.setVisibility(View.GONE);
+        box.addView(s);
+
+        box.setOnFocusChangeListener((v, has) -> {
+            g.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
+            t.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
+            s.setTextColor(has ? UiKit.withAlpha(UiKit.INK_DARK, 170) : UiKit.INK_DIM);
+            UiKit.lift(v, has, 1.04f, PerformanceProfile.animationMs(ctx, 140));
+        });
+        box.setOnClickListener(onClick);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, 0, UiKit.px(8));
+        box.setLayoutParams(lp);
+        return box;
+    }
+
     /** A settings tile: title, one line of state, and a dot when the option is on. */
     public static LinearLayout tile(Context ctx, CharSequence title, CharSequence state, boolean active, View.OnClickListener onClick) {
         final LinearLayout box = new LinearLayout(ctx);

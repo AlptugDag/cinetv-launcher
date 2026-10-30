@@ -398,6 +398,25 @@ public final class EmaLightningTts {
                     mp.release();
                     return;
                 }
+                // Spatial 3D voice positioning: pan acoustic energy based on focus light origin
+                float leftVol = 1.0f, rightVol = 1.0f;
+                if (com.cinetv.launcher.service.Prefs.spatial3d(ctx)) {
+                    com.cinetv.launcher.ui.SpatialEnvironment env = com.cinetv.launcher.ui.SpatialEnvironment.current();
+                    if (env != null && env.getWidth() > 0) {
+                        float relX = Math.max(0.12f, Math.min(0.88f, env.glowX() / (float) env.getWidth()));
+                        if (relX < 0.5f) {
+                            leftVol = 1.0f;
+                            rightVol = 0.74f + 0.52f * relX;
+                        } else {
+                            rightVol = 1.0f;
+                            leftVol = 0.74f + 0.52f * (1.0f - relX);
+                        }
+                    }
+                    if (com.cinetv.launcher.device.AirPodsLink.isHeadphoneConnected(ctx)) {
+                        com.cinetv.launcher.device.AirPodsLink.applyHeadphoneSpatialAudio(ctx, true);
+                    }
+                }
+                mp.setVolume(leftVol, rightVol);
                 activePlayer = mp;
                 mp.start();
             } catch (Throwable t) {

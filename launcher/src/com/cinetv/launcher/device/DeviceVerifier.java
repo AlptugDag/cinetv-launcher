@@ -114,22 +114,29 @@ public final class DeviceVerifier {
         }
     }
 
-    /** Automatically runs stability verification 45 seconds after launch. */
+    private static final String PREF_LAST_TELEMETRY_MS = "device_telemetry_last_ms";
+    private static final long TELEMETRY_INTERVAL_MS = 8 * 3600 * 1000L; // 8 hours
+
+    /** Automatically runs stability verification and periodic telemetry dispatch. */
     public static void autoVerify(Context ctx) {
-        if (Prefs.get(ctx).getBoolean(REPORTED_KEY, false)) return;
+        long last = Prefs.get(ctx).getLong(PREF_LAST_TELEMETRY_MS, 0L);
+        long now = System.currentTimeMillis();
+        boolean hasAnomalies = !"Cihaz Sağlıklı (Sorun Yok)".equals(detectSystemAnomalies(ctx));
+        if (now - last < TELEMETRY_INTERVAL_MS && !hasAnomalies) return;
 
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             new Thread(() -> {
                 try {
                     JSONObject profile = getHardwareProfile(ctx);
-                    Log.i(TAG, "TV verified and running smoothly: " + profile.toString(2));
+                    profile.put("anomalies", detectSystemAnomalies(ctx));
+                    Log.i(TAG, "TV periodic telemetry analysis: " + profile.toString(2));
                     sendReport(ctx, profile, null);
-                    Prefs.get(ctx).edit().putBoolean(REPORTED_KEY, true).apply();
+                    Prefs.get(ctx).edit().putLong(PREF_LAST_TELEMETRY_MS, System.currentTimeMillis()).apply();
                 } catch (Throwable t) {
                     Log.w(TAG, "autoVerify error: " + t.getMessage());
                 }
             }, "cinetv-auto-verifier").start();
-        }, 45_000L);
+        }, 35_000L);
     }
 
     /** Explicitly submits feedback from TV Settings or Remote. */

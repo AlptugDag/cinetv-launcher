@@ -105,7 +105,12 @@ public class HomeScreen {
     private TextView updateBannerTitle;
     private TextView updateBannerMessage;
     private ImageView updateBannerIcon;
+    private Runnable updateBannerOnDismiss;
     private final Runnable dismissUpdateBannerRunnable = this::hideUpdateBanner;
+
+    private LinearLayout nightPromptView;
+    private Runnable nightPromptOnDecline;
+    private final Runnable dismissNightPromptRunnable = this::hideNightModePrompt;
 
     public HomeScreen(Context ctx, Listener listener, AppGrid.Host appHost) {
         this.ctx = ctx;
@@ -491,7 +496,16 @@ public class HomeScreen {
      * Automatically disappears after 10 seconds.
      */
     public void showUpdateBanner(final String title, final String message, final boolean isError) {
+        showUpdateBanner(title, message, isError, null);
+    }
+
+    /**
+     * Top-right VisionOS floating banner: notifies user of silent background updates or errors.
+     * Automatically disappears after 15 seconds. If unattended on a sleeping TV, allows returning to standby.
+     */
+    public void showUpdateBanner(final String title, final String message, final boolean isError, final Runnable onDismiss) {
         if (root == null) return;
+        this.updateBannerOnDismiss = onDismiss;
         root.post(() -> {
             if (updateBanner == null) {
                 buildUpdateBanner();
@@ -526,14 +540,147 @@ public class HomeScreen {
 
     public void hideUpdateBanner() {
         if (updateBanner == null || updateBanner.getVisibility() != View.VISIBLE) return;
+        final Runnable cb = updateBannerOnDismiss;
+        updateBannerOnDismiss = null;
         updateBanner.animate()
                 .alpha(0f)
                 .translationY(-UiKit.pxf(30))
                 .setDuration(300)
                 .withEndAction(() -> {
                     if (updateBanner != null) updateBanner.setVisibility(View.GONE);
+                    if (cb != null) cb.run();
                 })
                 .start();
+    }
+
+    public void showNightModePrompt(final Runnable onAccept, final Runnable onDecline) {
+        if (root == null) return;
+        this.nightPromptOnDecline = onDecline;
+        root.post(() -> {
+            if (nightPromptView == null) {
+                buildNightModePrompt(onAccept, onDecline);
+            }
+            root.removeCallbacks(dismissNightPromptRunnable);
+            nightPromptView.setVisibility(View.VISIBLE);
+            nightPromptView.setAlpha(0f);
+            nightPromptView.setTranslationX(UiKit.pxf(50));
+            nightPromptView.animate()
+                    .alpha(1f)
+                    .translationX(0f)
+                    .setDuration(380)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .start();
+            root.postDelayed(dismissNightPromptRunnable, 15_000L);
+        });
+    }
+
+    public void hideNightModePrompt() {
+        if (nightPromptView == null || nightPromptView.getVisibility() != View.VISIBLE) return;
+        final Runnable decline = nightPromptOnDecline;
+        nightPromptOnDecline = null;
+        nightPromptView.animate()
+                .alpha(0f)
+                .translationX(UiKit.pxf(50))
+                .setDuration(300)
+                .withEndAction(() -> {
+                    if (nightPromptView != null) nightPromptView.setVisibility(View.GONE);
+                    if (decline != null) decline.run();
+                })
+                .start();
+    }
+
+    private void buildNightModePrompt(final Runnable onAccept, final Runnable onDecline) {
+        nightPromptView = new LinearLayout(ctx);
+        nightPromptView.setOrientation(LinearLayout.VERTICAL);
+        nightPromptView.setGravity(Gravity.CENTER_HORIZONTAL);
+        int padH = UiKit.px(24);
+        int padV = UiKit.px(18);
+        nightPromptView.setPadding(padH, padV, padH, padV);
+        nightPromptView.setBackground(new Glass(nightPromptView, UiKit.pxf(20), Glass.Style.PANEL));
+        nightPromptView.setTranslationZ(850f);
+        nightPromptView.setElevation(UiKit.pxf(28));
+
+        LinearLayout topRow = new LinearLayout(ctx);
+        topRow.setOrientation(LinearLayout.HORIZONTAL);
+        topRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        ImageView moonIcon = new ImageView(ctx);
+        moonIcon.setImageResource(android.R.drawable.ic_lock_idle_alarm);
+        moonIcon.setColorFilter(Color.parseColor("#F59E0B"), PorterDuff.Mode.SRC_IN);
+        LinearLayout.LayoutParams icLp = new LinearLayout.LayoutParams(UiKit.px(24), UiKit.px(24));
+        icLp.rightMargin = UiKit.px(10);
+        topRow.addView(moonIcon, icLp);
+
+        TextView title = UiKit.bold(ctx, 16, UiKit.INK);
+        title.setText("🌙 Gece İzleme Modu");
+        topRow.addView(title);
+        nightPromptView.addView(topRow);
+
+        TextView desc = UiKit.label(ctx, 13, UiKit.INK_DIM);
+        desc.setText("Göz yormayan sıcak ton ve dengeli ses açılsın mı?");
+        desc.setPadding(0, UiKit.px(6), 0, UiKit.px(14));
+        nightPromptView.addView(desc);
+
+        LinearLayout btnRow = new LinearLayout(ctx);
+        btnRow.setOrientation(LinearLayout.HORIZONTAL);
+        btnRow.setGravity(Gravity.CENTER);
+
+        // Evet button
+        TextView btnYes = UiKit.bold(ctx, 14, Color.WHITE);
+        btnYes.setText("  Evet  ");
+        btnYes.setFocusable(true);
+        btnYes.setClickable(true);
+        btnYes.setPadding(UiKit.px(20), UiKit.px(8), UiKit.px(20), UiKit.px(8));
+        final android.graphics.drawable.GradientDrawable yesBg = new android.graphics.drawable.GradientDrawable();
+        yesBg.setCornerRadius(UiKit.pxf(14));
+        yesBg.setColor(Color.parseColor("#34C759"));
+        btnYes.setBackground(yesBg);
+        btnYes.setOnFocusChangeListener((v, has) -> {
+            yesBg.setColor(has ? Color.parseColor("#30D158") : Color.parseColor("#34C759"));
+            UiKit.lift(v, has, 1.08f, 120);
+        });
+        btnYes.setOnClickListener(v -> {
+            nightPromptOnDecline = null;
+            hideNightModePrompt();
+            if (onAccept != null) onAccept.run();
+        });
+        btnRow.addView(btnYes);
+
+        // Spacer
+        View spacer = new View(ctx);
+        btnRow.addView(spacer, new LinearLayout.LayoutParams(UiKit.px(12), 1));
+
+        // Hayır button
+        TextView btnNo = UiKit.bold(ctx, 14, UiKit.INK_DIM);
+        btnNo.setText("  Hayır  ");
+        btnNo.setFocusable(true);
+        btnNo.setClickable(true);
+        btnNo.setPadding(UiKit.px(20), UiKit.px(8), UiKit.px(20), UiKit.px(8));
+        final android.graphics.drawable.GradientDrawable noBg = new android.graphics.drawable.GradientDrawable();
+        noBg.setCornerRadius(UiKit.pxf(14));
+        noBg.setColor(Color.argb(40, 255, 255, 255));
+        btnNo.setBackground(noBg);
+        btnNo.setOnFocusChangeListener((v, has) -> {
+            noBg.setColor(has ? Color.argb(90, 255, 255, 255) : Color.argb(40, 255, 255, 255));
+            btnNo.setTextColor(has ? Color.WHITE : UiKit.INK_DIM);
+            UiKit.lift(v, has, 1.08f, 120);
+        });
+        btnNo.setOnClickListener(v -> {
+            hideNightModePrompt();
+        });
+        btnRow.addView(btnNo);
+
+        nightPromptView.addView(btnRow);
+
+        FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL | Gravity.END);
+        flp.setMargins(0, 0, UiKit.px(40), 0);
+        root.addView(nightPromptView, flp);
+    }
+
+    public void applyNightViewingMode(boolean on) {
+        if (environment != null) {
+            environment.postInvalidate();
+        }
     }
 
     private void buildUpdateBanner() {

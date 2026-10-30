@@ -714,6 +714,164 @@ header.hud {
 }
 .tv-banner .texts b { display: block; font-size: 15px; }
 .tv-banner .texts span { font-size: 13px; color: var(--ink-dim); }
+
+/* iOS-style Switch */
+.ios-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 30px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.ios-switch input { opacity: 0; width: 0; height: 0; }
+.ios-switch .slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #FF3B30; /* iOS Red when OFF */
+  transition: 0.3s cubic-bezier(0.2, 0.9, 0.2, 1);
+  border-radius: 30px;
+}
+.ios-switch .slider:before {
+  position: absolute;
+  content: "";
+  height: 24px;
+  width: 24px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s cubic-bezier(0.2, 0.9, 0.2, 1);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
+.ios-switch input:checked + .slider {
+  background-color: #34C759; /* iOS Green when ON */
+}
+.ios-switch input:checked + .slider:before {
+  transform: translateX(22px);
+}
+
+/* Single-page Settings Modal */
+#modal-settings {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(28px) saturate(180%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+#modal-settings.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.settings-box {
+  width: 820px;
+  max-width: 90vw;
+  max-height: 84vh;
+  background: rgba(20, 22, 28, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 24px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: scale(0.95);
+  transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+#modal-settings.active .settings-box {
+  transform: scale(1);
+}
+.settings-header {
+  padding: 22px 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.settings-header .title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.settings-header img.logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+.settings-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.settings-header .sub {
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+.settings-body {
+  padding: 24px 32px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.settings-section h3 {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.settings-tile {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.settings-tile:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+.settings-tile .tile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.settings-tile .tile-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.settings-tile .tile-sub {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+.night-tone-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(255, 140, 20, 0.08);
+  mix-blend-mode: color;
+  z-index: 99;
+  display: none;
+}
 </style>
 </head>
 <body class="theme-closet">
@@ -818,6 +976,163 @@ header.hud {
   <div class="texts">
     <b>CineTV Windows Aktif</b>
     <span>Nuvio, TMDB & Gamze AI entegrasyonu hazır.</span>
+  </div>
+</div>
+
+
+<!-- Night Tone Warm Display Overlay -->
+<div class="night-tone-overlay" id="nightToneOverlay"></div>
+
+<!-- Unified Single-Page Settings Modal -->
+<div id="modal-settings" onclick="closeSettings(event)">
+  <div class="settings-box" onclick="event.stopPropagation()">
+    <div class="settings-header">
+      <div class="title-group">
+        <img src="assets/icon.png" class="logo" alt="CineTV">
+        <div>
+          <h2>CineTV Ayarlar</h2>
+          <div class="sub">Tek Pencere Responsive Kontrol Paneli · v1.0.0.17 Windows</div>
+        </div>
+      </div>
+      <button class="btn-close-modal" style="position:static;" onclick="closeSettings()">Kapat</button>
+    </div>
+    <div class="settings-body">
+      <!-- Section 1: Temalar & Atmosfer -->
+      <div class="settings-section">
+        <h3>1. Temalar & Atmosfer</h3>
+        <div class="settings-grid">
+          <div class="settings-tile" onclick="setThemeDirect('closet')">
+            <div class="tile-info">
+              <span class="tile-title">Film Dolabı</span>
+              <span class="tile-sub">Nostaljik ahşap raf ve derinlikli gölgeler</span>
+            </div>
+            <span style="font-size:18px">🎞️</span>
+          </div>
+          <div class="settings-tile" onclick="setThemeDirect('cinema')">
+            <div class="tile-info">
+              <span class="tile-title">Sinema Salonu</span>
+              <span class="tile-sub">Kırmızı kadife perdeler ve loş projeksiyon</span>
+            </div>
+            <span style="font-size:18px">🎬</span>
+          </div>
+          <div class="settings-tile">
+            <div class="tile-info">
+              <span class="tile-title">Gece İzleme Modu (22:00 - 05:00)</span>
+              <span class="tile-sub">Sıcak amber tonu ve göz yormayan seviye</span>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="swNightMode" onchange="toggleNightViewingMode(this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="settings-tile">
+            <div class="tile-info">
+              <span class="tile-title">Ambilight Arka Işık</span>
+              <span class="tile-sub">Vitrin renkleriyle senkronize ortam ışığı</span>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="swAmbilight" checked onchange="saveSetting('ambilight', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Sinema Deneyimi & 3D -->
+      <div class="settings-section">
+        <h3>2. Sinema Deneyimi & 3D</h3>
+        <div class="settings-grid">
+          <div class="settings-tile">
+            <div class="tile-info">
+              <span class="tile-title">3D DVD Kutuları & Cover Flow</span>
+              <span class="tile-sub">Raf perspektifi ve gerçekçi disk kabartması</span>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="swDvdCases" checked onchange="saveSetting('dvdCases', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="settings-tile">
+            <div class="tile-info">
+              <span class="tile-title">Cam Prizma & Kırılma Efekti</span>
+              <span class="tile-sub">HUD kenarlarında optik visor dağılması</span>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="swGlassBevel" checked onchange="saveSetting('glassBevel', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="settings-tile">
+            <div class="tile-info">
+              <span class="tile-title">Fragman Otomatik Oynatma</span>
+              <span class="tile-sub">Kutunun içinde zero-UI gecikmesiz video</span>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="swTrailers" checked onchange="saveSetting('trailers', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="settings-tile">
+            <div class="tile-info">
+              <span class="tile-title">Fragman Crossfade Sesi</span>
+              <span class="tile-sub">Fragman açılışında kademeli ses yükselmesi</span>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="swTrailerAudio" checked onchange="saveSetting('trailerAudio', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Yapay Zeka & Gamze Asistan -->
+      <div class="settings-section">
+        <h3>3. Yapay Zeka & Gamze Asistan</h3>
+        <div class="settings-grid">
+          <div class="settings-tile">
+            <div class="tile-info">
+              <span class="tile-title">Gamze Sesli Asistan (EMA Lightning)</span>
+              <span class="tile-sub">Doğal Türkçe seslendirme & akıllı film önerileri</span>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="swGamzeVoice" checked onchange="saveSetting('gamzeVoice', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="settings-tile">
+            <div class="tile-info">
+              <span class="tile-title">Uzamsal Ses & Akustik</span>
+              <span class="tile-sub">Odaktaki filme göre stereo ses konumlandırması</span>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="swSpatialAcoustics" checked onchange="saveSetting('spatialAcoustics', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 4: Nuvio & Sistem -->
+      <div class="settings-section">
+        <h3>4. Nuvio & Sistem</h3>
+        <div class="settings-grid">
+          <div class="settings-tile" onclick="openNuvioDirect()">
+            <div class="tile-info">
+              <span class="tile-title">Nuvio PC Başlatıcı</span>
+              <span class="tile-sub">Yerel Nuvio / Stremio akış motoruna bağlan</span>
+            </div>
+            <span style="font-size:18px">🚀</span>
+          </div>
+          <div class="settings-tile" onclick="windowControl('fullscreen')">
+            <div class="tile-info">
+              <span class="tile-title">Tam Ekran TV Modu</span>
+              <span class="tile-sub">Pencereli / Tam Ekran (F11) arasında geçiş yap</span>
+            </div>
+            <span style="font-size:18px">⛶</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1198,6 +1513,52 @@ function windowControl(action) {
     window.close();
   }
 }
+
+// Settings Controller
+function showSettings() {
+  document.getElementById('modal-settings').classList.add('active');
+}
+function closeSettings(e) {
+  if (e && e.target !== document.getElementById('modal-settings') && !e.target.classList.contains('btn-close-modal')) return;
+  document.getElementById('modal-settings').classList.remove('active');
+}
+
+function setThemeDirect(theme) {
+  currentTheme = theme;
+  document.body.className = `theme-${theme}`;
+  const env = document.getElementById('env');
+  if (theme === 'closet') {
+    env.className = 'environment env-closet';
+    env.style.display = 'block';
+  } else {
+    env.style.display = 'none';
+  }
+}
+
+function toggleNightViewingMode(on) {
+  const overlay = document.getElementById('nightToneOverlay');
+  overlay.style.display = on ? 'block' : 'none';
+  localStorage.setItem('cinetv_night_view_mode', on ? '1' : '0');
+}
+
+function checkNightViewingAuto() {
+  const h = new Date().getHours();
+  const isNight = h >= 22 || h < 5;
+  const stored = localStorage.getItem('cinetv_night_view_mode') === '1';
+  if (!isNight && stored) {
+    // Auto disable during daytime (05:00 - 22:00)
+    toggleNightViewingMode(false);
+    const sw = document.getElementById('swNightMode');
+    if (sw) sw.checked = false;
+  }
+}
+setInterval(checkNightViewingAuto, 60000);
+checkNightViewingAuto();
+
+function saveSetting(key, val) {
+  localStorage.setItem(`cinetv_${key}`, val ? '1' : '0');
+}
+
 </script>
 </body>
 </html>

@@ -1,0 +1,33 @@
+{
+  "profiles": {
+    "sinchon": {
+      "target_tier": "LOW_RAM_OPTIMIZED",
+      "limit_poster_cache_mb": 48,
+      "enable_composited_backdrop": true,
+      "dynamic_framerate_lock": 60,
+      "recommended_tweaks": [
+        "Force 0° orientation lock",
+        "Enable aggressive memory reclaim on background transition"
+      ]
+    },
+    "akropoli": {
+      "target_tier": "BALANCED",
+      "limit_poster_cache_mb": 96,
+      "enable_composited_backdrop": false,
+      "dynamic_framerate_lock": 60,
+      "recommended_tweaks": [
+        "Dolby Vision & HDR10+ automatic tone mapping enabled"
+      ]
+    },
+    "generic_low_ram": {
+      "target_tier": "LOW_RAM_OPTIMIZED",
+      "limit_poster_cache_mb": 32,
+      "enable_composited_backdrop": true,
+      "dynamic_framerate_lock": 60,
+      "recommended_tweaks": [
+        "Disable heavy blur filters",
+        "Enforce strict 60 FPS profile"
+      ]
+    }
+  }
+}

@@ -248,6 +248,10 @@ public class SpatialEnvironment extends View {
                 canvas.drawBitmap(lightSprite, null, dst, lightPaint);
             }
         }
+        if (com.cinetv.launcher.device.NightCare.isNightViewingModeActive(getContext())) {
+            // Gentle warm amber/sepia eye-care tone for late night movie viewing
+            canvas.drawColor(Color.argb(26, 255, 140, 20), PorterDuff.Mode.SRC_OVER);
+        }
     }
 
     private void drawBase(Canvas canvas, int w, int h, boolean withParallax) {

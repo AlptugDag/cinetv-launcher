@@ -93,6 +93,65 @@ public final class NightCare {
 
     // ---- quiet hours ----------------------------------------------------------------------------
 
+    public static final String PREF_NIGHT_VIEW_MODE = "pref_night_view_mode";
+    public static final String PREF_NIGHT_PROMPTED_NIGHT = "pref_night_prompted_night";
+
+    /**
+     * Checks if current local time is in the night window: 22:00 to 05:00.
+     */
+    public static boolean isNightViewingHours() {
+        int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        return h >= 22 || h < 5;
+    }
+
+    /**
+     * Night viewing mode: default is OFF.
+     * Between 05:00 and 22:00, it automatically deactivates.
+     */
+    public static boolean isNightViewingModeActive(Context ctx) {
+        if (!isNightViewingHours()) {
+            if (Prefs.get(ctx).getBoolean(PREF_NIGHT_VIEW_MODE, false)) {
+                // Auto-disable when daytime arrives (05:00 - 22:00)
+                Prefs.get(ctx).edit().putBoolean(PREF_NIGHT_VIEW_MODE, false).apply();
+            }
+            return false;
+        }
+        return Prefs.get(ctx).getBoolean(PREF_NIGHT_VIEW_MODE, false);
+    }
+
+    public static void setNightViewingMode(Context ctx, boolean on) {
+        Prefs.get(ctx).edit().putBoolean(PREF_NIGHT_VIEW_MODE, on).apply();
+        if (on) {
+            setQuietHours(ctx, true);
+        }
+    }
+
+    /**
+     * Identifier for the current night (from 22:00 to next day's 05:00).
+     */
+    public static String currentNightKey() {
+        Calendar cal = Calendar.getInstance();
+        int h = cal.get(Calendar.HOUR_OF_DAY);
+        if (h < 5) {
+            cal.add(Calendar.DATE, -1);
+        }
+        return cal.get(Calendar.YEAR) + "-" + (cal.get(Calendar.MONTH) + 1) + "-" + cal.get(Calendar.DAY_OF_MONTH);
+    }
+
+    public static boolean shouldPromptNightViewingMode(Context ctx) {
+        if (!isNightViewingHours()) return false;
+        if (isNightViewingModeActive(ctx)) return false;
+        String prompted = Prefs.get(ctx).getString(PREF_NIGHT_PROMPTED_NIGHT, "");
+        if (currentNightKey().equals(prompted)) return false;
+
+        android.os.PowerManager pm = (android.os.PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
+        return pm != null && pm.isInteractive();
+    }
+
+    public static void markNightPromptDismissed(Context ctx) {
+        Prefs.get(ctx).edit().putString(PREF_NIGHT_PROMPTED_NIGHT, currentNightKey()).apply();
+    }
+
     public static boolean quietHours(Context ctx) {
         return Prefs.get(ctx).getBoolean(QUIET, false);
     }
@@ -108,7 +167,7 @@ public final class NightCare {
     }
 
     private static void capVolume(Context app) {
-        if (!quietHours(app) || !isNight()) return;
+        if ((!quietHours(app) && !isNightViewingModeActive(app)) || !isNight()) return;
         try {
             AudioManager am = (AudioManager) app.getSystemService(Context.AUDIO_SERVICE);
             if (am == null) return;

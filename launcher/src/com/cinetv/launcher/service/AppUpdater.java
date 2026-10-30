@@ -38,13 +38,19 @@ public final class AppUpdater {
         public final String releaseNotes;
         public final String downloadUrl;
         public final long sizeBytes;
+        public final String assetUpdatedAt;
 
         public ReleaseInfo(String tagName, String cleanVersion, String releaseNotes, String downloadUrl, long sizeBytes) {
+            this(tagName, cleanVersion, releaseNotes, downloadUrl, sizeBytes, "");
+        }
+
+        public ReleaseInfo(String tagName, String cleanVersion, String releaseNotes, String downloadUrl, long sizeBytes, String assetUpdatedAt) {
             this.tagName = tagName;
             this.cleanVersion = cleanVersion;
             this.releaseNotes = releaseNotes;
             this.downloadUrl = downloadUrl;
             this.sizeBytes = sizeBytes;
+            this.assetUpdatedAt = assetUpdatedAt;
         }
     }
 
@@ -132,6 +138,7 @@ public final class AppUpdater {
 
                 String downloadUrl = null;
                 long assetSize = 0;
+                String assetUpdatedAt = "";
                 JSONArray assets = root.optJSONArray("assets");
                 if (assets != null) {
                     for (int i = 0; i < assets.length(); i++) {
@@ -140,6 +147,7 @@ public final class AppUpdater {
                         if (name.endsWith(".apk")) {
                             downloadUrl = a.optString("browser_download_url", "");
                             assetSize = a.optLong("size", 0);
+                            assetUpdatedAt = a.optString("updated_at", "");
                             if (name.contains("CineTV-") || name.equalsIgnoreCase("CineTV.apk")) {
                                 break;
                             }
@@ -147,9 +155,21 @@ public final class AppUpdater {
                     }
                 }
 
+                android.content.SharedPreferences prefs = Prefs.get(ctx);
+                String lastInstalledAssetAt = prefs.getString("last_installed_asset_at", "");
+                long lastInstalledAssetSize = prefs.getLong("last_installed_asset_size", 0L);
+
+                boolean versionNewer = isNewer(cleanRemote, current);
+                // Force update even if version is identical if release asset was re-published / size changed!
+                boolean assetFresh = !assetUpdatedAt.isEmpty() && !assetUpdatedAt.equals(lastInstalledAssetAt);
+                if (assetSize > 0 && lastInstalledAssetSize > 0 && assetSize != lastInstalledAssetSize) {
+                    assetFresh = true;
+                }
+                boolean updateAvailable = (versionNewer || assetFresh) && downloadUrl != null;
+
                 isChecking = false;
-                if (isNewer(cleanRemote, current) && downloadUrl != null) {
-                    final ReleaseInfo info = new ReleaseInfo(tag, cleanRemote, body, downloadUrl, assetSize);
+                if (updateAvailable) {
+                    final ReleaseInfo info = new ReleaseInfo(tag, cleanRemote, body, downloadUrl, assetSize, assetUpdatedAt);
                     MAIN_HANDLER.post(() -> {
                         if (callback != null) callback.onUpdateAvailable(info);
                     });
@@ -315,7 +335,11 @@ public final class AppUpdater {
                 }
                 if (installed) {
                     Log.i(TAG, "Silent install successful via LocalAdb!");
-                    Prefs.get(ctx).edit().putString("just_updated_version", info.tagName).apply();
+                    Prefs.get(ctx).edit()
+                            .putString("just_updated_version", info.tagName)
+                            .putString("last_installed_asset_at", info.assetUpdatedAt != null ? info.assetUpdatedAt : "")
+                            .putLong("last_installed_asset_size", info.sizeBytes)
+                            .apply();
                     MAIN_HANDLER.post(() -> {
                         com.cinetv.launcher.MainActivity a = com.cinetv.launcher.MainActivity.instance;
                         if (a != null && !a.isFinishing()) {

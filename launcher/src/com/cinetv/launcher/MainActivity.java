@@ -117,6 +117,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         @Override
         public void run() {
             updateClock();
+            checkNightViewingPrompt();
             handler.postDelayed(this, 30_000L);
         }
     };
@@ -350,6 +351,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }, 300);
         checkNuvioUpdatePrompt();
         checkPendingUpdateBanner();
+        checkNightViewingPrompt();
         maybeSpeakStartupGreeting();
     }
 
@@ -423,27 +425,94 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
     }
 
+    private boolean wokenForBanner = false;
+    private boolean userInteractedDuringBanner = false;
+
+    public void presentUpdateBannerGuaranteed(final String title, final String message, final boolean isError) {
+        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+        final boolean screenWasOn = pm != null && pm.isInteractive();
+
+        if (!screenWasOn) {
+            wokenForBanner = true;
+            userInteractedDuringBanner = false;
+            try {
+                if (pm != null) {
+                    android.os.PowerManager.WakeLock wl = pm.newWakeLock(
+                            android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK | android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP | android.os.PowerManager.ON_AFTER_RELEASE,
+                            "cinetv:banner_wakeup");
+                    wl.acquire(25_000L);
+                }
+            } catch (Throwable ignored) {}
+            com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent KEYCODE_WAKEUP", 1000);
+        } else {
+            wokenForBanner = false;
+            userInteractedDuringBanner = false;
+        }
+
+        handler.postDelayed(new Runnable() {
+            int attempts = 0;
+            @Override
+            public void run() {
+                android.os.PowerManager p = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+                boolean interactive = p != null && p.isInteractive();
+                if (!interactive && attempts < 4) {
+                    attempts++;
+                    com.cinetv.launcher.remote.LocalAdb.shell(MainActivity.this, "input keyevent KEYCODE_WAKEUP", 800);
+                    handler.postDelayed(this, 350);
+                    return;
+                }
+
+                if (home != null) {
+                    home.showUpdateBanner(title, message, isError, () -> {
+                        if (wokenForBanner && !userInteractedDuringBanner) {
+                            wokenForBanner = false;
+                            com.cinetv.launcher.device.DeviceTweaks.sleepPanel(MainActivity.this);
+                        }
+                    });
+                }
+            }
+        }, screenWasOn ? 100 : 900);
+    }
+
     private void checkPendingUpdateBanner() {
         android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(this);
         String updatedVer = p.getString("just_updated_version", null);
         if (updatedVer != null) {
             p.edit().remove("just_updated_version").apply();
-            if (home != null) {
-                home.showUpdateBanner("CineTV " + updatedVer + " Sürümüne Güncellendi!", "Yeniliklerin keyfini çıkarın.", false);
-            }
+            presentUpdateBannerGuaranteed("CineTV " + updatedVer + " Sürümüne Güncellendi!", "Yeniliklerin keyfini çıkarın.", false);
         }
         String updateErr = p.getString("update_error_message", null);
         if (updateErr != null) {
             p.edit().remove("update_error_message").apply();
-            if (home != null) {
-                home.showUpdateBanner(updateErr, "Lütfen Ayarlar › Sistem › Sürüm menüsünden manuel güncellemeyi deneyin.", true);
-            }
+            presentUpdateBannerGuaranteed(updateErr, "Lütfen Ayarlar › Sistem › Sürüm menüsünden manuel güncellemeyi deneyin.", true);
         }
     }
 
     public void showUpdateBanner(String title, String message, boolean isError) {
-        if (home != null) {
-            home.showUpdateBanner(title, message, isError);
+        presentUpdateBannerGuaranteed(title, message, isError);
+    }
+
+    private void checkNightViewingPrompt() {
+        if (com.cinetv.launcher.device.NightCare.shouldPromptNightViewingMode(this)) {
+            com.cinetv.launcher.device.NightCare.markNightPromptDismissed(this);
+            if (home != null) {
+                home.showNightModePrompt(
+                        () -> {
+                            com.cinetv.launcher.device.NightCare.setNightViewingMode(MainActivity.this, true);
+                            if (home != null) home.applyNightViewingMode(true);
+                            Toast.makeText(MainActivity.this, "🌙 Gece İzleme Modu Aktif Edildi", Toast.LENGTH_SHORT).show();
+                        },
+                        () -> {
+                            com.cinetv.launcher.device.NightCare.setNightViewingMode(MainActivity.this, false);
+                        }
+                );
+            }
+        } else {
+            // Auto de-activate when daytime arrives (05:00 - 22:00)
+            boolean active = com.cinetv.launcher.device.NightCare.isNightViewingModeActive(this);
+            if (!active && home != null) {
+                home.applyNightViewingMode(false);
+            }
         }
     }
 
@@ -512,11 +581,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (bannerTitle != null && !bannerTitle.isEmpty()) {
             String bannerMsg = intent.getStringExtra("banner_msg");
             if (bannerMsg == null) bannerMsg = intent.getStringExtra("message");
-            final String finalMsg = bannerMsg;
-            final String finalTitle = bannerTitle;
-            handler.postDelayed(() -> {
-                if (home != null) home.showUpdateBanner(finalTitle, finalMsg, false);
-            }, 300);
+            presentUpdateBannerGuaranteed(bannerTitle, bannerMsg, false);
         }
         String theme = intent.getStringExtra("theme");
         if (theme != null && !theme.isEmpty()) applyTheme(theme);
@@ -556,10 +621,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     // ---- keys -------------------------------------------------------------------------------------
 
     @Override
+    public void onUserInteraction() {
+        super.onUserInteraction();
+        userInteractedDuringBanner = true;
+    }
+
+    @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         if (home == null) return super.dispatchKeyEvent(e);
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         if (down) {
+            userInteractedDuringBanner = true;
             resetIdle();
         }
         // Throttle vertical D-pad key repeats between rows to prevent focus skipping multiple rows on laggy frames
