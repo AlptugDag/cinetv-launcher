@@ -209,27 +209,6 @@ public final class Prefs {
         return trailerAudio(ctx) ? (tr ? "Açık (Crossfade)" : "On (Crossfade)") : (tr ? "Sessiz" : "Muted");
     }
 
-    public static final String STREAM_APP_NAME_MODE = "pref_stream_app_name_mode";
-
-    public static int streamAppNameMode(Context ctx) {
-        return get(ctx).getInt(STREAM_APP_NAME_MODE, 0); // 0: Alptugflix, 1: Nuvio, 2: Orijinal, 3: Sinema
-    }
-
-    public static void setStreamAppNameMode(Context ctx, int mode) {
-        get(ctx).edit().putInt(STREAM_APP_NAME_MODE, Math.abs(mode) % 4).apply();
-    }
-
-    public static String streamAppNameLabel(Context ctx) {
-        boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
-        switch (streamAppNameMode(ctx)) {
-            case 1: return "Nuvio";
-            case 2: return tr ? "Orijinal İsimler (RS / Legacy)" : "Original Names (RS / Legacy)";
-            case 3: return tr ? "Sinema Salonu" : "Cinema";
-            case 0:
-            default: return "Alptuğflix";
-        }
-    }
-
     public static final String PREFERRED_NUVIO_PKG = "pref_preferred_nuvio_pkg";
 
     public static String preferredNuvioPackage(Context ctx) {

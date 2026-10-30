@@ -27,6 +27,8 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.util.LruCache;
 
+import java.util.Locale;
+
 /**
  * Apple tvOS / visionOS Liquid Glass & Chromatic Diversity Engine:
  * - Neutral smoked optical crystal card body (zero artificial blue cast).
@@ -78,26 +80,41 @@ public final class AppArtwork {
                 || lower.contains("chrome") || lower.contains("cromite");
     }
 
+    /** Distinguishes the official Alptuğflix streaming experience from third-party/generic Nuvio installations. */
+    public static boolean isAlptugflixPackage(String pkg, String rawLabel) {
+        if (pkg == null) return false;
+        String lower = pkg.toLowerCase(Locale.ROOT);
+        String rawLow = (rawLabel != null ? rawLabel : "").toLowerCase(Locale.ROOT);
+        if (lower.contains("rs") || rawLow.contains("rs")) return false;
+        if (lower.contains("legacy") || rawLow.contains("legacy") || rawLow.contains("legach")) return false;
+        if (lower.contains("stremio") || rawLow.contains("stremio")) return false;
+        if (lower.contains("beta") || rawLow.contains("beta")) return false;
+
+        if (lower.contains("alptugflix") || rawLow.contains("alptugflix") || rawLow.contains("alptuğflix")) return true;
+        return AppLauncher.NUVIO.equalsIgnoreCase(pkg);
+    }
+
     public static String getCleanLabel(String pkg, String originalLabel) {
         if (pkg == null) return "";
-        String lower = pkg.toLowerCase();
+        String lower = pkg.toLowerCase(Locale.ROOT);
         if (AppLauncher.LIVE_TV.equals(pkg)) return originalLabel;
         if (AppCatalog.isTizenTube(pkg)) return "YouTube";
         if (lower.contains("turkcell.ott") || lower.contains("tvplus")) return "TV+";
         if (lower.contains("instantbits.cast")) return "Web Video Caster";
         if (lower.contains("nuvio") || lower.contains("alptugflix")) {
-            Context app = com.cinetv.launcher.CineTvApp.get();
-            int mode = app != null ? com.cinetv.launcher.service.Prefs.streamAppNameMode(app) : 0;
-            String suffix = "";
-            String rawLow = (originalLabel != null ? originalLabel : "").toLowerCase();
-            if (rawLow.contains("rs") || lower.contains("rs")) suffix = " RS";
-            else if (rawLow.contains("legacy") || lower.contains("legacy") || rawLow.contains("legach")) suffix = " Legacy";
-            else if (rawLow.contains("beta") || lower.contains("beta")) suffix = " Beta";
+            String rawLow = (originalLabel != null ? originalLabel : "").toLowerCase(Locale.ROOT);
+            if (rawLow.contains("rs") || lower.contains("rs")) return "Nuvio RS";
+            if (rawLow.contains("legacy") || lower.contains("legacy") || rawLow.contains("legach")) return "Nuvio Legacy";
+            if (rawLow.contains("beta") || lower.contains("beta")) return "Nuvio Beta";
+            if (lower.contains("stremio") || rawLow.contains("stremio")) return "Stremio";
 
-            if (mode == 1) return "Nuvio" + suffix;
-            if (mode == 2 && originalLabel != null && !originalLabel.trim().isEmpty()) return originalLabel;
-            if (mode == 3) return "Sinema" + suffix;
-            return "Alptuğflix" + suffix;
+            if (isAlptugflixPackage(pkg, originalLabel)) {
+                return "Alptuğflix";
+            }
+            if (originalLabel != null && !originalLabel.trim().isEmpty() && !originalLabel.contains(".")) {
+                return originalLabel;
+            }
+            return "Nuvio";
         }
         if (lower.contains("stremio")) return "Stremio";
         if (lower.contains("dizipal") || lower.contains("lipter")) return "DİZİPAL";
@@ -116,7 +133,7 @@ public final class AppArtwork {
      */
     public static int getAppNeonColor(String pkg) {
         if (pkg == null) return Color.parseColor("#E0AAFF");
-        String lower = pkg.toLowerCase();
+        String lower = pkg.toLowerCase(Locale.ROOT);
         if (AppLauncher.LIVE_TV.equals(pkg)) {
             return Color.parseColor("#38BDF8"); // Broadcast Sky (Hue 199°)
         }
@@ -126,8 +143,13 @@ public final class AppArtwork {
         if (lower.contains("instantbits.cast")) {
             return Color.parseColor("#FF6B00"); // Vibrant Tangerine Amber (Hue 25°)
         }
-        if (lower.contains("nuvio") || lower.contains("alptugflix")) {
+        if (isAlptugflixPackage(pkg, null)) {
             return Color.parseColor("#E50914"); // Alptugflix Netflix Signature Red (Hue 356°)
+        }
+        if (lower.contains("nuvio")) {
+            if (lower.contains("rs")) return Color.parseColor("#00E5FF"); // Vibrant Electric Cyan
+            if (lower.contains("legacy") || lower.contains("legach")) return Color.parseColor("#F59E0B"); // Warm Nuvio Legacy Gold
+            return Color.parseColor("#06B6D4"); // Classic Nuvio Cyan
         }
         if (AppCatalog.isTizenTube(pkg)) {
             return Color.parseColor("#FF0033"); // Official YouTube Ruby Crimson (Hue 348°)
@@ -419,8 +441,10 @@ public final class AppArtwork {
             rawCard = createTvPlusCard(ctx);
         } else if (lower.contains("instantbits.cast")) {
             rawCard = createWebVideoCasterCard(ctx);
-        } else if (lower.contains("nuvio") || lower.contains("alptugflix")) {
-            rawCard = createNuvioCard(ctx, focused, cleanLabel);
+        } else if (isAlptugflixPackage(pkg, rawLabel)) {
+            rawCard = createNuvioCard(ctx, focused, "Alptuğflix");
+        } else if (lower.contains("nuvio")) {
+            rawCard = createGenericNuvioCard(ctx, focused, cleanLabel);
         } else if (lower.contains("stremio")) {
             rawCard = createStremioCard(ctx);
         } else if (lower.contains("dizipal") || lower.contains("lipter")) {
@@ -858,15 +882,10 @@ public final class AppArtwork {
         int neon = Color.parseColor("#E50914"); // Authentic Netflix / Cinema Ruby
         drawLiquidGlassCardBase(canvas, neon, CARD_W * 0.64f, CARD_H / 2f);
 
-        int mode = com.cinetv.launcher.service.Prefs.streamAppNameMode(ctx);
-        boolean useWordmark = (mode == 0 || cleanLabel == null || cleanLabel.contains("Alptuğflix"));
-
         Drawable wordmark = null;
-        if (useWordmark) {
-            try {
-                wordmark = ctx.getResources().getDrawable(R.drawable.ic_nuvio_wordmark, ctx.getTheme());
-            } catch (Throwable ignored) {
-            }
+        try {
+            wordmark = ctx.getResources().getDrawable(R.drawable.ic_nuvio_wordmark, ctx.getTheme());
+        } catch (Throwable ignored) {
         }
 
         if (wordmark != null) {
@@ -912,8 +931,8 @@ public final class AppArtwork {
             canvas.drawBitmap(wmBmp, left, top, p);
             wmBmp.recycle();
         } else {
-            String title = (cleanLabel != null && !cleanLabel.trim().isEmpty()) ? cleanLabel.toUpperCase() : "NUVIO";
-            Paint text = createCrispTextPaint(ctx, 60f, neon);
+            String title = "ALPTUĞFLIX";
+            Paint text = createCrispTextPaint(ctx, 56f, neon);
             text.setLetterSpacing(0.06f);
             float tw = text.measureText(title);
             Paint.FontMetrics fm = text.getFontMetrics();
@@ -921,38 +940,80 @@ public final class AppArtwork {
             canvas.drawText(title, (CARD_W - tw) / 2f, ty, text);
         }
 
-        // Distinctive badge for variant (RS, Legacy, Beta) so dual installs are instantly distinguishable
-        if (cleanLabel != null) {
-            String labelUpper = cleanLabel.toUpperCase();
-            String badgeText = null;
-            if (labelUpper.contains("RS")) badgeText = "RS";
-            else if (labelUpper.contains("LEGACY") || labelUpper.contains("LEGACH")) badgeText = "LEGACY";
-            else if (labelUpper.contains("BETA")) badgeText = "BETA";
+        return bmp;
+    }
 
-            if (badgeText != null) {
-                Paint bp = createCrispTextPaint(ctx, 22f, Color.WHITE);
-                bp.setTypeface(android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.BOLD));
-                float bw = bp.measureText(badgeText) + 26f;
-                float bh = 34f;
-                float bx = CARD_W - bw - 22f;
-                float by = 22f;
-                RectF br = new RectF(bx, by, bx + bw, by + bh);
+    /**
+     * Dedicated Liquid Glass Card for third-party / generic Nuvio installations (Nuvio RS, Nuvio Legacy, generic Nuvio).
+     * Prevents Alptuğflix branding/logo from ever being stamped onto the user's independent Nuvio apps.
+     */
+    public static Bitmap createGenericNuvioCard(Context ctx, boolean focused, String cleanLabel) {
+        Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
 
-                Paint badgeBg = new Paint(Paint.ANTI_ALIAS_FLAG);
-                badgeBg.setColor(Color.argb(230, 229, 9, 20));
-                badgeBg.setStyle(Paint.Style.FILL);
-                canvas.drawRoundRect(br, 8f, 8f, badgeBg);
+        String upperLabel = cleanLabel != null ? cleanLabel.toUpperCase(Locale.ROOT) : "NUVIO";
+        int neon;
+        if (upperLabel.contains("RS")) {
+            neon = Color.parseColor("#00E5FF"); // Vibrant Electric Cyan
+        } else if (upperLabel.contains("LEGACY") || upperLabel.contains("LEGACH")) {
+            neon = Color.parseColor("#F59E0B"); // Warm Vintage Amber Gold
+        } else {
+            neon = Color.parseColor("#06B6D4"); // Pure Nuvio Cyan
+        }
 
-                Paint badgeBorder = new Paint(Paint.ANTI_ALIAS_FLAG);
-                badgeBorder.setColor(Color.argb(200, 255, 255, 255));
-                badgeBorder.setStyle(Paint.Style.STROKE);
-                badgeBorder.setStrokeWidth(2f);
-                canvas.drawRoundRect(br, 8f, 8f, badgeBorder);
+        drawLiquidGlassCardBase(canvas, neon, CARD_W * 0.5f, CARD_H * 0.45f);
 
-                Paint.FontMetrics bfm = bp.getFontMetrics();
-                float bty = by + (bh / 2f) - ((bfm.ascent + bfm.descent) / 2f);
-                canvas.drawText(badgeText, bx + 13f, bty, bp);
-            }
+        // Render clean, modern typographic "NUVIO" brand title
+        Paint textPaint = createCrispTextPaint(ctx, 58f, Color.WHITE);
+        textPaint.setTypeface(android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.BOLD));
+        textPaint.setLetterSpacing(0.08f);
+        if (focused) {
+            textPaint.setShadowLayer(16f, 0, 0, neon);
+        } else {
+            textPaint.setShadowLayer(8f, 0, 4f, Color.argb(160, 0, 0, 0));
+        }
+        float tw = textPaint.measureText("NUVIO");
+        Paint.FontMetrics fm = textPaint.getFontMetrics();
+        float ty = (CARD_H / 2f) - ((fm.ascent + fm.descent) / 2f);
+        canvas.drawText("NUVIO", (CARD_W - tw) / 2f, ty, textPaint);
+
+        // Distinctive upper-right badge for variant (RS, Legacy, Beta)
+        String badgeText = null;
+        int badgeColor = neon;
+        if (upperLabel.contains("RS")) {
+            badgeText = "RS";
+            badgeColor = Color.parseColor("#00E5FF");
+        } else if (upperLabel.contains("LEGACY") || upperLabel.contains("LEGACH")) {
+            badgeText = "LEGACY";
+            badgeColor = Color.parseColor("#F59E0B");
+        } else if (upperLabel.contains("BETA")) {
+            badgeText = "BETA";
+            badgeColor = Color.parseColor("#8B5CF6");
+        }
+
+        if (badgeText != null) {
+            Paint bp = createCrispTextPaint(ctx, 22f, Color.WHITE);
+            bp.setTypeface(android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.BOLD));
+            float bw = bp.measureText(badgeText) + 26f;
+            float bh = 34f;
+            float bx = CARD_W - bw - 22f;
+            float by = 22f;
+            RectF br = new RectF(bx, by, bx + bw, by + bh);
+
+            Paint badgeBg = new Paint(Paint.ANTI_ALIAS_FLAG);
+            badgeBg.setColor(Color.argb(220, Color.red(badgeColor), Color.green(badgeColor), Color.blue(badgeColor)));
+            badgeBg.setStyle(Paint.Style.FILL);
+            canvas.drawRoundRect(br, 8f, 8f, badgeBg);
+
+            Paint badgeBorder = new Paint(Paint.ANTI_ALIAS_FLAG);
+            badgeBorder.setColor(Color.argb(220, 255, 255, 255));
+            badgeBorder.setStyle(Paint.Style.STROKE);
+            badgeBorder.setStrokeWidth(2f);
+            canvas.drawRoundRect(br, 8f, 8f, badgeBorder);
+
+            Paint.FontMetrics bfm = bp.getFontMetrics();
+            float bty = by + (bh / 2f) - ((bfm.ascent + bfm.descent) / 2f);
+            canvas.drawText(badgeText, bx + 13f, bty, bp);
         }
 
         return bmp;

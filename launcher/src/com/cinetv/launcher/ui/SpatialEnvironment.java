@@ -4,6 +4,7 @@ import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
@@ -98,7 +99,17 @@ public class SpatialEnvironment extends View {
         composited = PerformanceProfile.compositedBackdrop(getContext());
         focusLight = PerformanceProfile.focusLight(getContext()) && theme.wash && !theme.pureBlack;
         if (ThemeManager.usesCustomWallpaper(getContext())) {
-            wallpaper = PosterCache.decodeFile(ThemeManager.customWallpaper(getContext()), wallW(), wallH());
+            java.io.File wpFile = ThemeManager.customWallpaper(getContext());
+            try {
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inJustDecodeBounds = false;
+                opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
+                opts.inDither = true;
+                opts.inScaled = false;
+                wallpaper = BitmapFactory.decodeFile(wpFile.getAbsolutePath(), opts);
+            } catch (Throwable t) {
+                wallpaper = PosterCache.decodeFile(wpFile, wallW(), wallH());
+            }
         } else if (theme.scene != null) {
             wallpaper = ThemeArt.render(getContext(), theme.scene);
         } else {
@@ -200,12 +211,15 @@ public class SpatialEnvironment extends View {
     protected void onDraw(Canvas canvas) {
         if (theme == null) return;
         int w = getWidth(), h = getHeight();
-        if (composited && baseCache != null) {
+        boolean customWp = ThemeManager.usesCustomWallpaper(getContext());
+        if (composited && baseCache != null && !customWp) {
             float px = (glowX - w / 2f) * -0.035f, py = (glowY - h / 2f) * -0.025f;
             float ow = w * OVERSIZE, oh = h * OVERSIZE;
             dst.set((w - ow) / 2f + px, (h - oh) / 2f + py, (w + ow) / 2f + px, (h + oh) / 2f + py);
             paint.setShader(null);
             paint.setAlpha(255);
+            paint.setFilterBitmap(true);
+            paint.setDither(true);
             canvas.drawBitmap(baseCache, null, dst, paint);
             if (pattern != null) {
                 patternPaint.setAlpha(light ? 18 : 28);
@@ -252,6 +266,8 @@ public class SpatialEnvironment extends View {
             dst.set((w - dw) / 2f + px * 0.6f, (h - dh) / 2f + py * 0.6f, (w + dw) / 2f + px * 0.6f, (h + dh) / 2f + py * 0.6f);
             paint.setShader(null);
             paint.setAlpha(255);
+            paint.setFilterBitmap(true);
+            paint.setDither(true);
             canvas.drawBitmap(wallpaper, src, dst, paint);
             if (toneVeil == null || toneVeilHeight != h || toneVeilLight != light) {
                 toneVeilLight = light;

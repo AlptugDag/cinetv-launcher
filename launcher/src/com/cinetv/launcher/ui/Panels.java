@@ -370,15 +370,6 @@ public final class Panels {
                         host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_font_scale"));
                     }));
 
-            c2.addView(Controls.tile(ctx,
-                    "tr".equals(Locale.getDefault().getLanguage()) ? "Sinema Uygulaması İsmi" : "Cinema App Label",
-                    Prefs.streamAppNameLabel(ctx), false, v -> {
-                        Prefs.setStreamAppNameMode(ctx, Prefs.streamAppNameMode(ctx) + 1);
-                        AppArtwork.clearCache();
-                        a.onAppsChanged();
-                        host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_stream_name"));
-                    }));
-
             java.util.List<String> nuvioPkgs = AppLauncher.installedNuvioPackages(ctx);
             if (nuvioPkgs.size() > 1) {
                 String currentSelected = AppLauncher.resolveNuvioPackage(ctx);
