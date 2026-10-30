@@ -533,12 +533,34 @@ public class HomeScreen {
                     .translationY(0f)
                     .setDuration(350)
                     .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .withEndAction(this::startBannerPulse)
                     .start();
             root.postDelayed(dismissUpdateBannerRunnable, 15_000L); // 15 seconds popup
         });
     }
 
+    private android.animation.ObjectAnimator bannerPulseAnim;
+
+    private void startBannerPulse() {
+        stopBannerPulse();
+        if (updateBanner == null) return;
+        bannerPulseAnim = android.animation.ObjectAnimator.ofFloat(updateBanner, "alpha", 1f, 0.65f, 1f);
+        bannerPulseAnim.setDuration(1200);
+        bannerPulseAnim.setRepeatMode(android.animation.ValueAnimator.REVERSE);
+        bannerPulseAnim.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+        bannerPulseAnim.start();
+    }
+
+    private void stopBannerPulse() {
+        if (bannerPulseAnim != null) {
+            bannerPulseAnim.cancel();
+            bannerPulseAnim = null;
+        }
+        if (updateBanner != null) updateBanner.setAlpha(1f);
+    }
+
     public void hideUpdateBanner() {
+        stopBannerPulse();
         if (updateBanner == null || updateBanner.getVisibility() != View.VISIBLE) return;
         final Runnable cb = updateBannerOnDismiss;
         updateBannerOnDismiss = null;
@@ -687,14 +709,25 @@ public class HomeScreen {
         updateBanner = new LinearLayout(ctx);
         updateBanner.setOrientation(LinearLayout.HORIZONTAL);
         updateBanner.setGravity(Gravity.CENTER_VERTICAL);
-        int padH = UiKit.px(22);
-        int padV = UiKit.px(14);
+        int padH = UiKit.px(24);
+        int padV = UiKit.px(16);
         updateBanner.setPadding(padH, padV, padH, padV);
-        updateBanner.setBackground(new Glass(updateBanner, UiKit.pxf(20), Glass.Style.PANEL));
+        updateBanner.setBackground(new Glass(updateBanner, UiKit.pxf(22), Glass.Style.PANEL));
         updateBanner.setTranslationZ(800f);
-        updateBanner.setElevation(UiKit.pxf(24));
+        updateBanner.setElevation(UiKit.pxf(28));
+        updateBanner.setFocusable(true);
         updateBanner.setClickable(true);
-        updateBanner.setOnClickListener(v -> hideUpdateBanner());
+        updateBanner.setOnFocusChangeListener((v, has) -> {
+            if (has) stopBannerPulse();
+            UiKit.lift(v, has, 1.08f, 140);
+        });
+        updateBanner.setOnClickListener(v -> {
+            stopBannerPulse();
+            hideUpdateBanner();
+            if (modal != null) {
+                Panels.changelog(ctx, modal);
+            }
+        });
 
         updateBannerIcon = new ImageView(ctx);
         int iconSize = UiKit.px(26);

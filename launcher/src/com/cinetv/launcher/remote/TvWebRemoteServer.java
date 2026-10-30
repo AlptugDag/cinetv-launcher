@@ -65,6 +65,8 @@ public final class TvWebRemoteServer {
         /** A new backdrop arrived from the phone. */
         void onWallpaperChanged();
         void resetBackground();
+        /** Someone suggested a movie for the household watch party. */
+        void onWatchlistSuggested(String movieTitle, String userLabel);
         /** Someone is using the phone page: the TV is not idle. */
         void onPhoneActivity();
     }
@@ -485,6 +487,27 @@ public final class TvWebRemoteServer {
     }
 
     private static volatile String lastTyped = "";
+    private static final List<JSONObject> sharedWatchlist = new ArrayList<>();
+
+    private static synchronized void loadWatchlist() {
+        if (!sharedWatchlist.isEmpty() || app == null) return;
+        try {
+            String raw = app.getSharedPreferences("cinetv_watchlist", Context.MODE_PRIVATE).getString("list", "[]");
+            JSONArray arr = new JSONArray(raw);
+            for (int i = 0; i < arr.length(); i++) {
+                sharedWatchlist.add(arr.getJSONObject(i));
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private static synchronized void saveWatchlist() {
+        if (app == null) return;
+        try {
+            JSONArray arr = new JSONArray();
+            for (JSONObject o : sharedWatchlist) arr.put(o);
+            app.getSharedPreferences("cinetv_watchlist", Context.MODE_PRIVATE).edit().putString("list", arr.toString()).apply();
+        } catch (Throwable ignored) {}
+    }
 
     private static JSONObject api(String path, Map<String, String> q) throws Exception {
         JSONObject ok = new JSONObject().put("ok", true);
@@ -524,6 +547,49 @@ public final class TvWebRemoteServer {
                 String title = clip(q.get("title"), 200);
                 List<MovieCatalog.Movie> sim = MovieCatalog.similar(app, tmdb, type, title, 30);
                 return ok.put("results", toJson(sim)).put("title", title);
+            }
+            case "/api/watchlist": {
+                loadWatchlist();
+                JSONArray arr = new JSONArray();
+                for (JSONObject o : sharedWatchlist) arr.put(o);
+                return ok.put("items", arr);
+            }
+            case "/api/watchlist/add": {
+                loadWatchlist();
+                final String title = clip(q.get("title"), 200);
+                final String by = clip(q.get("by"), 100);
+                final String poster = safeUrl(q.get("poster"));
+                final int tmdb = parseInt(q.get("tmdb"), 0);
+                final String type = clip(q.get("type"), 16);
+                if (!title.isEmpty()) {
+                    JSONObject item = new JSONObject()
+                            .put("title", title)
+                            .put("by", by.isEmpty() ? "Ev Halkı" : by)
+                            .put("poster", poster)
+                            .put("tmdb", tmdb)
+                            .put("type", type)
+                            .put("time", System.currentTimeMillis());
+                    sharedWatchlist.add(0, item);
+                    if (sharedWatchlist.size() > 50) sharedWatchlist.remove(sharedWatchlist.size() - 1);
+                    saveWatchlist();
+                    post(() -> {
+                        Controller c = controller;
+                        if (c != null) c.onWatchlistSuggested(title, by);
+                    });
+                }
+                return ok;
+            }
+            case "/api/watchlist/remove": {
+                loadWatchlist();
+                final String title = clip(q.get("title"), 200);
+                for (int i = 0; i < sharedWatchlist.size(); i++) {
+                    if (title.equalsIgnoreCase(sharedWatchlist.get(i).optString("title"))) {
+                        sharedWatchlist.remove(i);
+                        break;
+                    }
+                }
+                saveWatchlist();
+                return ok;
             }
             case "/api/tv/similar": {
                 final int tmdb = parseInt(q.get("tmdb"), 0);

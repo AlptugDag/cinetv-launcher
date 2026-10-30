@@ -245,6 +245,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <main>
   <section id="tab-search" class="on">
     <div class="wait glass" id="waitBox" hidden><i></i><span id="waitText"></span></div>
+    <div class="vibe-chips" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
+      <button type="button" class="glass chip" data-vibe="Gamze ailece izleyeceğimiz sürükleyici bir film bul" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">👨‍👩‍👧‍👦 Ailece</button>
+      <button type="button" class="glass chip" data-vibe="Arkadaş ortamı için eğlenceli ve gerilimli bir şey aç" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">🍿 Arkadaşlar</button>
+      <button type="button" class="glass chip" data-vibe="Sevgilimle baş başa izleyeceğimiz büyüleyici bir film" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">🍷 Sevgiliyle</button>
+      <button type="button" class="glass chip" data-vibe="Bana Interstellar'daki o derin uzay yalnızlığını hissettiren filmleri getir" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">🌌 Uzay Yalnızlığı</button>
+      <button type="button" class="glass chip" data-vibe="Blade Runner'daki gibi yağmurlu neon hüznü filmleri" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">🌧️ Neon Hüznü</button>
+      <button type="button" class="glass chip" id="watchlistChip" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:#f59e0b;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.15)">🍿 Ortak Liste</button>
+    </div>
     <h2 id="listTitle" data-i="trending"></h2>
     <div class="grid" id="results"></div>
   </section>
@@ -256,7 +264,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       <button class="glass ic pwr" id="pwr" aria-label="Power"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg></button>
     </div>
     <div class="deck" id="deck">
-      <div class="page"><div class="touch glass" id="touch"><button class="mchip glass" id="mouseBtn" data-i="airMouse"></button><div class="arrow" id="arrow"></div><div class="tip" id="padTip" data-i="touchTip"></div></div></div>
+      <div class="page"><div class="touch glass" id="touch">
+        <button class="mchip glass" id="mouseBtn" data-i="airMouse"></button>
+        <button class="mchip glass" id="gyroBtn" style="right:auto;left:12px;display:none">🎮 3D Gyro</button>
+        <button class="mchip glass" id="calBtn" style="right:auto;left:108px;display:none">🎯 Sıfırla</button>
+        <div class="arrow" id="arrow"></div>
+        <div class="tip" id="padTip" data-i="touchTip"></div>
+        <button type="button" id="gyroTrigger" style="display:none;position:absolute;bottom:14px;left:18px;right:18px;height:54px;border-radius:18px;border:0;background:linear-gradient(135deg,#34c759,#28a745);color:#fff;font-size:16px;font-weight:700;letter-spacing:0.04em;box-shadow:0 8px 24px rgba(52,199,89,.45);z-index:10">🎯 TETİK / TIKLA</button>
+      </div></div>
       <div class="page"><div class="more">
         <button class="glass" data-key="178" data-i="input"></button><button class="glass" data-key="172" data-i="guide"></button>
         <button class="glass" data-key="82" data-i="menu"></button><button class="glass" data-key="165" data-i="info"></button>
@@ -363,6 +378,27 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   <button id="typerGo" type="button">↵</button>
 </form>
 <div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet-bg" id="cropBg"></div>
+<div class="sheet glass" id="cropSheet" style="max-height:92vh;text-align:center">
+  <h3 style="margin-top:0">📐 16:9 TV Çerçevesi Odaklama</h3>
+  <p style="color:var(--dim);font-size:12px;margin:2px 0 12px">TV ekranına tam oturması için fotoğrafı çerçeve içinde kaydırarak odaklayın</p>
+  <div id="cropFrame" style="width:100%;aspect-ratio:16/9;position:relative;overflow:hidden;border-radius:12px;background:#000;border:2px solid var(--accent);touch-action:none">
+    <img id="cropImg" style="position:absolute;transform-origin:top left;user-select:none;pointer-events:none" alt="">
+    <div style="position:absolute;inset:0;border:1px dashed rgba(255,255,255,.3);pointer-events:none;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr">
+      <div style="border-right:1px dashed rgba(255,255,255,.2);border-bottom:1px dashed rgba(255,255,255,.2)"></div>
+      <div style="border-right:1px dashed rgba(255,255,255,.2);border-bottom:1px dashed rgba(255,255,255,.2)"></div>
+      <div style="border-bottom:1px dashed rgba(255,255,255,.2)"></div>
+      <div style="border-right:1px dashed rgba(255,255,255,.2);border-bottom:1px dashed rgba(255,255,255,.2)"></div>
+      <div style="border-right:1px dashed rgba(255,255,255,.2);border-bottom:1px dashed rgba(255,255,255,.2)"></div>
+      <div style="border-bottom:1px dashed rgba(255,255,255,.2)"></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:12px;margin-top:16px">
+    <button class="btn ghost" id="cropCancel" style="flex:1">Vazgeç</button>
+    <button class="btn" id="cropConfirm" style="flex:2;background:linear-gradient(135deg,#34c759,#28a745);border:0">TV'ye Odakla ve Gönder (16:9)</button>
+  </div>
+</div>
+
 <div class="sheet glass" id="sheet"></div>
 <div class="toast glass" id="toast"></div>
 
@@ -662,6 +698,30 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const cleanSearchQuery = text => (text || "").replace(/\b(filmleri|filmler|filmi|dizileri|dizisi|dizi|movies|movie|films|film|tavsiyesi|önerisi|seçkisi)\b/gi, "").replace(/\s+/g, " ").trim();
 
   // Typing shows in the TV's search bar; Enter (or the keyboard's Search) fills the TV's shelf.
+  document.querySelectorAll(".vibe-chips button[data-vibe]").forEach(btn => {
+    btn.onclick = () => {
+      const q = btn.dataset.vibe;
+      $("q").value = q;
+      $("q").dispatchEvent(new Event("input"));
+      api("tv/voice", {q}).catch(() => {});
+      toast("Gamze AI: " + q);
+    };
+  });
+  if ($("watchlistChip")) {
+    $("watchlistChip").onclick = async () => {
+      skeleton();
+      try {
+        const r = await api("watchlist");
+        const items = r.items || [];
+        if (!items.length) {
+          $("results").innerHTML = '<div class="empty" style="grid-column:1/-1">🍿 Henüz ortak listeye film önerilmedi.<br><span style="font-size:12px;color:var(--dim)">Filmlerin detayından "Bunu İzleyelim!" diyerek ekleyebilirsiniz.</span></div>';
+          $("listTitle").textContent = "🍿 ORTAK İZLEME LİSTESİ";
+        } else {
+          render(items, "🍿 EV İÇİ ORTAK İZLEME LİSTESİ (" + items.length + ")");
+        }
+      } catch (e) { toast(t("offline")); }
+    };
+  }
   $("q").addEventListener("input", e => {
     clearTimeout(mirrorTimer);
     const q = e.target.value.trim();
@@ -752,6 +812,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       <p class="ov" style="text-align:center;line-height:1.5">${esc(m.overview || "")}</p>
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
         <button class="btn" id="go">▶︎ ${t("openTv")}</button>
+        <button class="btn ghost" id="suggestBtn" style="background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4)">🍿 Bunu İzleyelim! (TV'ye Öner)</button>
         <button class="btn ghost" id="similarBtn">✦ ${t("similarMovies") || "Benzer Filmler"}</button>
       </div>`;
     sheet.classList.add("on"); bg.classList.add("on");
@@ -760,6 +821,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       try {
         const r = await api("open", {imdb: m.imdb || "", tmdb: m.tmdb || 0, type: m.type, title: m.title, poster: m.poster});
         toast(r.ok ? t("opening") : t("noResults"));
+      } catch (e) { toast(t("offline")); }
+      closeSheet();
+    };
+    $("suggestBtn").onclick = async () => {
+      $("suggestBtn").disabled = true;
+      try {
+        const by = localStorage.getItem("cinetv.nickname") || navigator.platform || "Ev Halkı";
+        const r = await api("watchlist/add", {title: m.title, poster: m.poster, tmdb: m.tmdb || 0, type: m.type, by});
+        toast(r.ok ? "🍿 TV ve Ortak Listeye Önerildi!" : t("offline"));
       } catch (e) { toast(t("offline")); }
       closeSheet();
     };
@@ -912,10 +982,78 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     scheduleFlush();
   };
   $("mouseBtn").addEventListener("pointerdown", e => e.stopPropagation());
+  let gyroMode = false;
+  let calBeta = 0, calGamma = 0, lastBeta = 0, lastGamma = 0;
+  let smoothDx = 0, smoothDy = 0;
+
+  const onOrientation = ev => {
+    if (!mouse || !gyroMode) return;
+    if (ev.beta === null || ev.gamma === null) return;
+    if (!calBeta && !calGamma) {
+      calBeta = ev.beta; calGamma = ev.gamma;
+      lastBeta = ev.beta; lastGamma = ev.gamma;
+      return;
+    }
+    const dG = (ev.gamma - lastGamma);
+    const dB = (ev.beta - lastBeta);
+    lastGamma = ev.gamma; lastBeta = ev.beta;
+    if (Math.abs(dG) < 0.08 && Math.abs(dB) < 0.08) return;
+    const sens = 32.0;
+    smoothDx = smoothDx * 0.35 + (dG * sens) * 0.65;
+    smoothDy = smoothDy * 0.35 + (dB * sens) * 0.65;
+    mx += smoothDx;
+    my += smoothDy;
+    scheduleFlush();
+  };
+
+  const gyroBtn = $("gyroBtn"), calBtn = $("calBtn"), gyroTrigger = $("gyroTrigger");
+  if (gyroBtn) {
+    gyroBtn.onclick = async e => {
+      e.stopPropagation();
+      gyroMode = !gyroMode;
+      gyroBtn.classList.toggle("on", gyroMode);
+      gyroBtn.textContent = gyroMode ? "🎮 3D Aktif" : "🎮 3D Gyro";
+      calBtn.style.display = gyroMode ? "block" : "none";
+      gyroTrigger.style.display = gyroMode ? "block" : "none";
+      if (gyroMode) {
+        calBeta = 0; calGamma = 0;
+        try { if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); } catch (err) {}
+        window.addEventListener("deviceorientation", onOrientation);
+        toast("3D Lazer Modu Açıldı. TV'ye doğrultup hareket ettirin.");
+      } else {
+        window.removeEventListener("deviceorientation", onOrientation);
+        smoothDx = 0; smoothDy = 0;
+      }
+    };
+  }
+  if (calBtn) {
+    calBtn.onclick = e => {
+      e.stopPropagation();
+      calBeta = lastBeta; calGamma = lastGamma;
+      smoothDx = 0; smoothDy = 0;
+      toast("Merkez Sıfırlandı 🎯");
+    };
+  }
+  if (gyroTrigger) {
+    gyroTrigger.onpointerdown = e => {
+      e.stopPropagation(); e.preventDefault();
+      flush();
+      api("mouse/click").catch(() => {});
+      navigator.vibrate && navigator.vibrate(15);
+      gyroTrigger.style.transform = "scale(0.96)";
+    };
+    gyroTrigger.onpointerup = e => {
+      e.stopPropagation();
+      gyroTrigger.style.transform = "none";
+    };
+  }
+
   $("mouseBtn").onclick = async e => {
     e.stopPropagation();
     mouse = !mouse;
     $("mouseBtn").classList.toggle("on", mouse); pad.classList.toggle("mouse", mouse);
+    if (gyroBtn) gyroBtn.style.display = mouse ? "block" : "none";
+    if (!mouse && gyroMode && gyroBtn) gyroBtn.click();
     $("padTip").textContent = t(mouse ? "mouseTip" : "touchTip");
     if (mouse) {
       try { if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) await DeviceMotionEvent.requestPermission(); } catch (err) {}
@@ -1127,6 +1265,85 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       } else {
         s = Math.min(1, Math.max(1920 / w, 2560 / Math.max(w, h)));
       }
+      // 16:9 Smart Focus Cropper
+      const cropSheet = $("cropSheet"), cropBg = $("cropBg"), cropImg = $("cropImg"), cropFrame = $("cropFrame");
+      const isPortraitOrNon169 = Math.abs((w / h) - (16 / 9)) > 0.08;
+      if (isPortraitOrNon169 && cropSheet && cropFrame) {
+        let frameW = cropFrame.clientWidth || 320;
+        let frameH = Math.round(frameW * 9 / 16);
+        let scale = Math.max(frameW / w, frameH / h);
+        let dispW = Math.round(w * scale);
+        let dispH = Math.round(h * scale);
+        let panX = Math.round((frameW - dispW) / 2);
+        let panY = Math.round((frameH - dispH) / 2);
+
+        cropImg.src = img.src || URL.createObjectURL(file);
+        cropImg.style.width = dispW + "px";
+        cropImg.style.height = dispH + "px";
+        cropImg.style.left = panX + "px";
+        cropImg.style.top = panY + "px";
+
+        cropSheet.classList.add("on"); cropBg.classList.add("on");
+
+        let startPointerX = 0, startPointerY = 0, startPanX = panX, startPanY = panY, dragging = false;
+        cropFrame.onpointerdown = pe => {
+          dragging = true;
+          startPointerX = pe.clientX; startPointerY = pe.clientY;
+          startPanX = panX; startPanY = panY;
+          cropFrame.setPointerCapture(pe.pointerId);
+        };
+        cropFrame.onpointermove = pe => {
+          if (!dragging) return;
+          let nx = startPanX + (pe.clientX - startPointerX);
+          let ny = startPanY + (pe.clientY - startPointerY);
+          panX = Math.min(0, Math.max(frameW - dispW, nx));
+          panY = Math.min(0, Math.max(frameH - dispH, ny));
+          cropImg.style.left = panX + "px";
+          cropImg.style.top = panY + "px";
+        };
+        const stopDrag = () => { dragging = false; };
+        cropFrame.onpointerup = stopDrag;
+        cropFrame.onpointercancel = stopDrag;
+
+        const closeCrop = () => {
+          cropSheet.classList.remove("on"); cropBg.classList.remove("on");
+          cropFrame.onpointerdown = null; cropFrame.onpointermove = null;
+        };
+        $("cropCancel").onclick = closeCrop;
+
+        await new Promise((resolve) => {
+          $("cropConfirm").onclick = async () => {
+            closeCrop();
+            // Map panX, panY to image source coordinates
+            let ratio = w / dispW;
+            let sx = Math.max(0, Math.round(-panX * ratio));
+            let sy = Math.max(0, Math.round(-panY * ratio));
+            let sw = Math.min(w - sx, Math.round(frameW * ratio));
+            let sh = Math.min(h - sy, Math.round(frameH * ratio));
+
+            const cv = document.createElement("canvas");
+            cv.width = 1920; cv.height = 1080;
+            const ctx = cv.getContext("2d");
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 1920, 1080);
+            const quality = 0.94;
+            const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", quality));
+            $("bgPreview").src = URL.createObjectURL(blob);
+            $("bgPreview").hidden = false;
+            if (RELAY) {
+              const data = cv.toDataURL("image/jpeg", quality).split(",")[1];
+              toast((await api("wallpaper64", {data})).ok ? "📐 16:9 TV Arka Planı Gönderildi" : t("bgFail"));
+            } else {
+              const r = await fetch("/api/wallpaper?k=" + encodeURIComponent(token), {method: "POST", body: blob, headers: {"Content-Type": "image/jpeg"}});
+              toast((await r.json()).ok ? "📐 16:9 TV Arka Planı Odaklandı" : t("bgFail"));
+            }
+            resolve();
+          };
+        });
+        return;
+      }
+
       const cv = document.createElement("canvas");
       cv.width = Math.round(w * s);
       cv.height = Math.round(h * s);

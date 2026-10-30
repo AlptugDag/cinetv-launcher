@@ -38,7 +38,7 @@ public class LogicTest {
     public void remoteButtonsMapToApps() {
         assertEquals(HardwareKeys.NUVIO, HardwareKeys.builtIn(207, 0));          // KEYCODE_NETFLIX
         assertEquals(HardwareKeys.YOUTUBE, HardwareKeys.builtIn(0, 218));        // YouTube scan code
-        assertEquals(HardwareKeys.WEB_VIDEO, HardwareKeys.builtIn(KeyEvent.KEYCODE_PROG_YELLOW, 0));
+        assertEquals(HardwareKeys.SIMILAR_MOVIES, HardwareKeys.builtIn(KeyEvent.KEYCODE_PROG_YELLOW, 0));
         assertEquals(HardwareKeys.TV_PLUS, HardwareKeys.builtIn(KeyEvent.KEYCODE_TV, 0));
         assertNull(HardwareKeys.builtIn(KeyEvent.KEYCODE_DPAD_LEFT, 105));
         assertTrue(HardwareKeys.isNavigation(KeyEvent.KEYCODE_BACK));

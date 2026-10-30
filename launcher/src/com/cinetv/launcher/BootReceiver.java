@@ -42,6 +42,7 @@ public class BootReceiver extends BroadcastReceiver {
                 }, delay);
             }
             new Thread(() -> HomeGuard.ensureDefault(context), "cinetv-boot-guard").start();
+            com.cinetv.launcher.device.MemoryOptimizer.ensureAirPlayReceiver(context);
             com.cinetv.launcher.service.AppUpdater.checkAndAutoUpdateOnBoot(context);
         }
     }

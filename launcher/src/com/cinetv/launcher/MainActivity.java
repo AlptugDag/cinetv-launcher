@@ -118,6 +118,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         public void run() {
             updateClock();
             checkNightViewingPrompt();
+            MemoryOptimizer.ensureAirPlayReceiver(MainActivity.this);
             handler.postDelayed(this, 30_000L);
         }
     };
@@ -599,6 +600,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         else if ("setup".equals(action)) handler.postDelayed(() -> Panels.setup(this, home.modal, true), 1500);
         else if ("settings".equals(action)) handler.postDelayed(this::onSettings, 300);
+        else if ("similar".equals(action)) handler.postDelayed(this::openSimilarForFocused, 300);
         else if ("voice".equals(action)) {
             wasLaunchedForVoice = true;
             handler.postDelayed(this::onVoice, 250);
@@ -690,6 +692,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
             String action = HardwareKeys.actionFor(this, e.getKeyCode(), e.getScanCode());
             if (action != null) {
+                if (HardwareKeys.SIMILAR_MOVIES.equals(action)) {
+                    openSimilarForFocused();
+                    return true;
+                }
                 if (!HardwareKeys.perform(this, action)) onAllApps();
                 return true;
             }
@@ -1745,12 +1751,41 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         onSearch(query);
     }
 
+    public void openSimilarForFocused() {
+        if (home == null || home.shelf == null) return;
+        final MovieCatalog.Movie m = home.shelf.focusedMovie();
+        if (m == null) {
+            Toast.makeText(this, "Önce bir film seçin", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        home.showBubble(m.title + " benzeri filmler aranıyor...", false, 3000);
+        new Thread(() -> {
+            List<MovieCatalog.Movie> sim = MovieCatalog.similar(MainActivity.this, m.tmdbId, m.type, m.title, 24);
+            runOnUiThread(() -> {
+                if (sim != null && !sim.isEmpty()) {
+                    showSimilarOnTv((m.title + " BENZERİ FİLMLER").toUpperCase(Locale.getDefault()), sim);
+                } else {
+                    home.showBubble("Benzer film bulunamadı", false, 3000);
+                }
+            });
+        }, "cinetv-similar-btn").start();
+    }
+
     @Override
     public void showSimilarOnTv(String title, List<MovieCatalog.Movie> movies) {
         if (movies != null && !movies.isEmpty()) {
             setShelf(title == null || title.isEmpty() ? "BENZER FİLMLER" : title, movies, true);
             home.shelf.requestFocus();
         }
+    }
+
+    @Override
+    public void onWatchlistSuggested(String movieTitle, String userLabel) {
+        String msg = (userLabel != null && !userLabel.isEmpty())
+                ? "🍿 " + userLabel + ", '" + movieTitle + "' filmini ortak listeye önerdi!"
+                : "🍿 Ortak listeye yeni film önerildi: " + movieTitle;
+        if (home != null) home.showBubble(msg, false, 5000);
+        com.cinetv.launcher.ai.EmaLightningTts.speak(this, msg);
     }
 
     @Override

@@ -192,10 +192,10 @@ public final class Panels {
         LinearLayout c2 = column(ctx, cols, "tr".equals(Locale.getDefault().getLanguage()) ? "Atmosfer & Dinlenme" : "Atmosphere & Rest", colWidth);
         boolean nightViewActive = com.cinetv.launcher.device.NightCare.isNightViewingModeActive(ctx);
         LinearLayout nightTile = Controls.toggleTile(ctx,
-                tr ? "Gece İzleme Modu (22:00 - 05:00)" : "Night Viewing Mode (22:00 - 05:00)",
+                tr ? "Gece İzleme Modu (23:00 - 05:00)" : "Night Viewing Mode (23:00 - 05:00)",
                 nightViewActive
-                        ? (tr ? "Açık · Göz yormayan sıcak ton ve dengeli ses" : "On · Warm tone & balanced audio")
-                        : (tr ? "Kapalı · 22:00-05:00 arası ekran açılınca sorulur" : "Off · Prompted between 22:00 and 05:00"),
+                        ? (tr ? "Açık · 23:00-05:00 saatleri aktif" : "On · Active 23:00-05:00")
+                        : (tr ? "Kapalı · 23:00-05:00 arası ekran açılınca sorulur" : "Off · Prompted between 23:00 and 05:00"),
                 nightViewActive, v -> {
                     boolean next = !com.cinetv.launcher.device.NightCare.isNightViewingModeActive(ctx);
                     com.cinetv.launcher.device.NightCare.setNightViewingMode(ctx, next);
@@ -204,6 +204,31 @@ public final class Panels {
                 });
         nightTile.setTag("opt_night_view_mode");
         c2.addView(nightTile);
+
+        boolean nightVisual = com.cinetv.launcher.device.NightCare.isVisualActive(ctx);
+        LinearLayout nightVisualTile = Controls.toggleTile(ctx,
+                tr ? "Gece Göz Koruma Filtresi" : "Night Eye-Care Warm Tone",
+                nightVisual ? (tr ? "Açık · Sıcak amber ton" : "On · Warm amber tone") : (tr ? "Kapalı" : "Off"),
+                nightVisual, v -> {
+                    boolean next = !com.cinetv.launcher.device.NightCare.isVisualActive(ctx);
+                    com.cinetv.launcher.device.NightCare.setVisualActive(ctx, next);
+                    a.applyAppearance();
+                    host.replace(() -> buildSettings(ctx, host, a, "opt_night_visual"));
+                });
+        nightVisualTile.setTag("opt_night_visual");
+        c2.addView(nightVisualTile);
+
+        boolean nightAudio = com.cinetv.launcher.device.NightCare.isAudioActive(ctx);
+        LinearLayout nightAudioTile = Controls.toggleTile(ctx,
+                tr ? "Gece Dinamik Ses Dengeleme" : "Night Dynamic Audio Leveling",
+                nightAudio ? (tr ? "Açık · Fısıltı & ses sınırı aktif" : "On · Volume capped & leveled") : (tr ? "Kapalı" : "Off"),
+                nightAudio, v -> {
+                    boolean next = !com.cinetv.launcher.device.NightCare.isAudioActive(ctx);
+                    com.cinetv.launcher.device.NightCare.setAudioActive(ctx, next);
+                    host.replace(() -> buildSettings(ctx, host, a, "opt_night_audio"));
+                });
+        nightAudioTile.setTag("opt_night_audio");
+        c2.addView(nightAudioTile);
 
         c2.addView(Controls.tile(ctx, ctx.getString(R.string.night_title), nightState(ctx), com.cinetv.launcher.device.NightCare.sleepMinutesLeft(ctx) > 0,
                 v -> host.push(() -> buildNight(ctx, host, a))));
@@ -1159,6 +1184,77 @@ public final class Panels {
 
     public static void pairing(Context ctx, ModalHost host, String section) {
         host.push(() -> buildPairing(ctx, host, section));
+    }
+
+    public static void changelog(Context ctx, ModalHost host) {
+        host.push(() -> buildChangelog(ctx, host));
+    }
+
+    private static View buildChangelog(Context ctx, ModalHost host) {
+        LinearLayout outer = new LinearLayout(ctx);
+        outer.setOrientation(LinearLayout.VERTICAL);
+        outer.setPadding(UiKit.px(36), UiKit.px(28), UiKit.px(36), UiKit.px(28));
+        outer.setBackground(new Glass(outer, UiKit.pxf(24), Glass.Style.PANEL));
+
+        TextView title = UiKit.bold(ctx, 22, UiKit.INK);
+        title.setText("✨ CineTV v1.0.0.17 — Yenilikler ve Değişiklikler");
+        outer.addView(title);
+
+        TextView sub = UiKit.label(ctx, 13, UiKit.INK_DIM);
+        sub.setText("Alptuğ Dağ İmzasıyla En Son CineTV Sürümündeki Geliştirmeler");
+        sub.setPadding(0, UiKit.px(4), 0, UiKit.px(16));
+        outer.addView(sub);
+
+        ScrollView sv = new ScrollView(ctx);
+        sv.setVerticalScrollBarEnabled(false);
+        LinearLayout list = new LinearLayout(ctx);
+        list.setOrientation(LinearLayout.VERTICAL);
+
+        String[][] items = {
+            {"🟢 Tek Sayfa Ayarlar & iOS Switchler", "Tüm ayarlar bölümlere ayrılmadan tek sayfada toplandı. iOS stili yeşil/kırmızı switchler ve dairesel wrap-around gezinme eklendi."},
+            {"🌙 Akıllı Gece İzleme Modu (23:00 - 05:00)", "Gece saatlerinde kenarda beliren onay sorgusu ile sıcak amber göz koruma tonu ve fısıltı ses dengelemesi ayrı ayrı kontrol edilebilir."},
+            {"👥 'Kiminle İzliyorsun?' Modu", "Gamze AI; ailece, arkadaşlarla, sevgiliyle veya tek başına izleme durumuna göre anlık sosyal bağlama duyarlı vitrin kürasyonu yapar."},
+            {"🌌 'Vibe Seeker' (Duygu Eşleştirici)", "Interstellar uzay yalnızlığı veya Blade Runner yağmurlu neon hüznü gibi derin atmosferik duyguları analiz edip vitrine eşleştirir."},
+            {"📱 16:9 Akıllı Odak Kırpma Aracı", "Telefondan fotoğraf yüklerken dikey resimleri 16:9 TV çerçevesinde kaydırıp odaklayarak sıfır bulanıklıkla arka plan yapar."},
+            {"🍿 Ev İçi Ortak İzleme Listesi (Watch Party)", "Evdekiler kumandaya bağlanıp 'Bunu İzleyelim!' tuşu ile televizyon vitrinine ve ortak listeye anında öneri gönderebilir."},
+            {"🎮 3D Gyro Lazer Hava Kumandası", "Telefonun gyro sensörleri ile televizyonda profesyonel bir lazer işaretçi gibi 3D kontrol ve DVD kutusu odaklama."},
+            {"🔴 HDMI-CEC Renkli Tuş Kısayolları", "Kumandanın kırmızı tuşuna Alptuğflix, yeşil tuşuna YouTube, sarı tuşuna Benzer Filmler doğrudan atandı."},
+            {"🔔 Sıvı Cam Uyanma Garantili Güncelleme Bildirimi", "TV kapalıyken bile ekranı açıp güncellemeyi bildirir, etkileşim olmazsa TV'yi standby uykusuna geri döndürür."},
+            {"🪟 Windows PC Sürümü Entegrasyonu", "Tüm 3D DVD rafları, Gamze AI ve Nuvio motoru masaüstü Windows uygulaması ile senkronize edildi."}
+        };
+
+        for (String[] it : items) {
+            LinearLayout card = new LinearLayout(ctx);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(UiKit.px(18), UiKit.px(12), UiKit.px(18), UiKit.px(12));
+            card.setBackground(new Glass(card, UiKit.pxf(14), Glass.Style.CONTROL));
+            LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            clp.bottomMargin = UiKit.px(10);
+            card.setLayoutParams(clp);
+
+            TextView h = UiKit.bold(ctx, 15, Color.parseColor("#F59E0B"));
+            h.setText(it[0]);
+            card.addView(h);
+
+            TextView d = UiKit.label(ctx, 13, UiKit.INK);
+            d.setText(it[1]);
+            d.setPadding(0, UiKit.px(3), 0, 0);
+            card.addView(d);
+
+            list.addView(card);
+        }
+
+        sv.addView(list);
+        LinearLayout.LayoutParams svLp = new LinearLayout.LayoutParams(UiKit.px(740), UiKit.px(380));
+        svLp.bottomMargin = UiKit.px(16);
+        outer.addView(sv, svLp);
+
+        View btnClose = Controls.button(ctx, "Tamam, Sinemaya Dön", v -> host.back());
+        btnClose.setFocusable(true);
+        outer.addView(btnClose);
+        btnClose.requestFocus();
+
+        return outer;
     }
 
     // ---- Inputs -----------------------------------------------------------------------------------

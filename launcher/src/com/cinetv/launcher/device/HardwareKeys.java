@@ -20,6 +20,7 @@ public final class HardwareKeys {
 
     public static final String NUVIO = "nuvio";
     public static final String YOUTUBE = "youtube";
+    public static final String SIMILAR_MOVIES = "similar_movies";
     public static final String WEB_VIDEO = "webvideo";
     public static final String TV_PLUS = "tvplus";
     public static final String CLEAN_RAM = "clean_ram";
@@ -48,7 +49,7 @@ public final class HardwareKeys {
     public static String builtIn(int keyCode, int scanCode) {
         if (matches(keyCode, scanCode, NETFLIX_KEYS, NETFLIX_SCANS)) return NUVIO;
         if (matches(keyCode, scanCode, YOUTUBE_KEYS, YOUTUBE_SCANS)) return YOUTUBE;
-        if (matches(keyCode, scanCode, PRIME_KEYS, PRIME_SCANS)) return WEB_VIDEO;
+        if (matches(keyCode, scanCode, PRIME_KEYS, PRIME_SCANS)) return SIMILAR_MOVIES;
         if (matches(keyCode, scanCode, TV_PLUS_KEYS, TV_PLUS_SCANS)) return TV_PLUS;
         return null;
     }
@@ -90,6 +91,9 @@ public final class HardwareKeys {
         switch (action) {
             case NUVIO: ok = AppLauncher.launchFirst(ctx, AppLauncher.NUVIO_PACKAGES); break;
             case YOUTUBE: ok = AppLauncher.launchFirst(ctx, AppLauncher.YOUTUBE_PACKAGES); break;
+            case SIMILAR_MOVIES:
+                // Handled in MainActivity when CineTV is in front
+                return false;
             case WEB_VIDEO: AppLauncher.openPhoneCast(ctx); ok = true; break;
             case TV_PLUS: ok = AppLauncher.launchFirst(ctx, AppLauncher.TV_PLUS_PACKAGES); break;
             case CLEAN_RAM:

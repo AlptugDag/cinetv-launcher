@@ -447,6 +447,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
         String action = HardwareKeys.actionFor(this, event.getKeyCode(), event.getScanCode());
         if (action == null) return false;
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+            if (HardwareKeys.SIMILAR_MOVIES.equals(action)) {
+                startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                        .putExtra("action", "similar"));
+                return true;
+            }
             if (!HardwareKeys.perform(this, action)) {
                 startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         .putExtra("action", "show_all_apps"));

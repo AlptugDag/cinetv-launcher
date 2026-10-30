@@ -1017,11 +1017,31 @@ header.hud {
           </div>
           <div class="settings-tile">
             <div class="tile-info">
-              <span class="tile-title">Gece İzleme Modu (22:00 - 05:00)</span>
+              <span class="tile-title">Gece İzleme Modu (23:00 - 05:00)</span>
               <span class="tile-sub">Sıcak amber tonu ve göz yormayan seviye</span>
             </div>
             <label class="ios-switch">
               <input type="checkbox" id="swNightMode" onchange="toggleNightViewingMode(this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="settings-tile">
+            <div class="tile-info">
+              <span class="tile-title">Gece Göz Koruma Filtresi</span>
+              <span class="tile-sub">Sıcak amber tonu mavi ışığı filtreler</span>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="swNightVisual" checked onchange="saveSetting('night_visual', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="settings-tile">
+            <div class="tile-info">
+              <span class="tile-title">Gece Dinamik Ses Dengeleme</span>
+              <span class="tile-sub">Fısıltı ses seviyesi ve ani patlama koruması</span>
+            </div>
+            <label class="ios-switch">
+              <input type="checkbox" id="swNightAudio" checked onchange="saveSetting('night_audio', this.checked)">
               <span class="slider"></span>
             </label>
           </div>
@@ -1543,10 +1563,10 @@ function toggleNightViewingMode(on) {
 
 function checkNightViewingAuto() {
   const h = new Date().getHours();
-  const isNight = h >= 22 || h < 5;
+  const isNight = h >= 23 || h < 5;
   const stored = localStorage.getItem('cinetv_night_view_mode') === '1';
   if (!isNight && stored) {
-    // Auto disable during daytime (05:00 - 22:00)
+    // Auto disable during daytime (05:00 - 23:00)
     toggleNightViewingMode(false);
     const sw = document.getElementById('swNightMode');
     if (sw) sw.checked = false;

@@ -53,7 +53,7 @@ android {
         def part = { i -> parts.size() > i ? parts[i] : 0 }
         def suffixBoost = ver.endsWith('b') ? 1 : (ver.endsWith('c') ? 2 : (ver.endsWith('d') ? 3 : 0))
         def p3 = parts.size() >= 5 ? (part(3) * 10 + part(4)) : part(3)
-        def revBoost = (project.findProperty('cineTvRev') ?: '5') as int
+        def revBoost = (project.findProperty('cineTvRev') ?: '6') as int
         versionCode 1000000 + part(0) * 100000 + part(1) * 1000 + part(2) * 10 + p3 + suffixBoost + revBoost
     }
 
