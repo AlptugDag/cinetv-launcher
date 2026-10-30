@@ -105,9 +105,8 @@ public final class EmaLightningTts {
             case SEARCH:
                 return level >= Prefs.TTS_LEVEL_SEARCH_ONLY;
             case SYSTEM:
-                return level >= Prefs.TTS_LEVEL_BALANCED;
             case GREETING:
-                return level >= Prefs.TTS_LEVEL_PROACTIVE;
+                return level >= Prefs.TTS_LEVEL_BALANCED;
             default:
                 return false;
         }
@@ -405,6 +404,28 @@ public final class EmaLightningTts {
                 Log.w(TAG, "MediaPlayer failed for EMA WAV: " + t.getMessage());
             }
         }
+    }
+
+    public static void prewarmNativeFallback(final Context ctx) {
+        if (ctx == null) return;
+        WORKER.execute(() -> {
+            synchronized (PLAYER_LOCK) {
+                if (fallbackTts == null) {
+                    try {
+                        fallbackTts = new TextToSpeech(ctx.getApplicationContext(), status -> {
+                            if (status == TextToSpeech.SUCCESS && fallbackTts != null) {
+                                try {
+                                    fallbackTts.setLanguage(new Locale("tr", "TR"));
+                                    fallbackTts.setPitch(0.98f);
+                                    fallbackTts.setSpeechRate(1.02f);
+                                    fallbackReady = true;
+                                } catch (Throwable ignored) {}
+                            }
+                        });
+                    } catch (Throwable ignored) {}
+                }
+            }
+        });
     }
 
     private static void speakWithNativeFallback(final Context ctx, final String text, final int gen) {

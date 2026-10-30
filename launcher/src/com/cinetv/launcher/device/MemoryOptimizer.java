@@ -145,6 +145,7 @@ public final class MemoryOptimizer {
     public static void applyTvOptimizations(Context ctx) {
         final Context app = ctx.getApplicationContext();
         Prefs.get(app).edit().putBoolean("tv_opt_applied", true).apply();
+        DeviceTweaks.applyFastBootTweaks(app);
         try {
             android.content.ContentResolver cr = app.getContentResolver();
             Settings.Secure.putString(cr, "assistant", "");

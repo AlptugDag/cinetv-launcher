@@ -26,6 +26,8 @@ import com.cinetv.launcher.service.PosterCache;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -78,6 +80,8 @@ public class CinemaScreensaverView extends View {
 
     private final float[] sx = new float[STARS], sy = new float[STARS], sv = new float[STARS], sr = new float[STARS], sa = new float[STARS];
     private final List<CinemaMoments.Moment> moments;
+    private final List<CinemaMoments.Moment> unplayedQueue = new ArrayList<>();
+    private final java.util.Set<String> seenFilmKeys = new java.util.HashSet<>();
     private int momentIndex;
     private Frame current, previous;
     private volatile Frame incoming;
@@ -92,6 +96,8 @@ public class CinemaScreensaverView extends View {
         super(ctx);
         low = PerformanceProfile.tier(ctx) == PerformanceProfile.Tier.LOW;
         moments = CinemaMoments.load(ctx);
+        unplayedQueue.addAll(moments);
+        Collections.shuffle(unplayedQueue);
         signature = Brand.mark(ctx);
         timeFmt = android.text.format.DateFormat.getTimeFormat(ctx);
         dateFmt = new SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEEdMMMM"), Locale.getDefault());
@@ -164,27 +170,65 @@ public class CinemaScreensaverView extends View {
         return f;
     }
 
+    private synchronized CinemaMoments.Moment nextMoment() {
+        if (moments.isEmpty()) return null;
+        if (unplayedQueue.isEmpty()) {
+            List<CinemaMoments.Moment> pool = new ArrayList<>(moments);
+            Collections.shuffle(pool);
+            for (CinemaMoments.Moment m : pool) {
+                if (!seenFilmKeys.contains(m.imdbId)) {
+                    unplayedQueue.add(m);
+                }
+            }
+            if (unplayedQueue.isEmpty()) {
+                seenFilmKeys.clear();
+                unplayedQueue.addAll(pool);
+            }
+        }
+        CinemaMoments.Moment chosen = unplayedQueue.remove(0);
+        seenFilmKeys.add(chosen.imdbId);
+        if (unplayedQueue.size() < 6) {
+            CinemaMoments.fetchDynamicMoments(getContext(), dyn -> {
+                if (dyn != null && !dyn.isEmpty()) {
+                    post(() -> {
+                        for (CinemaMoments.Moment m : dyn) {
+                            if (!seenFilmKeys.contains(m.imdbId) && !moments.contains(m)) {
+                                moments.add(m);
+                                unplayedQueue.add(m);
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        return chosen;
+    }
+
     public void start() {
         running = true;
-        momentIndex = random.nextInt(Math.max(1, moments.size()));
         current = previous = null;
         incoming = null;
         rollStart = -1;
         Frame w = warm;
         if (w != null && w.still != null) {
-            // Pre-loaded: the picture is on screen at once; the next one is warmed for the next idle.
             warm = null;
             incoming = w;
-            for (int i = 0; i < moments.size(); i++) {
-                if (moments.get(i) == w.moment) {
-                    momentIndex = i;
-                    break;
-                }
-            }
         } else {
             warm = null;
-            prepare(momentIndex);
+            prepare(nextMoment());
         }
+        CinemaMoments.fetchDynamicMoments(getContext(), dyn -> {
+            if (dyn != null && !dyn.isEmpty()) {
+                post(() -> {
+                    for (CinemaMoments.Moment m : dyn) {
+                        if (!moments.contains(m)) {
+                            moments.add(m);
+                            unplayedQueue.add(m);
+                        }
+                    }
+                });
+            }
+        });
         warmUp(getContext());
         invalidate();
     }
@@ -194,10 +238,9 @@ public class CinemaScreensaverView extends View {
     }
 
     /** Loads still, logo and tagline for a moment in the background; it rolls in once all are ready. */
-    private void prepare(final int index) {
-        if (moments.isEmpty() || loading) return;
+    private void prepare(final CinemaMoments.Moment m) {
+        if (m == null || loading) return;
         loading = true;
-        final CinemaMoments.Moment m = moments.get(index);
         final Context ctx = getContext();
         new Thread(() -> {
             Frame f = new Frame();
@@ -218,6 +261,11 @@ public class CinemaScreensaverView extends View {
         }, "cinetv-saver").start();
     }
 
+    private void prepare(final int index) {
+        if (moments.isEmpty() || index < 0 || index >= moments.size()) return;
+        prepare(moments.get(index));
+    }
+
     @Override
     protected void onDraw(Canvas c) {
         int w = getWidth(), h = getHeight();
@@ -236,10 +284,11 @@ public class CinemaScreensaverView extends View {
             rollStart = previous == null ? -1 : now;
         }
         if (current != null && incoming == null && !loading && now - shownAt >= MOMENT_MS - 5_000L) {
-            momentIndex = (momentIndex + 1 + random.nextInt(Math.max(1, moments.size() - 1))) % moments.size();
-            prepare(momentIndex);
+            prepare(nextMoment());
         }
-        if (current == null && !loading && incoming == null) prepare(momentIndex);
+        if (current == null && !loading && incoming == null) {
+            prepare(nextMoment());
+        }
 
         float roll = rollStart < 0 ? 1f : Math.min(1f, (now - rollStart) / (float) ROLL_MS);
         if (roll >= 1f) {
@@ -310,7 +359,10 @@ public class CinemaScreensaverView extends View {
         if (f.quote == null || f.quoteWidth != qw) {
             quote.setTextSize(h * 0.040f);
             quote.setShadowLayer(22f, 0, 4f, Color.argb(240, 0, 0, 0));
-            String q = "“" + f.moment.quote + "”";
+            String rawQ = (f.moment != null && f.moment.quote != null) ? f.moment.quote.trim() : "";
+            if (rawQ.isEmpty() && f.tagline != null) rawQ = f.tagline.trim();
+            if (rawQ.isEmpty() && f.moment != null) rawQ = f.moment.film;
+            String q = rawQ.isEmpty() ? "" : (rawQ.startsWith("“") ? rawQ : "“" + rawQ + "”");
             f.quote = StaticLayout.Builder.obtain(q, 0, q.length(), quote, qw)
                     .setAlignment(Layout.Alignment.ALIGN_CENTER).setLineSpacing(h * 0.006f, 1f).setMaxLines(3).build();
             f.quoteWidth = qw;

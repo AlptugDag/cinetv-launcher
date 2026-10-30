@@ -228,6 +228,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         AppUpdater.checkAndAutoUpdateOnBoot(this);
         MemoryOptimizer.ensureAirPlayReceiver(this);
         com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
+        com.cinetv.launcher.ai.EmaLightningTts.prewarmNativeFallback(this);
 
         if (!Prefs.get(this).getBoolean("tv_opt_auto_applied", false)) {
             Prefs.get(this).edit().putBoolean("tv_opt_auto_applied", true).apply();
@@ -350,35 +351,73 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     private static long lastGreetingMs = 0L;
-    private static final long GREETING_INTERVAL_MS = 3 * 3600 * 1000L;
+    private static final long GREETING_INTERVAL_MS = 2 * 3600 * 1000L;
+    private int greetingAttempts = 0;
+
+    private boolean isNetworkAvailable() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return false;
+            android.net.NetworkInfo ni = cm.getActiveNetworkInfo();
+            return ni != null && ni.isConnected();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
 
     private void maybeSpeakStartupGreeting() {
         long now = System.currentTimeMillis();
         if (now - lastGreetingMs < GREETING_INTERVAL_MS) return;
-        lastGreetingMs = now;
+        greetingAttempts = 0;
+        handler.removeCallbacks(greetingRetryRunnable);
+        handler.postDelayed(greetingRetryRunnable, 2500L);
+    }
 
+    private final Runnable greetingRetryRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing() || !inFront) return;
+            greetingAttempts++;
+            if (!isNetworkAvailable() && greetingAttempts < 6) {
+                handler.postDelayed(this, 3000L);
+                return;
+            }
+            performStartupGreeting();
+        }
+    };
+
+    private void performStartupGreeting() {
+        if (!inFront || isFinishing()) return;
+        lastGreetingMs = System.currentTimeMillis();
         int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        String city = Prefs.city(this);
+        if (city == null || city.trim().isEmpty()) city = "İstanbul";
+        String weather = com.cinetv.launcher.service.WeatherService.getLastFull();
+
         String greeting;
         if (tr) {
-            if (hour >= 5 && hour < 12) {
-                greeting = "Günaydın. CineTV'ye hoş geldiniz.";
-            } else if (hour >= 12 && hour < 18) {
-                greeting = "İyi günler. Bugün sizin için harika filmler seçtik.";
-            } else if (hour >= 18 && hour < 23) {
-                greeting = "İyi akşamlar. Keyifli bir sinema akşamı dileriz.";
-            } else {
-                greeting = "İyi geceler. Gece kuşağı seçkisi vitrinde hazır.";
+            String timeSalute;
+            if (hour >= 5 && hour < 12) timeSalute = "Günaydın.";
+            else if (hour >= 12 && hour < 18) timeSalute = "İyi günler.";
+            else if (hour >= 18 && hour < 23) timeSalute = "İyi akşamlar.";
+            else timeSalute = "İyi geceler.";
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(timeSalute).append(" CineTV'ye hoş geldiniz.");
+            if (!weather.isEmpty()) {
+                sb.append(" ").append(city).append("'da hava ").append(weather).append(".");
             }
+            sb.append(" Günün seçkisi vitrinde hazır.");
+            greeting = sb.toString();
         } else {
-            greeting = "Welcome to CineTV.";
+            greeting = "Welcome to CineTV. Today's curation is ready on the shelf.";
         }
 
-        handler.postDelayed(() -> {
-            if (!isFinishing() && inFront) {
-                com.cinetv.launcher.ai.EmaLightningTts.speakMoment(this, com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.GREETING, greeting);
-            }
-        }, 1500L);
+        com.cinetv.launcher.ai.EmaLightningTts.speak(this, greeting);
+        if (home != null) {
+            home.showBubble(greeting, false, 6000);
+        }
     }
 
     private void checkPendingUpdateBanner() {
@@ -950,7 +989,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         isCurating = true;
         String provider = LlmClient.providerName(this);
         home.shelfLabel.setText(getString(R.string.shelf_curating, provider == null ? "AI" : provider).toUpperCase(Locale.getDefault()));
-        final String moment = MovieAssistant.momentContext(home.weather.getText().toString());
+        final String moment = MovieAssistant.momentContext(this, com.cinetv.launcher.service.WeatherService.getLastFull());
         background(() -> {
             try {
                 MovieAssistant.Shelf s = MovieAssistant.curate(this, mood, moment, PerformanceProfile.shelfSize(this));
@@ -1058,9 +1097,26 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
         }
         final MovieCatalog.Category cat = pick != null ? pick : MovieCatalog.CATEGORIES[0];
+
+        int hour = cal.get(Calendar.HOUR_OF_DAY);
+        int day = cal.get(Calendar.DAY_OF_WEEK);
+        int month = cal.get(Calendar.MONTH);
+        String[] daysTr = {"", "Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"};
+        String[] monthsTr = {"Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"};
+        String dayStr = (day >= 1 && day <= 7) ? daysTr[day] : "";
+        String monthStr = (month >= 0 && month <= 11) ? monthsTr[month] : "";
+        String timeSegment;
+        if (hour >= 5 && hour < 12) timeSegment = "Sabah";
+        else if (hour >= 12 && hour < 17) timeSegment = "İkindi";
+        else if (hour >= 17 && hour < 22) timeSegment = "Akşam";
+        else timeSegment = "Gece";
+        String weather = com.cinetv.launcher.service.WeatherService.getLastCondition();
+        final String richTitle = String.format(Locale.getDefault(), "%s %s · %s %s",
+                dayStr, timeSegment, (weather.isEmpty() ? monthStr : weather), getString(cat.nameRes)).toUpperCase(Locale.getDefault());
+
         background(() -> {
             List<Movie> list = MovieCatalog.category(app, cat, PerformanceProfile.shelfSize(app));
-            if (!list.isEmpty()) ui(() -> setShelf(getString(cat.nameRes), list, true));
+            if (!list.isEmpty()) ui(() -> setShelf(richTitle, list, true));
         });
     }
 

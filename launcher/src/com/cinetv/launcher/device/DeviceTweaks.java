@@ -48,6 +48,23 @@ public final class DeviceTweaks {
         com.cinetv.launcher.remote.LocalAdb.shell(ctx,
                 "settings put global package_verifier_enable 0; settings put global package_verifier_user_consent -1; settings put global upload_apk_enable 0; settings put global play_protect_enabled 0", 1500);
         enableKeyService(ctx);
+        applyFastBootTweaks(ctx);
+    }
+
+    /** Configures TV hardware and kernel for Fast Boot / Quick Standby and keeps CineTV unthrottled. */
+    public static void applyFastBootTweaks(Context ctx) {
+        new Thread(() -> {
+            String pkg = ctx.getPackageName();
+            String cmd = "setprop persist.sys.quickboot 1; "
+                    + "setprop persist.sys.shutdown.mode hibernate; "
+                    + "setprop ro.config.hw_quickpoweron true; "
+                    + "setprop persist.sys.power.quickboot 1; "
+                    + "settings put global stay_on_while_plugged_in 0 2>/dev/null; "
+                    + "cmd deviceidle whitelist +" + pkg + " 2>/dev/null; "
+                    + "cmd appops set " + pkg + " RUN_IN_BACKGROUND allow 2>/dev/null; "
+                    + "dumpsys deviceidle whitelist +" + pkg + " 2>/dev/null; ";
+            com.cinetv.launcher.remote.LocalAdb.shell(ctx, cmd, 2500);
+        }, "cinetv-fastboot").start();
     }
 
     // ---- the TV's own values, kept so "Remove CineTV" can put everything back -------------------------

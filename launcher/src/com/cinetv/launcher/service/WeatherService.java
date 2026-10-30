@@ -22,8 +22,18 @@ public final class WeatherService {
     private static final Pattern TEMP_PATTERN = Pattern.compile("([+-]?\\d+)");
     private static long lastFetch;
     private static String lastText;
+    private static String lastCondition = "";
+    private static String lastFull = "";
 
     private WeatherService() {}
+
+    public static String getLastCondition() {
+        return lastCondition != null ? lastCondition : "";
+    }
+
+    public static String getLastFull() {
+        return lastFull != null ? lastFull : (lastText != null ? lastText : "");
+    }
 
     public static void fetch(Context ctx, boolean force, Callback cb) {
         long now = System.currentTimeMillis();
@@ -38,24 +48,25 @@ public final class WeatherService {
             try {
                 String city = Prefs.city(app);
                 String url = (city != null && !city.trim().isEmpty())
-                        ? "https://wttr.in/" + URLEncoder.encode(city.trim(), "UTF-8") + "?format=%t"
-                        : "https://wttr.in/?format=%t";
+                        ? "https://wttr.in/" + URLEncoder.encode(city.trim(), "UTF-8") + "?format=%C+%t"
+                        : "https://wttr.in/?format=%C+%t";
                 Map<String, String> headers = Collections.singletonMap("Accept-Language", Locale.getDefault().getLanguage());
                 String line = Http.getText(url, headers, 6000).trim();
                 line = line.replaceAll("[\\p{So}\\p{Cn}\\p{Cs}]", "").trim();
-                if (line.isEmpty() || line.length() > 30 || line.contains("<")) return;
+                if (line.isEmpty() || line.length() > 60 || line.contains("<")) return;
 
-                String tempStr;
+                String tempStr = "";
                 Matcher m = TEMP_PATTERN.matcher(line);
                 if (m.find()) {
                     String num = m.group(1).replace("+", "");
                     tempStr = num + "°";
-                } else {
-                    tempStr = line.replace("+", "").replace("C", "").trim();
-                    if (!tempStr.endsWith("°")) tempStr = tempStr + "°";
                 }
+                String condition = line.replaceAll("[+-]?\\d+.*", "").trim();
+                if (condition.isEmpty()) condition = line.replace("C", "").replace("+", "").trim();
+                lastCondition = condition;
+                lastFull = (condition.isEmpty() ? "" : condition + " ") + tempStr;
 
-                if (tempStr.equals("°") || tempStr.length() > 6) return;
+                if (tempStr.isEmpty() || tempStr.equals("°")) return;
                 final String text = tempStr;
                 lastText = text;
                 main.post(() -> cb.onWeather(text));
