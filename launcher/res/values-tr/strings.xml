@@ -139,7 +139,7 @@
     <string name="tour_phone_t">Telefonun kumandan olur</string>
     <string name="tour_phone">Buraya bas, kodu okut: telefonun her uygulamada çalışan dokunmatik bir kumanda olur; hava faresi, televizyona yazan klavyesi ve gerçekten kapatan güç tuşuyla.</string>
     <string name="tour_cast_t">Televizyona gönder</string>
-    <string name="tour_cast">Herhangi bir telefonda YouTube\'da yayınla simgesine basıp bu televizyonu seç: reklamsız YouTube\'da açılır. Telefon sayfasındaki Yayınla ise bir film sitesindeki filmi oynatır: oynat tuşuna televizyon kendisi basar, reklamları geçer.</string>
+    <string name="tour_cast">Herhangi bir telefonda YouTube\'da yayınla simgesine basıp bu televizyonu seç: YouTube\'da açılır. Telefon sayfasındaki Yayınla ise webdeki herhangi bir videoyu televizyona fırlatır: video doğrudan televizyonda oynatılır.</string>
     <string name="tour_inputs_t">Kaynaklar adlarıyla</string>
     <string name="tour_inputs">Cihazların kendi adlarıyla: “PlayStation 5”, “Digiturk”. En başta Canlı TV.</string>
     <string name="tour_apps_t">Uygulamaların</string>

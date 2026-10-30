@@ -139,7 +139,7 @@ public final class CastResolver {
             return AppLauncher.start(ctx, new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         }
         String low = url.toLowerCase(Locale.ROOT);
-        // HLS also comes as master.txt / playlist.txt or under /hls/ on film sites
+        // HLS also comes as master.txt / playlist.txt or under /hls/ on web video streams
         String type = low.contains(".m3u8") || low.contains("master.txt") || low.contains("playlist.txt") || low.contains("/hls/") ? "application/x-mpegurl"
                 : url.toLowerCase(Locale.ROOT).contains(".mpd") ? "application/dash+xml" : "video/*";
         Intent i = new Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(url), type).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

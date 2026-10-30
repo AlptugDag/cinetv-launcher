@@ -232,13 +232,38 @@ public final class AppLauncher {
     public static boolean openYouTubeVideo(Context ctx, String url) {
         com.cinetv.launcher.TvKeyInterceptorService.launchedYouTubeFromCineTv = true;
         if (url == null || url.isEmpty()) return launchFirst(ctx, YOUTUBE_PACKAGES);
-        Uri uri = Uri.parse(url);
+
+        String vid = null;
+        if (url.contains("youtu.be/")) {
+            int idx = url.indexOf("youtu.be/");
+            vid = url.substring(idx + 9);
+            if (vid.contains("?")) vid = vid.substring(0, vid.indexOf("?"));
+            if (vid.contains("&")) vid = vid.substring(0, vid.indexOf("&"));
+        } else if (url.contains("v=")) {
+            int idx = url.indexOf("v=");
+            vid = url.substring(idx + 2);
+            if (vid.contains("&")) vid = vid.substring(0, vid.indexOf("&"));
+        }
+
+        String finalUrl = vid != null ? ("https://youtu.be/" + vid) : url;
+        Uri uri = Uri.parse(finalUrl);
+
         for (String pkg : YOUTUBE_PACKAGES) {
             Intent view = new Intent(Intent.ACTION_VIEW, uri).setPackage(pkg)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            if (vid != null) {
+                view.putExtra("video_id", vid);
+                view.putExtra("v", vid);
+                view.putExtra("url", finalUrl);
+            }
             if (start(ctx, view)) return true;
         }
-        return start(ctx, new Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        Intent generic = new Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (vid != null) {
+            generic.putExtra("video_id", vid);
+            generic.putExtra("v", vid);
+        }
+        return start(ctx, generic);
     }
 
     /** Opens a title on Nuvio's detail/stream page; falls back to Nuvio's start screen. */

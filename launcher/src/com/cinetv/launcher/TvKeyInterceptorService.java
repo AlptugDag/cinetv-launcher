@@ -94,6 +94,20 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
     };
 
+    private final BroadcastReceiver cinesubReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent == null) return;
+            String title = intent.getStringExtra("title");
+            String insight = intent.getStringExtra("insight");
+            if (insight != null && !insight.isEmpty()) {
+                com.cinetv.launcher.ui.CineSubOverlay.showInsight(TvKeyInterceptorService.this, title, insight);
+            } else {
+                com.cinetv.launcher.ui.CineSubOverlay.trigger(TvKeyInterceptorService.this);
+            }
+        }
+    };
+
     /** Puts text into the input field that has focus on screen, in any app; false when there is none. */
     public static boolean typeIntoFocused(String text) {
         TvKeyInterceptorService s = instance;
@@ -230,6 +244,16 @@ public class TvKeyInterceptorService extends AccessibilityService {
             android.util.Log.w("CineTvKeyService", "celebrationReceiver register failed: " + t.getMessage());
         }
         try {
+            IntentFilter csf = new IntentFilter("com.cinetv.launcher.ACTION_CINESUB");
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(cinesubReceiver, csf, Context.RECEIVER_EXPORTED);
+            } else {
+                registerReceiver(cinesubReceiver, csf);
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("CineTvKeyService", "cinesubReceiver register failed: " + t.getMessage());
+        }
+        try {
             final com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(this);
             if (day != null) {
                 java.util.Calendar c = java.util.Calendar.getInstance();
@@ -268,6 +292,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
         } catch (Throwable ignored) {}
         try {
             unregisterReceiver(celebrationReceiver);
+        } catch (Throwable ignored) {}
+        try {
+            unregisterReceiver(cinesubReceiver);
         } catch (Throwable ignored) {}
         handler.removeCallbacksAndMessages(null);
         super.onDestroy();

@@ -17,9 +17,9 @@ public final class Creator {
     public static final String LETTERBOXD_URL = "https://letterboxd.com/AlptugDag/";
     public static final String GITHUB_URL = "https://github.com/AlptugDag";
     public static final String SESSIZ_TRAILER_ID = "jb7BM-NHreg";
-    public static final String SESSIZ_TRAILER_URL = "https://www.youtube.com/watch?v=" + SESSIZ_TRAILER_ID + "&feature=youtu.be";
+    public static final String SESSIZ_TRAILER_URL = "https://youtu.be/" + SESSIZ_TRAILER_ID;
     public static final String SESSIZ_YOUTUBE_ID = "bLvdsibrR-I";
-    public static final String SESSIZ_YOUTUBE_URL = "https://www.youtube.com/watch?v=" + SESSIZ_YOUTUBE_ID;
+    public static final String SESSIZ_YOUTUBE_URL = "https://youtu.be/" + SESSIZ_YOUTUBE_ID;
 
     private Creator() {}
 

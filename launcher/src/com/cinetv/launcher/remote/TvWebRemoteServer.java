@@ -827,7 +827,15 @@ public final class TvWebRemoteServer {
                 return ok;
             }
             case "/api/cinesub": {
-                post(() -> com.cinetv.launcher.ui.CineSubOverlay.trigger(app));
+                final String csTitle = q.get("title");
+                final String csInsight = q.get("insight");
+                post(() -> {
+                    if (csInsight != null && !csInsight.isEmpty()) {
+                        com.cinetv.launcher.ui.CineSubOverlay.showInsight(app, csTitle, csInsight);
+                    } else {
+                        com.cinetv.launcher.ui.CineSubOverlay.trigger(app);
+                    }
+                });
                 return ok;
             }
             case "/api/party/join": {

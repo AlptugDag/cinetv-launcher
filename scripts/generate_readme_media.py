@@ -129,9 +129,9 @@ def generate_roulette_view():
         d.line([(0, y), (w, y)], fill=(r, g, b, 255))
 
     # Title header
-    d.text((120, 56), "SINEFIL FILM ONERI RULETI (TV & MOBIL ES ZAMANLI)", font=font("bold", 20), fill=(245, 158, 11))
-    d.text((120, 92), "Bu Aksam Hangi Filmi Izleyelim?", font=font("black", 46), fill=(255, 255, 255))
-    d.text((120, 155), "Herkes kendi telefonundan 'Oyunlar' sekmesine girip bir film firlatir. Cark doner ve kazanan film taclandirilir!", font=font("medium", 19), fill=(148, 163, 184))
+    d.text((120, 56), "SİNEFİL FİLM ÖNERİ RULETİ (TV & MOBİL EŞ ZAMANLI)", font=font("bold", 20), fill=(245, 158, 11))
+    d.text((120, 92), "Bu Akşam Hangi Filmi İzleyelim?", font=font("black", 46), fill=(255, 255, 255))
+    d.text((120, 155), "Herkes kendi telefonundan 'Oyunlar' sekmesine girip bir film fırlatır. Çark döner ve kazanan film taçlandırılır!", font=font("medium", 19), fill=(148, 163, 184))
 
     # Left: Photorealistic Wheel (Diameter ~620px)
     cx, cy = 520, 590
@@ -189,14 +189,14 @@ def generate_roulette_view():
 
     # Winner Card
     round_rect(d, [rx + 36, 280, rx + 784, 460], 20, fill=(245, 158, 11, 35), outline=(245, 158, 11, 200), width=2)
-    d.text((rx + 60, 305), "BU AKSAMIN KAZANAN FILMI (PREMIYER SECIMI)", font=font("bold", 15), fill=(251, 191, 36))
+    d.text((rx + 60, 305), "BU AKŞAMIN KAZANAN FİLMİ (PREMİYER SEÇİMİ)", font=font("bold", 15), fill=(251, 191, 36))
     d.text((rx + 60, 335), "Taxi Driver (1976)", font=font("black", 38), fill=(255, 255, 255))
-    d.text((rx + 60, 395), "Oneren: Alptug  ·  Martin Scorsese  ·  Robert De Niro", font=font("medium", 18), fill=(203, 213, 225))
+    d.text((rx + 60, 395), "Öneren: Alptuğ  ·  Martin Scorsese  ·  Robert De Niro", font=font("medium", 18), fill=(203, 213, 225))
 
     # Suggestions pool list
-    d.text((rx + 36, 495), "Oturma Odasi Havuzundaki Oneriler:", font=font("bold", 20), fill=(255, 255, 255))
+    d.text((rx + 36, 495), "Oturma Odası Havuzundaki Öneriler:", font=font("bold", 20), fill=(255, 255, 255))
     suggested = [
-        ("Taxi Driver", "Alptug", (245, 158, 11)),
+        ("Taxi Driver", "Alptuğ", (245, 158, 11)),
         ("Interstellar", "Gamze", (56, 189, 248)),
         ("Pulp Fiction", "Misafir 1", (239, 68, 68)),
         ("The Godfather", "Misafir 2", (16, 185, 129))
@@ -209,7 +209,7 @@ def generate_roulette_view():
 
     # Controls row
     round_rect(d, [rx + 36, 800, rx + 520, 860], 16, fill=(139, 92, 246), outline=None)
-    d.text((rx + 200, 818), "Carki Cevir", font=font("bold", 20), fill=(255, 255, 255))
+    d.text((rx + 200, 818), "Çarkı Çevir", font=font("bold", 20), fill=(255, 255, 255))
 
     round_rect(d, [rx + 540, 800, rx + 784, 860], 16, fill=(35, 42, 60, 200), outline=(70, 80, 110), width=1)
     d.text((rx + 610, 818), "Temizle", font=font("medium", 20), fill=(203, 213, 225))
@@ -219,14 +219,13 @@ def generate_roulette_view():
     print("Saved:", out)
 
 # -------------------------------------------------------------
-# 3. 35MM SNAKE & QUIZ ARENA (docs/media/cineparty_games.png)
+# 3. CINEPARTY: 35MM CELLULOID SNAKE & 10-QUESTION QUIZ ARENA
 # -------------------------------------------------------------
 def generate_cineparty_games():
     w, h = 1920, 1080
-    im = Image.new("RGBA", (w, h), (9, 10, 15, 255))
+    im = Image.new("RGBA", (w, h), (8, 9, 14, 255))
     d = ImageDraw.Draw(im)
 
-    # Ambient theater background
     for y in range(h):
         r = int(10 + (y / h) * 14)
         g = int(14 + (y / h) * 18)
@@ -234,93 +233,144 @@ def generate_cineparty_games():
         d.line([(0, y), (w, y)], fill=(r, g, b, 255))
 
     # Header
-    d.text((100, 50), "CINEPARTY: OTURMA ODASI INTERAKTIF SINEMA OYUNLARI", font=font("bold", 20), fill=(16, 185, 129))
-    d.text((100, 84), "35mm Seluloit Yilani ve 10 Soruluk Sinefil Bilmece Arenasi", font=font("black", 42), fill=(255, 255, 255))
+    d.text((100, 48), "CİNEPARTY: OTURMA ODASI İNTERAKTİF SİNEMA OYUNLARI", font=font("bold", 19), fill=(16, 185, 129))
+    d.text((100, 84), "35mm Selüloit Yılanı ve 10 Soruluk Sinefil Bilmece Arenası", font=font("black", 42), fill=(255, 255, 255))
 
     # Left: 35mm Celluloid Snake Game Card
     lx = 100
-    round_rect(d, [lx, 170, lx + 830, 990], 28, fill=(18, 22, 32, 230), outline=(16, 185, 129, 140), width=2)
-    d.text((lx + 40, 205), "35MM SELULOIT SINEFIL YILANI (GYRO EGIM KONTROLLU)", font=font("bold", 17), fill=(16, 185, 129))
-    d.text((lx + 40, 240), "Telefonunuzu saga-sola, one-arkaya egerek yonetin; klasik film DVD'lerini yedikce uzayin!", font=font("medium", 15), fill=(148, 163, 184))
+    round_rect(d, [lx, 165, lx + 830, 995], 28, fill=(16, 20, 30, 235), outline=(16, 185, 129, 160), width=2)
+    d.text((lx + 40, 198), "35MM SELÜLOİT SİNEFİL YILANI (GYRO EĞİM KONTROLLÜ)", font=font("bold", 17), fill=(16, 185, 129))
+    d.text((lx + 40, 232), "Telefonunuzu sağa-sola, öne-arkaya eğerek yönetin; 3D film DVD'lerini yedikçe uzayın!", font=font("medium", 15), fill=(148, 163, 184))
 
     # HUD Bar
-    round_rect(d, [lx + 40, 285, lx + 790, 335], 12, fill=(25, 32, 48), outline=(45, 58, 85), width=1)
-    d.text((lx + 60, 298), "KARE (SKOR): 140", font=font("bold", 16), fill=(16, 185, 129))
-    d.text((lx + 420, 298), "REKOR: 420", font=font("bold", 16), fill=(245, 158, 11))
-    d.text((lx + 620, 298), "HEDEF: Interstellar", font=font("medium", 15), fill=(56, 189, 248))
+    round_rect(d, [lx + 40, 275, lx + 790, 325], 12, fill=(24, 30, 44), outline=(45, 58, 85), width=1)
+    d.text((lx + 60, 288), "KARE (SKOR): 180", font=font("bold", 16), fill=(16, 185, 129))
+    d.text((lx + 360, 288), "REKOR: 420", font=font("bold", 16), fill=(245, 158, 11))
+    d.text((lx + 580, 288), "HEDEF DVD: Interstellar", font=font("medium", 15), fill=(56, 189, 248))
 
-    # Snake Game Board (440x440)
-    bx, by, b_size = lx + 195, 360, 440
-    round_rect(d, [bx, by, bx + b_size, by + b_size], 18, fill=(9, 10, 15), outline=(255, 255, 255, 40), width=2)
+    # 3D Cinema Board (lx + 175, 350, 480x480)
+    bx, by, b_size = lx + 175, 350, 480
+    round_rect(d, [bx, by, bx + b_size, by + b_size], 22, fill=(9, 12, 18), outline=(245, 158, 11, 70), width=2)
 
-    grid_n = 16
+    # Subtle projector lens vignette & grid lines
+    grid_n = 12
     cell = b_size / grid_n
     for c in range(1, grid_n):
-        d.line([(bx + c * cell, by), (bx + c * cell, by + b_size)], fill=(255, 255, 255, 12))
-        d.line([(bx, by + c * cell), (bx + b_size, by + c * cell)], fill=(255, 255, 255, 12))
+        d.line([(bx + c * cell, by), (bx + c * cell, by + b_size)], fill=(245, 158, 11, 15))
+        d.line([(bx, by + c * cell), (bx + b_size, by + c * cell)], fill=(245, 158, 11, 15))
 
-    # Food: 3D miniature keepcase DVD
-    food_x = bx + 11 * cell
-    food_y = by + 5 * cell
-    round_rect(d, [food_x + 2, food_y + 1, food_x + cell - 2, food_y + cell - 1], 4, fill=(14, 165, 233), outline=(255, 255, 255, 180), width=1)
-    d.line([(food_x + 4, food_y + 3), (food_x + cell - 4, food_y + cell - 3)], fill=(255, 255, 255, 120), width=2)
+    # Food: Photorealistic 3D Miniature Keepcase DVD (Interstellar)
+    fx = bx + 8 * cell + 4
+    fy = by + 3 * cell + 4
+    dvd_w, dvd_h = cell - 8, cell - 6
+    # 3D drop shadow
+    round_rect(d, [fx + 4, fy + 8, fx + dvd_w + 4, fy + dvd_h + 8], 6, fill=(0, 0, 0, 160))
+    # Ambient halo
+    round_rect(d, [fx - 6, fy - 6, fx + dvd_w + 6, fy + dvd_h + 6], 10, fill=(2, 132, 199, 45))
+    # Outer keepcase plastic
+    round_rect(d, [fx, fy, fx + dvd_w, fy + dvd_h], 6, fill=(10, 14, 23), outline=(56, 189, 248, 200), width=1)
+    # Cover Art: Cyan galaxy / nebula
+    round_rect(d, [fx + 3, fy + 3, fx + dvd_w - 3, fy + dvd_h - 3], 4, fill=(2, 132, 199))
+    d.text((fx + 6, fy + 12), "INT", font=font("black", 12), fill=(255, 255, 255))
+    # Spine highlight (gold)
+    d.rectangle([fx + 3, fy + 3, fx + 6, fy + dvd_h - 3], fill=(253, 230, 138))
+    # Diagonal cellophane reflection streak
+    d.line([(fx + 3, fy + 4), (fx + dvd_w - 4, fy + dvd_h - 4)], fill=(255, 255, 255, 140), width=2)
 
-    # Snake Body: 35mm celluloid frames
-    snake_coords = [(8, 8), (7, 8), (6, 8), (5, 8), (5, 9), (5, 10), (5, 11), (4, 11), (3, 11)]
+    # Snake: 3D Cine Camera Lens Head + 35mm Celluloid Segments
+    snake_coords = [(6, 5), (5, 5), (4, 5), (3, 5), (3, 6), (3, 7), (4, 7), (5, 7), (6, 7)]
     for s_idx, (sx, sy) in enumerate(snake_coords):
-        px = bx + sx * cell
-        py = by + sy * cell
-        if s_idx == 0:
-            d.ellipse([px + 2, py + 2, px + cell - 2, py + cell - 2], fill=(30, 41, 59), outline=(217, 119, 6), width=2)
-            d.ellipse([px + 6, py + 6, px + cell - 6, py + cell - 6], fill=(16, 185, 129))
-            d.ellipse([px + 10, py + 8, px + 15, py + 13], fill=(255, 255, 255))
-        else:
-            round_rect(d, [px + 2, py + 2, px + cell - 2, py + cell - 2], 3, fill=(22, 27, 38), outline=(180, 83, 9, 180), width=1)
-            d.rectangle([px + 4, py + 3, px + 7, py + 5], fill=(241, 245, 249))
-            d.rectangle([px + cell - 7, py + 3, px + cell - 4, py + 5], fill=(241, 245, 249))
-            d.rectangle([px + 4, py + cell - 5, px + 7, py + cell - 3], fill=(241, 245, 249))
-            d.rectangle([px + cell - 7, py + cell - 5, px + cell - 4, py + cell - 3], fill=(241, 245, 249))
-            d.rectangle([px + 6, py + 7, px + cell - 6, py + cell - 7], fill=(16, 185, 129, 90))
+        px = bx + sx * cell + 3
+        py = by + sy * cell + 3
+        sw, sh = cell - 6, cell - 6
+        fade = max(0.4, 1.0 - (s_idx / len(snake_coords)) * 0.5)
 
-    d.text((lx + 235, 825), "Egim Sensoru Aktif  ·  Dokunmatik Yon Tuslari Destekli", font=font("medium", 15), fill=(148, 163, 184))
-    round_rect(d, [lx + 180, 865, lx + 650, 930], 16, fill=(16, 185, 129), outline=None)
-    d.text((lx + 335, 885), "Oyunu Baslat", font=font("bold", 20), fill=(10, 20, 15))
+        if s_idx == 0:
+            # 3D Head: Cinema Projector Lens Barrel
+            round_rect(d, [px + 3, py + 5, px + sw + 3, py + sh + 5], int(sw // 2), fill=(0, 0, 0, 160))
+            d.ellipse([px, py, px + sw, py + sh], fill=(30, 41, 59), outline=(245, 158, 11), width=2)
+            d.ellipse([px + 4, py + 4, px + sw - 4, py + sh - 4], fill=(16, 185, 129), outline=(4, 120, 87), width=1)
+            # Tracking Eye looking toward the DVD
+            d.ellipse([px + sw - 14, py + 8, px + sw - 6, py + 16], fill=(255, 255, 255))
+            d.ellipse([px + sw - 12, py + 9, px + sw - 7, py + 14], fill=(15, 23, 42))
+            # Lens reflection arc
+            d.arc([px + 6, py + 6, px + sw - 6, py + sh - 6], start=210, end=300, fill=(255, 255, 255), width=2)
+        else:
+            # 3D Celluloid Filmstrip Segment
+            round_rect(d, [px + 2, py + 4, px + sw + 2, py + sh + 4], 6, fill=(0, 0, 0, 130))
+            round_rect(d, [px, py, px + sw, py + sh], 6, fill=(22, 28, 42), outline=(245, 158, 11, int(fade * 255)), width=1)
+            # Center projection window
+            round_rect(d, [px + 5, py + 5, px + sw - 5, py + sh - 5], 4, fill=(16, 185, 129, int(fade * 110)))
+            # Kodak 35mm Sprocket Perforations (4 holes)
+            d.rectangle([px + 4, py + 2, px + 8, py + 4], fill=(248, 250, 252))
+            d.rectangle([px + sw - 8, py + 2, px + sw - 4, py + 4], fill=(248, 250, 252))
+            d.rectangle([px + 4, py + sh - 4, px + 8, py + sh - 2], fill=(248, 250, 252))
+            d.rectangle([px + sw - 8, py + sh - 4, px + sw - 4, py + sh - 2], fill=(248, 250, 252))
+
+    d.text((lx + 235, 850), "Eğim Sensörü Aktif  ·  Dokunmatik D-Pad Destekli", font=font("medium", 15), fill=(148, 163, 184))
+    round_rect(d, [lx + 180, 885, lx + 650, 950], 16, fill=(16, 185, 129), outline=None)
+    d.text((lx + 335, 905), "Oyunu Başlat", font=font("bold", 20), fill=(10, 20, 15))
 
     # Right: 10-Question Cinephile Quiz Arena Card
     rx = 990
-    round_rect(d, [rx, 170, rx + 830, 990], 28, fill=(18, 22, 32, 230), outline=(245, 158, 11, 140), width=2)
-    d.text((rx + 40, 205), "SINEFIL BILMECE ARENASI (10 SORU)", font=font("bold", 17), fill=(245, 158, 11))
-    d.text((rx + 40, 240), "Coklu telefonla baglanin! Ekrana gelen sahneleri 10s icinde bilin, aksamin filmini siz secin!", font=font("medium", 15), fill=(148, 163, 184))
+    round_rect(d, [rx, 165, rx + 830, 995], 28, fill=(16, 20, 30, 235), outline=(245, 158, 11, 160), width=2)
+    d.text((rx + 40, 198), "SİNEFİL BİLMECE ARENASI (10 SORU & CANLI YARIŞMA)", font=font("bold", 17), fill=(245, 158, 11))
+    d.text((rx + 40, 232), "Ekrana aktör resmi gelir, 10s içinde bilin; kazanan akşamın filmini seçer!", font=font("medium", 15), fill=(148, 163, 184))
 
-    # Clue Box
-    round_rect(d, [rx + 40, 285, rx + 790, 600], 20, fill=(24, 30, 46, 220), outline=(245, 158, 11, 100), width=1)
-    d.text((rx + 65, 310), "SORU 4 / 10  ·  CANLI YARISMA", font=font("bold", 15), fill=(245, 158, 11))
-    d.text((rx + 690, 310), "7s", font=font("bold", 20), fill=(239, 68, 68))
+    # Question Card with Actor Portrait and Live Buzzer
+    round_rect(d, [rx + 40, 275, rx + 790, 620], 20, fill=(22, 28, 44, 230), outline=(245, 158, 11, 120), width=1)
+    
+    # Top bar: Soru 1 / 10 and Countdown Ring
+    d.text((rx + 65, 298), "SORU 1 / 10  ·  AKTÖR TANIMA", font=font("bold", 15), fill=(245, 158, 11))
+    round_rect(d, [rx + 680, 292, rx + 765, 328], 10, fill=(239, 68, 68, 40), outline=(239, 68, 68), width=1)
+    d.text((rx + 705, 300), "10s", font=font("bold", 17), fill=(248, 113, 113))
 
-    round_rect(d, [rx + 65, 345, rx + 765, 355], 5, fill=(45, 55, 80))
-    round_rect(d, [rx + 65, 345, rx + 560, 355], 5, fill=(16, 185, 129))
+    # Clue Text
+    d.text((rx + 65, 342), "Bu ünlü aktör kimdir?", font=font("bold", 22), fill=(255, 255, 255))
+    d.text((rx + 65, 372), "İpucu: Oppenheimer, Peaky Blinders, Inception", font=font("medium", 15), fill=(148, 163, 184))
 
-    d.text((rx + 65, 380), "Bu efsanevi replik hangi basyapita aittir?", font=font("bold", 23), fill=(255, 255, 255))
-    quote = "“You talkin' to me? You talkin' to me? Then who the hell else\nare you talkin' to? Well, I'm the only one here.”"
-    d.text((rx + 65, 430), quote, font=font("medium", 19), fill=(251, 191, 36), spacing=6)
-    d.text((rx + 65, 530), "Ipucu: 1976 Altin Palmiye odullu Martin Scorsese klasigi.", font=font("medium", 16), fill=(148, 163, 184))
+    # 3D Actor Portrait Frame (rx + 65, 410, 160x180)
+    ax, ay, aw, ah = rx + 65, 410, 160, 180
+    round_rect(d, [ax - 2, ay - 2, ax + aw + 2, ay + ah + 2], 12, fill=(10, 14, 22), outline=(245, 158, 11), width=2)
+    round_rect(d, [ax, ay, ax + aw, ay + ah], 10, fill=(18, 24, 38))
+    d.ellipse([ax + 30, ay + 20, ax + aw - 30, ay + 90], fill=(45, 55, 75))
+    d.ellipse([ax + 15, ay + 15, ax + aw - 15, ay + 45], fill=(15, 20, 30))
+    d.rectangle([ax + 40, ay + 5, ax + aw - 40, ay + 25], fill=(15, 20, 30))
+    d.ellipse([ax + 50, ay + 48, ax + 66, ay + 56], fill=(56, 189, 248))
+    d.ellipse([ax + aw - 66, ay + 48, ax + aw - 50, ay + 56], fill=(56, 189, 248))
+    d.text((ax + 34, ay + 145), "CILLIAN M.", font=font("bold", 13), fill=(245, 158, 11))
 
-    # Leaderboard
-    d.text((rx + 40, 630), "Canli Liderlik Tablosu:", font=font("bold", 20), fill=(255, 255, 255))
+    # Live Living Room Answers Box (rx + 250, 410, 515x180)
+    bx2 = rx + 250
+    round_rect(d, [bx2, ay, rx + 765, ay + ah], 14, fill=(14, 18, 28), outline=(45, 58, 85), width=1)
+    d.text((bx2 + 20, ay + 14), "10s DOLDU · SALONDAKİ CEVAPLAR:", font=font("bold", 13), fill=(16, 185, 129))
+    
+    # Correct Answer
+    round_rect(d, [bx2 + 15, ay + 38, rx + 750, ay + 72], 8, fill=(16, 185, 129, 35), outline=(16, 185, 129), width=1)
+    d.text((bx2 + 25, ay + 46), "DOĞRU CEVAP: Cillian Murphy", font=font("bold", 14), fill=(52, 211, 153))
+
+    # What each friend submitted
+    d.text((bx2 + 20, ay + 86), "Alptuğ:  “Cillian Murphy”  ✓ DOĞRU (+10p)", font=font("bold", 13), fill=(52, 211, 153))
+    d.text((bx2 + 20, ay + 114), "Gamze:  “Tommy Shelby”  ✓ KABUL (+10p)", font=font("bold", 13), fill=(56, 189, 248))
+    d.text((bx2 + 20, ay + 142), "Can:  “Leonardo DiCaprio”  ❌ YANLIŞ (0p)", font=font("bold", 13), fill=(248, 113, 113))
+
+    # Leaderboard Section
+    d.text((rx + 40, 642), "Canlı Liderlik Tablosu:", font=font("bold", 19), fill=(255, 255, 255))
     players = [
-        ("Alptug", "80 Puan", "Hizli Yanit (+20)", (16, 185, 129)),
-        ("Gamze", "60 Puan", "Dogru (+10)", (56, 189, 248)),
-        ("Misafir (Salondaki Dost)", "40 Puan", "Dogru (+10)", (245, 158, 11))
+        ("1. Alptuğ", "90 Puan", "Hızlı Yanıt (+20)", (16, 185, 129)),
+        ("2. Gamze", "70 Puan", "Doğru (+10)", (56, 189, 248)),
+        ("3. Can (Salondaki Dost)", "40 Puan", "Son Yanıt (0)", (245, 158, 11))
     ]
     for p_idx, (p_name, score, bonus, col) in enumerate(players):
-        py = 675 + p_idx * 56
-        round_rect(d, [rx + 40, py, rx + 790, py + 48], 12, fill=(26, 33, 50), outline=(45, 58, 85), width=1)
-        d.text((rx + 60, py + 12), p_name, font=font("bold", 17), fill=(255, 255, 255))
+        py = 680 + p_idx * 56
+        round_rect(d, [rx + 40, py, rx + 790, py + 48], 12, fill=(24, 31, 46), outline=(45, 58, 85), width=1)
+        d.text((rx + 60, py + 12), p_name, font=font("bold", 16), fill=(255, 255, 255))
         d.text((rx + 420, py + 14), bonus, font=font("medium", 14), fill=col)
-        d.text((rx + 680, py + 12), score, font=font("bold", 17), fill=(255, 255, 255))
+        d.text((rx + 680, py + 12), score, font=font("bold", 16), fill=(255, 255, 255))
 
-    round_rect(d, [rx + 40, 860, rx + 790, 930], 16, fill=(245, 158, 11, 40), outline=(245, 158, 11), width=1)
-    d.text((rx + 90, 882), "10 Soru Sonunda: “Bugun, kazanan hangi filmi secerse o izlenir!”", font=font("bold", 18), fill=(251, 191, 36))
+    # Final coronation message banner
+    round_rect(d, [rx + 40, 875, rx + 790, 945], 16, fill=(245, 158, 11, 35), outline=(245, 158, 11), width=1)
+    d.text((rx + 75, 897), "10 Soru Sonunda: “Bugün, kazanan hangi filmi seçerse o izlenir!”", font=font("bold", 17), fill=(251, 191, 36))
 
     out = os.path.join(DOCS_MEDIA, "cineparty_games.png")
     im.save(out, "PNG")
@@ -334,64 +384,102 @@ def generate_cinesub_overlay():
     im = Image.new("RGBA", (w, h), (8, 9, 14, 255))
     d = ImageDraw.Draw(im)
 
+    # Ambient deep theater background matching CineTV
     for y in range(h):
-        r = int(12 + (y / h) * 10)
-        g = int(14 + (y / h) * 12)
-        b = int(20 + (y / h) * 18)
+        r = int(9 + (y / h) * 9)
+        g = int(11 + (y / h) * 11)
+        b = int(17 + (y / h) * 15)
         d.line([(0, y), (w, y)], fill=(r, g, b, 255))
 
-    d.text((120, 80), "CineSub · Sahneyi Durdurmayan Interaktif Kulturel Altyazi Rehberi", font=font("bold", 22), fill=(148, 163, 184))
-    d.text((120, 126), "2001: A Space Odyssey — 'Also Sprach Zarathustra' Sahnesi", font=font("black", 38), fill=(255, 255, 255))
+    # Top Header
+    d.text((120, 68), "CINESUB · SAHNEYİ DURDURMAYAN İNTERAKTİF KÜLTÜREL ALTYAZI REHBERİ", font=font("bold", 18), fill=(245, 158, 11))
+    d.text((120, 106), "Alptuğ Dağ — 'Sessiz' (2023) Canlı Seyir Sahnesi", font=font("black", 38), fill=(255, 255, 255))
 
-    # Widescreen cinematic frame
-    round_rect(d, [120, 200, 1260, 890], 24, fill=(14, 18, 28), outline=(60, 75, 105), width=2)
-    d.text((450, 500), "[ 4K SINEMA YAYINI KESINTISIZ AKIYOR ]", font=font("bold", 24), fill=(70, 85, 115))
-    d.text((360, 550), "Film durmaz, ses kesilmez; kulturel not karti sag kenarda suzulur.", font=font("medium", 18), fill=(100, 116, 139))
+    # Widescreen cinematic frame container (16:9 frame at 120, 185, 1140 x 670)
+    fx, fy, fw, fh = 120, 185, 1140, 670
+    round_rect(d, [fx - 3, fy - 3, fx + fw + 3, fy + fh + 3], 20, fill=(0, 0, 0), outline=(245, 158, 11, 75), width=2)
 
-    # Subtitle bar at bottom of film frame
-    round_rect(d, [260, 790, 1120, 850], 12, fill=(0, 0, 0, 180))
-    d.text((310, 808), "“Insan asilmasi gereken bir koprudur; bir gaye degil, bir gecistir.”", font=font("medium", 19), fill=(254, 240, 138))
+    # Load actual frame from Alptuğ Dağ's film "Sessiz" (1280x536, 2.39:1 CinemaScope)
+    sessiz_path = os.path.join(DOCS_MEDIA, "sessiz_frame.jpg")
+    if os.path.isfile(sessiz_path):
+        frame_img = Image.open(sessiz_path).convert("RGBA")
+        # Scale to fit width fw (1140), calculate CinemaScope height: 1140 * 536 / 1280 = 477 px
+        scope_h = int(fw * frame_img.height / frame_img.width)
+        frame_img = frame_img.resize((fw, scope_h), Image.Resampling.BICUBIC)
+        # Center inside 16:9 viewport with authentic anamorphic letterbox matte bars
+        scope_y = fy + (fh - scope_h) // 2
+        im.paste(frame_img, (fx, scope_y))
+        d = ImageDraw.Draw(im)
 
-    # Floating CineSub Cultural Note Card (right side)
-    card_x = 1310
-    round_rect(d, [card_x, 200, card_x + 490, 890], 24, fill=(20, 25, 38, 245), outline=(99, 102, 241, 200), width=2)
+    # Top Cinema Watermark Badge
+    round_rect(d, [fx + 24, fy + 20, fx + 250, fy + 56], 10, fill=(10, 14, 24, 220), outline=(245, 158, 11, 140), width=1)
+    d.text((fx + 38, fy + 30), "4K MASTER · SESSİZ (2023)", font=font("bold", 12), fill=(251, 191, 36))
 
-    round_rect(d, [card_x + 28, 230, card_x + 280, 268], 10, fill=(99, 102, 241, 40), outline=(99, 102, 241), width=1)
-    d.text((card_x + 40, 240), "CINESUB KULTUREL REHBER", font=font("bold", 13), fill=(165, 180, 252))
+    # Real Subtitle Bar from the Film at bottom center
+    sub_w = 760
+    sub_x = fx + (fw - sub_w) // 2
+    sub_y = fy + fh - 65
+    round_rect(d, [sub_x, sub_y, sub_x + sub_w, sub_y + 48], 12, fill=(0, 0, 0, 220), outline=(255, 255, 255, 30), width=1)
+    d.text((sub_x + 28, sub_y + 12), "“Cellatları dilsizlerden seçerlermiş derler... ama ya ben?”", font=font("medium", 18), fill=(254, 240, 138))
 
-    d.text((card_x + 28, 290), "Nietzsche ve 'Ustinsan'\nFelsefi Gondermesi", font=font("black", 24), fill=(255, 255, 255), spacing=4)
+    # Floating CineSub Cultural Note Card (right side: card_x = 1295, card_y = 185, 505 x 670)
+    card_x = 1295
+    card_y = 185
+    card_w = 505
+    card_h = 670
 
+    # 3D Liquid Glass Panel matching CineTV UiKit
+    round_rect(d, [card_x, card_y, card_x + card_w, card_y + card_h], 26, fill=(11, 14, 22, 248), outline=(245, 158, 11, 200), width=2)
+
+    # Badge Capsule: ✦ CİNESUB KÜLTÜREL REHBER
+    round_rect(d, [card_x + 26, card_y + 26, card_x + 280, card_y + 60], 10, fill=(245, 158, 11, 40), outline=(245, 158, 11, 180), width=1)
+    d.text((card_x + 38, card_y + 35), "✦ CİNESUB KÜLTÜREL REHBER", font=font("bold", 12), fill=(251, 191, 36))
+
+    # Title & Film Meta
+    d.text((card_x + 26, card_y + 80), "Osmanlı Saray Geleneği &\nVicdan Metaforu", font=font("black", 23), fill=(255, 255, 255), spacing=4)
+    d.text((card_x + 26, card_y + 148), "Alptuğ Dağ · Sessiz (2023) Kısametraj", font=font("bold", 13), fill=(148, 163, 184))
+
+    # Subtitle Context Highlight Inset
+    round_rect(d, [card_x + 24, card_y + 178, card_x + card_w - 24, card_y + 234], 12, fill=(18, 22, 34, 230), outline=(245, 158, 11, 90), width=1)
+    d.text((card_x + 36, card_y + 188), "Altyazı Repliği:", font=font("bold", 11), fill=(245, 158, 11))
+    d.text((card_x + 36, card_y + 206), "“Cellatları dilsizlerden seçerlermiş derler... ama ya ben?”", font=font("medium", 13), fill=(254, 240, 138))
+
+    # Cultural Explanation Body with Proper Turkish Characters
     card_text = (
-        "Bu sahnede calan Richard Strauss bestesi\n"
-        "'Also Sprach Zarathustra', Friedrich Nietzsche'nin\n"
-        "ayni adli felsefi eserine dogrudan saygi durusudur.\n\n"
-        "Kubrick, ilkel maymundan uzay cagi insanina\n"
-        "ve oradan da Yildiz Cocuga (Star Child) gecisi,\n"
-        "Nietzsche'nin 'Ustinsan' (Ubermensch)\n"
-        "kavraminin gorsel bir alegorisi olarak kurgulamistir."
+        "Alptuğ Dağ'ın yönettiği Sessiz (2023) filminde bu replik,\n"
+        "Osmanlı sarayında cellatların dilsizlerden seçilerek\n"
+        "kurbanların yalvarışlarını duymalarının engellenmesi\n"
+        "tarihsel gerçeğine doğrudan bir göndermedir.\n\n"
+        "Karakter, bu tarihi olguyu kendi içsel vicdanı,\n"
+        "ahlaki felci ve suskunluğuyla yüzleştiği dramatik bir\n"
+        "metafordan geçirir. Minimalist ses tasarımı ve diejetik\n"
+        "sessizlik, Robert Bresson ve Nuri Bilge Ceylan sinemasındaki\n"
+        "'sessizliğin dramatik ağırlığı' geleneğine saygı duruşudur."
     )
-    d.text((card_x + 28, 380), card_text, font=font("medium", 16), fill=(226, 232, 240), spacing=6)
+    d.text((card_x + 26, card_y + 252), card_text, font=font("medium", 13.5), fill=(226, 232, 240), spacing=5)
 
-    # Gemini Vision Inspector Box
-    round_rect(d, [card_x + 24, 670, card_x + 466, 850], 16, fill=(15, 20, 32), outline=(56, 189, 248, 120), width=1)
-    d.text((card_x + 40, 690), "GEMINI VISION SAHNE NESNESI", font=font("bold", 13), fill=(56, 189, 248))
-    d.text((card_x + 40, 720), "Nesne: Siyah Monolit (TMA-1)", font=font("bold", 17), fill=(255, 255, 255))
+    # Gemini Vision Scene Inspector Inset (bottom of card)
+    round_rect(d, [card_x + 22, card_y + 465, card_x + card_w - 22, card_y + 645], 16, fill=(10, 14, 24), outline=(56, 189, 248, 130), width=1)
+    round_rect(d, [card_x + 34, card_y + 480, card_x + 285, card_y + 508], 8, fill=(56, 189, 248, 25), outline=(56, 189, 248, 160), width=1)
+    d.text((card_x + 44, card_y + 487), "✦ GÖRSEL SAHNE İNCELEMESİ (GEMINI AI)", font=font("bold", 11), fill=(56, 189, 248))
+    
+    d.text((card_x + 34, card_y + 520), "Sahne Öğesi: Bıçak & Psikolojik Donakalma (Freezing)", font=font("bold", 14.5), fill=(255, 255, 255))
     vision_txt = (
-        "Geometrik oran: 1 : 4 : 9 (ilk uc asal sayi karesi).\n"
-        "Uzayli bilincin ve zeka evriminin sicrama tetikleyicisi."
+        "Kadrajdaki düşük anahtarlı ışık (low-key) ve bıçak nesnesi,\n"
+        "kurbanın intikam arzusu ile ahlaki vicdanı arasındaki çatışmayı\n"
+        "chiaroscuro gölge-ışık tezatıyla görselleştirir."
     )
-    d.text((card_x + 40, 755), vision_txt, font=font("medium", 14), fill=(148, 163, 184), spacing=4)
+    d.text((card_x + 34, card_y + 555), vision_txt, font=font("medium", 12.5), fill=(148, 163, 184), spacing=4)
 
-    # Bottom footer notice
-    round_rect(d, [120, 940, 1800, 1000], 14, fill=(16, 20, 30), outline=(45, 55, 75), width=1)
-    d.text((150, 955), "Kumandadaki Sari tusa veya mobil kumandadaki CineSub butonuna basildiginda aninda belirir · Sifir arabellek duraklamasi", font=font("medium", 16), fill=(148, 163, 184))
+    # Bottom notice banner
+    round_rect(d, [120, 915, 1800, 975], 14, fill=(14, 18, 28), outline=(45, 55, 75), width=1)
+    d.text((150, 935), "Kumandadaki Sarı tuşa veya telefon kumandadaki CineSub düğmesine basıldığında film kesilmeden kenarda süzülür · Sıfır duraklama", font=font("medium", 15), fill=(148, 163, 184))
 
     out = os.path.join(DOCS_MEDIA, "cinesub_overlay.png")
     im.save(out, "PNG")
     print("Saved:", out)
 
 if __name__ == "__main__":
-    generate_nuvio_home()
     generate_roulette_view()
     generate_cineparty_games()
     generate_cinesub_overlay()

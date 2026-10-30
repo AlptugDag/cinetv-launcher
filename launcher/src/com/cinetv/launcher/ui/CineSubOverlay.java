@@ -62,10 +62,93 @@ public final class CineSubOverlay {
         overlay.showAndInspect();
     }
 
+    public static synchronized void showInsight(Context ctx, String title, String insight) {
+        TvKeyInterceptorService acc = TvKeyInterceptorService.getInstance();
+        Context targetCtx = acc != null ? acc : ctx;
+        if (activeInstance != null) {
+            activeInstance.dismiss();
+        }
+        CineSubOverlay overlay = new CineSubOverlay(targetCtx);
+        activeInstance = overlay;
+        overlay.showStaticCard(title, insight);
+    }
+
     public static synchronized void dismissActive() {
         if (activeInstance != null) {
             activeInstance.dismiss();
             activeInstance = null;
+        }
+    }
+
+    private void showStaticCard(String customTitle, String insight) {
+        try {
+            UiKit.init(context);
+            boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+
+            FrameLayout card = new FrameLayout(context);
+            int cardW = UiKit.px(440);
+            card.setBackground(Glass.panel(card, 26));
+            card.setPadding(UiKit.px(24), UiKit.px(20), UiKit.px(24), UiKit.px(22));
+
+            LinearLayout contentLayout = new LinearLayout(context);
+            contentLayout.setOrientation(LinearLayout.VERTICAL);
+
+            // Badge Row: Glowing Icon + "✦ CINESUB KÜLTÜREL REHBER"
+            LinearLayout badgeRow = new LinearLayout(context);
+            badgeRow.setOrientation(LinearLayout.HORIZONTAL);
+            badgeRow.setGravity(Gravity.CENTER_VERTICAL);
+
+            TextView badge = UiKit.bold(context, 13, Color.parseColor("#F59E0B")); // Solar Amber
+            badge.setText(tr ? "✦ CINESUB KÜLTÜREL REHBER" : "✦ CINESUB CULTURAL GUIDE");
+            badge.setLetterSpacing(0.06f);
+            badgeRow.addView(badge);
+            contentLayout.addView(badgeRow);
+
+            titleView = UiKit.bold(context, 19, UiKit.INK);
+            titleView.setText(customTitle != null && !customTitle.isEmpty()
+                    ? customTitle
+                    : (tr ? "Sinematografik Detay" : "Cinematographic Detail"));
+            titleView.setPadding(0, UiKit.px(8), 0, UiKit.px(6));
+            contentLayout.addView(titleView);
+
+            contentView = UiKit.label(context, 14, UiKit.INK_DIM);
+            contentView.setLineSpacing(UiKit.pxf(4), 1.15f);
+            contentView.setText(insight != null ? insight.trim() : "");
+            contentLayout.addView(contentView);
+
+            card.addView(contentLayout);
+            this.overlayView = card;
+
+            WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+                    cardW,
+                    WindowManager.LayoutParams.WRAP_CONTENT,
+                    (context instanceof AccessibilityService)
+                            ? WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+                            : (android.os.Build.VERSION.SDK_INT >= 26
+                                    ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                                    : WindowManager.LayoutParams.TYPE_PHONE),
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                            | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                            | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    PixelFormat.TRANSLUCENT
+            );
+            lp.gravity = Gravity.TOP | Gravity.END;
+            lp.x = UiKit.px(36);
+            lp.y = UiKit.px(44);
+
+            overlayView.setAlpha(0f);
+            overlayView.setTranslationX(UiKit.pxf(60));
+            windowManager.addView(overlayView, lp);
+
+            overlayView.animate().alpha(1f).translationX(0f).setDuration(280)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
+
+            // Auto-dismiss after 12 seconds
+            handler.removeCallbacks(autoDismiss);
+            handler.postDelayed(autoDismiss, 12000);
+
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to display static CineSubOverlay: " + t.getMessage());
         }
     }
 

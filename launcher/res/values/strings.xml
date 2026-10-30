@@ -143,7 +143,7 @@
     <string name="tour_phone_t">Your phone is the remote</string>
     <string name="tour_phone">Press here and scan the code: your phone becomes a touchpad remote that works in every app, with an air mouse, its keyboard typing on the TV, and a real power-off.</string>
     <string name="tour_cast_t">Send to the TV</string>
-    <string name="tour_cast">In YouTube on any phone, tap Cast and pick this TV: it plays in ad-free YouTube. On the phone page, Cast plays a film from a web page: the TV presses play itself and skips the ads.</string>
+    <string name="tour_cast">In YouTube on any phone, tap Cast and pick this TV: it opens on the TV screen. On the phone page, Cast sends any web video to the TV: playback opens seamlessly.</string>
     <string name="tour_inputs_t">Inputs by name</string>
     <string name="tour_inputs">Your devices by their own names: “PlayStation 5”, “Digiturk”. Live TV is first.</string>
     <string name="tour_apps_t">Your apps</string>

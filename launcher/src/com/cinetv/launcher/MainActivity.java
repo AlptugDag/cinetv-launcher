@@ -635,6 +635,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             final String q = intent.getStringExtra("query");
             if (q != null && !q.trim().isEmpty()) handler.postDelayed(() -> onSearch(q), 300);
         }
+        else if ("cinesub".equals(action) || "com.cinetv.launcher.ACTION_CINESUB".equals(action)) {
+            final String cTitle = intent.getStringExtra("title");
+            final String cInsight = intent.getStringExtra("insight");
+            handler.postDelayed(() -> {
+                if (cInsight != null && !cInsight.isEmpty()) {
+                    com.cinetv.launcher.ui.CineSubOverlay.showInsight(this, cTitle, cInsight);
+                } else {
+                    com.cinetv.launcher.ui.CineSubOverlay.trigger(this);
+                }
+            }, 300);
+        }
     }
 
     // ---- keys -------------------------------------------------------------------------------------

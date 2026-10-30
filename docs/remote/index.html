@@ -1982,8 +1982,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       if (st.revealing) {
         if ($("quizFeedback")) {
           $("quizFeedback").style.display = "block";
-          $("quizFeedback").textContent = "★ Doğru Cevap: " + (st.displayAnswer || "");
+          const ansList = st.players ? st.players.map(p =>
+            `<div style="font-size:12px;margin:3px 0;display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-radius:8px;background:${p.correct ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)'}">
+              <span><b>${esc(p.name)}:</b> ${p.answer ? `"${esc(p.answer)}"` : '<i style="color:var(--dim)">Cevapsız</i>'}</span>
+              <span style="font-weight:700;font-size:11px;color:${p.correct ? '#10b981' : '#f87171'}">${p.correct ? '✓ DOĞRU (+10)' : '✕ YANLIŞ'}</span>
+            </div>`
+          ).join("") : "";
+          $("quizFeedback").innerHTML = `<div style="font-size:13.5px;font-weight:800;color:#10b981;margin-bottom:8px">★ DOĞRU CEVAP: ${esc(st.displayAnswer || "")}</div>` + ansList;
         }
+      } else {
+        if ($("quizFeedback")) $("quizFeedback").style.display = "none";
       }
       // Leaderboard
       if ($("quizLeaderboard") && st.players) {
@@ -2052,24 +2060,24 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   }
 
   const CINE_POSTERS = [
-    { title: "Interstellar", color: "#0284c7", glow: "#38bdf8", accent: "#7dd3fc" },
-    { title: "Inception", color: "#b45309", glow: "#f59e0b", accent: "#fde68a" },
-    { title: "The Dark Knight", color: "#334155", glow: "#64748b", accent: "#94a3b8" },
-    { title: "Pulp Fiction", color: "#b91c1c", glow: "#ef4444", accent: "#fca5a5" },
-    { title: "The Godfather", color: "#78350f", glow: "#d97706", accent: "#fcd34d" },
-    { title: "Fight Club", color: "#9d174d", glow: "#ec4899", accent: "#f472b6" },
-    { title: "The Matrix", color: "#047857", glow: "#10b981", accent: "#6ee7b7" },
-    { title: "Whiplash", color: "#c2410c", glow: "#f97316", accent: "#fdba74" },
-    { title: "Blade Runner", color: "#0e7490", glow: "#06b6d4", accent: "#67e8f9" },
-    { title: "Taxi Driver", color: "#854d0e", glow: "#eab308", accent: "#fef08a" }
+    { title: "Interstellar", code: "INT", color: "#0284c7", glow: "#38bdf8", accent: "#7dd3fc" },
+    { title: "Inception", code: "INC", color: "#b45309", glow: "#f59e0b", accent: "#fde68a" },
+    { title: "The Dark Knight", code: "TDK", color: "#1e293b", glow: "#64748b", accent: "#94a3b8" },
+    { title: "Pulp Fiction", code: "PULP", color: "#991b1b", glow: "#ef4444", accent: "#fca5a5" },
+    { title: "The Godfather", code: "BABA", color: "#78350f", glow: "#d97706", accent: "#fcd34d" },
+    { title: "Fight Club", code: "FC", color: "#831843", glow: "#ec4899", accent: "#f472b6" },
+    { title: "The Matrix", code: "MTX", color: "#064e3b", glow: "#10b981", accent: "#6ee7b7" },
+    { title: "Whiplash", code: "WHP", color: "#9a3412", glow: "#f97316", accent: "#fdba74" },
+    { title: "Blade Runner", code: "BLD", color: "#155e75", glow: "#06b6d4", accent: "#67e8f9" },
+    { title: "Taxi Driver", code: "TAXI", color: "#713f12", glow: "#eab308", accent: "#fef08a" }
   ];
 
-  const TILE_COUNT = 20;
+  const TILE_COUNT = 14;
   const TILE_PX = S_BOARD_SIZE / TILE_COUNT;
-  let snake = [{x: 10, y: 10}, {x: 10, y: 11}, {x: 10, y: 12}];
+  let snake = [{x: 7, y: 7}, {x: 7, y: 8}, {x: 7, y: 9}];
   let snakeDir = {x: 0, y: -1};
   let nextSnakeDir = {x: 0, y: -1};
-  let food = {x: 5, y: 5, poster: CINE_POSTERS[0]};
+  let food = {x: 4, y: 4, poster: CINE_POSTERS[0]};
   let snakeScore = 0;
   let snakeBest = 0;
   try { snakeBest = parseInt(localStorage.getItem("cinetv.snakeBest") || "0", 10); } catch (e) {}
@@ -2097,12 +2105,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     const h = S_BOARD_SIZE * sDpr;
     const tile = TILE_PX * sDpr;
 
-    // 1. Dark Slate Cinema Background
-    ctx.fillStyle = "#090a10";
+    // 1. Photorealistic 3D Obsidian Editing Deck Background
+    const bgGrad = ctx.createRadialGradient(w / 2, h / 2, tile * 2, w / 2, h / 2, w * 0.75);
+    bgGrad.addColorStop(0, "#0d111a");
+    bgGrad.addColorStop(1, "#050609");
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle projection grid
-    ctx.strokeStyle = "rgba(255,255,255,0.035)";
+    // Subtle golden cinema projection grid lines
+    ctx.strokeStyle = "rgba(245, 158, 11, 0.04)";
     ctx.lineWidth = 1 * sDpr;
     for (let c = 1; c < TILE_COUNT; c++) {
       ctx.beginPath();
@@ -2115,122 +2126,186 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       ctx.stroke();
     }
 
-    // 2. Draw Food: Realistic 3D Miniature Keepcase DVD
-    const fx = food.x * tile;
-    const fy = food.y * tile;
-    const dvdW = tile - 2 * sDpr;
-    const dvdH = tile - 1 * sDpr;
-    const rad = 2.5 * sDpr;
-
+    // 2. Draw Food: Realistic 3D Miniature Keepcase DVD with Drop Shadow
     foodPulseTime += 0.08;
-    const glowAmt = (Math.sin(foodPulseTime) * 0.35 + 0.65) * (8 * sDpr);
+    const floatY = Math.sin(foodPulseTime * 2.5) * (1.2 * sDpr);
+    const fx = food.x * tile + 1.5 * sDpr;
+    const fy = food.y * tile + 1 * sDpr + floatY;
+    const dvdW = tile - 3 * sDpr;
+    const dvdH = tile - 2 * sDpr;
+    const rad = 3 * sDpr;
 
     ctx.save();
-    // Ambient Glow
+    // Soft 3D drop shadow onto floor
+    ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+    ctx.shadowBlur = 8 * sDpr;
+    ctx.shadowOffsetY = 4 * sDpr;
+
+    // Outer Keepcase Plastic Case (Matte Dark Navy/Black)
+    ctx.fillStyle = "#0a0e17";
+    ctx.beginPath();
+    ctx.roundRect(fx, fy, dvdW, dvdH, rad);
+    ctx.fill();
+
+    // Reset shadow for inner art
     ctx.shadowColor = food.poster.glow;
-    ctx.shadowBlur = glowAmt;
+    ctx.shadowBlur = (Math.sin(foodPulseTime) * 0.4 + 0.6) * (10 * sDpr);
+    ctx.shadowOffsetY = 0;
 
-    // Dark Keepcase Plastic Rim
-    ctx.fillStyle = "#0f172a";
+    // Poster Inset Cover Art
+    const artMargin = 2 * sDpr;
+    const artW = dvdW - artMargin * 2;
+    const artH = dvdH - artMargin * 2;
+    const artGrad = ctx.createLinearGradient(fx + artMargin, fy + artMargin, fx + artMargin + artW, fy + artMargin + artH);
+    artGrad.addColorStop(0, food.poster.color);
+    artGrad.addColorStop(1, "#090d16");
+    ctx.fillStyle = artGrad;
     ctx.beginPath();
-    ctx.roundRect(fx + 1 * sDpr, fy + 0.5 * sDpr, dvdW, dvdH, rad);
+    ctx.roundRect(fx + artMargin, fy + artMargin, artW, artH, 2 * sDpr);
     ctx.fill();
 
-    // Cover Art
-    ctx.fillStyle = food.poster.color;
-    ctx.beginPath();
-    ctx.roundRect(fx + 2.5 * sDpr, fy + 1.5 * sDpr, dvdW - 3.5 * sDpr, dvdH - 2 * sDpr, 1.5 * sDpr);
-    ctx.fill();
-
-    // Spine Highlight
+    // Spine Ribbing (Left edge metallic accent)
     ctx.fillStyle = food.poster.accent;
-    ctx.fillRect(fx + 2.5 * sDpr, fy + 1.5 * sDpr, 1.8 * sDpr, dvdH - 2 * sDpr);
+    ctx.fillRect(fx + artMargin, fy + artMargin, 2.5 * sDpr, artH);
 
-    // Cellophane Diagonal Specular Sheen (glossy plastic reflection)
-    const sheenGrad = ctx.createLinearGradient(fx, fy, fx + dvdW, fy + dvdH);
-    sheenGrad.addColorStop(0, "rgba(255,255,255,0.45)");
-    sheenGrad.addColorStop(0.35, "rgba(255,255,255,0.12)");
-    sheenGrad.addColorStop(0.55, "rgba(255,255,255,0)");
-    sheenGrad.addColorStop(1, "rgba(255,255,255,0.18)");
-    ctx.fillStyle = sheenGrad;
+    // Film Code Monogram in tiny gold font
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.font = `bold ${Math.round(6.5 * sDpr)}px -apple-system, sans-serif`;
+    ctx.fillText(food.poster.code, fx + artMargin + 4.5 * sDpr, fy + artMargin + artH * 0.65);
+
+    // 3D Cellophane Diagonal Specular Reflection (glossy cellophane sleeve sheen)
+    const sheen = ctx.createLinearGradient(fx, fy, fx + dvdW, fy + dvdH);
+    sheen.addColorStop(0, "rgba(255, 255, 255, 0.55)");
+    sheen.addColorStop(0.35, "rgba(255, 255, 255, 0.12)");
+    sheen.addColorStop(0.5, "rgba(255, 255, 255, 0)");
+    sheen.addColorStop(0.85, "rgba(255, 255, 255, 0.22)");
+    sheen.addColorStop(1, "rgba(255, 255, 255, 0.35)");
+    ctx.fillStyle = sheen;
     ctx.beginPath();
-    ctx.roundRect(fx + 2.5 * sDpr, fy + 1.5 * sDpr, dvdW - 3.5 * sDpr, dvdH - 2 * sDpr, 1.5 * sDpr);
+    ctx.roundRect(fx, fy, dvdW, dvdH, rad);
     ctx.fill();
 
     ctx.restore();
 
-    // 3. Draw Snake: 35mm Celluloid Filmstrip
+    // 3. Draw Snake: Realistic 3D Celluloid Filmstrip & Cine Camera Optics
     snake.forEach((seg, i) => {
-      const sx = seg.x * tile;
-      const sy = seg.y * tile;
-      const segSize = tile - 2 * sDpr;
+      const sx = seg.x * tile + 1 * sDpr;
+      const sy = seg.y * tile + 1 * sDpr;
+      const segW = tile - 2 * sDpr;
+      const segH = tile - 2 * sDpr;
 
       if (i === 0) {
-        // HEAD: Vintage Cinema Projector Lens / Camera Barrel
+        // HEAD: 3D Cinema Camera Lens Barrel with Titanium Aperture Ring
         ctx.save();
-        const hcx = sx + tile / 2;
-        const hcy = sy + tile / 2;
-        const hr = (tile / 2) - 1 * sDpr;
+        const hcx = sx + segW / 2;
+        const hcy = sy + segH / 2;
+        const hr = (segW / 2) - 0.5 * sDpr;
 
-        // Outer Metallic Barrel
+        // Drop shadow for 3D camera head
+        ctx.shadowColor = "rgba(0, 0, 0, 0.75)";
+        ctx.shadowBlur = 6 * sDpr;
+        ctx.shadowOffsetY = 2 * sDpr;
+
+        // Outer Titanium Body
         ctx.beginPath();
         ctx.arc(hcx, hcy, hr, 0, Math.PI * 2);
-        ctx.fillStyle = "#1e293b";
-        ctx.shadowColor = "#10b981";
-        ctx.shadowBlur = 6 * sDpr;
+        const barrelGrad = ctx.createLinearGradient(hcx - hr, hcy - hr, hcx + hr, hcy + hr);
+        barrelGrad.addColorStop(0, "#334155");
+        barrelGrad.addColorStop(0.5, "#0f172a");
+        barrelGrad.addColorStop(1, "#1e293b");
+        ctx.fillStyle = barrelGrad;
         ctx.fill();
 
-        // Brass Aperture Ring
-        ctx.strokeStyle = "#d97706";
-        ctx.lineWidth = 1.2 * sDpr;
+        // Knurled Focus Ring (brass gold edge)
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 1.8 * sDpr;
         ctx.stroke();
 
-        // Lens Glass (Cyan / Emerald Eye)
+        // Multi-Coated Sapphire Optical Lens
         ctx.beginPath();
-        ctx.arc(hcx, hcy, hr * 0.65, 0, Math.PI * 2);
-        const lensGrad = ctx.createRadialGradient(hcx - hr * 0.2, hcy - hr * 0.2, hr * 0.1, hcx, hcy, hr * 0.65);
-        lensGrad.addColorStop(0, "#a7f3d0");
-        lensGrad.addColorStop(0.5, "#10b981");
-        lensGrad.addColorStop(1, "#065f46");
+        ctx.arc(hcx, hcy, hr * 0.68, 0, Math.PI * 2);
+        const lensGrad = ctx.createRadialGradient(hcx - hr * 0.2, hcy - hr * 0.2, hr * 0.08, hcx, hcy, hr * 0.68);
+        lensGrad.addColorStop(0, "#6ee7b7");
+        lensGrad.addColorStop(0.45, "#10b981");
+        lensGrad.addColorStop(0.85, "#047857");
+        lensGrad.addColorStop(1, "#022c22");
         ctx.fillStyle = lensGrad;
+        ctx.shadowColor = "#10b981";
+        ctx.shadowBlur = 8 * sDpr;
         ctx.fill();
 
-        // Pupil looking toward snakeDir
-        const eyeOffset = hr * 0.25;
+        // Moving Eye / Pupil tracking motion
+        const eyeOffset = hr * 0.22;
         const px = hcx + snakeDir.x * eyeOffset;
         const py = hcy + snakeDir.y * eyeOffset;
         ctx.beginPath();
-        ctx.arc(px, py, hr * 0.25, 0, Math.PI * 2);
+        ctx.arc(px, py, hr * 0.24, 0, Math.PI * 2);
         ctx.fillStyle = "#ffffff";
         ctx.fill();
 
+        // Inner pupil
+        ctx.beginPath();
+        ctx.arc(px + snakeDir.x * (0.8 * sDpr), py + snakeDir.y * (0.8 * sDpr), hr * 0.12, 0, Math.PI * 2);
+        ctx.fillStyle = "#0f172a";
+        ctx.fill();
+
+        // Lens Glare Arc
+        ctx.beginPath();
+        ctx.arc(hcx - hr * 0.2, hcy - hr * 0.2, hr * 0.35, Math.PI * 1.1, Math.PI * 1.7);
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.65)";
+        ctx.lineWidth = 1.2 * sDpr;
+        ctx.stroke();
+
         ctx.restore();
       } else {
-        // BODY: 35mm Filmstrip Frame Cell
+        // BODY SEGMENTS: 3D Volumetric 35mm Celluloid Filmstrip Cell
         ctx.save();
-        const fade = Math.max(0.3, 1 - (i / snake.length) * 0.6);
+        const fade = Math.max(0.35, 1 - (i / snake.length) * 0.55);
 
-        // Celluloid Base
-        ctx.fillStyle = `rgba(22, 27, 38, ${fade})`;
-        ctx.strokeStyle = `rgba(180, 83, 9, ${fade * 0.7})`;
-        ctx.lineWidth = 1 * sDpr;
+        // Segment drop shadow
+        ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+        ctx.shadowBlur = 4 * sDpr;
+        ctx.shadowOffsetY = 1.5 * sDpr;
+
+        // 3D Beveled Celluloid Base
+        const cellGrad = ctx.createLinearGradient(sx, sy, sx, sy + segH);
+        cellGrad.addColorStop(0, `rgba(45, 55, 75, ${fade})`);
+        cellGrad.addColorStop(0.4, `rgba(22, 28, 42, ${fade})`);
+        cellGrad.addColorStop(1, `rgba(12, 16, 24, ${fade})`);
+        ctx.fillStyle = cellGrad;
+
+        ctx.strokeStyle = `rgba(245, 158, 11, ${fade * 0.8})`; // Solar amber film edge
+        ctx.lineWidth = 1.2 * sDpr;
         ctx.beginPath();
-        ctx.roundRect(sx + 1 * sDpr, sy + 1 * sDpr, segSize, segSize, 2.5 * sDpr);
+        ctx.roundRect(sx, sy, segW, segH, 3.5 * sDpr);
         ctx.fill();
         ctx.stroke();
 
-        // Center Aperture Window
-        ctx.fillStyle = `rgba(16, 185, 129, ${fade * 0.35})`;
-        ctx.fillRect(sx + 3.5 * sDpr, sy + 3.5 * sDpr, segSize - 5 * sDpr, segSize - 5 * sDpr);
+        // Inner 35mm Projection Window (Exposed Cinema Frame)
+        const frameMargin = 3.5 * sDpr;
+        const fw = segW - frameMargin * 2;
+        const fh = segH - frameMargin * 2;
+        const innerGrad = ctx.createLinearGradient(sx + frameMargin, sy + frameMargin, sx + frameMargin + fw, sy + frameMargin + fh);
+        innerGrad.addColorStop(0, `rgba(16, 185, 129, ${fade * 0.45})`);
+        innerGrad.addColorStop(1, `rgba(6, 95, 70, ${fade * 0.2})`);
+        ctx.fillStyle = innerGrad;
+        ctx.fillRect(sx + frameMargin, sy + frameMargin, fw, fh);
 
-        // Kodak 35mm Perforations (Mini Sprocket Holes on top and bottom)
-        ctx.fillStyle = `rgba(241, 245, 249, ${fade * 0.85})`;
-        const spW = 1.6 * sDpr;
-        const spH = 1.2 * sDpr;
-        ctx.fillRect(sx + 2.5 * sDpr, sy + 1.2 * sDpr, spW, spH);
-        ctx.fillRect(sx + segSize - 2.5 * sDpr - spW, sy + 1.2 * sDpr, spW, spH);
-        ctx.fillRect(sx + 2.5 * sDpr, sy + segSize - 0.4 * sDpr - spH, spW, spH);
-        ctx.fillRect(sx + segSize - 2.5 * sDpr - spW, sy + segSize - 0.4 * sDpr - spH, spW, spH);
+        // Kodak 35mm Precision Sprocket Perforations (4 holes per frame)
+        ctx.fillStyle = `rgba(248, 250, 252, ${fade * 0.9})`;
+        const spW = 2.2 * sDpr;
+        const spH = 1.6 * sDpr;
+        const spOff = 2 * sDpr;
+        // Top perforations
+        ctx.fillRect(sx + spOff, sy + 1.2 * sDpr, spW, spH);
+        ctx.fillRect(sx + segW - spOff - spW, sy + 1.2 * sDpr, spW, spH);
+        // Bottom perforations
+        ctx.fillRect(sx + spOff, sy + segH - 1.2 * sDpr - spH, spW, spH);
+        ctx.fillRect(sx + segW - spOff - spW, sy + segH - 1.2 * sDpr - spH, spW, spH);
+
+        // Specular Top Ridge Highlight for true 3D cylinder depth
+        ctx.fillStyle = `rgba(255, 255, 255, ${fade * 0.25})`;
+        ctx.fillRect(sx + frameMargin, sy + 1.2 * sDpr, fw, 0.8 * sDpr);
 
         ctx.restore();
       }
