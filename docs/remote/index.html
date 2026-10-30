@@ -238,11 +238,28 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .pwa-card p{margin:0 0 10px;font-size:12.5px;color:var(--dim);line-height:1.45}
 .pwa-card .pwa-x{position:absolute;top:10px;right:12px;background:none;border:0;color:var(--dim);font-size:16px;cursor:pointer;padding:4px}
 
-/* CineParty & Games UI */
-.party-wrap{display:grid;gap:14px;padding:4px 0 28px}
-.party-card{padding:16px 18px;position:relative;overflow:hidden}
-.party-card h3{margin:0 0 8px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
-.party-card p{margin:0 0 12px;font-size:13px;color:var(--dim);line-height:1.45}
+/* visionOS Liquid Glass Party & Games UI */
+.party-wrap{display:grid;gap:16px;padding:4px 0 32px}
+.party-filter-bar{display:flex;gap:8px;overflow-x:auto;padding:6px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.party-filter-chip{white-space:nowrap;padding:7px 15px;border-radius:999px;font-size:12px;font-weight:700;color:var(--dim);border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);cursor:pointer;transition:all .2s ease;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.party-filter-chip.on{color:#fff;background:linear-gradient(135deg,rgba(139,92,246,.32),rgba(59,130,246,.25));border-color:rgba(167,139,250,.6);box-shadow:0 4px 16px rgba(139,92,246,.35)}
+.party-lobby-hud{padding:12px 16px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);-webkit-backdrop-filter:blur(28px);backdrop-filter:blur(28px);box-shadow:inset 0 1px 1px rgba(255,255,255,.25)}
+.live-pulse{width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 10px #10b981;animation:pulseLive 1.8s infinite}
+@keyframes pulseLive{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
+
+.party-card{padding:18px 20px;position:relative;overflow:hidden;border-radius:22px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);-webkit-backdrop-filter:blur(32px) saturate(180%);backdrop-filter:blur(32px) saturate(180%);box-shadow:inset 0 1px 1px rgba(255,255,255,.28),0 16px 40px rgba(0,0,0,.55)}
+.party-card h3{margin:0 0 8px;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+.party-card p{margin:0 0 12px;font-size:13.5px;color:var(--dim);line-height:1.5}
+.party-guide-box{background:rgba(0,0,0,.38);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;line-height:1.55;color:#cbd5e1}
+.party-guide-box b{color:#fff}
+.party-guide-toggle{font-size:12px;padding:5px 12px;border-radius:999px;margin-bottom:12px;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:var(--ink);display:inline-flex;align-items:center;gap:6px}
+.party-guide-toggle:hover{background:rgba(255,255,255,.1)}
+
+.quiz-options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.quiz-opt-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:12px 14px;font-size:13px;font-weight:600;color:#fff;text-align:left;cursor:pointer;transition:all .18s ease;display:flex;align-items:center;gap:8px}
+.quiz-opt-btn span{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:8px;background:rgba(139,92,246,.25);color:#c4b5fd;font-weight:800;font-size:12px}
+.quiz-opt-btn:active{transform:scale(.96);background:rgba(139,92,246,.35);border-color:#a78bfa}
+
 .party-input-row{display:flex;gap:8px;margin-bottom:10px}
 .party-input-row input{flex:1;background:rgba(0,0,0,.35);border:1px solid var(--edge);border-radius:14px;color:var(--ink);padding:10px 14px;font-size:14px;outline:0}
 .party-input-row input:focus{border-color:var(--accent)}
@@ -253,19 +270,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .party-pill{padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--edge);font-size:12px;color:var(--ink)}
 .party-pill b{color:var(--accent2)}
 
-/* Luxury Physical Roulette Wheel Container */
-.roulette-box{position:relative;margin:12px auto;width:280px;height:280px;display:flex;align-items:center;justify-content:center}
-#rouletteCanvas{border-radius:50%;box-shadow:0 14px 40px rgba(0,0,0,.7),inset 0 0 12px rgba(0,0,0,.6);touch-action:none;cursor:pointer}
-.roulette-winner-card{margin-top:10px;background:linear-gradient(135deg,rgba(245,158,11,.16),rgba(217,119,6,.06));border:1px solid rgba(245,158,11,.35);border-radius:16px;padding:12px 14px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:popIn .3s ease-out}
-.roulette-winner-card .win-tag{font-size:11px;font-weight:800;letter-spacing:1px;color:#fbbf24;text-transform:uppercase;margin-bottom:3px}
+/* SineRoulette: 3D Gunmetal Revolver Cylinder Container */
+.roulette-box{position:relative;margin:12px auto;width:100%;max-width:320px;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+#rouletteCanvas{border-radius:50%;box-shadow:0 16px 45px rgba(0,0,0,.85),inset 0 0 20px rgba(0,0,0,.8);touch-action:none;cursor:pointer}
+.roulette-winner-card{margin-top:10px;background:linear-gradient(135deg,rgba(56,189,248,.16),rgba(14,165,233,.06));border:1px solid rgba(56,189,248,.45);border-radius:16px;padding:12px 14px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.5);animation:popIn .3s ease-out}
+.roulette-winner-card .win-tag{font-size:11px;font-weight:800;letter-spacing:1px;color:#38bdf8;text-transform:uppercase;margin-bottom:3px}
 .roulette-winner-card .win-title{font-size:18px;font-weight:800;color:#fff}
 .roulette-winner-card .win-user{font-size:12px;color:var(--dim);margin-top:2px}
 @keyframes popIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 
-/* 35mm Celluloid Snake Game UI */
+/* SnakePhile: Fullscreen 3D Realistic Snake Game UI */
 .snake-wrap{text-align:center;position:relative}
-.snake-board{position:relative;margin:0 auto;width:280px;height:280px;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,.75),inset 0 0 20px rgba(0,0,0,.8);border:2px solid rgba(255,255,255,.14)}
-#snakeCanvas{background:#090a10;touch-action:none;display:block;width:100%;height:100%}
+.snake-board{position:relative;margin:0 auto;width:100%;max-width:440px;aspect-ratio:1;border-radius:20px;overflow:hidden;box-shadow:0 16px 44px rgba(0,0,0,.85),inset 0 0 25px rgba(0,0,0,.85);border:2px solid rgba(16,185,129,.4)}
+#snakeCanvas{background:#07090e;touch-action:none;display:block;width:100%;height:100%}
 .snake-hud-bar{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:700;margin-bottom:8px;background:rgba(255,255,255,.05);padding:6px 12px;border-radius:12px;border:1px solid var(--edge)}
 .snake-controls{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,46px);gap:6px;justify-content:center;margin-top:12px}
 .snake-btn{background:var(--glass);border:1px solid var(--edge);border-radius:12px;color:#fff;font-size:18px;display:grid;place-items:center;cursor:pointer}
@@ -279,9 +296,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   <div class="brand"><img class="sig" src="static/signature.png" alt="" style="cursor:pointer" onclick="document.querySelector('[data-tab=about]').click()" onerror="this.remove()"><b>Cine<span class="tv">TV</span></b><small style="cursor:pointer" onclick="document.querySelector('[data-tab=about]').click()">by Alptuğ Dağ</small><span class="st" id="tvPick"><i id="dot" class="dot"></i><em id="status" data-i="connecting"></em></span></div>
   <div class="pwa-card" id="pwaCard" hidden>
     <button class="pwa-x" id="pwaClose">✕</button>
-    <h4><span>📲</span> CineTV Uygulamasını Yükleyin</h4>
+    <h4>CineTV Web Uygulamasını Yükleyin</h4>
     <p id="pwaDesc">Tarayıcı çubuğu olmadan, tam ekran akıcı mobil kumanda deneyimi için uygulamayı telefonunuza ekleyin.</p>
-    <button class="btn" id="pwaActionBtn" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);width:100%">📲 Uygulamayı Telefona Ekle</button>
+    <button class="btn" id="pwaActionBtn" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);width:100%">Uygulamayı Ana Ekrana Ekle</button>
   </div>
   <div class="install glass" id="install" hidden><span id="installText"></span><button id="installGo" hidden></button><button class="x" id="installX">✕</button></div>
   <form class="search glass" id="searchBox" action="javascript:void(0);">
@@ -295,12 +312,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   <section id="tab-search" class="on">
     <div class="wait glass" id="waitBox" hidden><i></i><span id="waitText"></span></div>
     <div class="vibe-chips" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
-      <button type="button" class="glass chip" data-vibe="Gamze ailece izleyeceğimiz sürükleyici bir film bul" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">👨‍👩‍👧‍👦 Ailece</button>
-      <button type="button" class="glass chip" data-vibe="Arkadaş ortamı için eğlenceli ve gerilimli bir şey aç" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">🍿 Arkadaşlar</button>
-      <button type="button" class="glass chip" data-vibe="Sevgilimle baş başa izleyeceğimiz büyüleyici bir film" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">🍷 Sevgiliyle</button>
-      <button type="button" class="glass chip" data-vibe="Bana Interstellar'daki o derin uzay yalnızlığını hissettiren filmleri getir" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">🌌 Uzay Yalnızlığı</button>
-      <button type="button" class="glass chip" data-vibe="Blade Runner'daki gibi yağmurlu neon hüznü filmleri" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">🌧️ Neon Hüznü</button>
-      <button type="button" class="glass chip" id="watchlistChip" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:#f59e0b;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.15)">🍿 Ortak Liste</button>
+      <button type="button" class="glass chip" data-vibe="Gamze ailece izleyeceğimiz sürükleyici bir film bul" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Ailece</button>
+      <button type="button" class="glass chip" data-vibe="Arkadaş ortamı için eğlenceli ve gerilimli bir şey aç" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Arkadaşlar</button>
+      <button type="button" class="glass chip" data-vibe="Sevgilimle baş başa izleyeceğimiz büyüleyici bir film" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Sevgiliyle</button>
+      <button type="button" class="glass chip" data-vibe="Bana Interstellar'daki o derin uzay yalnızlığını hissettiren filmleri getir" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Uzay Yalnızlığı</button>
+      <button type="button" class="glass chip" data-vibe="Blade Runner'daki gibi yağmurlu neon hüznü filmleri" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Neon Hüznü</button>
+      <button type="button" class="glass chip" id="watchlistChip" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:#f59e0b;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.15)">Ortak Liste</button>
     </div>
     <h2 id="listTitle" data-i="trending"></h2>
     <div class="grid" id="results"></div>
@@ -314,12 +331,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     </div>
     <div class="deck" id="deck">
       <div class="page"><div class="touch glass" id="touch">
+        <button class="mchip glass" id="remoteCineSubBtn" style="right:auto;left:12px;color:#f59e0b;font-weight:700;display:flex;align-items:center;gap:4px;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.14)">Cine<span style="color:#f59e0b">SUB</span></button>
         <button class="mchip glass" id="mouseBtn" data-i="airMouse"></button>
-        <button class="mchip glass" id="gyroBtn" style="right:auto;left:12px;display:none">🎮 3D Gyro</button>
-        <button class="mchip glass" id="calBtn" style="right:auto;left:108px;display:none">🎯 Sıfırla</button>
+        <button class="mchip glass" id="gyroBtn" style="right:auto;left:12px;display:none">3D Gyro</button>
+        <button class="mchip glass" id="calBtn" style="right:auto;left:108px;display:none">Sıfırla</button>
         <div class="arrow" id="arrow"></div>
         <div class="tip" id="padTip" data-i="touchTip"></div>
-        <button type="button" id="gyroTrigger" style="display:none;position:absolute;bottom:14px;left:18px;right:18px;height:54px;border-radius:18px;border:0;background:linear-gradient(135deg,#34c759,#28a745);color:#fff;font-size:16px;font-weight:700;letter-spacing:0.04em;box-shadow:0 8px 24px rgba(52,199,89,.45);z-index:10">🎯 TETİK / TIKLA</button>
+        <button type="button" id="gyroTrigger" style="display:none;position:absolute;bottom:14px;left:18px;right:18px;height:54px;border-radius:18px;border:0;background:linear-gradient(135deg,#34c759,#28a745);color:#fff;font-size:16px;font-weight:700;letter-spacing:0.04em;box-shadow:0 8px 24px rgba(52,199,89,.45);z-index:10">TETİK / TIKLA</button>
       </div></div>
       <div class="page"><div class="more">
         <button class="glass" data-key="178" data-i="input"></button><button class="glass" data-key="172" data-i="guide"></button>
@@ -354,93 +372,217 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     </div>
   </section>
 
-  <section id="tab-party">
+      <section id="tab-party">
     <div class="party-wrap">
-      
-      <!-- CineSub Hızlı Tetikleyici -->
-      <div class="party-card glass">
-        <h3><span>✦</span> CineSub (Kültürel Not Kartı)</h3>
-        <p>Film izlerken sahneyi durdurmadan altyazıdaki tarihi olayları, yönetmen göndermelerini ve felsefi kavramları TV ekranının köşesinde mini bir kart olarak açar.</p>
-        <button class="btn" id="partyCineSubBtn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);width:100%">🎬 TV'de CineSub Kültürel Not Kartını Aç</button>
+
+      <!-- visionOS Horizontal Filter Pills (Only Party Games) -->
+      <div class="party-filter-bar" id="partyFilterBar">
+        <button class="party-filter-chip on" data-filter="all">Tüm Oyunlar</button>
+        <button class="party-filter-chip" data-filter="card-quiz">CineQuiz</button>
+        <button class="party-filter-chip" data-filter="card-roulette">CineRoulette</button>
+        <button class="party-filter-chip" data-filter="card-sessiz">CineSessiz</button>
+        <button class="party-filter-chip" data-filter="card-snake">SnakePhile</button>
       </div>
 
-      <!-- 10 Soruluk Sinefil Bilmece Arenası -->
-      <div class="party-card glass" id="quizCard">
-        <h3><span>🏆</span> Sinefil Bilmece Arenası (10 Soru)</h3>
-        <p>Aynı anda birden fazla telefonla bağlanın! Ekrana gelen aktör, replik veya sahneyi 10 saniye içinde ilk bilen puanı kapar. Kazanan bu akşam hangi filmin izleneceğini seçer!</p>
+      <!-- Live Room Multi-Phone Lobby HUD -->
+      <div class="party-lobby-hud">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="live-pulse"></span>
+            <span style="font-size:13px;font-weight:700;color:#fff" id="lobbyCountText">Salonda 1 Telefon Bağlı</span>
+          </div>
+          <span class="party-badge" id="lobbyMyBadge" style="background:rgba(16,185,129,0.18);color:#6ee7b7;border-color:rgba(16,185,129,0.4)">Çevrimiçi</span>
+        </div>
+        <div class="party-list" id="lobbyPhonesList">
+          <span class="party-pill" style="border-color:rgba(16,185,129,0.5)"><b id="lobbyMyName">Alptuğ'un iPhone'u</b> (Bu Cihaz)</span>
+        </div>
+      </div>
+
+      <!-- 1. CineQuiz: Multi-User Trivia Arena -->
+      <div class="party-card glass" id="card-quiz">
+        <h3><b>Cine<span style="color:#8b5cf6">Quiz</span></b> (10 Soru & Gamze AI Canlı Yarışma)</h3>
+        <p>Aynı anda birden fazla telefonla bağlanın! Ekrana gelen aktör portresi veya ikonik sahneyi 10 saniye içinde ilk bilen puanı kapar. Kazanan bu akşam hangi filmin izleneceğini seçer!</p>
         
+        <div class="party-guide-toggle" onclick="toggleGuide('guide-quiz')">ℹ <b>Nasıl Oynanır?</b> (TV & Telefon Bilmecesi)</div>
+        <div class="party-guide-box" id="guide-quiz" hidden>
+          <b>Nasıl Oynanır:</b><br>
+          • TV ekranında TMDB fotoğraflı 10 soru ve 10 saniye geri sayım başlar.<br>
+          • Salondaki herkes telefonundan A, B, C, D seçeneklerine veya serbest metin kutusuna cevabını girer.<br>
+          • Süre bitince tüm oyuncuların cevapları TV'de açılır; doğru bilenler +10 puan kazanır.<br>
+          • 10 soru sonunda en çok puan toplayan <b>Şampiyon</b>, TV'de açılacak gece filmini seçer!
+        </div>
+
         <div id="quizPlayerSetup" class="party-input-row">
-          <input type="text" id="quizPlayerName" placeholder="Yarışmacı Adınız (Örn: Alptuğ)" maxlength="20">
-          <button class="btn" id="quizJoinBtn" style="padding:0 16px;font-size:13px">Katıl</button>
+          <input type="text" id="quizPlayerName" placeholder="Yarışmacı Adınız (Örn: Alptuğ)" maxlength="32">
+          <button class="btn" id="quizJoinBtn" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);padding:0 16px;font-size:13px">Kaydet</button>
         </div>
 
         <div id="quizInactiveView" style="margin-top:10px">
-          <button class="btn" id="quizStartBtn" style="background:linear-gradient(135deg,#10b981,#059669);width:100%">🎮 TV'de 10 Soruluk Bilmeceyi Başlat</button>
+          <button class="btn" id="quizStartBtn" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);width:100%">TV'de CineQuiz'i Başlat</button>
         </div>
 
         <div id="quizActiveView" hidden style="margin-top:12px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span class="party-badge" id="quizQIndex">Soru 1 / 10</span>
+            <span class="party-badge" id="quizQIndex" style="background:rgba(139,92,246,.2);color:#c4b5fd;border-color:rgba(139,92,246,.4)">Soru 1 / 10</span>
             <span style="font-size:13px;font-weight:700;color:#ef4444" id="quizTimerText">10s</span>
           </div>
           <div class="quiz-timer-wrap"><div class="quiz-timer-bar" id="quizTimerBar"></div></div>
           <div id="quizClueBox" style="background:rgba(0,0,0,.3);border-radius:14px;padding:12px;margin:10px 0;border:1px solid var(--edge)">
-            <img id="quizImg" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;margin-bottom:8px" alt="" hidden>
+            <img id="quizImg" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin-bottom:8px" alt="" hidden>
             <div id="quizQuestionText" style="font-size:14px;font-weight:600;margin-bottom:4px"></div>
             <div id="quizHintText" style="font-size:12px;color:var(--dim)"></div>
           </div>
+          <div id="quizOptionsGrid" style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0"></div>
           <div class="party-input-row" id="quizAnswerRow">
             <input type="text" id="quizAnswerInput" placeholder="Cevabınızı buraya yazın..." autocomplete="off">
-            <button class="btn" id="quizAnswerBtn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);padding:0 16px">Gönder</button>
+            <button class="btn" id="quizAnswerBtn" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);padding:0 16px">Gönder</button>
           </div>
           <div id="quizFeedback" style="font-size:13px;color:#10b981;font-weight:600;margin:6px 0;display:none"></div>
+          
+          <!-- Şampiyon Film Başlatma Paneli -->
+          <div id="quizChampionBox" style="display:none;margin-top:12px;background:rgba(139,92,246,0.15);padding:14px;border-radius:14px;border:1px solid #8b5cf6">
+            <div style="font-weight:700;color:#c4b5fd;margin-bottom:6px">👑 ŞAMPİYON! Bu Akşam Salonda Hangi Filmi İzleyelim?</div>
+            <div class="party-input-row">
+              <input type="text" id="championMovieInput" placeholder="Film Adı (Örn: Interstellar)">
+              <button class="btn" id="championLaunchBtn" style="background:#8b5cf6;padding:0 14px">TV'de Aç</button>
+            </div>
+          </div>
+
           <div id="quizLeaderboard" style="margin-top:12px;font-size:12px;color:var(--dim)"></div>
-          <button class="btn ghost" id="quizStopBtn" style="margin-top:10px;width:100%;font-size:12px">Yarışmayı Bitir</button>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn ghost" id="quizGamzeBtn" style="flex:1;font-size:12px">Gamze AI Yeni Soru</button>
+            <button class="btn ghost" id="quizStopBtn" style="flex:1;font-size:12px">Yarışmayı Bitir</button>
+          </div>
         </div>
       </div>
 
-      <!-- Film Öneri Ruleti -->
-      <div class="party-card glass">
-        <h3><span>🎡</span> Film Öneri Ruleti</h3>
-        <p>Herkes kendi telefonundan bu akşam izlemek istediği bir filmi TV'ye fırlatsın. Rulet döner ve kazanan film hem TV'de hem telefonda otomatik taçlandırılır!</p>
+      <!-- 2. CineRoulette: 3D Revolver Göbeği Film Seçici -->
+      <div class="party-card glass" id="card-roulette">
+        <h3><b>Cine<span style="color:#38bdf8">Roulette</span></b> (3D Revolver & Gamze Tema)</h3>
+        <p>Herkes kendi telefonundan bu akşam izlemek istediği bir filmi fırlatsın. Rus ruleti tansiyonunda her tetiğe basışta ya KLİK ya GÜM!</p>
         
+        <div class="party-guide-toggle" onclick="toggleGuide('guide-roulette')">ℹ <b>Nasıl Oynanır?</b> (3D Revolver Rulet)</div>
+        <div class="party-guide-box" id="guide-roulette" hidden>
+          <b>Nasıl Oynanır:</b><br>
+          • Herkes kendi telefonundan izlemek istediği bir filmi hazneye fırlatır ya da Gamze temalarından birini seçer.<br>
+          • 6 gözlü revolver tamburunda her gözde bir film afişi yer alır.<br>
+          • Sırası gelen oyuncu tetiği çeker; <b>KLİK</b> gelirse sıra geçer, <b>GÜM</b> patlarsa canlı mermideki film TV'de otomatik açılır!
+        </div>
+
         <div class="roulette-box">
-          <canvas id="rouletteCanvas" width="280" height="280"></canvas>
+          <canvas id="rouletteCanvas" width="320" height="320"></canvas>
         </div>
         <div id="rouletteWinnerBanner" class="roulette-winner-card" hidden>
-          <div class="win-tag">✦ BU AKŞAMIN SEÇİMİ</div>
+          <div class="win-tag">BU AKŞAMIN SEÇİMİ</div>
           <div id="rouletteWinnerTitle" class="win-title">Taxi Driver</div>
-          <div id="rouletteWinnerUser" class="win-user">Öneren: Alptuğ</div>
+          <div id="rouletteWinnerUser" class="win-user">Öneren: Alptuğ'un iPhone'u</div>
+          <button class="btn" id="rouletteLaunchTvBtn" style="background:linear-gradient(135deg,#38bdf8,#0284c7);width:100%;margin-top:8px">Şimdi TV'de Başlat</button>
         </div>
+
+        <!-- 10s Tension Bar -->
+        <div class="quiz-timer-wrap"><div class="quiz-timer-bar" id="rouletteTimerBar" style="background:#38bdf8;width:100%"></div></div>
+
+        <button class="btn" id="rTriggerBtn" style="background:linear-gradient(135deg,#38bdf8,#0284c7);width:100%;margin-bottom:8px">Tetiği Çek (KLİK mi GÜM mü?)</button>
 
         <div class="party-input-row" style="margin-top:12px">
           <input type="text" id="rouletteInput" placeholder="Film ya da Dizi Adı (Örn: Taxi Driver)">
-          <button class="btn" id="rouletteSendBtn" style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:0 14px">Fırlat</button>
+          <button class="btn" id="rouletteSendBtn" style="background:linear-gradient(135deg,#38bdf8,#0284c7);padding:0 14px">Fırlat</button>
         </div>
-        <div style="font-size:12px;color:var(--dim);margin:6px 0">TV Havuzundaki Öneriler:</div>
+        <div style="font-size:12px;color:var(--dim);margin:6px 0">Tambur Haznesindeki Öneriler:</div>
         <div class="party-list" id="rouletteList"><span style="color:var(--faint);font-size:12px">Henüz öneri eklenmedi</span></div>
+        <div style="font-size:12px;color:var(--dim);margin:8px 0 4px">Gamze AI Tematik Seçki:</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          <button class="btn ghost" id="rThemeNoir" style="font-size:11px;padding:4px 8px">90'lar Suç</button>
+          <button class="btn ghost" id="rThemeScifi" style="font-size:11px;padding:4px 8px">Kozmik Bilim Kurgu</button>
+          <button class="btn ghost" id="rThemeCult" style="font-size:11px;padding:4px 8px">Kült Klasikler</button>
+          <button class="btn ghost" id="rThemeTr" style="font-size:11px;padding:4px 8px">Festival Sineması</button>
+        </div>
         <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn" id="rouletteSpinBtn" style="flex:2;background:linear-gradient(135deg,#8b5cf6,#6366f1)">🎡 Çarkı Çevir (TV & Mobil)</button>
+          <button class="btn" id="rouletteSpinBtn" style="flex:2;background:linear-gradient(135deg,#38bdf8,#0284c7)">Tamburu Döndür</button>
           <button class="btn ghost" id="rouletteClearBtn" style="flex:1">Temizle</button>
         </div>
       </div>
 
-      <!-- Gyro Sinefil Yılanı -->
-      <div class="party-card glass snake-wrap">
-        <h3><span>🐍</span> 35mm Sinefil Yılanı (Gyro Eğimli)</h3>
-        <p>Telefonunuzu sağa-sola, öne-arkaya eğerek yönetin! 35mm selüloit film yılanı, klasik film DVD'lerini yedikçe uzar.</p>
+      <!-- 3. CineSessiz: Sinema & Dizi Sessiz Sinema / Tabu -->
+      <div class="party-card glass" id="card-sessiz">
+        <h3><b>Cine<span style="color:#f59e0b">Sessiz</span></b> (Sinema & Dizi Tabu)</h3>
+        <p>Zaman veya soru sınırı yok! Bir kişi telefonundaki gizli sinema kartını anlatır, salondakiler telefonlarından tahminlerini yazar!</p>
+        
+        <div class="party-guide-toggle" onclick="toggleGuide('guide-sessiz')">ℹ <b>Nasıl Oynanır?</b> (Sinema & Dizi Sessiz Sinema)</div>
+        <div class="party-guide-box" id="guide-sessiz" hidden>
+          <b>Nasıl Oynanır:</b><br>
+          • Bir kişi <b>Anlatıcı</b> olur; gizli kartı ve yasaklı kelimeleri yalnızca kendi telefonunda görür.<br>
+          • Salondakiler telefonlarından tahminlerini yazar; canlı akışta kimse görmeden doğru cevap aranır.<br>
+          • Doğru bilen hem kendini hem anlatıcıyı +10 puanla ödüllendirir. Zaman sınırı yoktur!
+        </div>
+
+        <div id="sessizInactiveView">
+          <button class="btn" id="sessizStartBtn" style="background:linear-gradient(135deg,#f59e0b,#d97706);width:100%">TV'de CineSessiz'i Başlat</button>
+        </div>
+
+        <div id="sessizActiveView" hidden style="margin-top:12px">
+          <!-- Teller Secret Vault -->
+          <div id="sessizTellerBox" style="display:none;background:rgba(245,158,11,0.12);border:1px solid #f59e0b;border-radius:14px;padding:14px;margin-bottom:12px">
+            <div style="font-size:12px;font-weight:700;color:#f59e0b">ANLATICI SENSİN (GİZLİ KART):</div>
+            <div id="sessizSecretTitle" style="font-size:22px;font-weight:800;color:#fff;margin:4px 0">Fight Club</div>
+            <div id="sessizSecretCategory" style="font-size:13px;color:#fde68a;margin-bottom:10px">Kült Film (1999)</div>
+            <div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:4px">YASAKLI KELİMELER (ASLA SÖYLEME!):</div>
+            <div id="sessizTabooList" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn" id="sessizCorrectBtn" style="flex:2;background:#10b981">Bildiler (+10p)</button>
+              <button class="btn ghost" id="sessizPassBtn" style="flex:1">Pas</button>
+            </div>
+          </div>
+
+          <!-- Guesser View -->
+          <div id="sessizGuesserBox" style="display:none;background:rgba(0,0,0,0.3);border:1px solid var(--edge);border-radius:14px;padding:12px;margin-bottom:12px">
+            <div id="sessizTellerNotice" style="font-size:13px;font-weight:700;color:#f59e0b;margin-bottom:4px">Anlatıcı: Alptuğ'un iPhone'u</div>
+            <div id="sessizCategoryHint" style="font-size:12px;color:var(--dim);margin-bottom:10px">Kategori: Kült Film (1999)</div>
+            <div class="party-input-row">
+              <input type="text" id="sessizGuessInput" placeholder="Tahmininizi buraya yazın..." autocomplete="off">
+              <button class="btn" id="sessizGuessBtn" style="background:#f59e0b;padding:0 16px">Fırlat</button>
+            </div>
+          </div>
+
+          <div style="font-size:12px;color:var(--dim);margin:6px 0">Canlı Tahmin Akışı:</div>
+          <div id="sessizFeedList" style="max-height:140px;overflow-y:auto;margin-bottom:10px"></div>
+          <div id="sessizLeaderboard" style="font-size:12px;color:var(--dim)"></div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn ghost" id="sessizGamzeBtn" style="flex:1;font-size:12px">Gamze AI Yeni Kartlar</button>
+            <button class="btn ghost" id="sessizStopBtn" style="flex:1;font-size:12px">Oyunu Bitir</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. SnakePhile: Fullscreen 3D Gerçekçi Yılan -->
+      <div class="party-card glass snake-wrap" id="card-snake">
+        <h3><b>Snake<span style="color:#10b981">Phile</span></b> (3D Gerçekçi Yılan)</h3>
+        <p>Telefonunuzu sağa-sola, öne-arkaya eğerek yönetin! 3D gerçekçi yılan, salondaki gerçek film afişlerini yedikçe uzar.</p>
+        
+        <div class="party-guide-toggle" onclick="toggleGuide('guide-snake')">ℹ <b>Nasıl Oynanır?</b> (3D Gerçekçi Yılan)</div>
+        <div class="party-guide-box" id="guide-snake" hidden>
+          <b>Nasıl Oynanır:</b><br>
+          • Gerçekçi 3D yılan tahtada hareket eder; telefonun jiroskopuyla (eğerek) veya yön tuşlarıyla yönlendirilir.<br>
+          • Yılan, salondaki gerçek DVD-boxless film afişlerini yedikçe uzar ve her film hakkında sahne bilgisi sunar.<br>
+          • Yılan kendi kuyruğunu ısırdığında yiyemediği son afişin filmi TV'de açılmaya hazır hale gelir!
+        </div>
+
         <div class="snake-hud-bar">
           <span>KARE (SKOR): <b id="snakeScore" style="color:#10b981">0</b></span>
           <span>REKOR: <b id="snakeBest" style="color:var(--accent2)">0</b></span>
         </div>
         <div class="snake-board">
-          <canvas id="snakeCanvas" width="280" height="280"></canvas>
+          <canvas id="snakeCanvas" width="340" height="340"></canvas>
         </div>
-        <div id="snakeLastFilm" style="margin-top:8px;font-size:12px;color:var(--dim);font-style:italic">Hedef DVD: Interstellar</div>
+        <div id="snakeFilmTrivia" style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);font-size:12px;color:#a7f3d0">
+          <b>Hedef: Interstellar (2014)</b> · Christopher Nolan · 8.7/10<br>
+          <span style="color:var(--dim);font-size:11px">Fizikçi Kip Thorne danışmanlığında modellenen gerçekçi karadelik simülasyonu.</span>
+        </div>
         <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn" id="snakeStartBtn" style="flex:1;background:linear-gradient(135deg,#10b981,#059669)">🎮 Oyunu Başlat</button>
-          <button class="btn ghost" id="snakeGyroToggle" style="flex:1">📱 Gyro: Açık</button>
+          <button class="btn" id="snakeStartBtn" style="flex:1;background:linear-gradient(135deg,#10b981,#059669)">Telefonda Oyna</button>
+          <button class="btn ghost" id="snakeGyroToggle" style="flex:1">Gyro: Açık</button>
         </div>
+        <button class="btn" id="snakeTvLaunchBtn" style="width:100%;background:linear-gradient(135deg,#10b981,#047857);margin-top:8px">🎬 TV Ekranında Fullscreen 3D Oyna</button>
         <div class="snake-controls">
           <div></div>
           <button class="snake-btn" id="snkUp">▲</button>
@@ -514,12 +656,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 </main>
 
 <nav class="glass">
-  <button class="on" data-tab="search"><span>🎬</span><span data-i="tabSearch"></span></button>
-  <button data-tab="remote"><span>🕹️</span><span data-i="tabRemote"></span></button>
-  <button data-tab="party"><span>🎉</span><span data-i="tabParty"></span></button>
-  <button data-tab="cast"><span>📡</span><span data-i="tabCast"></span></button>
-  <button data-tab="bg"><span>🖼️</span><span data-i="tabBg"></span></button>
-  <button data-tab="about"><span>✦</span><span data-i="tabAbout"></span></button>
+  <button class="on" data-tab="search"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span data-i="tabSearch"></span></button>
+  <button data-tab="remote"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="6" y="2" width="12" height="20" rx="3"/><circle cx="12" cy="7" r="1.5"/><path d="M9 13h6M12 10v6"/></svg><span data-i="tabRemote"></span></button>
+  <button data-tab="party"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="6" width="18" height="12" rx="4"/><path d="M7 12h4M9 10v4M15 11h.01M17 13h.01"/></svg><span data-i="tabParty"></span></button>
+  <button data-tab="cast"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><circle cx="2" cy="20" r="1"/></svg><span data-i="tabCast"></span></button>
+  <button data-tab="bg"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span data-i="tabBg"></span></button>
+  <button data-tab="about"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span data-i="tabAbout"></span></button>
 </nav>
 </div>
 
@@ -530,7 +672,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <div class="sheet-bg" id="sheetBg"></div>
 <div class="sheet-bg" id="cropBg" hidden style="display:none"></div>
 <div class="sheet glass" id="cropSheet" hidden style="display:none;max-height:92vh;text-align:center">
-  <h3 style="margin-top:0">📐 16:9 TV Çerçevesi Odaklama</h3>
+  <h3 style="margin-top:0">16:9 TV Çerçevesi Odaklama</h3>
   <p style="color:var(--dim);font-size:12px;margin:2px 0 12px">TV ekranına tam oturması için fotoğrafı çerçeve içinde kaydırarak odaklayın</p>
   <div id="cropFrame" style="width:100%;aspect-ratio:16/9;position:relative;overflow:hidden;border-radius:12px;background:#000;border:2px solid var(--accent);touch-action:none">
     <img id="cropImg" style="position:absolute;transform-origin:top left;user-select:none;pointer-events:none" alt="">
@@ -555,34 +697,34 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <script>
 (() => {
   const T = {
-    en: {filmFound:"Film found: tap the video, or the button below",playOnTv:"Play on TV",open:"Open",browseHint:"Type or paste the film page’s address above and press Open. The page appears here; tap it as on a phone.",browseTip:"Skip the site’s ads, then press the film’s play button: the film starts on the TV.",airMouse:"🖱 Air mouse",mouseTip:"Move the phone or a finger · Tap = click · Two fingers = scroll",swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ (b. 2000, Ankara) is an independent film director, creative technologist, editor and voice artist known for his short film Sessiz (2023). He designed and built CineTV from scratch as a free gift to cinema lovers. Follow @alptugdag on Instagram for new film projects, directing/editing collaborations, or just to say hello.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgReset:"Restore Theme Background",bgResetDone:"Theme background restored",bgSent:"Now on your TV",bgFail:"Could not send the picture",
+    en: {filmFound:"Film found: tap the video, or the button below",playOnTv:"Play on TV",open:"Open",browseHint:"Type or paste the film page’s address above and press Open. The page appears here; tap it as on a phone.",browseTip:"Skip the site’s ads, then press the film’s play button: the film starts on the TV.",airMouse:"Air mouse",mouseTip:"Move the phone or a finger · Tap = click · Two fingers = scroll",swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ (b. 2000, Ankara) is an independent film director, creative technologist, editor and voice artist known for his short film Sessiz (2023). He designed and built CineTV from scratch as a free gift to cinema lovers. Follow @alptugdag on Instagram for new film projects, directing/editing collaborations, or just to say hello.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgReset:"Restore Theme Background",bgResetDone:"Theme background restored",bgSent:"Now on your TV",bgFail:"Could not send the picture",
       installAndroid:"Install CineTV on this phone for one-tap access.",installGo:"Install",installIos:"Tap Share, then “Add to Home Screen” to keep CineTV one tap away.",
       otherTvs:"CineTV TVs here",onTv:"On your TV now",waiting:"Allow this phone on your TV with the remote",denied:"Not allowed on the TV. Tap to ask again.",busy:"Another phone is asking. Retrying…",
       tabCast:"Cast",tabAbout:"Creator",castTitle:"Play a video on the TV",castPh:"Film page address",paste:"Paste",castPlay:"Play on TV",
       castNote:"Works with direct links (mp4, m3u8…) and film pages: the TV opens the page, presses play itself and skips the ads.",castFinding:"Looking for the film… ads are skipped (up to 45 s)",castNone:"No film found on that page (videos under 3 minutes are skipped as ads).",castPlaying:"Playing on your TV",
-      aboutRole:"Director · Creative Technologist & Editor · Voice Artist",followIg:"📸 Follow on Instagram · @alptugdag",watchSessiz:"▶ Short Film: Sessiz (2023)",watchSessizTr:"🎞️ Official Trailer: Sessiz",playSessizTv:"📺 Play 'Sessiz' on the TV",followLi:"💼 LinkedIn · Collaborations & Career",followYt:"Subscribe on YouTube · @AlptugDag",hisFilms:"🎬 Show His Films on the TV",
-      mCreator:"✦ Alptuğ Dağ Picks",mNoir:"🌙 Midnight Neo-Noir",mRain:"🌧️ Rainy Night",mFest:"🏆 Festival Gems",mMind:"🧠 Mind-Benders",mTr:"🇹🇷 Turkish Cinema",
+      aboutRole:"Director · Creative Technologist & Editor · Voice Artist",followIg:"📸 Follow on Instagram · @alptugdag",watchSessiz:"▶ Short Film: Sessiz (2023)",watchSessizTr:"🎞️ Official Trailer: Sessiz",playSessizTv:"Play 'Sessiz' on TV",followLi:"💼 LinkedIn · Collaborations & Career",followYt:"Subscribe on YouTube · @AlptugDag",hisFilms:"Show His Films on TV",
+      mCreator:"Alptuğ Dağ Picks",mNoir:"Midnight Neo-Noir",mRain:"Rainy Night",mFest:"Festival Gems",mMind:"Mind-Benders",mTr:"Turkish Cinema",
       homeHint:"Tip: Share › Add to Home Screen keeps CineTV one tap away, full screen.",
       connecting:"Connecting…",connected:"Connected",offline:"TV not reachable",searchPh:"Films, series, people…",trending:"Trending",
       results:"Results",noResults:"Nothing found",openTv:"Open on TV",opening:"Opening on your TV…",movie:"Film",series:"Series",similarMovies:"Similar Titles",
-      back:"Back",home:"Home",menu:"Menu",send:"Send",input:"Input",guide:"Guide",info:"Info",subs:"Subtitles",audio:"Audio",last:"Last",typePh:"Type on the TV…",sleepOff:"💤 Sleep timer: off",sleepIn:"💤 Sleeps in {n} min",typeNote:"Letters appear in the field that is selected on the TV, in any app; ↵ confirms.",tvSearchPh:"Search or ask on the TV",screensaver:"Start screensaver",
+      back:"Back",home:"Home",menu:"Menu",send:"Send",input:"Input",guide:"Guide",info:"Info",subs:"Subtitles",audio:"Audio",last:"Last",typePh:"Type on the TV…",sleepOff:"Sleep timer: off",sleepIn:"Sleeps in {n} min",typeNote:"Letters appear in the field that is selected on the TV, in any app; ↵ confirms.",tvSearchPh:"Search or ask on the TV",screensaver:"Start screensaver",
       tabSearch:"Discover",tabRemote:"Remote",tabParty:"Party",partyTitle:"Party & Games",tabCal:"Picture",presets:"Presets",patterns:"Test patterns",picture:"Picture engine",
       warmth:"Colour temperature",reset:"Restore my original settings",patternNote:"Choose a pattern, adjust until it looks right, then tap Off.",
       noPanel:"This TV takes picture changes only from its own menu. Show a pattern here, then adjust Picture settings with the TV remote until the pattern looks right.",
       p_natural:"Natural",p_cinema:"Cinema",p_night:"Dark room",p_vivid:"Vivid",
       t_off:"Off",t_gray:"Gray ramp",t_bars:"Colour bars",t_black:"Black level",t_white:"White level",t_skin:"Skin tones",
       backlight:"Backlight",brightness:"Brightness",contrast:"Contrast",saturation:"Colour",hue:"Tint",sharpness:"Sharpness",red:"Red gain",green:"Green gain",blue:"Blue gain",done:"Saved"},
-    tr: {filmFound:"Film bulundu: videoya ya da aşağıdaki tuşa dokunun",playOnTv:"TV’de oynat",open:"Aç",browseHint:"Filmin sayfasının adresini yukarı yazın ya da yapıştırın, Aç’a basın. Sayfa burada açılır; telefondaki gibi dokunun.",browseTip:"Sitenin reklamlarını geçin, sonra filmin oynat tuşuna basın: film televizyonda başlar.",airMouse:"🖱 Hava faresi",mouseTip:"Telefonu ya da parmağını oynat · Dokun = tıkla · İki parmak = kaydır",swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ (d. 2000, Ankara); sinemayı, kurguyu ve yaratıcı yazılım mimarisini tek potada buluşturan bağımsız bir yönetmen, içerik üreticisi ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. Ev sinemasını reklamsız ve özgür kılmak için CineTV'yi sıfırdan tasarlayıp ücretsiz olarak armağan etti. Yeni film projeleri, reklam/kurgu yönetmenliği, yaratıcı iş birlikleri veya sadece bir teşekkür için Instagram'da @alptugdag hesabını takip edebilirsiniz.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgReset:"Temanın Kendi Arka Planına Dön",bgResetDone:"Temanın arka planına dönüldü",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
+    tr: {filmFound:"Film bulundu: videoya ya da aşağıdaki tuşa dokunun",playOnTv:"TV’de oynat",open:"Aç",browseHint:"Filmin sayfasının adresini yukarı yazın ya da yapıştırın, Aç’a basın. Sayfa burada açılır; telefondaki gibi dokunun.",browseTip:"Sitenin reklamlarını geçin, sonra filmin oynat tuşuna basın: film televizyonda başlar.",airMouse:"Hava faresi",mouseTip:"Telefonu ya da parmağını oynat · Dokun = tıkla · İki parmak = kaydır",swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ (d. 2000, Ankara); sinemayı, kurguyu ve yaratıcı yazılım mimarisini tek potada buluşturan bağımsız bir yönetmen, içerik üreticisi ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. Ev sinemasını reklamsız ve özgür kılmak için CineTV'yi sıfırdan tasarlayıp ücretsiz olarak armağan etti. Yeni film projeleri, reklam/kurgu yönetmenliği, yaratıcı iş birlikleri veya sadece bir teşekkür için Instagram'da @alptugdag hesabını takip edebilirsiniz.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgReset:"Temanın Kendi Arka Planına Dön",bgResetDone:"Temanın arka planına dönüldü",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
       installAndroid:"CineTV'yi bu telefona uygulama olarak ekleyin, tek dokunuşla açılsın.",installGo:"Ekle",installIos:"Paylaş'a, ardından “Ana Ekrana Ekle”ye dokunun; CineTV tek dokunuşla açılsın.",
       otherTvs:"Bu ağdaki CineTV televizyonları",onTv:"TV'de vitrine geldi",waiting:"Bu telefona TV'den kumandayla izin verin",denied:"TV'de izin verilmedi. Tekrar sormak için dokunun.",busy:"Başka bir telefon soruyor. Tekrar deneniyor…",
       tabCast:"Yayınla",tabAbout:"Yaratıcı",castTitle:"TV'de video oynat",castPh:"Filmin sayfasının adresi",paste:"Yapıştır",castPlay:"TV'de oynat",
       castNote:"Doğrudan bağlantılarla (mp4, m3u8…) ve film sayfalarıyla çalışır: TV sayfayı açar, oynat tuşuna kendisi basar, reklamları atlar.",castFinding:"Film aranıyor… reklam varsa geçiliyor (en fazla 45 sn)",castNone:"Bu sayfada film bulunamadı (3 dakikadan kısa videolar reklam sayılıp atlanır).",castPlaying:"TV'de oynatılıyor",
-      aboutRole:"Yönetmen · Kurgu & Yaratıcı Teknoloji · Seslendirme",followIg:"📸 Instagram'da Takip Et · @alptugdag",watchSessiz:"▶ Kısa Film: Sessiz (2023)",watchSessizTr:"🎞️ Resmi Fragman: Sessiz",playSessizTv:"📺 Kısa Filmi 'Sessiz'i TV'de Oynat",followLi:"💼 LinkedIn · İş Birliği & Kariyer",followYt:"YouTube'da Abone Ol · @AlptugDag",hisFilms:"🎬 Filmlerini TV'de Vitrine Getir",
-      mCreator:"✦ Alptuğ Dağ Seçkisi",mNoir:"🌙 Gece Yarısı Neo-Noir",mRain:"🌧️ Yağmurlu Gece",mFest:"🏆 Festival Seçkisi",mMind:"🧠 Psikolojik Gizem",mTr:"🇹🇷 Türk Sineması",
+      aboutRole:"Yönetmen · Kurgu & Yaratıcı Teknoloji · Seslendirme",followIg:"📸 Instagram'da Takip Et · @alptugdag",watchSessiz:"▶ Kısa Film: Sessiz (2023)",watchSessizTr:"🎞️ Resmi Fragman: Sessiz",playSessizTv:"'Sessiz'i TV'de Oynat",followLi:"💼 LinkedIn · İş Birliği & Kariyer",followYt:"YouTube'da Abone Ol · @AlptugDag",hisFilms:"🎬 Filmlerini TV'de Vitrine Getir",
+      mCreator:"Alptuğ Dağ Seçkisi",mNoir:"Gece Yarısı Neo-Noir",mRain:"Yağmurlu Gece",mFest:"Festival Seçkisi",mMind:"Psikolojik Gizem",mTr:"Türk Sineması",
       homeHint:"İpucu: Paylaş › Ana Ekrana Ekle ile CineTV tam ekran, tek dokunuşla açılır.",
       connecting:"Bağlanıyor…",connected:"Bağlı",offline:"TV'ye ulaşılamıyor",searchPh:"Film, dizi, oyuncu…",trending:"Trend",
       results:"Sonuçlar",noResults:"Bir şey bulunamadı",openTv:"TV'ye Gönder",opening:"TV'de açılıyor…",movie:"Film",series:"Dizi",similarMovies:"Benzerleri",
-      back:"Geri",home:"Ana sayfa",menu:"Menü",send:"Gönder",input:"Kaynak",guide:"Rehber",info:"Bilgi",subs:"Altyazı",audio:"Ses dili",last:"Önceki",typePh:"Televizyona yaz…",sleepOff:"💤 Uyku zamanlayıcı: kapalı",sleepIn:"💤 {n} dk sonra kapanır",typeNote:"Yazdıkların televizyonda seçili alana gelir, hangi uygulama olursa olsun; ↵ onaylar.",tvSearchPh:"TV'de ara veya sor",screensaver:"Ekran koruyucuyu başlat",
+      back:"Geri",home:"Ana sayfa",menu:"Menü",send:"Gönder",input:"Kaynak",guide:"Rehber",info:"Bilgi",subs:"Altyazı",audio:"Ses dili",last:"Önceki",typePh:"Televizyona yaz…",sleepOff:"Uyku zamanlayıcı: kapalı",sleepIn:"{n} dk sonra kapanır",typeNote:"Yazdıkların televizyonda seçili alana gelir, hangi uygulama olursa olsun; ↵ onaylar.",tvSearchPh:"TV'de ara veya sor",screensaver:"Ekran koruyucuyu başlat",
       tabSearch:"Keşfet",tabRemote:"Kumanda",tabParty:"Oyunlar",partyTitle:"Parti & Oyunlar",tabCal:"Görüntü",presets:"Hazır ayarlar",patterns:"Test desenleri",picture:"Görüntü motoru",
       warmth:"Renk sıcaklığı",reset:"Orijinal ayarlarıma dön",patternNote:"Bir desen seçin, doğru görünene kadar ayarlayın, sonra Kapat'a dokunun.",
       noPanel:"Bu TV görüntü değişikliklerini yalnızca kendi menüsünden kabul ediyor. Buradan bir desen gösterin, sonra TV kumandasıyla Görüntü ayarlarını desen doğru görünene kadar değiştirin.",
@@ -865,10 +1007,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         const r = await api("watchlist");
         const items = r.items || [];
         if (!items.length) {
-          $("results").innerHTML = '<div class="empty" style="grid-column:1/-1">🍿 Henüz ortak listeye film önerilmedi.<br><span style="font-size:12px;color:var(--dim)">Filmlerin detayından "Bunu İzleyelim!" diyerek ekleyebilirsiniz.</span></div>';
-          $("listTitle").textContent = "🍿 ORTAK İZLEME LİSTESİ";
+          $("results").innerHTML = '<div class="empty" style="grid-column:1/-1">Henüz ortak listeye film önerilmedi.<br><span style="font-size:12px;color:var(--dim)">Filmlerin detayından "Bunu İzleyelim!" diyerek ekleyebilirsiniz.</span></div>';
+          $("listTitle").textContent = "ORTAK İZLEME LİSTESİ";
         } else {
-          render(items, "🍿 EV İÇİ ORTAK İZLEME LİSTESİ (" + items.length + ")");
+          render(items, "EV İÇİ ORTAK İZLEME LİSTESİ (" + items.length + ")");
         }
       } catch (e) { toast(t("offline")); }
     };
@@ -957,15 +1099,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         <div class="hud-meta" style="justify-content:center">
           ${m.year ? `<span class="hud-tag">${m.year}</span>` : ""}
           <span class="hud-tag">${m.type === "series" ? t("series") : t("movie")}</span>
-          ${ratingStr ? `<span class="hud-tag rating">★ ${ratingStr}</span>` : ""}
+          ${ratingStr ? `<span class="hud-tag rating">${ratingStr}/10</span>` : ""}
         </div>
       </div>
       <p class="ov" style="text-align:center;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${esc(m.overview || "")}</p>
       <div style="display:flex;gap:10px;margin-top:14px">
         <button class="btn" id="go" style="flex:1;margin:0">▶︎ ${t("openTv") || "TV'de Aç"}</button>
-        <button class="btn ghost" id="similarBtn" style="flex:1;margin:0;background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.4);color:#38bdf8">✦ ${t("similarMovies") || "Benzerleri"}</button>
+        <button class="btn ghost" id="similarBtn" style="flex:1;margin:0;background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.4);color:#38bdf8">${t("similarMovies") || "Benzerleri"}</button>
       </div>
-      <button class="btn ghost" id="suggestBtn" style="width:100%;margin-top:8px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4)">🍿 Bunu İzleyelim! (TV'ye Öner)</button>
+      <button class="btn ghost" id="suggestBtn" style="width:100%;margin-top:8px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4)">Bunu İzleyelim! (TV'ye Öner)</button>
       </div>`;
     sheet.classList.add("on"); bg.classList.add("on");
     $("go").onclick = async () => {
@@ -981,7 +1123,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       try {
         const by = localStorage.getItem("cinetv.nickname") || navigator.platform || "Ev Halkı";
         const r = await api("watchlist/add", {title: m.title, poster: m.poster, tmdb: m.tmdb || 0, type: m.type, by});
-        toast(r.ok ? "🍿 TV ve Ortak Listeye Önerildi!" : t("offline"));
+        toast(r.ok ? "TV ve Ortak Listeye Önerildi!" : t("offline"));
       } catch (e) { toast(t("offline")); }
       closeSheet();
     };
@@ -1166,7 +1308,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     window.removeEventListener("deviceorientation", onOrientation);
     if (gyroBtn) {
       gyroBtn.classList.remove("on");
-      gyroBtn.textContent = "🎮 3D Gyro";
+      gyroBtn.textContent = "3D Gyro";
     }
     if (calBtn) calBtn.style.display = "none";
     if (gyroTrigger) gyroTrigger.style.display = "none";
@@ -1182,7 +1324,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       e.stopPropagation();
       gyroMode = !gyroMode;
       gyroBtn.classList.toggle("on", gyroMode);
-      gyroBtn.textContent = gyroMode ? "🎮 VR Aktif" : "🎮 3D Gyro";
+      gyroBtn.textContent = gyroMode ? "🎮 VR Aktif" : "3D Gyro";
       calBtn.style.display = gyroMode ? "block" : "none";
       gyroTrigger.style.display = gyroMode ? "block" : "none";
       if (gyroMode) {
@@ -1190,7 +1332,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         lastBeta = null; lastGamma = null;
         try { if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); } catch (err) {}
         window.addEventListener("deviceorientation", onOrientation);
-        toast("🎮 VR Lazer Kumandası Açıldı. TV'ye doğrultup hareket ettirin.");
+        toast("VR Lazer Kumandası Açıldı. TV'ye doğrultup hareket ettirin.");
       } else {
         stopGyro();
         if (mouse) addEventListener("devicemotion", onMotion);
@@ -1202,7 +1344,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       e.stopPropagation();
       lastBeta = null; lastGamma = null;
       smoothDx = 0; smoothDy = 0;
-      toast("🎯 VR Lazer Merkezi Sıfırlandı");
+      toast("VR Lazer Merkezi Sıfırlandı");
     };
   }
   if (gyroTrigger) {
@@ -1296,7 +1438,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     $("settingsBtn").onclick = () => {
       navigator.vibrate && navigator.vibrate(12);
       api("settings").catch(() => {});
-      toast("⚙️ CineTV Ayarları Açılıyor...");
+      toast("CineTV Ayarları Açılıyor...");
     };
   }
 
@@ -1579,7 +1721,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       if (card) {
         card.hidden = false;
         $("pwaDesc").textContent = "CineTV Kumandasını tek dokunuşla ana ekranınıza ekleyin. Sıfır gecikme, tam ekran yerel kumanda.";
-        $("pwaActionBtn").textContent = "📲 Uygulamayı Telefona Yükle";
+        $("pwaActionBtn").textContent = "Uygulamayı Ana Ekrana Ekle";
         $("pwaActionBtn").onclick = async () => {
           if (deferredPrompt) {
             deferredPrompt.prompt();
@@ -1624,96 +1766,247 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register(RELAY ? "sw.js" : "/sw.js").catch(() => {});
 
-  // CineParty: Living Room Interactive Party Manager
+    // CineParty: Living Room Interactive Party Manager
   let partyPollTimer = null;
   let partyPlayerId = localStorage.getItem("cinetv.party.id");
   if (!partyPlayerId) {
     partyPlayerId = "p_" + Math.random().toString(36).substr(2, 9);
     try { localStorage.setItem("cinetv.party.id", partyPlayerId); } catch (e) {}
   }
-  let partyPlayerName = localStorage.getItem("cinetv.party.name") || "";
-  if ($("quizPlayerName") && partyPlayerName) {
-    $("quizPlayerName").value = partyPlayerName;
-  }
 
-  const joinParty = async () => {
-    const nameInput = $("quizPlayerName");
-    const name = nameInput && nameInput.value.trim() ? nameInput.value.trim() : "Misafir";
-    partyPlayerName = name;
-    try { localStorage.setItem("cinetv.party.name", name); } catch (e) {}
+  // Pure Web Audio Synthesizer for tactile game feedback
+  const playPartySound = type => {
     try {
-      const st = await api("party/join", { id: partyPlayerId, name });
-      renderPartyState(st);
-      toast("🏆 Sinefil Yarışmasına Katıldınız: " + name);
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!playPartySound.ctx) playPartySound.ctx = new AudioCtx();
+      const actx = playPartySound.ctx;
+      if (actx.state === "suspended") actx.resume();
+      const osc = actx.createOscillator();
+      const gain = actx.createGain();
+      osc.connect(gain);
+      gain.connect(actx.destination);
+      const now = actx.currentTime;
+      if (type === "click") {
+        osc.frequency.setValueAtTime(580, now);
+        osc.frequency.exponentialRampToValueAtTime(280, now + 0.05);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+        osc.start(now); osc.stop(now + 0.05);
+      } else if (type === "correct") {
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.09);
+        osc.frequency.setValueAtTime(783.99, now + 0.18);
+        gain.gain.setValueAtTime(0.24, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        osc.start(now); osc.stop(now + 0.35);
+      } else if (type === "tick") {
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(750, now);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.03);
+        osc.start(now); osc.stop(now + 0.03);
+      } else if (type === "bang") {
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(36, now + 0.4);
+        gain.gain.setValueAtTime(0.42, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc.start(now); osc.stop(now + 0.4);
+      }
     } catch (e) {}
   };
 
-  if ($("quizJoinBtn")) $("quizJoinBtn").onclick = joinParty;
+  // Expandable "Nasıl Oynanır?" Guides
+  window.toggleGuide = id => {
+    const el = $(id);
+    if (el) {
+      el.hidden = !el.hidden;
+      playPartySound("click");
+    }
+  };
+
+  // Turkish Device Naming with Exact Possessive Apostrophe
+  function detectFriendlyDeviceName(customBase) {
+    const ua = navigator.userAgent || "";
+    let base = customBase || localStorage.getItem("cinetv.party.base_name") || "";
+    if (!base) base = "Alptuğ";
+
+    let device = "Telefonu";
+    if (/iPhone/i.test(ua)) device = "iPhone'u";
+    else if (/iPad/i.test(ua)) device = "iPad'i";
+    else if (/SM-|Samsung/i.test(ua)) device = "Galaxy'si";
+    else if (/Pixel/i.test(ua)) device = "Pixel'i";
+    else if (/Xiaomi|Redmi|POCO/i.test(ua)) device = "Xiaomi'si";
+    else if (/Huawei|Honor/i.test(ua)) device = "Huawei'si";
+    else if (/Android/i.test(ua)) device = "Android'i";
+    else if (/Macintosh/i.test(ua)) device = "Mac'i";
+
+    const trimmed = base.trim();
+    if (!trimmed) return "Misafir'in " + device;
+
+    // Apply Turkish possessive apostrophe rule
+    const vowels = "aeıioöuü";
+    let lastVowel = "e";
+    for (let i = trimmed.length - 1; i >= 0; i--) {
+      const c = trimmed[i].toLowerCase();
+      if (vowels.includes(c)) {
+        lastVowel = c;
+        break;
+      }
+    }
+    const endsWithVowel = vowels.includes(trimmed.slice(-1).toLowerCase());
+    let suffix;
+    if (endsWithVowel) {
+      if (["a", "ı"].includes(lastVowel)) suffix = "'nın";
+      else if (["e", "i"].includes(lastVowel)) suffix = "'nin";
+      else if (["o", "u"].includes(lastVowel)) suffix = "'nun";
+      else suffix = "'nün";
+    } else {
+      if (["a", "ı"].includes(lastVowel)) suffix = "'ın";
+      else if (["e", "i"].includes(lastVowel)) suffix = "'in";
+      else if (["o", "u"].includes(lastVowel)) suffix = "'un";
+      else suffix = "'ün";
+    }
+
+    return trimmed + suffix + " " + device;
+  }
+
+  let partyPlayerName = localStorage.getItem("cinetv.party.name") || detectFriendlyDeviceName();
+  if ($("quizPlayerName")) $("quizPlayerName").value = partyPlayerName;
+  if ($("lobbyMyName")) $("lobbyMyName").textContent = partyPlayerName;
+
+  const joinParty = async (forcedName) => {
+    let name = forcedName;
+    if (!name) {
+      const nameInput = $("quizPlayerName");
+      if (nameInput && nameInput.value.trim()) {
+        const val = nameInput.value.trim();
+        name = val.includes("'") ? val : detectFriendlyDeviceName(val);
+      } else {
+        name = partyPlayerName;
+      }
+    }
+    partyPlayerName = name;
+    try {
+      localStorage.setItem("cinetv.party.name", name);
+      if ($("quizPlayerName")) $("quizPlayerName").value = name;
+      if ($("lobbyMyName")) $("lobbyMyName").textContent = name;
+    } catch (e) {}
+    try {
+      const st = await api("party/join", { id: partyPlayerId, name });
+      renderPartyState(st);
+      toast("Salona Katıldınız: " + name);
+    } catch (e) {}
+  };
+
+  if ($("quizJoinBtn")) {
+    $("quizJoinBtn").onclick = () => {
+      playPartySound("click");
+      joinParty();
+    };
+  }
+
+  // Filter chips
+  const filterChips = document.querySelectorAll(".party-filter-chip");
+  filterChips.forEach(chip => {
+    chip.onclick = () => {
+      filterChips.forEach(c => c.classList.remove("on"));
+      chip.classList.add("on");
+      playPartySound("click");
+      const targetId = chip.dataset.filter;
+      if (targetId === "all") {
+        document.querySelectorAll(".party-card").forEach(c => c.style.display = "");
+      } else {
+        document.querySelectorAll(".party-card").forEach(c => {
+          c.style.display = (c.id === targetId) ? "" : "none";
+        });
+        const el = $(targetId);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+  });
+
   if ($("quizStartBtn")) $("quizStartBtn").onclick = async () => {
+    playPartySound("click");
     try {
       await api("game/quiz/start");
-      toast("🎮 TV'de Bilmece Başlatıldı!");
+      toast("TV'de CineQuiz Başlatıldı!");
       updatePartyState();
     } catch (e) {}
   };
   if ($("quizStopBtn")) $("quizStopBtn").onclick = async () => {
+    playPartySound("click");
     try {
       await api("game/quiz/stop");
-      toast("Yarışma Durduruldu");
+      toast("CineQuiz Durduruldu");
       updatePartyState();
     } catch (e) {}
   };
 
-  const submitQuizAnswer = async () => {
+  window.submitQuizAnswer = async (manualAnswer) => {
     const inp = $("quizAnswerInput");
-    if (!inp) return;
-    const ans = inp.value.trim();
+    const ans = (typeof manualAnswer === "string" ? manualAnswer : (inp ? inp.value : "")).trim();
     if (!ans) return;
+    playPartySound("click");
+    if (navigator.vibrate) navigator.vibrate(25);
     try {
       await api("game/quiz/answer", { id: partyPlayerId, answer: ans });
       $("quizFeedback").style.display = "block";
       $("quizFeedback").textContent = "✓ Cevabınız TV'ye iletildi: \"" + ans + "\"";
-      inp.value = "";
+      if (inp) inp.value = "";
     } catch (e) {}
   };
 
-  if ($("quizAnswerBtn")) $("quizAnswerBtn").onclick = submitQuizAnswer;
+  const loadRouletteTheme = async (theme) => {
+    playPartySound("click");
+    try {
+      const st = await api("party/roulette/theme", { theme });
+      renderPartyState(st);
+      toast("Gamze AI Tematik Seçki Revolvere Yüklendi!");
+    } catch (e) {}
+  };
+
+  if ($("rThemeNoir")) $("rThemeNoir").onclick = () => loadRouletteTheme("noir");
+  if ($("rThemeScifi")) $("rThemeScifi").onclick = () => loadRouletteTheme("scifi");
+  if ($("rThemeCult")) $("rThemeCult").onclick = () => loadRouletteTheme("cult");
+  if ($("rThemeTr")) $("rThemeTr").onclick = () => loadRouletteTheme("turkish");
+
+  if ($("quizAnswerBtn")) $("quizAnswerBtn").onclick = () => window.submitQuizAnswer();
   if ($("quizAnswerInput")) {
     $("quizAnswerInput").onkeydown = e => {
-      if (e.key === "Enter") submitQuizAnswer();
+      if (e.key === "Enter") window.submitQuizAnswer();
     };
   }
 
-  if ($("partyCineSubBtn")) {
-    $("partyCineSubBtn").onclick = async () => {
-      try {
-        await api("cinesub");
-        toast("✦ CineSub Kültürel Not Kartı TV'de Açıldı");
-      } catch (e) { toast(t("offline")); }
-    };
-  }
+  const triggerCineSubHelper = async () => {
+    playPartySound("click");
+    if (navigator.vibrate) navigator.vibrate(25);
+    try {
+      await api("cinesub");
+      toast("CineSUB Kültürel Not Kartı TV'de Açıldı");
+    } catch (e) { toast(t("offline")); }
+  };
+  if ($("remoteCineSubBtn")) $("remoteCineSubBtn").onclick = triggerCineSubHelper;
+  if ($("partyCineSubBtn")) $("partyCineSubBtn").onclick = triggerCineSubHelper;
 
-  // Movie Suggestion Roulette
+  // CineRoulette: 3D Gunmetal Revolver Cylinder
   const rCanvas = $("rouletteCanvas");
   let rCtx = null;
   const dpr = window.devicePixelRatio || 1;
+  const R_SIZE = 320;
   if (rCanvas) {
     rCtx = rCanvas.getContext("2d");
-    rCanvas.width = 280 * dpr;
-    rCanvas.height = 280 * dpr;
-    rCanvas.style.width = "280px";
-    rCanvas.style.height = "280px";
+    rCanvas.width = R_SIZE * dpr;
+    rCanvas.height = R_SIZE * dpr;
+    rCanvas.style.width = "100%";
+    rCanvas.style.maxWidth = R_SIZE + "px";
   }
 
   const SLICE_COLORS = [
-    "#881337", // Crimson Noir
-    "#1e3a8a", // Midnight Sapphire
-    "#065f46", // Velvet Emerald
-    "#b45309", // Solar Amber
-    "#581c87", // Electric Amethyst
-    "#0f766e", // Deep Teal
-    "#991b1b", // Ruby Red
-    "#312e81"  // Deep Indigo
+    "#881337", "#1e3a8a", "#065f46", "#b45309",
+    "#581c87", "#0f766e", "#991b1b", "#312e81"
   ];
 
   let rouletteItems = ["Taxi Driver", "Interstellar", "Pulp Fiction", "The Godfather", "Fight Club", "The Matrix", "Inception", "Whiplash"];
@@ -1725,132 +2018,133 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const drawRouletteWheel = (angle, deflection) => {
     if (!rCtx || !rCanvas) return;
     const ctx = rCtx;
-    const w = 280 * dpr;
-    const h = 280 * dpr;
+    const w = rCanvas.width;
+    const h = rCanvas.height;
     const cx = w / 2;
     const cy = h / 2;
     const radius = cx - (16 * dpr);
 
     ctx.clearRect(0, 0, w, h);
 
-    // 1. Titanium & Brass Outer Rim
-    const rimWidth = 12 * dpr;
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius + rimWidth / 2, 0, Math.PI * 2);
-    ctx.strokeStyle = "#1e293b";
-    ctx.lineWidth = rimWidth;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = "#d97706";
-    ctx.lineWidth = 2.5 * dpr;
-    ctx.stroke();
-
-    // 2. Wheel Slices
-    const count = Math.max(1, rouletteItems.length);
-    const sliceAngle = (Math.PI * 2) / count;
-
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate((angle * Math.PI) / 180);
 
+    // 1. Brushed Gunmetal Steel Cylinder Base
+    const cylGrad = ctx.createRadialGradient(-radius * 0.25, -radius * 0.25, radius * 0.1, 0, 0, radius);
+    cylGrad.addColorStop(0, "#334155");
+    cylGrad.addColorStop(0.55, "#1e293b");
+    cylGrad.addColorStop(1, "#0f172a");
+    ctx.fillStyle = cylGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer Chamfer Bevel
+    ctx.strokeStyle = "#64748b";
+    ctx.lineWidth = 2.5 * dpr;
+    ctx.stroke();
+
+    const count = Math.max(4, Math.min(8, rouletteItems.length));
+    const sliceAngle = (Math.PI * 2) / count;
+
+    // 2. Revolver Cylinder Outer Flutes
+    ctx.fillStyle = "rgba(0,0,0,0.32)";
+    const fluteR = radius * 0.22;
+    for (let i = 0; i < count; i++) {
+      const midAng = i * sliceAngle + sliceAngle / 2;
+      const fx = radius * Math.cos(midAng);
+      const fy = radius * Math.sin(midAng);
+      ctx.beginPath();
+      ctx.arc(fx, fy, fluteR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 3. Bullet Chambers with DVD-boxless Posters
+    const chDist = radius * 0.60;
+    const chR = radius * 0.26;
     for (let i = 0; i < count; i++) {
       const sa = i * sliceAngle;
-      const ea = sa + sliceAngle;
+      const chX = chDist * Math.cos(sa);
+      const chY = chDist * Math.sin(sa);
 
+      // Bore Hole Deep Shadow
+      ctx.fillStyle = "#090d14";
       ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.arc(0, 0, radius, sa, ea);
-      ctx.closePath();
-      ctx.fillStyle = SLICE_COLORS[i % SLICE_COLORS.length];
+      ctx.arc(chX, chY, chR, 0, Math.PI * 2);
       ctx.fill();
 
-      // Dividing line
-      ctx.strokeStyle = "rgba(255,255,255,0.22)";
-      ctx.lineWidth = 1.5 * dpr;
+      // Brass Rim
+      ctx.strokeStyle = "#d97706";
+      ctx.lineWidth = 2 * dpr;
       ctx.stroke();
 
-      // Label text
+      // Movie Poster (DVD-boxless, 2:3 ratio)
+      const pw = chR * 1.25;
+      const ph = pw * 1.48;
+      const px = chX - pw / 2;
+      const py = chY - ph / 2;
+      const prad = pw * 0.085;
+
       ctx.save();
-      ctx.rotate(sa + sliceAngle / 2);
-      ctx.textAlign = "right";
-      ctx.textBaseline = "middle";
+      ctx.fillStyle = SLICE_COLORS[i % SLICE_COLORS.length];
+      ctx.beginPath();
+      ctx.roundRect(px, py, pw, ph, prad);
+      ctx.fill();
+
+      // Glass sheen
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      ctx.fill();
+
+      // Title
       ctx.fillStyle = "#ffffff";
-      ctx.shadowColor = "rgba(0,0,0,0.85)";
-      ctx.shadowBlur = 4 * dpr;
-      const fontSize = count > 10 ? 10 * dpr : (count > 6 ? 12 * dpr : 14 * dpr);
-      ctx.font = `600 ${fontSize}px Poppins, -apple-system, sans-serif`;
-      let label = rouletteItems[i];
-      if (label && label.length > 16) label = label.substring(0, 14) + "…";
-      ctx.fillText(label || "", radius - (16 * dpr), 0);
+      ctx.font = `700 ${8.5 * dpr}px Poppins, -apple-system, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      let title = rouletteItems[i % rouletteItems.length] || "";
+      if (title.length > 8) title = title.substring(0, 7) + "…";
+      ctx.fillText(title, chX, chY);
       ctx.restore();
     }
 
-    // Outer Rivets (Pegs)
-    for (let i = 0; i < count; i++) {
-      const a = i * sliceAngle;
-      const px = (radius + rimWidth / 2) * Math.cos(a);
-      const py = (radius + rimWidth / 2) * Math.sin(a);
-      ctx.beginPath();
-      ctx.arc(px, py, 3.2 * dpr, 0, Math.PI * 2);
-      ctx.fillStyle = "#fbbf24";
-      ctx.shadowColor = "rgba(0,0,0,0.7)";
-      ctx.shadowBlur = 3 * dpr;
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
+    // 4. Center Extractor Star Ratchet Gear
+    const ratR = radius * 0.22;
+    ctx.fillStyle = "#0f172a";
+    ctx.beginPath();
+    ctx.arc(0, 0, ratR, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 1.8 * dpr;
+    ctx.stroke();
+
+    // Center Pin
+    ctx.fillStyle = "#94a3b8";
+    ctx.beginPath();
+    ctx.arc(0, 0, ratR * 0.45, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore();
 
-    // 3. Center Polished Brass Hub with Specular Glint
-    const hubR = radius * 0.28;
-    const hubGrad = ctx.createRadialGradient(cx - hubR * 0.35, cy - hubR * 0.35, hubR * 0.1, cx, cy, hubR);
-    hubGrad.addColorStop(0, "#fef3c7");
-    hubGrad.addColorStop(0.3, "#fde68a");
-    hubGrad.addColorStop(0.7, "#d97706");
-    hubGrad.addColorStop(1, "#78350f");
-
+    // 5. Top Hammer Sight Alignment Notch
+    ctx.save();
+    ctx.translate(cx, cy - radius);
     ctx.beginPath();
-    ctx.arc(cx, cy, hubR, 0, Math.PI * 2);
-    ctx.fillStyle = hubGrad;
-    ctx.shadowColor = "rgba(0,0,0,0.6)";
+    const iw = 14 * dpr;
+    const ih = 22 * dpr;
+    ctx.moveTo(-iw / 2, -ih * 0.5);
+    ctx.lineTo(iw / 2, -ih * 0.5);
+    ctx.lineTo(0, ih * 0.5);
+    ctx.closePath();
+    ctx.fillStyle = "#38bdf8";
+    ctx.shadowColor = "rgba(56,189,248,0.8)";
     ctx.shadowBlur = 8 * dpr;
     ctx.fill();
-    ctx.shadowBlur = 0;
 
-    // Brass Hub Star Emblem
+    ctx.beginPath();
+    ctx.arc(0, -ih * 0.35, 2.5 * dpr, 0, Math.PI * 2);
     ctx.fillStyle = "#ffffff";
-    ctx.font = `700 ${18 * dpr}px Poppins, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("✦", cx, cy + (1 * dpr));
-
-    // 4. Golden Top Pointer Needle
-    ctx.save();
-    ctx.translate(cx, cy - radius - rimWidth * 0.3);
-    ctx.rotate((deflection * Math.PI) / 180);
-
-    const nw = 12 * dpr;
-    const nh = 24 * dpr;
-
-    ctx.beginPath();
-    ctx.moveTo(-nw / 2, -nh * 0.25);
-    ctx.lineTo(nw / 2, -nh * 0.25);
-    ctx.lineTo(0, nh);
-    ctx.closePath();
-
-    ctx.fillStyle = "rgba(0,0,0,0.4)";
     ctx.fill();
-
-    ctx.fillStyle = "#f59e0b";
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(0, 0, 4.5 * dpr, 0, Math.PI * 2);
-    ctx.fillStyle = "#fef3c7";
-    ctx.fill();
-
     ctx.restore();
   };
 
@@ -1861,7 +2155,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
     const count = Math.max(1, rouletteItems.length);
     const sliceAngle = 360 / count;
-    // Pointer is at TOP (270 deg / -90 deg)
     const targetSliceCenter = winningIndex * sliceAngle + (sliceAngle / 2);
     const endAngle = 360 * 6 + (270 - targetSliceCenter);
 
@@ -1884,6 +2177,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       if (degPassed >= sliceAngle) {
         lastPeg = rCurrentAngle;
         rNeedleDeflection = -12 * (1 - frac);
+        playPartySound("tick");
         if (navigator.vibrate) navigator.vibrate(8);
       } else {
         rNeedleDeflection *= 0.86;
@@ -1897,6 +2191,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         rIsSpinning = false;
         rNeedleDeflection = 0;
         drawRouletteWheel(rCurrentAngle, 0);
+        playPartySound("correct");
         if (navigator.vibrate) navigator.vibrate([30, 40, 60]);
         if ($("rouletteWinnerBanner")) {
           if ($("rouletteWinnerTitle")) $("rouletteWinnerTitle").textContent = winTitle || rouletteItems[winningIndex] || "";
@@ -1915,9 +2210,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       const inp = $("rouletteInput");
       const title = inp ? inp.value.trim() : "";
       if (!title) return;
+      playPartySound("click");
       try {
         await api("party/suggest", { title, user: partyPlayerName || "Misafir" });
-        toast("🚀 '" + title + "' TV Ruletine Fırlatıldı!");
+        toast("'" + title + "' TV Ruletine Fırlatıldı!");
         if (inp) inp.value = "";
         updatePartyState();
       } catch (e) { toast(t("offline")); }
@@ -1926,10 +2222,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   if ($("rouletteSpinBtn")) {
     $("rouletteSpinBtn").onclick = async () => {
+      playPartySound("click");
       try {
         const win = await api("party/roulette/spin");
         if (win && win.title) {
-          toast("🎡 Kazanan: " + win.title);
+          toast("Kazanan: " + win.title);
           let winIdx = rouletteItems.findIndex(it => it.toLowerCase() === win.title.toLowerCase());
           if (winIdx < 0) {
             rouletteItems.push(win.title);
@@ -1950,6 +2247,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   if ($("rouletteClearBtn")) {
     $("rouletteClearBtn").onclick = async () => {
+      playPartySound("click");
       try {
         await api("party/roulette/clear");
         toast("Rulet Listesi Temizlendi");
@@ -1961,8 +2259,174 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     };
   }
 
+  if ($("quizGamzeBtn")) {
+    $("quizGamzeBtn").onclick = async () => {
+      playPartySound("click");
+      try {
+        await api("game/quiz/gemini");
+        toast("Gamze AI Yeni Soru Hazırlıyor...");
+        updatePartyState();
+      } catch (e) {}
+    };
+  }
+
+  if ($("championLaunchBtn")) {
+    $("championLaunchBtn").onclick = async () => {
+      const inp = $("championMovieInput");
+      const movie = inp && inp.value.trim() ? inp.value.trim() : "";
+      if (!movie) return;
+      playPartySound("click");
+      try {
+        await api("game/champion/launch", { movie });
+        toast("Şampiyonun Filmi TV'de Başlatılıyor: " + movie);
+      } catch (e) {}
+    };
+  }
+
+  // Russian Roulette Trigger
+  if ($("rTriggerBtn")) {
+    $("rTriggerBtn").onclick = async () => {
+      try {
+        const res = await api("party/roulette/trigger", { id: partyPlayerId });
+        if (res && res.result === "BANG") {
+          playPartySound("bang");
+          if (navigator.vibrate) navigator.vibrate([80, 50, 120]);
+          toast("GÜM! Kurşun patladı: " + res.movie);
+          if ($("rouletteWinnerBanner")) {
+            $("rouletteWinnerBanner").hidden = false;
+            if ($("rouletteWinnerTitle")) $("rouletteWinnerTitle").textContent = res.movie;
+            if ($("rouletteWinnerUser")) $("rouletteWinnerUser").textContent = "GÜM! Canlı mermi isabet etti!";
+          }
+        } else {
+          playPartySound("click");
+          if (navigator.vibrate) navigator.vibrate(20);
+          toast("KLİK! Boş kovan tıkırdadı... Tansiyon tırmanıyor!");
+        }
+        updatePartyState();
+      } catch (e) {}
+    };
+  }
+
+  if ($("rouletteLaunchTvBtn")) {
+    $("rouletteLaunchTvBtn").onclick = async () => {
+      const m = $("rouletteWinnerTitle") ? $("rouletteWinnerTitle").textContent : "";
+      if (m) {
+        playPartySound("click");
+        try {
+          await api("game/champion/launch", { movie: m });
+          toast("Kazanan Film TV'de Başlatılıyor: " + m);
+        } catch (e) {}
+      }
+    };
+  }
+
+  // CineSessiz Controls
+  if ($("sessizStartBtn")) {
+    $("sessizStartBtn").onclick = async () => {
+      playPartySound("click");
+      try {
+        await api("game/sessiz/start");
+        toast("TV'de CineSessiz Başlatıldı!");
+        updatePartyState();
+      } catch (e) {}
+    };
+  }
+  if ($("sessizStopBtn")) {
+    $("sessizStopBtn").onclick = async () => {
+      playPartySound("click");
+      try {
+        await api("game/sessiz/stop");
+        toast("CineSessiz Durduruldu");
+        updatePartyState();
+      } catch (e) {}
+    };
+  }
+  if ($("sessizCorrectBtn")) {
+    $("sessizCorrectBtn").onclick = async () => {
+      playPartySound("correct");
+      if (navigator.vibrate) navigator.vibrate(40);
+      try {
+        await api("game/sessiz/next", { pass: 0 });
+        toast("Bildiler! +10 Puan & Sonraki Kart");
+        updatePartyState();
+      } catch (e) {}
+    };
+  }
+  if ($("sessizPassBtn")) {
+    $("sessizPassBtn").onclick = async () => {
+      playPartySound("click");
+      try {
+        await api("game/sessiz/next", { pass: 1 });
+        toast("Pas geçildi");
+        updatePartyState();
+      } catch (e) {}
+    };
+  }
+  if ($("sessizGamzeBtn")) {
+    $("sessizGamzeBtn").onclick = async () => {
+      playPartySound("click");
+      try {
+        await api("game/sessiz/gemini");
+        toast("Gamze AI Yeni Tabu Kartları Hazırlıyor...");
+        updatePartyState();
+      } catch (e) {}
+    };
+  }
+  const submitSessizGuess = async () => {
+    const inp = $("sessizGuessInput");
+    const guess = inp && inp.value.trim() ? inp.value.trim() : "";
+    if (!guess) return;
+    playPartySound("click");
+    try {
+      const res = await api("game/sessiz/guess", { id: partyPlayerId, guess });
+      if (res && res.correct) {
+        playPartySound("correct");
+        if (navigator.vibrate) navigator.vibrate([40, 30, 60]);
+        toast("TEBRİKLER! DOĞRU TAHMİN (+10 Puan)");
+      } else {
+        toast("• Tahmin TV'ye iletildi: " + guess);
+      }
+      if (inp) inp.value = "";
+      updatePartyState();
+    } catch (e) {}
+  };
+  if ($("sessizGuessBtn")) $("sessizGuessBtn").onclick = submitSessizGuess;
+  if ($("sessizGuessInput")) {
+    $("sessizGuessInput").onkeydown = e => {
+      if (e.key === "Enter") submitSessizGuess();
+    };
+  }
+
+  // Snake Launch on TV
+  if ($("snakeTvLaunchBtn")) {
+    $("snakeTvLaunchBtn").onclick = async () => {
+      playPartySound("click");
+      try {
+        await api("game/snake/launch");
+        toast("SnakePhile TV Ekranında Açıldı!");
+      } catch (e) {}
+    };
+  }
+
   const renderPartyState = st => {
     if (!st) return;
+
+    // Multi-Phone Connected Lobby HUD
+    if (st.players && st.players.length > 0) {
+      if ($("lobbyCountText")) {
+        $("lobbyCountText").textContent = "Salonda " + st.players.length + " Telefon Bağlı";
+      }
+      const lobbyList = $("lobbyPhonesList");
+      if (lobbyList) {
+        lobbyList.innerHTML = st.players.map(p => {
+          const isMe = (p.id === partyPlayerId);
+          return `<span class="party-pill" style="${isMe ? 'border-color:rgba(16,185,129,0.55);background:rgba(16,185,129,0.12)' : ''}">
+            📱 <b>${esc(p.name)}</b> ${isMe ? '(Bu Cihaz)' : ''} · ${p.score}p
+          </span>`;
+        }).join("");
+      }
+    }
+
     // Quiz state
     const activeView = $("quizActiveView");
     const inactiveView = $("quizInactiveView");
@@ -1974,6 +2438,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       if ($("quizTimerBar")) $("quizTimerBar").style.width = ((st.countdown / 10) * 100) + "%";
       if ($("quizQuestionText")) $("quizQuestionText").textContent = st.question || "";
       if ($("quizHintText")) $("quizHintText").textContent = st.hint || "";
+      const qOptGrid = $("quizOptionsGrid");
+      if (qOptGrid) {
+        if (st.options && st.options.length > 0) {
+          qOptGrid.style.display = "grid";
+          qOptGrid.innerHTML = st.options.map((opt, idx) => `
+            <button class="btn glass" onclick="submitQuizAnswer('${esc(opt)}')" style="text-align:left;font-size:12.5px;padding:9px 10px;border:1px solid rgba(139,92,246,0.35);border-radius:10px;background:rgba(139,92,246,0.12);color:#fff">
+              <b style="color:#a78bfa">${['A','B','C','D'][idx]})</b> ${esc(opt)}
+            </button>
+          `).join("");
+        } else {
+          qOptGrid.style.display = "none";
+        }
+      }
       const qImg = $("quizImg");
       if (qImg) {
         if (st.image) { qImg.src = st.image; qImg.hidden = false; }
@@ -1988,7 +2465,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
               <span style="font-weight:700;font-size:11px;color:${p.correct ? '#10b981' : '#f87171'}">${p.correct ? '✓ DOĞRU (+10)' : '✕ YANLIŞ'}</span>
             </div>`
           ).join("") : "";
-          $("quizFeedback").innerHTML = `<div style="font-size:13.5px;font-weight:800;color:#10b981;margin-bottom:8px">★ DOĞRU CEVAP: ${esc(st.displayAnswer || "")}</div>` + ansList;
+          $("quizFeedback").innerHTML = `<div style="font-size:13.5px;font-weight:800;color:#10b981;margin-bottom:8px">DOĞRU CEVAP: ${esc(st.displayAnswer || "")}</div>` + ansList;
         }
       } else {
         if ($("quizFeedback")) $("quizFeedback").style.display = "none";
@@ -1997,15 +2474,84 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       if ($("quizLeaderboard") && st.players) {
         const html = st.players.map(p =>
           `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-            <span>${p.id === partyPlayerId ? "★ " : ""}${esc(p.name)}</span>
+            <span>${p.id === partyPlayerId ? "" : ""}${esc(p.name)}</span>
             <b>${p.score} puan</b>
           </div>`
         ).join("");
         $("quizLeaderboard").innerHTML = `<div style="font-weight:700;margin-bottom:4px">Liderlik Tablosu:</div>` + (html || "Yarışmacı bekleniyor");
       }
+
+      // Champion Box
+      const champBox = $("quizChampionBox");
+      if (champBox) {
+        if (st.quizCompleted && (st.championId === partyPlayerId || !st.championId)) {
+          champBox.style.display = "block";
+        } else {
+          champBox.style.display = "none";
+        }
+      }
     } else {
       if (activeView) activeView.hidden = true;
       if (inactiveView) inactiveView.hidden = false;
+    }
+
+    // Roulette tension timer
+    if ($("rouletteTimerBar") && st.rouletteSeconds !== undefined) {
+      $("rouletteTimerBar").style.width = ((st.rouletteSeconds / 10) * 100) + "%";
+    }
+
+    // CineSessiz state
+    const sActiveView = $("sessizActiveView");
+    const sInactiveView = $("sessizInactiveView");
+    if (st.sessizActive) {
+      if (sActiveView) sActiveView.hidden = false;
+      if (sInactiveView) sInactiveView.hidden = true;
+
+      const isTeller = (st.tellerId === partyPlayerId);
+      const tellerBox = $("sessizTellerBox");
+      const guesserBox = $("sessizGuesserBox");
+
+      if (isTeller) {
+        if (tellerBox) tellerBox.style.display = "block";
+        if (guesserBox) guesserBox.style.display = "none";
+        if (st.sessizSecret) {
+          if ($("sessizSecretTitle")) $("sessizSecretTitle").textContent = st.sessizSecret.title || "";
+          if ($("sessizSecretCategory")) $("sessizSecretCategory").textContent = st.sessizSecret.category || "";
+          const tList = $("sessizTabooList");
+          if (tList && st.sessizSecret.tabooWords) {
+            tList.innerHTML = st.sessizSecret.tabooWords.map(w =>
+              `<span style="background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);border-radius:8px;padding:4px 8px;font-size:12px;font-weight:700">${esc(w)}</span>`
+            ).join("");
+          }
+        }
+      } else {
+        if (tellerBox) tellerBox.style.display = "none";
+        if (guesserBox) guesserBox.style.display = "block";
+        if ($("sessizTellerNotice")) $("sessizTellerNotice").textContent = "Anlatıcı: " + (st.tellerName || "Sinefil");
+        if ($("sessizCategoryHint")) $("sessizCategoryHint").textContent = "Kategori: " + (st.sessizCategory || "Kült Film");
+      }
+
+      const sFeed = $("sessizFeedList");
+      if (sFeed && st.sessizFeed) {
+        sFeed.innerHTML = st.sessizFeed.map(f =>
+          `<div style="font-size:12px;padding:3px 6px;margin:2px 0;border-radius:6px;background:${f.correct ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)'};color:${f.correct ? '#10b981' : '#e2e8f0'}">
+            <b>${esc(f.user)}:</b> "${esc(f.guess)}" ${f.correct ? '(DOĞRU BİLDİ! +10p)' : ''}
+          </div>`
+        ).join("");
+      }
+
+      const sBoard = $("sessizLeaderboard");
+      if (sBoard && st.players) {
+        sBoard.innerHTML = `<div style="font-weight:700;margin-bottom:4px">Puan Durumu:</div>` + st.players.map(p =>
+          `<div style="display:flex;justify-content:space-between;padding:2px 0">
+            <span>${p.id === partyPlayerId ? "" : ""}${esc(p.name)}</span>
+            <b>${p.score}p</b>
+          </div>`
+        ).join("");
+      }
+    } else {
+      if (sActiveView) sActiveView.hidden = true;
+      if (sInactiveView) sInactiveView.hidden = false;
     }
 
     // Roulette suggestions
@@ -2013,7 +2559,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     if (rList) {
       if (st.suggestions && st.suggestions.length > 0) {
         rList.innerHTML = st.suggestions.map(s =>
-          `<span class="party-pill">🎬 <b>${esc(s.title)}</b> (${esc(s.user)})</span>`
+          `<span class="party-pill"><b>${esc(s.title)}</b> (${esc(s.user)})</span>`
         ).join("");
         rouletteItems = st.suggestions.map(s => s.title);
       } else {
@@ -2046,30 +2592,28 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     }
   };
 
-  // 35mm Celluloid Snake Game with Retina DPR
+  // SnakePhile: Fullscreen 3D Organic Snake with Retina DPR
   const snakeCanvas = $("snakeCanvas");
   let snakeCtx = null;
   const sDpr = window.devicePixelRatio || 1;
-  const S_BOARD_SIZE = 280;
+  const S_BOARD_SIZE = 340;
   if (snakeCanvas) {
     snakeCtx = snakeCanvas.getContext("2d");
     snakeCanvas.width = S_BOARD_SIZE * sDpr;
     snakeCanvas.height = S_BOARD_SIZE * sDpr;
-    snakeCanvas.style.width = S_BOARD_SIZE + "px";
-    snakeCanvas.style.height = S_BOARD_SIZE + "px";
+    snakeCanvas.style.width = "100%";
+    snakeCanvas.style.maxWidth = S_BOARD_SIZE + "px";
   }
 
   const CINE_POSTERS = [
-    { title: "Interstellar", code: "INT", color: "#0284c7", glow: "#38bdf8", accent: "#7dd3fc" },
-    { title: "Inception", code: "INC", color: "#b45309", glow: "#f59e0b", accent: "#fde68a" },
-    { title: "The Dark Knight", code: "TDK", color: "#1e293b", glow: "#64748b", accent: "#94a3b8" },
-    { title: "Pulp Fiction", code: "PULP", color: "#991b1b", glow: "#ef4444", accent: "#fca5a5" },
-    { title: "The Godfather", code: "BABA", color: "#78350f", glow: "#d97706", accent: "#fcd34d" },
-    { title: "Fight Club", code: "FC", color: "#831843", glow: "#ec4899", accent: "#f472b6" },
-    { title: "The Matrix", code: "MTX", color: "#064e3b", glow: "#10b981", accent: "#6ee7b7" },
-    { title: "Whiplash", code: "WHP", color: "#9a3412", glow: "#f97316", accent: "#fdba74" },
-    { title: "Blade Runner", code: "BLD", color: "#155e75", glow: "#06b6d4", accent: "#67e8f9" },
-    { title: "Taxi Driver", code: "TAXI", color: "#713f12", glow: "#eab308", accent: "#fef08a" }
+    { title: "Interstellar", code: "INTERSTELLAR", year: "2014", dir: "Christopher Nolan", rating: "8.7", lore: "Fizikçi Kip Thorne danışmanlığında modellenen ilk gerçekçi solucan deliği ve karadelik simülasyonu.", color: "#0284c7", glow: "#38bdf8" },
+    { title: "Pulp Fiction", code: "PULP FICTION", year: "1994", dir: "Quentin Tarantino", rating: "8.9", lore: "Doğrusal olmayan kurgusu ve Ezekiel 25:17 monoloğuyla sinema tarihini dönüştüren başyapıt.", color: "#991b1b", glow: "#ef4444" },
+    { title: "The Godfather", code: "THE GODFATHER", year: "1972", dir: "Francis Ford Coppola", rating: "9.2", lore: "Gordon Willis'in çığır açan tepe aydınlatması ve gölgeleriyle 'Karanlıklar Prensi' lakabını aldığı sahne.", color: "#78350f", glow: "#d97706" },
+    { title: "Inception", code: "INCEPTION", year: "2010", dir: "Christopher Nolan", rating: "8.8", lore: "Dönen koridor sahnesi için Paris banliyösünde inşa edilen devasa döner santrifüj seti.", color: "#b45309", glow: "#f59e0b" },
+    { title: "Fight Club", code: "FIGHT CLUB", year: "1999", dir: "David Fincher", rating: "8.8", lore: "Fincher'ın tek karelik subliminal Tyler Durden parlamaları ve IKEA katalog hicvi.", color: "#831843", glow: "#ec4899" },
+    { title: "Taxi Driver", code: "TAXI DRIVER", year: "1976", dir: "Martin Scorsese", rating: "8.2", lore: "Travis Bickle'ın meşhur 'You talkin' to me?' sahnesi senaryoda yazmaksızın tamamen De Niro doğaçlamasıdır.", color: "#713f12", glow: "#eab308" },
+    { title: "Blade Runner", code: "BLADE RUNNER", year: "1982", dir: "Ridley Scott", rating: "8.1", lore: "Roy Batty'nin yağmur altındaki 'Tears in rain' vedası sinema tarihinin en unutulmaz monoloğudur.", color: "#155e75", glow: "#06b6d4" },
+    { title: "Whiplash", code: "WHIPLASH", year: "2014", dir: "Damien Chazelle", rating: "8.5", lore: "Caravan parçası ve ziller üzerindeki gerçek ter damlalarıyla sınırları zorlayan mükemmeliyetçilik arayışı.", color: "#9a3412", glow: "#f97316" }
   ];
 
   const TILE_COUNT = 14;
@@ -2095,7 +2639,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       y: Math.floor(Math.random() * TILE_COUNT),
       poster: CINE_POSTERS[idx]
     };
-    if ($("snakeLastFilm")) $("snakeLastFilm").textContent = "Hedef DVD: " + food.poster.title;
+    if ($("snakeFilmTrivia")) {
+      $("snakeFilmTrivia").innerHTML = `<b>Hedef: ${food.poster.title} (${food.poster.year})</b> · ${food.poster.dir} · ${food.poster.rating} /10<br>` +
+        `<span style="color:var(--dim);font-size:11px">${food.poster.lore}</span>`;
+    }
   };
 
   const drawSnakeGame = () => {
@@ -2113,7 +2660,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     ctx.fillRect(0, 0, w, h);
 
     // Subtle golden cinema projection grid lines
-    ctx.strokeStyle = "rgba(245, 158, 11, 0.04)";
+    ctx.strokeStyle = "rgba(16, 185, 129, 0.05)";
     ctx.lineWidth = 1 * sDpr;
     for (let c = 1; c < TILE_COUNT; c++) {
       ctx.beginPath();
@@ -2126,189 +2673,140 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       ctx.stroke();
     }
 
-    // 2. Draw Food: Realistic 3D Miniature Keepcase DVD with Drop Shadow
+    // 2. Draw Food: Realistic DVD-boxless Movie Poster matching CineTV Home
     foodPulseTime += 0.08;
     const floatY = Math.sin(foodPulseTime * 2.5) * (1.2 * sDpr);
+    const pw = tile - 3 * sDpr;
+    const ph = pw * 1.48; // 2:3 aspect ratio
     const fx = food.x * tile + 1.5 * sDpr;
-    const fy = food.y * tile + 1 * sDpr + floatY;
-    const dvdW = tile - 3 * sDpr;
-    const dvdH = tile - 2 * sDpr;
-    const rad = 3 * sDpr;
+    const fy = food.y * tile + (tile - ph) / 2 + floatY;
+    const prad = pw * 0.085;
 
     ctx.save();
-    // Soft 3D drop shadow onto floor
-    ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
-    ctx.shadowBlur = 8 * sDpr;
-    ctx.shadowOffsetY = 4 * sDpr;
-
-    // Outer Keepcase Plastic Case (Matte Dark Navy/Black)
-    ctx.fillStyle = "#0a0e17";
-    ctx.beginPath();
-    ctx.roundRect(fx, fy, dvdW, dvdH, rad);
-    ctx.fill();
-
-    // Reset shadow for inner art
     ctx.shadowColor = food.poster.glow;
-    ctx.shadowBlur = (Math.sin(foodPulseTime) * 0.4 + 0.6) * (10 * sDpr);
-    ctx.shadowOffsetY = 0;
+    ctx.shadowBlur = (Math.sin(foodPulseTime) * 0.4 + 0.6) * (12 * sDpr);
+    ctx.shadowOffsetY = 2 * sDpr;
 
-    // Poster Inset Cover Art
-    const artMargin = 2 * sDpr;
-    const artW = dvdW - artMargin * 2;
-    const artH = dvdH - artMargin * 2;
-    const artGrad = ctx.createLinearGradient(fx + artMargin, fy + artMargin, fx + artMargin + artW, fy + artMargin + artH);
-    artGrad.addColorStop(0, food.poster.color);
-    artGrad.addColorStop(1, "#090d16");
-    ctx.fillStyle = artGrad;
+    // Poster Card
+    const pGrad = ctx.createLinearGradient(fx, fy, fx + pw, fy + ph);
+    pGrad.addColorStop(0, food.poster.color);
+    pGrad.addColorStop(1, "#070b12");
+    ctx.fillStyle = pGrad;
     ctx.beginPath();
-    ctx.roundRect(fx + artMargin, fy + artMargin, artW, artH, 2 * sDpr);
+    ctx.roundRect(fx, fy, pw, ph, prad);
     ctx.fill();
 
-    // Spine Ribbing (Left edge metallic accent)
-    ctx.fillStyle = food.poster.accent;
-    ctx.fillRect(fx + artMargin, fy + artMargin, 2.5 * sDpr, artH);
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
 
-    // Film Code Monogram in tiny gold font
-    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-    ctx.font = `bold ${Math.round(6.5 * sDpr)}px -apple-system, sans-serif`;
-    ctx.fillText(food.poster.code, fx + artMargin + 4.5 * sDpr, fy + artMargin + artH * 0.65);
+    // Subtle edge bevel
+    ctx.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx.lineWidth = 1 * sDpr;
+    ctx.stroke();
 
-    // 3D Cellophane Diagonal Specular Reflection (glossy cellophane sleeve sheen)
-    const sheen = ctx.createLinearGradient(fx, fy, fx + dvdW, fy + dvdH);
-    sheen.addColorStop(0, "rgba(255, 255, 255, 0.55)");
-    sheen.addColorStop(0.35, "rgba(255, 255, 255, 0.12)");
-    sheen.addColorStop(0.5, "rgba(255, 255, 255, 0)");
-    sheen.addColorStop(0.85, "rgba(255, 255, 255, 0.22)");
-    sheen.addColorStop(1, "rgba(255, 255, 255, 0.35)");
+    // Specular diagonal glass sheen
+    const sheen = ctx.createLinearGradient(fx, fy, fx + pw, fy + ph * 0.6);
+    sheen.addColorStop(0, "rgba(255, 255, 255, 0.45)");
+    sheen.addColorStop(0.3, "rgba(255, 255, 255, 0.12)");
+    sheen.addColorStop(0.7, "transparent");
     ctx.fillStyle = sheen;
     ctx.beginPath();
-    ctx.roundRect(fx, fy, dvdW, dvdH, rad);
+    ctx.roundRect(fx, fy, pw, ph, prad);
     ctx.fill();
 
+    // Poster Title text
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `bold ${Math.round(6.5 * sDpr)}px Poppins, -apple-system, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(food.poster.code.substring(0, 5), fx + pw / 2, fy + ph * 0.68);
     ctx.restore();
 
-    // 3. Draw Snake: Realistic 3D Celluloid Filmstrip & Cine Camera Optics
+    // 3. Draw Snake: Realistic 3D Organic Viper Snake
+    const tongueOut = (Math.sin(foodPulseTime * 4) > 0.35);
+
     snake.forEach((seg, i) => {
-      const sx = seg.x * tile + 1 * sDpr;
-      const sy = seg.y * tile + 1 * sDpr;
-      const segW = tile - 2 * sDpr;
-      const segH = tile - 2 * sDpr;
+      const sx = seg.x * tile + tile / 2;
+      const sy = seg.y * tile + tile / 2;
+      const r = (tile / 2) - 1.5 * sDpr;
+      const t = i / snake.length;
+      const segR = r * Math.max(0.45, 1 - t * 0.52);
+
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+      ctx.shadowBlur = 6 * sDpr;
+      ctx.shadowOffsetY = 2.5 * sDpr;
 
       if (i === 0) {
-        // HEAD: 3D Cinema Camera Lens Barrel with Titanium Aperture Ring
-        ctx.save();
-        const hcx = sx + segW / 2;
-        const hcy = sy + segH / 2;
-        const hr = (segW / 2) - 0.5 * sDpr;
+        // HEAD: Realistic 3D Viper Head
+        const hGrad = ctx.createRadialGradient(sx - segR * 0.3, sy - segR * 0.3, segR * 0.1, sx, sy, segR * 1.15);
+        hGrad.addColorStop(0, "#4ade80");
+        hGrad.addColorStop(0.4, "#16a34a");
+        hGrad.addColorStop(0.85, "#15803d");
+        hGrad.addColorStop(1, "#052e16");
+        ctx.fillStyle = hGrad;
 
-        // Drop shadow for 3D camera head
-        ctx.shadowColor = "rgba(0, 0, 0, 0.75)";
-        ctx.shadowBlur = 6 * sDpr;
-        ctx.shadowOffsetY = 2 * sDpr;
-
-        // Outer Titanium Body
         ctx.beginPath();
-        ctx.arc(hcx, hcy, hr, 0, Math.PI * 2);
-        const barrelGrad = ctx.createLinearGradient(hcx - hr, hcy - hr, hcx + hr, hcy + hr);
-        barrelGrad.addColorStop(0, "#334155");
-        barrelGrad.addColorStop(0.5, "#0f172a");
-        barrelGrad.addColorStop(1, "#1e293b");
-        ctx.fillStyle = barrelGrad;
+        ctx.arc(sx, sy, segR * 1.08, 0, Math.PI * 2);
         ctx.fill();
 
-        // Knurled Focus Ring (brass gold edge)
-        ctx.strokeStyle = "#f59e0b";
-        ctx.lineWidth = 1.8 * sDpr;
-        ctx.stroke();
+        ctx.shadowColor = "transparent";
 
-        // Multi-Coated Sapphire Optical Lens
-        ctx.beginPath();
-        ctx.arc(hcx, hcy, hr * 0.68, 0, Math.PI * 2);
-        const lensGrad = ctx.createRadialGradient(hcx - hr * 0.2, hcy - hr * 0.2, hr * 0.08, hcx, hcy, hr * 0.68);
-        lensGrad.addColorStop(0, "#6ee7b7");
-        lensGrad.addColorStop(0.45, "#10b981");
-        lensGrad.addColorStop(0.85, "#047857");
-        lensGrad.addColorStop(1, "#022c22");
-        ctx.fillStyle = lensGrad;
-        ctx.shadowColor = "#10b981";
-        ctx.shadowBlur = 8 * sDpr;
-        ctx.fill();
+        // Eyes: Golden Reptilian Slit Eyes
+        const eyeDist = segR * 0.58;
+        const perpX = -snakeDir.y;
+        const perpY = snakeDir.x;
+        const eye1X = sx + snakeDir.x * (segR * 0.3) + perpX * eyeDist;
+        const eye1Y = sy + snakeDir.y * (segR * 0.3) + perpY * eyeDist;
+        const eye2X = sx + snakeDir.x * (segR * 0.3) - perpX * eyeDist;
+        const eye2Y = sy + snakeDir.y * (segR * 0.3) - perpY * eyeDist;
 
-        // Moving Eye / Pupil tracking motion
-        const eyeOffset = hr * 0.22;
-        const px = hcx + snakeDir.x * eyeOffset;
-        const py = hcy + snakeDir.y * eyeOffset;
-        ctx.beginPath();
-        ctx.arc(px, py, hr * 0.24, 0, Math.PI * 2);
-        ctx.fillStyle = "#ffffff";
-        ctx.fill();
+        [ [eye1X, eye1Y], [eye2X, eye2Y] ].forEach(([ex, ey]) => {
+          ctx.beginPath();
+          ctx.arc(ex, ey, segR * 0.28, 0, Math.PI * 2);
+          ctx.fillStyle = "#fbbf24";
+          ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(ex, ey, segR * 0.08, segR * 0.24, 0, 0, Math.PI * 2);
+          ctx.fillStyle = "#022c22";
+          ctx.fill();
+        });
 
-        // Inner pupil
-        ctx.beginPath();
-        ctx.arc(px + snakeDir.x * (0.8 * sDpr), py + snakeDir.y * (0.8 * sDpr), hr * 0.12, 0, Math.PI * 2);
-        ctx.fillStyle = "#0f172a";
-        ctx.fill();
+        // Flicking Forked Red Tongue
+        if (tongueOut) {
+          const tx = sx + snakeDir.x * (segR * 1.1);
+          const ty = sy + snakeDir.y * (segR * 1.1);
+          const tipX = tx + snakeDir.x * (6 * sDpr);
+          const tipY = ty + snakeDir.y * (6 * sDpr);
+          ctx.strokeStyle = "#ef4444";
+          ctx.lineWidth = 1.6 * sDpr;
+          ctx.beginPath();
+          ctx.moveTo(tx, ty);
+          ctx.lineTo(tipX, tipY);
+          ctx.lineTo(tipX + (snakeDir.x + perpX) * (3 * sDpr), tipY + (snakeDir.y + perpY) * (3 * sDpr));
+          ctx.moveTo(tipX, tipY);
+          ctx.lineTo(tipX + (snakeDir.x - perpX) * (3 * sDpr), tipY + (snakeDir.y - perpY) * (3 * sDpr));
+          ctx.stroke();
+        }
 
-        // Lens Glare Arc
-        ctx.beginPath();
-        ctx.arc(hcx - hr * 0.2, hcy - hr * 0.2, hr * 0.35, Math.PI * 1.1, Math.PI * 1.7);
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.65)";
-        ctx.lineWidth = 1.2 * sDpr;
-        ctx.stroke();
-
-        ctx.restore();
       } else {
-        // BODY SEGMENTS: 3D Volumetric 35mm Celluloid Filmstrip Cell
-        ctx.save();
-        const fade = Math.max(0.35, 1 - (i / snake.length) * 0.55);
+        // BODY SEGMENT: 3D Cylindrical Scales
+        const bGrad = ctx.createRadialGradient(sx - segR * 0.25, sy - segR * 0.25, segR * 0.08, sx, sy, segR);
+        bGrad.addColorStop(0, "#86efac");
+        bGrad.addColorStop(0.35, "#22c55e");
+        bGrad.addColorStop(0.75, "#15803d");
+        bGrad.addColorStop(1, "#052e16");
+        ctx.fillStyle = bGrad;
 
-        // Segment drop shadow
-        ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-        ctx.shadowBlur = 4 * sDpr;
-        ctx.shadowOffsetY = 1.5 * sDpr;
-
-        // 3D Beveled Celluloid Base
-        const cellGrad = ctx.createLinearGradient(sx, sy, sx, sy + segH);
-        cellGrad.addColorStop(0, `rgba(45, 55, 75, ${fade})`);
-        cellGrad.addColorStop(0.4, `rgba(22, 28, 42, ${fade})`);
-        cellGrad.addColorStop(1, `rgba(12, 16, 24, ${fade})`);
-        ctx.fillStyle = cellGrad;
-
-        ctx.strokeStyle = `rgba(245, 158, 11, ${fade * 0.8})`; // Solar amber film edge
-        ctx.lineWidth = 1.2 * sDpr;
         ctx.beginPath();
-        ctx.roundRect(sx, sy, segW, segH, 3.5 * sDpr);
+        ctx.arc(sx, sy, segR, 0, Math.PI * 2);
         ctx.fill();
+
+        ctx.strokeStyle = "rgba(255,255,255,0.18)";
+        ctx.lineWidth = 0.8 * sDpr;
         ctx.stroke();
-
-        // Inner 35mm Projection Window (Exposed Cinema Frame)
-        const frameMargin = 3.5 * sDpr;
-        const fw = segW - frameMargin * 2;
-        const fh = segH - frameMargin * 2;
-        const innerGrad = ctx.createLinearGradient(sx + frameMargin, sy + frameMargin, sx + frameMargin + fw, sy + frameMargin + fh);
-        innerGrad.addColorStop(0, `rgba(16, 185, 129, ${fade * 0.45})`);
-        innerGrad.addColorStop(1, `rgba(6, 95, 70, ${fade * 0.2})`);
-        ctx.fillStyle = innerGrad;
-        ctx.fillRect(sx + frameMargin, sy + frameMargin, fw, fh);
-
-        // Kodak 35mm Precision Sprocket Perforations (4 holes per frame)
-        ctx.fillStyle = `rgba(248, 250, 252, ${fade * 0.9})`;
-        const spW = 2.2 * sDpr;
-        const spH = 1.6 * sDpr;
-        const spOff = 2 * sDpr;
-        // Top perforations
-        ctx.fillRect(sx + spOff, sy + 1.2 * sDpr, spW, spH);
-        ctx.fillRect(sx + segW - spOff - spW, sy + 1.2 * sDpr, spW, spH);
-        // Bottom perforations
-        ctx.fillRect(sx + spOff, sy + segH - 1.2 * sDpr - spH, spW, spH);
-        ctx.fillRect(sx + segW - spOff - spW, sy + segH - 1.2 * sDpr - spH, spW, spH);
-
-        // Specular Top Ridge Highlight for true 3D cylinder depth
-        ctx.fillStyle = `rgba(255, 255, 255, ${fade * 0.25})`;
-        ctx.fillRect(sx + frameMargin, sy + 1.2 * sDpr, fw, 0.8 * sDpr);
-
-        ctx.restore();
       }
+      ctx.restore();
     });
   };
 
@@ -2316,25 +2814,23 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     snakeDir = nextSnakeDir;
     const head = { x: snake[0].x + snakeDir.x, y: snake[0].y + snakeDir.y };
 
-    // Wall collision wrap-around
     if (head.x < 0) head.x = TILE_COUNT - 1;
     if (head.x >= TILE_COUNT) head.x = 0;
     if (head.y < 0) head.y = TILE_COUNT - 1;
     if (head.y >= TILE_COUNT) head.y = 0;
 
-    // Self collision check
     for (let i = 0; i < snake.length; i++) {
       if (snake[i].x === head.x && snake[i].y === head.y) {
         stopSnakeGame();
+        playPartySound("bang");
         if (navigator.vibrate) navigator.vibrate([60, 40, 100]);
-        toast("💥 35mm Film Koptu! Skorunuz: " + snakeScore);
+        toast("Yılan Kendini Isırdı! Skor: " + snakeScore);
         return;
       }
     }
 
     snake.unshift(head);
 
-    // Food check
     if (head.x === food.x && head.y === food.y) {
       snakeScore += 10;
       if ($("snakeScore")) $("snakeScore").textContent = snakeScore;
@@ -2343,6 +2839,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         if ($("snakeBest")) $("snakeBest").textContent = snakeBest;
         try { localStorage.setItem("cinetv.snakeBest", String(snakeBest)); } catch (e) {}
       }
+      playPartySound("correct");
       if (navigator.vibrate) navigator.vibrate(35);
       placeFood();
     } else {
@@ -2353,14 +2850,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
 
   const startSnakeGame = () => {
-    snake = [{x: 10, y: 10}, {x: 10, y: 11}, {x: 10, y: 12}];
+    snake = [{x: 7, y: 7}, {x: 7, y: 8}, {x: 7, y: 9}];
     snakeDir = {x: 0, y: -1};
     nextSnakeDir = {x: 0, y: -1};
     snakeScore = 0;
     if ($("snakeScore")) $("snakeScore").textContent = "0";
     placeFood();
     snakeRunning = true;
-    if ($("snakeStartBtn")) $("snakeStartBtn").textContent = "⏸ Oyunu Duraklat";
+    if ($("snakeStartBtn")) $("snakeStartBtn").textContent = "Oyunu Duraklat";
     if (snakeLoopTimer) clearInterval(snakeLoopTimer);
     snakeLoopTimer = setInterval(stepSnake, 120);
     drawSnakeGame();
@@ -2369,11 +2866,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const stopSnakeGame = () => {
     snakeRunning = false;
     if (snakeLoopTimer) { clearInterval(snakeLoopTimer); snakeLoopTimer = null; }
-    if ($("snakeStartBtn")) $("snakeStartBtn").textContent = "🎮 Yeniden Başlat";
+    if ($("snakeStartBtn")) $("snakeStartBtn").textContent = "Yeniden Başlat";
   };
 
   if ($("snakeStartBtn")) {
     $("snakeStartBtn").onclick = () => {
+      playPartySound("click");
       if (snakeRunning) stopSnakeGame();
       else startSnakeGame();
     };
@@ -2382,14 +2880,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   if ($("snakeGyroToggle")) {
     $("snakeGyroToggle").onclick = async () => {
       snakeGyroActive = !snakeGyroActive;
-      $("snakeGyroToggle").textContent = "📱 Gyro: " + (snakeGyroActive ? "Açık" : "Kapalı");
+      playPartySound("click");
+      $("snakeGyroToggle").textContent = "Gyro: " + (snakeGyroActive ? "Açık" : "Kapalı");
       if (snakeGyroActive) {
         try { if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); } catch (err) {}
       }
     };
   }
 
-  // Gyro orientation controls
   window.addEventListener("deviceorientation", e => {
     if (!snakeRunning || !snakeGyroActive) return;
     if (e.gamma > 12 && snakeDir.x === 0) nextSnakeDir = {x: 1, y: 0};
@@ -2398,14 +2896,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     else if (e.beta < 22 && snakeDir.y === 0) nextSnakeDir = {x: 0, y: -1};
   });
 
-  // Touch fallback controls
-  if ($("snkUp")) $("snkUp").onclick = () => { if (snakeDir.y === 0) nextSnakeDir = {x: 0, y: -1}; };
-  if ($("snkDown")) $("snkDown").onclick = () => { if (snakeDir.y === 0) nextSnakeDir = {x: 0, y: 1}; };
-  if ($("snkLeft")) $("snkLeft").onclick = () => { if (snakeDir.x === 0) nextSnakeDir = {x: -1, y: 0}; };
-  if ($("snkRight")) $("snkRight").onclick = () => { if (snakeDir.x === 0) nextSnakeDir = {x: 1, y: 0}; };
+  if ($("snkUp")) $("snkUp").onclick = () => { playPartySound("click"); if (snakeDir.y === 0) nextSnakeDir = {x: 0, y: -1}; };
+  if ($("snkDown")) $("snkDown").onclick = () => { playPartySound("click"); if (snakeDir.y === 0) nextSnakeDir = {x: 0, y: 1}; };
+  if ($("snkLeft")) $("snkLeft").onclick = () => { playPartySound("click"); if (snakeDir.x === 0) nextSnakeDir = {x: -1, y: 0}; };
+  if ($("snkRight")) $("snkRight").onclick = () => { playPartySound("click"); if (snakeDir.x === 0) nextSnakeDir = {x: 1, y: 0}; };
 
   drawRouletteWheel(0, 0);
   drawSnakeGame();
+  joinParty(); // Auto-join room lobby on mobile remote connection
 
   // several CineTV TVs on this network: tap the status to switch
   open("info").then(info => {
@@ -2415,7 +2913,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     $("tvPick").style.cursor = "pointer";
     $("tvPick").onclick = () => {
       sheet.innerHTML = `<h3>${t("otherTvs")}</h3>` + [{name: info.name, url: ""}].concat(peers).map(p =>
-        `<button class="btn ${p.url ? "ghost" : ""}" style="margin-top:10px" data-u="${esc(p.url)}">📺 ${esc(p.name)}</button>`).join("");
+        `<button class="btn ${p.url ? "ghost" : ""}" style="margin-top:10px" data-u="${esc(p.url)}">${esc(p.name)}</button>`).join("");
       sheet.classList.add("on"); bg.classList.add("on");
       sheet.querySelectorAll("[data-u]").forEach(b => b.onclick = () => { if (b.dataset.u) location.href = b.dataset.u; else closeSheet(); });
     };

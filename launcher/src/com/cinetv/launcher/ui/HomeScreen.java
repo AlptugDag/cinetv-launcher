@@ -676,24 +676,7 @@ public class HomeScreen {
     }
 
     public void showNightModePrompt(final Runnable onAccept, final Runnable onDecline) {
-        if (root == null) return;
-        this.nightPromptOnDecline = onDecline;
-        root.post(() -> {
-            if (nightPromptView == null) {
-                buildNightModePrompt(onAccept, onDecline);
-            }
-            root.removeCallbacks(dismissNightPromptRunnable);
-            nightPromptView.setVisibility(View.VISIBLE);
-            nightPromptView.setAlpha(0f);
-            nightPromptView.setTranslationX(UiKit.pxf(50));
-            nightPromptView.animate()
-                    .alpha(1f)
-                    .translationX(0f)
-                    .setDuration(380)
-                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
-                    .start();
-            root.postDelayed(dismissNightPromptRunnable, 15_000L);
-        });
+        // Canceled per user request: night viewing prompt is disabled
     }
 
     public void hideNightModePrompt() {
@@ -1057,6 +1040,7 @@ public class HomeScreen {
                 new TourView.Step(phone, R.string.tour_cast_t, R.string.tour_cast),
                 new TourView.Step(inputs, R.string.tour_inputs_t, R.string.tour_inputs),
                 new TourView.Step(apps.dockView(), R.string.tour_apps_t, R.string.tour_apps),
+                new TourView.Step(apps.dockView(), R.string.tour_party_games_t, R.string.tour_party_games),
                 new TourView.Step(gear, R.string.tour_settings_t, R.string.tour_settings),
                 new TourView.Step(gear, R.string.tour_perf_t, R.string.tour_perf),
                 new TourView.Step(null, R.string.tour_saver_t, R.string.tour_saver),

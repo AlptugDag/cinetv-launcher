@@ -10,7 +10,7 @@
 
 <br>
 
-[![Sürüm](https://img.shields.io/badge/SURUM-1.0.0.18-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher/releases/latest)
+[![Sürüm](https://img.shields.io/badge/SURUM-1.0.0.19-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher/releases/latest)
 [![Felsefe](https://img.shields.io/badge/FELSEFE-SIFIR%20KAR%20%7C%20SAF%20SINEMA-E50914?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher)
 [![Mimari](https://img.shields.io/badge/ROL-A%C3%87IK%20KAYNAK%20BA%C5%9ELATICI%20(LAUNCHER)-000000?style=for-the-badge)](#-yasal-bilgilendirme-ve-mimari-sorumluluk-reddi-legal-disclaimer)
 [![İçerik Politikası](https://img.shields.io/badge/%C4%B0%C3%87ER%C4%B0K-SIFIR%20BARINDIRMA%20%7C%20INTENT%20K%C3%96PR%C3%9CS%C3%9C-10b981?style=for-the-badge)](#-yasal-bilgilendirme-ve-mimari-sorumluluk-reddi-legal-disclaimer)

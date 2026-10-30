@@ -269,6 +269,9 @@
     <string name="setup_dns_ok">Şifreli DNS: %s</string>
     <string name="setup_dns_off">Şifreli DNS etkin değil (%s)</string>
     <string name="setup_picture_manual">Ses otomatik ayarlandı. Bu TV görüntü değişikliklerini yalnızca kendi menüsünden kabul ediyor (Ayarlar ya da kumandadaki menü tuşu › Görüntü). Filmi stüdyoda çıktığı gibi görmek için: Görüntü modu Sinema · Hareket yumuşatma (MEMC) Kapalı · Gürültü azaltma Kapalı · Dinamik kontrast Kapalı · Keskinlik 0 · Renk sıcaklığı Sıcak · Yerel kontrast/karartma Düşük · Film modu Açık.</string>
+    <string name="party_folder_title">Parti &amp; Oyunlar</string>
+    <string name="tour_party_games_t">Parti &amp; Sinefil Oyunları</string>
+    <string name="tour_party_games">Uygulamalar satırındaki Parti &amp; Oyunlar klasöründe SnakePhile, CineQuiz, CineRoulette, CineSessiz ve CineSUB yer alır. Arkadaşlarınız telefonlarıyla katılabilir veya TV kumandasıyla oynayabilirsiniz!</string>
     <string name="ai_err_no_key">Asistanı kullanmak için Ayarlar\'dan bir yapay zekâ anahtarı ekleyin.</string>
     <string name="ai_err_empty">Yapay zekâ boş yanıt verdi.</string>
     <string name="ai_err_timeout">Yapay zekâ çok uzun sürdü. Tekrar deneyin.</string>

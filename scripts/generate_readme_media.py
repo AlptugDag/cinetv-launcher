@@ -114,92 +114,135 @@ def generate_nuvio_home():
     print("Saved:", out)
 
 # -------------------------------------------------------------
-# 2. ROULETTE WHEEL VIEW (docs/media/roulette_wheel.png)
+# 2. SINEROULETTE: 3D GUNMETAL REVOLVER CYLINDER (docs/media/roulette_wheel.png)
 # -------------------------------------------------------------
+def draw_plain_poster(dest_img, poster_path, bbox, corner_radius, sheen=True):
+    pw = int(bbox[2] - bbox[0])
+    ph = int(bbox[3] - bbox[1])
+    if os.path.isfile(poster_path):
+        p_img = Image.open(poster_path).convert("RGBA")
+        p_resized = p_img.resize((pw, ph), Image.Resampling.BICUBIC)
+        mask = Image.new("L", (pw, ph), 0)
+        dmask = ImageDraw.Draw(mask)
+        dmask.rounded_rectangle([0, 0, pw, ph], radius=corner_radius, fill=255)
+        dest_img.paste(p_resized, (int(bbox[0]), int(bbox[1])), mask)
+        
+        if sheen:
+            sheen_layer = Image.new("RGBA", (pw, ph), (0, 0, 0, 0))
+            dsheen = ImageDraw.Draw(sheen_layer)
+            dsheen.polygon([(0, 0), (pw, 0), (0, int(ph * 0.52))], fill=(255, 255, 255, 50))
+            dest_img.paste(sheen_layer, (int(bbox[0]), int(bbox[1])), mask)
+    else:
+        d = ImageDraw.Draw(dest_img)
+        round_rect(d, bbox, corner_radius, fill=(30, 41, 59), outline=(56, 189, 248), width=1)
+
 def generate_roulette_view():
     w, h = 1920, 1080
-    im = Image.new("RGBA", (w, h), (10, 11, 16, 255))
+    im = Image.new("RGBA", (w, h), (9, 11, 17, 255))
     d = ImageDraw.Draw(im)
 
-    # Ambient theater background
+    # Ambient deep theater background matching CineTV
     for y in range(h):
-        r = int(12 + (y / h) * 16)
-        g = int(10 + (y / h) * 8)
-        b = int(22 + (y / h) * 20)
+        r = int(10 + (y / h) * 14)
+        g = int(12 + (y / h) * 10)
+        b = int(20 + (y / h) * 22)
         d.line([(0, y), (w, y)], fill=(r, g, b, 255))
 
-    # Title header
-    d.text((120, 56), "SİNEFİL FİLM ÖNERİ RULETİ (TV & MOBİL EŞ ZAMANLI)", font=font("bold", 20), fill=(245, 158, 11))
-    d.text((120, 92), "Bu Akşam Hangi Filmi İzleyelim?", font=font("black", 46), fill=(255, 255, 255))
-    d.text((120, 155), "Herkes kendi telefonundan 'Oyunlar' sekmesine girip bir film fırlatır. Çark döner ve kazanan film taçlandırılır!", font=font("medium", 19), fill=(148, 163, 184))
+    # Header with SineRoulette wordmark ("Sine" in white, "Roulette" in electric blue)
+    d.text((120, 56), "✦ SİNEFİL FİLM SEÇİCİ · REVOLVER GÖBEĞİ SİNEMA TAMBURU (TV & MOBİL)", font=font("bold", 18), fill=(56, 189, 248))
+    
+    # Wordmark
+    sine_txt = "Sine"
+    d.text((120, 88), sine_txt, font=font("black", 48), fill=(255, 255, 255))
+    sine_w = font("black", 48).getbbox(sine_txt)[2]
+    d.text((120 + sine_w, 88), "Roulette", font=font("black", 48), fill=(56, 189, 248))
+    d.text((120, 155), "Herkes kendi telefonundan 'Oyunlar' sekmesine girip bir film fırlatır. 3D revolver tamburu döner ve kazanan film taçlandırılır!", font=font("medium", 19), fill=(148, 163, 184))
 
-    # Left: Photorealistic Wheel (Diameter ~620px)
-    cx, cy = 520, 590
-    R = 285
-    rim_w = 26
+    # Left: Photorealistic 3D Gunmetal Revolver Cylinder (Diameter ~600px)
+    cx, cy = 520, 600
+    R = 275
 
-    # Titanium rim
-    d.ellipse([cx - R - rim_w, cy - R - rim_w, cx + R + rim_w, cy + R + rim_w], fill=(30, 41, 59, 255), outline=(217, 119, 6, 255), width=4)
-    d.ellipse([cx - R, cy - R, cx + R, cy + R], fill=(15, 23, 42, 255))
+    # Gunmetal Cylinder Base
+    for r_i in range(R, 0, -2):
+        frac = r_i / R
+        cr = int(15 + frac * 28)
+        cg = int(22 + frac * 32)
+        cb = int(35 + frac * 48)
+        d.ellipse([cx - r_i, cy - r_i, cx + r_i, cy + r_i], fill=(cr, cg, cb, 255))
 
-    slices = [
-        ("Taxi Driver", (136, 19, 55)),
-        ("Interstellar", (30, 58, 138)),
-        ("Pulp Fiction", (6, 95, 70)),
-        ("Godfather", (180, 83, 9)),
-        ("Fight Club", (88, 28, 135)),
-        ("The Matrix", (15, 118, 110)),
-        ("Inception", (153, 27, 27)),
-        ("Whiplash", (49, 46, 129))
+    # Outer Steel Chamfer Bevel Ring
+    d.ellipse([cx - R, cy - R, cx + R, cy + R], outline=(100, 116, 139), width=3)
+    d.ellipse([cx - R + 4, cy - R + 4, cx + R - 4, cy + R - 4], outline=(51, 65, 85), width=2)
+
+    # 6 Bullet Chambers (Mermi Yuvaları) with real TMDB movie posters
+    chambers = [
+        ("Taxi Driver", "taxi_driver.jpg"),
+        ("Interstellar", "interstellar.jpg"),
+        ("The Godfather", "godfather.jpg"),
+        ("Pulp Fiction", "pulp_fiction.jpg"),
+        ("Fight Club", "fight_club.jpg"),
+        ("Inception", "inception.jpg")
     ]
-    n = len(slices)
-    step = 360 / n
-    for i, (title, color) in enumerate(slices):
-        sa = i * step
-        ea = sa + step
-        d.pieslice([cx - R, cy - R, cx + R, cy + R], sa, ea, fill=color, outline=(255, 255, 255, 80), width=2)
-        # Radial text label
-        mid_ang = math.radians(sa + step / 2)
-        tx = cx + (R * 0.62) * math.cos(mid_ang)
-        ty = cy + (R * 0.62) * math.sin(mid_ang)
-        d.text((tx - 32, ty - 10), title, font=font("bold", 15), fill=(255, 255, 255))
+    n_ch = len(chambers)
+    ch_dist = R * 0.62
+    ch_r = R * 0.26
 
-    # Golden rivets (pegs)
-    for i in range(n):
-        ang = math.radians(i * step)
-        px = cx + (R + rim_w / 2) * math.cos(ang)
-        py = cy + (R + rim_w / 2) * math.sin(ang)
-        d.ellipse([px - 6, py - 6, px + 6, py + 6], fill=(251, 191, 36), outline=(120, 53, 15), width=2)
+    # Revolver Outer Flutes (Scalloped cutouts between chambers)
+    for i in range(n_ch):
+        mid_ang = math.radians(i * (360 / n_ch) + (180 / n_ch) - 90)
+        fx = cx + R * math.cos(mid_ang)
+        fy = cy + R * math.sin(mid_ang)
+        flute_r = R * 0.22
+        d.ellipse([fx - flute_r, fy - flute_r, fx + flute_r, fy + flute_r], fill=(6, 8, 14, 255), outline=(51, 65, 85), width=1)
 
-    # Polished brass hub with specular center
-    hub_r = 75
-    d.ellipse([cx - hub_r, cy - hub_r, cx + hub_r, cy + hub_r], fill=(217, 119, 6), outline=(254, 243, 199), width=3)
-    d.ellipse([cx - hub_r * 0.7, cy - hub_r * 0.7, cx + hub_r * 0.7, cy + hub_r * 0.7], fill=(245, 158, 11))
-    # Vector golden star
-    draw_star(d, cx, cy, 26, 11, (255, 255, 255))
+    # Chambers and Movie Posters
+    posters_dir = os.path.join(DOCS_MEDIA, "posters")
+    for i, (m_title, p_file) in enumerate(chambers):
+        ang = math.radians(i * (360 / n_ch) - 90) # Taxi Driver at top 12 o'clock (-90 deg)
+        ch_x = cx + ch_dist * math.cos(ang)
+        ch_y = cy + ch_dist * math.sin(ang)
 
-    # Top indicator needle (pointer)
-    top_y = cy - R - rim_w
-    d.polygon([(cx - 14, top_y - 8), (cx + 14, top_y - 8), (cx, top_y + 36)], fill=(245, 158, 11), outline=(254, 243, 199))
-    d.ellipse([cx - 8, top_y - 8, cx + 8, top_y + 8], fill=(254, 243, 199))
+        # Bore hole deep shadow
+        d.ellipse([ch_x - ch_r - 2, ch_y - ch_r - 2, ch_x + ch_r + 2, ch_y + ch_r + 2], fill=(6, 9, 14), outline=(217, 119, 6), width=2)
+        d.ellipse([ch_x - ch_r, ch_y - ch_r, ch_x + ch_r, ch_y + ch_r], fill=(10, 14, 22))
+
+        # Real Movie Poster (DVD-boxless, 2:3 ratio, rounded corners)
+        pw = int(ch_r * 1.25)
+        ph = int(pw * 1.48)
+        p_bbox = [ch_x - pw // 2, ch_y - ph // 2, ch_x + pw // 2, ch_y + ph // 2]
+        p_path = os.path.join(posters_dir, p_file)
+        draw_plain_poster(im, p_path, p_bbox, corner_radius=int(pw * 0.085))
+
+    # Center Extractor Star Ratchet Gear (Yıldız Dişli)
+    rat_r = R * 0.22
+    d.ellipse([cx - rat_r, cy - rat_r, cx + rat_r, cy + rat_r], fill=(15, 23, 42), outline=(56, 189, 248), width=2)
+    # Center pin
+    d.ellipse([cx - rat_r * 0.45, cy - rat_r * 0.45, cx + rat_r * 0.45, cy + rat_r * 0.45], fill=(148, 163, 184), outline=(248, 250, 252), width=1)
+
+    # Top Hammer Sight Alignment Notch (pointing at 12 o'clock winning chamber)
+    top_y = cy - R - 6
+    notch_w, notch_h = 24, 34
+    d.polygon([(cx - notch_w // 2, top_y - notch_h * 0.6), (cx + notch_w // 2, top_y - notch_h * 0.6), (cx, top_y + notch_h * 0.5)],
+              fill=(56, 189, 248), outline=(255, 255, 255))
+    d.ellipse([cx - 4, top_y - notch_h * 0.35, cx + 4, top_y - notch_h * 0.35 + 8], fill=(255, 255, 255))
 
     # Right: Modal Card & Winner Card
     rx = 980
-    round_rect(d, [rx, 240, rx + 820, 890], 28, fill=(20, 24, 36, 230), outline=(245, 158, 11, 120), width=2)
+    round_rect(d, [rx, 240, rx + 820, 890], 28, fill=(20, 24, 36, 230), outline=(56, 189, 248, 140), width=2)
 
-    # Winner Card
-    round_rect(d, [rx + 36, 280, rx + 784, 460], 20, fill=(245, 158, 11, 35), outline=(245, 158, 11, 200), width=2)
-    d.text((rx + 60, 305), "BU AKŞAMIN KAZANAN FİLMİ (PREMİYER SEÇİMİ)", font=font("bold", 15), fill=(251, 191, 36))
+    # Winner Card (Taxi Driver crowned)
+    round_rect(d, [rx + 36, 280, rx + 784, 460], 20, fill=(56, 189, 248, 28), outline=(56, 189, 248, 220), width=2)
+    d.text((rx + 60, 305), "BU AKŞAMIN SEÇİLEN BAŞYAPITI (PREMİYER SEÇİMİ)", font=font("bold", 15), fill=(56, 189, 248))
     d.text((rx + 60, 335), "Taxi Driver (1976)", font=font("black", 38), fill=(255, 255, 255))
     d.text((rx + 60, 395), "Öneren: Alptuğ  ·  Martin Scorsese  ·  Robert De Niro", font=font("medium", 18), fill=(203, 213, 225))
 
     # Suggestions pool list
-    d.text((rx + 36, 495), "Oturma Odası Havuzundaki Öneriler:", font=font("bold", 20), fill=(255, 255, 255))
+    d.text((rx + 36, 495), "Revolver Tamburundaki Öneriler:", font=font("bold", 20), fill=(255, 255, 255))
     suggested = [
-        ("Taxi Driver", "Alptuğ", (245, 158, 11)),
-        ("Interstellar", "Gamze", (56, 189, 248)),
+        ("Taxi Driver", "Alptuğ", (56, 189, 248)),
+        ("Interstellar", "Gamze", (16, 185, 129)),
         ("Pulp Fiction", "Misafir 1", (239, 68, 68)),
-        ("The Godfather", "Misafir 2", (16, 185, 129))
+        ("The Godfather", "Misafir 2", (245, 158, 11))
     ]
     for s_idx, (m_title, user, col) in enumerate(suggested):
         sy = 540 + s_idx * 58
@@ -208,8 +251,8 @@ def generate_roulette_view():
         d.text((rx + 640, sy + 14), "(" + user + ")", font=font("medium", 15), fill=col)
 
     # Controls row
-    round_rect(d, [rx + 36, 800, rx + 520, 860], 16, fill=(139, 92, 246), outline=None)
-    d.text((rx + 200, 818), "Çarkı Çevir", font=font("bold", 20), fill=(255, 255, 255))
+    round_rect(d, [rx + 36, 800, rx + 520, 860], 16, fill=(14, 165, 233), outline=None)
+    d.text((rx + 160, 818), "🎯 Revolver Tamburunu Çevir", font=font("bold", 20), fill=(255, 255, 255))
 
     round_rect(d, [rx + 540, 800, rx + 784, 860], 16, fill=(35, 42, 60, 200), outline=(70, 80, 110), width=1)
     d.text((rx + 610, 818), "Temizle", font=font("medium", 20), fill=(203, 213, 225))
@@ -219,7 +262,7 @@ def generate_roulette_view():
     print("Saved:", out)
 
 # -------------------------------------------------------------
-# 3. CINEPARTY: 35MM CELLULOID SNAKE & 10-QUESTION QUIZ ARENA
+# 3. CINEPARTY: SNAKEPHILE & SINEQUIZ (docs/media/cineparty_games.png)
 # -------------------------------------------------------------
 def generate_cineparty_games():
     w, h = 1920, 1080
@@ -233,95 +276,110 @@ def generate_cineparty_games():
         d.line([(0, y), (w, y)], fill=(r, g, b, 255))
 
     # Header
-    d.text((100, 48), "CİNEPARTY: OTURMA ODASI İNTERAKTİF SİNEMA OYUNLARI", font=font("bold", 19), fill=(16, 185, 129))
-    d.text((100, 84), "35mm Selüloit Yılanı ve 10 Soruluk Sinefil Bilmece Arenası", font=font("black", 42), fill=(255, 255, 255))
+    d.text((100, 48), "✦ CİNEPARTY: OTURMA ODASI İNTERAKTİF SİNEMA OYUNLARI", font=font("bold", 18), fill=(16, 185, 129))
+    d.text((100, 84), "SnakePhile 3D Yılanı ve 10 Soruluk SineQuiz Arenası", font=font("black", 42), fill=(255, 255, 255))
 
-    # Left: 35mm Celluloid Snake Game Card
+    posters_dir = os.path.join(DOCS_MEDIA, "posters")
+
+    # Left: SnakePhile Game Card (Fullscreen Cinema Deck)
     lx = 100
     round_rect(d, [lx, 165, lx + 830, 995], 28, fill=(16, 20, 30, 235), outline=(16, 185, 129, 160), width=2)
-    d.text((lx + 40, 198), "35MM SELÜLOİT SİNEFİL YILANI (GYRO EĞİM KONTROLLÜ)", font=font("bold", 17), fill=(16, 185, 129))
-    d.text((lx + 40, 232), "Telefonunuzu sağa-sola, öne-arkaya eğerek yönetin; 3D film DVD'lerini yedikçe uzayın!", font=font("medium", 15), fill=(148, 163, 184))
+    
+    # Wordmark for SnakePhile
+    snk_txt = "Snake"
+    d.text((lx + 40, 198), snk_txt, font=font("black", 26), fill=(255, 255, 255))
+    snk_w = font("black", 26).getbbox(snk_txt)[2]
+    d.text((lx + 40 + snk_w, 198), "Phile", font=font("black", 26), fill=(16, 185, 129))
+    d.text((lx + 40 + snk_w + 80, 204), "· 3D GERÇEKÇİ SİNEFİL YILANI (GYRO EĞİMLİ)", font=font("bold", 14), fill=(16, 185, 129))
+    d.text((lx + 40, 236), "Telefonunuzu sağa-sola, öne-arkaya eğerek yönetin; gerçek film afişlerini yedikçe uzayın!", font=font("medium", 15), fill=(148, 163, 184))
 
     # HUD Bar
     round_rect(d, [lx + 40, 275, lx + 790, 325], 12, fill=(24, 30, 44), outline=(45, 58, 85), width=1)
     d.text((lx + 60, 288), "KARE (SKOR): 180", font=font("bold", 16), fill=(16, 185, 129))
     d.text((lx + 360, 288), "REKOR: 420", font=font("bold", 16), fill=(245, 158, 11))
-    d.text((lx + 580, 288), "HEDEF DVD: Interstellar", font=font("medium", 15), fill=(56, 189, 248))
+    d.text((lx + 580, 288), "HEDEF AFİŞ: Interstellar", font=font("medium", 15), fill=(56, 189, 248))
 
     # 3D Cinema Board (lx + 175, 350, 480x480)
     bx, by, b_size = lx + 175, 350, 480
-    round_rect(d, [bx, by, bx + b_size, by + b_size], 22, fill=(9, 12, 18), outline=(245, 158, 11, 70), width=2)
+    round_rect(d, [bx, by, bx + b_size, by + b_size], 22, fill=(9, 12, 18), outline=(16, 185, 129, 90), width=2)
 
-    # Subtle projector lens vignette & grid lines
+    # Ambient subtle projection grid lines
     grid_n = 12
     cell = b_size / grid_n
     for c in range(1, grid_n):
-        d.line([(bx + c * cell, by), (bx + c * cell, by + b_size)], fill=(245, 158, 11, 15))
-        d.line([(bx, by + c * cell), (bx + b_size, by + c * cell)], fill=(245, 158, 11, 15))
+        d.line([(bx + c * cell, by), (bx + c * cell, by + b_size)], fill=(16, 185, 129, 15))
+        d.line([(bx, by + c * cell), (bx + b_size, by + c * cell)], fill=(16, 185, 129, 15))
 
-    # Food: Photorealistic 3D Miniature Keepcase DVD (Interstellar)
-    fx = bx + 8 * cell + 4
-    fy = by + 3 * cell + 4
-    dvd_w, dvd_h = cell - 8, cell - 6
-    # 3D drop shadow
-    round_rect(d, [fx + 4, fy + 8, fx + dvd_w + 4, fy + dvd_h + 8], 6, fill=(0, 0, 0, 160))
-    # Ambient halo
-    round_rect(d, [fx - 6, fy - 6, fx + dvd_w + 6, fy + dvd_h + 6], 10, fill=(2, 132, 199, 45))
-    # Outer keepcase plastic
-    round_rect(d, [fx, fy, fx + dvd_w, fy + dvd_h], 6, fill=(10, 14, 23), outline=(56, 189, 248, 200), width=1)
-    # Cover Art: Cyan galaxy / nebula
-    round_rect(d, [fx + 3, fy + 3, fx + dvd_w - 3, fy + dvd_h - 3], 4, fill=(2, 132, 199))
-    d.text((fx + 6, fy + 12), "INT", font=font("black", 12), fill=(255, 255, 255))
-    # Spine highlight (gold)
-    d.rectangle([fx + 3, fy + 3, fx + 6, fy + dvd_h - 3], fill=(253, 230, 138))
-    # Diagonal cellophane reflection streak
-    d.line([(fx + 3, fy + 4), (fx + dvd_w - 4, fy + dvd_h - 4)], fill=(255, 255, 255, 140), width=2)
+    # Food: REAL TMDB MOVIE POSTER (Interstellar, DVD-boxless with glow)
+    fx = bx + 8 * cell + 2
+    fy = by + 3 * cell
+    food_w = int(cell * 1.3)
+    food_h = int(food_w * 1.48) # 2:3 aspect ratio
+    
+    # Ambient cyan bloom glow behind poster
+    round_rect(d, [fx - 8, fy - 8, fx + food_w + 8, fy + food_h + 8], 16, fill=(2, 132, 199, 45))
+    round_rect(d, [fx - 4, fy - 4, fx + food_w + 4, fy + food_h + 4], 12, fill=(2, 132, 199, 80))
+    # Plain poster drawing (no DVD case)
+    interstellar_path = os.path.join(posters_dir, "interstellar.jpg")
+    draw_plain_poster(im, interstellar_path, [fx, fy, fx + food_w, fy + food_h], corner_radius=int(food_w * 0.085))
 
-    # Snake: 3D Cine Camera Lens Head + 35mm Celluloid Segments
+    # Snake: REALISTIC 3D ORGANIC SNAKE (Scales, Head, Reptilian Eyes, Flicking Tongue)
     snake_coords = [(6, 5), (5, 5), (4, 5), (3, 5), (3, 6), (3, 7), (4, 7), (5, 7), (6, 7)]
     for s_idx, (sx, sy) in enumerate(snake_coords):
-        px = bx + sx * cell + 3
-        py = by + sy * cell + 3
-        sw, sh = cell - 6, cell - 6
-        fade = max(0.4, 1.0 - (s_idx / len(snake_coords)) * 0.5)
+        scx = bx + sx * cell + cell // 2
+        scy = by + sy * cell + cell // 2
+        seg_r = (cell // 2) - 1.5
+        t = s_idx / len(snake_coords)
+        curr_r = seg_r * max(0.48, 1 - t * 0.5)
+
+        # Soft organic shadow under body
+        d.ellipse([scx - curr_r + 2, scy - curr_r + 4, scx + curr_r + 2, scy + curr_r + 4], fill=(0, 0, 0, 150))
 
         if s_idx == 0:
-            # 3D Head: Cinema Projector Lens Barrel
-            round_rect(d, [px + 3, py + 5, px + sw + 3, py + sh + 5], int(sw // 2), fill=(0, 0, 0, 160))
-            d.ellipse([px, py, px + sw, py + sh], fill=(30, 41, 59), outline=(245, 158, 11), width=2)
-            d.ellipse([px + 4, py + 4, px + sw - 4, py + sh - 4], fill=(16, 185, 129), outline=(4, 120, 87), width=1)
-            # Tracking Eye looking toward the DVD
-            d.ellipse([px + sw - 14, py + 8, px + sw - 6, py + 16], fill=(255, 255, 255))
-            d.ellipse([px + sw - 12, py + 9, px + sw - 7, py + 14], fill=(15, 23, 42))
-            # Lens reflection arc
-            d.arc([px + 6, py + 6, px + sw - 6, py + sh - 6], start=210, end=300, fill=(255, 255, 255), width=2)
+            # HEAD: 3D Viper Head
+            d.ellipse([scx - curr_r, scy - curr_r, scx + curr_r, scy + curr_r], fill=(22, 163, 74), outline=(74, 222, 128), width=2)
+            d.ellipse([scx - curr_r * 0.6, scy - curr_r * 0.6, scx + curr_r * 0.6, scy + curr_r * 0.6], fill=(34, 197, 94))
+            
+            # Eyes: Golden Reptilian Eyes with vertical slit pupils
+            # Facing right towards food (food is at x=8, y=3)
+            eye_offset_x = curr_r * 0.4
+            eye_offset_y = curr_r * 0.45
+            for e_y in [scy - eye_offset_y, scy + eye_offset_y]:
+                d.ellipse([scx + eye_offset_x - 4, e_y - 4, scx + eye_offset_x + 4, e_y + 4], fill=(251, 191, 36))
+                d.rectangle([scx + eye_offset_x - 1, e_y - 3, scx + eye_offset_x + 1, e_y + 3], fill=(2, 44, 34))
+
+            # Flicking Red Tongue (pointing forward toward food)
+            tongue_x = scx + curr_r + 2
+            d.line([(scx + curr_r, scy), (tongue_x + 10, scy)], fill=(239, 68, 68), width=2)
+            d.line([(tongue_x + 10, scy), (tongue_x + 15, scy - 4)], fill=(239, 68, 68), width=2)
+            d.line([(tongue_x + 10, scy), (tongue_x + 15, scy + 4)], fill=(239, 68, 68), width=2)
+
         else:
-            # 3D Celluloid Filmstrip Segment
-            round_rect(d, [px + 2, py + 4, px + sw + 2, py + sh + 4], 6, fill=(0, 0, 0, 130))
-            round_rect(d, [px, py, px + sw, py + sh], 6, fill=(22, 28, 42), outline=(245, 158, 11, int(fade * 255)), width=1)
-            # Center projection window
-            round_rect(d, [px + 5, py + 5, px + sw - 5, py + sh - 5], 4, fill=(16, 185, 129, int(fade * 110)))
-            # Kodak 35mm Sprocket Perforations (4 holes)
-            d.rectangle([px + 4, py + 2, px + 8, py + 4], fill=(248, 250, 252))
-            d.rectangle([px + sw - 8, py + 2, px + sw - 4, py + 4], fill=(248, 250, 252))
-            d.rectangle([px + 4, py + sh - 4, px + 8, py + sh - 2], fill=(248, 250, 252))
-            d.rectangle([px + sw - 8, py + sh - 4, px + sw - 4, py + sh - 2], fill=(248, 250, 252))
+            # BODY SEGMENT: 3D Cylindrical Scales
+            d.ellipse([scx - curr_r, scy - curr_r, scx + curr_r, scy + curr_r], fill=(21, 128, 61), outline=(134, 239, 172, 160), width=1)
+            d.ellipse([scx - curr_r * 0.6, scy - curr_r * 0.6, scx + curr_r * 0.6, scy + curr_r * 0.6], fill=(34, 197, 94))
 
     d.text((lx + 235, 850), "Eğim Sensörü Aktif  ·  Dokunmatik D-Pad Destekli", font=font("medium", 15), fill=(148, 163, 184))
     round_rect(d, [lx + 180, 885, lx + 650, 950], 16, fill=(16, 185, 129), outline=None)
     d.text((lx + 335, 905), "Oyunu Başlat", font=font("bold", 20), fill=(10, 20, 15))
 
-    # Right: 10-Question Cinephile Quiz Arena Card
+    # Right: SineQuiz Arena Card
     rx = 990
-    round_rect(d, [rx, 165, rx + 830, 995], 28, fill=(16, 20, 30, 235), outline=(245, 158, 11, 160), width=2)
-    d.text((rx + 40, 198), "SİNEFİL BİLMECE ARENASI (10 SORU & CANLI YARIŞMA)", font=font("bold", 17), fill=(245, 158, 11))
-    d.text((rx + 40, 232), "Ekrana aktör resmi gelir, 10s içinde bilin; kazanan akşamın filmini seçer!", font=font("medium", 15), fill=(148, 163, 184))
+    round_rect(d, [rx, 165, rx + 830, 995], 28, fill=(16, 20, 30, 235), outline=(139, 92, 246, 160), width=2)
+    
+    # Wordmark for SineQuiz
+    sq_txt = "Sine"
+    d.text((rx + 40, 198), sq_txt, font=font("black", 26), fill=(255, 255, 255))
+    sq_w = font("black", 26).getbbox(sq_txt)[2]
+    d.text((rx + 40 + sq_w, 198), "Quiz", font=font("black", 26), fill=(139, 92, 246))
+    d.text((rx + 40 + sq_w + 70, 204), "· 10 SORULUK CANLI YARIŞMA ARENASI", font=font("bold", 14), fill=(139, 92, 246))
+    d.text((rx + 40, 236), "Ekrana aktör portresi gelir, 10s içinde bilin; kazanan akşamın filmini seçer!", font=font("medium", 15), fill=(148, 163, 184))
 
     # Question Card with Actor Portrait and Live Buzzer
-    round_rect(d, [rx + 40, 275, rx + 790, 620], 20, fill=(22, 28, 44, 230), outline=(245, 158, 11, 120), width=1)
+    round_rect(d, [rx + 40, 275, rx + 790, 620], 20, fill=(22, 28, 44, 230), outline=(139, 92, 246, 120), width=1)
     
     # Top bar: Soru 1 / 10 and Countdown Ring
-    d.text((rx + 65, 298), "SORU 1 / 10  ·  AKTÖR TANIMA", font=font("bold", 15), fill=(245, 158, 11))
+    d.text((rx + 65, 298), "SORU 1 / 10  ·  AKTÖR TANIMA", font=font("bold", 15), fill=(139, 92, 246))
     round_rect(d, [rx + 680, 292, rx + 765, 328], 10, fill=(239, 68, 68, 40), outline=(239, 68, 68), width=1)
     d.text((rx + 705, 300), "10s", font=font("bold", 17), fill=(248, 113, 113))
 
@@ -329,16 +387,21 @@ def generate_cineparty_games():
     d.text((rx + 65, 342), "Bu ünlü aktör kimdir?", font=font("bold", 22), fill=(255, 255, 255))
     d.text((rx + 65, 372), "İpucu: Oppenheimer, Peaky Blinders, Inception", font=font("medium", 15), fill=(148, 163, 184))
 
-    # 3D Actor Portrait Frame (rx + 65, 410, 160x180)
+    # 3D Actor Portrait Frame with REAL Cillian Murphy Photograph
     ax, ay, aw, ah = rx + 65, 410, 160, 180
-    round_rect(d, [ax - 2, ay - 2, ax + aw + 2, ay + ah + 2], 12, fill=(10, 14, 22), outline=(245, 158, 11), width=2)
-    round_rect(d, [ax, ay, ax + aw, ay + ah], 10, fill=(18, 24, 38))
-    d.ellipse([ax + 30, ay + 20, ax + aw - 30, ay + 90], fill=(45, 55, 75))
-    d.ellipse([ax + 15, ay + 15, ax + aw - 15, ay + 45], fill=(15, 20, 30))
-    d.rectangle([ax + 40, ay + 5, ax + aw - 40, ay + 25], fill=(15, 20, 30))
-    d.ellipse([ax + 50, ay + 48, ax + 66, ay + 56], fill=(56, 189, 248))
-    d.ellipse([ax + aw - 66, ay + 48, ax + aw - 50, ay + 56], fill=(56, 189, 248))
-    d.text((ax + 34, ay + 145), "CILLIAN M.", font=font("bold", 13), fill=(245, 158, 11))
+    round_rect(d, [ax - 2, ay - 2, ax + aw + 2, ay + ah + 2], 12, fill=(10, 14, 22), outline=(139, 92, 246), width=2)
+    cillian_path = os.path.join(posters_dir, "cillian_murphy.jpg")
+    if os.path.isfile(cillian_path):
+        c_img = Image.open(cillian_path).convert("RGBA")
+        c_resized = c_img.resize((aw, ah), Image.Resampling.BICUBIC)
+        c_mask = Image.new("L", (aw, ah), 0)
+        ImageDraw.Draw(c_mask).rounded_rectangle([0, 0, aw, ah], radius=10, fill=255)
+        im.paste(c_resized, (ax, ay), c_mask)
+        # Specular sheen
+        sheen_layer = Image.new("RGBA", (aw, ah), (0, 0, 0, 0))
+        ImageDraw.Draw(sheen_layer).polygon([(0, 0), (aw, 0), (0, int(ah * 0.45))], fill=(255, 255, 255, 45))
+        im.paste(sheen_layer, (ax, ay), c_mask)
+        d = ImageDraw.Draw(im)
 
     # Live Living Room Answers Box (rx + 250, 410, 515x180)
     bx2 = rx + 250
@@ -369,8 +432,8 @@ def generate_cineparty_games():
         d.text((rx + 680, py + 12), score, font=font("bold", 16), fill=(255, 255, 255))
 
     # Final coronation message banner
-    round_rect(d, [rx + 40, 875, rx + 790, 945], 16, fill=(245, 158, 11, 35), outline=(245, 158, 11), width=1)
-    d.text((rx + 75, 897), "10 Soru Sonunda: “Bugün, kazanan hangi filmi seçerse o izlenir!”", font=font("bold", 17), fill=(251, 191, 36))
+    round_rect(d, [rx + 40, 875, rx + 790, 945], 16, fill=(139, 92, 246, 35), outline=(139, 92, 246), width=1)
+    d.text((rx + 75, 897), "10 Soru Sonunda: “Bugün, kazanan hangi filmi seçerse o izlenir!”", font=font("bold", 17), fill=(196, 181, 253))
 
     out = os.path.join(DOCS_MEDIA, "cineparty_games.png")
     im.save(out, "PNG")

@@ -165,13 +165,8 @@ public final class NightCare {
     }
 
     public static boolean shouldPromptNightViewingMode(Context ctx) {
-        if (!isNightViewingHours()) return false;
-        if (isNightViewingModeActive(ctx)) return false;
-        String prompted = Prefs.get(ctx).getString(PREF_NIGHT_PROMPTED_NIGHT, "");
-        if (currentNightKey().equals(prompted)) return false;
-
-        android.os.PowerManager pm = (android.os.PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
-        return pm != null && pm.isInteractive();
+        // Canceled per user request: night viewing prompt is disabled
+        return false;
     }
 
     public static void markNightPromptDismissed(Context ctx) {

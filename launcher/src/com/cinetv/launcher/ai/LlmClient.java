@@ -264,4 +264,13 @@ public final class LlmClient {
         if (start < 0 || end <= start) throw new IllegalArgumentException("No JSON object in reply");
         return new JSONObject(s.substring(start, end + 1));
     }
+
+    /** Pulls the JSON array out of a reply that may be wrapped in markdown fences or prose. */
+    public static JSONArray extractJsonArray(String text) throws Exception {
+        String s = text == null ? "" : text.trim();
+        int start = s.indexOf('[');
+        int end = s.lastIndexOf(']');
+        if (start < 0 || end <= start) throw new IllegalArgumentException("No JSON array in reply");
+        return new JSONArray(s.substring(start, end + 1));
+    }
 }

@@ -119,6 +119,38 @@ public final class EmaLightningTts {
     }
 
     /**
+     * Speaks aloud during CineTV party games (CineQuiz, CineRoulette, CineSessiz, SnakePhile).
+     * Always delivers audio prompts, trivia, and announcements via Gamze neural voice or native fallback.
+     */
+    public static void speakGame(final Context ctx, final CharSequence rawText) {
+        if (ctx == null || rawText == null) return;
+        final Context app = ctx.getApplicationContext();
+        final String clean = normalizeForSpeech(rawText.toString());
+        if (clean.isEmpty()) return;
+
+        final int gen = GENERATION.incrementAndGet();
+        stopActivePlayback();
+
+        WORKER.execute(() -> {
+            if (gen != GENERATION.get()) return;
+            try {
+                File wavFile = getOrSynthesizeWav(app, clean, gen);
+                if (gen != GENERATION.get()) return;
+                if (wavFile != null && wavFile.exists() && wavFile.length() > 512) {
+                    playWavFile(app, wavFile, gen);
+                } else {
+                    speakWithNativeFallback(app, clean, gen);
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "Gamze Game TTS fallback: " + t.getMessage());
+                if (gen == GENERATION.get()) {
+                    speakWithNativeFallback(app, clean, gen);
+                }
+            }
+        });
+    }
+
+    /**
      * Speaks the given Turkish response aloud using {@code canberkkkkkk/ema-lightning} on supported
      * MID/HIGH performance devices. Immediately cancels any previous speech in progress.
      */

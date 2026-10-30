@@ -273,6 +273,9 @@
     <string name="setup_dns_ok">Encrypted DNS: %s</string>
     <string name="setup_dns_off">Encrypted DNS not active (%s)</string>
     <string name="setup_picture_manual">Sound was tuned automatically. This TV accepts picture changes only from its own menu (Settings or the remote\'s menu key › Picture). For the film as it was mastered: Picture mode Cinema/Movie · Motion smoothing (MEMC) Off · Noise reduction Off · Dynamic contrast Off · Sharpness 0 · Colour temperature Warm · Local contrast/dimming Low · Film mode On.</string>
+    <string name="party_folder_title">Party &amp; Games</string>
+    <string name="tour_party_games_t">Party &amp; Games Hub</string>
+    <string name="tour_party_games">Inside the Party &amp; Games folder in your apps dock, discover SnakePhile, CineQuiz, CineRoulette, CineSessiz, and CineSUB. Friends can join with their smartphones or play using the TV remote!</string>
     <string name="ai_err_no_key">Add an AI key in Settings to use the assistant.</string>
     <string name="ai_err_empty">The AI returned an empty answer.</string>
     <string name="ai_err_timeout">The AI took too long. Try again.</string>

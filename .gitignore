@@ -35,9 +35,17 @@ keystore.properties
 signature_logo.png
 ic_user_signature.xml
 private-assets/
+launcher/assets/posters/
+launcher/assets/brand/sessiz_frame.jpg
 *.env
 .env*
 google-services.json
+
+# Documentation media / screenshots
+docs/media/posters/
+*.png
+!launcher/src/main/res/**/*.png
+!launcher/assets/**/*.png
 
 # Local tooling
 .claude/

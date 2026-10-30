@@ -46,12 +46,62 @@ public final class Brand {
 
     /** Signal red of the "TV" in the wordmark, wherever CineTV is written. */
     public static final int TV_RED = Color.parseColor("#FF1E1E");
+    public static final int CINESUB_ORANGE = Color.parseColor("#F59E0B");
+    public static final int SNAKEPHILE_GREEN = Color.parseColor("#10B981");
+    public static final int CINEQUIZ_PURPLE = Color.parseColor("#8B5CF6");
+    public static final int CINEROULETTE_BLUE = Color.parseColor("#38BDF8");
+    public static final int CINESESSIZ_GOLD = Color.parseColor("#F59E0B");
     public static final String AUTHOR = "Alptuğ Dağ";
 
     /** "CineTV" with a red "TV". */
     public static CharSequence wordmark() {
         android.text.SpannableString s = new android.text.SpannableString("CineTV");
         s.setSpan(new android.text.style.ForegroundColorSpan(TV_RED), 4, 6, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return s;
+    }
+
+    /** "CineSUB" with an orange "SUB". */
+    public static CharSequence cinesubWordmark() {
+        android.text.SpannableString s = new android.text.SpannableString("CineSUB");
+        s.setSpan(new android.text.style.ForegroundColorSpan(CINESUB_ORANGE), 4, 7, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return s;
+    }
+
+    /** "SnakePhile" with a green "Phile". */
+    public static CharSequence snakephileWordmark() {
+        android.text.SpannableString s = new android.text.SpannableString("SnakePhile");
+        s.setSpan(new android.text.style.ForegroundColorSpan(SNAKEPHILE_GREEN), 5, 10, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return s;
+    }
+
+    /** "CineQuiz" with a purple "Quiz". */
+    public static CharSequence cinequizWordmark() {
+        android.text.SpannableString s = new android.text.SpannableString("CineQuiz");
+        s.setSpan(new android.text.style.ForegroundColorSpan(CINEQUIZ_PURPLE), 4, 8, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return s;
+    }
+
+    /** Backward compatibility alias */
+    public static CharSequence sinequizWordmark() {
+        return cinequizWordmark();
+    }
+
+    /** "CineRoulette" with a blue "Roulette". */
+    public static CharSequence cinerouletteWordmark() {
+        android.text.SpannableString s = new android.text.SpannableString("CineRoulette");
+        s.setSpan(new android.text.style.ForegroundColorSpan(CINEROULETTE_BLUE), 4, 12, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return s;
+    }
+
+    /** Backward compatibility alias */
+    public static CharSequence sinerouletteWordmark() {
+        return cinerouletteWordmark();
+    }
+
+    /** "CineSessiz" with a gold "Sessiz". */
+    public static CharSequence cinesessizWordmark() {
+        android.text.SpannableString s = new android.text.SpannableString("CineSessiz");
+        s.setSpan(new android.text.style.ForegroundColorSpan(CINESESSIZ_GOLD), 4, 10, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         return s;
     }
 

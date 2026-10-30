@@ -40,6 +40,24 @@ public final class AllApps {
 
     private AllApps() {}
 
+    public static boolean isGame(Context ctx, String pkg, String label) {
+        if (pkg == null) return false;
+        if (pkg.startsWith("com.cinetv.party.")) return true;
+        String p = pkg.toLowerCase(Locale.ROOT);
+        String l = label != null ? label.toLowerCase(Locale.ROOT) : "";
+        if (p.contains("game") || l.contains("oyun") || l.contains("game")) return true;
+        if (p.contains("retro") || p.contains("arcade") || p.contains("emulator") || p.contains("steam")) return true;
+        try {
+            android.content.pm.ApplicationInfo ai = ctx.getPackageManager().getApplicationInfo(pkg, 0);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                if (ai.category == android.content.pm.ApplicationInfo.CATEGORY_GAME) return true;
+            }
+            if ((ai.flags & android.content.pm.ApplicationInfo.FLAG_IS_GAME) != 0) return true;
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
     public static boolean isTool(String pkg, String label) {
         if (pkg == null) return false;
         String p = pkg.toLowerCase(Locale.ROOT);
@@ -79,10 +97,17 @@ public final class AllApps {
             return root;
         }
 
+        final List<AppCatalog.Entry> gamesList = new ArrayList<>();
+        gamesList.add(new AppCatalog.Entry(AppCatalog.PKG_SNAKE, "SnakePhile", null));
+        gamesList.add(new AppCatalog.Entry(AppCatalog.PKG_QUIZ, "CineQuiz", null));
+        gamesList.add(new AppCatalog.Entry(AppCatalog.PKG_ROULETTE, "CineRoulette", null));
+        gamesList.add(new AppCatalog.Entry(AppCatalog.PKG_SESSIZ, "CineSessiz", null));
+
         final List<AppCatalog.Entry> appsList = new ArrayList<>();
         final List<AppCatalog.Entry> toolsList = new ArrayList<>();
         for (AppCatalog.Entry e : apps) {
-            if (isTool(e.packageName, e.label)) toolsList.add(e);
+            if (isGame(ctx, e.packageName, e.label)) gamesList.add(e);
+            else if (isTool(e.packageName, e.label)) toolsList.add(e);
             else appsList.add(e);
         }
         final List<AppCatalog.Entry> hiddenList = AppCatalog.hiddenApps(ctx);
@@ -91,77 +116,91 @@ public final class AllApps {
         container.setClipChildren(false);
 
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        if (!toolsList.isEmpty() || !hiddenList.isEmpty()) {
-            LinearLayout tabRow = new LinearLayout(ctx);
-            tabRow.setOrientation(LinearLayout.HORIZONTAL);
-            tabRow.setPadding(UiKit.px(8), 0, 0, UiKit.px(10));
+        LinearLayout tabRow = new LinearLayout(ctx);
+        tabRow.setOrientation(LinearLayout.HORIZONTAL);
+        tabRow.setPadding(UiKit.px(8), 0, 0, UiKit.px(10));
 
-            final List<TextView> allTabs = new ArrayList<>();
-            TextView tabApps = makeTab(ctx, (tr ? "Uygulamalar" : "Apps") + " (" + appsList.size() + ")", true);
-            allTabs.add(tabApps);
-            TextView tabTools = null;
-            if (!toolsList.isEmpty()) {
-                tabTools = makeTab(ctx, (tr ? "Araçlar & Sistem" : "Tools & System") + " (" + toolsList.size() + ")", false);
-                allTabs.add(tabTools);
+        final List<TextView> allTabs = new ArrayList<>();
+        TextView tabApps = makeTab(ctx, (tr ? "Uygulamalar" : "Apps") + " (" + appsList.size() + ")", true);
+        allTabs.add(tabApps);
+
+        TextView tabGames = makeTab(ctx, (tr ? "Oyunlar" : "Games") + " (" + gamesList.size() + ")", false);
+        allTabs.add(tabGames);
+
+        TextView tabTools = null;
+        if (!toolsList.isEmpty()) {
+            tabTools = makeTab(ctx, (tr ? "Araçlar & Sistem" : "Tools & System") + " (" + toolsList.size() + ")", false);
+            allTabs.add(tabTools);
+        }
+        TextView tabHidden = null;
+        if (!hiddenList.isEmpty()) {
+            tabHidden = makeTab(ctx, (tr ? "Gizlenenler" : "Hidden") + " (" + hiddenList.size() + ")", false);
+            allTabs.add(tabHidden);
+        }
+
+        final TextView fTabApps = tabApps;
+        final TextView fTabGames = tabGames;
+        final TextView fTabTools = tabTools;
+        final TextView fTabHidden = tabHidden;
+
+        tabApps.setOnClickListener(v -> {
+            for (TextView t : allTabs) {
+                boolean sel = (t == fTabApps);
+                t.setTag(sel);
+                applyTabBg(t, sel, t.hasFocus());
             }
-            TextView tabHidden = null;
-            if (!hiddenList.isEmpty()) {
-                tabHidden = makeTab(ctx, (tr ? "Gizlenenler" : "Hidden") + " (" + hiddenList.size() + ")", false);
-                allTabs.add(tabHidden);
+            renderGrid(ctx, container, host, appsList, l);
+        });
+
+        tabGames.setOnClickListener(v -> {
+            for (TextView t : allTabs) {
+                boolean sel = (t == fTabGames);
+                t.setTag(sel);
+                applyTabBg(t, sel, t.hasFocus());
             }
+            renderGrid(ctx, container, host, gamesList, l);
+        });
 
-            final TextView fTabApps = tabApps;
-            final TextView fTabTools = tabTools;
-            final TextView fTabHidden = tabHidden;
-
-            tabApps.setOnClickListener(v -> {
+        if (tabTools != null) {
+            tabTools.setOnClickListener(v -> {
                 for (TextView t : allTabs) {
-                    boolean sel = (t == fTabApps);
+                    boolean sel = (t == fTabTools);
                     t.setTag(sel);
                     applyTabBg(t, sel, t.hasFocus());
                 }
-                renderGrid(ctx, container, host, appsList, l);
+                renderGrid(ctx, container, host, toolsList, l);
             });
-
-            if (tabTools != null) {
-                tabTools.setOnClickListener(v -> {
-                    for (TextView t : allTabs) {
-                        boolean sel = (t == fTabTools);
-                        t.setTag(sel);
-                        applyTabBg(t, sel, t.hasFocus());
-                    }
-                    renderGrid(ctx, container, host, toolsList, l);
-                });
-            }
-
-            if (tabHidden != null) {
-                tabHidden.setOnClickListener(v -> {
-                    for (TextView t : allTabs) {
-                        boolean sel = (t == fTabHidden);
-                        t.setTag(sel);
-                        applyTabBg(t, sel, t.hasFocus());
-                    }
-                    renderGrid(ctx, container, host, hiddenList, l);
-                });
-            }
-
-            tabRow.addView(tabApps);
-            if (tabTools != null) {
-                View sp1 = new View(ctx);
-                tabRow.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(14), 1));
-                tabRow.addView(tabTools);
-            }
-            if (tabHidden != null) {
-                View sp2 = new View(ctx);
-                tabRow.addView(sp2, new LinearLayout.LayoutParams(UiKit.px(14), 1));
-                tabRow.addView(tabHidden);
-            }
-            root.addView(tabRow);
-
-            renderGrid(ctx, container, host, appsList, l);
-        } else {
-            renderGrid(ctx, container, host, apps, l);
         }
+
+        if (tabHidden != null) {
+            tabHidden.setOnClickListener(v -> {
+                for (TextView t : allTabs) {
+                    boolean sel = (t == fTabHidden);
+                    t.setTag(sel);
+                    applyTabBg(t, sel, t.hasFocus());
+                }
+                renderGrid(ctx, container, host, hiddenList, l);
+            });
+        }
+
+        tabRow.addView(tabApps);
+        View sp0 = new View(ctx);
+        tabRow.addView(sp0, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+        tabRow.addView(tabGames);
+
+        if (tabTools != null) {
+            View sp1 = new View(ctx);
+            tabRow.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+            tabRow.addView(tabTools);
+        }
+        if (tabHidden != null) {
+            View sp2 = new View(ctx);
+            tabRow.addView(sp2, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+            tabRow.addView(tabHidden);
+        }
+        root.addView(tabRow);
+
+        renderGrid(ctx, container, host, appsList, l);
 
         root.addView(container);
         return root;

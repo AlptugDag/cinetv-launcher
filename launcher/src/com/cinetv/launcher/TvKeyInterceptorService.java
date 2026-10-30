@@ -482,6 +482,15 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return true;
         }
 
+        // Dismiss active CineSUB overlay cleanly on Back key without interrupting video playback
+        if (com.cinetv.launcher.ui.CineSubOverlay.isShowing()
+                && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                com.cinetv.launcher.ui.CineSubOverlay.dismissActive();
+            }
+            return true;
+        }
+
         // Direct return to CineTV: when exiting Nuvio or YouTube, Back returns straight to CineTV Launcher Home
         // Intercept BOTH ACTION_DOWN and ACTION_UP BEFORE navigation check so Nuvio NEVER unwinds its internal history stack!
         boolean inNuvio = isNuvioApp(lastPackage) || launchedNuvioFromCineTv;
@@ -498,6 +507,15 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 return true;
             }
             return true;
+        }
+
+        // Dedicated CineSUB key trigger: Subtitle, Info, or Yellow color button during playback across any player
+        if (code == KeyEvent.KEYCODE_CAPTIONS || code == 175
+                || code == KeyEvent.KEYCODE_INFO || code == 165 || code == KeyEvent.KEYCODE_PROG_YELLOW || code == 185) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                com.cinetv.launcher.ui.CineSubOverlay.trigger(this);
+                return true;
+            }
         }
 
         int source = event.getSource();

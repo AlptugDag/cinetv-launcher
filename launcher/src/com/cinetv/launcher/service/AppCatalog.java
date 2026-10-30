@@ -21,6 +21,12 @@ import java.util.Set;
 /** Installed apps, split into the dock and the grid, with the user's order and hidden list. */
 public final class AppCatalog {
 
+    public static final String PKG_PARTY_FOLDER = "com.cinetv.party.folder";
+    public static final String PKG_SNAKE = "com.cinetv.party.snake";
+    public static final String PKG_QUIZ = "com.cinetv.party.quiz";
+    public static final String PKG_ROULETTE = "com.cinetv.party.roulette";
+    public static final String PKG_SESSIZ = "com.cinetv.party.sessiz";
+
     public static final class Snapshot {
         public final List<AppTileItem> dock = new ArrayList<>();
         public final List<AppTileItem> grid = new ArrayList<>();
@@ -33,7 +39,7 @@ public final class AppCatalog {
         public final String label;
         public final Drawable icon;
 
-        Entry(String packageName, String label, Drawable icon) {
+        public Entry(String packageName, String label, Drawable icon) {
             this.packageName = packageName;
             this.label = label;
             this.icon = icon;
@@ -123,13 +129,25 @@ public final class AppCatalog {
             found.put(AppLauncher.LIVE_TV, tv);
         }
 
+        // CineTV Party & Games folder: always present on Home dock
+        if (!userHidden.contains(PKG_PARTY_FOLDER)) {
+            AppTileItem folder = new AppTileItem();
+            folder.packageName = PKG_PARTY_FOLDER;
+            folder.label = ctx.getString(com.cinetv.launcher.R.string.party_folder_title);
+            found.put(PKG_PARTY_FOLDER, folder);
+        }
+
         String dockCsv = prefs.getString(Prefs.DOCK_ORDER, "");
         List<String> dockOrder = dockCsv.isEmpty()
-                ? Arrays.asList(AppLauncher.NUVIO, youtube, AppLauncher.LIVE_TV, "com.android.vending")
+                ? Arrays.asList(PKG_PARTY_FOLDER, AppLauncher.NUVIO, youtube, AppLauncher.LIVE_TV, "com.android.vending")
                 : Arrays.asList(dockCsv.split(","));
         for (String pkg : dockOrder) {
             AppTileItem item = found.remove(pkg);
             if (item != null) snap.dock.add(item);
+        }
+        // Ensure party folder is in dock even if an existing viewer has a saved dock order from older releases
+        if (found.containsKey(PKG_PARTY_FOLDER)) {
+            snap.dock.add(0, found.remove(PKG_PARTY_FOLDER));
         }
         snap.grid.addAll(found.values());
         final List<String> gridOrder = Arrays.asList(prefs.getString(Prefs.APP_ORDER, "").split(","));

@@ -65,6 +65,7 @@ public final class AppArtwork {
 
     public static boolean hasCustomVectorCard(String pkg) {
         if (pkg == null) return false;
+        if (pkg.startsWith("com.cinetv.party.")) return true;
         if (AppLauncher.LIVE_TV.equals(pkg) || AppCatalog.isTizenTube(pkg)) return true;
         String lower = pkg.toLowerCase();
         return lower.contains("turkcell.ott") || lower.contains("tvplus")
@@ -133,6 +134,11 @@ public final class AppArtwork {
      */
     public static int getAppNeonColor(String pkg) {
         if (pkg == null) return Color.parseColor("#E0AAFF");
+        if (AppCatalog.PKG_PARTY_FOLDER.equals(pkg)) return Color.parseColor("#8B5CF6");
+        if (AppCatalog.PKG_SNAKE.equals(pkg)) return Color.parseColor("#10B981");
+        if (AppCatalog.PKG_QUIZ.equals(pkg)) return Color.parseColor("#8B5CF6");
+        if (AppCatalog.PKG_ROULETTE.equals(pkg)) return Color.parseColor("#38BDF8");
+        if (AppCatalog.PKG_SESSIZ.equals(pkg)) return Color.parseColor("#F59E0B");
         String lower = pkg.toLowerCase(Locale.ROOT);
         if (AppLauncher.LIVE_TV.equals(pkg)) {
             return Color.parseColor("#38BDF8"); // Broadcast Sky (Hue 199°)
@@ -416,6 +422,21 @@ public final class AppArtwork {
         return Color.HSVToColor(new float[]{avgHue, avgSat, avgVal});
     }
 
+    public static Bitmap getCustomVectorCard(Context ctx, String pkg, boolean focused) {
+        if (AppCatalog.PKG_PARTY_FOLDER.equals(pkg)) {
+            return createPartyFolderCard(ctx, focused);
+        } else if (AppCatalog.PKG_SNAKE.equals(pkg)) {
+            return createSnakePhileCard(ctx, focused);
+        } else if (AppCatalog.PKG_QUIZ.equals(pkg)) {
+            return createCineQuizCard(ctx, focused);
+        } else if (AppCatalog.PKG_ROULETTE.equals(pkg)) {
+            return createCineRouletteCard(ctx, focused);
+        } else if (AppCatalog.PKG_SESSIZ.equals(pkg)) {
+            return createCineSessizCard(ctx, focused);
+        }
+        return null;
+    }
+
     public static synchronized Drawable createDesignerLogoCard(Context ctx, String pkg, String rawLabel,
                                                   Drawable rawBanner, Drawable rawIcon, boolean darkMode) {
         return createDesignerLogoCard(ctx, pkg, rawLabel, rawBanner, rawIcon, darkMode, false);
@@ -435,6 +456,16 @@ public final class AppArtwork {
 
         if (AppLauncher.LIVE_TV.equals(pkg)) {
             rawCard = createLiveTvCard(ctx, rawLabel);
+        } else if (AppCatalog.PKG_PARTY_FOLDER.equals(pkg)) {
+            rawCard = createPartyFolderCard(ctx, focused);
+        } else if (AppCatalog.PKG_SNAKE.equals(pkg)) {
+            rawCard = createSnakePhileCard(ctx, focused);
+        } else if (AppCatalog.PKG_QUIZ.equals(pkg)) {
+            rawCard = createCineQuizCard(ctx, focused);
+        } else if (AppCatalog.PKG_ROULETTE.equals(pkg)) {
+            rawCard = createCineRouletteCard(ctx, focused);
+        } else if (AppCatalog.PKG_SESSIZ.equals(pkg)) {
+            rawCard = createCineSessizCard(ctx, focused);
         } else if (AppCatalog.isTizenTube(pkg)) {
             rawCard = createYouTubeCard(ctx);
         } else if (lower.contains("turkcell.ott") || lower.contains("tvplus")) {
@@ -1368,6 +1399,376 @@ public final class AppArtwork {
         Paint.FontMetrics fm = text.getFontMetrics();
         float ty = (CARD_H / 2f) - ((fm.ascent + fm.descent) / 2f);
         canvas.drawText("Chrome", 248f, ty, text);
+        return bmp;
+    }
+
+    /** CineParty & Games Hub Liquid Glass Folder Card */
+    public static Bitmap createPartyFolderCard(Context ctx, boolean focused) {
+        Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
+        int neon = Color.parseColor("#8B5CF6");
+        drawLiquidGlassCardBase(canvas, neon, 175f, CARD_H / 2f);
+
+        float cx = 165f;
+        float cy = CARD_H / 2f;
+
+        // 3D Liquid Glass Folder Backplate
+        Paint folderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        folderPaint.setShader(new LinearGradient(
+                cx - 50f, cy - 45f, cx + 50f, cy + 45f,
+                new int[]{Color.parseColor("#7C3AED"), Color.parseColor("#4C1D95"), Color.parseColor("#2E1065")},
+                null, Shader.TileMode.CLAMP
+        ));
+        folderPaint.setShadowLayer(18f, 0f, 6f, Color.argb(170, 139, 92, 246));
+
+        // Folder tab
+        Path folderPath = new Path();
+        folderPath.moveTo(cx - 48f, cy - 36f);
+        folderPath.lineTo(cx - 10f, cy - 36f);
+        folderPath.lineTo(cx + 2f, cy - 24f);
+        folderPath.lineTo(cx + 48f, cy - 24f);
+        folderPath.quadTo(cx + 52f, cy - 24f, cx + 52f, cy - 20f);
+        folderPath.lineTo(cx + 52f, cy + 38f);
+        folderPath.quadTo(cx + 52f, cy + 42f, cx + 48f, cy + 42f);
+        folderPath.lineTo(cx - 48f, cy + 42f);
+        folderPath.quadTo(cx - 52f, cy + 42f, cx - 52f, cy + 38f);
+        folderPath.lineTo(cx - 52f, cy - 32f);
+        folderPath.quadTo(cx - 52f, cy - 36f, cx - 48f, cy - 36f);
+        folderPath.close();
+        canvas.drawPath(folderPath, folderPaint);
+
+        // Front glass pocket
+        Paint pocketPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        pocketPaint.setColor(Color.argb(90, 255, 255, 255));
+        canvas.drawRoundRect(new RectF(cx - 48f, cy - 10f, cx + 48f, cy + 40f), 10f, 10f, pocketPaint);
+
+        // 4 Glowing Game Dots inside folder
+        int[] dotColors = {
+            Color.parseColor("#10B981"), // SnakePhile
+            Color.parseColor("#8B5CF6"), // CineQuiz
+            Color.parseColor("#38BDF8"), // CineRoulette
+            Color.parseColor("#F59E0B")  // CineSessiz
+        };
+        float[][] dotCoords = {
+            {cx - 24f, cy + 6f},
+            {cx + 24f, cy + 6f},
+            {cx - 24f, cy + 24f},
+            {cx + 24f, cy + 24f}
+        };
+        Paint dotPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        for (int i = 0; i < 4; i++) {
+            dotPaint.setColor(dotColors[i]);
+            dotPaint.setShadowLayer(10f, 0f, 0f, dotColors[i]);
+            canvas.drawCircle(dotCoords[i][0], dotCoords[i][1], 7f, dotPaint);
+            Paint core = new Paint(Paint.ANTI_ALIAS_FLAG);
+            core.setColor(Color.WHITE);
+            canvas.drawCircle(dotCoords[i][0], dotCoords[i][1], 2.5f, core);
+        }
+
+        // Folder Rim Highlight
+        Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
+        rim.setStyle(Paint.Style.STROKE);
+        rim.setStrokeWidth(2.5f);
+        rim.setColor(Color.argb(160, 255, 255, 255));
+        canvas.drawPath(folderPath, rim);
+
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        Paint textWhite = createCrispTextPaint(ctx, 48f, neon);
+        Paint subPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        subPaint.setTypeface(FontManager.getMedium(ctx));
+        subPaint.setTextSize(22f);
+        subPaint.setColor(Color.parseColor("#C4B5FD"));
+        subPaint.setShadowLayer(8f, 0f, 2f, Color.argb(150, 0, 0, 0));
+
+        float tx = 248f;
+        float ty = CARD_H / 2f - 4f;
+        canvas.drawText(tr ? "Parti & Oyunlar" : "Party & Games", tx, ty, textWhite);
+        canvas.drawText(tr ? "CineParty Hub · 4 Oyun" : "CineParty Hub · 4 Games", tx, ty + 34f, subPaint);
+        return bmp;
+    }
+
+    /** SnakePhile Liquid Glass Card */
+    public static Bitmap createSnakePhileCard(Context ctx, boolean focused) {
+        Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
+        int neon = Color.parseColor("#10B981");
+        drawLiquidGlassCardBase(canvas, neon, 175f, CARD_H / 2f);
+
+        float cx = 165f;
+        float cy = CARD_H / 2f;
+
+        // 3D Emerald Metallic Coiled Serpent Badge
+        Paint snakeBadge = new Paint(Paint.ANTI_ALIAS_FLAG);
+        snakeBadge.setShader(new LinearGradient(
+                cx - 45f, cy - 45f, cx + 45f, cy + 45f,
+                new int[]{Color.parseColor("#34D399"), Color.parseColor("#10B981"), Color.parseColor("#064E3B")},
+                null, Shader.TileMode.CLAMP
+        ));
+        snakeBadge.setShadowLayer(22f, 0f, 4f, Color.argb(180, 16, 185, 129));
+        canvas.drawCircle(cx, cy, 46f, snakeBadge);
+
+        // Serpent curve
+        Paint serpent = new Paint(Paint.ANTI_ALIAS_FLAG);
+        serpent.setStyle(Paint.Style.STROKE);
+        serpent.setStrokeWidth(10f);
+        serpent.setStrokeCap(Paint.Cap.ROUND);
+        serpent.setColor(Color.WHITE);
+        serpent.setShadowLayer(8f, 0f, 0f, Color.parseColor("#A7F3D0"));
+        Path sp = new Path();
+        sp.moveTo(cx - 24f, cy + 18f);
+        sp.cubicTo(cx - 10f, cy + 30f, cx + 18f, cy + 12f, cx + 14f, cy - 8f);
+        sp.cubicTo(cx + 10f, cy - 24f, cx - 18f, cy - 22f, cx - 12f, cy - 8f);
+        sp.lineTo(cx + 8f, cy - 8f);
+        canvas.drawPath(sp, serpent);
+
+        // Serpent head & glowing ruby/specular eye
+        Paint head = new Paint(Paint.ANTI_ALIAS_FLAG);
+        head.setColor(Color.WHITE);
+        canvas.drawCircle(cx + 16f, cy - 8f, 8f, head);
+        Paint eye = new Paint(Paint.ANTI_ALIAS_FLAG);
+        eye.setColor(Color.parseColor("#EF4444"));
+        canvas.drawCircle(cx + 18f, cy - 10f, 2.5f, eye);
+
+        Paint textWhite = createCrispTextPaint(ctx, 48f, neon);
+        Paint textGreen = createCrispTextPaint(ctx, 48f, neon);
+        textGreen.setColor(Color.parseColor("#10B981"));
+
+        Paint subPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        subPaint.setTypeface(FontManager.getMedium(ctx));
+        subPaint.setTextSize(22f);
+        subPaint.setColor(Color.parseColor("#6EE7B7"));
+        subPaint.setShadowLayer(8f, 0f, 2f, Color.argb(150, 0, 0, 0));
+
+        float tx = 248f;
+        float ty = CARD_H / 2f - 4f;
+        canvas.drawText("Snake", tx, ty, textWhite);
+        float sw = textWhite.measureText("Snake");
+        canvas.drawText("Phile", tx + sw, ty, textGreen);
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        canvas.drawText(tr ? "3D Gerçekçi Yılan & Afiş Avı" : "3D Realistic Movie Snake", tx, ty + 34f, subPaint);
+        return bmp;
+    }
+
+    /** CineQuiz Liquid Glass Card */
+    public static Bitmap createCineQuizCard(Context ctx, boolean focused) {
+        Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
+        int neon = Color.parseColor("#8B5CF6");
+        drawLiquidGlassCardBase(canvas, neon, 175f, CARD_H / 2f);
+
+        float cx = 165f;
+        float cy = CARD_H / 2f;
+
+        // 3D Golden/Purple Trophy Buzzer Dome
+        Paint dome = new Paint(Paint.ANTI_ALIAS_FLAG);
+        dome.setShader(new LinearGradient(
+                cx - 45f, cy - 45f, cx + 45f, cy + 45f,
+                new int[]{Color.parseColor("#C084FC"), Color.parseColor("#8B5CF6"), Color.parseColor("#4C1D95")},
+                null, Shader.TileMode.CLAMP
+        ));
+        dome.setShadowLayer(22f, 0f, 4f, Color.argb(180, 139, 92, 246));
+        canvas.drawCircle(cx, cy, 46f, dome);
+
+        // Trophy Cup Glyph
+        Paint cup = new Paint(Paint.ANTI_ALIAS_FLAG);
+        cup.setColor(Color.parseColor("#FDE68A"));
+        cup.setShadowLayer(8f, 0f, 0f, Color.parseColor("#F59E0B"));
+        Path cp = new Path();
+        cp.moveTo(cx - 20f, cy - 22f);
+        cp.lineTo(cx + 20f, cy - 22f);
+        cp.lineTo(cx + 15f, cy + 2f);
+        cp.quadTo(cx, cy + 18f, cx - 15f, cy + 2f);
+        cp.close();
+        canvas.drawPath(cp, cup);
+
+        // Cup stem and base
+        canvas.drawRect(cx - 4f, cy + 14f, cx + 4f, cy + 24f, cup);
+        canvas.drawRoundRect(new RectF(cx - 18f, cy + 22f, cx + 18f, cy + 28f), 3f, 3f, cup);
+
+        Paint textWhite = createCrispTextPaint(ctx, 48f, neon);
+        Paint textPurple = createCrispTextPaint(ctx, 48f, neon);
+        textPurple.setColor(Color.parseColor("#8B5CF6"));
+
+        Paint subPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        subPaint.setTypeface(FontManager.getMedium(ctx));
+        subPaint.setTextSize(22f);
+        subPaint.setColor(Color.parseColor("#DDD6FE"));
+        subPaint.setShadowLayer(8f, 0f, 2f, Color.argb(150, 0, 0, 0));
+
+        float tx = 248f;
+        float ty = CARD_H / 2f - 4f;
+        canvas.drawText("Cine", tx, ty, textWhite);
+        float cw = textWhite.measureText("Cine");
+        canvas.drawText("Quiz", tx + cw, ty, textPurple);
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        canvas.drawText(tr ? "Canlı Sinefil Bilmecesi & Buzzer" : "Live Cinephile Trivia & Buzzers", tx, ty + 34f, subPaint);
+        return bmp;
+    }
+
+    /** CineRoulette Liquid Glass Card */
+    public static Bitmap createCineRouletteCard(Context ctx, boolean focused) {
+        Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
+        int neon = Color.parseColor("#38BDF8");
+        drawLiquidGlassCardBase(canvas, neon, 175f, CARD_H / 2f);
+
+        float cx = 165f;
+        float cy = CARD_H / 2f;
+
+        // 3D Gunmetal Revolver Cylinder
+        Paint cyl = new Paint(Paint.ANTI_ALIAS_FLAG);
+        cyl.setShader(new LinearGradient(
+                cx - 45f, cy - 45f, cx + 45f, cy + 45f,
+                new int[]{Color.parseColor("#7DD3FC"), Color.parseColor("#0284C7"), Color.parseColor("#0C4A6E")},
+                null, Shader.TileMode.CLAMP
+        ));
+        cyl.setShadowLayer(22f, 0f, 4f, Color.argb(180, 56, 189, 248));
+        canvas.drawCircle(cx, cy, 46f, cyl);
+
+        // 6 Revolver chambers
+        Paint chPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        chPaint.setColor(Color.parseColor("#090D14"));
+        Paint brassRim = new Paint(Paint.ANTI_ALIAS_FLAG);
+        brassRim.setStyle(Paint.Style.STROKE);
+        brassRim.setStrokeWidth(2f);
+        brassRim.setColor(Color.parseColor("#F59E0B"));
+
+        for (int i = 0; i < 6; i++) {
+            double ang = i * Math.PI / 3;
+            float chx = cx + (float) Math.cos(ang) * 26f;
+            float chy = cy + (float) Math.sin(ang) * 26f;
+            canvas.drawCircle(chx, chy, 9f, chPaint);
+            canvas.drawCircle(chx, chy, 9f, brassRim);
+        }
+
+        // Center Ratchet Extractor Pin
+        Paint pin = new Paint(Paint.ANTI_ALIAS_FLAG);
+        pin.setColor(Color.parseColor("#E0F2FE"));
+        canvas.drawCircle(cx, cy, 9f, pin);
+        Paint core = new Paint(Paint.ANTI_ALIAS_FLAG);
+        core.setColor(Color.parseColor("#0284C7"));
+        canvas.drawCircle(cx, cy, 4f, core);
+
+        Paint textWhite = createCrispTextPaint(ctx, 48f, neon);
+        Paint textBlue = createCrispTextPaint(ctx, 48f, neon);
+        textBlue.setColor(Color.parseColor("#38BDF8"));
+
+        Paint subPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        subPaint.setTypeface(FontManager.getMedium(ctx));
+        subPaint.setTextSize(22f);
+        subPaint.setColor(Color.parseColor("#BAE6FD"));
+        subPaint.setShadowLayer(8f, 0f, 2f, Color.argb(150, 0, 0, 0));
+
+        float tx = 248f;
+        float ty = CARD_H / 2f - 4f;
+        canvas.drawText("Cine", tx, ty, textWhite);
+        float cw = textWhite.measureText("Cine");
+        canvas.drawText("Roulette", tx + cw, ty, textBlue);
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        canvas.drawText(tr ? "3D Revolver Ruleti & Film Seçici" : "3D Revolver Cinema Roulette", tx, ty + 34f, subPaint);
+        return bmp;
+    }
+
+    /** CineSessiz Liquid Glass Card */
+    public static Bitmap createCineSessizCard(Context ctx, boolean focused) {
+        Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
+        int neon = Color.parseColor("#F59E0B");
+        drawLiquidGlassCardBase(canvas, neon, 175f, CARD_H / 2f);
+
+        float cx = 165f;
+        float cy = CARD_H / 2f;
+
+        // 3D Warm Gold Cinema Mask Badge
+        Paint maskBadge = new Paint(Paint.ANTI_ALIAS_FLAG);
+        maskBadge.setShader(new LinearGradient(
+                cx - 45f, cy - 45f, cx + 45f, cy + 45f,
+                new int[]{Color.parseColor("#FDE68A"), Color.parseColor("#F59E0B"), Color.parseColor("#78350F")},
+                null, Shader.TileMode.CLAMP
+        ));
+        maskBadge.setShadowLayer(22f, 0f, 4f, Color.argb(180, 245, 158, 11));
+        canvas.drawCircle(cx, cy, 46f, maskBadge);
+
+        // Mask Face Outlines
+        Paint maskOutline = new Paint(Paint.ANTI_ALIAS_FLAG);
+        maskOutline.setStyle(Paint.Style.STROKE);
+        maskOutline.setStrokeWidth(3.5f);
+        maskOutline.setColor(Color.WHITE);
+        canvas.drawOval(new RectF(cx - 24f, cy - 20f, cx + 6f, cy + 22f), maskOutline);
+        // Eyes and smile
+        Paint feat = new Paint(Paint.ANTI_ALIAS_FLAG);
+        feat.setColor(Color.WHITE);
+        canvas.drawCircle(cx - 15f, cy - 6f, 3.5f, feat);
+        canvas.drawCircle(cx - 3f, cy - 6f, 3.5f, feat);
+        Paint smile = new Paint(Paint.ANTI_ALIAS_FLAG);
+        smile.setStyle(Paint.Style.STROKE);
+        smile.setStrokeWidth(3f);
+        smile.setColor(Color.WHITE);
+        canvas.drawArc(new RectF(cx - 16f, cy + 2f, cx - 2f, cy + 14f), 10f, 160f, false, smile);
+
+        Paint textWhite = createCrispTextPaint(ctx, 48f, neon);
+        Paint textGold = createCrispTextPaint(ctx, 48f, neon);
+        textGold.setColor(Color.parseColor("#F59E0B"));
+
+        Paint subPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        subPaint.setTypeface(FontManager.getMedium(ctx));
+        subPaint.setTextSize(22f);
+        subPaint.setColor(Color.parseColor("#FDE68A"));
+        subPaint.setShadowLayer(8f, 0f, 2f, Color.argb(150, 0, 0, 0));
+
+        float tx = 248f;
+        float ty = CARD_H / 2f - 4f;
+        canvas.drawText("Cine", tx, ty, textWhite);
+        float cw = textWhite.measureText("Cine");
+        canvas.drawText("Sessiz", tx + cw, ty, textGold);
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        canvas.drawText(tr ? "Sinema & Dizi Sessiz Sinema (Tabu)" : "Cinema Charades & Movie Taboo", tx, ty + 34f, subPaint);
+        return bmp;
+    }
+
+    /** CineSUB Liquid Glass Card */
+    public static Bitmap createCineSubCard(Context ctx, boolean focused) {
+        Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bmp);
+        int neon = Color.parseColor("#F59E0B");
+        drawLiquidGlassCardBase(canvas, neon, 175f, CARD_H / 2f);
+
+        float cx = 165f;
+        float cy = CARD_H / 2f;
+
+        // 3D Orange CC Subtitle & AI Badge
+        Paint ccBadge = new Paint(Paint.ANTI_ALIAS_FLAG);
+        ccBadge.setShader(new LinearGradient(
+                cx - 45f, cy - 45f, cx + 45f, cy + 45f,
+                new int[]{Color.parseColor("#FBBF24"), Color.parseColor("#F59E0B"), Color.parseColor("#92400E")},
+                null, Shader.TileMode.CLAMP
+        ));
+        ccBadge.setShadowLayer(22f, 0f, 4f, Color.argb(180, 245, 158, 11));
+        canvas.drawRoundRect(new RectF(cx - 38f, cy - 28f, cx + 38f, cy + 28f), 12f, 12f, ccBadge);
+
+        // Subtitle horizontal bars inside card
+        Paint bar = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bar.setColor(Color.WHITE);
+        canvas.drawRoundRect(new RectF(cx - 24f, cy - 12f, cx + 24f, cy - 4f), 3f, 3f, bar);
+        canvas.drawRoundRect(new RectF(cx - 20f, cy + 4f, cx + 20f, cy + 12f), 3f, 3f, bar);
+
+        Paint textWhite = createCrispTextPaint(ctx, 48f, neon);
+        Paint textOrange = createCrispTextPaint(ctx, 48f, neon);
+        textOrange.setColor(Color.parseColor("#F59E0B"));
+
+        Paint subPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        subPaint.setTypeface(FontManager.getMedium(ctx));
+        subPaint.setTextSize(22f);
+        subPaint.setColor(Color.parseColor("#FDE68A"));
+        subPaint.setShadowLayer(8f, 0f, 2f, Color.argb(150, 0, 0, 0));
+
+        float tx = 248f;
+        float ty = CARD_H / 2f - 4f;
+        canvas.drawText("Cine", tx, ty, textWhite);
+        float cw = textWhite.measureText("Cine");
+        canvas.drawText("SUB", tx + cw, ty, textOrange);
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        canvas.drawText(tr ? "Kültürel Altyazı & Sahne Dedektifi" : "Cultural Subtitles & AI Inspector", tx, ty + 34f, subPaint);
         return bmp;
     }
 }

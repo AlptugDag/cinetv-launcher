@@ -4,6 +4,8 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
@@ -20,42 +22,57 @@ import com.cinetv.launcher.device.SystemAudio;
 import com.cinetv.launcher.FontManager;
 import com.cinetv.launcher.ui.UiKit;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Photorealistic luxury cinema spinning roulette wheel for film suggestion party games.
- * Features physical brass rim with studs, radial cinema-color slices, center hub with specular glint,
- * spring-deflecting pointer needle, and decelerating angular velocity with audio ticks.
+ * Photorealistic 3D Gunmetal Revolver Cylinder ("SineRoulette") for film suggestion party games.
+ * Features brushed steel fluted cylinder, cylindrical bullet chambers with movie posters,
+ * central ratchet extractor gear, top hammer alignment notch, and realistic mechanical deceleration.
  */
 public final class RouletteWheelView extends View {
 
     private final List<String> items = new ArrayList<>();
+    private final List<Bitmap> posterBitmaps = new ArrayList<>();
     private float currentAngle = 0f;
     private float needleDeflection = 0f;
     private boolean isSpinning = false;
 
-    private final Paint slicePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint cylinderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint chamberPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint posterPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint rimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint pegPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint hubPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint needlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint needleShadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint steelBevelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint ratchetPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint indicatorPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private final RectF wheelRect = new RectF();
-    private final RectF rimRect = new RectF();
+    private final RectF chamberRect = new RectF();
+    private final Path chamberPath = new Path();
 
-    // Luxury saturated cinema tones
-    private static final int[] SLICE_COLORS = {
-            0xFF881337, // Crimson Noir
-            0xFF1E3A8A, // Midnight Sapphire
-            0xFF065F46, // Velvet Emerald
-            0xFFB45309, // Solar Amber
-            0xFF581C87, // Electric Amethyst
-            0xFF0F766E, // Deep Teal
-            0xFF991B1B, // Ruby Red
-            0xFF312E81  // Deep Indigo
+    // Poster asset filenames for the revolver cylinder chambers
+    private static final String[] POSTER_ASSETS = {
+            "posters/interstellar.jpg",
+            "posters/godfather.jpg",
+            "posters/pulp_fiction.jpg",
+            "posters/inception.jpg",
+            "posters/fight_club.jpg",
+            "posters/taxi_driver.jpg",
+            "posters/blade_runner.jpg",
+            "posters/whiplash.jpg"
+    };
+
+    // Vibrant cinema poster tones fallback
+    private static final int[] POSTER_COLORS = {
+            0xFF881337, // Crimson Noir (Taxi Driver)
+            0xFF1E3A8A, // Midnight Sapphire (Interstellar)
+            0xFF065F46, // Velvet Emerald (The Godfather)
+            0xFFB45309, // Solar Amber (Pulp Fiction)
+            0xFF581C87, // Electric Amethyst (Fight Club)
+            0xFF0F766E, // Deep Teal (The Matrix)
+            0xFF991B1B, // Ruby Red (Inception)
+            0xFF312E81  // Deep Indigo (Whiplash)
     };
 
     public RouletteWheelView(Context context) {
@@ -70,12 +87,20 @@ public final class RouletteWheelView extends View {
 
     private void init() {
         textPaint.setColor(Color.WHITE);
-        textPaint.setTypeface(FontManager.getMedium(getContext()));
-        textPaint.setTextAlign(Paint.Align.RIGHT);
-        textPaint.setShadowLayer(UiKit.pxf(4), 0, UiKit.pxf(2), 0xCC000000);
+        textPaint.setTypeface(FontManager.getBold(getContext()));
+        textPaint.setTextAlign(Paint.Align.CENTER);
+        textPaint.setShadowLayer(UiKit.pxf(3), 0, UiKit.pxf(1), 0xDD000000);
 
-        needlePaint.setColor(Color.parseColor("#F59E0B")); // Golden Needle
-        needleShadowPaint.setColor(0x88000000);
+        indicatorPaint.setColor(Color.parseColor("#38BDF8")); // Electric Cyan/Blue Hammer Notch
+
+        // Load authentic TMDB posters into the bullet chambers
+        for (String assetPath : POSTER_ASSETS) {
+            try (InputStream in = getContext().getAssets().open(assetPath)) {
+                posterBitmaps.add(BitmapFactory.decodeStream(in));
+            } catch (Throwable ignored) {
+                posterBitmaps.add(null);
+            }
+        }
     }
 
     public void setItems(List<String> newItems) {
@@ -134,6 +159,35 @@ public final class RouletteWheelView extends View {
         anim.start();
     }
 
+    public void clickNextChamber(Runnable onFinished) {
+        if (items.isEmpty() || isSpinning) return;
+        isSpinning = true;
+
+        int count = Math.max(4, Math.min(8, items.size()));
+        float sliceAngle = 360f / count;
+        final float startAngle = currentAngle;
+        final float targetAngle = startAngle + sliceAngle;
+
+        ValueAnimator anim = ValueAnimator.ofFloat(0f, 1f);
+        anim.setDuration(360);
+        anim.setInterpolator(new android.view.animation.OvershootInterpolator(1.4f));
+        anim.addUpdateListener(a -> {
+            float frac = (float) a.getAnimatedValue();
+            currentAngle = startAngle + (targetAngle - startAngle) * frac;
+            invalidate();
+        });
+        anim.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                isSpinning = false;
+                invalidate();
+                SystemAudio.tick(getContext());
+                if (onFinished != null) onFinished.run();
+            }
+        });
+        anim.start();
+    }
+
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int w = MeasureSpec.getSize(widthMeasureSpec);
@@ -158,102 +212,139 @@ public final class RouletteWheelView extends View {
 
         wheelRect.set(cx - radius, cy - radius, cx + radius, cy + radius);
 
-        // 1. Outer Titanium / Brass Rim
-        float rimWidth = UiKit.pxf(14);
-        rimRect.set(wheelRect.left - rimWidth, wheelRect.top - rimWidth, wheelRect.right + rimWidth, wheelRect.bottom + rimWidth);
-        rimPaint.setStyle(Paint.Style.STROKE);
-        rimPaint.setStrokeWidth(rimWidth);
-        rimPaint.setColor(Color.parseColor("#1E293B")); // Dark Titanium
-        canvas.drawOval(rimRect, rimPaint);
-
-        // Brass Accent Ring
-        rimPaint.setStrokeWidth(UiKit.pxf(2.5f));
-        rimPaint.setColor(Color.parseColor("#D97706")); // Brass Gold
-        canvas.drawOval(wheelRect, rimPaint);
-
-        // 2. Wheel Slices
-        int count = Math.max(1, items.size());
-        float sliceAngle = 360f / count;
-
         canvas.save();
         canvas.rotate(currentAngle, cx, cy);
 
+        // 1. Brushed Gunmetal Steel Revolver Cylinder Base
+        cylinderPaint.setStyle(Paint.Style.FILL);
+        cylinderPaint.setShader(new RadialGradient(cx - radius * 0.25f, cy - radius * 0.25f, radius * 1.15f,
+                new int[]{0xFF334155, 0xFF1E293B, 0xFF0F172A}, new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
+        canvas.drawCircle(cx, cy, radius, cylinderPaint);
+        cylinderPaint.setShader(null);
+
+        // Outer Steel Chamfer Bevel Ring
+        steelBevelPaint.setStyle(Paint.Style.STROKE);
+        steelBevelPaint.setStrokeWidth(UiKit.pxf(3));
+        steelBevelPaint.setColor(Color.parseColor("#64748B"));
+        canvas.drawCircle(cx, cy, radius - UiKit.pxf(2), steelBevelPaint);
+
+        int count = Math.max(4, Math.min(8, items.size()));
+        float sliceAngle = 360f / count;
+
+        // 2. Revolver Cylinder Outer Flutes (Scalloped cutouts)
+        steelBevelPaint.setStyle(Paint.Style.FILL);
+        steelBevelPaint.setColor(0x33000000);
+        float fluteR = radius * 0.22f;
         for (int i = 0; i < count; i++) {
-            slicePaint.setColor(SLICE_COLORS[i % SLICE_COLORS.length]);
-            slicePaint.setStyle(Paint.Style.FILL);
-            canvas.drawArc(wheelRect, i * sliceAngle, sliceAngle, true, slicePaint);
+            float midAng = (float) Math.toRadians(i * sliceAngle + sliceAngle / 2f);
+            float fx = cx + radius * (float) Math.cos(midAng);
+            float fy = cy + radius * (float) Math.sin(midAng);
+            canvas.drawCircle(fx, fy, fluteR, steelBevelPaint);
+        }
 
-            // Dividing Seams
-            slicePaint.setStyle(Paint.Style.STROKE);
-            slicePaint.setStrokeWidth(UiKit.pxf(2));
-            slicePaint.setColor(0x55FFFFFF);
-            canvas.drawArc(wheelRect, i * sliceAngle, sliceAngle, true, slicePaint);
+        // 3. Bullet Chambers (Mermi Yuvaları) with DVD-boxless Movie Posters
+        float chamberDist = radius * 0.60f;
+        float chamberR = radius * 0.26f;
 
-            // Radial Text
-            if (!items.isEmpty()) {
+        for (int i = 0; i < count; i++) {
+            float ang = (float) Math.toRadians(i * sliceAngle);
+            float chX = cx + chamberDist * (float) Math.cos(ang);
+            float chY = cy + chamberDist * (float) Math.sin(ang);
+
+            // Bore Hole Deep Shadow
+            chamberPaint.setStyle(Paint.Style.FILL);
+            chamberPaint.setColor(Color.parseColor("#090D14"));
+            canvas.drawCircle(chX, chY, chamberR, chamberPaint);
+
+            // Brass Cartridge Lip Ring
+            chamberPaint.setStyle(Paint.Style.STROKE);
+            chamberPaint.setStrokeWidth(UiKit.pxf(2));
+            chamberPaint.setColor(Color.parseColor("#D97706"));
+            canvas.drawCircle(chX, chY, chamberR - UiKit.pxf(1), chamberPaint);
+
+            // Plain Poster (DVD-boxless, 2:3 ratio) matching CineTV Home
+            float pw = chamberR * 1.30f;
+            float ph = pw * 1.48f;
+            chamberRect.set(chX - pw / 2f, chY - ph / 2f, chX + pw / 2f, chY + ph / 2f);
+            float pCorner = pw * 0.085f;
+
+            Bitmap posterBmp = (i < posterBitmaps.size()) ? posterBitmaps.get(i) : null;
+            if (posterBmp != null) {
+                chamberPath.reset();
+                chamberPath.addRoundRect(chamberRect, pCorner, pCorner, Path.Direction.CW);
                 canvas.save();
-                canvas.rotate(i * sliceAngle + sliceAngle / 2f, cx, cy);
-                textPaint.setTextSize(count > 10 ? UiKit.pxf(13) : (count > 6 ? UiKit.pxf(15) : UiKit.pxf(18)));
-                String label = items.get(i);
-                if (label.length() > 18) label = label.substring(0, 16) + "...";
-                canvas.drawText(label, cx + radius - UiKit.pxf(22), cy + textPaint.getTextSize() / 3f, textPaint);
+                canvas.clipPath(chamberPath);
+                canvas.drawBitmap(posterBmp, null, chamberRect, null);
                 canvas.restore();
+            } else {
+                int pCol = POSTER_COLORS[i % POSTER_COLORS.length];
+                posterPaint.setStyle(Paint.Style.FILL);
+                posterPaint.setColor(pCol);
+                canvas.drawRoundRect(chamberRect, pCorner, pCorner, posterPaint);
+            }
+
+            // Specular glass sheen on poster
+            posterPaint.setStyle(Paint.Style.FILL);
+            posterPaint.setColor(0x28FFFFFF);
+            canvas.drawRoundRect(chamberRect, pCorner, pCorner, posterPaint);
+
+            // Outer crisp thin glass border
+            posterPaint.setStyle(Paint.Style.STROKE);
+            posterPaint.setStrokeWidth(UiKit.pxf(1.4f));
+            posterPaint.setColor(0x88FFFFFF);
+            canvas.drawRoundRect(chamberRect, pCorner, pCorner, posterPaint);
+
+            // Movie Title text inside bottom of poster with glass backing
+            if (!items.isEmpty()) {
+                String title = items.get(i % items.size());
+                if (title.length() > 9) title = title.substring(0, 8) + "..";
+                textPaint.setTextSize(UiKit.pxf(9.5f));
+                canvas.drawText(title, chX, chY + ph * 0.40f, textPaint);
             }
         }
 
-        // 3. Brass Outer Pegs (Rivets)
-        pegPaint.setStyle(Paint.Style.FILL);
-        pegPaint.setColor(Color.parseColor("#FBBF24")); // Golden Rivet
-        float pegRadius = UiKit.pxf(4f);
-        for (int i = 0; i < count; i++) {
-            float rad = (float) Math.toRadians(i * sliceAngle);
-            float px = cx + (radius + rimWidth / 2f) * (float) Math.cos(rad);
-            float py = cy + (radius + rimWidth / 2f) * (float) Math.sin(rad);
-            canvas.drawCircle(px, py, pegRadius, pegPaint);
-        }
+        // 4. Center Extractor Star Ratchet Gear (Yıldız Dişli)
+        float ratchetR = radius * 0.22f;
+        ratchetPaint.setStyle(Paint.Style.FILL);
+        ratchetPaint.setColor(Color.parseColor("#0F172A"));
+        canvas.drawCircle(cx, cy, ratchetR, ratchetPaint);
 
-        canvas.restore(); // Restore wheel rotation
+        ratchetPaint.setStyle(Paint.Style.STROKE);
+        ratchetPaint.setStrokeWidth(UiKit.pxf(2));
+        ratchetPaint.setColor(Color.parseColor("#38BDF8")); // Cyan Accent
+        canvas.drawCircle(cx, cy, ratchetR, ratchetPaint);
 
-        // 4. Center Polished Brass Hub with Specular Glint
-        float hubRadius = radius * 0.28f;
-        hubPaint.setStyle(Paint.Style.FILL);
-        hubPaint.setShader(new RadialGradient(cx - hubRadius * 0.3f, cy - hubRadius * 0.3f, hubRadius,
-                new int[]{0xFFFDE68A, 0xFFD97706, 0xFF78350F}, new float[]{0f, 0.6f, 1f}, Shader.TileMode.CLAMP));
-        canvas.drawCircle(cx, cy, hubRadius, hubPaint);
-        hubPaint.setShader(null);
+        // Center Pin
+        ratchetPaint.setStyle(Paint.Style.FILL);
+        ratchetPaint.setColor(Color.parseColor("#94A3B8"));
+        canvas.drawCircle(cx, cy, ratchetR * 0.45f, ratchetPaint);
 
-        // Center Emblem Star
-        hubPaint.setColor(Color.WHITE);
-        hubPaint.setTextAlign(Paint.Align.CENTER);
-        hubPaint.setTextSize(hubRadius * 0.9f);
-        canvas.drawText("✦", cx, cy + hubRadius * 0.32f, hubPaint);
+        canvas.restore(); // Restore cylinder rotation
 
-        // 5. Golden Top Pointer Needle
+        // 5. Top Hammer Alignment Indicator (at 12 o'clock firing position)
         canvas.save();
-        canvas.translate(cx, wheelRect.top - rimWidth);
-        canvas.rotate(needleDeflection, 0, 0);
+        canvas.translate(cx, cy - radius);
 
-        Path needlePath = new Path();
-        float nw = UiKit.pxf(14);
-        float nh = UiKit.pxf(28);
-        needlePath.moveTo(-nw / 2f, -nh * 0.3f);
-        needlePath.lineTo(nw / 2f, -nh * 0.3f);
-        needlePath.lineTo(0, nh);
-        needlePath.close();
+        Path indicatorPath = new Path();
+        float iw = UiKit.pxf(16);
+        float ih = UiKit.pxf(24);
+        indicatorPath.moveTo(-iw / 2f, -ih * 0.6f);
+        indicatorPath.lineTo(iw / 2f, -ih * 0.6f);
+        indicatorPath.lineTo(0, ih * 0.5f);
+        indicatorPath.close();
 
-        // Shadow
-        canvas.save();
-        canvas.translate(0, UiKit.pxf(3));
-        canvas.drawPath(needlePath, needleShadowPaint);
-        canvas.restore();
+        // Drop Shadow
+        indicatorPaint.setColor(0x99000000);
+        canvas.drawPath(indicatorPath, indicatorPaint);
 
-        // Needle body
-        needlePaint.setColor(Color.parseColor("#F59E0B"));
-        canvas.drawPath(needlePath, needlePaint);
+        // Electric Blue Sight Body
+        indicatorPaint.setColor(Color.parseColor("#38BDF8"));
+        canvas.translate(0, -UiKit.pxf(2));
+        canvas.drawPath(indicatorPath, indicatorPaint);
 
-        // Pivot cap
-        needlePaint.setColor(Color.parseColor("#FEF3C7"));
-        canvas.drawCircle(0, 0, UiKit.pxf(6), needlePaint);
+        // Glowing sight bead
+        indicatorPaint.setColor(Color.WHITE);
+        canvas.drawCircle(0, -ih * 0.4f, UiKit.pxf(3), indicatorPaint);
 
         canvas.restore();
     }

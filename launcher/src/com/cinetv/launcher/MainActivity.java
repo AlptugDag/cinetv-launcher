@@ -12,11 +12,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.TypedValue;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -234,6 +237,19 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         TvWebRemoteServer.setController(this);
         TvWebRemoteServer.start(this);
+        com.cinetv.launcher.party.CinePartyManager.get(this).setListener(new com.cinetv.launcher.party.CinePartyManager.Listener() {
+            @Override
+            public void onGameStateChanged(org.json.JSONObject state) {}
+
+            @Override
+            public void onMovieLaunchRequested(String movieTitle) {
+                handler.post(() -> {
+                    if (home != null && home.modal != null && home.modal.isShowing()) home.modal.close();
+                    hideLiveSnakePhileScene();
+                    onSearch(movieTitle);
+                });
+            }
+        });
         AppUpdater.checkAndAutoUpdateOnBoot(this);
         MemoryOptimizer.ensureAirPlayReceiver(this);
         com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
@@ -510,26 +526,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     private void checkNightViewingPrompt() {
-        if (com.cinetv.launcher.device.NightCare.shouldPromptNightViewingMode(this)) {
-            com.cinetv.launcher.device.NightCare.markNightPromptDismissed(this);
-            if (home != null) {
-                home.showNightModePrompt(
-                        () -> {
-                            com.cinetv.launcher.device.NightCare.setNightViewingMode(MainActivity.this, true);
-                            if (home != null) home.applyNightViewingMode(true);
-                            Toast.makeText(MainActivity.this, "Gece İzleme Modu Aktif Edildi", Toast.LENGTH_SHORT).show();
-                        },
-                        () -> {
-                            com.cinetv.launcher.device.NightCare.setNightViewingMode(MainActivity.this, false);
-                        }
-                );
-            }
-        } else {
-            // Auto de-activate when daytime arrives (05:00 - 22:00)
-            boolean active = com.cinetv.launcher.device.NightCare.isNightViewingModeActive(this);
-            if (!active && home != null) {
-                home.applyNightViewingMode(false);
-            }
+        // Canceled per user request: night mode side prompt completely disabled.
+        boolean active = com.cinetv.launcher.device.NightCare.isNightViewingModeActive(this);
+        if (!active && home != null) {
+            home.applyNightViewingMode(false);
         }
     }
 
@@ -646,6 +646,21 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 }
             }, 300);
         }
+        else if ("show_cinesub_live".equals(action)) {
+            handler.postDelayed(this::showLiveCineSubScene, 300);
+        }
+        else if ("show_cineroulette_live".equals(action) || "show_sineroulette_live".equals(action)) {
+            handler.postDelayed(this::showMovieRouletteModal, 300);
+        }
+        else if ("show_cinequiz_live".equals(action) || "show_sinequiz_live".equals(action)) {
+            handler.postDelayed(this::showLiveSineQuizScene, 300);
+        }
+        else if ("show_snakephile_live".equals(action)) {
+            handler.postDelayed(this::showLiveSnakePhileScene, 300);
+        }
+        else if ("show_cinesessiz_live".equals(action)) {
+            handler.postDelayed(this::showCineSessizModal, 300);
+        }
     }
 
     // ---- keys -------------------------------------------------------------------------------------
@@ -663,6 +678,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (down) {
             userInteractedDuringBanner = true;
             resetIdle();
+        }
+        if (liveCineSubView != null) {
+            if (down) hideLiveCineSubScene();
+            return true;
+        }
+        if (liveSnakePhileView != null) {
+            if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+                if (down) hideLiveSnakePhileScene();
+                return true;
+            }
+            return liveSnakePhileView.dispatchKeyEvent(e);
         }
         // Throttle D-pad key repeats to prevent rapid accidental skips on Bluetooth/IR TV remotes
         if (down && e.getRepeatCount() > 0 && !home.modal.isShowing() && !home.keyboard.isShowing()) {
@@ -837,6 +863,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     new AllApps.Listener() {
                         @Override
                         public void open(String pkg) {
+                            if (handlePartyAppLaunch(pkg)) return;
                             if (!AppLauncher.launch(MainActivity.this, pkg)) toast(R.string.app_not_found);
                         }
 
@@ -1243,6 +1270,75 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     // ---- opening a film ---------------------------------------------------------------------------
 
+    public boolean handlePartyAppLaunch(String pkg) {
+        if (pkg == null) return false;
+        if (AppCatalog.PKG_PARTY_FOLDER.equals(pkg)) {
+            showPartyGamesFolderModal();
+            return true;
+        }
+        if (AppCatalog.PKG_SNAKE.equals(pkg)) {
+            showLiveSnakePhileScene();
+            return true;
+        }
+        if (AppCatalog.PKG_QUIZ.equals(pkg)) {
+            showPartyQuizModal();
+            return true;
+        }
+        if (AppCatalog.PKG_ROULETTE.equals(pkg)) {
+            showMovieRouletteModal();
+            return true;
+        }
+        if (AppCatalog.PKG_SESSIZ.equals(pkg)) {
+            showCineSessizModal();
+            return true;
+        }
+        return false;
+    }
+
+    public void showPartyGamesFolderModal() {
+        if (home == null || home.modal == null) return;
+        home.modal.push(() -> Panels.buildPartyGamesFolderModal(this, home.modal, new Panels.PartyLauncher() {
+            @Override
+            public void launchSnake() {
+                home.modal.close();
+                showLiveSnakePhileScene();
+            }
+
+            @Override
+            public void launchQuiz() {
+                home.modal.close();
+                showPartyQuizModal();
+            }
+
+            @Override
+            public void launchRoulette() {
+                home.modal.close();
+                showMovieRouletteModal();
+            }
+
+            @Override
+            public void launchSessiz() {
+                home.modal.close();
+                showCineSessizModal();
+            }
+        }));
+    }
+
+    public void showPartyHowToPlay(String pkg) {
+        if (home == null || home.modal == null) return;
+        if (AppCatalog.PKG_SNAKE.equals(pkg)) {
+            home.modal.push(() -> Panels.buildSnakePhileHowToPlayModal(this, home.modal));
+        } else if (AppCatalog.PKG_QUIZ.equals(pkg)) {
+            home.modal.push(() -> Panels.buildCineQuizHowToPlayModal(this, home.modal));
+        } else if (AppCatalog.PKG_ROULETTE.equals(pkg)) {
+            home.modal.push(() -> Panels.buildCineRouletteHowToPlayModal(this, home.modal));
+        } else if (AppCatalog.PKG_SESSIZ.equals(pkg)) {
+            home.modal.push(() -> Panels.buildCineSessizHowToPlayModal(this, home.modal));
+        } else {
+            showPartyGamesFolderModal();
+        }
+    }
+
     public void showPartyQuizModal() {
         if (home != null && home.modal != null) {
             home.modal.push(() -> Panels.buildPartyQuizModal(this, home.modal));
@@ -1490,6 +1586,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void onLaunch(AppTileItem item) {
+        if (item != null && handlePartyAppLaunch(item.packageName)) return;
         MemoryOptimizer.kill(this, "com.android.vending");
         if (!AppLauncher.launch(this, item.packageName)) toast(R.string.app_not_found);
     }
@@ -1502,6 +1599,38 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     /** Long-press: Move / Hide / Uninstall / Info as a glass bar attached to the tile itself. */
     @Override
     public void showActions(final AppTileItem item, final boolean inDock, final int index, View tile) {
+        if (item != null && item.packageName != null && item.packageName.startsWith("com.cinetv.party.")) {
+            final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+            ModalHost.Builder bar = () -> {
+                android.widget.LinearLayout row = new android.widget.LinearLayout(this);
+                row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+                if (tile == null) {
+                    android.widget.TextView name = UiKit.bold(this, 26, UiKit.INK);
+                    name.setText(AppArtwork.getCleanLabel(item.packageName, item.label));
+                    name.setPadding(UiKit.px(8), 0, UiKit.px(20), 0);
+                    row.addView(name);
+                }
+                row.addView(spaced(Controls.button(this, tr ? "▶ Oyunu Başlat" : "▶ Launch Game", v -> {
+                    home.modal.close();
+                    handlePartyAppLaunch(item.packageName);
+                })));
+                row.addView(spaced(Controls.button(this, tr ? "ℹ Nasıl Oynanır?" : "ℹ Rules", v -> {
+                    home.modal.close();
+                    showPartyHowToPlay(item.packageName);
+                })));
+                if (!AppCatalog.PKG_PARTY_FOLDER.equals(item.packageName)) {
+                    row.addView(spaced(Controls.button(this, getString(R.string.hide), v -> {
+                        home.modal.close();
+                        AppCatalog.hide(this, item.packageName);
+                        loadApps(true);
+                    })));
+                }
+                return row;
+            };
+            if (tile != null) home.modal.pushAnchored(bar, tile);
+            else home.modal.push(bar);
+            return;
+        }
         ModalHost.Builder bar = () -> {
             android.widget.LinearLayout row = new android.widget.LinearLayout(this);
             row.setGravity(android.view.Gravity.CENTER_VERTICAL);
@@ -1942,6 +2071,141 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void showScreensaver() {
         if (home.screensaver.getVisibility() != View.VISIBLE) showScreensaverInternal();
+    }
+
+    private View liveCineSubView;
+
+    public void showLiveCineSubScene() {
+        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.close();
+        hideLiveSnakePhileScene();
+        if (liveCineSubView != null) {
+            home.root.removeView(liveCineSubView);
+            liveCineSubView = null;
+        }
+
+        FrameLayout container = new FrameLayout(this);
+        container.setBackgroundColor(Color.BLACK);
+        container.setFocusable(true);
+        container.setClickable(true);
+
+        try {
+            java.io.InputStream in = getAssets().open("brand/sessiz_frame.jpg");
+            Bitmap frame = BitmapFactory.decodeStream(in);
+            in.close();
+
+            if (frame != null) {
+                ImageView iv = new ImageView(this);
+                iv.setImageBitmap(frame);
+                iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                FrameLayout.LayoutParams ivLp = new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER);
+                container.addView(iv, ivLp);
+            }
+        } catch (Throwable ignored) {}
+
+        // Subtitle bar at bottom center matching the exact film dialogue
+        FrameLayout subBar = new FrameLayout(this);
+        subBar.setBackground(Glass.panel(subBar, 14));
+        subBar.setPadding(UiKit.px(28), UiKit.px(10), UiKit.px(28), UiKit.px(10));
+        TextView subText = UiKit.text(this, 22, Color.parseColor("#FEF08A"), FontManager.getMedium(this));
+        subText.setText("“Cellatları dilsizlerden seçerlermiş derler... ama ya ben?”");
+        subBar.addView(subText);
+
+        FrameLayout.LayoutParams sLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        sLp.bottomMargin = UiKit.px(54);
+        container.addView(subBar, sLp);
+
+        liveCineSubView = container;
+        home.root.addView(liveCineSubView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // Trigger CineSUB overlay
+        handler.postDelayed(() -> {
+            com.cinetv.launcher.ui.CineSubOverlay.showInsight(
+                    this,
+                    "Osmanlı Saray Geleneği & Vicdan Metaforu",
+                    "Alptuğ Dağ'ın yönettiği Sessiz (2023) filminde geçen “Cellatları dilsizlerden seçerlermiş derler... ama ya ben?” repliği, Osmanlı sarayında cellatların dilsizlerden seçilerek kurbanların yalvarışlarını duymalarının engellenmesi tarihsel gerçeğine doğrudan bir göndermedir.\n\nMinimalist ses tasarımı ve diejetik sessizlik, Robert Bresson ve Nuri Bilge Ceylan sinemasındaki 'sessizliğin dramatik ağırlığı' geleneğine saygı duruşudur."
+            );
+        }, 300);
+
+        liveCineSubView.setOnClickListener(v -> hideLiveCineSubScene());
+    }
+
+    public void hideLiveCineSubScene() {
+        if (liveCineSubView != null) {
+            home.root.removeView(liveCineSubView);
+            liveCineSubView = null;
+            com.cinetv.launcher.ui.CineSubOverlay.dismissActive();
+        }
+    }
+
+    public void showLiveSineRouletteScene() {
+        hideLiveSnakePhileScene();
+        hideLiveCineSubScene();
+        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.close();
+        showMovieRouletteModal();
+    }
+
+    public void showLiveSineQuizScene() {
+        hideLiveSnakePhileScene();
+        hideLiveCineSubScene();
+        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.close();
+        com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(this);
+        party.registerPlayer("p1", "Alptuğ");
+        party.registerPlayer("p2", "Elif");
+        party.registerPlayer("p3", "Can");
+        party.startQuiz();
+        showPartyQuizModal();
+    }
+
+    public void showCineSessizModal() {
+        hideLiveSnakePhileScene();
+        hideLiveCineSubScene();
+        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.close();
+        com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(this);
+        party.registerPlayer("p1", "Alptuğ");
+        party.registerPlayer("p2", "Elif");
+        party.registerPlayer("p3", "Can");
+        party.startSessiz();
+        if (home != null && home.modal != null) {
+            home.modal.push(() -> Panels.buildCineSessizModal(this, home.modal));
+        }
+    }
+
+    private com.cinetv.launcher.party.SnakePhileView liveSnakePhileView;
+
+    public void showLiveSnakePhileScene() {
+        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.close();
+        hideLiveCineSubScene();
+        if (liveSnakePhileView != null) {
+            home.root.removeView(liveSnakePhileView);
+            liveSnakePhileView = null;
+        }
+
+        com.cinetv.launcher.party.SnakePhileView snakeView = new com.cinetv.launcher.party.SnakePhileView(this);
+        snakeView.setOnSnakePhileListener(new com.cinetv.launcher.party.SnakePhileView.OnSnakePhileListener() {
+            @Override
+            public void onMovieLaunch(String cleanMovieTitle) {
+                hideLiveSnakePhileScene();
+                onSearch(cleanMovieTitle);
+            }
+
+            @Override
+            public void onExit() {
+                hideLiveSnakePhileScene();
+            }
+        });
+        liveSnakePhileView = snakeView;
+        home.root.addView(liveSnakePhileView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        liveSnakePhileView.requestFocus();
+    }
+
+    public void hideLiveSnakePhileScene() {
+        if (liveSnakePhileView != null) {
+            home.root.removeView(liveSnakePhileView);
+            liveSnakePhileView = null;
+        }
     }
 
     private void showScreensaverInternal() {
