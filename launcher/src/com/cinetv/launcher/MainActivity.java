@@ -1387,6 +1387,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void applyAppearance() {
         DeviceTweaks.syncNightMode(this);
+        UiKit.init(this);
         // Light and dark use different ink everywhere: rebuild the screen when it flips.
         if (ThemeManager.isLight(this) != UiKit.isLight()) {
             recreate();

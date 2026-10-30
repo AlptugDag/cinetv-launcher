@@ -38,15 +38,8 @@ public final class DeviceTweaks {
             Settings.Secure.putInt(cr, "screensaver_timeout", 300_000);
             Settings.Secure.putInt(cr, "screensaver_enabled", 1);
             Settings.Secure.putString(cr, "screensaver_components", DREAM);
-            // Suppress Google Play Protect and package verifier false warnings on sideloaded TV launcher
-            Settings.Global.putInt(cr, "package_verifier_enable", 0);
-            Settings.Global.putInt(cr, "package_verifier_user_consent", -1);
-            Settings.Global.putInt(cr, "upload_apk_enable", 0);
-            Settings.Global.putInt(cr, "play_protect_enabled", 0);
         } catch (Throwable ignored) {
         }
-        com.cinetv.launcher.remote.LocalAdb.shell(ctx,
-                "settings put global package_verifier_enable 0; settings put global package_verifier_user_consent -1; settings put global upload_apk_enable 0; settings put global play_protect_enabled 0", 1500);
         enableKeyService(ctx);
         applyFastBootTweaks(ctx);
     }

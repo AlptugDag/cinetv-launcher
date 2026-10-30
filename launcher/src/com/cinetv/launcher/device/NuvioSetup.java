@@ -46,6 +46,11 @@ public final class NuvioSetup {
 
     /** Off the main thread. */
     public static void runOnce(Context ctx) {
+        if (AppLauncher.isLaunchable(ctx.getPackageManager(), AppLauncher.NUVIO)) {
+            Log.i(TAG, "Existing Nuvio installation found on TV. Preserving user's Nuvio and syncing curated addons & configs.");
+            syncAddonsAndConfigs(ctx, true);
+            return;
+        }
         installNuvio(ctx, false);
         syncAddonsAndConfigs(ctx, false);
     }
@@ -145,8 +150,9 @@ public final class NuvioSetup {
             return true;
         }
         if (AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) {
+            Log.i(TAG, "Nuvio is already installed on TV. Skipping Nuvio APK install, syncing curated addons and configs into existing Nuvio.");
             Prefs.get(app).edit().putBoolean(DONE, true).apply();
-            if (force) syncAddonsAndConfigs(app, true);
+            syncAddonsAndConfigs(app, true);
             return true;
         }
         try {

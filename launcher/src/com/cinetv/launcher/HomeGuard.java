@@ -116,25 +116,26 @@ public final class HomeGuard {
     /**
      * Installed from the APK alone (no computer)? CineTV then does what install.sh would, through the TV's
      * own adb ("network debugging" on; the TV asks once to allow it): its permissions, Home, the
-     * remote-button service and the screensaver. Nothing is done when all of it is in place already.
+     * remote-button service and the screensaver.
      */
-    private static void ensureDefault(Context app) {
+    public static void ensureDefault(Context app) {
         String pkg = app.getPackageName();
-        boolean secure = com.cinetv.launcher.device.DeviceTweaks.canWriteSecureSettings(app);
-        if (isDefault(app) && secure) return;
         String service = pkg + "/" + TvKeyInterceptorService.class.getName();
-        String cmd = "pm grant " + pkg + " android.permission.WRITE_SECURE_SETTINGS; "
+        String cmd = "appops set " + pkg + " ACCESS_RESTRICTED_SETTINGS allow 2>/dev/null; "
+                + "pm grant " + pkg + " android.permission.WRITE_SECURE_SETTINGS 2>/dev/null; "
                 + "pm grant " + pkg + " android.permission.RECORD_AUDIO 2>/dev/null; "
-                + "appops set " + pkg + " SYSTEM_ALERT_WINDOW allow; "
+                + "appops set " + pkg + " SYSTEM_ALERT_WINDOW allow 2>/dev/null; "
                 + "pm grant " + pkg + " android.permission.BLUETOOTH_CONNECT 2>/dev/null; "
-                + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity; "
-                + "cmd package set-home-activity " + pkg + "/.MainActivity; "
-                + (secure ? "" : "s=$(settings get secure enabled_accessibility_services); case \"$s\" in *" + service + "*) ;; "
-                + "null|'') settings put secure enabled_accessibility_services " + service + " ;; "
-                + "*) settings put secure enabled_accessibility_services \"$s:" + service + "\" ;; esac; "
-                + "settings put secure accessibility_enabled 1; settings put secure screensaver_enabled 1; "
-                + "settings put secure screensaver_activate_on_sleep 1; "
-                + "settings put secure screensaver_components " + pkg + "/" + pkg + ".ClockDream; ");
-        com.cinetv.launcher.remote.LocalAdb.shell(app, cmd, 90_000);
+                + "pm grant " + pkg + " android.permission.BLUETOOTH_SCAN 2>/dev/null; "
+                + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity 2>/dev/null; "
+                + "cmd package set-home-activity " + pkg + "/.MainActivity 2>/dev/null; "
+                + "s=$(settings get secure enabled_accessibility_services 2>/dev/null); case \"$s\" in *" + service + "*) ;; "
+                + "null|'') settings put secure enabled_accessibility_services " + service + " 2>/dev/null ;; "
+                + "*) settings put secure enabled_accessibility_services \"$s:" + service + "\" 2>/dev/null ;; esac; "
+                + "settings put secure accessibility_enabled 1 2>/dev/null; "
+                + "settings put secure screensaver_enabled 1 2>/dev/null; "
+                + "settings put secure screensaver_activate_on_sleep 1 2>/dev/null; "
+                + "settings put secure screensaver_components " + pkg + "/" + pkg + ".ClockDream 2>/dev/null; ";
+        com.cinetv.launcher.remote.LocalAdb.shell(app, cmd, 30_000);
     }
 }

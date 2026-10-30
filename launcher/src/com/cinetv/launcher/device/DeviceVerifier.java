@@ -63,6 +63,7 @@ public final class DeviceVerifier {
 
     public static String detectSystemAnomalies(Context ctx) {
         StringBuilder sb = new StringBuilder();
+        // Accessibility is optional; native keys and launcher features operate autonomously
         try {
             boolean accEnabled = false;
             String enabledServices = android.provider.Settings.Secure.getString(ctx.getContentResolver(),
@@ -70,9 +71,7 @@ public final class DeviceVerifier {
             if (enabledServices != null && enabledServices.contains("TvKeyInterceptorService")) {
                 accEnabled = true;
             }
-            if (!accEnabled) sb.append("Erişilebilirlik Kapalı/Yok; ");
         } catch (Throwable ignored) {
-            sb.append("Erişilebilirlik Yok; ");
         }
 
         try {

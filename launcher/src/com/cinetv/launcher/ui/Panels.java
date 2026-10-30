@@ -343,6 +343,23 @@ public final class Panels {
                 a.previewScreensaver();
             }));
 
+            c2.addView(Controls.tile(ctx,
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "Arayüz Ölçeği" : "UI Scale",
+                    Prefs.uiScaleLabel(ctx), false, v -> {
+                        Prefs.setUiScaleLevel(ctx, Prefs.uiScaleLevel(ctx) + 1);
+                        UiKit.init(ctx);
+                        a.applyAppearance();
+                        host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_ui_scale"));
+                    }));
+            c2.addView(Controls.tile(ctx,
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "Yazı Boyutu" : "Font Size",
+                    Prefs.fontScaleLabel(ctx), false, v -> {
+                        Prefs.setFontScaleLevel(ctx, Prefs.fontScaleLevel(ctx) + 1);
+                        UiKit.init(ctx);
+                        a.applyAppearance();
+                        host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_font_scale"));
+                    }));
+
         } else if (pageIndex == PAGE_AI) {
             // Page 3: AI & Media / Network
             LinearLayout c1 = column(ctx, cols, R.string.col_ai, colWidth);
@@ -402,10 +419,14 @@ public final class Panels {
                            : ("tr".equals(Locale.getDefault().getLanguage()) ? "Kumanda ana tuşu için dokunun" : "Tap to set as default launcher"),
                     isHome, v -> com.cinetv.launcher.HomeGuard.promptHomeChooser(ctx)));
             boolean a11y = com.cinetv.launcher.TvKeyInterceptorService.getInstance() != null;
-            c1.addView(Controls.tile(ctx, "tr".equals(Locale.getDefault().getLanguage()) ? "Erişilebilirlik & Tuşlar" : "Accessibility & Keys",
-                    a11y ? ("tr".equals(Locale.getDefault().getLanguage()) ? "Tuş servisi aktif" : "Key service active")
-                         : ("tr".equals(Locale.getDefault().getLanguage()) ? "Erişilebilirlik ayarlarını aç" : "Open accessibility settings"),
-                    a11y, v -> com.cinetv.launcher.HomeGuard.openAccessibilitySettings(ctx)));
+            c1.addView(Controls.tile(ctx,
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "Kumanda Tuş Entegrasyonu" : "Remote Key Integration",
+                    a11y ? ("tr".equals(Locale.getDefault().getLanguage()) ? "Yerel tuşlar & global servis devrede" : "Native keys & global service active")
+                         : ("tr".equals(Locale.getDefault().getLanguage()) ? "Yerel kumanda tuşları aktif · Erişilebilirlik zorunlu değil" : "Native keys active · Accessibility optional"),
+                    true, v -> {
+                        com.cinetv.launcher.HomeGuard.ensureDefault(ctx);
+                        com.cinetv.launcher.HomeGuard.openAccessibilitySettings(ctx);
+                    }));
             c1.addView(Controls.tile(ctx, ctx.getString(R.string.tv_settings), ctx.getString(R.string.tv_settings_hint), false,
                     v -> AppLauncher.openSystemSettings(ctx)));
             if (AppLauncher.liveTvPackage(ctx.getPackageManager()) != null || AppLauncher.hasHdmiSource(ctx)) {
@@ -1764,13 +1785,12 @@ public final class Panels {
                     }
                 }));
 
-        // 4. Remote Keys & Permissions
-        boolean a11yOk = TvKeyInterceptorService.getInstance() != null || DeviceTweaks.canWriteSecureSettings(ctx);
+        // 4. Remote Keys & System Integration (Accessibility is strictly optional, native keys always work)
         list.addView(Controls.tile(ctx,
-                turkish ? "4. Kumanda Tuş Servisi & Erişilebilirlik" : "4. Remote Key Interceptor & Accessibility",
-                a11yOk ? (turkish ? "Erişilebilirlik ve tuş servisi aktif" : "Key interceptor active")
-                       : (turkish ? "Erişilebilirlik ayarlarını açıp CineTV'yi etkinleştirin" : "Open accessibility settings to enable CineTV"),
-                a11yOk, v -> {
+                turkish ? "4. Kumanda Tuşları & Sistem Uyumu" : "4. Remote Keys & System Integration",
+                turkish ? "Doğrudan yerel kumanda kontrolü hazır (Erişilebilirlik zorunlu değil)" : "Native remote key navigation ready (Accessibility optional)",
+                true, v -> {
+                    com.cinetv.launcher.HomeGuard.ensureDefault(ctx);
                     HomeGuard.openAccessibilitySettings(ctx);
                     v.postDelayed(() -> host.replace(() -> buildWizard(ctx, host)), 2000);
                 }));

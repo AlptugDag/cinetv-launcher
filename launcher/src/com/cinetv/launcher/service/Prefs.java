@@ -132,4 +132,65 @@ public final class Prefs {
         // Read once from the key older builds used, so an existing setting carries over.
         return v != null ? v : global(ctx, "tvhome_city");
     }
+
+    public static final String UI_SCALE = "pref_ui_scale_level";
+    public static final String FONT_SCALE = "pref_font_scale_level";
+
+    public static int uiScaleLevel(Context ctx) {
+        return get(ctx).getInt(UI_SCALE, 1);
+    }
+
+    public static void setUiScaleLevel(Context ctx, int level) {
+        get(ctx).edit().putInt(UI_SCALE, Math.abs(level) % 4).apply();
+    }
+
+    public static float uiScaleMultiplier(Context ctx) {
+        switch (uiScaleLevel(ctx)) {
+            case 0: return 0.88f;
+            case 2: return 1.14f;
+            case 3: return 1.28f;
+            case 1:
+            default: return 1.00f;
+        }
+    }
+
+    public static String uiScaleLabel(Context ctx) {
+        boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+        switch (uiScaleLevel(ctx)) {
+            case 0: return tr ? "Küçük (%88)" : "Small (88%)";
+            case 2: return tr ? "Büyük (%114)" : "Large (114%)";
+            case 3: return tr ? "Çok Büyük (%128)" : "Extra Large (128%)";
+            case 1:
+            default: return tr ? "Standart (%100)" : "Standard (100%)";
+        }
+    }
+
+    public static int fontScaleLevel(Context ctx) {
+        return get(ctx).getInt(FONT_SCALE, 1);
+    }
+
+    public static void setFontScaleLevel(Context ctx, int level) {
+        get(ctx).edit().putInt(FONT_SCALE, Math.abs(level) % 4).apply();
+    }
+
+    public static float fontScaleMultiplier(Context ctx) {
+        switch (fontScaleLevel(ctx)) {
+            case 0: return 0.90f;
+            case 2: return 1.15f;
+            case 3: return 1.30f;
+            case 1:
+            default: return 1.00f;
+        }
+    }
+
+    public static String fontScaleLabel(Context ctx) {
+        boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+        switch (fontScaleLevel(ctx)) {
+            case 0: return tr ? "Küçük (%90)" : "Small (90%)";
+            case 2: return tr ? "Büyük (%115)" : "Large (115%)";
+            case 3: return tr ? "Çok Büyük (%130)" : "Extra Large (130%)";
+            case 1:
+            default: return tr ? "Standart (%100)" : "Standard (100%)";
+        }
+    }
 }

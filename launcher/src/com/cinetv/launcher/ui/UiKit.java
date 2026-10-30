@@ -24,16 +24,23 @@ public final class UiKit {
     private static boolean light;
 
     private static float scale = 1f;
+    private static float userFontMultiplier = 1f;
 
     private UiKit() {}
 
     public static void init(Context ctx) {
         int w = Math.max(ctx.getResources().getDisplayMetrics().widthPixels, ctx.getResources().getDisplayMetrics().heightPixels);
-        scale = w / 1920f;
+        float uiMultiplier = com.cinetv.launcher.service.Prefs.uiScaleMultiplier(ctx);
+        userFontMultiplier = com.cinetv.launcher.service.Prefs.fontScaleMultiplier(ctx);
+        scale = (w / 1920f) * uiMultiplier;
         light = com.cinetv.launcher.service.ThemeManager.isLight(ctx);
         INK = light ? Color.parseColor("#0B0F19") : Color.parseColor("#F5F5F7");
         INK_DIM = light ? Color.argb(175, 18, 22, 34) : Color.argb(160, 235, 235, 245);
         INK_FAINT = light ? Color.argb(115, 18, 22, 34) : Color.argb(96, 235, 235, 245);
+    }
+
+    public static float fontScale() {
+        return userFontMultiplier;
     }
 
     public static boolean isLight() {
@@ -51,7 +58,7 @@ public final class UiKit {
 
     public static TextView text(Context ctx, float sizeDesignPx, int color, Typeface face) {
         TextView tv = new TextView(ctx);
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, pxf(sizeDesignPx));
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, pxf(sizeDesignPx) * userFontMultiplier);
         tv.setTextColor(color);
         tv.setTypeface(face);
         tv.setIncludeFontPadding(false);
