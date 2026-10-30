@@ -244,12 +244,20 @@ public class HomeScreen {
         search.setShowSoftInputOnFocus(false);
         search.setPadding(UiKit.px(16), 0, 0, 0);
         searchRow.addView(search, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        // Voice search: the microphone at the end of the bar.
+        // Voice search: the microphone at the end of the bar with smooth Rose Neon glow.
         micButton = new FrameLayout(ctx);
         micButton.setFocusable(true);
         micButton.setClickable(true);
         micButton.setContentDescription(ctx.getString(R.string.voice_search));
-        // A plain circle, not sampled glass: inside the tilted visor the glass sample would sit off-centre.
+
+        final View micGlowView = new View(ctx);
+        final android.graphics.drawable.GradientDrawable micGlow = new android.graphics.drawable.GradientDrawable();
+        micGlow.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        micGlow.setColor(Color.parseColor("#F43F5E")); // Neon Rose
+        micGlowView.setBackground(micGlow);
+        micGlowView.setAlpha(0f);
+        micButton.addView(micGlowView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
         final android.graphics.drawable.GradientDrawable micDisc = new android.graphics.drawable.GradientDrawable();
         micDisc.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         micDisc.setColor(Color.TRANSPARENT);
@@ -260,18 +268,29 @@ public class HomeScreen {
         micIcon.setImageDrawable(md);
         micButton.addView(micIcon, new FrameLayout.LayoutParams(UiKit.px(26), UiKit.px(26), Gravity.CENTER));
         micButton.setOnFocusChangeListener((v, has) -> {
-            micDisc.setColor(has ? Color.WHITE : Color.TRANSPARENT);
-            md.setTint(has ? UiKit.INK_DARK : UiKit.INK_DIM);
-            v.animate().scaleX(has ? 1.12f : 1f).scaleY(has ? 1.12f : 1f).setDuration(140).start();
+            micGlowView.animate().alpha(has ? 0.40f : 0f).setDuration(180).start();
+            micDisc.setColor(has ? Color.argb(45, 244, 63, 94) : Color.TRANSPARENT);
+            md.setTint(has ? Color.WHITE : UiKit.INK_DIM);
+            v.animate().scaleX(has ? 1.07f : 1f).scaleY(has ? 1.07f : 1f).setDuration(180).start();
             if (has) {
-                listener.onFocusLight(v, currentTheme != null ? currentTheme.accent : Color.parseColor("#A78BFA"));
+                com.cinetv.launcher.device.SystemAudio.tick(ctx);
+                listener.onFocusLight(v, Color.parseColor("#F43F5E"));
                 showButtonHint(v, ctx.getString(R.string.voice_search));
             } else if (buttonHint != null) {
                 buttonHint.animate().cancel();
                 buttonHint.setVisibility(View.GONE);
             }
         });
-        micButton.setOnClickListener(v -> listener.onVoice());
+        micButton.setOnHoverListener((v, event) -> {
+            if (event.getAction() == android.view.MotionEvent.ACTION_HOVER_ENTER) {
+                v.requestFocus();
+            }
+            return false;
+        });
+        micButton.setOnClickListener(v -> {
+            com.cinetv.launcher.device.SystemAudio.click(ctx);
+            listener.onVoice();
+        });
         LinearLayout.LayoutParams mlp0 = new LinearLayout.LayoutParams(UiKit.px(48), UiKit.px(48));
         mlp0.setMargins(UiKit.px(10), 0, 0, 0);
         searchRow.addView(micButton, mlp0);
@@ -282,7 +301,10 @@ public class HomeScreen {
             searchBevel.setFocusedState(has);
             searchBox.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(160).start();
             searchBox.setAlpha(has ? 1f : 0.92f);
-            if (has) listener.onFocusLight(searchBox, currentTheme != null ? currentTheme.accent : Color.parseColor("#A78BFA"));
+            if (has) {
+                com.cinetv.launcher.device.SystemAudio.tick(ctx);
+                listener.onFocusLight(searchBox, currentTheme != null ? currentTheme.accent : Color.parseColor("#A78BFA"));
+            }
         });
         search.setOnEditorActionListener((v, id, e) -> {
             String q = v.getText().toString().trim();
@@ -301,12 +323,12 @@ public class HomeScreen {
         rightGroup.setGravity(Gravity.CENTER_VERTICAL);
         rightGroup.setClipChildren(false);
         headerButtons = new View[]{
-                headerButton(R.drawable.ic_refresh, R.string.refresh_shelf, R.string.refresh_shelf_hint, v -> listener.onRefreshShelf()),
-                headerButton(R.drawable.ic_phone, R.string.connect_phone, R.string.connect_phone, v -> listener.onPhone()),
-                headerButton(R.drawable.ic_network, R.string.network, R.string.network, v -> listener.onNetwork()),
-                headerButton(R.drawable.ic_inputs, R.string.inputs, R.string.inputs, v -> listener.onInputs()),
-                headerButton(R.drawable.ic_all_apps, R.string.all_apps, R.string.all_apps, v -> listener.onAllApps()),
-                headerButton(R.drawable.ic_settings_gear, R.string.settings_title, R.string.settings_hold_hint, v -> listener.onSettings()),
+                headerButton(R.drawable.ic_refresh, R.string.refresh_shelf, R.string.refresh_shelf_hint, Color.parseColor("#10B981"), v -> listener.onRefreshShelf()),
+                headerButton(R.drawable.ic_phone, R.string.connect_phone, R.string.connect_phone, Color.parseColor("#38BDF8"), v -> listener.onPhone()),
+                headerButton(R.drawable.ic_network, R.string.network, R.string.network, Color.parseColor("#F59E0B"), v -> listener.onNetwork()),
+                headerButton(R.drawable.ic_inputs, R.string.inputs, R.string.inputs, Color.parseColor("#8B5CF6"), v -> listener.onInputs()),
+                headerButton(R.drawable.ic_all_apps, R.string.all_apps, R.string.all_apps, Color.parseColor("#FB923C"), v -> listener.onAllApps()),
+                headerButton(R.drawable.ic_settings_gear, R.string.settings_title, R.string.settings_hold_hint, Color.parseColor("#6366F1"), v -> listener.onSettings()),
         };
         headerButtons[headerButtons.length - 1].setOnLongClickListener(v -> {
             listener.onSystemSettings();
@@ -375,8 +397,8 @@ public class HomeScreen {
         aiCard = new FrameLayout(ctx);
         aiCard.setVisibility(View.GONE);
         aiCard.setClipChildren(false);
-        FrameLayout.LayoutParams alp = new FrameLayout.LayoutParams(UiKit.px(860), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
-        alp.setMargins(0, UiKit.px(118), 0, 0);
+        FrameLayout.LayoutParams alp = new FrameLayout.LayoutParams(UiKit.px(860), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START);
+        alp.setMargins(UiKit.px(540), UiKit.px(118), 0, 0);
         root.addView(aiCard, alp);
 
         buttonHint = UiKit.bold(ctx, 15, Color.WHITE);
@@ -452,13 +474,13 @@ public class HomeScreen {
         wireFocus();
     }
 
-    private View headerButton(int icon, int desc, int hint, View.OnClickListener click) {
-        final FrameLayout b = Controls.iconButton(ctx, ctx.getDrawable(icon), ctx.getString(desc), click);
+    private View headerButton(int icon, int desc, int hint, int glowColor, View.OnClickListener click) {
+        final FrameLayout b = Controls.iconButton(ctx, ctx.getDrawable(icon), ctx.getString(desc), glowColor, click);
         View.OnFocusChangeListener inner = b.getOnFocusChangeListener();
         b.setOnFocusChangeListener((v, has) -> {
-            inner.onFocusChange(v, has);
+            if (inner != null) inner.onFocusChange(v, has);
             if (has) {
-                listener.onFocusLight(v, currentTheme != null ? currentTheme.accent : Color.parseColor("#38BDF8"));
+                listener.onFocusLight(v, glowColor);
                 showButtonHint(v, ctx.getString(hint));
             } else if (buttonHint != null) {
                 buttonHint.animate().cancel();
@@ -712,7 +734,7 @@ public class HomeScreen {
         topRow.addView(moonIcon, icLp);
 
         TextView title = UiKit.bold(ctx, 16, UiKit.INK);
-        title.setText("🌙 Gece İzleme Modu");
+        title.setText("Gece İzleme Modu");
         topRow.addView(title);
         nightPromptView.addView(topRow);
 
@@ -1186,22 +1208,51 @@ public class HomeScreen {
 
     private float lastParallaxNx = Float.NaN, lastParallaxNy = Float.NaN;
 
-    /** Subtle 3D optical counter-parallax on the curved HUD visor as focus moves across the screen. */
+    /** Multi-plane 3D optical parallax on the curved HUD visor as focus moves across the screen. */
     public void updateVisorParallax(float focusX, float focusY) {
         if (!spatialOn || root.getWidth() <= 0 || root.getHeight() <= 0) return;
         float nx = Math.max(-1f, Math.min(1f, (focusX / root.getWidth() - 0.5f) * 2f));
         float ny = Math.max(-1f, Math.min(1f, (focusY / root.getHeight() - 0.5f) * 2f));
-        if (!Float.isNaN(lastParallaxNx) && Math.abs(nx - lastParallaxNx) < 0.25f && Math.abs(ny - lastParallaxNy) < 0.25f) {
+        if (!Float.isNaN(lastParallaxNx) && Math.abs(nx - lastParallaxNx) < 0.02f && Math.abs(ny - lastParallaxNy) < 0.02f) {
             return;
         }
         lastParallaxNx = nx;
         lastParallaxNy = ny;
-        int ms = PerformanceProfile.animationMs(ctx, 180);
-        float pitch = 11f - ny * 1.6f;
-        leftGroup.animate().rotationY(24f - nx * 2.4f).rotationX(pitch).setDuration(ms).start();
-        searchBox.animate().rotationY(-nx * 2.8f).rotationX(pitch).setDuration(ms).start();
-        rightGroup.animate().rotationY(-24f - nx * 2.4f).rotationX(pitch).setDuration(ms).start();
-        shelfLabel.animate().rotationY(18f - nx * 2.0f).rotationX(6f - ny * 1.2f).setDuration(ms).start();
+        int ms = PerformanceProfile.animationMs(ctx, 220);
+        float pitch = 11f - ny * 3.5f;
+
+        // Multi-plane cinematic optical parallax: foreground layers slide slightly in counter-perspective
+        float tX = -nx * UiKit.pxf(16);
+        float tY = -ny * UiKit.pxf(10);
+
+        leftGroup.animate()
+                .rotationY(24f - nx * 4.2f)
+                .rotationX(pitch)
+                .translationX(tX * 0.75f)
+                .translationY(tY * 0.75f)
+                .setDuration(ms).start();
+
+        searchBox.animate()
+                .rotationY(-nx * 4.8f)
+                .rotationX(pitch)
+                .translationX(tX * 1.15f)
+                .translationY(tY * 1.0f)
+                .setDuration(ms).start();
+
+        rightGroup.animate()
+                .rotationY(-24f - nx * 4.2f)
+                .rotationX(pitch)
+                .translationX(tX * 0.75f)
+                .translationY(tY * 0.75f)
+                .setDuration(ms).start();
+
+        shelfLabel.animate()
+                .rotationY(18f - nx * 3.0f)
+                .rotationX(6f - ny * 2.0f)
+                .translationX(tX * 0.5f)
+                .translationY(tY * 0.5f)
+                .setDuration(ms).start();
+
         if (buttonHint != null && buttonHint.getVisibility() == View.VISIBLE) {
             float hintCenterX = buttonHint.getTranslationX() + buttonHint.getWidth() / 2f;
             float hnx = Math.max(-1f, Math.min(1f, (hintCenterX / (float) Math.max(1, root.getWidth()) - 0.5f) * 2f));
@@ -1365,8 +1416,35 @@ public class HomeScreen {
         showBubble(ctx.getString(R.string.assistant_thinking), true, 30000);
     }
 
+    /** Recalculates aiCard position to align directly under searchBox */
+    public void updateAiCardPosition() {
+        if (searchBox == null || aiCard == null || root == null) return;
+        int[] rootLoc = new int[2];
+        int[] boxLoc = new int[2];
+        root.getLocationInWindow(rootLoc);
+        searchBox.getLocationInWindow(boxLoc);
+        int targetLeft = boxLoc[0] - rootLoc[0];
+        int targetTop = boxLoc[1] - rootLoc[1] + searchBox.getHeight() + UiKit.px(10);
+        int targetWidth = searchBox.getWidth();
+        if (targetWidth > 0 && targetLeft > 0) {
+            ViewGroup.LayoutParams vlp = aiCard.getLayoutParams();
+            if (vlp instanceof FrameLayout.LayoutParams) {
+                FrameLayout.LayoutParams flp = (FrameLayout.LayoutParams) vlp;
+                flp.gravity = Gravity.TOP | Gravity.START;
+                flp.leftMargin = targetLeft;
+                flp.topMargin = targetTop;
+                flp.width = targetWidth;
+                aiCard.setLayoutParams(flp);
+            }
+        }
+    }
+
     /** Shows an answer; {@code staysMs} after which it leaves unless {@link #hideAiCardSoon} is called first. */
     public void showBubble(CharSequence text, boolean thinking, long staysMs) {
+        updateAiCardPosition();
+        if (searchBox != null && searchBox.getWidth() <= 0) {
+            searchBox.post(this::updateAiCardPosition);
+        }
         aiCard.removeAllViews();
         LinearLayout card = new LinearLayout(ctx);
         card.setOrientation(LinearLayout.HORIZONTAL);

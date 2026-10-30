@@ -280,7 +280,8 @@ public final class TvWebRemoteServer {
                 asset(out, "remote/me.html", "text/html; charset=utf-8");
                 return;
             }
-            if (path.equals("/manifest.webmanifest") || path.endsWith("/manifest.webmanifest")) {
+            if (path.equals("/manifest.webmanifest") || path.endsWith("/manifest.webmanifest")
+                    || path.equals("/manifest.json") || path.endsWith("/manifest.json")) {
                 asset(out, "remote/manifest.webmanifest", "application/manifest+json");
                 return;
             }
@@ -814,6 +815,64 @@ public final class TvWebRemoteServer {
                     Controller c = controller;
                     if (c != null) c.mirrorSearch(text);
                 });
+                return ok;
+            }
+            case "/api/settings": {
+                post(() -> {
+                    com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                    if (ma != null) {
+                        ma.runOnUiThread(ma::onSettings);
+                    }
+                });
+                return ok;
+            }
+            case "/api/cinesub": {
+                post(() -> com.cinetv.launcher.ui.CineSubOverlay.trigger(app));
+                return ok;
+            }
+            case "/api/party/join": {
+                final String id = q.get("id");
+                final String name = q.get("name");
+                com.cinetv.launcher.party.CinePartyManager.get(app).registerPlayer(id, name);
+                return com.cinetv.launcher.party.CinePartyManager.get(app).getState();
+            }
+            case "/api/party/state": {
+                return com.cinetv.launcher.party.CinePartyManager.get(app).getState();
+            }
+            case "/api/game/quiz/start": {
+                post(() -> {
+                    com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                    if (ma != null) ma.showPartyQuizModal();
+                    com.cinetv.launcher.party.CinePartyManager.get(app).startQuiz();
+                });
+                return ok;
+            }
+            case "/api/game/quiz/stop": {
+                com.cinetv.launcher.party.CinePartyManager.get(app).stopQuiz();
+                return ok;
+            }
+            case "/api/game/quiz/answer": {
+                final String id = q.get("id");
+                final String answer = q.get("answer");
+                com.cinetv.launcher.party.CinePartyManager.get(app).submitAnswer(id, answer);
+                return ok;
+            }
+            case "/api/party/suggest": {
+                final String title = q.get("title");
+                final String user = q.get("user");
+                com.cinetv.launcher.party.CinePartyManager.get(app).addRouletteSuggestion(title, user);
+                post(() -> {
+                    com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                    if (ma != null) ma.showMovieRouletteModal();
+                });
+                return ok;
+            }
+            case "/api/party/roulette/spin": {
+                JSONObject winner = com.cinetv.launcher.party.CinePartyManager.get(app).spinRoulette();
+                return winner != null ? winner : ok;
+            }
+            case "/api/party/roulette/clear": {
+                com.cinetv.launcher.party.CinePartyManager.get(app).clearRouletteSuggestions();
                 return ok;
             }
             case "/api/mouse": {

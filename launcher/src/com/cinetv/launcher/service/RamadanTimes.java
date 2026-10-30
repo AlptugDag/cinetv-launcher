@@ -174,17 +174,17 @@ public final class RamadanTimes {
                 int hours = diffMin / 60;
                 int mins = diffMin % 60;
                 if (hours > 0) {
-                    return "🌙 İftara " + hours + " sa " + (mins > 0 ? mins + " dk" : "") + " · " + iftarStr;
+                    return "İftara " + hours + " sa " + (mins > 0 ? mins + " dk" : "") + " · " + iftarStr;
                 } else if (mins > 0) {
-                    return "🌙 İftara " + mins + " dk · " + iftarStr;
+                    return "İftara " + mins + " dk · " + iftarStr;
                 } else {
-                    return "🌙 Hayırlı İftarlar! · " + iftarStr;
+                    return "Hayırlı İftarlar! · " + iftarStr;
                 }
             }
 
             // Scenario 2: Within 25 minutes after iftar
             if (curTotalMin >= iftarTotalMin && curTotalMin < iftarTotalMin + 25) {
-                return "🌙 Hayırlı İftarlar! (İftar Vakti)";
+                return "Hayırlı İftarlar! (İftar Vakti)";
             }
 
             // Scenario 3: After Iftar until Sahur / Imsak (Night)
@@ -199,12 +199,12 @@ public final class RamadanTimes {
             int sMins = diffToImsakMin % 60;
 
             if (sHours > 0) {
-                return "✨ Sahur / İmsak: " + imsakStr + " · " + sHours + " sa kaldı";
+                return "Sahur / İmsak: " + imsakStr + " · " + sHours + " sa kaldı";
             } else {
-                return "✨ İmsaka Son " + sMins + " dk! · " + imsakStr;
+                return "İmsaka Son " + sMins + " dk! · " + imsakStr;
             }
         } catch (Throwable t) {
-            return "🌙 İftar: " + iftarStr + " · İmsak: " + imsakStr;
+            return "İftar: " + iftarStr + " · İmsak: " + imsakStr;
         }
     }
 

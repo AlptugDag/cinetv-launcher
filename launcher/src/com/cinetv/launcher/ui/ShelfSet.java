@@ -406,8 +406,13 @@ final class ShelfSet {
             p.setShader(null);
         }
 
+        private float shelfDeckDepth() {
+            // Holds precisely the two bottom corners and base plane of the tilted DVD keep case
+            return Math.max(UiKit.pxf(28), caseW * 0.22f);
+        }
+
         private void cinemaShelf(Canvas c) {
-            renderCurvedShelf(c, UiKit.pxf(48), UiKit.pxf(22),
+            renderCurvedShelf(c, shelfDeckDepth(), UiKit.pxf(22),
                     new int[]{Color.rgb(18, 10, 8), Color.rgb(36, 18, 14), Color.rgb(44, 22, 16)},
                     new float[]{0f, 0.7f, 1f},
                     Color.rgb(228, 180, 52), UiKit.pxf(2.4f),
@@ -419,7 +424,7 @@ final class ShelfSet {
         }
 
         private void redCarpetShelf(Canvas c) {
-            renderCurvedShelf(c, UiKit.pxf(48), UiKit.pxf(22),
+            renderCurvedShelf(c, shelfDeckDepth(), UiKit.pxf(22),
                     new int[]{Color.rgb(128, 10, 22), Color.rgb(175, 14, 30), Color.rgb(195, 18, 36)},
                     new float[]{0f, 0.7f, 1f},
                     Color.rgb(255, 215, 64), UiKit.pxf(2.4f),
@@ -431,7 +436,7 @@ final class ShelfSet {
         }
 
         private void closetShelf(Canvas c) {
-            renderCurvedShelf(c, UiKit.pxf(36), UiKit.pxf(14),
+            renderCurvedShelf(c, shelfDeckDepth() * 0.85f, UiKit.pxf(16),
                     new int[]{Color.rgb(38, 40, 44), Color.rgb(58, 60, 66), Color.rgb(74, 76, 82)},
                     new float[]{0f, 0.6f, 1f},
                     Color.rgb(132, 135, 142), UiKit.pxf(2.0f),
@@ -474,7 +479,7 @@ final class ShelfSet {
                 spotCol = Color.argb(38, 56, 189, 248);
             }
 
-            renderCurvedShelf(c, UiKit.pxf(48), UiKit.pxf(22),
+            renderCurvedShelf(c, shelfDeckDepth(), UiKit.pxf(22),
                     new int[]{deckTop, deckBot}, null,
                     rimCol, UiKit.pxf(2.4f),
                     new int[]{faceTop, faceBot}, null,

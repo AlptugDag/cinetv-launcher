@@ -44,16 +44,16 @@ android {
         minSdk 26
         targetSdk 34
         // Release builds take the version from the git tag (CI passes -PcineTvVersion=1.0.0).
-        def ver = (project.findProperty('cineTvVersion') ?: '1.0.0.18').toString().replaceFirst('^v', '')
+        def ver = (project.findProperty('cineTvVersion') ?: '1.0.0.18 Beta 2').toString().replaceFirst('^v', '')
         def parts = ver.tokenize('.').collect { it.replaceAll('[^0-9]', '') as int }
         versionName ver
         // Numbering restarted at 1.0.0 after 3.2.0: the 1000000 base keeps codes above every older build's, so
         // TVs that had them still take updates (Android refuses a lower code without wiping the app's data).
         // A fourth part counts small fixes: 1.0.0.1 = 1100001. Letter suffixes boost code so 1.0.0.9b > 1.0.0.9.
         def part = { i -> parts.size() > i ? parts[i] : 0 }
-        def suffixBoost = ver.endsWith('b') ? 1 : (ver.endsWith('c') ? 2 : (ver.endsWith('d') ? 3 : 0))
+        def suffixBoost = ver.contains('Beta') ? 20 : (ver.endsWith('b') ? 1 : (ver.endsWith('c') ? 2 : (ver.endsWith('d') ? 3 : 0)))
         def p3 = parts.size() >= 5 ? (part(3) * 10 + part(4)) : part(3)
-        def revBoost = (project.findProperty('cineTvRev') ?: '7') as int
+        def revBoost = (project.findProperty('cineTvRev') ?: '8') as int
         versionCode 1000000 + part(0) * 100000 + part(1) * 1000 + part(2) * 10 + p3 + suffixBoost + revBoost
     }
 
@@ -73,6 +73,7 @@ android {
     }
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
@@ -143,6 +144,14 @@ tasks.configureEach { task ->
 }
 
 dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
     implementation 'com.google.zxing:core:3.5.3'
+    implementation 'androidx.media3:media3-exoplayer:1.2.1'
+    implementation 'androidx.media3:media3-ui:1.2.1'
+    implementation 'androidx.media3:media3-datasource:1.2.1'
+    implementation 'androidx.media3:media3-datasource-okhttp:1.2.1'
+    implementation 'androidx.media3:media3-database:1.2.1'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.github.teamnewpipe.NewPipeExtractor:extractor:v0.24.8'
     testImplementation 'junit:junit:4.13.2'
 }

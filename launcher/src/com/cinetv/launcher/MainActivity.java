@@ -12,11 +12,17 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.TypedValue;
+import android.net.Uri;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import com.cinetv.launcher.ui.Glass;
+import com.cinetv.launcher.ui.UiKit;
 
 import com.cinetv.launcher.ai.LlmClient;
 import com.cinetv.launcher.ai.MovieAssistant;
@@ -112,6 +118,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private DateFormat dateFmt;
     private int lastShelfHour = -1;
     private int lastShelfDay = -1;
+    private long lastDpadRepeatMs = 0L;
 
     private final Runnable clockTick = new Runnable() {
         @Override
@@ -341,7 +348,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         lastShelfDay = curDay;
         // Suppress unwanted OEM TV tuner attempting to steal focus
         handler.postDelayed(() -> {
-            if (!isFinishing() && !hasWindowFocus() && DeviceTweaks.isUnwantedTuner()) {
+            TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
+            String currentPkg = svc != null ? svc.getLastPackage() : null;
+            boolean isOemTuner = "com.mediatek.wwtv.tvcenter".equals(currentPkg) || "com.arcelik.tv.livetv".equals(currentPkg);
+            if (!isFinishing() && !hasWindowFocus() && isOemTuner && DeviceTweaks.isUnwantedTuner()) {
                 background(() -> LocalAdb.shell(this, "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null", 800));
                 try {
                     startActivity(new Intent(this, MainActivity.class)
@@ -357,7 +367,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     private static long lastGreetingMs = 0L;
-    private static final long GREETING_INTERVAL_MS = 2 * 3600 * 1000L;
+    private static final long GREETING_INTERVAL_MS = 15 * 60 * 1000L;
     private int greetingAttempts = 0;
 
     private boolean isNetworkAvailable() {
@@ -373,10 +383,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     private void maybeSpeakStartupGreeting() {
         long now = System.currentTimeMillis();
-        if (now - lastGreetingMs < GREETING_INTERVAL_MS) return;
+        if (lastGreetingMs > 0 && now - lastGreetingMs < GREETING_INTERVAL_MS) return;
         greetingAttempts = 0;
         handler.removeCallbacks(greetingRetryRunnable);
-        handler.postDelayed(greetingRetryRunnable, 2500L);
+        handler.postDelayed(greetingRetryRunnable, 1800L);
     }
 
     private final Runnable greetingRetryRunnable = new Runnable() {
@@ -384,8 +394,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         public void run() {
             if (isFinishing() || !inFront) return;
             greetingAttempts++;
-            if (!isNetworkAvailable() && greetingAttempts < 6) {
-                handler.postDelayed(this, 3000L);
+            if (!isNetworkAvailable() && greetingAttempts < 2) {
+                handler.postDelayed(this, 1500L);
                 return;
             }
             performStartupGreeting();
@@ -404,20 +414,26 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         String greeting;
         if (tr) {
             String timeSalute;
-            if (hour >= 5 && hour < 12) timeSalute = "Günaydın.";
-            else if (hour >= 12 && hour < 18) timeSalute = "İyi günler.";
-            else if (hour >= 18 && hour < 23) timeSalute = "İyi akşamlar.";
-            else timeSalute = "İyi geceler.";
+            if (hour >= 5 && hour < 12) timeSalute = "Günaydın";
+            else if (hour >= 12 && hour < 18) timeSalute = "İyi günler";
+            else if (hour >= 18 && hour < 23) timeSalute = "İyi akşamlar";
+            else timeSalute = "İyi geceler";
 
-            StringBuilder sb = new StringBuilder();
-            sb.append(timeSalute).append(" CineTV'ye hoş geldiniz.");
-            if (!weather.isEmpty()) {
+            String[] templates = {
+                    timeSalute + ", Sine TV'ye hoş geldiniz. Sinema arşiviniz vitrinde hazır.",
+                    timeSalute + "! Sine TV açıldı, bugünün seçkisine göz atabilirsiniz.",
+                    timeSalute + ", Sine TV'ye hoş geldiniz. Harika bir film akşamı dilerim.",
+                    timeSalute + "! 4K sinema koleksiyonunuz hazır.",
+                    timeSalute + ", Sine TV hazır. Keyifli seyirler dilerim."
+            };
+            int rIdx = (int) (System.currentTimeMillis() % templates.length);
+            StringBuilder sb = new StringBuilder(templates[rIdx]);
+            if (weather != null && !weather.isEmpty() && (hour >= 6 && hour <= 20)) {
                 sb.append(" ").append(city).append("'da hava ").append(weather).append(".");
             }
-            sb.append(" Günün seçkisi vitrinde hazır.");
             greeting = sb.toString();
         } else {
-            greeting = "Welcome to CineTV. Today's curation is ready on the shelf.";
+            greeting = "Welcome to CineTV. Today's cinema curation is ready on the shelf.";
         }
 
         com.cinetv.launcher.ai.EmaLightningTts.speak(this, greeting);
@@ -501,7 +517,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                         () -> {
                             com.cinetv.launcher.device.NightCare.setNightViewingMode(MainActivity.this, true);
                             if (home != null) home.applyNightViewingMode(true);
-                            Toast.makeText(MainActivity.this, "🌙 Gece İzleme Modu Aktif Edildi", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(MainActivity.this, "Gece İzleme Modu Aktif Edildi", Toast.LENGTH_SHORT).show();
                         },
                         () -> {
                             com.cinetv.launcher.device.NightCare.setNightViewingMode(MainActivity.this, false);
@@ -637,10 +653,19 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             userInteractedDuringBanner = true;
             resetIdle();
         }
-        // Throttle vertical D-pad key repeats between rows to prevent focus skipping multiple rows on laggy frames
-        if (down && e.getRepeatCount() > 0 && !home.modal.isShowing() && !home.keyboard.isShowing()
-                && (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN || e.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP)) {
-            return true;
+        // Throttle D-pad key repeats to prevent rapid accidental skips on Bluetooth/IR TV remotes
+        if (down && e.getRepeatCount() > 0 && !home.modal.isShowing() && !home.keyboard.isShowing()) {
+            int code = e.getKeyCode();
+            if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_DPAD_UP) {
+                return true;
+            }
+            if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                long now = android.os.SystemClock.uptimeMillis();
+                if (now - lastDpadRepeatMs < 220L) {
+                    return true;
+                }
+                lastDpadRepeatMs = now;
+            }
         }
         if (home.screensaver.getVisibility() == View.VISIBLE) {
             if (down) hideScreensaver();
@@ -707,6 +732,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void onBackPressed() {
         if (home == null) return;
+        com.cinetv.launcher.device.SystemAudio.back(this);
         com.cinetv.launcher.ai.EmaLightningTts.stop();
         if (home.modal.isShowing()) {
             home.modal.back();
@@ -1135,7 +1161,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     private void setShelf(String title, List<Movie> movies, boolean remember) {
-        home.shelfLabel.setText(title.toUpperCase(Locale.getDefault()));
+        String cleanTitle = (title != null) ? title.replaceAll("\\b\\d{1,2}[:.]\\d{2}\\b\\s*", "").trim() : "";
+        if (cleanTitle.isEmpty()) cleanTitle = getString(R.string.cat_trending);
+        home.shelfLabel.setText(cleanTitle.toUpperCase(Locale.getDefault()));
         home.shelf.setMovies(movies);
         final Context app = getApplicationContext();
         for (int i = 0; i < Math.min(4, movies.size()); i++) {
@@ -1204,6 +1232,92 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     // ---- opening a film ---------------------------------------------------------------------------
 
+    public void showPartyQuizModal() {
+        if (home != null && home.modal != null) {
+            home.modal.push(() -> Panels.buildPartyQuizModal(this, home.modal));
+        }
+    }
+
+    public void showMovieRouletteModal() {
+        if (home != null && home.modal != null) {
+            home.modal.push(() -> Panels.buildMovieRouletteModal(this, home.modal));
+        }
+    }
+
+    public void startMovieRoulette() {
+        showMovieRouletteModal();
+    }
+
+    private void launchFilm(Movie m) {
+        if (m == null) return;
+        boolean ok = AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl);
+        if (!ok) {
+            showNuvioNotFoundDialog(m);
+        } else {
+            com.cinetv.launcher.service.LetterboxdSync.recordWatch(this, m);
+        }
+    }
+
+    public void showNuvioNotFoundDialog(final Movie m) {
+        if (home == null || home.modal == null) return;
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        home.modal.push(() -> {
+            LinearLayout root = new LinearLayout(this);
+            root.setOrientation(LinearLayout.VERTICAL);
+            root.setPadding(UiKit.px(36), UiKit.px(28), UiKit.px(36), UiKit.px(28));
+            root.setBackground(Glass.panel(root, 24));
+            root.setFocusable(true);
+
+            TextView title = UiKit.bold(this, 26, UiKit.INK);
+            title.setText(tr ? "Nuvio veya Uyumlu Oynatıcı Bulunamadı" : "Nuvio Player Not Found");
+            root.addView(title);
+
+            TextView desc = UiKit.label(this, 16, UiKit.INK_DIM);
+            desc.setPadding(0, UiKit.px(12), 0, UiKit.px(24));
+            desc.setLineSpacing(UiKit.pxf(6), 1.15f);
+            desc.setMaxWidth(UiKit.px(740));
+            desc.setText(tr
+                    ? "CineTV'nin filmleri ve dizileri 4K/1080p kalitesinde açabilmesi için televizyonunuzda Nuvio veya Stremio oynatıcısının kurulu olması gerekir.\n\n"
+                    + "Aşağıdaki seçeneklerden biriyle Nuvio'yu hemen kurabilir veya cihazınızdaki başka bir oynatıcıyı deneyebilirsiniz."
+                    : "To play movies and series in 4K/1080p, CineTV requires Nuvio or Stremio installed on your TV.\n\n"
+                    + "You can install Nuvio now or attempt opening with another installed media player.");
+            root.addView(desc);
+
+            LinearLayout btns = new LinearLayout(this);
+            btns.setOrientation(LinearLayout.HORIZONTAL);
+
+            TextView installBtn = Controls.button(this, tr ? "Nuvio Kurulum Rehberi (QR Kod)" : "Install Nuvio (QR Guide)", v -> {
+                home.modal.replace(() -> Panels.buildNuvioInstallGuideModal(this, home.modal));
+            });
+            btns.addView(installBtn);
+
+            View sp1 = new View(this);
+            btns.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+
+            TextView genericBtn = Controls.button(this, tr ? "Harici Oynatıcı ile Dene" : "Try External Player", v -> {
+                home.modal.back();
+                try {
+                    Intent generic = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.imdb.com/title/" + m.imdbId));
+                    generic.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(generic);
+                } catch (Throwable ignored) {
+                    Toast.makeText(this, tr ? "Uygun harici oynatıcı bulunamadı." : "No external player found.", Toast.LENGTH_SHORT).show();
+                }
+            });
+            btns.addView(genericBtn);
+
+            View sp2 = new View(this);
+            btns.addView(sp2, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+
+            TextView closeBtn = Controls.button(this, tr ? "Kapat" : "Close", v -> home.modal.back());
+            btns.addView(closeBtn);
+
+            root.addView(btns);
+            root.post(installBtn::requestFocus);
+            return root;
+        });
+    }
+
     /** Plays the DVD opening (when enabled and the TV can afford it), then opens the title in Nuvio. */
     public void openTitle(final Movie m, DvdCaseView from) {
         com.cinetv.launcher.ai.EmaLightningTts.stop();
@@ -1214,7 +1328,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 return;
             }
             if (!m.imdbId.isEmpty()) {
-                AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl);
+                launchFilm(m);
                 return;
             }
             // Search results carry only TMDB ids: look the IMDb id up now.
@@ -1224,7 +1338,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     Movie resolved = MovieCatalog.resolve(appCtx, m.title, m.year);
                     if (resolved != null && !resolved.imdbId.isEmpty()) m.imdbId = resolved.imdbId;
                 }
-                ui(() -> AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl));
+                ui(() -> launchFilm(m));
             });
         };
         // trailer moments play inside the opened case, so they open it even with the animation off
@@ -1272,11 +1386,22 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         });
     }
 
+    private Runnable trailerPrefetchRunnable;
+
     private void prefetchMovie(final Movie m) {
         if (m == null) return;
         final Context app = getApplicationContext();
         final int w = home.opening.innerWidth(), h = home.opening.innerHeight();
         MovieCatalog.prefetchTrailer(app, m);
+        if (home != null && home.trailer != null && Prefs.trailerMoments(app)) {
+            if (trailerPrefetchRunnable != null) handler.removeCallbacks(trailerPrefetchRunnable);
+            trailerPrefetchRunnable = () -> {
+                if (home != null && home.trailer != null) {
+                    home.trailer.prepare(m);
+                }
+            };
+            handler.postDelayed(trailerPrefetchRunnable, 320L);
+        }
         background(() -> {
             try {
                 if (m.cast == null || m.cast.isEmpty()) {
@@ -1284,6 +1409,23 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 }
                 if (m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
                     PosterCache.load(app, m.backdropUrl, w * 2, h);
+                }
+                // Also prefetch adjacent shelf neighbors so booklet & photos open instantaneously
+                int idx = home.shelf.focusedIndex();
+                List<Movie> list = home.shelf.movies();
+                if (list != null && !list.isEmpty()) {
+                    if (idx + 1 < list.size()) {
+                        Movie next = list.get(idx + 1);
+                        if (next != null && (next.cast == null || next.cast.isEmpty())) {
+                            MovieCatalog.details(app, next);
+                        }
+                    }
+                    if (idx - 1 >= 0) {
+                        Movie prev = list.get(idx - 1);
+                        if (prev != null && (prev.cast == null || prev.cast.isEmpty())) {
+                            MovieCatalog.details(app, prev);
+                        }
+                    }
                 }
             } catch (Throwable ignored) {
             }
@@ -1296,20 +1438,14 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         final int w = home.opening.innerWidth(), h = home.opening.innerHeight();
         background(() -> {
             try {
-                final String initialBackdrop = m.backdropUrl;
-                final Bitmap[] stillBox = new Bitmap[1];
-                Thread stillThread = null;
-                if (initialBackdrop != null && !initialBackdrop.isEmpty()) {
-                    stillThread = new Thread(() -> stillBox[0] = PosterCache.load(app, initialBackdrop, w * 2, h));
-                    stillThread.start();
+                boolean needsDetails = (m.cast == null || m.cast.isEmpty() || m.overview == null || m.overview.isEmpty());
+                if (needsDetails) {
+                    MovieCatalog.details(app, m);
                 }
-                MovieCatalog.details(app, m);
-                if (stillThread != null) {
-                    try { stillThread.join(2500); } catch (Throwable ignored) {}
-                }
-                Bitmap still = stillBox[0];
-                if (still == null && m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
-                    still = PosterCache.load(app, m.backdropUrl, w * 2, h);
+                Bitmap still = null;
+                if (m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
+                    still = PosterCache.getFast(m.backdropUrl);
+                    if (still == null) still = PosterCache.load(app, m.backdropUrl, w * 2, h);
                 }
                 final Bitmap inner = DvdOpeningView.bakeInner(app, w, h, dvd.cover, still, m, dvd.accent);
                 ui(() -> home.opening.setInner(inner));
@@ -1780,8 +1916,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void onWatchlistSuggested(String movieTitle, String userLabel) {
         String msg = (userLabel != null && !userLabel.isEmpty())
-                ? "🍿 " + userLabel + ", '" + movieTitle + "' filmini ortak listeye önerdi!"
-                : "🍿 Ortak listeye yeni film önerildi: " + movieTitle;
+                ? userLabel + ", '" + movieTitle + "' filmini ortak listeye önerdi!"
+                : "Ortak listeye yeni film önerildi: " + movieTitle;
         if (home != null) home.showBubble(msg, false, 5000);
         com.cinetv.launcher.ai.EmaLightningTts.speak(this, msg);
     }

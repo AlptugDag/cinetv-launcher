@@ -26,6 +26,8 @@ public final class HardwareKeys {
     public static final String CLEAN_RAM = "clean_ram";
     public static final String ALL_APPS = "all_apps";
     public static final String SCENE_INSPECTOR = "scene_inspector";
+    public static final String CINESUB = "cinesub";
+    public static final String ROULETTE = "roulette";
     public static final String NIGHT_MODE = "night_mode";
 
     private static final int[] NETFLIX_KEYS = {207, 188, 183, 265, 229, 289, 398, KeyEvent.KEYCODE_PROG_RED, KeyEvent.KEYCODE_BUTTON_1};
@@ -105,10 +107,20 @@ public final class HardwareKeys {
             case NIGHT_MODE:
                 boolean curNight = NightCare.isNightViewingModeActive(ctx);
                 NightCare.setNightViewingMode(ctx, !curNight);
-                Toast.makeText(ctx, !curNight ? "🌙 Gece İzleme Modu Açıldı" : "☀️ Gece İzleme Modu Kapatıldı", Toast.LENGTH_SHORT).show();
+                Toast.makeText(ctx, !curNight ? "Gece İzleme Modu Açıldı" : "Gece İzleme Modu Kapatıldı", Toast.LENGTH_SHORT).show();
                 return true;
             case SCENE_INSPECTOR:
-                com.cinetv.launcher.ai.SceneInspector.inspectScene(ctx, null);
+            case CINESUB:
+                com.cinetv.launcher.ui.CineSubOverlay.trigger(ctx);
+                return true;
+            case ROULETTE:
+                if (ctx instanceof com.cinetv.launcher.MainActivity) {
+                    ((com.cinetv.launcher.MainActivity) ctx).startMovieRoulette();
+                } else {
+                    ctx.startActivity(new android.content.Intent(ctx, com.cinetv.launcher.MainActivity.class)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                            .putExtra("action", "roulette"));
+                }
                 return true;
             case ALL_APPS:
                 return false;

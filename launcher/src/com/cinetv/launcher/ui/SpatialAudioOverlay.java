@@ -88,7 +88,7 @@ public final class SpatialAudioOverlay {
 
         // Header
         TextView title = UiKit.bold(app, 22, UiKit.INK);
-        title.setText(tr ? "🎧 AirPods & Uzamsal Ses" : "🎧 AirPods & Spatial Audio");
+        title.setText(tr ? "AirPods & Uzamsal Ses" : "AirPods & Spatial Audio");
         panel.addView(title);
 
         TextView sub = UiKit.label(app, 14, Color.parseColor("#34D399"));

@@ -8,6 +8,7 @@ import android.graphics.LightingColorFilter;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.view.View;
 
 /**
@@ -31,11 +32,13 @@ public class DvdCaseView extends View {
     private float drift;
     private float blur;
     private float glint;
+    private android.graphics.ColorFilter themeFilter;
     private float ca, sa, cb, sb, persp;
 
     private final Paint bmpPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Paint wrapPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Paint fxPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Paint sheenPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix matrix = new Matrix();
     private final RectF rect = new RectF();
     private final float[] proj = new float[16];
@@ -135,6 +138,13 @@ public class DvdCaseView extends View {
             if (py > maxBottom) maxBottom = py;
         }
         return maxBottom;
+    }
+
+    public void setThemeFilter(android.graphics.ColorFilter filter) {
+        if (this.themeFilter != filter) {
+            this.themeFilter = filter;
+            invalidate();
+        }
     }
 
     /** Extra shrink-wrap reflection while the focused case turns on its own (0..1). */
@@ -295,7 +305,7 @@ public class DvdCaseView extends View {
             dst[k * 2] = proj[idx[k] * 2];
             dst[k * 2 + 1] = proj[idx[k] * 2 + 1];
         }
-        bmpPaint.setColorFilter(filter);
+        bmpPaint.setColorFilter(themeFilter != null ? themeFilter : filter);
         if (soft == null || blur < 0.98f) {
             mapTo(tex, 0, tex.getWidth());
             bmpPaint.setAlpha(255);
@@ -310,30 +320,43 @@ public class DvdCaseView extends View {
         }
 
         if (wrapped) {
-            // Shrink-wrap: a window onto a wide reflection texture, sliding as the case turns and the shelf moves.
+            // Soft collectors' satin cellophane sheen (subtle and realistic, never blown-out CGI):
             Bitmap wrap = DvdCase.wrap();
             float facing = Math.max(0f, -z2);
-            float slide = (x1 * 0.5f + 0.5f) * 0.55f + drift * 0.08f + glint * 0.6f;
+            float slide = (x1 * 0.5f + 0.5f) * 0.40f + drift * 0.05f + glint * 0.45f;
             int win = wrap.getWidth() / 3;
-            // Continuous ping-pong triangle wrap: eliminates hard seam snaps completely
             float phase = (float) (slide - Math.floor(slide));
             float smooth = phase <= 0.5f ? phase * 2f : (1f - phase) * 2f;
             int off = (int) (smooth * (wrap.getWidth() - win));
             mapTo(tex, 0, tex.getWidth());
-            wrapPaint.setAlpha((int) (255 * Math.min(1f, (0.45f + 0.55f * lift + 1.4f * glint) * (0.6f + 0.4f * facing)) * dim));
+            // Velvety soft reflection with harmonic glint boost
+            float wrapStrength = (0.16f + 0.12f * lift + 0.14f * glint) * (0.5f + 0.5f * facing) * dim;
+            wrapPaint.setAlpha((int) (255 * Math.min(0.36f, wrapStrength)));
             sliceSrc.set(off, 0, off + win, wrap.getHeight());
             rect.set(0, 0, tex.getWidth(), tex.getHeight());
             canvas.save();
             canvas.concat(matrix);
             canvas.drawBitmap(wrap, sliceSrc, rect, wrapPaint);
-            if (glint > 0.05f) {
-                // Turning towards the light: smooth second flare pass without snap
-                float phase2 = (float) (slide * 1.7f + 0.3f - Math.floor(slide * 1.7f + 0.3f));
-                float smooth2 = phase2 <= 0.5f ? phase2 * 2f : (1f - phase2) * 2f;
-                int off2 = (int) (smooth2 * (wrap.getWidth() - win));
-                sliceSrc.set(off2, 0, off2 + win, wrap.getHeight());
-                wrapPaint.setAlpha((int) (255 * glint * dim));
-                canvas.drawBitmap(wrap, sliceSrc, rect, wrapPaint);
+
+            // Physical Fresnel cellophane sleeve reflection: subtle, organic and true to physical keepcases
+            if (lift > 0.05f && glint > 0.01f) {
+                float sheenCenter = tex.getWidth() * (0.20f + glint * 0.60f);
+                float sheenW = tex.getWidth() * 0.45f;
+                int maxAlpha = Math.min(38, Math.round(36f * lift * (0.6f + 0.4f * glint)));
+                sheenPaint.setShader(new android.graphics.LinearGradient(
+                        sheenCenter - sheenW, -tex.getHeight() * 0.15f,
+                        sheenCenter + sheenW, tex.getHeight() * 1.15f,
+                        new int[]{
+                                Color.TRANSPARENT,
+                                Color.argb(Math.round(maxAlpha * 0.45f), 224, 242, 254),
+                                Color.argb(maxAlpha, 255, 252, 240),
+                                Color.argb(Math.round(maxAlpha * 0.50f), 254, 240, 224),
+                                Color.TRANSPARENT
+                        },
+                        new float[]{0f, 0.32f, 0.50f, 0.68f, 1f},
+                        Shader.TileMode.CLAMP
+                ));
+                canvas.drawRect(0, 0, tex.getWidth(), tex.getHeight(), sheenPaint);
             }
             canvas.restore();
         }

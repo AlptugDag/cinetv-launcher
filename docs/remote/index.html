@@ -8,6 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CineTV">
 <title>CineTV by Alptuğ Dağ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon.png">
@@ -26,7 +29,8 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
-  font:15px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+  font:15px/1.4 'Poppins',-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+button,input,select,textarea{font-family:'Poppins',-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
 body::before{content:"";position:fixed;inset:-20%;z-index:-1;
   background:radial-gradient(40% 35% at 20% 10%,rgba(139,92,246,.35),transparent 70%),
              radial-gradient(35% 30% at 85% 30%,rgba(56,189,248,.18),transparent 70%),
@@ -227,6 +231,32 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .found button{text-align:left;border:1px solid var(--edge);background:var(--glass);color:var(--ink);border-radius:14px;padding:12px 14px;font-size:13px;word-break:break-all}
 .skeleton{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,.12),rgba(255,255,255,.05));background-size:200% 100%;animation:sk 1.2s infinite}
 @keyframes sk{to{background-position:-200% 0}}
+
+/* Liquid Glass PWA card */
+.pwa-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:14px 16px;margin-bottom:12px;-webkit-backdrop-filter:blur(28px) saturate(180%);backdrop-filter:blur(28px) saturate(180%);box-shadow:inset 0 1px 1px rgba(255,255,255,.28),0 12px 32px rgba(0,0,0,.45);position:relative}
+.pwa-card h4{margin:0 0 4px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;color:#fff}
+.pwa-card p{margin:0 0 10px;font-size:12.5px;color:var(--dim);line-height:1.45}
+.pwa-card .pwa-x{position:absolute;top:10px;right:12px;background:none;border:0;color:var(--dim);font-size:16px;cursor:pointer;padding:4px}
+
+/* CineParty & Games UI */
+.party-wrap{display:grid;gap:14px;padding:4px 0 28px}
+.party-card{padding:16px 18px}
+.party-card h3{margin:0 0 8px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.party-card p{margin:0 0 12px;font-size:13px;color:var(--dim);line-height:1.45}
+.party-input-row{display:flex;gap:8px;margin-bottom:10px}
+.party-input-row input{flex:1;background:rgba(0,0,0,.35);border:1px solid var(--edge);border-radius:14px;color:var(--ink);padding:10px 14px;font-size:14px;outline:0}
+.party-input-row input:focus{border-color:var(--accent)}
+.party-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(139,92,246,.25);color:var(--accent2);border:1px solid rgba(139,92,246,.4)}
+.quiz-timer-wrap{height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;margin:10px 0}
+.quiz-timer-bar{height:100%;background:linear-gradient(90deg,var(--ok),#f59e0b,#ef4444);width:100%;transition:width 1s linear}
+.party-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.party-pill{padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--edge);font-size:12px;color:var(--ink)}
+.party-pill b{color:var(--accent2)}
+.snake-wrap{text-align:center;position:relative}
+#snakeCanvas{background:#000;border:2px solid rgba(255,255,255,.18);border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.6);touch-action:none;display:block;margin:0 auto}
+.snake-controls{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,46px);gap:6px;justify-content:center;margin-top:12px}
+.snake-btn{background:var(--glass);border:1px solid var(--edge);border-radius:12px;color:#fff;font-size:18px;display:grid;place-items:center;cursor:pointer}
+.snake-btn:active{background:var(--glass-hi);transform:scale(.94)}
 </style>
 </head>
 <body>
@@ -234,6 +264,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <div id="app">
 <header>
   <div class="brand"><img class="sig" src="static/signature.png" alt="" style="cursor:pointer" onclick="document.querySelector('[data-tab=about]').click()" onerror="this.remove()"><b>Cine<span class="tv">TV</span></b><small style="cursor:pointer" onclick="document.querySelector('[data-tab=about]').click()">by Alptuğ Dağ</small><span class="st" id="tvPick"><i id="dot" class="dot"></i><em id="status" data-i="connecting"></em></span></div>
+  <div class="pwa-card" id="pwaCard" hidden>
+    <button class="pwa-x" id="pwaClose">✕</button>
+    <h4><span>📲</span> CineTV Uygulamasını Yükleyin</h4>
+    <p id="pwaDesc">Tarayıcı çubuğu olmadan, tam ekran akıcı mobil kumanda deneyimi için uygulamayı telefonunuza ekleyin.</p>
+    <button class="btn" id="pwaActionBtn" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);width:100%">📲 Uygulamayı Telefona Ekle</button>
+  </div>
   <div class="install glass" id="install" hidden><span id="installText"></span><button id="installGo" hidden></button><button class="x" id="installX">✕</button></div>
   <form class="search glass" id="searchBox" action="javascript:void(0);">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -259,7 +295,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   <section id="tab-remote">
     <div class="rbar">
-      <button class="glass ic" data-key="176" aria-label="Settings"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button>
+      <button class="glass ic" id="settingsBtn" aria-label="Settings"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button>
       <span class="hint" id="rHint" data-i="swipeHint"></span>
       <button class="glass ic pwr" id="pwr" aria-label="Power"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg></button>
     </div>
@@ -302,6 +338,94 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         <button class="glass" data-key="4" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5 4 10l5 5"/><path d="M4 10h10a6 6 0 0 1 0 12h-3" transform="translate(0 -3)"/></svg></button>
       </div>
       <div class="rocker glass"><button data-key="166" data-repeat aria-label="Channel up">⌃</button><span>CH</span><button data-key="167" data-repeat aria-label="Channel down">⌄</button></div>
+    </div>
+  </section>
+
+  <section id="tab-party">
+    <div class="party-wrap">
+      
+      <!-- CineSub Hızlı Tetikleyici -->
+      <div class="party-card glass">
+        <h3><span>✦</span> CineSub (Kültürel Not Kartı)</h3>
+        <p>Film izlerken sahneyi durdurmadan altyazıdaki tarihi olayları, yönetmen göndermelerini ve felsefi kavramları TV ekranının köşesinde mini bir kart olarak açar.</p>
+        <button class="btn" id="partyCineSubBtn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);width:100%">🎬 TV'de CineSub Kültürel Not Kartını Aç</button>
+      </div>
+
+      <!-- 10 Soruluk Sinefil Bilmece Arenası -->
+      <div class="party-card glass" id="quizCard">
+        <h3><span>🏆</span> Sinefil Bilmece Arenası (10 Soru)</h3>
+        <p>Aynı anda birden fazla telefonla bağlanın! Ekrana gelen aktör, replik veya sahneyi 10 saniye içinde ilk bilen puanı kapar. Kazanan bu akşam hangi filmin izleneceğini seçer!</p>
+        
+        <div id="quizPlayerSetup" class="party-input-row">
+          <input type="text" id="quizPlayerName" placeholder="Yarışmacı Adınız (Örn: Alptuğ)" maxlength="20">
+          <button class="btn" id="quizJoinBtn" style="padding:0 16px;font-size:13px">Katıl</button>
+        </div>
+
+        <div id="quizInactiveView" style="margin-top:10px">
+          <button class="btn" id="quizStartBtn" style="background:linear-gradient(135deg,#10b981,#059669);width:100%">🎮 TV'de 10 Soruluk Bilmeceyi Başlat</button>
+        </div>
+
+        <div id="quizActiveView" hidden style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span class="party-badge" id="quizQIndex">Soru 1 / 10</span>
+            <span style="font-size:13px;font-weight:700;color:#ef4444" id="quizTimerText">10s</span>
+          </div>
+          <div class="quiz-timer-wrap"><div class="quiz-timer-bar" id="quizTimerBar"></div></div>
+          <div id="quizClueBox" style="background:rgba(0,0,0,.3);border-radius:14px;padding:12px;margin:10px 0;border:1px solid var(--edge)">
+            <img id="quizImg" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;margin-bottom:8px" alt="" hidden>
+            <div id="quizQuestionText" style="font-size:14px;font-weight:600;margin-bottom:4px"></div>
+            <div id="quizHintText" style="font-size:12px;color:var(--dim)"></div>
+          </div>
+          <div class="party-input-row" id="quizAnswerRow">
+            <input type="text" id="quizAnswerInput" placeholder="Cevabınızı buraya yazın..." autocomplete="off">
+            <button class="btn" id="quizAnswerBtn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);padding:0 16px">Gönder</button>
+          </div>
+          <div id="quizFeedback" style="font-size:13px;color:#10b981;font-weight:600;margin:6px 0;display:none"></div>
+          <div id="quizLeaderboard" style="margin-top:12px;font-size:12px;color:var(--dim)"></div>
+          <button class="btn ghost" id="quizStopBtn" style="margin-top:10px;width:100%;font-size:12px">Yarışmayı Bitir</button>
+        </div>
+      </div>
+
+      <!-- Film Öneri Ruleti -->
+      <div class="party-card glass">
+        <h3><span>🎡</span> Film Öneri Ruleti</h3>
+        <p>Herkes kendi telefonundan bu akşam izlemek istediği bir filmi TV'ye fırlatsın. Rulet döner ve kazanan film otomatik seçilir!</p>
+        <div class="party-input-row">
+          <input type="text" id="rouletteInput" placeholder="Film ya da Dizi Adı (Örn: Taxi Driver)">
+          <button class="btn" id="rouletteSendBtn" style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:0 14px">Fırlat</button>
+        </div>
+        <div style="font-size:12px;color:var(--dim);margin:6px 0">TV Havuzundaki Öneriler:</div>
+        <div class="party-list" id="rouletteList"><span style="color:var(--faint);font-size:12px">Henüz öneri eklenmedi</span></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn" id="rouletteSpinBtn" style="flex:2;background:linear-gradient(135deg,#8b5cf6,#6366f1)">🎡 TV'de Çarkı Çevir</button>
+          <button class="btn ghost" id="rouletteClearBtn" style="flex:1">Temizle</button>
+        </div>
+      </div>
+
+      <!-- Gyro Sinefil Yılanı -->
+      <div class="party-card glass snake-wrap">
+        <h3><span>🐍</span> Sinefil Yılanı (Gyro Eğim Kontrollü)</h3>
+        <p>Telefonunuzu sağa, sola, öne veya arkaya eğerek yılanı yönetin! Yılan klasik film afişlerini yedikçe büyür.</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;margin-bottom:8px">
+          <span>Skor: <b id="snakeScore" style="color:#10b981">0</b></span>
+          <span>En Yüksek: <b id="snakeBest" style="color:var(--accent2)">0</b></span>
+        </div>
+        <canvas id="snakeCanvas" width="280" height="280"></canvas>
+        <div id="snakeLastFilm" style="margin-top:8px;font-size:12px;color:var(--dim);font-style:italic">Hedef Afiş: Interstellar</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn" id="snakeStartBtn" style="flex:1;background:linear-gradient(135deg,#10b981,#059669)">🎮 Oyunu Başlat</button>
+          <button class="btn ghost" id="snakeGyroToggle" style="flex:1">📱 Gyro: Açık</button>
+        </div>
+        <div class="snake-controls">
+          <div></div>
+          <button class="snake-btn" id="snkUp">▲</button>
+          <div></div>
+          <button class="snake-btn" id="snkLeft">◀</button>
+          <button class="snake-btn" id="snkDown">▼</button>
+          <button class="snake-btn" id="snkRight">▶</button>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -367,6 +491,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <nav class="glass">
   <button class="on" data-tab="search"><span>🎬</span><span data-i="tabSearch"></span></button>
   <button data-tab="remote"><span>🕹️</span><span data-i="tabRemote"></span></button>
+  <button data-tab="party"><span>🎉</span><span data-i="tabParty"></span></button>
   <button data-tab="cast"><span>📡</span><span data-i="tabCast"></span></button>
   <button data-tab="bg"><span>🖼️</span><span data-i="tabBg"></span></button>
   <button data-tab="about"><span>✦</span><span data-i="tabAbout"></span></button>
@@ -378,8 +503,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   <button id="typerGo" type="button">↵</button>
 </form>
 <div class="sheet-bg" id="sheetBg"></div>
-<div class="sheet-bg" id="cropBg"></div>
-<div class="sheet glass" id="cropSheet" style="max-height:92vh;text-align:center">
+<div class="sheet-bg" id="cropBg" hidden style="display:none"></div>
+<div class="sheet glass" id="cropSheet" hidden style="display:none;max-height:92vh;text-align:center">
   <h3 style="margin-top:0">📐 16:9 TV Çerçevesi Odaklama</h3>
   <p style="color:var(--dim);font-size:12px;margin:2px 0 12px">TV ekranına tam oturması için fotoğrafı çerçeve içinde kaydırarak odaklayın</p>
   <div id="cropFrame" style="width:100%;aspect-ratio:16/9;position:relative;overflow:hidden;border-radius:12px;background:#000;border:2px solid var(--accent);touch-action:none">
@@ -416,7 +541,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       connecting:"Connecting…",connected:"Connected",offline:"TV not reachable",searchPh:"Films, series, people…",trending:"Trending",
       results:"Results",noResults:"Nothing found",openTv:"Open on TV",opening:"Opening on your TV…",movie:"Film",series:"Series",similarMovies:"Similar Titles",
       back:"Back",home:"Home",menu:"Menu",send:"Send",input:"Input",guide:"Guide",info:"Info",subs:"Subtitles",audio:"Audio",last:"Last",typePh:"Type on the TV…",sleepOff:"💤 Sleep timer: off",sleepIn:"💤 Sleeps in {n} min",typeNote:"Letters appear in the field that is selected on the TV, in any app; ↵ confirms.",tvSearchPh:"Search or ask on the TV",screensaver:"Start screensaver",
-      tabSearch:"Discover",tabRemote:"Remote",tabCal:"Picture",presets:"Presets",patterns:"Test patterns",picture:"Picture engine",
+      tabSearch:"Discover",tabRemote:"Remote",tabParty:"Party",partyTitle:"Party & Games",tabCal:"Picture",presets:"Presets",patterns:"Test patterns",picture:"Picture engine",
       warmth:"Colour temperature",reset:"Restore my original settings",patternNote:"Choose a pattern, adjust until it looks right, then tap Off.",
       noPanel:"This TV takes picture changes only from its own menu. Show a pattern here, then adjust Picture settings with the TV remote until the pattern looks right.",
       p_natural:"Natural",p_cinema:"Cinema",p_night:"Dark room",p_vivid:"Vivid",
@@ -431,9 +556,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       mCreator:"✦ Alptuğ Dağ Seçkisi",mNoir:"🌙 Gece Yarısı Neo-Noir",mRain:"🌧️ Yağmurlu Gece",mFest:"🏆 Festival Seçkisi",mMind:"🧠 Psikolojik Gizem",mTr:"🇹🇷 Türk Sineması",
       homeHint:"İpucu: Paylaş › Ana Ekrana Ekle ile CineTV tam ekran, tek dokunuşla açılır.",
       connecting:"Bağlanıyor…",connected:"Bağlı",offline:"TV'ye ulaşılamıyor",searchPh:"Film, dizi, oyuncu…",trending:"Trend",
-      results:"Sonuçlar",noResults:"Bir şey bulunamadı",openTv:"TV'de aç",opening:"TV'de açılıyor…",movie:"Film",series:"Dizi",similarMovies:"Benzer Filmler",
+      results:"Sonuçlar",noResults:"Bir şey bulunamadı",openTv:"TV'ye Gönder",opening:"TV'de açılıyor…",movie:"Film",series:"Dizi",similarMovies:"Benzerleri",
       back:"Geri",home:"Ana sayfa",menu:"Menü",send:"Gönder",input:"Kaynak",guide:"Rehber",info:"Bilgi",subs:"Altyazı",audio:"Ses dili",last:"Önceki",typePh:"Televizyona yaz…",sleepOff:"💤 Uyku zamanlayıcı: kapalı",sleepIn:"💤 {n} dk sonra kapanır",typeNote:"Yazdıkların televizyonda seçili alana gelir, hangi uygulama olursa olsun; ↵ onaylar.",tvSearchPh:"TV'de ara veya sor",screensaver:"Ekran koruyucuyu başlat",
-      tabSearch:"Keşfet",tabRemote:"Kumanda",tabCal:"Görüntü",presets:"Hazır ayarlar",patterns:"Test desenleri",picture:"Görüntü motoru",
+      tabSearch:"Keşfet",tabRemote:"Kumanda",tabParty:"Oyunlar",partyTitle:"Parti & Oyunlar",tabCal:"Görüntü",presets:"Hazır ayarlar",patterns:"Test desenleri",picture:"Görüntü motoru",
       warmth:"Renk sıcaklığı",reset:"Orijinal ayarlarıma dön",patternNote:"Bir desen seçin, doğru görünene kadar ayarlayın, sonra Kapat'a dokunun.",
       noPanel:"Bu TV görüntü değişikliklerini yalnızca kendi menüsünden kabul ediyor. Buradan bir desen gösterin, sonra TV kumandasıyla Görüntü ayarlarını desen doğru görünene kadar değiştirin.",
       p_natural:"Doğal",p_cinema:"Sinema",p_night:"Karanlık oda",p_vivid:"Canlı",
@@ -636,6 +761,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     $("searchBox").style.display = name === "search" ? "" : "none";
     document.body.classList.toggle("remote", name === "remote" || name === "cast");
     if (name === "cast") browseLoop(); else browsing = false;
+    if (name === "party") startPartyPolling(); else stopPartyPolling();
     if (name !== "remote") $("kbd").hidden = true;
     requestAnimationFrame(() => document.documentElement.style.setProperty("--hdr", document.querySelector("header").offsetHeight + "px"));
   };
@@ -809,11 +935,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
           ${ratingStr ? `<span class="hud-tag rating">★ ${ratingStr}</span>` : ""}
         </div>
       </div>
-      <p class="ov" style="text-align:center;line-height:1.5">${esc(m.overview || "")}</p>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
-        <button class="btn" id="go">▶︎ ${t("openTv")}</button>
-        <button class="btn ghost" id="suggestBtn" style="background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4)">🍿 Bunu İzleyelim! (TV'ye Öner)</button>
-        <button class="btn ghost" id="similarBtn">✦ ${t("similarMovies") || "Benzer Filmler"}</button>
+      <p class="ov" style="text-align:center;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${esc(m.overview || "")}</p>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn" id="go" style="flex:1;margin:0">▶︎ ${t("openTv") || "TV'de Aç"}</button>
+        <button class="btn ghost" id="similarBtn" style="flex:1;margin:0;background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.4);color:#38bdf8">✦ ${t("similarMovies") || "Benzerleri"}</button>
+      </div>
+      <button class="btn ghost" id="suggestBtn" style="width:100%;margin-top:8px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.4)">🍿 Bunu İzleyelim! (TV'ye Öner)</button>
       </div>`;
     sheet.classList.add("on"); bg.classList.add("on");
     $("go").onclick = async () => {
@@ -983,27 +1110,45 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
   $("mouseBtn").addEventListener("pointerdown", e => e.stopPropagation());
   let gyroMode = false;
-  let calBeta = 0, calGamma = 0, lastBeta = 0, lastGamma = 0;
+  let lastBeta = null, lastGamma = null;
   let smoothDx = 0, smoothDy = 0;
 
   const onOrientation = ev => {
     if (!mouse || !gyroMode) return;
     if (ev.beta === null || ev.gamma === null) return;
-    if (!calBeta && !calGamma) {
-      calBeta = ev.beta; calGamma = ev.gamma;
+    if (lastBeta === null || lastGamma === null) {
       lastBeta = ev.beta; lastGamma = ev.gamma;
       return;
     }
     const dG = (ev.gamma - lastGamma);
     const dB = (ev.beta - lastBeta);
     lastGamma = ev.gamma; lastBeta = ev.beta;
-    if (Math.abs(dG) < 0.08 && Math.abs(dB) < 0.08) return;
-    const sens = 32.0;
-    smoothDx = smoothDx * 0.35 + (dG * sens) * 0.65;
-    smoothDy = smoothDy * 0.35 + (dB * sens) * 0.65;
+    if (Math.abs(dG) < 0.04 && Math.abs(dB) < 0.04) return;
+    // Tilting up (beta increases towards TV) moves reticle UP (negative dy on screen)
+    const sens = 30.0;
+    const targetDx = dG * sens;
+    const targetDy = -dB * sens;
+    // Low-pass exponential smoothing for VR-grade fluid movement
+    smoothDx = smoothDx * 0.40 + targetDx * 0.60;
+    smoothDy = smoothDy * 0.40 + targetDy * 0.60;
     mx += smoothDx;
     my += smoothDy;
     scheduleFlush();
+  };
+
+  const stopGyro = () => {
+    gyroMode = false;
+    window.removeEventListener("deviceorientation", onOrientation);
+    if (gyroBtn) {
+      gyroBtn.classList.remove("on");
+      gyroBtn.textContent = "🎮 3D Gyro";
+    }
+    if (calBtn) calBtn.style.display = "none";
+    if (gyroTrigger) gyroTrigger.style.display = "none";
+    smoothDx = 0; smoothDy = 0;
+    lastBeta = null; lastGamma = null;
+    mx = 0; my = 0;
+    api("mouse/off").catch(() => {});
   };
 
   const gyroBtn = $("gyroBtn"), calBtn = $("calBtn"), gyroTrigger = $("gyroTrigger");
@@ -1012,26 +1157,27 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       e.stopPropagation();
       gyroMode = !gyroMode;
       gyroBtn.classList.toggle("on", gyroMode);
-      gyroBtn.textContent = gyroMode ? "🎮 3D Aktif" : "🎮 3D Gyro";
+      gyroBtn.textContent = gyroMode ? "🎮 VR Aktif" : "🎮 3D Gyro";
       calBtn.style.display = gyroMode ? "block" : "none";
       gyroTrigger.style.display = gyroMode ? "block" : "none";
       if (gyroMode) {
-        calBeta = 0; calGamma = 0;
+        removeEventListener("devicemotion", onMotion);
+        lastBeta = null; lastGamma = null;
         try { if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); } catch (err) {}
         window.addEventListener("deviceorientation", onOrientation);
-        toast("3D Lazer Modu Açıldı. TV'ye doğrultup hareket ettirin.");
+        toast("🎮 VR Lazer Kumandası Açıldı. TV'ye doğrultup hareket ettirin.");
       } else {
-        window.removeEventListener("deviceorientation", onOrientation);
-        smoothDx = 0; smoothDy = 0;
+        stopGyro();
+        if (mouse) addEventListener("devicemotion", onMotion);
       }
     };
   }
   if (calBtn) {
     calBtn.onclick = e => {
       e.stopPropagation();
-      calBeta = lastBeta; calGamma = lastGamma;
+      lastBeta = null; lastGamma = null;
       smoothDx = 0; smoothDy = 0;
-      toast("Merkez Sıfırlandı 🎯");
+      toast("🎯 VR Lazer Merkezi Sıfırlandı");
     };
   }
   if (gyroTrigger) {
@@ -1039,8 +1185,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       e.stopPropagation(); e.preventDefault();
       flush();
       api("mouse/click").catch(() => {});
-      navigator.vibrate && navigator.vibrate(15);
-      gyroTrigger.style.transform = "scale(0.96)";
+      navigator.vibrate && navigator.vibrate(20);
+      gyroTrigger.style.transform = "scale(0.95)";
     };
     gyroTrigger.onpointerup = e => {
       e.stopPropagation();
@@ -1053,13 +1199,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     mouse = !mouse;
     $("mouseBtn").classList.toggle("on", mouse); pad.classList.toggle("mouse", mouse);
     if (gyroBtn) gyroBtn.style.display = mouse ? "block" : "none";
-    if (!mouse && gyroMode && gyroBtn) gyroBtn.click();
-    $("padTip").textContent = t(mouse ? "mouseTip" : "touchTip");
-    if (mouse) {
+    if (!mouse) {
+      if (gyroMode) stopGyro();
+      removeEventListener("devicemotion", onMotion);
+      api("mouse/off").catch(() => {});
+    } else {
+      $("padTip").textContent = t("mouseTip");
       try { if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) await DeviceMotionEvent.requestPermission(); } catch (err) {}
-      addEventListener("devicemotion", onMotion);
+      if (!gyroMode) addEventListener("devicemotion", onMotion);
       api("mouse", {dx: 0, dy: 0}).catch(() => {});
-    } else { removeEventListener("devicemotion", onMotion); api("mouse/off").catch(() => {}); }
+    }
   };
   pad.addEventListener("touchstart", e => { fingers = e.touches.length; }, {passive: true});
   pad.addEventListener("pointerdown", e => {
@@ -1117,6 +1266,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     clearTimeout(pwrT); b.classList.remove("arm"); $("rHint").textContent = t("swipeHint");
     api("power/off").then(() => toast(t("powerOff"))).catch(() => {});
   };
+
+  if ($("settingsBtn")) {
+    $("settingsBtn").onclick = () => {
+      navigator.vibrate && navigator.vibrate(12);
+      api("settings").catch(() => {});
+      toast("⚙️ CineTV Ayarları Açılıyor...");
+    };
+  }
 
   // Microphone: CineTV's assistant answers on the TV; hold or click opens CineTV's voice overlay directly on TV
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1283,6 +1440,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         cropImg.style.left = panX + "px";
         cropImg.style.top = panY + "px";
 
+        cropSheet.style.display = "block"; cropBg.style.display = "block";
+        cropSheet.removeAttribute("hidden"); cropBg.removeAttribute("hidden");
         cropSheet.classList.add("on"); cropBg.classList.add("on");
 
         let startPointerX = 0, startPointerY = 0, startPanX = panX, startPanY = panY, dragging = false;
@@ -1308,6 +1467,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         const closeCrop = () => {
           cropSheet.classList.remove("on"); cropBg.classList.remove("on");
           cropFrame.onpointerdown = null; cropFrame.onpointermove = null;
+          setTimeout(() => {
+            if (!cropSheet.classList.contains("on")) {
+              cropSheet.style.display = "none"; cropBg.style.display = "none";
+              cropSheet.setAttribute("hidden", ""); cropBg.setAttribute("hidden", "");
+            }
+          }, 320);
         };
         $("cropCancel").onclick = closeCrop;
 
@@ -1375,18 +1540,387 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     };
   }
 
-  // "Add to Home Screen": a real prompt on Android, a hint on iPhone; never once it is installed
+  // Apple Liquid Glass PWA & Native Standalone Experience
   const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
-  let dismissed = false; try { dismissed = localStorage.getItem("cinetv.installX") === "1"; } catch (e) {}
+  let pwaDismissed = false;
+  try { pwaDismissed = localStorage.getItem("cinetv.pwaDismissed") === "1"; } catch (e) {}
+
+  let deferredPrompt = null;
+  window.addEventListener("beforeinstallprompt", e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!standalone && !pwaDismissed) {
+      const card = $("pwaCard");
+      if (card) {
+        card.hidden = false;
+        $("pwaDesc").textContent = "CineTV Kumandasını tek dokunuşla ana ekranınıza ekleyin. Sıfır gecikme, tam ekran yerel kumanda.";
+        $("pwaActionBtn").textContent = "📲 Uygulamayı Telefona Yükle";
+        $("pwaActionBtn").onclick = async () => {
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === "accepted") card.hidden = true;
+            deferredPrompt = null;
+          }
+        };
+      }
+    }
+  });
+
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !standalone && !pwaDismissed) {
+    const card = $("pwaCard");
+    if (card) {
+      card.hidden = false;
+      $("pwaDesc").innerHTML = "Safari alt menüsündeki <b>Paylaş [↑]</b> simgesine dokunun ve <b>'Ana Ekrana Ekle'</b>yi seçin. Tarayıcı çubuğu kalkar, CineTV tam ekran yerel uygulama olarak açılır.";
+      $("pwaActionBtn").textContent = "Nasıl Yapılır?";
+      $("pwaActionBtn").onclick = () => {
+        alert("1. Safari ekranının en altındaki Paylaş simgesine [↑] dokunun.\n2. Yukarı kaydırıp 'Ana Ekrana Ekle'yi seçin.\n3. CineTV artık telefonunuzda bağımsız bir app olarak çalışacaktır!");
+      };
+    }
+  }
+
+  const pwaCloseBtn = $("pwaClose");
+  if (pwaCloseBtn) {
+    pwaCloseBtn.onclick = () => {
+      $("pwaCard").hidden = true;
+      try { localStorage.setItem("cinetv.pwaDismissed", "1"); } catch (e) {}
+    };
+  }
+
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register(RELAY ? "sw.js" : "/sw.js").catch(() => {});
-  const showInstall = (text, go) => {
-    if (standalone || dismissed) return;
-    $("installText").textContent = text; $("install").hidden = false;
-    if (go) { $("installGo").textContent = t("installGo"); $("installGo").hidden = false; $("installGo").onclick = go; }
+
+  // CineParty: Living Room Interactive Party Manager
+  let partyPollTimer = null;
+  let partyPlayerId = localStorage.getItem("cinetv.party.id");
+  if (!partyPlayerId) {
+    partyPlayerId = "p_" + Math.random().toString(36).substr(2, 9);
+    try { localStorage.setItem("cinetv.party.id", partyPlayerId); } catch (e) {}
+  }
+  let partyPlayerName = localStorage.getItem("cinetv.party.name") || "";
+  if ($("quizPlayerName") && partyPlayerName) {
+    $("quizPlayerName").value = partyPlayerName;
+  }
+
+  const joinParty = async () => {
+    const nameInput = $("quizPlayerName");
+    const name = nameInput && nameInput.value.trim() ? nameInput.value.trim() : "Misafir";
+    partyPlayerName = name;
+    try { localStorage.setItem("cinetv.party.name", name); } catch (e) {}
+    try {
+      const st = await api("party/join", { id: partyPlayerId, name });
+      renderPartyState(st);
+      toast("🏆 Sinefil Yarışmasına Katıldınız: " + name);
+    } catch (e) {}
   };
-  $("installX").onclick = () => { $("install").hidden = true; try { localStorage.setItem("cinetv.installX", "1"); } catch (e) {} };
-  window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); showInstall(t("installAndroid"), () => { e.prompt(); $("install").hidden = true; }); });
-  if (/iPhone|iPad/.test(navigator.userAgent) && !standalone) showInstall(t("installIos"));
+
+  if ($("quizJoinBtn")) $("quizJoinBtn").onclick = joinParty;
+  if ($("quizStartBtn")) $("quizStartBtn").onclick = async () => {
+    try {
+      await api("game/quiz/start");
+      toast("🎮 TV'de Bilmece Başlatıldı!");
+      updatePartyState();
+    } catch (e) {}
+  };
+  if ($("quizStopBtn")) $("quizStopBtn").onclick = async () => {
+    try {
+      await api("game/quiz/stop");
+      toast("Yarışma Durduruldu");
+      updatePartyState();
+    } catch (e) {}
+  };
+
+  const submitQuizAnswer = async () => {
+    const inp = $("quizAnswerInput");
+    if (!inp) return;
+    const ans = inp.value.trim();
+    if (!ans) return;
+    try {
+      await api("game/quiz/answer", { id: partyPlayerId, answer: ans });
+      $("quizFeedback").style.display = "block";
+      $("quizFeedback").textContent = "✓ Cevabınız TV'ye iletildi: \"" + ans + "\"";
+      inp.value = "";
+    } catch (e) {}
+  };
+
+  if ($("quizAnswerBtn")) $("quizAnswerBtn").onclick = submitQuizAnswer;
+  if ($("quizAnswerInput")) {
+    $("quizAnswerInput").onkeydown = e => {
+      if (e.key === "Enter") submitQuizAnswer();
+    };
+  }
+
+  if ($("partyCineSubBtn")) {
+    $("partyCineSubBtn").onclick = async () => {
+      try {
+        await api("cinesub");
+        toast("✦ CineSub Kültürel Not Kartı TV'de Açıldı");
+      } catch (e) { toast(t("offline")); }
+    };
+  }
+
+  // Movie Suggestion Roulette
+  if ($("rouletteSendBtn")) {
+    $("rouletteSendBtn").onclick = async () => {
+      const inp = $("rouletteInput");
+      const title = inp ? inp.value.trim() : "";
+      if (!title) return;
+      try {
+        await api("party/suggest", { title, user: partyPlayerName || "Misafir" });
+        toast("🚀 '" + title + "' TV Ruletine Fırlatıldı!");
+        if (inp) inp.value = "";
+        updatePartyState();
+      } catch (e) { toast(t("offline")); }
+    };
+  }
+
+  if ($("rouletteSpinBtn")) {
+    $("rouletteSpinBtn").onclick = async () => {
+      try {
+        const win = await api("party/roulette/spin");
+        if (win && win.title) toast("🎡 Kazanan: " + win.title);
+        updatePartyState();
+      } catch (e) { toast(t("offline")); }
+    };
+  }
+
+  if ($("rouletteClearBtn")) {
+    $("rouletteClearBtn").onclick = async () => {
+      try {
+        await api("party/roulette/clear");
+        toast("Rulet Listesi Temizlendi");
+        updatePartyState();
+      } catch (e) { toast(t("offline")); }
+    };
+  }
+
+  const renderPartyState = st => {
+    if (!st) return;
+    // Quiz state
+    const activeView = $("quizActiveView");
+    const inactiveView = $("quizInactiveView");
+    if (st.quizActive) {
+      if (activeView) activeView.hidden = false;
+      if (inactiveView) inactiveView.hidden = true;
+      if ($("quizQIndex")) $("quizQIndex").textContent = "Soru " + (st.questionIndex + 1) + " / " + st.totalQuestions;
+      if ($("quizTimerText")) $("quizTimerText").textContent = st.countdown + "s";
+      if ($("quizTimerBar")) $("quizTimerBar").style.width = ((st.countdown / 10) * 100) + "%";
+      if ($("quizQuestionText")) $("quizQuestionText").textContent = st.question || "";
+      if ($("quizHintText")) $("quizHintText").textContent = st.hint || "";
+      const qImg = $("quizImg");
+      if (qImg) {
+        if (st.image) { qImg.src = st.image; qImg.hidden = false; }
+        else { qImg.hidden = true; }
+      }
+      if (st.revealing) {
+        if ($("quizFeedback")) {
+          $("quizFeedback").style.display = "block";
+          $("quizFeedback").textContent = "★ Doğru Cevap: " + (st.displayAnswer || "");
+        }
+      }
+      // Leaderboard
+      if ($("quizLeaderboard") && st.players) {
+        const html = st.players.map(p =>
+          `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+            <span>${p.id === partyPlayerId ? "★ " : ""}${esc(p.name)}</span>
+            <b>${p.score} puan</b>
+          </div>`
+        ).join("");
+        $("quizLeaderboard").innerHTML = `<div style="font-weight:700;margin-bottom:4px">Liderlik Tablosu:</div>` + (html || "Yarışmacı bekleniyor");
+      }
+    } else {
+      if (activeView) activeView.hidden = true;
+      if (inactiveView) inactiveView.hidden = false;
+    }
+
+    // Roulette suggestions
+    const rList = $("rouletteList");
+    if (rList) {
+      if (st.suggestions && st.suggestions.length > 0) {
+        rList.innerHTML = st.suggestions.map(s =>
+          `<span class="party-pill">🎬 <b>${esc(s.title)}</b> (${esc(s.user)})</span>`
+        ).join("");
+      } else {
+        rList.innerHTML = `<span style="color:var(--faint);font-size:12px">Henüz öneri eklenmedi</span>`;
+      }
+    }
+  };
+
+  const updatePartyState = async () => {
+    try {
+      const st = await api("party/state");
+      renderPartyState(st);
+    } catch (e) {}
+  };
+
+  const startPartyPolling = () => {
+    if (partyPollTimer) clearInterval(partyPollTimer);
+    updatePartyState();
+    partyPollTimer = setInterval(updatePartyState, 1400);
+  };
+
+  const stopPartyPolling = () => {
+    if (partyPollTimer) {
+      clearInterval(partyPollTimer);
+      partyPollTimer = null;
+    }
+  };
+
+  // Gyro-Controlled Cinephile Snake Game
+  const snakeCanvas = $("snakeCanvas");
+  let snakeCtx = null;
+  if (snakeCanvas) snakeCtx = snakeCanvas.getContext("2d");
+
+  const CINE_POSTERS = [
+    { title: "Interstellar", color: "#38bdf8" },
+    { title: "Inception", color: "#f59e0b" },
+    { title: "The Dark Knight", color: "#64748b" },
+    { title: "Pulp Fiction", color: "#ef4444" },
+    { title: "The Godfather", color: "#d97706" },
+    { title: "Fight Club", color: "#ec4899" },
+    { title: "The Matrix", color: "#10b981" },
+    { title: "Whiplash", color: "#f97316" },
+    { title: "Blade Runner", color: "#06b6d4" },
+    { title: "Taxi Driver", color: "#eab308" }
+  ];
+
+  const GRID_SIZE = 14;
+  const TILE_COUNT = 20; // 20 * 14 = 280px
+  let snake = [{x: 10, y: 10}, {x: 10, y: 11}, {x: 10, y: 12}];
+  let snakeDir = {x: 0, y: -1};
+  let nextSnakeDir = {x: 0, y: -1};
+  let food = {x: 5, y: 5, poster: CINE_POSTERS[0]};
+  let snakeScore = 0;
+  let snakeBest = 0;
+  try { snakeBest = parseInt(localStorage.getItem("cinetv.snakeBest") || "0", 10); } catch (e) {}
+  if ($("snakeBest")) $("snakeBest").textContent = snakeBest;
+
+  let snakeLoopTimer = null;
+  let snakeRunning = false;
+  let snakeGyroActive = true;
+
+  const placeFood = () => {
+    const idx = Math.floor(Math.random() * CINE_POSTERS.length);
+    food = {
+      x: Math.floor(Math.random() * TILE_COUNT),
+      y: Math.floor(Math.random() * TILE_COUNT),
+      poster: CINE_POSTERS[idx]
+    };
+    if ($("snakeLastFilm")) $("snakeLastFilm").textContent = "Hedef Afiş: " + food.poster.title;
+  };
+
+  const drawSnakeGame = () => {
+    if (!snakeCtx) return;
+    snakeCtx.fillStyle = "#0a0a10";
+    snakeCtx.fillRect(0, 0, 280, 280);
+
+    // Draw food (Miniature DVD poster style)
+    snakeCtx.fillStyle = food.poster.color;
+    snakeCtx.shadowColor = food.poster.color;
+    snakeCtx.shadowBlur = 8;
+    snakeCtx.fillRect(food.x * GRID_SIZE + 1, food.y * GRID_SIZE + 1, GRID_SIZE - 2, GRID_SIZE - 2);
+    snakeCtx.shadowBlur = 0;
+
+    // Draw snake
+    snake.forEach((seg, i) => {
+      snakeCtx.fillStyle = i === 0 ? "#10b981" : "rgba(16,185,129," + Math.max(0.3, 1 - (i / snake.length)) + ")";
+      snakeCtx.beginPath();
+      snakeCtx.roundRect(seg.x * GRID_SIZE + 1, seg.y * GRID_SIZE + 1, GRID_SIZE - 2, GRID_SIZE - 2, 3);
+      snakeCtx.fill();
+    });
+  };
+
+  const stepSnake = () => {
+    snakeDir = nextSnakeDir;
+    const head = { x: snake[0].x + snakeDir.x, y: snake[0].y + snakeDir.y };
+
+    // Wall collision wrap-around
+    if (head.x < 0) head.x = TILE_COUNT - 1;
+    if (head.x >= TILE_COUNT) head.x = 0;
+    if (head.y < 0) head.y = TILE_COUNT - 1;
+    if (head.y >= TILE_COUNT) head.y = 0;
+
+    // Self collision check
+    for (let i = 0; i < snake.length; i++) {
+      if (snake[i].x === head.x && snake[i].y === head.y) {
+        stopSnakeGame();
+        toast("💥 Yılan Çarptı! Skorunuz: " + snakeScore);
+        return;
+      }
+    }
+
+    snake.unshift(head);
+
+    // Food check
+    if (head.x === food.x && head.y === food.y) {
+      snakeScore += 10;
+      if ($("snakeScore")) $("snakeScore").textContent = snakeScore;
+      if (snakeScore > snakeBest) {
+        snakeBest = snakeScore;
+        if ($("snakeBest")) $("snakeBest").textContent = snakeBest;
+        try { localStorage.setItem("cinetv.snakeBest", String(snakeBest)); } catch (e) {}
+      }
+      if (navigator.vibrate) navigator.vibrate(40);
+      placeFood();
+    } else {
+      snake.pop();
+    }
+
+    drawSnakeGame();
+  };
+
+  const startSnakeGame = () => {
+    snake = [{x: 10, y: 10}, {x: 10, y: 11}, {x: 10, y: 12}];
+    snakeDir = {x: 0, y: -1};
+    nextSnakeDir = {x: 0, y: -1};
+    snakeScore = 0;
+    if ($("snakeScore")) $("snakeScore").textContent = "0";
+    placeFood();
+    snakeRunning = true;
+    if ($("snakeStartBtn")) $("snakeStartBtn").textContent = "⏸ Oyunu Duraklat";
+    if (snakeLoopTimer) clearInterval(snakeLoopTimer);
+    snakeLoopTimer = setInterval(stepSnake, 130);
+    drawSnakeGame();
+  };
+
+  const stopSnakeGame = () => {
+    snakeRunning = false;
+    if (snakeLoopTimer) { clearInterval(snakeLoopTimer); snakeLoopTimer = null; }
+    if ($("snakeStartBtn")) $("snakeStartBtn").textContent = "🎮 Yeniden Başlat";
+  };
+
+  if ($("snakeStartBtn")) {
+    $("snakeStartBtn").onclick = () => {
+      if (snakeRunning) stopSnakeGame();
+      else startSnakeGame();
+    };
+  }
+
+  if ($("snakeGyroToggle")) {
+    $("snakeGyroToggle").onclick = async () => {
+      snakeGyroActive = !snakeGyroActive;
+      $("snakeGyroToggle").textContent = "📱 Gyro: " + (snakeGyroActive ? "Açık" : "Kapalı");
+      if (snakeGyroActive) {
+        try { if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); } catch (err) {}
+      }
+    };
+  }
+
+  // Gyro orientation controls
+  window.addEventListener("deviceorientation", e => {
+    if (!snakeRunning || !snakeGyroActive) return;
+    if (e.gamma > 14 && snakeDir.x === 0) nextSnakeDir = {x: 1, y: 0};
+    else if (e.gamma < -14 && snakeDir.x === 0) nextSnakeDir = {x: -1, y: 0};
+    else if (e.beta > 50 && snakeDir.y === 0) nextSnakeDir = {x: 0, y: 1};
+    else if (e.beta < 25 && snakeDir.y === 0) nextSnakeDir = {x: 0, y: -1};
+  });
+
+  // Touch fallback controls
+  if ($("snkUp")) $("snkUp").onclick = () => { if (snakeDir.y === 0) nextSnakeDir = {x: 0, y: -1}; };
+  if ($("snkDown")) $("snkDown").onclick = () => { if (snakeDir.y === 0) nextSnakeDir = {x: 0, y: 1}; };
+  if ($("snkLeft")) $("snkLeft").onclick = () => { if (snakeDir.x === 0) nextSnakeDir = {x: -1, y: 0}; };
+  if ($("snkRight")) $("snkRight").onclick = () => { if (snakeDir.x === 0) nextSnakeDir = {x: 1, y: 0}; };
+
+  drawSnakeGame();
 
   // several CineTV TVs on this network: tap the status to switch
   open("info").then(info => {
@@ -1422,7 +1956,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
   if (token) connected(); else pair();
   const start = RELAY ? (hp.get("s") || location.hash.replace("#", "")) : location.hash.replace("#", "");
-  if (["remote", "search", "cast", "about", "bg", "background"].includes(start)) show(start === "background" ? "bg" : start);
+  if (["remote", "search", "party", "cast", "about", "bg", "background"].includes(start)) show(start === "background" ? "bg" : start);
 })();
 </script>
 </body>

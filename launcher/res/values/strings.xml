@@ -119,7 +119,7 @@
     <string name="appearance_light">Light</string>
     <string name="appearance_auto">Automatic (day / night)</string>
     <string name="spatial_hud">Spatial HUD</string>
-    <string name="glass_bevel">3D liquid glass bevel</string>
+    <string name="glass_bevel">Crystal Edge Contour</string>
     <string name="trailer_moments">Trailer moments</string>
     <string name="trailer_moments_on">The opened DVD plays the trailer</string>
     <string name="trailer_hint">%1$d / %2$d  ·  ‹ › another film  ·  OK to watch</string>

@@ -40,6 +40,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String lastPackage;
+
+    public String getLastPackage() {
+        return lastPackage;
+    }
     private com.cinetv.launcher.ui.SignatureOverlay signature;
     private com.cinetv.launcher.device.AirPodsLink airPods;
 

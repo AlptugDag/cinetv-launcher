@@ -65,7 +65,7 @@ public final class AppLauncher {
         if (saved != null && isLaunchable(pm, saved)) return saved;
         List<String> pkgs = installedNuvioPackages(ctx);
         if (!pkgs.isEmpty()) return pkgs.get(0);
-        return NUVIO;
+        return isLaunchable(pm, NUVIO) ? NUVIO : null;
     }
     public static final String[] YOUTUBE_PACKAGES = {
             "io.gh.reisxd.tizentube.cobalt", "com.reisxd.tizentube", "com.teamsmart.videomanager.tv",
@@ -292,7 +292,17 @@ public final class AppLauncher {
     }
 
     public static void openWifiSettings(Context ctx) {
-        if (!start(ctx, new Intent(Settings.ACTION_WIFI_SETTINGS))) start(ctx, new Intent(Settings.ACTION_SETTINGS));
+        com.cinetv.launcher.device.DeviceTweaks.markUserOpenedTv();
+        Intent[] candidates = {
+                new Intent(Settings.ACTION_WIFI_SETTINGS),
+                new Intent("android.settings.NETWORK_SETTINGS"),
+                new Intent(Settings.ACTION_WIRELESS_SETTINGS),
+                new Intent().setClassName("com.android.tv.settings", "com.android.tv.settings.connectivity.NetworkActivity"),
+                new Intent(Settings.ACTION_SETTINGS)
+        };
+        for (Intent i : candidates) {
+            if (start(ctx, i)) return;
+        }
     }
 
     public static void openSystemSettings(Context ctx) {

@@ -28,10 +28,10 @@ public final class TvSources {
 
     public static List<Source> list(Context ctx) {
         List<Source> out = new ArrayList<>();
-        if (AppLauncher.liveTvPackage(ctx.getPackageManager()) != null) {
+        if (com.cinetv.launcher.service.AppCatalog.liveTvShown(ctx) && AppLauncher.liveTvPackage(ctx.getPackageManager()) != null) {
             Source tv = new Source();
             tv.name = ctx.getString(R.string.live_tv);
-            tv.connected = true;
+            tv.connected = false;
             out.add(tv);
         }
         try {

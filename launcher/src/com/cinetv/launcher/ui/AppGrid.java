@@ -296,6 +296,7 @@ public class AppGrid {
 
         frame.setOnFocusChangeListener((v, has) -> {
             if (moving != null && !carried) return;
+            if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
             applyFocus(frame, bloom, face, item, has, rest);
             bevel.setFocusedState(has);
             if (has) host.onTileFocused(v, item.neonColor);
@@ -315,6 +316,7 @@ public class AppGrid {
                 longPressed[0] = false;
                 return;
             }
+            com.cinetv.launcher.device.SystemAudio.click(ctx);
             host.onLaunch(item);
         });
 
@@ -438,9 +440,15 @@ public class AppGrid {
                     .rotationY(has ? 0f : rest[0]).rotationX(has ? 0f : rest[1])
                     .translationY(has ? -UiKit.pxf(12) : rest[3]).translationZ(has ? UiKit.pxf(55) : rest[2])
                     .setDuration(ms).start();
-            if (has) host.onTileFocused(v, neonColor);
+            if (has) {
+                com.cinetv.launcher.device.SystemAudio.tick(ctx);
+                host.onTileFocused(v, neonColor);
+            }
         });
-        frame.setOnClickListener(v -> host.onAddToDock());
+        frame.setOnClickListener(v -> {
+            com.cinetv.launcher.device.SystemAudio.click(ctx);
+            host.onAddToDock();
+        });
         frame.setOnKeyListener((v, keyCode, e) -> {
             if (e.getAction() != KeyEvent.ACTION_DOWN || moving != null) return false;
             if (e.getRepeatCount() > 0 && (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_UP)) {

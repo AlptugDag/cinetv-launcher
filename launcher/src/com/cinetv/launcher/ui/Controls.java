@@ -1,6 +1,7 @@
 package com.cinetv.launcher.ui;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.view.Gravity;
 import android.view.View;
@@ -170,6 +171,8 @@ public final class Controls {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setFocusable(true);
         box.setClickable(true);
+        box.setClipChildren(false);
+        box.setClipToPadding(false);
         box.setPadding(UiKit.px(18), UiKit.px(10), UiKit.px(18), UiKit.px(10));
         final Glass g = new Glass(box, UiKit.pxf(16), Glass.Style.CONTROL);
         box.setBackground(g);
@@ -204,7 +207,7 @@ public final class Controls {
             g.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
             t.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
             s.setTextColor(has ? UiKit.withAlpha(UiKit.INK_DARK, 170) : UiKit.INK_DIM);
-            UiKit.lift(v, has, 1.04f, PerformanceProfile.animationMs(ctx, 140));
+            UiKit.lift(v, has, 1.035f, PerformanceProfile.animationMs(ctx, 160));
         });
         box.setOnClickListener(v -> {
             com.cinetv.launcher.device.SystemAudio.toggle(ctx);
@@ -230,6 +233,8 @@ public final class Controls {
         box.setOrientation(LinearLayout.VERTICAL);
         box.setFocusable(true);
         box.setClickable(true);
+        box.setClipChildren(false);
+        box.setClipToPadding(false);
         box.setPadding(UiKit.px(18), UiKit.px(10), UiKit.px(18), UiKit.px(10));
         final Glass g = new Glass(box, UiKit.pxf(16), Glass.Style.CONTROL);
         box.setBackground(g);
@@ -263,7 +268,7 @@ public final class Controls {
             g.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
             t.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
             s.setTextColor(has ? UiKit.withAlpha(UiKit.INK_DARK, 170) : UiKit.INK_DIM);
-            UiKit.lift(v, has, 1.04f, PerformanceProfile.animationMs(ctx, 140));
+            UiKit.lift(v, has, 1.035f, PerformanceProfile.animationMs(ctx, 160));
         });
         box.setOnClickListener(v -> {
             com.cinetv.launcher.device.SystemAudio.click(ctx);
@@ -303,26 +308,56 @@ public final class Controls {
 
     /** A round icon button for the header. */
     public static FrameLayout iconButton(Context ctx, Drawable icon, CharSequence description, View.OnClickListener onClick) {
+        return iconButton(ctx, icon, description, Color.argb(100, 56, 189, 248), onClick);
+    }
+
+    public static FrameLayout iconButton(Context ctx, Drawable icon, CharSequence description, int glowColor, View.OnClickListener onClick) {
         final FrameLayout f = new FrameLayout(ctx);
         f.setFocusable(true);
         f.setClickable(true);
         f.setContentDescription(description);
         final Glass g = new Glass(f, UiKit.pxf(34), Glass.Style.CONTROL);
         f.setBackground(g);
+
+        // Inner glowing ambient disc layer per button color
+        final View glowView = new View(ctx);
+        final android.graphics.drawable.GradientDrawable glowDrawable = new android.graphics.drawable.GradientDrawable();
+        glowDrawable.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        glowDrawable.setColor(glowColor);
+        glowView.setBackground(glowDrawable);
+        glowView.setAlpha(0f);
+        f.addView(glowView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
         final ImageView iv = new ImageView(ctx);
         final Drawable d = icon.mutate();
         d.setTint(UiKit.INK);
         iv.setImageDrawable(d);
         f.addView(iv, new FrameLayout.LayoutParams(UiKit.px(30), UiKit.px(30), Gravity.CENTER));
+
         final GlassBevelView bevel = new GlassBevelView(ctx, UiKit.pxf(34), true);
         f.addView(bevel, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
         f.setOnFocusChangeListener((v, has) -> {
             bevel.setFocusedState(has);
             g.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
             d.setTint(has ? UiKit.INK_DARK : UiKit.INK);
-            UiKit.lift(v, has, 1.14f, PerformanceProfile.animationMs(ctx, 150));
+            // Smooth subtle scale: 1.07f
+            UiKit.lift(v, has, 1.07f, PerformanceProfile.animationMs(ctx, 180));
+            glowView.animate().alpha(has ? 0.38f : 0f).setDuration(PerformanceProfile.animationMs(ctx, 180)).start();
+            if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
         });
-        f.setOnClickListener(onClick);
+
+        f.setOnHoverListener((v, event) -> {
+            if (event.getAction() == android.view.MotionEvent.ACTION_HOVER_ENTER) {
+                v.requestFocus();
+            }
+            return false;
+        });
+
+        f.setOnClickListener(v -> {
+            com.cinetv.launcher.device.SystemAudio.click(ctx);
+            if (onClick != null) onClick.onClick(v);
+        });
         return f;
     }
 

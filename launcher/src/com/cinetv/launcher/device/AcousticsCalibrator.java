@@ -20,6 +20,44 @@ public final class AcousticsCalibrator {
 
     private AcousticsCalibrator() {}
 
+    public static final class AudioOutputInfo {
+        public final String name;
+        public final String type;
+        public final boolean isExternal;
+
+        public AudioOutputInfo(String name, String type, boolean isExternal) {
+            this.name = name;
+            this.type = type;
+            this.isExternal = isExternal;
+        }
+    }
+
+    /** Auto-detects connected sound systems (HDMI ARC, eARC, Optical SPDIF, Bluetooth A2DP, USB DAC) */
+    public static AudioOutputInfo detectAudioOutput(Context ctx) {
+        if (ctx == null) return new AudioOutputInfo("Dahili TV Hoparlörleri", "Dahili", false);
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                android.media.AudioDeviceInfo[] devices = am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS);
+                for (android.media.AudioDeviceInfo dev : devices) {
+                    int type = dev.getType();
+                    if (type == android.media.AudioDeviceInfo.TYPE_HDMI_ARC) {
+                        return new AudioOutputInfo("HDMI ARC Ses Sistemi", "HDMI ARC", true);
+                    } else if (android.os.Build.VERSION.SDK_INT >= 31 && type == 26 /* TYPE_HDMI_EARC */) {
+                        return new AudioOutputInfo("HDMI eARC Ev Sineması", "HDMI eARC", true);
+                    } else if (type == android.media.AudioDeviceInfo.TYPE_LINE_DIGITAL) {
+                        return new AudioOutputInfo("Optik (SPDIF) Ses Sistemi", "Optik", true);
+                    } else if (type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP) {
+                        return new AudioOutputInfo("Bluetooth Ses Sistemi", "Bluetooth", true);
+                    } else if (type == android.media.AudioDeviceInfo.TYPE_USB_DEVICE || type == android.media.AudioDeviceInfo.TYPE_USB_HEADSET) {
+                        return new AudioOutputInfo("USB Harici DAC / Ses Kartı", "USB DAC", true);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+        return new AudioOutputInfo("Dahili TV Hoparlörleri", "Dahili", false);
+    }
+
     /** Runs a 4-second logarithmic audio sweep across 40 Hz - 14 kHz. */
     public static synchronized void playSweep(Context ctx, Runnable onComplete) {
         stop();

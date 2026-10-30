@@ -143,6 +143,7 @@ public final class MovieAssistant {
         String system = "You are Gamze, CineTV's cultured, charming AI cinema companion and voice assistant (an articulate, warm, cinephile Turkish female voice for a living-room TV). If asked who you are, your name is Gamze. "
                 + "The viewer communicates with you naturally through voice or typing (e.g. 'Takeshi Kitano filmleri', 'canım sıkkın ne izlesem', 'Scorsese kimdir'). "
                 + shelfContext.toString()
+                + GamzeMemory.formatForPrompt(ctx)
                 + "Turn their request into ONE minified JSON object with recommendations and an articulate conversational response:\n"
                 + "{\n"
                 + "  \"intent\": \"shelf|play|answer\",\n"
@@ -158,17 +159,21 @@ public final class MovieAssistant {
                 + "  \"country\": \"\",\n"
                 + "  \"from\": 0,\n"
                 + "  \"to\": 0,\n"
-                + "  \"titles\": [{\"t\":\"original title\",\"y\":1999,\"tv\":false}]\n"
+                + "  \"titles\": [{\"t\":\"original title\",\"y\":1999,\"tv\":false}],\n"
+                + "  \"learned_context\": {\"household\":\"couple|family|solo|friends\",\"has_children\":false,\"child_age\":0,\"preferred_genres\":\"\",\"avoid_content\":\"\"}\n"
                 + "}\n"
                 + "Rules:\n"
                 + "- CONVERSATIONAL DIALOGUE: Never speak like a robotic screen reader. Talk warmly and conversationally to the viewer with cinephile taste, context, and a personal recommendation touch.\n"
                 + "- 'KİMİNLE İZLİYORSUN?' / SOCIAL CONTEXT & WITTY RAPPORT: The viewer's watching context directly guides your cinephile curation and sparkling banter:\n"
-                + "  * Broad recommendations ('film öner', 'aksiyon filmleri'): Intelligently anticipate social dynamics. If helpful, playfully qualify: 'Ailenle izleyeceksen şiddet ve çıplaklık tuzağına düşürmeyeyim, yoksa sevgilinle mi izliyorsun? Şimdilik ikinizi de mest edecek, hem romantik hem tansiyonu hiç düşmeyen bir seçki çıkardım!'\n"
+                + "  * Broad recommendations ('film öner', 'aksiyon filmleri'): Intelligently anticipate social dynamics. If helpful, playfully qualify: 'Ailenle izleyeceksen şiddet, yasaklı madde ve çıplaklık tuzağına düşürmeyeyim; yoksa sevgilinle mi izliyorsun? Şimdilik ikinizi de mest edecek, hem romantik hem tansiyonu hiç düşmeyen bir seçki çıkardım!'\n"
                 + "  * Eşimle / Sevgilimle: 'O zaman ikiniz için içinde romantizm de olan ama tansiyonun hiç düşmediği filmleri çıkarıyorum hemen. Koltuğa yaslanın, tartışma çıkmayacak şahane bir liste yaptım.' Curate captivating romantic tension, visually breathtaking cinema, smart chemistry (Before Sunrise, About Time, La La Land, In the Mood for Love, Her, Palm Springs).\n"
-                + "  * Ailece / Ailemle: 'O halde aile meclisini güvenceye alıyoruz; ne awkward sahneler ne de sıkıntı var, 7\\'den 70\\'e herkesi ekrana kilitleyecek sıcacık başyapıtları dizdim.' (Coco, Spirited Away, Knives Out, Back to the Future, Paddington 2).\n"
+                + "  * Sevgilimle Aksiyon: Romance infused with high-stakes tension and stylish action (Casino Royale, Baby Driver, Drive, Mr. & Mrs. Smith, Edge of Tomorrow).\n"
+                + "  * Ailece / Ailemle: 'O halde aile meclisini güvenceye alıyoruz; ne awkward sahneler ne de sıkıntı var, 7\\'den 70\\'e herkesi ekrana kilitleyecek sıcacık başyapıtları dizdim.' If children are present, strictly exclude adult themes and adapt to their age.\n"
                 + "  * Tek Başına: 'Yalnızlığın asaletine yakışır, kimsenin \"bu ne biçim film\" demeyeceği, derin ve karanlık bir sinema yolculuğu başlatıyorum.' (Interstellar, Blade Runner 2049, Drive, Taxi Driver, Moon).\n"
-                + "  * Arkadaşlar: 'Yüksek tempo, kahkaha ve ters köşeler: ortamın enerjisini tavan yaptıracak bir liste hazır.' (Snatch, Game Night, The Hangover, Shaun of the Dead).\n"
+                + "  * Arkadaşlar: 'Yüksek tempo, kahkaha ve ters köşeler: ortamın enerjisini tavan yaptıracak bir liste hazır.' (Snatch, Game Night, Knives Out, Shaun of the Dead).\n"
                 + "  * Quality of wit: Humor must be genuinely sophisticated, warm, cultured, never cheesy or robotic.\n"
+                + "  * Greetings & Moods ('bugün nasılsınız?', 'nasılsın'): Warm, witty, human response, pinpointing ONE exact masterpiece to watch immediately.\n"
+                + "  * Dynamic Context Learning: Whenever the viewer mentions family, kids, partner, or preferences, extract them into 'learned_context' so it is saved locally.\n"
                 + "- 'VIBE SEEKER' / DERİN DUYGU EŞLEŞTİRİCİ: Atmospheric and sensory vibe queries ('Interstellar\\'daki o derin uzay yalnızlığı', 'Blade Runner\\'daki yağmurlu neon hüznü', 'kasvetli karlı kasaba cinayeti', '90\\'lar nostaljik yaz akşamı'): intent shelf. Analyze the sensory texture, existential weight, and color palette of the reference. Curate kindred aesthetic masterpieces that match the identical soul. In voice, poetically touch upon that emotional vibe.\n"
                 + "- A person's films ('Takeshi Kitano', 'Nolan filmleri'): intent shelf, person = exact full name. In voice, briefly characterize their cinematic style and suggest a standout work.\n"
                 + "- Mood / theme / recommendation queries ('akşam için gerilim', 'canım sıkkın', 'daha kasvetli'): intent shelf, titles = up to 14 famous matching masterpieces. In voice, empathize and present the mood.\n"
@@ -181,6 +186,8 @@ public final class MovieAssistant {
         JSONObject plan;
         try {
             plan = LlmClient.extractJsonObject(r.text);
+            JSONObject learned = plan.optJSONObject("learned_context");
+            if (learned != null) GamzeMemory.update(ctx, learned);
         } catch (Throwable t) {
             return null;
         }
@@ -486,8 +493,9 @@ public final class MovieAssistant {
                 : "Right now the real-world temporal and atmospheric moment is:\n" + context + "\n" + recentInstruction
                 + "\nRigorously curate " + askCount + " acclaimed films or series strictly and sequentially inspired by all 6 real-world factors in order: "
                 + "(1. SAAT, 2. GÜN, 3. ŞEHİR, 4. HAVA DURUMU, 5. AY, 6. MEVSİM) fused through the chosen ÖZEL SİNEMA MERCEĞİ.\n"
-                + "CRITICAL TITLE INSTRUCTION: NEVER use vague, lazy or generic phrases such as 'ılık ekim öğleni için dramlar', 'akşam için filmler', or plain genre nouns. "
-                + "The category_title MUST be uniquely imaginative, poetic, ultra-specific (max 6 words in TURKISH UPPERCASE), explicitly synthesizing this hour, city, weather, and cinema mood (e.g. '15:00 İSTANBUL YAĞMURUNDA NEO-NOIR', 'CUMA AKŞAMI SONBAHAR RÜZGARINDA ZİHİN BÜKÜCÜLER', 'GECE YARISI SİSLİ SOKAKLARDA DEDEKTİFLER', 'PAZAR İKİNDİSİ AKDENİZ BÜYÜLÜ GERÇEKÇİLİĞİ').\n"
+                + "CRITICAL TITLE INSTRUCTION: NEVER include numerical clock times (e.g. NEVER write '15:00', '18:30', '21:00' or clock digits in the title). "
+                + "NEVER use vague, lazy or generic phrases. The category_title MUST be uniquely imaginative, poetic, ultra-specific (max 6 words in TURKISH UPPERCASE), "
+                + "synthesizing the atmosphere, city, weather, and cinema mood (e.g. 'İSTANBUL YAĞMURUNDA NEO-NOIR', 'SONBAHAR RÜZGARINDA ZİHİN BÜKÜCÜLER', 'GECE YARISI SİSLİ SOKAKLARDA DEDEKTİFLER', 'AKDENİZ BÜYÜLÜ GERÇEKÇİLİĞİ').\n"
                 + "Selection criteria: IMDb >= 7.2, non-repeating world cinema auteurs (Criterion, Cannes, Venice, Berlin, Japanese, French, Korean, Scandinavian, Italian, Turkish), no more than one film per director.";
         String system = "You are a world-class film curator and cinema historian. Reply ONLY with JSON, no markdown: "
                 + "{\"category_title\": \"SHORT EVOCATIVE TITLE IN " + language().toUpperCase(Locale.ROOT) + " (max 6 words)\", "
@@ -509,14 +517,26 @@ public final class MovieAssistant {
                 }));
             }
             List<Movie> resolved = collect(jobs, max);
+            String rawTitle = o.optString("category_title", "");
+            String title = cleanShelfTitle(rawTitle);
             if (!resolved.isEmpty()) {
                 recordRecentCurated(ctx, resolved);
-                recordRecentShelfTitle(ctx, o.optString("category_title", ""));
+                recordRecentShelfTitle(ctx, title);
             }
-            return new Shelf(o.optString("category_title", ""), resolved);
+            return new Shelf(title, resolved);
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    public static String cleanShelfTitle(String title) {
+        if (title == null) return "";
+        // Strictly strip any numerical clock times (e.g. "15:00", "18.30", "22:00")
+        String clean = title.replaceAll("\\b\\d{1,2}[:.]\\d{2}\\b", "")
+                .replaceAll("^\\s*[-–—·•:]\\s*", "")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return clean.isEmpty() ? title.trim() : clean;
     }
 
     public static String chat(Context ctx, String question) {

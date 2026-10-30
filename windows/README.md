@@ -1,6 +1,6 @@
-# CineTV for Windows PC 🎬
+# CineTV for Windows PC 🎬 (Kişisel Sinema Kütüphanesi & Oynatıcı)
 
-CineTV Launcher'ın fiziksel 3D DVD vitrini, Nuvio, TMDB ve Gamze AI asistanı entegrasyonuyla Windows PC masaüstü sürümü.
+Windows PC için yerel, bağımsız kişisel sinema kütüphanesi ve oynatıcı arayüzü. Bir sistem başlatıcısı (launcher) değil; masaüstü veya ev sineması bilgisayarınızda (HTPC) fiziksel 3D DVD vitrini, Nuvio, TMDB ve Gamze AI asistanı entegrasyonuyla çalışan bağımsız bir sinema kütüphanesidir.
 
 ---
 

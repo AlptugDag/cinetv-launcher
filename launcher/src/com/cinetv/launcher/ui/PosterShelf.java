@@ -50,7 +50,7 @@ public class PosterShelf extends FrameLayout {
     private static final float PROFILE_ANGLE = -16f;
     /** The focused case comes far forward, as if taken off the shelf. */
     private static final float FOCUS_SCALE = 1.52f;
-    private static final long SWAY_AFTER_MS = 2600, SWAY_EVERY_MS = 9000, SWAY_MS = 2800;
+    private static final long SWAY_AFTER_MS = 2200L, SWAY_MS = 5600L;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<Movie> movies = new ArrayList<>();
@@ -62,6 +62,7 @@ public class PosterShelf extends FrameLayout {
     private float focusPos;
     private int targetPos;
     private ValueAnimator anim;
+    private long lastStepMs = 0L;
     private int generation;
     private boolean spatial;
     private boolean asCases;
@@ -104,6 +105,7 @@ public class PosterShelf extends FrameLayout {
 
     private View setBack, setFront;
     private String scene;
+    private android.graphics.ColorFilter currentThemeFilter;
 
     /** The theme's furniture around the row (curtains, a wooden shelf) and tailored cinematic lighting grade. */
     public void setTheme(String themeId, String furniture) {
@@ -120,6 +122,13 @@ public class PosterShelf extends FrameLayout {
             }
             if (setBack != null) addView(setBack, 0, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
             if (setFront != null) addView(setFront, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+
+            // Theme lighting color grade: tint DVD cases to match each room's aesthetic
+            android.graphics.ColorMatrix grade = ShelfSet.grade(targetScene);
+            currentThemeFilter = grade != null ? new android.graphics.ColorMatrixColorFilter(grade) : null;
+            for (DvdCaseView cv : cases) {
+                cv.setThemeFilter(currentThemeFilter);
+            }
             layoutCases();
         }
         // Hardware layer on a dynamic scrolling shelf causes heavy offscreen texture overhead on TV GPUs;
@@ -182,6 +191,7 @@ public class PosterShelf extends FrameLayout {
         while (cases.size() > max) removeView(cases.remove(cases.size() - 1));
         while (cases.size() < max) {
             DvdCaseView v = new DvdCaseView(getContext(), caseW, glowPad);
+            if (currentThemeFilter != null) v.setThemeFilter(currentThemeFilter);
             addView(v, new LayoutParams(v.viewWidth(), v.viewHeight()));
             cases.add(v);
         }
@@ -238,14 +248,31 @@ public class PosterShelf extends FrameLayout {
         if (n == 0) return super.onKeyDown(keyCode, event);
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_LEFT:
+                if (event.getRepeatCount() > 0) {
+                    long now = android.os.SystemClock.uptimeMillis();
+                    if (now - lastStepMs < 220L) return true;
+                    lastStepMs = now;
+                } else {
+                    lastStepMs = android.os.SystemClock.uptimeMillis();
+                }
                 step(-1);
                 return true;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
+                if (event.getRepeatCount() > 0) {
+                    long now = android.os.SystemClock.uptimeMillis();
+                    if (now - lastStepMs < 220L) return true;
+                    lastStepMs = now;
+                } else {
+                    lastStepMs = android.os.SystemClock.uptimeMillis();
+                }
                 step(1);
                 return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
-                if (event.getRepeatCount() == 0 && listener != null) listener.onOpen(movies.get(index), cases.get(index));
+                if (event.getRepeatCount() == 0 && listener != null) {
+                    com.cinetv.launcher.device.SystemAudio.open(getContext());
+                    listener.onOpen(movies.get(index), cases.get(index));
+                }
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_DPAD_DOWN:
@@ -261,6 +288,7 @@ public class PosterShelf extends FrameLayout {
     public void step(int delta) {
         int n = cases.size();
         if (n == 0) return;
+        com.cinetv.launcher.device.SystemAudio.shelfTick(getContext());
         stopSway();
         targetPos += delta;
         index = Math.floorMod(targetPos, n);
@@ -296,23 +324,18 @@ public class PosterShelf extends FrameLayout {
         if (v != null && v.dvdCase() != null && listener != null) listener.onFocusCase(v, v.dvdCase().accent);
     }
 
-    /** The focused case turns a little towards the light and back; its wrap catches the light on the way. */
+    /** The focused case continuously breathes with a harmonic yaw turn and synchronized looping reflection sweep. */
     private void sway() {
         if (!hasFocus() || cases.isEmpty() || !isShown()) return;
+        if (swayAnim != null) swayAnim.cancel();
         swayAnim = ValueAnimator.ofFloat(0f, 1f);
         swayAnim.setDuration(SWAY_MS);
+        swayAnim.setRepeatMode(ValueAnimator.REVERSE);
+        swayAnim.setRepeatCount(ValueAnimator.INFINITE);
         swayAnim.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
         swayAnim.addUpdateListener(a -> {
             sway = (float) a.getAnimatedValue();
             layoutCases();
-        });
-        swayAnim.addListener(new android.animation.AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(android.animation.Animator animation) {
-                sway = 0f;
-                layoutCases();
-                if (swayAnim == animation) postDelayed(startSway, SWAY_EVERY_MS);
-            }
         });
         swayAnim.start();
     }
@@ -395,10 +418,10 @@ public class PosterShelf extends FrameLayout {
             float turn = 0f, glint = 0f;
             float swaySine = 0f;
             if (i == index && sway > 0f) {
-                // Idle turn: perfectly continuous sine wave (0 -> 1 -> 0) with zero position jump at the end
-                swaySine = (float) Math.sin(Math.PI * sway);
-                turn = 24f * swaySine;
-                glint = swaySine;
+                // Ultra-refined physical micro-breathing (calm ±2.2 deg yaw and organic Fresnel sheen):
+                swaySine = (float) Math.sin(Math.PI * (sway - 0.5f)); // -1.0 to +1.0
+                turn = 2.2f * swaySine;
+                glint = (float) (0.5f + 0.5f * Math.sin(Math.PI * (sway - 0.5f)));
             }
 
             // Continuous subtle architectural bow (apex in center, NO flat zone, NO artificial vertical climb):

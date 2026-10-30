@@ -115,7 +115,7 @@
     <string name="appearance_light">Açık</string>
     <string name="appearance_auto">Otomatik (gece / gündüz)</string>
     <string name="spatial_hud">Uzamsal HUD</string>
-    <string name="glass_bevel">3D sıvı cam bevel</string>
+    <string name="glass_bevel">Kristal Kenar Parlaması</string>
     <string name="trailer_moments">Fragman anları</string>
     <string name="trailer_moments_on">Açılan DVD fragmanı oynatır</string>
     <string name="trailer_hint">%1$d / %2$d  ·  ‹ › başka film  ·  OK ile izle</string>

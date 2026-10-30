@@ -127,11 +127,11 @@ public class GlassBevelView extends View {
         }
 
         // Solid, continuous specular crystal bevel rim (never dashed or broken)
-        final float bevelWidth = 2.0f + focusProgress * 0.8f;
+        final float bevelWidth = 2.4f + focusProgress * 1.0f;
         bevelPaint.setStrokeWidth(bevelWidth);
 
-        final int alphaTop = (int) (180 + focusProgress * 75);
-        final int alphaBottom = (int) (110 + focusProgress * 90);
+        final int alphaTop = (int) (200 + focusProgress * 55);
+        final int alphaBottom = (int) (130 + focusProgress * 90);
 
         if (w != cachedW || h != cachedH || alphaTop != cachedAlphaStart || alphaBottom != cachedAlphaEnd || cachedShader == null) {
             cachedW = w;

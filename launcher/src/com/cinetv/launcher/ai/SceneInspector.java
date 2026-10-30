@@ -43,13 +43,13 @@ public final class SceneInspector {
                         @Override
                         public void onResult(String insight) {
                             new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
-                                android.widget.Toast.makeText(ctx, "🔍 " + insight, android.widget.Toast.LENGTH_LONG).show());
+                                android.widget.Toast.makeText(ctx, insight, android.widget.Toast.LENGTH_LONG).show());
                         }
 
                         @Override
                         public void onError(String message) {
                             new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
-                                android.widget.Toast.makeText(ctx, "🔍 Sahne dedektifi: " + message, android.widget.Toast.LENGTH_SHORT).show());
+                                android.widget.Toast.makeText(ctx, "Sahne dedektifi: " + message, android.widget.Toast.LENGTH_SHORT).show());
                         }
                     });
                 } else {

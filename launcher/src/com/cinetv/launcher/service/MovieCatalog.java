@@ -609,6 +609,7 @@ public final class MovieCatalog {
     public static Movie details(Context ctx, Movie m) {
         if (!hasTmdb(ctx)) {
             m.overview = localized(m.overview); // Cinemeta writes in English only
+            m.overview = curatedPlot(ctx, m);
             ratings(ctx, m);
             return m;
         }
@@ -647,6 +648,7 @@ public final class MovieCatalog {
             m.title = cleanNfc(m.title);
             m.originalTitle = cleanNfc(m.originalTitle);
             m.overview = cleanNfc(m.overview);
+            m.overview = curatedPlot(ctx, m);
             m.tagline = cleanNfc(m.tagline);
             int rt = d.optInt("runtime", 0);
             if (rt <= 0) {
@@ -696,7 +698,7 @@ public final class MovieCatalog {
                 }
                 for (Future<?> f : photoJobs) {
                     try {
-                        f.get(5500, TimeUnit.MILLISECONDS);
+                        f.get(1200, TimeUnit.MILLISECONDS);
                     } catch (Throwable ignored) {
                     }
                 }
@@ -750,10 +752,16 @@ public final class MovieCatalog {
      */
     static String curatedPlot(final Context ctx, final Movie m) {
         final String base = m.overview == null ? "" : m.overview.trim();
+        if (base.length() < 40 || Creator.isSessiz(m)) return base;
+        String lang = Locale.getDefault().getLanguage();
+        String ck = "plot_v3_" + lang + "_" + m.type + "_" + (m.tmdbId > 0 ? m.tmdbId : m.imdbId);
+        String saved = Prefs.get(ctx).getString(ck, null);
+        if (saved != null && !saved.isEmpty()) return saved;
+
         Future<String> f = resolver.submit(() -> curatedPlotNow(ctx, m, base));
         try {
-            // The booklet opens with the original text if the AI is slow; the rewrite is cached for the next opening
-            return f.get(7, TimeUnit.SECONDS);
+            // Fast 600ms budget; if slower, return base now and AI saves to cache for subsequent viewings
+            return f.get(600, TimeUnit.MILLISECONDS);
         } catch (Throwable t) {
             return base;
         }
@@ -1010,6 +1018,50 @@ public final class MovieCatalog {
             if (m.tmdbId > 0) trailers.put(m.type + ":" + m.tmdbId, "");
         }
         return best;
+    }
+
+    /** Returns up to 3 candidate YouTube trailer keys for a movie, sorted by relevance. */
+    public static List<String> trailerCandidateKeys(Context ctx, Movie m) {
+        List<String> list = new ArrayList<>();
+        if (m == null) return list;
+        if (Creator.isSessiz(m)) {
+            list.add(Creator.SESSIZ_TRAILER_ID);
+            return list;
+        }
+        String first = trailerKey(ctx, m);
+        if (first != null && !first.isEmpty()) {
+            list.add(first);
+        }
+        try {
+            if (hasTmdb(ctx) && m.tmdbId > 0) {
+                String kind = "series".equals(m.type) || "tv".equals(m.type) ? "tv" : "movie";
+                String lang = Locale.getDefault().getLanguage();
+                JSONArray r = tmdb(ctx, kind + "/" + m.tmdbId + "/videos?include_video_language=" + lang + ",en,null").optJSONArray("results");
+                if (r != null) {
+                    List<int[]> scored = new ArrayList<>();
+                    for (int i = 0; i < r.length(); i++) {
+                        JSONObject v = r.getJSONObject(i);
+                        if (!"YouTube".equals(v.optString("site"))) continue;
+                        String key = v.optString("key", "");
+                        if (!key.matches("[A-Za-z0-9_-]{6,20}")) continue;
+                        String type = v.optString("type");
+                        int score = ("Trailer".equals(type) ? 40 : "Teaser".equals(type) ? 20 : "Clip".equals(type) ? 10 : -1);
+                        if (score < 0) continue;
+                        if (v.optBoolean("official")) score += 8;
+                        scored.add(new int[]{i, score});
+                    }
+                    Collections.sort(scored, (a, b) -> Integer.compare(b[1], a[1]));
+                    for (int[] item : scored) {
+                        String key = r.getJSONObject(item[0]).optString("key", "");
+                        if (!key.isEmpty() && !list.contains(key)) {
+                            list.add(key);
+                            if (list.size() >= 3) break;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+        return list;
     }
 
     private static String selectTrailerKey(JSONArray r) {

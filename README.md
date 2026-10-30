@@ -91,6 +91,7 @@ Ana ekranınızdaki filmler sıradan afişler değildir; her biri poligon yüzey
 
 - **Sol İç Kapakta Edebi Kürasyon:** Özel basım bir Criterion Collection kutusunu aralamışçasına; filmin ruhunu, vizyon mirasını ve sinematografik değerini aktaran edebi sinopsis sizi karşılar.
 - **Sağ Tepside Sıfır Arayüzlü Fragman & Akıllı Dikey Disk Modu:** DVD kutusunun sağ tepsisinde fragman oynarken hiçbir YouTube arayüzü (başlık çubuğu, kanal ikonu, filigran veya bitiş ekranı) görünmez. Eğer bir filmin fragmanı YouTube'da bulunmuyorsa veya bulunduğunuz ülkede izlenme kısıtı varsa, o filmin DVD kutusu otomatik olarak **fragmansız ve dikey** açılır; tepsideki dönen DVD diski tüm gerçekçiliğiyle sahneye çıkar.
+- **Mikro Nefes Salınımı & Fiziksel Fresnel Kılıf Parlaması:** Odaktaki DVD kutusu yapay ve kaba bir sarkaç gibi savrulmak yerine, $\pm2.2^\circ$ genlikte 5.6 saniyelik doğal bir mikro nefes salınımı yapar. Kutunun üzerindeki saydam selofan kılıf, oda ışığı ve temanın aydınlatmasıyla tam uyumlu biçimde ince film kromatik kırılma (Fresnel dispersiyonu) ışık parlaması üretir.
 
 <br>
 
@@ -160,6 +161,10 @@ Standart televizyon arayüzlerinde harf harf arama yapmak sinema keyfini başlam
 
 Kumandanızın mikrofonuna konuştuğunuzda televizyon çerçevesinin dört bir yanında canlanan **akustik kromatik ışık şeritleri**, sesinizin frekansına gerçek zamanlı tepki verir ve yapay zekanın his/durum odaklı analiz yeteneğiyle birleşir. *"90'larda yağmurlu gecelerde geçen melankolik dedektif filmleri"* dediğinizde vitrininiz saniyeler içinde o başyapıtlarla donatılır; destekleyen orta ve üst segment televizyonlarda ise **EMA-Lightning Nöral Türkçe Ses Motoru** (`canberkkkkkk/ema-lightning`, 24 kHz) yanıtları stüdyo kalitesinde doğal insan sesiyle seslendirir.
 
+- **"Kiminle İzliyorsun?" Modu:** "Gamze, bu akşam ailece izleyeceğimiz sürükleyici bir film bul" dendiğinde sistem evdeki çocukları gözeterek yaş kısıtlaması uygular, şiddet ve yetişkin içeriklerini tamamen eler. "Arkadaş ortamı için eğlenceli ve gerilimli bir şey" dendiğinde yüksek tempolu ters köşeleri; "Sevgilimle baş başa" dendiğinde derin romantizm ve estetik dramları veya romantik gerilimli aksiyonları vitrine çıkarır.
+- **Dinamik Yerel Bağlam Belleği (GamzeMemory):** Kullanıcının yaşı, beğenileri ve aile fertlerinin tercihleri gibi bağlamlar televizyonun kendi yerel deposunda (`GamzeMemory`) tamamen gizlilik esaslı olarak saklanır ve her sohbette daha rafine bir sinema deneyimi sunar.
+- **Ruh Haline Göre Tek Dokunuş Başlatma:** "Bugün nasılsınız?" sorusuna verilen duygu durum cevabına göre nokta atışı tek bir film doğrudan oynatılabilir.
+
 <br>
 
 <p align="center">
@@ -225,13 +230,18 @@ Film bittiğinde veya televizyonunuz boşta kaldığında ekran kararmaz; salonu
 
 <br>
 
-## Telefonunuz: Sıfır Sürtünmeli İkinci Ekran
+## Telefonunuz: Sıfır Sürtünmeli İkinci Ekran & CineParty
 
 Uygulama mağazalarından ek yazılım indirmeye, hesap açmaya veya karmaşık kodlar girmeye gerek yok. Kameranızı televizyondaki QR koda doğrulttuğunuz anda tüm güç telefonunuza geçer:
 
+- **Apple Liquid Glass PWA (Doğrudan Yerel Uygulama):** Hem iOS Safari ("Ana Ekrana Ekle") hem Android ("Uygulamayı Yükle") üzerinden tek dokunuşla kurulur. Tarayıcı adres çubuğu ve butonları olmadan, tam ekran yerel bir akıllı kumanda olarak çalışır.
 - **Tüm TV Genelinde Dokunmatik Kumanda & Air Mouse:** Milisaniyelik tepki süresine sahip dokunmatik izleme dörtgeni (Touchpad), Hava Faresi (Air Mouse) ve klavye/metin yapıştırma altyapısı yalnızca CineTV içinde değil; Nuvio, YouTube, Nova Player ve sistem menüleri dahil **televizyonun her yerinde** kesintisiz çalışır.
-- **Web Cast Köprüsü:** İnternette karşılaştığınız herhangi bir yayını (iframe Referer, Origin ve Cookie başlıklarını otomatik yakalayarak) tek dokunuşla televizyona fırlatma imkanı.
-- **Kişisel Galeri:** Telefonunuzdaki fotoğrafları anında televizyonun duvar kağıdı yapabilme özgürlüğü.
+- **Çoklu Telefon Deneyimi & Sinefil Parti Oyunları (CineParty):** Salondaki birden fazla telefon aynı anda TV'ye bağlanabilir:
+  - **10 Soruluk Sinefil Bilmece Arenası:** Canlı TV ekranında geri sayım ve çoklu telefon buzzer/metin girişi ile aktörleri, replikleri ve yönetmenleri tahmin edin. 10 soru sonunda TV ekranında şampiyon ilan edilir: *"Bugün, kazanan hangi filmi seçerse o izlenir!"*
+  - **Film Öneri Ruleti:** Salondaki herkes kendi telefonundan TV'ye bir film veya dizi fırlatır; TV ekranında dönen rulet akşamın filmini otomatik seçer.
+  - **Gyro Destekli Sinefil Yılan Oyunu:** Telefonun jiroskopuyla eğim vererek oynanan, yılanın klasik film afişlerini yedikçe büyüdüğü sinefil arcade oyunu.
+- **Web Cast Köprüsü:** İnternette karşılaştığınız herhangi bir yayını tek dokunuşla televizyona fırlatma imkanı.
+- **Kişisel Galeri & 16:9 Odaklama:** Telefonunuzdaki fotoğrafları çerçeve içinde odaklayıp televizyonun duvar kağıdı yapabilme özgürlüğü.
 
 <br>
 
@@ -244,6 +254,31 @@ Uygulama mağazalarından ek yazılım indirmeye, hesap açmaya veya karmaşık 
 <p align="center">
   <img src="docs/media/phone-walkthrough.gif" alt="Canlı Akış" width="360">
 </p>
+
+<br><br>
+
+---
+
+<br>
+
+## ✦ CineSub: İnteraktif Kültürel Altyazı Rehberi & AI Sahne Analizi
+
+Film izlerken geçen tarihi bir olay, yönetmen metaforu veya felsefi kavram için filmi durdurup telefonunuzdan araştırma devri sona erdi:
+
+- **Sahneyi Durdurmayan Yüzen Kültürel Kart:** Kumandanızın atanmış renkli tuşuna veya mobil arayüzdeki CineSub butonuna bastığınız anda sahne durmadan ve video akışı kesilmeden ekranın sağ kenarında şık bir cam not kartı belirir.
+- **Gemini Vision Sahne Denetçisi:** Sahnedeki ikonik bir tabloyu, mimari detayı, tarihi kostümü veya yemeği tek dokunuşla analiz edip kökenini açıklar.
+
+<br><br>
+
+---
+
+<br>
+
+## 🍿 Otomatik Letterboxd Senkronizasyonu & Fiziksel Kumanda Atamaları
+
+- **Letterboxd Günlük Kaydı (Scrobble / Diary):** CineTV'de başlattığınız filmler `/sdcard/Download/cinetv_letterboxd_diary.csv` dosyasına resmi Letterboxd formatında anında işlenir. Yıl sonunda veya dilediğiniz an tek tıkla profilinize aktarabilirsiniz.
+- **Fiziksel TV Kumandası Renkli Tuşları:** Televizyon kumandanızdaki Kırmızı, Yeşil, Sarı ve Mavi tuşlara CineSub, Gamze AI, Film Ruleti veya Nuvio doğrudan atanabilir.
+- **Sistem Seslerini Özelleştirme:** Hans Zimmer & Apple estetiğindeki mikro tınıları Ayarlar > Görsel & Ses menüsünden dilediğiniz an kapatıp açabilirsiniz.
 
 <br><br>
 
@@ -322,9 +357,9 @@ CineTV Kurulum Sihirbazı içerisinde QR kodlu rehberle adım adım anlatıldı�
 
 <br>
 
-## 🪟 Windows PC Masaüstü Sürümü (Companion App)
+## 🪟 Windows PC Masaüstü Sürümü (Kişisel Sinema Kütüphanesi & Oynatıcı)
 
-CineTV, Android TV'nin yanı sıra salonunuzdaki veya çalışma odanızdaki Windows bilgisayarınızda da kusursuz bir sinema salonu kurabilmeniz için özel bir masaüstü sürümüne sahiptir:
+CineTV, Android TV'nin yanı sıra salonunuzdaki veya çalışma odanızdaki Windows bilgisayarınızda da kusursuz bir sinema salonu kurabilmeniz için özel bir masaüstü kütüphanesine sahiptir (bir sistem başlatıcısı değil, bağımsız bir kişisel sinema kütüphanesi ve oynatıcı arayüzüdür):
 
 - **Birebir Aynı Sinema Felsefesi & Kaynaklar:** 3B açılan DVD kutuları, TMDB yüksek çözünürlüklü afişler, Türkçe özetler, fragmanlar ve Gamze AI asistanı Windows sürümünde de birebir aynı tasarım diliyle çalışır.
 - **Senkronize Nuvio & Eklenti Mimarisi:** TV'nizde kullandığınız tüm Nuvio katalogları ve eklentileri masaüstü sürümünde de aktiftir.
@@ -355,7 +390,7 @@ CineTV, TV Denetçisi üzerinden gönderilen telemetri ve doğrudan laboratuvar 
 
 <br>
 
-## Uyumluluk ve Bağımsızlık Sözü
+## Cihaz Desteği ve Bağımsız Sistem Mimarisi
 
 CineTV; Sony, Philips, TCL, Xiaomi, Hisense, Arçelik, Beko, Grundig ve Vestel başta olmak üzere tüm Android TV ve Google TV cihazlarında, Chromecast, NVIDIA SHIELD ve Android projeksiyonlarda akıcı çalışır.
 
@@ -376,15 +411,13 @@ Hiçbir kişisel verinizi toplamaz, kullanım alışkanlıklarınızı izlemez v
 **CineTV**, ticari bir ürün ya da abonelik servisi değil; sinema tutkusunu herkes için ulaşılabilir kılmak adına **Alptuğ Dağ** tarafından sıfır kâr ve sıfır reklam felsefesiyle tasarlanıp geliştirilmiş bağımsız bir ev sineması projesidir.
 
 **Alptuğ Dağ** — Yönetmen, Senarist, Kurgucu, Seslendirme Sanatçısı & Yaratıcı Teknoloji Geliştiricisi.  
-Kısa filmi **[Sessiz (2023)](https://www.youtube.com/watch?v=bLvdsibrR-I)** ([Fragman](https://www.youtube.com/watch?v=jb7BM-NHreg&feature=youtu.be)) başta olmak üzere bağımsız sinema, görsel hikâye anlatımı, kurgu ve sahne sanatları üretimleriyle tanınır.
+Bağımsız sinema, görsel hikâye anlatımı, kurgu ve sahne sanatları üretimleriyle tanınır.
 
-CineTV salonunuzun başköşesinde yaşarken bu bağımsız vizyona destek olmak, yeni kısa film ve projelerden haberdar olmak ya da **film, reklam, yönetmenlik, kurgu, seslendirme ve yaratıcı teknoloji iş birlikleri** için doğrudan iletişime geçebilirsiniz:
+CineTV salonunuzun başköşesinde yaşarken bu bağımsız vizyona destek olmak, yeni projelerden haberdar olmak ya da **film, reklam, yönetmenlik, kurgu, seslendirme ve yaratıcı teknoloji iş birlikleri** için doğrudan iletişime geçebilirsiniz:
 
 <br>
 
 [![Instagram](https://img.shields.io/badge/INSTAGRAM-%40alptugdag-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://instagram.com/alptugdag) &nbsp;
-[![Kısa Film: Sessiz](https://img.shields.io/badge/KISA%20FILM-SESSIZ%20(2023)-E50914?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=bLvdsibrR-I) &nbsp;
-[![Fragman: Sessiz](https://img.shields.io/badge/FRAGMAN-SESSIZ%20(2023)-18181B?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=jb7BM-NHreg&feature=youtu.be) &nbsp;
 [![LinkedIn](https://img.shields.io/badge/LINKEDIN-ALPTUG%20DAG-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/AlptugDag/)
 
 <br>

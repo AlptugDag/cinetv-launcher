@@ -42,6 +42,8 @@ public class ModalHost extends FrameLayout {
         setVisibility(GONE);
         setBackgroundColor(Color.argb(150, 0, 0, 0));
         setClickable(true);
+        setClipChildren(false);
+        setClipToPadding(false);
     }
 
     public void setSpatial(boolean on) {
