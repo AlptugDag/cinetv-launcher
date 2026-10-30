@@ -325,6 +325,16 @@ public final class Panels {
             trailersTile.setTag("opt_trailers");
             c1.addView(trailersTile);
 
+            boolean trailerAudio = Prefs.trailerAudio(ctx);
+            LinearLayout audioTile = Controls.tile(ctx,
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "Fragman Sesi" : "Trailer Audio",
+                    Prefs.trailerAudioLabel(ctx), trailerAudio, v -> {
+                        Prefs.setTrailerAudio(ctx, !Prefs.trailerAudio(ctx));
+                        host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_trailer_audio"));
+                    });
+            audioTile.setTag("opt_trailer_audio");
+            c1.addView(audioTile);
+
             LinearLayout c2 = column(ctx, cols, "Animasyon & Performans", colWidth);
             boolean dvd = Prefs.dvdAnimation(ctx);
             LinearLayout dvdTile = Controls.tile(ctx, ctx.getString(R.string.dvd_animation), ctx.getString(dvd ? R.string.state_on : R.string.state_off), dvd, v -> {
@@ -359,6 +369,29 @@ public final class Panels {
                         a.applyAppearance();
                         host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_font_scale"));
                     }));
+
+            c2.addView(Controls.tile(ctx,
+                    "tr".equals(Locale.getDefault().getLanguage()) ? "Sinema Uygulaması İsmi" : "Cinema App Label",
+                    Prefs.streamAppNameLabel(ctx), false, v -> {
+                        Prefs.setStreamAppNameMode(ctx, Prefs.streamAppNameMode(ctx) + 1);
+                        AppArtwork.clearCache();
+                        a.onAppsChanged();
+                        host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_stream_name"));
+                    }));
+
+            java.util.List<String> nuvioPkgs = AppLauncher.installedNuvioPackages(ctx);
+            if (nuvioPkgs.size() > 1) {
+                String currentSelected = AppLauncher.resolveNuvioPackage(ctx);
+                String currentPkgLabel = AppArtwork.getCleanLabel(currentSelected, currentSelected);
+                c2.addView(Controls.tile(ctx,
+                        "tr".equals(Locale.getDefault().getLanguage()) ? "Varsayılan Film Oynatıcı" : "Default Movie Player",
+                        currentPkgLabel, true, v -> {
+                            int idx = nuvioPkgs.indexOf(currentSelected);
+                            int nextIdx = (idx + 1) % nuvioPkgs.size();
+                            Prefs.setPreferredNuvioPackage(ctx, nuvioPkgs.get(nextIdx));
+                            host.replace(() -> buildSettings(ctx, host, a, PAGE_VISUAL, "opt_nuvio_player"));
+                        }));
+            }
 
         } else if (pageIndex == PAGE_AI) {
             // Page 3: AI & Media / Network

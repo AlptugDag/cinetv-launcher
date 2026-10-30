@@ -16,11 +16,17 @@ import com.cinetv.launcher.device.DeviceTweaks;
  */
 public class CineTvApp extends Application {
 
+    private static volatile CineTvApp appInstance;
     private static final long[] BOOT_RESCUES_MS = {1500, 3500, 6000, 9000, 13000};
+
+    public static CineTvApp get() {
+        return appInstance;
+    }
 
     @Override
     public void onCreate() {
         super.onCreate();
+        appInstance = this;
         com.cinetv.launcher.service.PosterCache.configure(com.cinetv.launcher.device.PerformanceProfile.lowMemory(this));
         HomeGuard.install(this);
         // The phone remote works whatever is on screen: its server and key bridge live with the process

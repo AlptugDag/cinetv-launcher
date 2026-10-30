@@ -16,7 +16,57 @@ import java.util.List;
 public final class AppLauncher {
 
     public static final String NUVIO = "com.nuvio.tv";
-    public static final String[] NUVIO_PACKAGES = {NUVIO, "com.stremio.one"};
+    public static final String[] NUVIO_PACKAGES = {
+            NUVIO, "com.stremio.one", "com.stremio.tv", "com.nuvio.rs",
+            "com.nuvio.legacy", "com.nuvio.app", "com.nuvio",
+            "org.stremio.one", "com.stremio"
+    };
+
+    /** Discovers all installed Nuvio/Stremio packages (including Nuvio RS, Nuvio Legacy, custom APKs). */
+    public static List<String> installedNuvioPackages(Context ctx) {
+        List<String> list = new java.util.ArrayList<>();
+        if (ctx == null) return list;
+        PackageManager pm = ctx.getPackageManager();
+        if (pm == null) return list;
+
+        try {
+            Intent probe = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/movie/tt0000001"));
+            List<ResolveInfo> activities = pm.queryIntentActivities(probe, 0);
+            for (ResolveInfo ri : activities) {
+                if (ri.activityInfo != null && !list.contains(ri.activityInfo.packageName)) {
+                    list.add(ri.activityInfo.packageName);
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        for (String p : NUVIO_PACKAGES) {
+            if (!list.contains(p) && isLaunchable(pm, p)) {
+                list.add(p);
+            }
+        }
+
+        try {
+            List<android.content.pm.PackageInfo> installed = pm.getInstalledPackages(0);
+            for (android.content.pm.PackageInfo pi : installed) {
+                String lp = pi.packageName.toLowerCase(java.util.Locale.ROOT);
+                if ((lp.contains("nuvio") || lp.contains("stremio")) && !list.contains(pi.packageName) && isLaunchable(pm, pi.packageName)) {
+                    list.add(pi.packageName);
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        return list;
+    }
+
+    /** Resolves active Nuvio package (respects user selection in Settings if multiple are installed). */
+    public static String resolveNuvioPackage(Context ctx) {
+        String saved = Prefs.preferredNuvioPackage(ctx);
+        PackageManager pm = ctx.getPackageManager();
+        if (saved != null && isLaunchable(pm, saved)) return saved;
+        List<String> pkgs = installedNuvioPackages(ctx);
+        if (!pkgs.isEmpty()) return pkgs.get(0);
+        return NUVIO;
+    }
     public static final String[] YOUTUBE_PACKAGES = {
             "io.gh.reisxd.tizentube.cobalt", "com.reisxd.tizentube", "com.teamsmart.videomanager.tv",
             "com.liskovsoft.smarttubetv.beta", "com.liskovsoft.smarttubetv"};
@@ -197,30 +247,46 @@ public final class AppLauncher {
             return openYouTubeVideo(ctx, Creator.SESSIZ_YOUTUBE_URL);
         }
         com.cinetv.launcher.TvKeyInterceptorService.launchedNuvioFromCineTv = true;
+        String targetPkg = resolveNuvioPackage(ctx);
+
         if (imdbId != null && (imdbId.startsWith("tv:") || "tv".equals(type) || "channel".equals(type))) {
-            Intent tvIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/tv/" + imdbId)).setPackage(NUVIO);
+            Intent tvIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/tv/" + imdbId));
+            if (targetPkg != null) tvIntent.setPackage(targetPkg);
             tvIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            if (start(ctx, tvIntent)) return true;
+            tvIntent.setPackage(null);
             if (start(ctx, tvIntent)) return true;
         }
         if (imdbId != null && imdbId.startsWith("tt")) {
             String kind = "series".equals(type) ? "series" : "movie";
             // Deep link directly to Nuvio detail page so scraper addons (Cinestream, Torrentio) resolve all 4K/1080p streams and Turkish dubbing
-            Intent detail = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/" + kind + "/" + imdbId)).setPackage(NUVIO);
+            Intent detail = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/" + kind + "/" + imdbId));
+            if (targetPkg != null) detail.setPackage(targetPkg);
             detail.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             if (start(ctx, detail)) return true;
 
-            Intent nuvioUri = new Intent(Intent.ACTION_VIEW, Uri.parse("nuvio:///detail/" + kind + "/" + imdbId)).setPackage(NUVIO);
+            Intent nuvioUri = new Intent(Intent.ACTION_VIEW, Uri.parse("nuvio:///detail/" + kind + "/" + imdbId));
+            if (targetPkg != null) nuvioUri.setPackage(targetPkg);
             nuvioUri.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             if (start(ctx, nuvioUri)) return true;
+
+            detail.setPackage(null);
+            if (start(ctx, detail)) return true;
         }
         // Fallback: If imdbId is missing or stream intent didn't catch, deep-link search directly into Nuvio
         if (title != null && !title.trim().isEmpty()) {
             try {
-                Intent searchIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///search?search=" + Uri.encode(title.trim())))
-                        .setPackage(NUVIO)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                Intent searchIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///search?search=" + Uri.encode(title.trim())));
+                if (targetPkg != null) searchIntent.setPackage(targetPkg);
+                searchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                if (start(ctx, searchIntent)) return true;
+                searchIntent.setPackage(null);
                 if (start(ctx, searchIntent)) return true;
             } catch (Throwable ignored) {}
+        }
+        if (targetPkg != null && launch(ctx, targetPkg)) return true;
+        for (String p : installedNuvioPackages(ctx)) {
+            if (launch(ctx, p)) return true;
         }
         return launchFirst(ctx, NUVIO_PACKAGES);
     }

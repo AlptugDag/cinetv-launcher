@@ -320,6 +320,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         MemoryOptimizer.ensureAirPlayReceiver(this);
         com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
         MemoryOptimizer.sweepAsync(this);
+        if (!HomeGuard.isDefault(this)) {
+            new Thread(() -> HomeGuard.ensureDefault(this), "cinetv-resume-guard").start();
+        }
         PerformanceProfile.noteMemory(this);
         AppUpdater.checkAndAutoUpdateOnBoot(this);
         resetIdle();

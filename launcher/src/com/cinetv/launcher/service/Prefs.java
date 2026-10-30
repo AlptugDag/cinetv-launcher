@@ -193,4 +193,50 @@ public final class Prefs {
             default: return tr ? "Standart (%100)" : "Standard (100%)";
         }
     }
+
+    public static final String TRAILER_AUDIO = "pref_trailer_audio_v2";
+
+    public static boolean trailerAudio(Context ctx) {
+        return get(ctx).getBoolean(TRAILER_AUDIO, true);
+    }
+
+    public static void setTrailerAudio(Context ctx, boolean on) {
+        get(ctx).edit().putBoolean(TRAILER_AUDIO, on).apply();
+    }
+
+    public static String trailerAudioLabel(Context ctx) {
+        boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+        return trailerAudio(ctx) ? (tr ? "Açık (Crossfade)" : "On (Crossfade)") : (tr ? "Sessiz" : "Muted");
+    }
+
+    public static final String STREAM_APP_NAME_MODE = "pref_stream_app_name_mode";
+
+    public static int streamAppNameMode(Context ctx) {
+        return get(ctx).getInt(STREAM_APP_NAME_MODE, 0); // 0: Alptugflix, 1: Nuvio, 2: Orijinal, 3: Sinema
+    }
+
+    public static void setStreamAppNameMode(Context ctx, int mode) {
+        get(ctx).edit().putInt(STREAM_APP_NAME_MODE, Math.abs(mode) % 4).apply();
+    }
+
+    public static String streamAppNameLabel(Context ctx) {
+        boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+        switch (streamAppNameMode(ctx)) {
+            case 1: return "Nuvio";
+            case 2: return tr ? "Orijinal İsimler (RS / Legacy)" : "Original Names (RS / Legacy)";
+            case 3: return tr ? "Sinema Salonu" : "Cinema";
+            case 0:
+            default: return "Alptuğflix";
+        }
+    }
+
+    public static final String PREFERRED_NUVIO_PKG = "pref_preferred_nuvio_pkg";
+
+    public static String preferredNuvioPackage(Context ctx) {
+        return get(ctx).getString(PREFERRED_NUVIO_PKG, null);
+    }
+
+    public static void setPreferredNuvioPackage(Context ctx, String pkg) {
+        get(ctx).edit().putString(PREFERRED_NUVIO_PKG, pkg).apply();
+    }
 }

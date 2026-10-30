@@ -65,8 +65,11 @@ public final class StreamProfile {
 
     /** Opens Nuvio's own addon screen with this configuration (the user confirms there). */
     public boolean openInNuvio(Context ctx) {
-        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio://torrentio.strem.fun/" + torrentioConfig + "/manifest.json"))
-                .setPackage(AppLauncher.NUVIO);
+        String pkg = AppLauncher.resolveNuvioPackage(ctx);
+        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio://torrentio.strem.fun/" + torrentioConfig + "/manifest.json"));
+        if (pkg != null) i.setPackage(pkg);
+        if (AppLauncher.start(ctx, i)) return true;
+        i.setPackage(null);
         return AppLauncher.start(ctx, i);
     }
 }

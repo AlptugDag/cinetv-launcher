@@ -85,7 +85,20 @@ public final class AppArtwork {
         if (AppCatalog.isTizenTube(pkg)) return "YouTube";
         if (lower.contains("turkcell.ott") || lower.contains("tvplus")) return "TV+";
         if (lower.contains("instantbits.cast")) return "Web Video Caster";
-        if (lower.contains("nuvio") || lower.contains("alptugflix")) return "Alptuğflix";
+        if (lower.contains("nuvio") || lower.contains("alptugflix")) {
+            Context app = com.cinetv.launcher.CineTvApp.get();
+            int mode = app != null ? com.cinetv.launcher.service.Prefs.streamAppNameMode(app) : 0;
+            String suffix = "";
+            String rawLow = (originalLabel != null ? originalLabel : "").toLowerCase();
+            if (rawLow.contains("rs") || lower.contains("rs")) suffix = " RS";
+            else if (rawLow.contains("legacy") || lower.contains("legacy") || rawLow.contains("legach")) suffix = " Legacy";
+            else if (rawLow.contains("beta") || lower.contains("beta")) suffix = " Beta";
+
+            if (mode == 1) return "Nuvio" + suffix;
+            if (mode == 2 && originalLabel != null && !originalLabel.trim().isEmpty()) return originalLabel;
+            if (mode == 3) return "Sinema" + suffix;
+            return "Alptuğflix" + suffix;
+        }
         if (lower.contains("stremio")) return "Stremio";
         if (lower.contains("dizipal") || lower.contains("lipter")) return "DİZİPAL";
         if (lower.contains("courville.nova")) return "NOVA";
@@ -407,7 +420,7 @@ public final class AppArtwork {
         } else if (lower.contains("instantbits.cast")) {
             rawCard = createWebVideoCasterCard(ctx);
         } else if (lower.contains("nuvio") || lower.contains("alptugflix")) {
-            rawCard = createNuvioCard(ctx, focused);
+            rawCard = createNuvioCard(ctx, focused, cleanLabel);
         } else if (lower.contains("stremio")) {
             rawCard = createStremioCard(ctx);
         } else if (lower.contains("dizipal") || lower.contains("lipter")) {
@@ -831,20 +844,29 @@ public final class AppArtwork {
     }
 
     public static Bitmap createNuvioCard(Context ctx) {
-        return createNuvioCard(ctx, false);
+        return createNuvioCard(ctx, false, "Alptuğflix");
+    }
+
+    public static Bitmap createNuvioCard(Context ctx, boolean focused) {
+        return createNuvioCard(ctx, focused, "Alptuğflix");
     }
 
     /** 4. Alptugflix (Nuvio) Liquid Glass Card: Liquid Glass crystal + Authentic 3D Chrome ALPTUG & Crimson Ruby FLIX Wordmark */
-    public static Bitmap createNuvioCard(Context ctx, boolean focused) {
+    public static Bitmap createNuvioCard(Context ctx, boolean focused, String cleanLabel) {
         Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
         int neon = Color.parseColor("#E50914"); // Authentic Netflix / Cinema Ruby
         drawLiquidGlassCardBase(canvas, neon, CARD_W * 0.64f, CARD_H / 2f);
 
+        int mode = com.cinetv.launcher.service.Prefs.streamAppNameMode(ctx);
+        boolean useWordmark = (mode == 0 || cleanLabel == null || cleanLabel.contains("Alptuğflix"));
+
         Drawable wordmark = null;
-        try {
-            wordmark = ctx.getResources().getDrawable(R.drawable.ic_nuvio_wordmark, ctx.getTheme());
-        } catch (Throwable ignored) {
+        if (useWordmark) {
+            try {
+                wordmark = ctx.getResources().getDrawable(R.drawable.ic_nuvio_wordmark, ctx.getTheme());
+            } catch (Throwable ignored) {
+            }
         }
 
         if (wordmark != null) {
@@ -866,13 +888,12 @@ public final class AppArtwork {
             Bitmap wmBmp = processAlptugflixWordmark(rawBmp, focused);
             if (wmBmp != rawBmp && !rawBmp.isRecycled()) rawBmp.recycle();
 
-
             // 1. 3D Bevel Drop Shadow underneath the entire wordmark (pop off the glass surface)
             Paint shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
             shadowPaint.setColorFilter(new PorterDuffColorFilter(Color.argb(200, 0, 0, 0), PorterDuff.Mode.SRC_IN));
             canvas.drawBitmap(wmBmp, left, top + 4f, shadowPaint);
 
-            // 2. Focused mode: Add vivid crimson neon glow directly behind the semi-transparent FLIX letters (smooth 360 radial glow, no hard cutoff)
+            // 2. Focused mode: Add vivid crimson neon glow directly behind the semi-transparent FLIX letters
             if (focused) {
                 int splitX = Math.round(targetW * 0.638f);
                 Bitmap flixBmp = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888);
@@ -891,13 +912,49 @@ public final class AppArtwork {
             canvas.drawBitmap(wmBmp, left, top, p);
             wmBmp.recycle();
         } else {
-            Paint text = createCrispTextPaint(ctx, 64f, neon);
+            String title = (cleanLabel != null && !cleanLabel.trim().isEmpty()) ? cleanLabel.toUpperCase() : "NUVIO";
+            Paint text = createCrispTextPaint(ctx, 60f, neon);
             text.setLetterSpacing(0.06f);
-            float tw = text.measureText("ALPTUGFLIX");
+            float tw = text.measureText(title);
             Paint.FontMetrics fm = text.getFontMetrics();
             float ty = (CARD_H / 2f) - ((fm.ascent + fm.descent) / 2f);
-            canvas.drawText("ALPTUGFLIX", (CARD_W - tw) / 2f, ty, text);
+            canvas.drawText(title, (CARD_W - tw) / 2f, ty, text);
         }
+
+        // Distinctive badge for variant (RS, Legacy, Beta) so dual installs are instantly distinguishable
+        if (cleanLabel != null) {
+            String labelUpper = cleanLabel.toUpperCase();
+            String badgeText = null;
+            if (labelUpper.contains("RS")) badgeText = "RS";
+            else if (labelUpper.contains("LEGACY") || labelUpper.contains("LEGACH")) badgeText = "LEGACY";
+            else if (labelUpper.contains("BETA")) badgeText = "BETA";
+
+            if (badgeText != null) {
+                Paint bp = createCrispTextPaint(ctx, 22f, Color.WHITE);
+                bp.setTypeface(android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.BOLD));
+                float bw = bp.measureText(badgeText) + 26f;
+                float bh = 34f;
+                float bx = CARD_W - bw - 22f;
+                float by = 22f;
+                RectF br = new RectF(bx, by, bx + bw, by + bh);
+
+                Paint badgeBg = new Paint(Paint.ANTI_ALIAS_FLAG);
+                badgeBg.setColor(Color.argb(230, 229, 9, 20));
+                badgeBg.setStyle(Paint.Style.FILL);
+                canvas.drawRoundRect(br, 8f, 8f, badgeBg);
+
+                Paint badgeBorder = new Paint(Paint.ANTI_ALIAS_FLAG);
+                badgeBorder.setColor(Color.argb(200, 255, 255, 255));
+                badgeBorder.setStyle(Paint.Style.STROKE);
+                badgeBorder.setStrokeWidth(2f);
+                canvas.drawRoundRect(br, 8f, 8f, badgeBorder);
+
+                Paint.FontMetrics bfm = bp.getFontMetrics();
+                float bty = by + (bh / 2f) - ((bfm.ascent + bfm.descent) / 2f);
+                canvas.drawText(badgeText, bx + 13f, bty, bp);
+            }
+        }
+
         return bmp;
     }
 

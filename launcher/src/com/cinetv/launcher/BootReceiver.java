@@ -28,15 +28,20 @@ public class BootReceiver extends BroadcastReceiver {
             } catch (Throwable t) {
                 Log.w(TAG, "failed to start on boot: " + t);
             }
-            // Follow-up reinforcement after OEM launcher initialization completes
-            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                try {
-                    Intent followUp = new Intent(context, MainActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION);
-                    context.startActivity(followUp);
-                } catch (Throwable ignored) {
-                }
-            }, 2200);
+            // Aggressive follow-up reinforcements to suppress OEM launchers (Android 9, 11, 14 TV boxes)
+            android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
+            long[] delays = {1000L, 2200L, 4500L};
+            for (long delay : delays) {
+                h.postDelayed(() -> {
+                    try {
+                        Intent followUp = new Intent(context, MainActivity.class)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                        context.startActivity(followUp);
+                    } catch (Throwable ignored) {
+                    }
+                }, delay);
+            }
+            new Thread(() -> HomeGuard.ensureDefault(context), "cinetv-boot-guard").start();
             com.cinetv.launcher.service.AppUpdater.checkAndAutoUpdateOnBoot(context);
         }
     }

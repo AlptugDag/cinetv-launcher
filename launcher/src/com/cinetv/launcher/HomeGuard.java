@@ -91,8 +91,9 @@ public final class HomeGuard {
         if (isDefault(ctx)) return;
         String pkg = ctx.getPackageName();
         com.cinetv.launcher.remote.LocalAdb.shell(ctx,
-                "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity; "
-                + "cmd package set-home-activity " + pkg + "/.MainActivity", 2000);
+                "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity 2>/dev/null; "
+                + "cmd package set-home-activity --user current " + pkg + "/.MainActivity 2>/dev/null; "
+                + "cmd package set-home-activity " + pkg + "/.MainActivity 2>/dev/null", 2000);
         if (isDefault(ctx)) return;
         promptHomeChooser(ctx);
     }
@@ -128,6 +129,7 @@ public final class HomeGuard {
                 + "pm grant " + pkg + " android.permission.BLUETOOTH_CONNECT 2>/dev/null; "
                 + "pm grant " + pkg + " android.permission.BLUETOOTH_SCAN 2>/dev/null; "
                 + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity 2>/dev/null; "
+                + "cmd package set-home-activity --user current " + pkg + "/.MainActivity 2>/dev/null; "
                 + "cmd package set-home-activity " + pkg + "/.MainActivity 2>/dev/null; "
                 + "s=$(settings get secure enabled_accessibility_services 2>/dev/null); case \"$s\" in *" + service + "*) ;; "
                 + "null|'') settings put secure enabled_accessibility_services " + service + " 2>/dev/null ;; "

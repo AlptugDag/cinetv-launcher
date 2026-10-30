@@ -5,6 +5,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ResolveInfo;
+import java.util.List;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.InputDevice;
@@ -350,15 +352,35 @@ public class TvKeyInterceptorService extends AccessibilityService {
         return pkg.startsWith("com.mediatek.wwtv") || pkg.startsWith("com.mediatek.tv.oneworld.tvcenter");
     }
 
-    /** Stock TV launchers (Xiaomi Mi TV, Google TV, Android TV). */
+    /** Stock TV launchers (Xiaomi Mi TV, Google TV, Android TV, Next Media Box, Amlogic, Droidlogic, Mstar, Rockchip). */
     private boolean isStockLauncher(String pkg) {
         if (pkg == null || pkg.equals(getPackageName())) return false;
-        return pkg.equals("com.google.android.tvlauncher")
+        if (pkg.equals("com.google.android.tvlauncher")
                 || pkg.equals("com.google.android.apps.tv.launcherx")
                 || pkg.equals("com.xiaomi.mitv.tvhome")
                 || pkg.equals("com.android.tv.launcher")
                 || pkg.contains("tvlauncher")
-                || pkg.contains("mitv.tvhome");
+                || pkg.contains("mitv.tvhome")
+                || pkg.contains("droidlogic")
+                || pkg.contains("mstar")
+                || pkg.contains("homeshell")
+                || pkg.contains("rockchip")
+                || pkg.contains("elinkway")
+                || pkg.contains("shafa")
+                || pkg.contains("dangbei")
+                || pkg.contains("next.launcher")) {
+            return true;
+        }
+        try {
+            Intent homeIntent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            List<ResolveInfo> homes = getPackageManager().queryIntentActivities(homeIntent, 0);
+            for (ResolveInfo ri : homes) {
+                if (ri.activityInfo != null && pkg.equals(ri.activityInfo.packageName)) {
+                    return true;
+                }
+            }
+        } catch (Throwable ignored) {}
+        return false;
     }
 
     /** A real change of app (not a keyboard, toast or pop-up drawn over Nuvio). */
@@ -386,11 +408,20 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return true;
         }
         armIdleSaver();
+        int code = event.getKeyCode();
+        // Aggressive Home capture: Home button on any remote returns instantly to CineTV
+        if (code == KeyEvent.KEYCODE_HOME) {
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                startActivity(new Intent(this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+                return true;
+            }
+            return true;
+        }
         int source = event.getSource();
         boolean gamepad = (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
                 || (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
-        if (gamepad || HardwareKeys.isNavigation(event.getKeyCode())) return false;
-        int code = event.getKeyCode();
+        if (gamepad || HardwareKeys.isNavigation(code)) return false;
         // Direct return to CineTV: when exiting Nuvio or YouTube, Back returns straight to CineTV Launcher Home
         if ((launchedYouTubeFromCineTv || launchedNuvioFromCineTv) && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
             if (event.getAction() == KeyEvent.ACTION_UP) {

@@ -229,7 +229,8 @@ public final class TrailerPlayer extends FrameLayout {
 
             final String origin = "https://www.youtube-nocookie.com";
             final boolean withSound = com.cinetv.launcher.service.Creator.isSessiz(m)
-                    || com.cinetv.launcher.service.Creator.SESSIZ_TRAILER_ID.equals(key);
+                    || com.cinetv.launcher.service.Creator.SESSIZ_TRAILER_ID.equals(key)
+                    || com.cinetv.launcher.service.Prefs.trailerAudio(getContext());
             final int muteFlag = withSound ? 0 : 1;
 
             String html = "<!DOCTYPE html><html><head>"
@@ -249,6 +250,21 @@ public final class TrailerPlayer extends FrameLayout {
                     + "var notified = false, playing = false, yt;"
                     + "function log(m){ try{ console.log('CTV ' + m); }catch(e){} }"
                     + "function notifyReady() { if (notified) return; notified = true; if (window.CineTvBridge) window.CineTvBridge.onPlaying(); }"
+                    + "function fadeInVolume(player, durationMs) {"
+                    + "  try {"
+                    + "    player.unMute();"
+                    + "    player.setVolume(0);"
+                    + "    var start = Date.now();"
+                    + "    var targetVol = 85;"
+                    + "    var timer = setInterval(function() {"
+                    + "      var elapsed = Date.now() - start;"
+                    + "      var frac = Math.min(1.0, elapsed / durationMs);"
+                    + "      var vol = Math.round(frac * targetVol);"
+                    + "      try { player.setVolume(vol); } catch(x){}"
+                    + "      if (frac >= 1.0) clearInterval(timer);"
+                    + "    }, 40);"
+                    + "  } catch(e) { log('fade err: ' + e); }"
+                    + "}"
                     + "function killChrome() {"
                     + "  try {"
                     + "    var iframes = document.querySelectorAll('iframe');"
@@ -275,12 +291,20 @@ public final class TrailerPlayer extends FrameLayout {
                     + "  yt = new YT.Player('player', { videoId:'" + key + "', host:'https://www.youtube-nocookie.com',"
                     + "    playerVars:{ autoplay:1, mute:" + muteFlag + ", controls:0, disablekb:1, fs:0, iv_load_policy:3, loop:1, playlist:'" + key + "', playsinline:1, rel:0, modestbranding:1, cc_load_policy:0 },"
                     + "    events:{"
-                    + "      onReady:function(e){ log('ready'); try{ if(" + muteFlag + "==1) e.target.mute(); e.target.playVideo(); }catch(x){} },"
+                    + "      onReady:function(e){"
+                    + "        log('ready');"
+                    + "        try{"
+                    + "          if(" + muteFlag + "==1) { e.target.mute(); e.target.setVolume(0); }"
+                    + "          else { e.target.unMute(); e.target.setVolume(0); }"
+                    + "          e.target.playVideo();"
+                    + "        }catch(x){}"
+                    + "      },"
                     + "      onStateChange:function(e){"
                     + "        log('state ' + e.data);"
                     + "        if (e.data === 1) {"
                     + "          playing = true;"
                     + "          killChrome();"
+                    + "          if (" + (withSound ? "true" : "false") + ") fadeInVolume(e.target, 1600);"
                     + "          setTimeout(function(){ if (playing) notifyReady(); }, 360);"
                     + "        } else if (e.data === 3 || e.data === 2 || e.data === 0) {"
                     + "          playing = false;"
