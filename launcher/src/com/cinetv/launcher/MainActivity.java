@@ -601,6 +601,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         else if ("setup".equals(action)) handler.postDelayed(() -> Panels.setup(this, home.modal, true), 1500);
         else if ("settings".equals(action)) handler.postDelayed(this::onSettings, 300);
         else if ("similar".equals(action)) handler.postDelayed(this::openSimilarForFocused, 300);
+        else if ("changelog".equals(action)) handler.postDelayed(() -> Panels.changelog(this, home.modal), 300);
         else if ("voice".equals(action)) {
             wasLaunchedForVoice = true;
             handler.postDelayed(this::onVoice, 250);
