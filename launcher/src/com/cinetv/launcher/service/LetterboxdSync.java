@@ -61,8 +61,15 @@ public final class LetterboxdSync {
                 String tags = "CineTV, Ev Sineması";
 
                 // 1. Append to local CSV at /sdcard/Download/cinetv_letterboxd_diary.csv
-                File dl = new File("/sdcard/Download");
-                if (!dl.exists()) dl.mkdirs();
+                File dl = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
+                if (dl == null || (!dl.exists() && !dl.mkdirs())) {
+                    dl = new File("/sdcard/Download");
+                    if (!dl.exists()) dl.mkdirs();
+                }
+                if (!dl.exists() || !dl.canWrite()) {
+                    File ext = ctx.getExternalFilesDir(null);
+                    if (ext != null) dl = ext;
+                }
                 File csv = new File(dl, "cinetv_letterboxd_diary.csv");
                 boolean isNew = !csv.exists() || csv.length() == 0;
 

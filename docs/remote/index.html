@@ -263,7 +263,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <div class="voice-edge" id="voiceEdge"></div>
 <div id="app">
 <header>
-  <div class="brand"><img class="sig" src="static/signature.png" alt="" style="cursor:pointer" onclick="document.querySelector('[data-tab=about]').click()" onerror="this.remove()"><b>Cine<span class="tv">TV</span></b><small style="cursor:pointer" onclick="document.querySelector('[data-tab=about]').click()">by Alptuğ Dağ</small><span class="st" id="tvPick"><i id="dot" class="dot"></i><em id="status" data-i="connecting"></em></span></div>
+  <div class="brand"><img class="sig" src="static/signature.png" alt="" style="cursor:pointer" onclick="document.querySelector('[data-tab=about]').click()" onerror="this.remove()"><b>Cine<span class="tv">TV</span></b><small style="cursor:pointer" onclick="document.querySelector('[data-tab=about]').click()">by Alptuğ Dağ</small><span class="st" id="tvPick"><i id="dot" class="dot"></i><em id="status" data-i="connecting"></em></span><button type="button" class="glass" id="supportBtn" style="padding:4px 10px;border-radius:999px;font-size:11.5px;color:#f43f5e;border:1px solid rgba(244,63,94,.4);background:rgba(244,63,94,.12);display:inline-flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;margin-left:6px"><span>☕</span><b>Destek</b></button></div>
   <div class="pwa-card" id="pwaCard" hidden>
     <button class="pwa-x" id="pwaClose">✕</button>
     <h4><span>📲</span> CineTV Uygulamasını Yükleyin</h4>
@@ -1584,6 +1584,46 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     pwaCloseBtn.onclick = () => {
       $("pwaCard").hidden = true;
       try { localStorage.setItem("cinetv.pwaDismissed", "1"); } catch (e) {}
+    };
+  }
+
+  if (navigator.standalone) {
+    document.addEventListener("click", e => {
+      const a = e.target.closest("a");
+      if (a && a.href && a.host === location.host && !a.target) {
+        e.preventDefault();
+        location.href = a.href;
+      }
+    }, false);
+  }
+
+  const supportBtn = $("supportBtn");
+  if (supportBtn) {
+    supportBtn.onclick = () => {
+      sheet.innerHTML = `
+        <div style="text-align:center;padding:12px 6px 18px">
+          <div style="font-size:38px;margin-bottom:6px">☕</div>
+          <h3 style="margin:0 0 6px;font-size:20px;font-weight:700">✦ Geliştiriciye Destek Ol</h3>
+          <p style="font-size:13px;color:var(--dim);line-height:1.45;margin:0 0 16px">CineTV, ev sinemasını özgür ve reklamsız kılmak için Alptuğ Dağ tarafından geliştirilmiş bağımsız bir projedir. Bir kahve ısmarlayarak sunucu masraflarına ve yeni özelliklere katkıda bulunabilirsiniz.</p>
+          <a href="https://kreosus.com/alptugdag" target="_blank" rel="noopener" class="btn" style="background:linear-gradient(135deg,#f43f5e,#e11d48);display:block;text-decoration:none;font-weight:700;box-shadow:0 6px 20px rgba(244,63,94,.4)">💖 Kreosus ile Destek Ol (Banka/Kredi Kartı)</a>
+          <button class="btn ghost" id="toggleSupportIban" style="width:100%;margin-top:10px;font-size:12.5px">📋 FAST / IBAN Bilgisi</button>
+          <div id="ibanBox" style="display:none;background:rgba(0,0,0,.35);border:1px solid var(--edge);border-radius:14px;padding:12px;margin-top:10px;font-size:12px;text-align:left;line-height:1.45">
+            <div><b>Alıcı:</b> Alptuğ Dağ</div>
+            <div style="color:var(--dim);margin-top:4px">⚠️ Yasal Hatırlatma: Banka transferi açıklamalarına lütfen <b>'Bağış'</b> yazmayınız; <b>'Hediye'</b> veya <b>'Katkı'</b> yazabilirsiniz.</div>
+          </div>
+          <button class="btn ghost" id="supportCloseBtn" style="margin-top:14px;width:100%">Kapat</button>
+        </div>
+      `;
+      sheet.classList.add("on"); bg.classList.add("on");
+      const tog = $("toggleSupportIban");
+      if (tog) {
+        tog.onclick = () => {
+          const ib = $("ibanBox");
+          if (ib) ib.style.display = ib.style.display === "none" ? "block" : "none";
+        };
+      }
+      const cls = $("supportCloseBtn");
+      if (cls) cls.onclick = closeSheet;
     };
   }
 

@@ -554,6 +554,10 @@ public final class Panels {
                 tr ? "Fiziksel Kumanda & Renkli Tuşlar" : "Remote & Color Keys",
                 tr ? "Kırmızı, Yeşil, Sarı, Mavi tuşlara CineSub ve eylem ata" : "Assign CineSub and actions to colored keys", false,
                 v -> host.push(() -> buildKeyCapture(ctx, host, a))));
+        cMaint.addView(Controls.tile(ctx,
+                tr ? "✦ Geliştiriciye Destek Ol (Kreosus / Shopier)" : "✦ Support the Creator",
+                tr ? "CineTV'nin bağımsız kalmasına katkıda bulunun" : "Help keep CineTV independent & ad-free", false,
+                v -> host.push(() -> buildSupportModal(ctx, host))));
         String curVer = AppUpdater.currentVersion(ctx);
         cMaint.addView(Controls.tile(ctx, tr ? "Sürüm & Güncelleme" : "Version & Updates",
                 "v" + curVer + (tr ? " · Güncellemeleri Denetle" : " · Check for Updates"), false, v -> {
@@ -3016,10 +3020,50 @@ public final class Panels {
         suggestionsList.setPadding(0, 0, 0, UiKit.px(18));
         root.addView(suggestionsList);
 
+        final com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(ctx);
+        final Runnable updateList = () -> {
+            suggestionsList.removeAllViews();
+            JSONObject st = party.getState();
+            org.json.JSONArray arr = st != null ? st.optJSONArray("suggestions") : null;
+            if (arr != null && arr.length() > 0) {
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject s = arr.optJSONObject(i);
+                    if (s != null) {
+                        TextView item = UiKit.label(ctx, 16, UiKit.INK);
+                        item.setText("🎬 " + s.optString("title") + " (" + s.optString("user") + ")");
+                        item.setPadding(0, UiKit.px(3), 0, UiKit.px(3));
+                        suggestionsList.addView(item);
+                    }
+                }
+            } else {
+                TextView empty = UiKit.label(ctx, 15, UiKit.INK_DIM);
+                empty.setText(tr ? "Telefonda 'Oyunlar' sekmesinden film önerisi ekleyin..." : "Add suggestions from phone 'Party' tab...");
+                suggestionsList.addView(empty);
+            }
+        };
+        updateList.run();
+
         final TextView winnerTv = UiKit.bold(ctx, 26, Color.parseColor("#F59E0B"));
         winnerTv.setVisibility(View.GONE);
         winnerTv.setPadding(0, UiKit.px(10), 0, UiKit.px(16));
         root.addView(winnerTv);
+
+        party.setListener(new com.cinetv.launcher.party.CinePartyManager.Listener() {
+            @Override
+            public void onGameStateChanged(JSONObject state) {
+                root.post(updateList);
+            }
+
+            @Override
+            public void onRouletteFinished(String movieTitle, String suggestedBy) {
+                root.post(() -> {
+                    winnerTv.setVisibility(View.VISIBLE);
+                    winnerTv.setText(tr
+                            ? "🎉 SEÇİLEN FİLM: " + movieTitle + " (Öneren: " + suggestedBy + ")"
+                            : "🎉 CHOSEN FILM: " + movieTitle + " (Suggested by " + suggestedBy + ")");
+                });
+            }
+        });
 
         LinearLayout btns = new LinearLayout(ctx);
         btns.setOrientation(LinearLayout.HORIZONTAL);
@@ -3186,6 +3230,103 @@ public final class Panels {
             return true;
         });
         return root;
+    }
+
+    public static View buildSupportModal(final Context ctx, final ModalHost host) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(28), UiKit.px(36), UiKit.px(28));
+        root.setBackground(Glass.panel(root, 28));
+
+        TextView title = UiKit.bold(ctx, 28, Color.parseColor("#EC4899")); // Ruby Pink / Rose
+        title.setText(tr ? "✦ Geliştiriciye Destek Ol" : "✦ Support the Creator");
+        root.addView(title);
+
+        TextView sub = UiKit.label(ctx, 16, UiKit.INK_DIM);
+        sub.setPadding(0, UiKit.px(10), 0, UiKit.px(22));
+        sub.setLineSpacing(UiKit.pxf(5), 1.15f);
+        sub.setMaxWidth(UiKit.px(820));
+        sub.setText(tr
+                ? "CineTV, ev sinemasını reklamsız, tarafsız ve özgür kılmak için Alptuğ Dağ tarafından geliştirilmiş bağımsız bir projedir.\n\n"
+                + "Geliştiriciye bir kahve ısmarlayarak sunucu, TMDB/Gemini API masraflarına ve yeni özellik geliştirme süreçlerine katkıda bulunabilirsiniz."
+                : "CineTV is an independent project by Alptuğ Dağ to keep home cinema pure, ad-free, and accessible.\n\n"
+                + "You can support by buying the developer a coffee to help cover server, TMDB/Gemini API, and feature development costs.");
+        root.addView(sub);
+
+        LinearLayout cardRow = new LinearLayout(ctx);
+        cardRow.setOrientation(LinearLayout.HORIZONTAL);
+        cardRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        // QR Code box on left
+        int size = UiKit.px(260);
+        ImageView qr = new ImageView(ctx);
+        String supportUrl = Prefs.get(ctx).getString("support_url", "https://kreosus.com/alptugdag");
+        Bitmap code = RemotePairing.qr(supportUrl, size, Color.parseColor("#0B1220"), Color.WHITE);
+        if (code != null) qr.setImageBitmap(code);
+        cardRow.addView(qr, new LinearLayout.LayoutParams(size, size));
+
+        // Info column on right
+        LinearLayout infoCol = new LinearLayout(ctx);
+        infoCol.setOrientation(LinearLayout.VERTICAL);
+        infoCol.setPadding(UiKit.px(28), 0, 0, 0);
+
+        TextView creatorName = UiKit.bold(ctx, 20, UiKit.INK);
+        creatorName.setText("Alptuğ Dağ");
+        infoCol.addView(creatorName);
+
+        TextView linkTv = UiKit.label(ctx, 15, Color.parseColor("#38BDF8"));
+        linkTv.setText(supportUrl);
+        linkTv.setPadding(0, UiKit.px(4), 0, UiKit.px(10));
+        infoCol.addView(linkTv);
+
+        TextView note = UiKit.label(ctx, 13, UiKit.INK_DIM);
+        note.setLineSpacing(UiKit.pxf(4), 1.15f);
+        note.setMaxWidth(UiKit.px(520));
+        note.setText(tr
+                ? "Telefonunuzun kamerasını QR koda doğrultarak banka/kredi kartı ile güvenle katkıda bulunabilirsiniz.\n\n"
+                + "⚠️ Yasal Hatırlatma: Banka transferi açıklamalarında lütfen 'Bağış' kelimesi yerine 'Hediye' veya 'Katkı' yazınız."
+                : "Scan the QR code with your phone camera to support safely via credit/debit card.\n\n"
+                + "Thank you for supporting independent cinema software!");
+        infoCol.addView(note);
+
+        cardRow.addView(infoCol);
+        root.addView(cardRow);
+
+        LinearLayout btns = new LinearLayout(ctx);
+        btns.setPadding(0, UiKit.px(24), 0, 0);
+
+        TextView editLinkBtn = Controls.button(ctx, tr ? "Destek Linkini Değiştir" : "Change Support Link", v -> {
+            host.push(() -> buildSupportUrlInput(ctx, host));
+        });
+        btns.addView(editLinkBtn);
+
+        View sp = new View(ctx);
+        btns.addView(sp, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+
+        TextView closeBtn = Controls.button(ctx, tr ? "Kapat" : "Close", v -> host.back());
+        btns.addView(closeBtn);
+
+        root.addView(btns);
+        root.post(closeBtn::requestFocus);
+        return root;
+    }
+
+    private static View buildSupportUrlInput(Context ctx, ModalHost host) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        String cur = Prefs.get(ctx).getString("support_url", "https://kreosus.com/alptugdag");
+        final EditText et = field(ctx, cur, R.string.not_set, false);
+        et.setHint("https://kreosus.com/alptugdag");
+        return form(ctx, tr ? "Destek Sayfası Bağlantısı" : "Support Page URL",
+                tr ? "QR kod ve mobil arayüzde açılacak bağış/destek platformu linkinizi girin (Kreosus, Shopier, vb.):" : "Enter your creator support platform URL (Kreosus, Shopier, etc.):",
+                et, v -> {
+                    String val = et.getText().toString().trim();
+                    if (!val.isEmpty()) {
+                        Prefs.get(ctx).edit().putString("support_url", val).apply();
+                        Toast.makeText(ctx, tr ? "Destek linki güncellendi!" : "Support link updated!", Toast.LENGTH_SHORT).show();
+                    }
+                    host.back();
+                });
     }
 
     public static View buildCineTvTourModal(final Context ctx, final ModalHost host) {

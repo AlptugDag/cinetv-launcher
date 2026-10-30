@@ -852,6 +852,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     @Override
+    public void onSupport() {
+        if (home != null && home.modal != null) {
+            home.modal.push(() -> Panels.buildSupportModal(this, home.modal));
+        }
+    }
+
+    @Override
     public void onFocusLight(View v, int color) {
         home.environment.focusOn(v, color);
     }

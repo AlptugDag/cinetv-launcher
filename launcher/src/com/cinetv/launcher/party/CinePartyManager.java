@@ -90,6 +90,7 @@ public final class CinePartyManager {
     private int countdownSeconds = 10;
     private boolean revealingAnswer = false;
     private Runnable countdownRunnable;
+    private Runnable nextQuestionRunnable;
 
     private static final QuizQuestion[] QUESTIONS = {
             new QuizQuestion(
@@ -205,7 +206,9 @@ public final class CinePartyManager {
 
     public void stopQuiz() {
         quizActive = false;
+        revealingAnswer = false;
         if (countdownRunnable != null) main.removeCallbacks(countdownRunnable);
+        if (nextQuestionRunnable != null) main.removeCallbacks(nextQuestionRunnable);
         notifyState();
     }
 
@@ -247,20 +250,24 @@ public final class CinePartyManager {
 
     private void revealAnswers() {
         revealingAnswer = true;
-        QuizQuestion q = QUESTIONS[currentQuestionIndex];
-        // Calculate points
-        for (Player p : players.values()) {
-            if (p.answered && q.isCorrect(p.currentAnswer)) {
-                p.score += 10;
+        if (currentQuestionIndex < QUESTIONS.length) {
+            QuizQuestion q = QUESTIONS[currentQuestionIndex];
+            // Calculate points
+            for (Player p : players.values()) {
+                if (p.answered && q.isCorrect(p.currentAnswer)) {
+                    p.score += 10;
+                }
             }
         }
         notifyState();
         // Show answers for 5 seconds, then next question
-        main.postDelayed(() -> {
+        if (nextQuestionRunnable != null) main.removeCallbacks(nextQuestionRunnable);
+        nextQuestionRunnable = () -> {
             if (quizActive) {
                 startQuestion(currentQuestionIndex + 1);
             }
-        }, 5000);
+        };
+        main.postDelayed(nextQuestionRunnable, 5000);
     }
 
     public void submitAnswer(String playerId, String answer) {

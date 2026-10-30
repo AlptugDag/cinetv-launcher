@@ -52,10 +52,12 @@ public final class CineSubOverlay {
     }
 
     public static synchronized void trigger(Context ctx) {
+        TvKeyInterceptorService acc = TvKeyInterceptorService.getInstance();
+        Context targetCtx = acc != null ? acc : ctx;
         if (activeInstance != null) {
             activeInstance.dismiss();
         }
-        CineSubOverlay overlay = new CineSubOverlay(ctx);
+        CineSubOverlay overlay = new CineSubOverlay(targetCtx);
         activeInstance = overlay;
         overlay.showAndInspect();
     }

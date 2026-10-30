@@ -222,6 +222,8 @@
     <string name="refresh_shelf">Refresh Vitrine</string>
     <string name="refresh_shelf_hint">Instantly refresh the vitrine with fresh titles</string>
     <string name="connect_phone">Connect phone</string>
+    <string name="support_title">Support</string>
+    <string name="support_hint">Support the developer with a coffee</string>
     <string name="pair_trouble">Not opening? The phone must be on the same Wi-Fi as the TV (not mobile data or a guest network). Or type the address above into the browser.</string>
     <string name="connect_phone_hint">Search and open films from your phone</string>
     <string name="calibration">Picture calibration</string>
