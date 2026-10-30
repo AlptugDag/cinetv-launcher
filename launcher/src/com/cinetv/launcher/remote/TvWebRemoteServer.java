@@ -30,8 +30,10 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -49,6 +51,7 @@ public final class TvWebRemoteServer {
     public interface Controller {
         void openTitle(MovieCatalog.Movie movie);
         void searchOnTv(String query);
+        void showSimilarOnTv(String title, List<MovieCatalog.Movie> movies);
         /** Spoken on the phone: a TV command, or a voice search. */
         void voiceOnTv(String said);
         void triggerVoiceOverlay();
@@ -500,19 +503,46 @@ public final class TvWebRemoteServer {
             case "/api/catalog/search": {
                 // The same assistant as the TV: people, themes, plots, series, or an answer.
                 String text = clip(q.get("q"), 200);
+                int page = parseInt(q.get("page"), 1);
                 if (text.isEmpty()) return ok.put("results", new JSONArray());
-                List<MovieCatalog.Movie> live = com.cinetv.launcher.service.AnthologyLiveChannels.search(text, 6);
+                List<MovieCatalog.Movie> live = (page <= 1) ? com.cinetv.launcher.service.AnthologyLiveChannels.search(text, 6) : Collections.emptyList();
                 // While typing: a quick title search. On Enter (ai=1): the assistant, once.
                 if (!"1".equals(q.get("ai"))) {
                     List<MovieCatalog.Movie> found = new ArrayList<>(live);
-                    found.addAll(MovieCatalog.search(app, text, 30));
+                    found.addAll(MovieCatalog.search(app, text, page, 30));
                     return ok.put("results", toJson(found));
                 }
                 com.cinetv.launcher.ai.MovieAssistant.Reply r = com.cinetv.launcher.ai.MovieAssistant.ask(app, text, 30);
-                if (r.movies.isEmpty() && r.answer.isEmpty()) r.movies = MovieCatalog.search(app, text, 30);
+                if (r.movies.isEmpty() && r.answer.isEmpty()) r.movies = MovieCatalog.search(app, text, page, 30);
                 List<MovieCatalog.Movie> merged = new ArrayList<>(live);
                 merged.addAll(r.movies);
                 return ok.put("results", toJson(merged)).put("title", r.title).put("answer", r.answer);
+            }
+            case "/api/catalog/similar": {
+                int tmdb = parseInt(q.get("tmdb"), 0);
+                String type = clip(q.get("type"), 16);
+                String title = clip(q.get("title"), 200);
+                List<MovieCatalog.Movie> sim = MovieCatalog.similar(app, tmdb, type, title, 30);
+                return ok.put("results", toJson(sim)).put("title", title);
+            }
+            case "/api/tv/similar": {
+                final int tmdb = parseInt(q.get("tmdb"), 0);
+                final String type = clip(q.get("type"), 16);
+                final String title = clip(q.get("title"), 200);
+                post(() -> {
+                    Controller c = controller;
+                    if (c != null) {
+                        new Thread(() -> {
+                            List<MovieCatalog.Movie> sim = MovieCatalog.similar(app, tmdb, type, title, 30);
+                            if (!sim.isEmpty()) {
+                                post(() -> c.showSimilarOnTv((title.isEmpty() ? "Benzer Filmler" : title + " Benzeri").toUpperCase(Locale.getDefault()), sim));
+                            } else if (!title.isEmpty()) {
+                                post(() -> c.searchOnTv(title + " benzeri filmler"));
+                            }
+                        }).start();
+                    }
+                });
+                return ok;
             }
             case "/api/open": {
                 final MovieCatalog.Movie m = new MovieCatalog.Movie();
@@ -930,10 +960,14 @@ public final class TvWebRemoteServer {
     }
 
     private static int parseInt(String s) {
+        return parseInt(s, 0);
+    }
+
+    private static int parseInt(String s, int fallback) {
         try {
-            return Integer.parseInt(s.trim());
+            return s == null ? fallback : Integer.parseInt(s.trim());
         } catch (Throwable t) {
-            return 0;
+            return fallback;
         }
     }
 

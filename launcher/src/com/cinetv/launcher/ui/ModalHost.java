@@ -105,7 +105,13 @@ public class ModalHost extends FrameLayout {
         alarmOn = on;
     }
 
+    private String lastFocusedTag;
+
     private void showTop() {
+        View currentFocused = findFocus();
+        if (currentFocused != null && currentFocused.getTag() != null) {
+            lastFocusedTag = currentFocused.getTag().toString();
+        }
         removeAllViews();
         alarmOn = false;
         View content = stack.peek().build();
@@ -162,10 +168,14 @@ public class ModalHost extends FrameLayout {
                 .rotationY(0f)
                 .setDuration(PerformanceProfile.animationMs(getContext(), 220)).start();
         post(() -> {
-            View first = firstFocusable(card);
-            if (first != null) {
-                first.requestFocus();
-                tiltToFocus(first);
+            View target = null;
+            if (lastFocusedTag != null) {
+                target = card.findViewWithTag(lastFocusedTag);
+            }
+            if (target == null) target = firstFocusable(card);
+            if (target != null) {
+                target.requestFocus();
+                tiltToFocus(target);
             }
         });
     }
@@ -208,6 +218,21 @@ public class ModalHost extends FrameLayout {
         if (next != null) {
             next.requestFocus();
             tiltToFocus(next);
+        } else {
+            // Infinite Wrap-Around D-Pad Navigation per user directive
+            if (dir == View.FOCUS_DOWN) {
+                View first = firstFocusable(this);
+                if (first != null && first != focused) {
+                    first.requestFocus();
+                    tiltToFocus(first);
+                }
+            } else if (dir == View.FOCUS_UP) {
+                View last = lastFocusable(this);
+                if (last != null && last != focused) {
+                    last.requestFocus();
+                    tiltToFocus(last);
+                }
+            }
         }
         return true;
     }
@@ -228,6 +253,19 @@ public class ModalHost extends FrameLayout {
                 View f = firstFocusable((ViewGroup) c);
                 if (f != null) return f;
             }
+        }
+        return null;
+    }
+
+    private static View lastFocusable(ViewGroup g) {
+        for (int i = g.getChildCount() - 1; i >= 0; i--) {
+            View c = g.getChildAt(i);
+            if (c.getVisibility() != VISIBLE) continue;
+            if (c instanceof ViewGroup) {
+                View l = lastFocusable((ViewGroup) c);
+                if (l != null) return l;
+            }
+            if (c.isFocusable()) return c;
         }
         return null;
     }

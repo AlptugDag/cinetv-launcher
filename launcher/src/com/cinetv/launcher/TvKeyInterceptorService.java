@@ -32,6 +32,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     private static volatile TvKeyInterceptorService instance;
     public static volatile boolean launchedYouTubeFromCineTv;
+    public static volatile boolean launchedNuvioFromCineTv;
 
     private static final long APP_IDLE_SAVER_MS = 3 * 60 * 1000L;
 
@@ -390,10 +391,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 || (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
         if (gamepad || HardwareKeys.isNavigation(event.getKeyCode())) return false;
         int code = event.getKeyCode();
-        // YouTube exit: if trailer was opened from CineTV, Back exits YouTube directly back to CineTV
-        if (launchedYouTubeFromCineTv && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
+        // Direct return to CineTV: when exiting Nuvio or YouTube, Back returns straight to CineTV Launcher Home
+        if ((launchedYouTubeFromCineTv || launchedNuvioFromCineTv) && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
             if (event.getAction() == KeyEvent.ACTION_UP) {
                 launchedYouTubeFromCineTv = false;
+                launchedNuvioFromCineTv = false;
                 startActivity(new Intent(this, MainActivity.class)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
                 return true;

@@ -58,23 +58,30 @@ public final class Uninstaller {
                     "cmd package set-home-activity --user 0 \"\" 2>/dev/null; ", 5000);
         } catch (Throwable ignored) {
         }
-        // Launch original OEM Home activity so the user immediately lands on their native TV home
+        // Clear default home preferred activities so system uninstall dialog is not blocked
         try {
-            Intent home = new Intent(Intent.ACTION_MAIN)
-                    .addCategory(Intent.CATEGORY_HOME)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            ctx.startActivity(home);
+            ctx.getPackageManager().clearPackagePreferredActivities(ctx.getPackageName());
         } catch (Throwable ignored) {
         }
-        Intent delete = new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + ctx.getPackageName()))
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        // Launch standard Android package uninstaller dialog
         try {
-            ctx.startActivity(delete);
+            Intent uninstall = new Intent(Intent.ACTION_UNINSTALL_PACKAGE)
+                    .setData(Uri.parse("package:" + ctx.getPackageName()))
+                    .putExtra(Intent.EXTRA_RETURN_RESULT, true)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(uninstall);
             return null;
         } catch (Throwable t) {
-            ctx.startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:" + ctx.getPackageName())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            return null;
+            try {
+                Intent delete = new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + ctx.getPackageName()))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(delete);
+                return null;
+            } catch (Throwable t2) {
+                ctx.startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:" + ctx.getPackageName())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                return null;
+            }
         }
     }
 

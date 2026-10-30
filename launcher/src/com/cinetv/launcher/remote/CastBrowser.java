@@ -49,7 +49,7 @@ public final class CastBrowser {
     static volatile int H = 1280;
     private static final String UA = "Mozilla/5.0 (Linux; Android 14; SM-N986B) AppleWebKit/537.36 (KHTML, like Gecko) "
             + "Chrome/126.0 Mobile Safari/537.36";
-    private static final Pattern MEDIA = Pattern.compile("(?i)\\.(m3u8|mpd|mp4|m4v|webm|mkv|mov)(\\?|#|$)|/(hls|dash)/|master\\.txt|playlist\\.txt");
+    private static final Pattern MEDIA = Pattern.compile("(?i)\\.(m3u8|mpd|mp4|m4v|webm|mkv|mov)(\\?|#|$)|/(hls|dash)/");
     /** A film stream counts as "after the tap" this long after the viewer's last tap. */
     private static final long AFTER_TAP_MS = 25_000;
 

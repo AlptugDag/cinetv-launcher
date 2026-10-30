@@ -281,7 +281,7 @@ public final class TrailerPlayer extends FrameLayout {
                     + "        if (e.data === 1) {"
                     + "          playing = true;"
                     + "          killChrome();"
-                    + "          setTimeout(function(){ if (playing) notifyReady(); }, 80);"
+                    + "          setTimeout(function(){ if (playing) notifyReady(); }, 360);"
                     + "        } else if (e.data === 3 || e.data === 2 || e.data === 0) {"
                     + "          playing = false;"
                     + "          if (window.CineTvBridge) window.CineTvBridge.onHold();"

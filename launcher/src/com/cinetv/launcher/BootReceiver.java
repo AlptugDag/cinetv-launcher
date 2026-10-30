@@ -28,6 +28,15 @@ public class BootReceiver extends BroadcastReceiver {
             } catch (Throwable t) {
                 Log.w(TAG, "failed to start on boot: " + t);
             }
+            // Follow-up reinforcement after OEM launcher initialization completes
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                try {
+                    Intent followUp = new Intent(context, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                    context.startActivity(followUp);
+                } catch (Throwable ignored) {
+                }
+            }, 2200);
             com.cinetv.launcher.service.AppUpdater.checkAndAutoUpdateOnBoot(context);
         }
     }

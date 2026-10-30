@@ -203,6 +203,8 @@
     <string name="weather_city_hint">örn. İstanbul</string>
     <string name="weather_city_body">Saatin yanında sıcaklığı gösterilecek şehir. Boş bırakırsanız bağlantınızdan bulunur.</string>
     <string name="weather_auto">Otomatik</string>
+    <string name="refresh_shelf">Vitrini Yenile</string>
+    <string name="refresh_shelf_hint">Vitrini beklemeden yeni filmlerle anında tazele</string>
     <string name="connect_phone">Telefonu bağla</string>
     <string name="pair_trouble">Açılmıyor mu? Telefon televizyonla aynı Wi-Fi\'ye bağlı olmalı (mobil veri ya da misafir ağı değil). Ya da yukarıdaki adresi tarayıcıya elle yaz.</string>
     <string name="connect_phone_hint">Telefondan film ara ve aç</string>

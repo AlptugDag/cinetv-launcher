@@ -19,6 +19,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 /**
  * Film and series metadata: TMDB when a key is configured (localized titles, posters and taglines),
@@ -182,20 +183,78 @@ public final class MovieCatalog {
         return out;
     }
 
+    private static final Pattern SEARCH_STOPWORDS = Pattern.compile("(?i)\\b(filmleri|filmler|filmi|dizileri|dizisi|dizi|movies|movie|films|film|sineması|tavsiyesi|önerisi|seçkisi)\\b");
+
+    public static String cleanSearchQuery(String query) {
+        if (query == null) return "";
+        String s = SEARCH_STOPWORDS.matcher(query).replaceAll("").trim();
+        return s.replaceAll("\\s+", " ");
+    }
+
     /** Movies and series for a free-text query (phone search). IMDb ids may be resolved lazily via {@link #imdbFor}. */
     public static List<Movie> search(Context ctx, String query, int max) {
-        String q = enc(query);
+        return search(ctx, query, 1, max);
+    }
+
+    public static List<Movie> search(Context ctx, String query, int page, int max) {
+        if (query == null || query.trim().isEmpty()) return Collections.emptyList();
+        String cleaned = cleanSearchQuery(query);
+        String searchStr = cleaned.isEmpty() ? query.trim() : cleaned;
+        String q = enc(searchStr);
         if (hasTmdb(ctx)) {
             try {
-                JSONObject root = tmdb(ctx, "search/multi?include_adult=false&language=" + language() + "&query=" + q);
+                JSONObject root = tmdb(ctx, "search/multi?include_adult=false&language=" + language() + "&query=" + q + "&page=" + Math.max(1, page));
                 List<Movie> list = parseTmdbResults(root, null, max);
                 if (!list.isEmpty()) return list;
+                if (!searchStr.equals(query.trim())) {
+                    JSONObject origRoot = tmdb(ctx, "search/multi?include_adult=false&language=" + language() + "&query=" + enc(query.trim()) + "&page=" + Math.max(1, page));
+                    List<Movie> origList = parseTmdbResults(origRoot, null, max);
+                    if (!origList.isEmpty()) return origList;
+                }
             } catch (Throwable t) {
                 Log.w(TAG, "TMDB search failed: " + t.getMessage());
             }
         }
         List<Movie> out = cinemetaList(CINEMETA + "movie/top/search=" + q + ".json", "movie", max);
         out.addAll(cinemetaList(CINEMETA + "series/top/search=" + q + ".json", "series", Math.max(0, max - out.size())));
+        return out;
+    }
+
+    public static List<Movie> similar(Context ctx, int tmdbId, String type, String title, int max) {
+        List<Movie> out = new ArrayList<>();
+        String kind = "series".equals(type) || "tv".equals(type) ? "tv" : "movie";
+        if (hasTmdb(ctx)) {
+            int id = tmdbId;
+            if (id <= 0 && title != null && !title.isEmpty()) {
+                List<Movie> found = search(ctx, title, 1, 3);
+                if (!found.isEmpty()) id = found.get(0).tmdbId;
+            }
+            if (id > 0) {
+                try {
+                    JSONObject rec = tmdb(ctx, kind + "/" + id + "/recommendations?language=" + language());
+                    out.addAll(parseTmdbResults(rec, kind, max));
+                    if (out.size() < 6) {
+                        JSONObject sim = tmdb(ctx, kind + "/" + id + "/similar?language=" + language());
+                        List<Movie> more = parseTmdbResults(sim, kind, max - out.size());
+                        for (Movie m : more) {
+                            boolean exists = false;
+                            for (Movie ex : out) {
+                                if (ex.tmdbId == m.tmdbId || (ex.title != null && ex.title.equalsIgnoreCase(m.title))) {
+                                    exists = true;
+                                    break;
+                                }
+                            }
+                            if (!exists) out.add(m);
+                        }
+                    }
+                } catch (Throwable t) {
+                    Log.w(TAG, "TMDB similar failed: " + t.getMessage());
+                }
+            }
+        }
+        if (out.isEmpty() && title != null && !title.isEmpty()) {
+            out.addAll(search(ctx, cleanSearchQuery(title), 1, max));
+        }
         return out;
     }
 
@@ -639,7 +698,7 @@ public final class MovieCatalog {
                 }
                 for (Future<?> f : photoJobs) {
                     try {
-                        f.get(2500, TimeUnit.MILLISECONDS);
+                        f.get(5500, TimeUnit.MILLISECONDS);
                     } catch (Throwable ignored) {
                     }
                 }

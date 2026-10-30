@@ -2057,12 +2057,12 @@ public final class Panels {
                         box.setPadding(UiKit.px(24), UiKit.px(20), UiKit.px(24), UiKit.px(20));
                         FrameLayout qrPlate = new FrameLayout(ctx);
                         qrPlate.setBackground(new Glass(qrPlate, UiKit.pxf(24), Glass.Style.FOCUSED));
-                        int size = UiKit.px(280);
+                        int size = UiKit.px(380);
                         ImageView qr = new ImageView(ctx);
                         Bitmap code = RemotePairing.qr(issueUrl, size, Color.parseColor("#0B1220"), Color.WHITE);
                         if (code != null) qr.setImageBitmap(code);
                         qrPlate.addView(qr, new FrameLayout.LayoutParams(size, size, Gravity.CENTER));
-                        qrPlate.setPadding(UiKit.px(16), UiKit.px(16), UiKit.px(16), UiKit.px(16));
+                        qrPlate.setPadding(UiKit.px(24), UiKit.px(24), UiKit.px(24), UiKit.px(24));
                         box.addView(qrPlate);
 
                         LinearLayout info = new LinearLayout(ctx);

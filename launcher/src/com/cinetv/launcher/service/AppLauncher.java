@@ -196,29 +196,22 @@ public final class AppLauncher {
         if ((title != null && "sessiz".equals(Creator.fold(title))) || "tt38983576".equals(imdbId)) {
             return openYouTubeVideo(ctx, Creator.SESSIZ_YOUTUBE_URL);
         }
+        com.cinetv.launcher.TvKeyInterceptorService.launchedNuvioFromCineTv = true;
         if (imdbId != null && (imdbId.startsWith("tv:") || "tv".equals(type) || "channel".equals(type))) {
             Intent tvIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/tv/" + imdbId)).setPackage(NUVIO);
             tvIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             if (start(ctx, tvIntent)) return true;
         }
-        if (imdbId != null && imdbId.startsWith("tt") && "series".equals(type)) {
-            // Series open on their detail page (season and episode picker), not on an episode's streams.
-            Intent detail = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/series/" + imdbId)).setPackage(NUVIO);
-            if (start(ctx, detail)) return true;
-        }
         if (imdbId != null && imdbId.startsWith("tt")) {
-            String contentType = "series".equals(type) ? "series" : "movie";
-            Intent nuvio = new Intent()
-                    .setComponent(new ComponentName(NUVIO, NUVIO + ".MainActivity"))
-                    .putExtra("launchMode", "stream")
-                    .putExtra("contentId", imdbId)
-                    .putExtra("contentType", contentType)
-                    .putExtra("videoId", imdbId)
-                    .putExtra("name", title == null ? "" : title)
-                    .putExtra("playOnLoad", true)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            if (posterUrl != null && !posterUrl.isEmpty()) nuvio.putExtra("poster", posterUrl);
-            if (start(ctx, nuvio)) return true;
+            String kind = "series".equals(type) ? "series" : "movie";
+            // Deep link directly to Nuvio detail page so scraper addons (Cinestream, Torrentio) resolve all 4K/1080p streams and Turkish dubbing
+            Intent detail = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/" + kind + "/" + imdbId)).setPackage(NUVIO);
+            detail.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            if (start(ctx, detail)) return true;
+
+            Intent nuvioUri = new Intent(Intent.ACTION_VIEW, Uri.parse("nuvio:///detail/" + kind + "/" + imdbId)).setPackage(NUVIO);
+            nuvioUri.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            if (start(ctx, nuvioUri)) return true;
         }
         // Fallback: If imdbId is missing or stream intent didn't catch, deep-link search directly into Nuvio
         if (title != null && !title.trim().isEmpty()) {

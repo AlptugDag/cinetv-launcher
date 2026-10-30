@@ -182,7 +182,8 @@ public final class EmaLightningTts {
 
     /**
      * Cleans UI symbols, punctuation and excessive length so the neural flow-matching model
-     * produces crisp, natural Turkish prosody.
+     * produces crisp, natural Turkish prosody. Also smooths common English cinema title phonetics
+     * when read by Turkish TTS engines.
      */
     static String normalizeForSpeech(String text) {
         if (text == null) return "";
@@ -196,6 +197,22 @@ public final class EmaLightningTts {
                 .replace("✓", "")
                 .replace("%", "yüzde ")
                 .replaceAll("<[^>]+>", " ")
+                .replaceAll("(?i)\\bSearching for\\b", "")
+                .replaceAll("(?i)\\bThe Green Mile\\b", "Yeşil Yol")
+                .replaceAll("(?i)\\bThe Godfather\\b", "Baba")
+                .replaceAll("(?i)\\bThe Dark Knight\\b", "Kara Şövalye")
+                .replaceAll("(?i)\\bFight Club\\b", "Dövüş Kulübü")
+                .replaceAll("(?i)\\bPulp Fiction\\b", "Ucuz Roman")
+                .replaceAll("(?i)\\bInception\\b", "Başlangıç")
+                .replaceAll("(?i)\\bInterstellar\\b", "Yıldızlararası")
+                .replaceAll("(?i)\\bBreaking Bad\\b", "Bıreyking Bed")
+                .replaceAll("(?i)\\bBlade Runner\\b", "Bıleyd Ranır")
+                .replaceAll("(?i)\\bLord of the Rings\\b", "Yüzüklerin Efendisi")
+                .replaceAll("(?i)\\bStar Wars\\b", "Yıldız Savaşları")
+                .replaceAll("(?i)\\bThe Matrix\\b", "Metriks")
+                .replaceAll("(?i)\\bMatrix\\b", "Metriks")
+                .replaceAll("(?i)\\bGame of Thrones\\b", "Taht Oyunları")
+                .replaceAll("(?i)\\b\\bthe\\b", "dı")
                 .replaceAll("\\s+", " ")
                 .trim();
         if (s.length() > 300) {

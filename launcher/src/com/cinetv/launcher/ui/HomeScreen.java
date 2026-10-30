@@ -52,6 +52,7 @@ public class HomeScreen {
         void onNetwork();
         void onInputs();
         void onAllApps();
+        void onRefreshShelf();
         void onSettings();
         /** Long press on the gear: the TV's own settings. */
         void onSystemSettings();
@@ -295,6 +296,7 @@ public class HomeScreen {
         rightGroup.setGravity(Gravity.CENTER_VERTICAL);
         rightGroup.setClipChildren(false);
         headerButtons = new View[]{
+                headerButton(R.drawable.ic_refresh, R.string.refresh_shelf, R.string.refresh_shelf_hint, v -> listener.onRefreshShelf()),
                 headerButton(R.drawable.ic_phone, R.string.connect_phone, R.string.connect_phone, v -> listener.onPhone()),
                 headerButton(R.drawable.ic_network, R.string.network, R.string.network, v -> listener.onNetwork()),
                 headerButton(R.drawable.ic_inputs, R.string.inputs, R.string.inputs, v -> listener.onInputs()),
@@ -752,7 +754,7 @@ public class HomeScreen {
     /** The signature is written left to right, "CineTV" types itself in, then "by Alptuğ Dağ" rises. */
     /** The first-run tour: CineTV's best parts, each card pointing at its place on Home. */
     public TourView.Step[] tourSteps() {
-        View phone = headerButtons[0], gear = headerButtons[headerButtons.length - 1], inputs = headerButtons[2];
+        View phone = headerButtons[1], gear = headerButtons[headerButtons.length - 1], inputs = headerButtons[3];
         return new TourView.Step[]{
                 new TourView.Step(null, R.string.tour_welcome_t, R.string.tour_welcome),
                 new TourView.Step(shelf, R.string.tour_shelf_t, R.string.tour_shelf),

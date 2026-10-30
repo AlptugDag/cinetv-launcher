@@ -378,7 +378,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       mCreator:"✦ Alptuğ Dağ Picks",mNoir:"🌙 Midnight Neo-Noir",mRain:"🌧️ Rainy Night",mFest:"🏆 Festival Gems",mMind:"🧠 Mind-Benders",mTr:"🇹🇷 Turkish Cinema",
       homeHint:"Tip: Share › Add to Home Screen keeps CineTV one tap away, full screen.",
       connecting:"Connecting…",connected:"Connected",offline:"TV not reachable",searchPh:"Films, series, people…",trending:"Trending",
-      results:"Results",noResults:"Nothing found",openTv:"Open on TV",opening:"Opening on your TV…",movie:"Film",series:"Series",
+      results:"Results",noResults:"Nothing found",openTv:"Open on TV",opening:"Opening on your TV…",movie:"Film",series:"Series",similarMovies:"Similar Titles",
       back:"Back",home:"Home",menu:"Menu",send:"Send",input:"Input",guide:"Guide",info:"Info",subs:"Subtitles",audio:"Audio",last:"Last",typePh:"Type on the TV…",sleepOff:"💤 Sleep timer: off",sleepIn:"💤 Sleeps in {n} min",typeNote:"Letters appear in the field that is selected on the TV, in any app; ↵ confirms.",tvSearchPh:"Search or ask on the TV",screensaver:"Start screensaver",
       tabSearch:"Discover",tabRemote:"Remote",tabCal:"Picture",presets:"Presets",patterns:"Test patterns",picture:"Picture engine",
       warmth:"Colour temperature",reset:"Restore my original settings",patternNote:"Choose a pattern, adjust until it looks right, then tap Off.",
@@ -395,7 +395,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       mCreator:"✦ Alptuğ Dağ Seçkisi",mNoir:"🌙 Gece Yarısı Neo-Noir",mRain:"🌧️ Yağmurlu Gece",mFest:"🏆 Festival Seçkisi",mMind:"🧠 Psikolojik Gizem",mTr:"🇹🇷 Türk Sineması",
       homeHint:"İpucu: Paylaş › Ana Ekrana Ekle ile CineTV tam ekran, tek dokunuşla açılır.",
       connecting:"Bağlanıyor…",connected:"Bağlı",offline:"TV'ye ulaşılamıyor",searchPh:"Film, dizi, oyuncu…",trending:"Trend",
-      results:"Sonuçlar",noResults:"Bir şey bulunamadı",openTv:"TV'de aç",opening:"TV'de açılıyor…",movie:"Film",series:"Dizi",
+      results:"Sonuçlar",noResults:"Bir şey bulunamadı",openTv:"TV'de aç",opening:"TV'de açılıyor…",movie:"Film",series:"Dizi",similarMovies:"Benzer Filmler",
       back:"Geri",home:"Ana sayfa",menu:"Menü",send:"Gönder",input:"Kaynak",guide:"Rehber",info:"Bilgi",subs:"Altyazı",audio:"Ses dili",last:"Önceki",typePh:"Televizyona yaz…",sleepOff:"💤 Uyku zamanlayıcı: kapalı",sleepIn:"💤 {n} dk sonra kapanır",typeNote:"Yazdıkların televizyonda seçili alana gelir, hangi uygulama olursa olsun; ↵ onaylar.",tvSearchPh:"TV'de ara veya sor",screensaver:"Ekran koruyucuyu başlat",
       tabSearch:"Keşfet",tabRemote:"Kumanda",tabCal:"Görüntü",presets:"Hazır ayarlar",patterns:"Test desenleri",picture:"Görüntü motoru",
       warmth:"Renk sıcaklığı",reset:"Orijinal ayarlarıma dön",patternNote:"Bir desen seçin, doğru görünene kadar ayarlayın, sonra Kapat'a dokunun.",
@@ -605,20 +605,63 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
   document.querySelectorAll("nav button").forEach(b => b.onclick = () => { show(b.dataset.tab); location.hash = b.dataset.tab; });
 
-  // discover
-  const render = (list, title) => {
-    $("listTitle").textContent = title;
+  // discover & infinite scroll
+  let currentList = [], currentPage = 1, currentQuery = "", isLoadingMore = false, hasMore = true;
+  const render = (list, title, append = false) => {
+    if (!append) {
+      if (title) $("listTitle").textContent = title;
+      currentList = list.slice();
+      hasMore = list.length >= 12;
+    } else {
+      currentList = currentList.concat(list);
+      if (list.length < 6) hasMore = false;
+    }
     const box = $("results");
-    if (!list.length) { box.innerHTML = `<div class="empty" style="grid-column:1/-1">${t("noResults")}</div>`; return; }
-    box.innerHTML = list.map((m, i) => `<div class="card" data-i="${i}"><img loading="lazy" src="${esc(m.poster)}" alt="">
+    if (!currentList.length) { box.innerHTML = `<div class="empty" style="grid-column:1/-1">${t("noResults")}</div>`; return; }
+    box.innerHTML = currentList.map((m, i) => `<div class="card" data-i="${i}"><img loading="lazy" src="${esc(m.poster)}" alt="">
       ${m.type === "series" ? `<span class="badge">${t("series")}</span>` : ""}<div class="t">${esc(m.title)}</div></div>`).join("");
-    box.querySelectorAll(".card").forEach(c => c.onclick = () => openSheet(list[+c.dataset.i]));
+    box.querySelectorAll(".card").forEach(c => c.onclick = () => openSheet(currentList[+c.dataset.i]));
   };
   const skeleton = () => $("results").innerHTML = Array.from({length: 9}, () => '<div class="card skeleton"></div>').join("");
-  const trending = async () => { if (!token) return; skeleton(); try { render((await api("catalog/trending")).results || [], t("trending")); } catch (e) {} };
+  const trending = async () => {
+    if (!token) return;
+    skeleton();
+    currentQuery = ""; currentPage = 1; hasMore = true;
+    try {
+      render((await api("catalog/trending")).results || [], t("trending"));
+    } catch (e) {}
+  };
   let searchTimer, seq = 0;
-  // Typing shows in the TV's search bar; Enter (or the keyboard's Search) fills the TV's shelf.
   let mirrorTimer;
+
+  window.addEventListener("scroll", async () => {
+    if (isLoadingMore || !hasMore || location.hash === "#remote" || location.hash === "#cast") return;
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 360) {
+      isLoadingMore = true;
+      currentPage++;
+      try {
+        let r;
+        if (currentQuery) {
+          r = await api("catalog/search", {q: currentQuery, page: currentPage});
+        } else {
+          r = await api("catalog/trending", {page: currentPage});
+        }
+        if (r && r.results && r.results.length) {
+          render(r.results, "", true);
+        } else {
+          hasMore = false;
+        }
+      } catch (e) {
+        hasMore = false;
+      } finally {
+        isLoadingMore = false;
+      }
+    }
+  });
+
+  const cleanSearchQuery = text => (text || "").replace(/\b(filmleri|filmler|filmi|dizileri|dizisi|dizi|movies|movie|films|film|tavsiyesi|önerisi|seçkisi)\b/gi, "").replace(/\s+/g, " ").trim();
+
+  // Typing shows in the TV's search bar; Enter (or the keyboard's Search) fills the TV's shelf.
   $("q").addEventListener("input", e => {
     clearTimeout(mirrorTimer);
     const q = e.target.value.trim();
@@ -627,12 +670,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const submitSearch = () => {
     clearTimeout(mirrorTimer);
     clearTimeout(searchTimer);
-    const q = $("q").value.trim(); if (!q) return;
+    const raw = $("q").value.trim(); if (!raw) return;
     $("q").blur();
-    api("tv/search", {q}).then(() => toast(t("onTv"))).catch(() => {});
-    // The phone shows the assistant's answer too.
+    api("tv/search", {q: raw}).then(() => toast(t("onTv"))).catch(() => {});
+    const cleaned = cleanSearchQuery(raw);
+    currentQuery = cleaned || raw;
+    currentPage = 1;
+    hasMore = true;
     const my = ++seq; skeleton();
-    api("catalog/search", {q, ai: 1}).then(r => {
+    api("catalog/search", {q: currentQuery, ai: 1, page: 1}).then(r => {
       if (my !== seq) return;
       render(r.results || [], r.title || t("results"));
       if (r.answer) {
@@ -666,12 +712,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   });
   $("q").addEventListener("input", e => {
     clearTimeout(searchTimer);
-    const q = e.target.value.trim();
+    const raw = e.target.value.trim();
     searchTimer = setTimeout(async () => {
-      if (!q) return trending();
+      if (!raw) return trending();
+      const cleaned = cleanSearchQuery(raw);
+      currentQuery = cleaned || raw;
+      currentPage = 1; hasMore = true;
       const my = ++seq; skeleton();
       try {
-        const r = await api("catalog/search", {q});
+        const r = await api("catalog/search", {q: currentQuery, page: 1});
         if (my !== seq) return;
         render(r.results || [], t("results"));
       } catch (e) {}
@@ -703,7 +752,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       <p class="ov" style="text-align:center;line-height:1.5">${esc(m.overview || "")}</p>
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
         <button class="btn" id="go">▶︎ ${t("openTv")}</button>
-        <button class="btn ghost" id="shelfBtn">✦ TV Vitrinine Ekle</button>
+        <button class="btn ghost" id="similarBtn">✦ ${t("similarMovies") || "Benzer Filmler"}</button>
       </div>`;
     sheet.classList.add("on"); bg.classList.add("on");
     $("go").onclick = async () => {
@@ -714,13 +763,20 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       } catch (e) { toast(t("offline")); }
       closeSheet();
     };
-    $("shelfBtn").onclick = async () => {
-      $("shelfBtn").disabled = true;
+    $("similarBtn").onclick = async () => {
+      $("similarBtn").disabled = true;
+      closeSheet();
+      const my = ++seq; skeleton();
+      currentQuery = ""; currentPage = 1; hasMore = false;
       try {
-        await api("tv/search", {q: m.title});
+        const [r] = await Promise.all([
+          api("catalog/similar", {tmdb: m.tmdb || 0, type: m.type, title: m.title}),
+          api("tv/similar", {tmdb: m.tmdb || 0, type: m.type, title: m.title}).catch(() => {})
+        ]);
+        if (my !== seq) return;
+        render(r.results || [], (m.title || "Film") + " · " + (t("similarMovies") || "Benzer Filmler"));
         toast(t("onTv"));
       } catch (e) { toast(t("offline")); }
-      closeSheet();
     };
   };
 

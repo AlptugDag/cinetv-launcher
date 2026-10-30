@@ -744,8 +744,10 @@ public class DvdOpeningView extends View {
             float metaH = (hasSig ? sigSize * 1.35f : 0f) + (hasRatings ? ratSize * 1.35f : 0f) + u * 0.024f;
 
             // 3. Allocate Bottom area for Cast (No divider line between plot and cast)
-            float colW = (castCount > 0) ? (textW / castCount) : 0f;
-            float castH = (castCount > 0) ? u * 0.255f : 0f;
+            // Deterministic fixed height allocation so booklet typography NEVER shifts or pops when cast arrives
+            int slots = (castCount > 0) ? castCount : 3;
+            float colW = textW / slots;
+            float castH = u * 0.255f;
             float castTop = paper.bottom - pad * 0.45f - castH;
             float availForStoryAndMeta = castTop - y - u * 0.015f;
             float storyAvailH = Math.max(u * 0.10f, availForStoryAndMeta - metaH);

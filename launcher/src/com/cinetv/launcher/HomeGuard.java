@@ -40,9 +40,6 @@ public final class HomeGuard {
         });
         new Thread(() -> {
             ensureDefault(app);
-            if (!isDefault(app)) {
-                ensureDefaultHome(app);
-            }
             // installed from the APK alone: Nuvio and its addons come too, plus virtual RAM / zRAM optimization
             if (com.cinetv.launcher.service.Prefs.get(app).getBoolean("nuvio_install_allowed", true)) {
                 com.cinetv.launcher.device.NuvioSetup.runOnce(app);

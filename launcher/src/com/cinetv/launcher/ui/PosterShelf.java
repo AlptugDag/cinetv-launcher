@@ -165,6 +165,10 @@ public class PosterShelf extends FrameLayout {
         return movies.size();
     }
 
+    public List<Movie> movies() {
+        return new ArrayList<>(movies);
+    }
+
     public DvdCaseView focusedCase() {
         return index < cases.size() ? cases.get(index) : null;
     }
@@ -387,7 +391,7 @@ public class PosterShelf extends FrameLayout {
             float spatialWrap = spatial ? -Math.signum(d) * Math.min(7.5f, far * 1.8f) : 0f;
             float yaw = Math.signum(d) * SIDE_ANGLE * near + PROFILE_ANGLE * (1f - near) + spatialWrap;
             float lift = focused ? 1f - near : 0f;
-            float tilt = spatial ? 7.0f * (1f - lift) : 0f;
+            float tilt = spatial ? (7.0f - 1.2f * lift) : 0f;
             float turn = 0f, glint = 0f;
             float swaySine = 0f;
             if (i == index && sway > 0f) {
@@ -413,8 +417,8 @@ public class PosterShelf extends FrameLayout {
             v.setVisibility(VISIBLE);
             v.setAlpha(edgeFade);
             v.setTranslationX(x - v.getWidth() / 2f);
-            // Grounded shelf baseline: lift lifts hero forward, subtle bow grounds all cases on shelf surface:
-            v.setTranslationY((h - v.getHeight()) / 2f - UiKit.pxf(22) * lift + (UiKit.pxf(5f) - bow));
+            // Grounded shelf baseline: subtle bow and anchor contact keep all cases firmly planted on shelf plane:
+            v.setTranslationY((h - v.getHeight()) / 2f + (UiKit.pxf(5f) - bow) + UiKit.pxf(2f) * lift);
             v.setTranslationZ(100f - ad * 10f);
             v.setDepthBlur(blur);
             v.setGlint(glint);

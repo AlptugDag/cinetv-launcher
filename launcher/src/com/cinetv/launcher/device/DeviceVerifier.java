@@ -61,28 +61,52 @@ public final class DeviceVerifier {
         return obj;
     }
 
+    public static String detectSystemAnomalies(Context ctx) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            boolean accEnabled = false;
+            String enabledServices = android.provider.Settings.Secure.getString(ctx.getContentResolver(),
+                    android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            if (enabledServices != null && enabledServices.contains("TvKeyInterceptorService")) {
+                accEnabled = true;
+            }
+            if (!accEnabled) sb.append("Erişilebilirlik Kapalı/Yok; ");
+        } catch (Throwable ignored) {
+            sb.append("Erişilebilirlik Yok; ");
+        }
+
+        try {
+            if (!com.cinetv.launcher.HomeGuard.isDefault(ctx)) {
+                sb.append("Varsayılan Başlatıcı Değil; ");
+            }
+        } catch (Throwable ignored) {}
+
+        try {
+            Runtime rt = Runtime.getRuntime();
+            long freeMb = (rt.maxMemory() - (rt.totalMemory() - rt.freeMemory())) / (1024 * 1024);
+            if (freeMb < 64) sb.append("Düşük RAM (").append(freeMb).append("MB); ");
+        } catch (Throwable ignored) {}
+
+        if (sb.length() == 0) return "Cihaz Sağlıklı (Sorun Yok)";
+        return sb.toString().trim();
+    }
+
     /** Builds a pre-filled GitHub Issue URL so users can submit their verified TV profile via phone QR in one tap. */
     public static String getVerificationIssueUrl(Context ctx, String notes) {
         try {
             JSONObject p = getHardwareProfile(ctx);
-            if (notes != null && !notes.trim().isEmpty()) {
-                p.put("user_notes", notes.trim());
-            }
             String brand = p.optString("brand", Build.BRAND);
             String model = p.optString("model", Build.MODEL);
             String board = p.optString("board", Build.BOARD);
-            String title = "[Verified Device] " + brand + " " + model + " (" + board + ")";
-            String body = "### CineTV Doğrulanmış Cihaz Bildirimi (TV Denetçisi)\n\n"
-                    + "| Özellik | Değer |\n"
-                    + "|---|---|\n"
-                    + "| **Marka / Model** | " + brand + " / " + model + " |\n"
-                    + "| **Anakart / SoC** | `" + board + "` (`" + p.optString("hardware") + "`) |\n"
-                    + "| **Android Sürümü** | Android " + p.optString("android_release") + " (SDK " + p.optInt("android_sdk") + ") |\n"
-                    + "| **Panel & HDR** | " + p.optString("display_panel") + " · " + p.optString("hdr_formats") + " |\n"
-                    + "| **Ses** | " + p.optString("audio_formats") + " |\n"
-                    + "| **RAM & Katman** | " + p.optInt("ram_mb") + " MB (`" + p.optString("tier") + "`) |\n"
-                    + "| **CineTV Sürümü** | `v" + p.optString("app_version") + "` |\n\n"
-                    + "```json\n" + p.toString(2) + "\n```\n";
+            String anomalies = detectSystemAnomalies(ctx);
+            String title = "[Cihaz Raporu] " + brand + " " + model + " (" + board + ")";
+            String body = "### CineTV TV Denetçisi Raporu\n"
+                    + "- Model: " + brand + " " + model + " (" + board + ")\n"
+                    + "- Android: " + p.optString("android_release") + " (SDK " + p.optInt("android_sdk") + ")\n"
+                    + "- RAM: " + p.optInt("ram_mb") + "MB | Panel: " + p.optString("display_panel") + "\n"
+                    + "- Durum & Anomaliler: " + anomalies + "\n"
+                    + "- CineTV: v" + p.optString("app_version") + "\n"
+                    + (notes != null && !notes.isEmpty() ? "- Not: " + notes + "\n" : "");
             return "https://github.com/AlptugDag/cinetv-launcher/issues/new?title="
                     + java.net.URLEncoder.encode(title, "UTF-8")
                     + "&body=" + java.net.URLEncoder.encode(body, "UTF-8");

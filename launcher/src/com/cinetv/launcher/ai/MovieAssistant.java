@@ -12,6 +12,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -90,53 +91,58 @@ public final class MovieAssistant {
 
     /**
      * Immediate verbal response sentence as soon as any search is entered (voice, TV keyboard, or phone remote).
-     * E.g. "Takeshi Kitano filmleri derleniyor..."
      */
     public static String acknowledgmentPhrase(String query) {
-        if (query == null || query.trim().isEmpty()) return "Aranıyor...";
+        if (query == null || query.trim().isEmpty()) return "";
         String q = query.trim().toLowerCase(Locale.getDefault());
-        boolean tr = "tr".equals(language());
         String name = cleanShelfName(query);
         if (name.isEmpty()) name = query.trim();
 
-        if (!tr) {
-            if (isQuestion(query)) return "Checking for you...";
-            return "Searching for " + name + "...";
+        if (isQuestion(query)) {
+            return "tr".equals(Locale.getDefault().getLanguage()) ? "Hemen bakıyorum..." : "Checking for you...";
         }
 
         if (q.startsWith("aç") || q.startsWith("oynat") || q.startsWith("izle")
                 || q.endsWith("aç") || q.endsWith("oynat") || q.endsWith("izle")) {
             return name + " başlatılıyor...";
         }
-        if (isQuestion(query)) {
-            return "Hemen bakıyorum...";
-        }
-        if (q.contains("dizi") || q.contains("dizileri")) {
-            return name + " dizileri derleniyor...";
-        }
-        if (q.contains("filmleri") || q.contains("filmler") || q.contains("sineması") || q.contains("film")) {
-            return name + " filmleri derleniyor...";
-        }
-        return name + " seçkisi derleniyor...";
+        // Robotic "Searching for..." or "Aranıyor..." prefixes are strictly eliminated per user directive.
+        return "";
     }
 
     /** Understands the request and fetches its shelf or answer. */
     public static Reply ask(Context ctx, String query, int max) {
+        return ask(ctx, query, Collections.emptyList(), max);
+    }
+
+    public static Reply ask(Context ctx, String query, List<MovieCatalog.Movie> currentShelf, int max) {
         String q = query.trim();
         if (Creator.mentioned(q)) return aboutCreator(ctx, q, max);
         if (LlmClient.isConfigured(ctx)) {
-            Reply r = planned(ctx, q, max);
+            Reply r = planned(ctx, q, currentShelf, max);
             if (r != null) return r;
         }
-        return heuristic(ctx, q, max);
+        return heuristic(ctx, q, currentShelf, max);
     }
 
     // ---- with AI ----------------------------------------------------------------------------------
 
-    private static Reply planned(Context ctx, String query, int max) {
+    private static Reply planned(Context ctx, String query, List<MovieCatalog.Movie> currentShelf, int max) {
         String lang = language();
+        StringBuilder shelfContext = new StringBuilder();
+        if (currentShelf != null && !currentShelf.isEmpty()) {
+            shelfContext.append("\nCURRENT VITRINE SHELF TITLES: ");
+            for (int i = 0; i < Math.min(8, currentShelf.size()); i++) {
+                MovieCatalog.Movie sm = currentShelf.get(i);
+                if (i > 0) shelfContext.append(", ");
+                shelfContext.append(sm.title);
+                if (sm.year > 1900) shelfContext.append(" (").append(sm.year).append(")");
+            }
+            shelfContext.append(".\nIMPORTANT: If the viewer makes a relative or comparative request (e.g. 'daha kasvetli şeyler istiyorum', 'buna benzer', 'daha eski olsun', 'daha eğlenceli'), interpret their desire in direct relation to what is currently on the shelf! For example, 'daha kasvetli şeyler istiyorum' means noticeably darker, grittier, moodier cinema than the current shelf titles.\n");
+        }
         String system = "You are Gamze, CineTV's cultured, charming AI cinema companion and voice assistant (an articulate, warm, cinephile Turkish female voice for a living-room TV). If asked who you are, your name is Gamze. "
                 + "The viewer communicates with you naturally through voice or typing (e.g. 'Takeshi Kitano filmleri', 'canım sıkkın ne izlesem', 'Scorsese kimdir'). "
+                + shelfContext.toString()
                 + "Turn their request into ONE minified JSON object with recommendations and an articulate conversational response:\n"
                 + "{\n"
                 + "  \"intent\": \"shelf|play|answer\",\n"
@@ -157,11 +163,12 @@ public final class MovieAssistant {
                 + "Rules:\n"
                 + "- CONVERSATIONAL DIALOGUE: Never speak like a robotic screen reader. Talk warmly and conversationally to the viewer with cinephile taste, context, and a personal recommendation touch.\n"
                 + "- A person's films ('Takeshi Kitano', 'Nolan filmleri'): intent shelf, person = exact full name. In voice, briefly characterize their cinematic style and suggest a standout work.\n"
-                + "- Mood / theme / recommendation queries ('akşam için gerilim', 'canım sıkkın'): intent shelf, titles = up to 14 famous matching masterpieces. In voice, empathize and present the mood.\n"
+                + "- Mood / theme / recommendation queries ('akşam için gerilim', 'canım sıkkın', 'daha kasvetli'): intent shelf, titles = up to 14 famous matching masterpieces. In voice, empathize and present the mood.\n"
+                + "- Complex natural language searches ('Holywoodun en yüksek puanlı intikam filmleri'): extract keywords like 'revenge', genres ['thriller','action'], country 'US', and curate iconic masterpiece titles (e.g. John Wick, Memento, Oldboy, Kill Bill, The Revenant).\n"
                 + "- Trivia, chat or open questions ('Scorsese neden Marvel sevmez?'): intent answer, answer & voice = 1-2 insightful, elegant sentences in " + lang + ".\n"
                 + "- 'aç/izle/oynat X': intent play, query = X. Voice = e.g. 'Harika seçim, filmi başlatıyorum.'\n"
                 + "- Keep voice concise: 1-2 spoken sentences (under 32 words), clean natural Turkish without symbols or markdown.";
-        LlmClient.Result r = LlmClient.generate(ctx, system, query, 1800, true);
+        LlmClient.Result r = LlmClient.generate(ctx, system, query, 4500, true);
         if (!r.success) return null;
         JSONObject plan;
         try {
@@ -222,7 +229,7 @@ public final class MovieAssistant {
 
     // ---- without AI -------------------------------------------------------------------------------
 
-    private static Reply heuristic(Context ctx, String query, int max) {
+    private static Reply heuristic(Context ctx, String query, List<MovieCatalog.Movie> currentShelf, int max) {
         Reply out = new Reply();
         String q = query.toLowerCase(Locale.getDefault());
         boolean shelf = false;
@@ -236,7 +243,7 @@ public final class MovieAssistant {
             return out;
         }
         String name = cleanShelfName(query);
-        out.title = name;
+        out.title = name.isEmpty() ? query.trim() : name;
         if (shelf) {
             out.movies = MovieCatalog.personWork(ctx, name, "any", max);
             if (out.movies.isEmpty()) out.movies = MovieCatalog.filmography(ctx, name, max);
@@ -252,6 +259,38 @@ public final class MovieAssistant {
                     return out;
                 }
             }
+        }
+        // If still empty: Detect cinematic themes / genres / keywords
+        if (out.movies.isEmpty()) {
+            List<String> genres = new ArrayList<>();
+            List<String> keywords = new ArrayList<>();
+            String country = "";
+            if (q.contains("intikam")) { genres.add("thriller"); genres.add("action"); keywords.add("revenge"); }
+            if (q.contains("ajan") || q.contains("casus")) { genres.add("action"); genres.add("thriller"); keywords.add("spy"); }
+            if (q.contains("kasvet") || q.contains("karanlık") || q.contains("noir")) { genres.add("crime"); genres.add("thriller"); keywords.add("dark"); }
+            if (q.contains("korku") || q.contains("gerilim")) { genres.add("horror"); genres.add("thriller"); }
+            if (q.contains("komedi") || q.contains("eğlence")) { genres.add("comedy"); }
+            if (q.contains("romantik") || q.contains("aşk")) { genres.add("romance"); }
+            if (q.contains("bilim kurgu") || q.contains("uzay")) { genres.add("science fiction"); }
+            if (q.contains("animasyon") || q.contains("anime")) { genres.add("animation"); }
+            if (q.contains("polisiye") || q.contains("suç")) { genres.add("crime"); }
+            if (q.contains("savaş")) { genres.add("war"); }
+            if (q.contains("western") || q.contains("kovboy")) { genres.add("western"); }
+
+            if (q.contains("hollywood") || q.contains("amerikan")) country = "US";
+            else if (q.contains("kore")) country = "KR";
+            else if (q.contains("japon")) country = "JP";
+            else if (q.contains("fransız")) country = "FR";
+            else if (q.contains("türk") || q.contains("türkiye") || q.contains("yeşilçam")) country = "TR";
+            else if (q.contains("ingiliz")) country = "GB";
+
+            if (!genres.isEmpty() || !keywords.isEmpty() || !country.isEmpty()) {
+                out.movies = MovieCatalog.discover(ctx, keywords, genres, "movie", country, 0, 0, max);
+            }
+        }
+        if (out.movies.isEmpty()) {
+            String cleaned = MovieCatalog.cleanSearchQuery(query);
+            out.movies = MovieCatalog.search(ctx, cleaned.isEmpty() ? query : cleaned, 1, max);
         }
         if (out.movies.isEmpty()) out.movies = MovieCatalog.titled(ctx, query.replaceAll(STRIP_PLAY, "").trim(), "any", max);
         return out;

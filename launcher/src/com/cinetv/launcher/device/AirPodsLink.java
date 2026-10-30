@@ -47,6 +47,17 @@ public final class AirPodsLink {
     private BluetoothA2dp a2dp;
     private boolean running;
 
+    private static volatile long disconnectedAt = 0L;
+    private static final long RECONNECT_COOLDOWN_MS = 25 * 60 * 1000L; // 25 min cooldown: never steal back from phone!
+
+    public static void clearDisconnectCooldown() {
+        disconnectedAt = 0L;
+    }
+
+    public static void markDisconnected() {
+        disconnectedAt = System.currentTimeMillis();
+    }
+
     private final Runnable tick = new Runnable() {
         @Override
         public void run() {
@@ -67,10 +78,12 @@ public final class AirPodsLink {
             BluetoothDevice d = i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
             if (state == BluetoothProfile.STATE_CONNECTED) {
                 if (d != null && isHeadphones(d)) {
+                    disconnectedAt = 0L;
                     Toast.makeText(ctx, ctx.getString(R.string.airpods_connected, name(d)), Toast.LENGTH_SHORT).show();
                     applyHeadphoneSpatialAudio(ctx, true);
                 }
             } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
+                disconnectedAt = System.currentTimeMillis();
                 applyHeadphoneSpatialAudio(ctx, false);
             }
         }
@@ -134,6 +147,11 @@ public final class AirPodsLink {
     }
 
     private void attempt() throws Exception {
+        if (!com.cinetv.launcher.service.Prefs.get(ctx).getBoolean(com.cinetv.launcher.service.Prefs.AIRPODS_AUTO_CONNECT, true)) return;
+        if (System.currentTimeMillis() - disconnectedAt < RECONNECT_COOLDOWN_MS) {
+            // Respect manual disconnect: TV will NOT steal connection back while user is on phone/Mac
+            return;
+        }
         if (android.os.Build.VERSION.SDK_INT >= 31 && ctx.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != android.content.pm.PackageManager.PERMISSION_GRANTED) return;
         BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();
         PowerManager pm = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);

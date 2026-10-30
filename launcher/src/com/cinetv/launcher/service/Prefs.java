@@ -38,6 +38,9 @@ public final class Prefs {
 
     public static final String GLOBAL_APPEARANCE = "cinetv_appearance";
     public static final String GLOBAL_CITY = "cinetv_city";
+    public static final String AIRPODS_AUTO_CONNECT = "airpods_auto_connect";
+    public static final String AIRPODS_SPATIAL_MODE = "airpods_spatial_mode";
+    public static final String AIRPODS_NOISE_CONTROL = "airpods_noise_control";
 
     private Prefs() {}
 

@@ -464,10 +464,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             Toast.makeText(this, toastMsg, Toast.LENGTH_LONG).show();
         }
         String bannerTitle = intent.getStringExtra("banner_title");
+        if (bannerTitle == null && "com.cinetv.launcher.ACTION_UPDATE_BANNER".equals(intent.getAction())) {
+            bannerTitle = intent.getStringExtra("title");
+        }
         if (bannerTitle != null && !bannerTitle.isEmpty()) {
             String bannerMsg = intent.getStringExtra("banner_msg");
+            if (bannerMsg == null) bannerMsg = intent.getStringExtra("message");
+            final String finalMsg = bannerMsg;
+            final String finalTitle = bannerTitle;
             handler.postDelayed(() -> {
-                if (home != null) home.showUpdateBanner(bannerTitle, bannerMsg, false);
+                if (home != null) home.showUpdateBanner(finalTitle, finalMsg, false);
             }, 300);
         }
         String theme = intent.getStringExtra("theme");
@@ -688,6 +694,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     @Override
+    public void onRefreshShelf() {
+        refreshShelf();
+        toast(R.string.refresh_shelf_hint);
+    }
+
+    @Override
     public void onSettings() {
         Panels.settings(this, home.modal, this);
     }
@@ -714,8 +726,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         // Immediate verbal acknowledgment for all searches (voice, TV keyboard, or phone remote)
         String ack = MovieAssistant.acknowledgmentPhrase(query);
-        com.cinetv.launcher.ai.EmaLightningTts.speakMoment(this,
-                com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SEARCH, ack);
+        if (ack != null && !ack.isEmpty()) {
+            com.cinetv.launcher.ai.EmaLightningTts.speakMoment(this,
+                    com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SEARCH, ack);
+        }
 
         // Questions get the answer bubble; film, people and theme searches only change the shelf.
         final boolean question = MovieAssistant.isQuestion(query);
@@ -725,8 +739,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             home.shelfLabel.setText(getString(R.string.shelf_building, MovieAssistant.cleanShelfName(query)).toUpperCase(Locale.getDefault()));
         }
         final Context app = getApplicationContext();
+        final List<MovieCatalog.Movie> currentShelf = home.shelf.movies();
         background(() -> {
-            MovieAssistant.Reply r = MovieAssistant.ask(app, query, PerformanceProfile.shelfSize(app));
+            MovieAssistant.Reply r = MovieAssistant.ask(app, query, currentShelf, PerformanceProfile.shelfSize(app));
             ui(() -> {
                 if (gen != searchGen) return;
                 if (r.kind == MovieAssistant.Kind.PLAY && !r.movies.isEmpty()) {
@@ -1596,6 +1611,14 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void searchOnTv(String query) {
         onSearch(query);
+    }
+
+    @Override
+    public void showSimilarOnTv(String title, List<MovieCatalog.Movie> movies) {
+        if (movies != null && !movies.isEmpty()) {
+            setShelf(title == null || title.isEmpty() ? "BENZER FİLMLER" : title, movies, true);
+            home.shelf.requestFocus();
+        }
     }
 
     @Override

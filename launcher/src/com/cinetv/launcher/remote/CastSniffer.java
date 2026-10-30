@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  * play can be pressed inside them too. Ad networks are never caught; popups never open.
  */
 final class CastSniffer {
-    private static final Pattern MEDIA = Pattern.compile("(?i)\\.(m3u8|mpd|mp4|m4v|webm|mkv)(\\?|#|$)|/(hls|dash)/|master\\.txt|playlist\\.txt");
+    private static final Pattern MEDIA = Pattern.compile("(?i)\\.(m3u8|mpd|mp4|m4v|webm|mkv)(\\?|#|$)|/(hls|dash)/");
     private static final Pattern AD = Pattern.compile("(?i)(doubleclick|googlesyndication|googleadservices|imasdk|adservice|adnxs|adsystem|"
             + "advertising|popads|popcash|propellerads|exoclick|juicyads|trafficjunky|adsterra|onclick|vast|vpaid|preroll|pre-roll|"
             + "/ads?/|[./_-]ads?[./_-]|banner|promo|teaser|sponsor)");
