@@ -53,7 +53,6 @@ public class HomeScreen {
         void onInputs();
         void onAllApps();
         void onRefreshShelf();
-        void onSupport();
         void onSettings();
         /** Long press on the gear: the TV's own settings. */
         void onSystemSettings();
@@ -328,7 +327,6 @@ public class HomeScreen {
                 headerButton(R.drawable.ic_phone, R.string.connect_phone, R.string.connect_phone, Color.parseColor("#38BDF8"), v -> listener.onPhone()),
                 headerButton(R.drawable.ic_network, R.string.network, R.string.network, Color.parseColor("#F59E0B"), v -> listener.onNetwork()),
                 headerButton(R.drawable.ic_inputs, R.string.inputs, R.string.inputs, Color.parseColor("#8B5CF6"), v -> listener.onInputs()),
-                headerButton(R.drawable.ic_support, R.string.support_title, R.string.support_hint, Color.parseColor("#EC4899"), v -> listener.onSupport()),
                 headerButton(R.drawable.ic_all_apps, R.string.all_apps, R.string.all_apps, Color.parseColor("#FB923C"), v -> listener.onAllApps()),
                 headerButton(R.drawable.ic_settings_gear, R.string.settings_title, R.string.settings_hold_hint, Color.parseColor("#6366F1"), v -> listener.onSettings()),
         };

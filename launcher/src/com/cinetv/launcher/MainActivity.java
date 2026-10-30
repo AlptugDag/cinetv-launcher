@@ -556,7 +556,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         handler.removeCallbacks(idle);
         handler.removeCallbacks(sleepPanel);
         hideScreensaver();
-        // Deep background hibernation: immediately free memory for torrent & external media playback
+        // Deep background hibernation: immediately free memory for external media player & 4K video playback
         PosterCache.trimMemory();
         Glow.clear();
         MemoryOptimizer.cleanBackground(this, getPackageName());
@@ -849,13 +849,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void onSettings() {
         Panels.settings(this, home.modal, this);
-    }
-
-    @Override
-    public void onSupport() {
-        if (home != null && home.modal != null) {
-            home.modal.push(() -> Panels.buildSupportModal(this, home.modal));
-        }
     }
 
     @Override

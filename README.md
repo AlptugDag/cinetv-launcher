@@ -12,7 +12,8 @@
 
 [![Sürüm](https://img.shields.io/badge/SURUM-1.0.0.18-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher/releases/latest)
 [![Felsefe](https://img.shields.io/badge/FELSEFE-SIFIR%20KAR%20%7C%20SAF%20SINEMA-E50914?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher)
-[![Mimari](https://img.shields.io/badge/ALTYAPI-BAGIMSIZ%20%26%20NO--ROOT-000000?style=for-the-badge)](https://github.com/AlptugDag/cinetv-launcher)
+[![Mimari](https://img.shields.io/badge/ROL-A%C3%87IK%20KAYNAK%20BA%C5%9ELATICI%20(LAUNCHER)-000000?style=for-the-badge)](#-yasal-bilgilendirme-ve-mimari-sorumluluk-reddi-legal-disclaimer)
+[![İçerik Politikası](https://img.shields.io/badge/%C4%B0%C3%87ER%C4%B0K-SIFIR%20BARINDIRMA%20%7C%20INTENT%20K%C3%96PR%C3%9CS%C3%9C-10b981?style=for-the-badge)](#-yasal-bilgilendirme-ve-mimari-sorumluluk-reddi-legal-disclaimer)
 
 <br><br>
 
@@ -144,7 +145,7 @@ Tarihi kadife tiyatro perdelerinden endüstriyel fırçalanmış titanyuma, 80'l
 
 <div align="center">
 
-### <font color="#E50914">"Evet, torrenti ben icat etmedim ama onu televizyonunuzun kalbine, yapay zeka film araması ile entegre eden benim! Sadece ne istediğinizi söylemeniz yetecek; sizi anlayacak ve tam istediğiniz türden filmi önünüze serecek."</font>
+### <font color="#E50914">"Evet, sinemayı ben icat etmedim ama televizyonunuzun kalbine; yapay zeka film küratörlüğü, 3D fiziksel arşiv estetiği ve modern medya başlatıcı köprüsüyle entegre eden benim! Sadece ne izlemek istediğinizi söylemeniz yetecek; sizi anlayacak ve aradığınız filmi tüm detaylarıyla vitrininize serecek."</font>
 <p>— <b>Alptuğ Dağ</b></p>
 
 </div>
@@ -191,21 +192,21 @@ Kumandanızın mikrofonuna konuştuğunuzda televizyon çerçevesinin dört bir 
 
 <br>
 
-## Siz Sadece Koltuğunuza Yaslanın: Sıfır Ayar, Tam Otomasyon
+## Siz Sadece Koltuğunuza Yaslanın: Bağımsız Medya Oynatıcı Köprüsü & Tam Otomasyon
 
-Ev sineması kurmak bugüne kadar teknik bir sınavdı: Kodekler, harici oynatıcılar, eklenti linkleri ve bitmek bilmeyen menüler. CineTV bu zahmeti tamamen tarihe gömer.
+CineTV, kendi bünyesinde herhangi bir medya dosyası veya yayın barındırmayan saf bir **Sistem Başlatıcısı (Launcher) ve Arayüz Kabuğu**'dur. Vitrindeki bir eseri seçtiğinizde, standart Android sistem çağrıları (Intent) ile cihazınızda kurulu bağımsız üçüncü taraf medya oynatıcılarını ve uygulamalarını tetikler.
 
-**Her şey siz farkına bile varmadan, arka planda tam otomatik olarak inşa edilir.**
+Ev sineması kurmak bugüne kadar teknik bir sınavdı: Kodekler, harici oynatıcı uyumsuzlukları ve bitmek bilmeyen menüler. CineTV, bu köprüyü arka planda kusursuz bir otomasyonla kurar:
 
-- **Nuvio TV**: İşlemcinize özel derlenmiş medya merkezi.
-- **Nova Player**: Yüksek bit hızlı akışları sıfır takılmayla işleyen kayıpsız video motoru.
+- **Harici Medya Merkezi Köprüsü (Nuvio TV)**: Ekosistemde yaygın olarak kullanılan bağımsız üçüncü taraf medya merkezine tek dokunuşla akıllı intent yönlendirmesi.
+- **Kayıpsız Video Motoru (Nova Player)**: Yüksek bit hızlı yerel ve ağ akışlarını takılmadan işleyen harici oynatıcı entegrasyonu.
 - **AirPlay 2**: Apple cihazlarınız için yerleşik kablosuz ekran yansıtma desteği.
-- **Alptuğ Dağ Kürasyonu**: Önceden yerleştirilmiş, yapılandırılmış seçkin sinema kütüphanesi.
+- **Alptuğ Dağ Kürasyonu**: TMDB kamu veritabanı üzerinden derlenmiş, görsel derinlikli ve edebi sinopsisli seçkin vitrin mimarisi.
 
 <br>
 
 <p align="center">
-  <img src="docs/media/nuvio-signature.jpg" alt="Nuvio Ekosistemi" width="800">
+  <img src="docs/media/nuvio_logo.png" alt="Nuvio External Player" width="260">
 </p>
 
 <br><br>
@@ -255,6 +256,15 @@ Uygulama mağazalarından ek yazılım indirmeye, hesap açmaya veya karmaşık 
   <img src="docs/media/phone-walkthrough.gif" alt="Canlı Akış" width="360">
 </p>
 
+<br>
+
+<p align="center">
+  <img src="docs/media/roulette_wheel.png" alt="Film Öneri Ruleti (TV & Mobil)" width="840">
+</p>
+<p align="center">
+  <img src="docs/media/cineparty_games.png" alt="35mm Selüloit Yılanı ve Sinefil Bilmece Arenası" width="840">
+</p>
+
 <br><br>
 
 ---
@@ -267,6 +277,12 @@ Film izlerken geçen tarihi bir olay, yönetmen metaforu veya felsefi kavram iç
 
 - **Sahneyi Durdurmayan Yüzen Kültürel Kart:** Kumandanızın atanmış renkli tuşuna veya mobil arayüzdeki CineSub butonuna bastığınız anda sahne durmadan ve video akışı kesilmeden ekranın sağ kenarında şık bir cam not kartı belirir.
 - **Gemini Vision Sahne Denetçisi:** Sahnedeki ikonik bir tabloyu, mimari detayı, tarihi kostümü veya yemeği tek dokunuşla analiz edip kökenini açıklar.
+
+<br>
+
+<p align="center">
+  <img src="docs/media/cinesub_overlay.png" alt="CineSub İnteraktif Kültürel Altyazı Rehberi" width="840">
+</p>
 
 <br><br>
 
@@ -395,6 +411,42 @@ CineTV, TV Denetçisi üzerinden gönderilen telemetri ve doğrudan laboratuvar 
 CineTV; Sony, Philips, TCL, Xiaomi, Hisense, Arçelik, Beko, Grundig ve Vestel başta olmak üzere tüm Android TV ve Google TV cihazlarında, Chromecast, NVIDIA SHIELD ve Android projeksiyonlarda akıcı çalışır.
 
 Hiçbir kişisel verinizi toplamaz, kullanım alışkanlıklarınızı izlemez ve asla reklam barındırmaz. Açık kaynak kodları ve bağımsız felsefesiyle sadece ve sadece sinemaya adanmıştır.
+
+<br><br>
+
+---
+
+<br>
+
+## ⚖️ Yasal Bilgilendirme ve Mimari Sorumluluk Reddi (Legal Disclaimer)
+
+> [!IMPORTANT]
+> **CineTV bir korsan yayın, medya sunucusu, dosya barındırıcı veya streaming platformu DEĞİLDİR.**
+
+1. **Açık Kaynak Sistem Başlatıcısı (Custom Launcher & UI Shell):**  
+   CineTV; Android TV ve Google TV cihazları için bağımsız olarak geliştirilmiş açık kaynaklı bir **Sistem Başlatıcısı (Launcher)**, **Arayüz Kabuğu (UI Front-End)** ve **Kişisel Sinema Düzenleyicisidir (Metadata Aggregator)**. Yazılımın yegane gayesi; televizyon ana ekranını estetik, reklamsız, yüksek performanslı ve akıcı bir sinema vitrinine kavuşturmaktır.
+
+2. **Sıfır İçerik Barındırma (No Content Hosting / Zero Media Storage):**  
+   CineTV sunucularında veya kod tabanında hiçbir video, film, dizi, ses kaydı, canlı televizyon akışı veya telif hakkına tabi medya dosyası **barındırılmaz, depolanmaz, yüklenmez, aktarılmaz ya da dağıtılmaz**. CineTV bünyesinde herhangi bir dahili video akış motoru, dosya indirme/paylaşım istemcisi ya da içerik kazıyıcı (scraper) bulunmamaktadır.
+
+3. **Harici Medya Oynatıcı Köprüsü (External Player Intent Bridge):**  
+   CineTV, kullanıcı vitrindeki bir eseri oynatmak istediğinde standart Android işletim sistemi çağrılarını (`Intent.ACTION_VIEW` ve paket başlatıcı intent'leri) kullanarak kullanıcının kendi cihazında halihazırda yüklü olan bağımsız, üçüncü taraf medya oynatıcı uygulamaları (Nuvio, Nova Video Player, YouTube, VLC vb.) tetikler. CineTV; bu üçüncü taraf harici uygulamaların, eklentilerinin veya harici kütüphanelerinin sahibi, sağlayıcısı veya denetleyicisi değildir. Üçüncü taraf bağımsız uygulamalar aracılığıyla erişilen içeriklerin yasallığı, lisansı ve telif uygunluğu tamamen ilgili uygulamaların ve son kullanıcının sorumluluğundadır.
+
+4. **Kamusal Üstveri ve Adil Kullanım (Fair Use & Public Metadata):**  
+   Arayüz vitrininde gösterilen film adları, afiş görselleri, Türkçe konu özetleri, yönetmen/oyuncu kadrosu ve puanlar; The Movie Database (TMDB) tarafından kamuya açık olarak sunulan resmi API servisleri üzerinden yalnızca kataloglama, bilgilendirme ve arşivleme amacıyla çekilmektedir. Tanıtım fragmanları ise YouTube'un resmi kamuya açık oynatıcı altyapısı üzerinden oynatılmaktadır. CineTV, bu üçüncü taraf materyaller üzerinde hiçbir hak veya mülkiyet iddia etmez.
+
+5. **Açık Kaynak ve Eğitim/Hobi Niteliği:**  
+   Bu yazılım Alptuğ Dağ tarafından tamamen kâr amacı gütmeyen, ticari olmayan bağımsız bir hobi ve açık kaynak projesi olarak sunulmaktadır.
+
+<details>
+<summary><b>English Version (Legal Disclaimer & Architecture Note)</b></summary>
+
+> **CineTV is NOT a streaming service, media host, torrent client, or piracy provider.**  
+> - **Role:** CineTV is an open-source custom Android TV launcher and front-end interface (UI Shell). Its sole purpose is to replace default TV home screens with an ad-free, cinephile 3D shelf aesthetic.  
+> - **Zero Content Hosting:** CineTV does not host, store, stream, upload, or transmit any copyrighted audio or video media.  
+> - **External Player Bridge:** Playback requests are delegated via standard Android Intents (`Intent.ACTION_VIEW`) to standalone, external third-party media players (such as Nuvio, Nova Player, YouTube, or VLC) installed independently by the end-user. CineTV does not control or endorse third-party applications.  
+> - **Metadata:** Movie posters, summaries, and details are fetched from TMDB's public API strictly for cataloging and educational display under fair use. Trailers are served via YouTube's public embeds.
+</details>
 
 <br><br>
 

@@ -92,7 +92,7 @@ What the answers change:
 | `country`, `city` | weather and the shelf of the moment; which services' catalogues and free channels match; Netflix Top 10 of that country |
 | `household`, `kids_ages` | kids' series and family films rows (animated for under-9s) |
 | `loves`, `main` | which rows, addons and apps exist at all; `main` comes first and is pinned |
-| `audio`, `more_audio`, `anime_audio` | Torrentio's language priority (dubbed, original, Japanese for anime) |
+| `audio`, `more_audio`, `anime_audio` | Preferred audio language priority (dubbed, original, Japanese for anime) |
 | `subs` | OpenSubtitles (and TR Altyazı for Turkish); Nuvio's subtitle languages |
 | `film_*` | film rows by genre, era, style (popular / acclaimed / hidden gems) and country of origin; avoided genres are removed everywhere |
 | `series_*` | series rows by genre and origin; `series_only_origins` = nothing from anywhere else, service rows included |
@@ -102,7 +102,7 @@ What the answers change:
 | `channel_kinds`, `channel_countries` | free live channels (iptv-org's public index) of those kinds and countries |
 | `services` | the services they pay for: their official apps on Home (Play Store page opened for each one missing) and "On Netflix (in your country)"-style rows; `top10` adds Netflix Top 10 of the country |
 | `tv_sources`, `hdmi_port` | the Live TV tile: the TV's tuner (antenna, satellite, cable), the HDMI input of their satellite/cable/IPTV box, or no tile at all |
-| `quality`, `hide`, `autoplay` | Torrentio's quality filter; Nuvio's autoplay |
+| `quality`, `hide`, `autoplay` | Video quality filter; external player autoplay |
 | `phone`, `cast` | AirPlay receiver only for iPhone/Mac homes; Nova Video Player only if they cast from the phone |
 | `notes` | kept in `nuvio-preferences.json` for you to act on |
 

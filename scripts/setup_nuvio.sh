@@ -7,7 +7,7 @@
 #   scripts/setup_nuvio.sh --defaults tr   # Turkish defaults, no questions
 #
 # Installed addons (each can be removed in Nuvio › Addons):
-#   Torrentio       streams, configured from the answers (languages, quality, excluded qualities)
+#   Player Addons   catalog & stream provider configured from user preferences (languages, quality)
 #   TR Altyazı      Turkish subtitle pool (AltyaziTR, OpenSubtitles, YIFY)
 #   AIOMetadata     posters, plots and cast in your language (personal URL from its configure page)
 #   Xperience, Kaptain's Collection   when you paste their manifest URLs

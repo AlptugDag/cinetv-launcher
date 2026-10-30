@@ -259,7 +259,7 @@ public final class AppLauncher {
         }
         if (imdbId != null && imdbId.startsWith("tt")) {
             String kind = "series".equals(type) ? "series" : "movie";
-            // Deep link directly to Nuvio detail page so scraper addons (Cinestream, Torrentio) resolve all 4K/1080p streams and Turkish dubbing
+            // Deep link directly to Nuvio detail page so external media player handles catalog details and user playback
             Intent detail = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/" + kind + "/" + imdbId));
             if (targetPkg != null) detail.setPackage(targetPkg);
             detail.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);

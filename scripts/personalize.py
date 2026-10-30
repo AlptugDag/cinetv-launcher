@@ -25,7 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 QUESTIONS = os.path.join(HERE, "personalize", "questions.json")
 UI_LANGS = ("en", "tr", "pt", "es", "de", "fr")
 
-# Language code -> (Torrentio language, ISO 639-1)
+# Language code -> (Language name, ISO 639-1)
 LANGUAGES = {
     "en": ("english", "en"), "tr": ("turkish", "tr"), "pt-BR": ("portuguese", "pt"), "pt-PT": ("portuguese", "pt"),
     "es-ES": ("spanish", "es"), "es-419": ("latino", "es"), "de": ("german", "de"), "fr": ("french", "fr"),
@@ -599,7 +599,7 @@ def channels_url(config):
 
 
 def install_addon(path):
-    # Single quotes for the TV's shell: Torrentio options contain "|".
+    # Single quotes for the TV's shell: intent options may contain "|".
     subprocess.run(["adb", "shell", f"am start -a android.intent.action.VIEW -d 'stremio://{path}' com.nuvio.tv"],
                    capture_output=True, timeout=30)
     time.sleep(4)

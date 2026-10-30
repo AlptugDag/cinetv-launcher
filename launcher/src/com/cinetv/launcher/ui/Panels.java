@@ -554,10 +554,6 @@ public final class Panels {
                 tr ? "Fiziksel Kumanda & Renkli Tuşlar" : "Remote & Color Keys",
                 tr ? "Kırmızı, Yeşil, Sarı, Mavi tuşlara CineSub ve eylem ata" : "Assign CineSub and actions to colored keys", false,
                 v -> host.push(() -> buildKeyCapture(ctx, host, a))));
-        cMaint.addView(Controls.tile(ctx,
-                tr ? "✦ Geliştiriciye Destek Ol (Kreosus / Shopier)" : "✦ Support the Creator",
-                tr ? "CineTV'nin bağımsız kalmasına katkıda bulunun" : "Help keep CineTV independent & ad-free", false,
-                v -> host.push(() -> buildSupportModal(ctx, host))));
         String curVer = AppUpdater.currentVersion(ctx);
         cMaint.addView(Controls.tile(ctx, tr ? "Sürüm & Güncelleme" : "Version & Updates",
                 "v" + curVer + (tr ? " · Güncellemeleri Denetle" : " · Check for Updates"), false, v -> {
@@ -1281,7 +1277,7 @@ public final class Panels {
         outer.setBackground(new Glass(outer, UiKit.pxf(24), Glass.Style.PANEL));
 
         TextView title = UiKit.bold(ctx, 24, UiKit.INK);
-        title.setText(tr ? "CineTV v1.0.0.18 Beta 2 — Yenilikler ve Değişiklikler" : "CineTV v1.0.0.18 Beta 2 — What's New");
+        title.setText(tr ? "CineTV v1.0.0.18 Beta 3 — Yenilikler ve Değişiklikler" : "CineTV v1.0.0.18 Beta 3 — What's New");
         outer.addView(title);
 
         TextView sub = UiKit.label(ctx, 14, UiKit.INK_DIM);
@@ -1295,6 +1291,18 @@ public final class Panels {
         list.setOrientation(LinearLayout.VERTICAL);
 
         String[][] items = {
+            {(tr ? "Fiziksel Titanyum & Pirinç Film Öneri Ruleti" : "Physical Titanium & Brass Movie Roulette"),
+             tr ? "Hem TV'de hem mobilde senkronize çalışan fotogerçekçi, altın perçinli, kadife tonlu dilimli ve yaylı ibreli sinema ruleti."
+                : "Synchronized photorealistic cinema roulette wheel with titanium rim, golden rivets, velvet slices, and tactile deflection physics."},
+            {(tr ? "35mm Selüloit Film Şeridi Sinefil Yılanı" : "35mm Celluloid Filmstrip Snake Game"),
+             tr ? "Retina ekranlara özel Kodak delikli selüloit kareler, vintage lens başlığı, 3D selefon parlamalı minyatür DVD hedefleri ve gyro eğim kontrolü."
+                : "Kodak 35mm perforated celluloid filmstrip, vintage lens camera head, 3D cellophane DVD cases, and responsive gyro tilt steering."},
+            {(tr ? "10 Soruluk Sinefil Bilmece Arenası" : "10-Question Cinephile Quiz Arena"),
+             tr ? "Oturma odasındaki herkesin telefonundan anlık katılabildiği, festival bileti tasarımlı 10 soruluk gerçek zamanlı sinefil yarışması."
+                : "Multi-player real-time cinema quiz show where all connected smartphones compete live on the TV screen."},
+            {(tr ? "CineSub: İnteraktif Kültürel Altyazı Rehberi" : "CineSub: Interactive Cultural Subtitle Companion"),
+             tr ? "Sahneyi durdurmadan altyazıda geçen tarihi olayları, felsefi kavramları ve yönetmen göndermelerini TV köşesinde mini kart olarak açar."
+                : "Instant pop-up cultural annotation cards for historical context, philosophy, and director tributes without pausing playback."},
             {(tr ? "Yerel Donanım Hızlandırmalı Fragman Oynatıcı" : "Native Hardware-Accelerated Trailer Engine"),
              tr ? "YouTube UI barındırmayan, doğrudan donanım seviyesinde H.264/AAC ExoPlayer motoru. Anında başlar, pürüzsüz loop eder ve disk önbelleği kullanır."
                 : "Zero YouTube UI, sub-second start time, native seamless looping, minimal CPU/GPU usage via Media3 ExoPlayer with disk prefetch."},
@@ -3001,52 +3009,104 @@ public final class Panels {
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         final LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiKit.px(32), UiKit.px(24), UiKit.px(32), UiKit.px(24));
+        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
         root.setBackground(Glass.panel(root, 28));
 
-        TextView title = UiKit.bold(ctx, 28, UiKit.INK);
-        title.setText(tr ? "✦ Film Öneri Ruleti" : "✦ Movie Suggestion Roulette");
-        root.addView(title);
+        LinearLayout head = new LinearLayout(ctx);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView badge = UiKit.bold(ctx, 14, Color.parseColor("#F59E0B")); // Solar Amber
+        badge.setText(tr ? "✦ SİNEFİL FİLM ÖNERİ RULETİ" : "✦ CINEPHILE MOVIE SUGGESTION ROULETTE");
+        head.addView(badge);
+        root.addView(head);
 
-        TextView sub = UiKit.label(ctx, 16, UiKit.INK_DIM);
-        sub.setPadding(0, UiKit.px(8), 0, UiKit.px(16));
+        LinearLayout stageRow = new LinearLayout(ctx);
+        stageRow.setOrientation(LinearLayout.HORIZONTAL);
+        stageRow.setGravity(Gravity.CENTER_VERTICAL);
+        stageRow.setPadding(0, UiKit.px(16), 0, UiKit.px(16));
+
+        // Left Column: Custom luxury spinning wheel
+        final com.cinetv.launcher.party.RouletteWheelView wheel = new com.cinetv.launcher.party.RouletteWheelView(ctx);
+        int wheelSize = UiKit.px(340);
+        LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(wheelSize, wheelSize);
+        wlp.rightMargin = UiKit.px(36);
+        stageRow.addView(wheel, wlp);
+
+        // Right Column: Details, Suggestions, and Live Winner Card
+        LinearLayout infoCol = new LinearLayout(ctx);
+        infoCol.setOrientation(LinearLayout.VERTICAL);
+        infoCol.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView title = UiKit.bold(ctx, 24, UiKit.INK);
+        title.setText(tr ? "Akşam Hangi Filmi İzleyelim?" : "What Are We Watching Tonight?");
+        infoCol.addView(title);
+
+        TextView sub = UiKit.label(ctx, 15, UiKit.INK_DIM);
+        sub.setPadding(0, UiKit.px(6), 0, UiKit.px(14));
+        sub.setMaxWidth(UiKit.px(640));
         sub.setText(tr
-                ? "Herkes telefonundan bir film önerisi fırlatsın, rulet çarkı dönüp bu akşam izlenecek filmi seçsin!"
-                : "Everyone send a movie suggestion from your phone, and the roulette will pick what to watch tonight!");
-        root.addView(sub);
+                ? "Herkes kendi telefonundan 'Oyunlar' sekmesine girip bir film önersin. Çarkı çevirdiğinizde kazanan film belirlenir!"
+                : "Everyone send a recommendation from their phone's 'Party' tab. Spin the wheel to crown tonight's movie!");
+        infoCol.addView(sub);
 
         final LinearLayout suggestionsList = new LinearLayout(ctx);
         suggestionsList.setOrientation(LinearLayout.VERTICAL);
-        suggestionsList.setPadding(0, 0, 0, UiKit.px(18));
-        root.addView(suggestionsList);
+        suggestionsList.setPadding(0, 0, 0, UiKit.px(14));
+        infoCol.addView(suggestionsList);
+
+        final LinearLayout winnerCard = new LinearLayout(ctx);
+        winnerCard.setOrientation(LinearLayout.VERTICAL);
+        winnerCard.setBackground(Glass.panel(winnerCard, 20));
+        winnerCard.setPadding(UiKit.px(22), UiKit.px(16), UiKit.px(22), UiKit.px(16));
+        winnerCard.setVisibility(View.GONE);
+
+        TextView winBadge = UiKit.bold(ctx, 13, Color.parseColor("#F59E0B"));
+        winBadge.setText(tr ? "✦ BU AKŞAMIN SEÇİLEN BAŞYAPITI ✦" : "✦ TONIGHT'S CHOSEN MASTERPIECE ✦");
+        winnerCard.addView(winBadge);
+
+        final TextView winnerTv = UiKit.bold(ctx, 24, Color.WHITE);
+        winnerTv.setPadding(0, UiKit.px(6), 0, UiKit.px(4));
+        winnerCard.addView(winnerTv);
+
+        final TextView winnerUserTv = UiKit.label(ctx, 14, Color.parseColor("#38BDF8"));
+        winnerCard.addView(winnerUserTv);
+
+        infoCol.addView(winnerCard);
+
+        stageRow.addView(infoCol);
+        root.addView(stageRow);
 
         final com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(ctx);
+        final List<String> currentTitles = new ArrayList<>();
+
         final Runnable updateList = () -> {
             suggestionsList.removeAllViews();
+            currentTitles.clear();
             JSONObject st = party.getState();
             org.json.JSONArray arr = st != null ? st.optJSONArray("suggestions") : null;
             if (arr != null && arr.length() > 0) {
                 for (int i = 0; i < arr.length(); i++) {
                     JSONObject s = arr.optJSONObject(i);
                     if (s != null) {
-                        TextView item = UiKit.label(ctx, 16, UiKit.INK);
-                        item.setText("🎬 " + s.optString("title") + " (" + s.optString("user") + ")");
-                        item.setPadding(0, UiKit.px(3), 0, UiKit.px(3));
+                        String t = s.optString("title");
+                        currentTitles.add(t);
+                        TextView item = UiKit.label(ctx, 15, UiKit.INK);
+                        item.setText("🎬 " + t + " (" + s.optString("user") + ")");
+                        item.setPadding(0, UiKit.px(2), 0, UiKit.px(2));
                         suggestionsList.addView(item);
                     }
                 }
             } else {
-                TextView empty = UiKit.label(ctx, 15, UiKit.INK_DIM);
-                empty.setText(tr ? "Telefonda 'Oyunlar' sekmesinden film önerisi ekleyin..." : "Add suggestions from phone 'Party' tab...");
+                currentTitles.add("The Godfather");
+                currentTitles.add("Interstellar");
+                currentTitles.add("Inception");
+                currentTitles.add("Pulp Fiction");
+                TextView empty = UiKit.label(ctx, 14, UiKit.INK_DIM);
+                empty.setText(tr ? "Telefonda 'Oyunlar' sekmesinden film önerisi fırlatın..." : "Hurl movie suggestions from phone 'Party' tab...");
                 suggestionsList.addView(empty);
             }
+            wheel.setItems(currentTitles);
         };
         updateList.run();
-
-        final TextView winnerTv = UiKit.bold(ctx, 26, Color.parseColor("#F59E0B"));
-        winnerTv.setVisibility(View.GONE);
-        winnerTv.setPadding(0, UiKit.px(10), 0, UiKit.px(16));
-        root.addView(winnerTv);
 
         party.setListener(new com.cinetv.launcher.party.CinePartyManager.Listener() {
             @Override
@@ -3057,30 +3117,32 @@ public final class Panels {
             @Override
             public void onRouletteFinished(String movieTitle, String suggestedBy) {
                 root.post(() -> {
-                    winnerTv.setVisibility(View.VISIBLE);
-                    winnerTv.setText(tr
-                            ? "🎉 SEÇİLEN FİLM: " + movieTitle + " (Öneren: " + suggestedBy + ")"
-                            : "🎉 CHOSEN FILM: " + movieTitle + " (Suggested by " + suggestedBy + ")");
+                    winnerCard.setVisibility(View.VISIBLE);
+                    winnerTv.setText(movieTitle);
+                    winnerUserTv.setText(tr ? ("Öneren Sinefil: " + suggestedBy) : ("Suggested by: " + suggestedBy));
                 });
             }
         });
 
         LinearLayout btns = new LinearLayout(ctx);
         btns.setOrientation(LinearLayout.HORIZONTAL);
+        btns.setPadding(0, UiKit.px(10), 0, 0);
 
-        TextView spinBtn = Controls.button(ctx, tr ? "Çarkı Çevir!" : "Spin the Wheel!", v -> {
-            JSONObject winner = com.cinetv.launcher.party.CinePartyManager.get(ctx).spinRoulette();
-            if (winner != null) {
-                com.cinetv.launcher.device.SystemAudio.open(ctx);
-                String mTitle = winner.optString("title");
-                String mUser = winner.optString("user");
-                winnerTv.setVisibility(View.VISIBLE);
-                winnerTv.setText(tr
-                        ? "🎉 SEÇİLEN FİLM: " + mTitle + " (Öneren: " + mUser + ")"
-                        : "🎉 CHOSEN FILM: " + mTitle + " (Suggested by " + mUser + ")");
-            } else {
-                Toast.makeText(ctx, tr ? "Henüz telefondan film önerisi gönderilmedi." : "No suggestions yet from phones.", Toast.LENGTH_SHORT).show();
+        TextView spinBtn = Controls.button(ctx, tr ? "🎡 Çarkı Çevir!" : "🎡 Spin the Wheel!", v -> {
+            if (currentTitles.isEmpty()) {
+                Toast.makeText(ctx, tr ? "Henüz film önerisi eklenmedi." : "No suggestions added yet.", Toast.LENGTH_SHORT).show();
+                return;
             }
+            winnerCard.setVisibility(View.GONE);
+            int winIdx = (int) (Math.random() * currentTitles.size());
+            wheel.spinTo(winIdx, () -> {
+                JSONObject winObj = party.spinRoulette();
+                String mTitle = winObj != null ? winObj.optString("title") : currentTitles.get(winIdx);
+                String mUser = winObj != null ? winObj.optString("user") : "Misafir";
+                winnerCard.setVisibility(View.VISIBLE);
+                winnerTv.setText(mTitle);
+                winnerUserTv.setText(tr ? ("Öneren Sinefil: " + mUser) : ("Suggested by: " + mUser));
+            });
         });
         btns.addView(spinBtn);
 
@@ -3088,9 +3150,10 @@ public final class Panels {
         btns.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(16), 1));
 
         TextView clearBtn = Controls.button(ctx, tr ? "Temizle" : "Clear", v -> {
-            com.cinetv.launcher.party.CinePartyManager.get(ctx).clearRouletteSuggestions();
+            party.clearRouletteSuggestions();
             suggestionsList.removeAllViews();
-            winnerTv.setVisibility(View.GONE);
+            winnerCard.setVisibility(View.GONE);
+            updateList.run();
         });
         btns.addView(clearBtn);
 
@@ -3101,20 +3164,6 @@ public final class Panels {
         btns.addView(closeBtn);
 
         root.addView(btns);
-
-        JSONObject state = com.cinetv.launcher.party.CinePartyManager.get(ctx).getState();
-        JSONArray sArr = state.optJSONArray("suggestions");
-        if (sArr != null) {
-            for (int i = 0; i < sArr.length(); i++) {
-                JSONObject s = sArr.optJSONObject(i);
-                if (s == null) continue;
-                TextView st = UiKit.label(ctx, 16, UiKit.INK);
-                st.setText("🎬 " + s.optString("title") + " (" + s.optString("user") + ")");
-                st.setPadding(0, UiKit.px(4), 0, UiKit.px(4));
-                suggestionsList.addView(st);
-            }
-        }
-
         root.post(spinBtn::requestFocus);
         return root;
     }
@@ -3230,103 +3279,6 @@ public final class Panels {
             return true;
         });
         return root;
-    }
-
-    public static View buildSupportModal(final Context ctx, final ModalHost host) {
-        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        LinearLayout root = new LinearLayout(ctx);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiKit.px(36), UiKit.px(28), UiKit.px(36), UiKit.px(28));
-        root.setBackground(Glass.panel(root, 28));
-
-        TextView title = UiKit.bold(ctx, 28, Color.parseColor("#EC4899")); // Ruby Pink / Rose
-        title.setText(tr ? "✦ Geliştiriciye Destek Ol" : "✦ Support the Creator");
-        root.addView(title);
-
-        TextView sub = UiKit.label(ctx, 16, UiKit.INK_DIM);
-        sub.setPadding(0, UiKit.px(10), 0, UiKit.px(22));
-        sub.setLineSpacing(UiKit.pxf(5), 1.15f);
-        sub.setMaxWidth(UiKit.px(820));
-        sub.setText(tr
-                ? "CineTV, ev sinemasını reklamsız, tarafsız ve özgür kılmak için Alptuğ Dağ tarafından geliştirilmiş bağımsız bir projedir.\n\n"
-                + "Geliştiriciye bir kahve ısmarlayarak sunucu, TMDB/Gemini API masraflarına ve yeni özellik geliştirme süreçlerine katkıda bulunabilirsiniz."
-                : "CineTV is an independent project by Alptuğ Dağ to keep home cinema pure, ad-free, and accessible.\n\n"
-                + "You can support by buying the developer a coffee to help cover server, TMDB/Gemini API, and feature development costs.");
-        root.addView(sub);
-
-        LinearLayout cardRow = new LinearLayout(ctx);
-        cardRow.setOrientation(LinearLayout.HORIZONTAL);
-        cardRow.setGravity(Gravity.CENTER_VERTICAL);
-
-        // QR Code box on left
-        int size = UiKit.px(260);
-        ImageView qr = new ImageView(ctx);
-        String supportUrl = Prefs.get(ctx).getString("support_url", "https://kreosus.com/alptugdag");
-        Bitmap code = RemotePairing.qr(supportUrl, size, Color.parseColor("#0B1220"), Color.WHITE);
-        if (code != null) qr.setImageBitmap(code);
-        cardRow.addView(qr, new LinearLayout.LayoutParams(size, size));
-
-        // Info column on right
-        LinearLayout infoCol = new LinearLayout(ctx);
-        infoCol.setOrientation(LinearLayout.VERTICAL);
-        infoCol.setPadding(UiKit.px(28), 0, 0, 0);
-
-        TextView creatorName = UiKit.bold(ctx, 20, UiKit.INK);
-        creatorName.setText("Alptuğ Dağ");
-        infoCol.addView(creatorName);
-
-        TextView linkTv = UiKit.label(ctx, 15, Color.parseColor("#38BDF8"));
-        linkTv.setText(supportUrl);
-        linkTv.setPadding(0, UiKit.px(4), 0, UiKit.px(10));
-        infoCol.addView(linkTv);
-
-        TextView note = UiKit.label(ctx, 13, UiKit.INK_DIM);
-        note.setLineSpacing(UiKit.pxf(4), 1.15f);
-        note.setMaxWidth(UiKit.px(520));
-        note.setText(tr
-                ? "Telefonunuzun kamerasını QR koda doğrultarak banka/kredi kartı ile güvenle katkıda bulunabilirsiniz.\n\n"
-                + "⚠️ Yasal Hatırlatma: Banka transferi açıklamalarında lütfen 'Bağış' kelimesi yerine 'Hediye' veya 'Katkı' yazınız."
-                : "Scan the QR code with your phone camera to support safely via credit/debit card.\n\n"
-                + "Thank you for supporting independent cinema software!");
-        infoCol.addView(note);
-
-        cardRow.addView(infoCol);
-        root.addView(cardRow);
-
-        LinearLayout btns = new LinearLayout(ctx);
-        btns.setPadding(0, UiKit.px(24), 0, 0);
-
-        TextView editLinkBtn = Controls.button(ctx, tr ? "Destek Linkini Değiştir" : "Change Support Link", v -> {
-            host.push(() -> buildSupportUrlInput(ctx, host));
-        });
-        btns.addView(editLinkBtn);
-
-        View sp = new View(ctx);
-        btns.addView(sp, new LinearLayout.LayoutParams(UiKit.px(16), 1));
-
-        TextView closeBtn = Controls.button(ctx, tr ? "Kapat" : "Close", v -> host.back());
-        btns.addView(closeBtn);
-
-        root.addView(btns);
-        root.post(closeBtn::requestFocus);
-        return root;
-    }
-
-    private static View buildSupportUrlInput(Context ctx, ModalHost host) {
-        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        String cur = Prefs.get(ctx).getString("support_url", "https://kreosus.com/alptugdag");
-        final EditText et = field(ctx, cur, R.string.not_set, false);
-        et.setHint("https://kreosus.com/alptugdag");
-        return form(ctx, tr ? "Destek Sayfası Bağlantısı" : "Support Page URL",
-                tr ? "QR kod ve mobil arayüzde açılacak bağış/destek platformu linkinizi girin (Kreosus, Shopier, vb.):" : "Enter your creator support platform URL (Kreosus, Shopier, etc.):",
-                et, v -> {
-                    String val = et.getText().toString().trim();
-                    if (!val.isEmpty()) {
-                        Prefs.get(ctx).edit().putString("support_url", val).apply();
-                        Toast.makeText(ctx, tr ? "Destek linki güncellendi!" : "Support link updated!", Toast.LENGTH_SHORT).show();
-                    }
-                    host.back();
-                });
     }
 
     public static View buildCineTvTourModal(final Context ctx, final ModalHost host) {

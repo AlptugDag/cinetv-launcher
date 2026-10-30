@@ -218,8 +218,6 @@
     <string name="refresh_shelf">Vitrini Yenile</string>
     <string name="refresh_shelf_hint">Vitrini beklemeden yeni filmlerle anında tazele</string>
     <string name="connect_phone">Telefonu bağla</string>
-    <string name="support_title">Destek Ol</string>
-    <string name="support_hint">Geliştiriciye bir kahve ısmarlayarak projeye katkıda bulunun</string>
     <string name="pair_trouble">Açılmıyor mu? Telefon televizyonla aynı Wi-Fi\'ye bağlı olmalı (mobil veri ya da misafir ağı değil). Ya da yukarıdaki adresi tarayıcıya elle yaz.</string>
     <string name="connect_phone_hint">Telefondan film ara ve aç</string>
     <string name="calibration">Görüntü kalibrasyonu</string>
