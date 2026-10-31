@@ -38,7 +38,7 @@ public class CineTvApp extends Application {
         com.cinetv.launcher.device.NightCare.start(this);
         com.cinetv.launcher.device.SystemAudio.warmUp(this);
         new Thread(() -> com.cinetv.launcher.remote.KeyBridge.warmUp(this), "cinetv-keys").start();
-        if (SystemClock.elapsedRealtime() > DeviceTweaks.BOOT_GUARD_MS) return;
+        if (SystemClock.elapsedRealtime() > DeviceTweaks.BOOT_GUARD_MS || com.cinetv.launcher.device.Uninstaller.isRemoving(this)) return;
         Handler h = new Handler(Looper.getMainLooper());
         for (long delay : BOOT_RESCUES_MS) {
             h.postDelayed(() -> {

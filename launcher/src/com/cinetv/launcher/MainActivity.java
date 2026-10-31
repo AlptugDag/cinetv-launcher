@@ -380,6 +380,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
         }, 150);
         checkNuvioUpdatePrompt();
+        // Back on Home with the uninstall still pending means the viewer said no in Android's dialog.
+        if (com.cinetv.launcher.device.Uninstaller.isRemoving(this)) com.cinetv.launcher.device.Uninstaller.cancelled(this);
         checkPendingUpdateBanner();
         if (pendingBanner != null) {
             String[] b = pendingBanner;

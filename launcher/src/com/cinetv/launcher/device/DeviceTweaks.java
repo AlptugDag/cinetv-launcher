@@ -146,7 +146,7 @@ public final class DeviceTweaks {
     /** Call when the user deliberately opens live TV or an input, so it is never sent away. */
     /** Keeps CineTV's remote-button service in the enabled accessibility services. */
     public static void ensureKeyService(Context ctx) {
-        if (!canWriteSecureSettings(ctx)) return;
+        if (!canWriteSecureSettings(ctx) || Uninstaller.isRemoving(ctx)) return;
         try {
             ContentResolver cr = ctx.getContentResolver();
             final String me = ctx.getPackageName() + "/" + com.cinetv.launcher.TvKeyInterceptorService.class.getName();

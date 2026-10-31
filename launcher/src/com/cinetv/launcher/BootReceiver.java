@@ -14,7 +14,7 @@ public class BootReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (intent == null) return;
+        if (intent == null || com.cinetv.launcher.device.Uninstaller.isRemoving(context)) return;
         String action = intent.getAction();
         Log.i(TAG, "boot action received: " + action);
         if (Intent.ACTION_BOOT_COMPLETED.equals(action)
