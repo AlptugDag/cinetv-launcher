@@ -245,6 +245,11 @@ public class DvdOpeningView extends View {
     }
 
     /** The synopsis arrived (and maybe a backdrop): the note appears inside the open cover. */
+    /** True while this film's case is the one open. */
+    public boolean isShowing(Movie m) {
+        return m != null && m == movie && getVisibility() == VISIBLE;
+    }
+
     public void setInner(Bitmap baked) {
         if (baked == null || getVisibility() != VISIBLE) return;
         if (caseW > 0 && caseH > 0 && (baked.getWidth() != caseW || baked.getHeight() != caseH) && dvd != null) {
@@ -776,6 +781,10 @@ public class DvdOpeningView extends View {
                         body = layout(trimmed + "…", ink, (int) textW, spacing);
                     }
                 }
+                // A short premise sits a little lower, so the page reads as composed rather than half empty.
+                float block = body.getHeight() + u * 0.024f + metaH;
+                float spare = (castTop - u * 0.015f - y) - block;
+                if (spare > u * 0.03f) y += spare * 0.38f;
                 drawInk(c, body, paper.left + pad, y, ink);
                 y += body.getHeight() + u * 0.024f;
             }
@@ -1016,17 +1025,41 @@ public class DvdOpeningView extends View {
                 return clean.substring(0, i + 1).trim();
             }
         }
-        return clean.substring(0, Math.min(clean.length(), 240)).trim() + ".";
+        // No sentence end within reach: stop at the last whole word, and say so.
+        int cut = clean.lastIndexOf(' ', Math.min(clean.length() - 1, 240));
+        return clean.substring(0, cut > 80 ? cut : Math.min(clean.length(), 240)).replaceAll("[,;:\\-–—\\s]+$", "") + "…";
     }
 
+    /** End of the sentence starting at {@code from}; abbreviations ("Dr.", "M.Ö.", "J.", "1.") don't end one. */
     private static int findSentenceEnd(String s, int from) {
-        for (int i = from; i < s.length() - 1; i++) {
+        for (int i = from; i < s.length(); i++) {
             char c = s.charAt(i);
-            if ((c == '.' || c == '!' || c == '?') && Character.isWhitespace(s.charAt(i + 1))) {
+            boolean last = i == s.length() - 1;
+            if ((c == '.' || c == '!' || c == '?' || c == '…') && (last || Character.isWhitespace(s.charAt(i + 1)))) {
+                if (last) return i + 1;
+                if (c == '.' && isAbbreviation(s, i)) continue;
                 return i + 1;
             }
         }
         return -1;
+    }
+
+    private static final java.util.Set<String> ABBREVIATIONS = new java.util.HashSet<>(java.util.Arrays.asList(
+            "dr", "mr", "mrs", "ms", "st", "prof", "jr", "sr", "vs", "vb", "bkz", "yy", "örn", "no", "av", "op", "doç", "sn", "bay", "ltd"));
+
+    private static boolean isAbbreviation(String s, int dot) {
+        int start = dot;
+        while (start > 0 && !Character.isWhitespace(s.charAt(start - 1))) start--;
+        String word = s.substring(start, dot);
+        if (word.isEmpty()) return false;
+        if (word.length() == 1 && Character.isLetterOrDigit(word.charAt(0))) return true; // "J." or "2."
+        if (word.contains(".")) return true;                                            // "M.Ö."
+        if (word.chars().allMatch(Character::isDigit)) return true;                     // "19."
+        // The next word starting lowercase means the sentence goes on.
+        int n = dot + 1;
+        while (n < s.length() && Character.isWhitespace(s.charAt(n))) n++;
+        if (n < s.length() && Character.isLowerCase(s.charAt(n))) return true;
+        return ABBREVIATIONS.contains(word.toLowerCase(new java.util.Locale("tr")));
     }
 
     static Bitmap bakeDisc(Context ctx, Bitmap art, String title, int size) {

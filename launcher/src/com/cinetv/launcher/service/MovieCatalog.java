@@ -910,6 +910,28 @@ public final class MovieCatalog {
     private static final java.util.Map<String, Boolean> playableCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** Prefetches the YouTube trailer key and cinematic booklet details in background so opening the DVD has zero latency. */
+    /**
+     * Makes sure the booklet's cast portraits are decoded (they come from the disk cache after the first
+     * time, so this is quick); waits up to {@code waitMs}. True when every cast member with a photo has one.
+     */
+    public static boolean ensureCastPhotos(Context ctx, Movie m, long waitMs) {
+        if (m == null || m.cast == null || m.cast.isEmpty()) return false;
+        List<Future<?>> jobs = new ArrayList<>();
+        for (final CastMember cm : m.cast) {
+            if (cm.photoUrl.isEmpty() || (cm.photo != null && !cm.photo.isRecycled())) continue;
+            jobs.add(resolver.submit(() -> cm.photo = PosterCache.load(ctx, cm.photoUrl, 128, 128)));
+        }
+        long end = System.currentTimeMillis() + waitMs;
+        for (Future<?> f : jobs) {
+            try {
+                f.get(Math.max(1, end - System.currentTimeMillis()), TimeUnit.MILLISECONDS);
+            } catch (Throwable ignored) {
+            }
+        }
+        for (CastMember cm : m.cast) if (!cm.photoUrl.isEmpty() && (cm.photo == null || cm.photo.isRecycled())) return false;
+        return true;
+    }
+
     public static void prefetchTrailer(Context ctx, Movie m) {
         if (ctx == null || m == null) return;
         final Context app = ctx.getApplicationContext();

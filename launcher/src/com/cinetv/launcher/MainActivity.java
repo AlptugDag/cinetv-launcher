@@ -1695,6 +1695,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 if (m.cast == null || m.cast.isEmpty()) {
                     MovieCatalog.details(app, m);
                 }
+                // Portraits too, even when the details came earlier and a photo didn't make it in time.
+                MovieCatalog.ensureCastPhotos(app, m, 4000);
                 if (m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
                     PosterCache.load(app, m.backdropUrl, w * 2, h);
                 }
@@ -1707,12 +1709,14 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                         if (next != null && (next.cast == null || next.cast.isEmpty())) {
                             MovieCatalog.details(app, next);
                         }
+                        MovieCatalog.ensureCastPhotos(app, next, 3000);
                     }
                     if (idx - 1 >= 0) {
                         Movie prev = list.get(idx - 1);
                         if (prev != null && (prev.cast == null || prev.cast.isEmpty())) {
                             MovieCatalog.details(app, prev);
                         }
+                        MovieCatalog.ensureCastPhotos(app, prev, 3000);
                     }
                 }
             } catch (Throwable ignored) {
@@ -1735,8 +1739,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     still = PosterCache.getFast(m.backdropUrl);
                     if (still == null) still = PosterCache.load(app, m.backdropUrl, w * 2, h);
                 }
+                boolean allPhotos = MovieCatalog.ensureCastPhotos(app, m, 2500);
                 final Bitmap inner = DvdOpeningView.bakeInner(app, w, h, dvd.cover, still, m, dvd.accent);
                 ui(() -> home.opening.setInner(inner));
+                // A slow portrait still lands in the booklet: write the note again once it's here.
+                if (!allPhotos && MovieCatalog.ensureCastPhotos(app, m, 10_000)) {
+                    final Bitmap again = DvdOpeningView.bakeInner(app, w, h, dvd.cover, still, m, dvd.accent);
+                    ui(() -> {
+                        if (home.opening.isShowing(m)) home.opening.setInner(again);
+                    });
+                }
             } catch (Throwable t) {
                 android.util.Log.w("CineTv", "writeInnerNote failed: " + t.getMessage());
             }
