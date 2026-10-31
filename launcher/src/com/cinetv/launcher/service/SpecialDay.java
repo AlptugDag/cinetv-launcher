@@ -16,11 +16,12 @@ import java.util.Calendar;
  * shows another day; {@code settings delete global cinetv_preview_day} returns to the real date.
  */
 public final class SpecialDay {
-    public enum Icon { FLAG, RIBBON, SNOW }
+    public enum Icon { FLAG, RIBBON, SNOW, CRESCENT, HEART }
 
     public static final int RED = 0xFFE30A17;
     public static final int GREY = 0xFF9CA3AF;
     public static final int GOLD = 0xFFF5C26B;
+    public static final int ROSE = 0xFFFF6B8B;
 
     public final String id;
     public final String title;
@@ -133,6 +134,38 @@ public final class SpecialDay {
                     "Büyük Taarruz'un ve bağımsızlık destanımızın yıl dönümünde, Başkomutan Gazi Mustafa Kemal Atatürk ve silah arkadaşlarını saygı ve minnetle anıyor; büyük zaferimizin coşkusunu gönülden paylaşıyorum.",
                     "Alptuğ Dağ");
         }
+        // Religious holidays follow the lunar calendar: Diyanet's dates, arife (the eve) included.
+        int[] ramazan = lookup(RAMAZAN_BAYRAMI, year), kurban = lookup(KURBAN_BAYRAMI, year);
+        if (ramazan != null) {
+            int off = daysFrom(year, ramazan[0], ramazan[1], month, day);
+            if (off == -1) return bayram("ramazan_arife", "Ramazan Bayramı arifesi", "Yarın bayram", "Ramazan Bayramınız Şimdiden Mübarek Olsun");
+            if (off >= 0 && off <= 2) return bayram("ramazan", "Ramazan Bayramı", "Bayramınız mübarek olsun", "Ramazan Bayramınız Mübarek Olsun");
+        }
+        if (kurban != null) {
+            int off = daysFrom(year, kurban[0], kurban[1], month, day);
+            if (off == -1) return bayram("kurban_arife", "Kurban Bayramı arifesi", "Yarın bayram", "Kurban Bayramınız Şimdiden Mübarek Olsun");
+            if (off >= 0 && off <= 3) return bayram("kurban", "Kurban Bayramı", "Bayramınız mübarek olsun", "Kurban Bayramınız Mübarek Olsun");
+        }
+        if (month == 5 && day == nthSunday(year, 5, 2)) {
+            return new SpecialDay("anneler", "Anneler Günü", "Anneler Gününüz kutlu olsun", Icon.HEART, ROSE, false,
+                    "Anneler Gününüz Kutlu Olsun",
+                    "Bütün annelerin gününü kutlarım. Bu akşamki film onlar için olsun: birlikte, sıcacık bir film gecesi dilerim.", "Alptuğ Dağ");
+        }
+        if (month == 6 && day == nthSunday(year, 6, 3)) {
+            return new SpecialDay("babalar", "Babalar Günü", "Babalar Gününüz kutlu olsun", Icon.HEART, GOLD, false,
+                    "Babalar Gününüz Kutlu Olsun",
+                    "Bütün babaların gününü kutlarım. Bu akşam vitrini onların sevdiği filmlerle doldurmaya ne dersiniz?", "Alptuğ Dağ");
+        }
+        if (month == 11 && day == 24) {
+            return new SpecialDay("ogretmenler", "24 Kasım Öğretmenler Günü", "Öğretmenlerimizin günü kutlu olsun", Icon.HEART, GOLD, false,
+                    "Öğretmenler Gününüz Kutlu Olsun",
+                    "Başöğretmen Mustafa Kemal Atatürk'ü ve bize emeği geçen tüm öğretmenlerimizi saygı ve minnetle anıyor, günlerini kutluyorum.", "Alptuğ Dağ");
+        }
+        if (month == 2 && day == 14) {
+            return new SpecialDay("sevgililer", "Sevgililer Günü", "Bu akşam ikiniz için bir film", Icon.HEART, ROSE, false,
+                    "Sevgililer Gününüz Kutlu Olsun",
+                    "Bu akşam vitrin ikiniz için: Gamze'ye \"sevgilimle izleyeceğiz\" demeniz yeter.", "Alptuğ Dağ");
+        }
         if (month == 1 && day == 1) {
             return new SpecialDay("yilbasi", "Mutlu yıllar",
                     "Yeni yılınız sağlık ve güzel filmlerle dolsun", Icon.SNOW, GOLD, false,
@@ -141,6 +174,39 @@ public final class SpecialDay {
                     "Alptuğ Dağ");
         }
         return null;
+    }
+
+    /** First day of each bayram (Diyanet), year → {month, day}. */
+    private static final int[][] RAMAZAN_BAYRAMI = {{2026, 3, 20}, {2027, 3, 9}, {2028, 2, 26}, {2029, 2, 14}, {2030, 2, 5}};
+    private static final int[][] KURBAN_BAYRAMI = {{2026, 5, 27}, {2027, 5, 16}, {2028, 5, 5}, {2029, 4, 24}, {2030, 4, 13}};
+
+    private static int[] lookup(int[][] table, int year) {
+        for (int[] r : table) if (r[0] == year) return new int[]{r[1], r[2]};
+        return null;
+    }
+
+    /** Days from (sm/sd) to (m/d) in the same year; negative before it. */
+    private static int daysFrom(int year, int sm, int sd, int m, int d) {
+        Calendar a = Calendar.getInstance(), b = Calendar.getInstance();
+        a.clear();
+        b.clear();
+        a.set(year, sm - 1, sd);
+        b.set(year, m - 1, d);
+        return (int) Math.round((b.getTimeInMillis() - a.getTimeInMillis()) / 86_400_000.0);
+    }
+
+    private static int nthSunday(int year, int month, int n) {
+        Calendar c = Calendar.getInstance();
+        c.clear();
+        c.set(year, month - 1, 1);
+        int first = (Calendar.SUNDAY - c.get(Calendar.DAY_OF_WEEK) + 7) % 7 + 1;
+        return first + (n - 1) * 7;
+    }
+
+    private static SpecialDay bayram(String id, String title, String line, String heading) {
+        return new SpecialDay(id, title, line, Icon.CRESCENT, GOLD, false, heading,
+                "Bayramınızı en içten dileklerimle kutlar; sevdiklerinizle birlikte huzurlu, sağlıklı ve keyifli bir bayram geçirmenizi dilerim.",
+                "Alptuğ Dağ");
     }
 
     /** One line for the badge and the screensaver. */

@@ -44,6 +44,8 @@ public final class SpecialDayArt {
             case FLAG: flag(c, p, b); break;
             case RIBBON: ribbon(c, p, b); break;
             case SNOW: snow(c, p, b, accent); break;
+            case CRESCENT: crescent(c, p, b, accent); break;
+            case HEART: heart(c, p, b, accent); break;
             default: break;
         }
     }
@@ -112,6 +114,38 @@ public final class SpecialDayArt {
         p.setColor(Color.argb(150, 220, 224, 230));
         c.drawPath(tails, p);
         p.setStyle(Paint.Style.FILL);
+    }
+
+    /** Bayram: a gold crescent with a small star, softly lit. */
+    private static void crescent(Canvas c, Paint p, RectF b, int accent) {
+        float s = Math.min(b.width(), b.height()) / 2f;
+        float cx = b.centerX(), cy = b.centerY();
+        Path moon = new Path();
+        moon.addCircle(cx - s * 0.08f, cy, s * 0.82f, Path.Direction.CW);
+        Path cut = new Path();
+        cut.addCircle(cx + s * 0.22f, cy - s * 0.12f, s * 0.70f, Path.Direction.CW);
+        moon.op(cut, Path.Op.DIFFERENCE);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(60, Color.red(accent), Color.green(accent), Color.blue(accent)));
+        c.drawCircle(cx, cy, s * 0.98f, p);
+        p.setColor(accent);
+        c.drawPath(moon, p);
+        c.drawPath(star(cx + s * 0.46f, cy - s * 0.30f, s * 0.20f, s * 0.08f), p);
+    }
+
+    /** Mother's, Father's, Teachers' and Valentine's Day: a rounded heart. */
+    private static void heart(Canvas c, Paint p, RectF b, int accent) {
+        float s = Math.min(b.width(), b.height()) / 2f * 0.9f;
+        float cx = b.centerX(), cy = b.centerY();
+        Path h = new Path();
+        h.moveTo(cx, cy + s * 0.85f);
+        h.cubicTo(cx - s * 1.3f, cy + s * 0.05f, cx - s * 0.75f, cy - s * 1.05f, cx, cy - s * 0.42f);
+        h.cubicTo(cx + s * 0.75f, cy - s * 1.05f, cx + s * 1.3f, cy + s * 0.05f, cx, cy + s * 0.85f);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(accent);
+        c.drawPath(h, p);
+        p.setColor(Color.argb(60, 255, 255, 255));
+        c.drawCircle(cx - s * 0.42f, cy - s * 0.38f, s * 0.16f, p);
     }
 
     private static void snow(Canvas c, Paint p, RectF b, int accent) {

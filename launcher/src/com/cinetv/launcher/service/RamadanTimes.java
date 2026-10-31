@@ -82,8 +82,10 @@ public final class RamadanTimes {
             }
         }
 
-        // 2. Hijri lunar calendar check if available on Android API 26+
-        if (Build.VERSION.SDK_INT >= 26) {
+        // 2. Beyond the table only: the Umm al-Qura calendar can be a day off Diyanet's.
+        boolean tabled = false;
+        for (int[] r : RAMADAN_CALENDAR) tabled |= r[0] == year;
+        if (!tabled && Build.VERSION.SDK_INT >= 26) {
             try {
                 java.time.chrono.HijrahDate hDate = java.time.chrono.HijrahDate.now();
                 if (hDate.get(java.time.temporal.ChronoField.MONTH_OF_YEAR) == 9) {
