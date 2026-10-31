@@ -636,9 +636,13 @@ public class DvdOpeningView extends View {
 
         float lip = w * 0.03f;
         RectF paper = new RectF(lip, lip, w - lip * 1.6f, h - lip);
-        // Paper: authentic archival matte parchment paper with rock-solid consistency (never flashes or pops)
-        p.setColor(Color.parseColor("#EEE8DC"));
+        // The insert is printed on the room's own stock: parchment by default, kraft in the closet, a gilded
+        // programme in the cinema and on the red carpet, frosted acrylic on glass, brushed aluminium on metal,
+        // and a dark card with bright ink under neon.
+        Insert stock = Insert.of(com.cinetv.launcher.service.ThemeManager.current(ctx).id);
+        p.setColor(stock.paper);
         c.drawRoundRect(paper, w * 0.01f, w * 0.01f, p);
+        stock.decorate(c, paper, w);
 
         // Archival film image overlay: barely visible watermark embedded into parchment paper pulp
         Bitmap watermarkBmp = (still != null) ? still : cover;
@@ -661,12 +665,12 @@ public class DvdOpeningView extends View {
             mat[9] = 75f;
             mat[14] = 75f;
             wp.setColorFilter(new ColorMatrixColorFilter(cm));
-            wp.setAlpha(26); // Barely visible archival watermark (~10% opacity)
+            wp.setAlpha(stock.dark ? 18 : 26); // a watermark in the pulp, barely there
             c.drawBitmap(watermarkBmp, wm, wp);
 
             // Archival vergé paper texture: tactile laid lines running horizontally across the page
             Paint laid = new Paint(Paint.ANTI_ALIAS_FLAG);
-            laid.setColor(Color.argb(7, 45, 35, 25));
+            laid.setColor(stock.grain);
             laid.setStrokeWidth(Math.max(1f, UiKit.pxf(0.8f)));
             float lineStep = UiKit.pxf(6f);
             for (float ly = paper.top + lineStep; ly < paper.bottom; ly += lineStep) {
@@ -688,7 +692,7 @@ public class DvdOpeningView extends View {
             float textW = paper.width() - pad * 2;
             TextPaint ink = new TextPaint(Paint.ANTI_ALIAS_FLAG);
             ink.setTypeface(FontManager.getMarker(ctx));
-            ink.setColor(Color.argb(240, 18, 18, 22));
+            ink.setColor(stock.ink);
             c.save();
             // nothing written ever leaves the paper, whatever the title, the names or the cover's shape
             c.clipRect(paper);
@@ -697,7 +701,8 @@ public class DvdOpeningView extends View {
             float y = paper.top + pad * 0.78f;
 
             // Title and signature in the film's own colour (as its glow), deep enough to read on paper.
-            int filmInk = filmInkFromAccent(filmAccent != 0 ? filmAccent : filmInk(cover));
+            int filmInk = stock.dark ? brightInk(filmAccent != 0 ? filmAccent : filmInk(cover))
+                    : filmInkFromAccent(filmAccent != 0 ? filmAccent : filmInk(cover));
             int blackInk = ink.getColor();
             ink.setColor(filmInk);
             // the title in the viewer's language, the film's own beside it: "Sonbahar (秋日和)"; two lines at most
@@ -929,6 +934,122 @@ public class DvdOpeningView extends View {
         String t = text;
         while (t.length() > 2 && ink.measureText(t + "…") > maxW) t = t.substring(0, t.length() - 1);
         return t.trim() + "…";
+    }
+
+    /** On a dark insert the film's colour is lifted, not darkened, so it glows instead of sinking. */
+    private static int brightInk(int accent) {
+        float[] hsv = new float[3];
+        Color.colorToHSV(accent == 0 ? 0xFFBF5AF2 : accent, hsv);
+        hsv[1] = Math.min(0.75f, Math.max(0.45f, hsv[1]));
+        hsv[2] = Math.max(0.92f, hsv[2]);
+        return Color.HSVToColor(250, hsv);
+    }
+
+    /** The printed insert's stock for each theme. */
+    private static final class Insert {
+        final int paper, ink, grain;
+        final boolean dark;
+        final String kind;
+
+        private Insert(String kind, int paper, int ink, int grain, boolean dark) {
+            this.kind = kind;
+            this.paper = paper;
+            this.ink = ink;
+            this.grain = grain;
+            this.dark = dark;
+        }
+
+        static Insert of(String theme) {
+            switch (theme == null ? "" : theme) {
+                case "closet": return new Insert("kraft", 0xFFE6D8BE, Color.argb(240, 40, 28, 18), Color.argb(10, 90, 60, 30), false);
+                case "cinema": return new Insert("programme", 0xFFF2EBDD, Color.argb(240, 26, 18, 16), Color.argb(6, 60, 40, 20), false);
+                case "redcarpet": return new Insert("gilded", 0xFFF3ECE0, Color.argb(240, 30, 14, 16), Color.argb(6, 70, 30, 30), false);
+                case "glass": return new Insert("acrylic", 0xFFE8F0F7, Color.argb(240, 12, 22, 36), Color.argb(5, 20, 60, 110), false);
+                case "metal": return new Insert("aluminium", 0xFFD9DDE2, Color.argb(240, 22, 26, 32), Color.argb(16, 255, 255, 255), false);
+                case "neon": return new Insert("neon", 0xFF15101F, Color.argb(240, 240, 234, 255), Color.argb(10, 191, 90, 242), true);
+                default: return new Insert("parchment", 0xFFEEE8DC, Color.argb(240, 18, 18, 22), Color.argb(7, 45, 35, 25), false);
+            }
+        }
+
+        void decorate(Canvas c, RectF paper, int w) {
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            float r = w * 0.01f;
+            switch (kind) {
+                case "programme":
+                case "gilded": {
+                    // A gold-foil rule just inside the edge, like a theatre programme or a premiere invitation.
+                    p.setStyle(Paint.Style.STROKE);
+                    float in = w * ("gilded".equals(kind) ? 0.012f : 0.018f);
+                    p.setStrokeWidth(Math.max(1.5f, w * 0.0035f));
+                    p.setShader(new LinearGradient(paper.left, paper.top, paper.right, paper.bottom,
+                            new int[]{0xFFB8862E, 0xFFF3D27A, 0xFFA87422, 0xFFE9C46A}, null, Shader.TileMode.CLAMP));
+                    c.drawRoundRect(new RectF(paper.left + in, paper.top + in, paper.right - in, paper.bottom - in), r, r, p);
+                    if ("programme".equals(kind)) {
+                        p.setStrokeWidth(Math.max(1f, w * 0.0015f));
+                        float in2 = in + w * 0.008f;
+                        c.drawRoundRect(new RectF(paper.left + in2, paper.top + in2, paper.right - in2, paper.bottom - in2), r, r, p);
+                    }
+                    break;
+                }
+                case "kraft": {
+                    // Recycled kraft: a few darker fibres and a warm edge.
+                    java.util.Random rnd = new java.util.Random(7);
+                    p.setStrokeWidth(Math.max(1f, w * 0.0012f));
+                    for (int i = 0; i < 90; i++) {
+                        float x = paper.left + rnd.nextFloat() * paper.width(), y = paper.top + rnd.nextFloat() * paper.height();
+                        p.setColor(Color.argb(18 + rnd.nextInt(18), 110, 75, 40));
+                        c.drawLine(x, y, x + (rnd.nextFloat() - 0.5f) * w * 0.03f, y + (rnd.nextFloat() - 0.5f) * w * 0.01f, p);
+                    }
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(w * 0.01f);
+                    p.setColor(Color.argb(30, 90, 55, 25));
+                    c.drawRoundRect(paper, r, r, p);
+                    break;
+                }
+                case "acrylic": {
+                    // Frosted acrylic: a cool sheen across the top and a crisp polished edge.
+                    p.setShader(new LinearGradient(paper.left, paper.top, paper.left, paper.top + paper.height() * 0.45f,
+                            Color.argb(90, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+                    c.drawRoundRect(paper, r, r, p);
+                    p.setShader(null);
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(Math.max(1.5f, w * 0.003f));
+                    p.setColor(Color.argb(120, 125, 211, 252));
+                    c.drawRoundRect(paper, r, r, p);
+                    break;
+                }
+                case "aluminium": {
+                    // Brushed aluminium: fine horizontal grain and a bevelled light edge.
+                    java.util.Random rnd = new java.util.Random(3);
+                    p.setStrokeWidth(1f);
+                    for (float y = paper.top; y < paper.bottom; y += 2f) {
+                        p.setColor(rnd.nextBoolean() ? Color.argb(14 + rnd.nextInt(14), 255, 255, 255) : Color.argb(10 + rnd.nextInt(10), 0, 0, 0));
+                        c.drawLine(paper.left, y, paper.right, y, p);
+                    }
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(Math.max(1.5f, w * 0.003f));
+                    p.setShader(new LinearGradient(paper.left, paper.top, paper.left, paper.bottom, Color.argb(160, 255, 255, 255),
+                            Color.argb(80, 0, 0, 0), Shader.TileMode.CLAMP));
+                    c.drawRoundRect(paper, r, r, p);
+                    break;
+                }
+                case "neon": {
+                    // A dark card with a faint synthwave grid and a glowing edge.
+                    p.setStrokeWidth(Math.max(1f, w * 0.0012f));
+                    p.setColor(Color.argb(22, 191, 90, 242));
+                    float step = paper.width() / 14f;
+                    for (float x = paper.left; x < paper.right; x += step) c.drawLine(x, paper.top, x, paper.bottom, p);
+                    for (float y = paper.top; y < paper.bottom; y += step) c.drawLine(paper.left, y, paper.right, y, p);
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(Math.max(2f, w * 0.004f));
+                    p.setShader(new LinearGradient(paper.left, paper.top, paper.right, paper.bottom, 0xFFFF2BD6, 0xFF2BD9FF, Shader.TileMode.CLAMP));
+                    c.drawRoundRect(paper, r, r, p);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
     }
 
     private static int filmInkFromAccent(int accent) {
