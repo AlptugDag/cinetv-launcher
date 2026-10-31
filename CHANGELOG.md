@@ -1,5 +1,69 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.20 · Büyük Güncelleme
+
+Bu sürüm, 1.0.0.9'dan bu yana sürüm notlarına hiç yazılmamış her şeyi de kapsar (1.0.0.10–1.0.0.19 arasındaki yenilikler en altta).
+
+### CineParty baştan yazıldı
+- **Tek oyun motoru, iki ekran.** TV ortak sahneyi, her telefon o oyuncunun kendi ekranını gösterir. Telefonlar değişiklikleri anında alır (uzun yoklama); her telefon odanın yalnızca kendine düşen halini görür.
+- **CineQuiz** (mor *Quiz*): süreyi oyuncular seçer (3–15 dk, soru başına 15–30 sn). Sorular TMDB'den gerçek görsellerle gelir: *bu sahne hangi filmden*, *bu oyuncunun oynadığı bir film yazın* (oyuncunun tüm filmleri kabul edilir), *bu filmde hangi oyuncu yok*, *yönetmeni kim*, *hangi yıl*; üstüne Gamze'nin kendi soruları ve her cevaptan sonra kısa bir bilgi notu. Yalnızca çok izlenmiş filmler sorulur. Herkes cevaplayınca (ya da süre bitince) cevaplar TV'de birlikte açılır, doğrular 10 puan. Süre bitince en çok bilen (eşitlikte en hızlı) şampiyon olur, telefonundan bu gecenin filmini seçer ve film Nuvio'da açılır.
+- **CineRoulette** (mavi *Roulette*): altı haznede ana sayfadaki çerçevesiz afiş görünümüyle altı film, tek kurşun. Herkes telefonundan bir film yükler, boşları Gamze verdiğiniz ruh haline göre doldurur. Tetik sırayla çekilir: boş çıkan film elenir, kurşun bu gecenin filmini seçer. Süre her turda kısalır, süre biterse tetik kendiliğinden çekilir (−5); herkesin iki çevirme hakkı var; ilk iki tetik her zaman boştur.
+- **CineSessiz** (altın *Sessiz*): süresiz sinema tabusu. Sırası gelen, salonun bileceği bir film, dizi ya da oyuncuyu kendisi seçer (aklına gelmezse Gamze önerir); Gamze beş yasaklı kelime koyar. Kart yalnızca anlatıcının telefonunda görünür (önceden tüm telefonlara gidiyordu). Tahminler yazım hatalarına, Türkçe ve orijinal adlara toleranslı. Takılınca Gamze şifreli bir ipucu verir.
+- **Gamze sunuculuk yapar ve sözünü bitirmeden oyun ilerlemez;** soru süresi o soruyu okumayı bitirince başlar.
+- **SnakePhile** geri geldi (bir sürümde yerini CineDuel'e bırakmıştı); **CineDuel** kendi yerinde, telefon nişangâh olur ve oyun bitince film artık kendiliğinden açılmaz.
+- Oyunlar TV'de tek bir tuvalde çizilir; boştayken çizim yapmaz, zayıf TV'lerde arka plan animasyonsuzdur.
+
+### CineSUB (turuncu *SUB*) her oynatıcının üstünde
+- Nuvio'da, YouTube'da ve harici oynatıcıda **sarı tuş**: CineSUB kareyi yakalar, görsel yapay zekâ bilinmeye değer kişi, mekân, obje, yemek, tablo ve altyazıda geçen isim/yer/olayları konumlarıyla bulur. Konuların etrafında halkalar, yanlarında cam notlar belirir; notlar altyazıya değmez, ◀ ▶ aralarında gezer, OK daha fazlasını anlatır. Film durmaz.
+- **Eşlik modu:** izlerken birkaç dakikada bir köşede tek bir kısa not (Ayarlar › Görünüm & Ses).
+- Korumalı (DRM) içerikte uydurma bilgi yerine bunu söyler. Bilgi Gemini/Claude/OpenAI görsel modelleriyle; anahtar URL'ye yazılmaz.
+- Altyazı ve Info tuşları artık oynatıcılardan çalınmıyor.
+
+### Gamze sohbet ediyor
+- Konuşmayı hatırlar (*“daha eskisi?”*), gerektiğinde tek bir soru sorar ve mikrofonu kendisi yeniden açar; kumandaya dokununca sohbet biter.
+- **Gemini 3.8 Flash** (düşük düşünme, hızlı) ve yedek olarak 3.5 Flash-Lite.
+- Çok spesifik isteklerde kurallar korunur: yaş, ülke, dönem; yıl aralığı kodla da uygulanır. *“Tom Hanks'in adada mahsur kaldığı film”* gibi sorular cevapla birlikte filmi de vitrine koyar.
+- Hafıza artık boş alanlarla silinmiyor; adınızı, sevdiklerinizi ve sevmediklerinizi biriktirir.
+- Ses cümle cümle akar; ilk cümle hazır olunca konuşmaya başlar, “Hemen bakıyorum” gibi cümleler önceden hazırlanır, kota dolan sunucu atlanır; asistan ses kanalı kullanılır.
+- Açılış selamı kişisel ve kısa; hava durumu okunmuyor.
+
+### Ses tasarımı
+- Arayüz ve oyun sesleri yeniden sentezlendi: cam ve ahşap dokunuşlar, kutu açılışında alçak bir yükseliş, film başlarken derin bir vuruş; oyunlarda kalp atışı, tambur, horoz, boş tetik, kurşun, doğru/yanlış, alkış. Stereo, oda yankılı.
+- Sistem sesi kapalı olan TV'lerde de duyulur (medya kanalı). Arayüz sesleri, oyun sesleri ve Gamze'nin oyun sunuculuğu ayarlardan ayrı ayrı kapatılabilir. Telefonlar da aynı sesleri çalar.
+
+### Raf, fragman, kitapçık
+- **Fragmanlar YouTube arayüzü olmadan:** yerel oynatıcı Android 11'de her seferinde çöküp YouTube oynatıcısına düşüyordu (NewPipe ↔ Java NIO); düzeltildi, NewPipe 0.26.5. Kadraja tam oturur (kırpma/büyütme yok), odaktayken önceden yüklenir, siyah açılış yerine afişten görüntüye geçer.
+- **Tek basış = tek adım:** kumandaların kısa basışta gönderdiği tekrarlar artık iki film atlatmıyor.
+- Odaktaki kutu kendi ekseninde belirgin biçimde döner ve durur; selofan kılıfta açıyla gezinen gerçekçi bir parlama ve üst kenar parlaklığı.
+- Kitapçık: oyuncu portreleri geç kalırsa geldiğinde kitapçığa işlenir; öncül kısaltmalarda ya da kelime ortasında kesilmez; kısa öncüller sayfada dengeli durur; kâğıt temaya göre basılır (parşömen, kraft, altın varaklı program, buzlu akrilik, alüminyum, neon kart).
+
+### Temalar ve arayüz
+- Başlık her fotoğraflı arka planda okunur (üstte yumuşak gölge, raf başlığı cam kapsülde); Sıvı Cam damlaları saatin ve odağın üstünden çekildi; alt kenarda kesik görünen uygulama kutusu yumuşakça eriyor.
+- Tüm temalarda yeni CineTV ikonu ve TV banner'ı; telefonda kutu içinde kutu görünmüyor, maskeli ikonlar artık sunuluyor.
+- Açılış animasyonu 3,4 sn → 1,9 sn ve herhangi bir tuşla geçilebilir; tema sahneleri bir kez çizilip önbelleğe alınır.
+- Tur: CineQuiz, CineRoulette, CineSessiz, CineSUB, eşlik modu, sohbet eden Gamze, ses tasarımı, akustik ve uzamsal ses kartları. *Yenilikler* ekranı bu sürümü anlatır.
+- Uzamsal ses paneli (AirPods ayarlarından) yeniden erişilebilir.
+- Düğmeli bazı pencerelerde (ör. Oda Akustiği) odak hiçbir düğmeye gitmiyordu ve OK çalışmıyordu; düzeltildi.
+
+### Performans ve uyumluluk
+- Ana ekran her karenin süresini ölçer; yavaşsa rafı kendiliğinden hafifletir (daha kısa raf, uzak kutularda bulanıklık ve kılıf yok, tek ışık katmanı), hızlanınca geri açar. Boştayken hiçbir şey çizmez (önceden odaktaki kutunun sonsuz salınımı bütün rafı her karede yeniden çizdiriyordu).
+- Android 8'e kadar API denetimi; RAM temizleyicinin eksik izni eklendi; çökme riski taşıyan yerelleştirme dosyaları kaldırıldı.
+
+### Güncelleme, kaldırma, geri bildirim
+- **Otomatik güncelleme gerçekten çalışır:** indirilen APK CineTV'nin imzasını taşımalıdır; sessiz kurulum CineTV kapanırken de tamamlanır ve sonraki açılışta haber verilir; adb yoksa Android'in kurulum ekranı açılır. TV artık güncelleme bildirimi için gece uyandırılmıyor. Play Protect ve paket doğrulayıcı artık kapatılmıyor.
+- **CineTV'yi Yok Et:** önce TV'nin kendi başlatıcısı geri açılır, tüm ayarlar geri alınır, CineTV'nin koyduğu dosyalar silinir; kaldırma sırasında hiçbir koruma CineTV'yi geri getiremez.
+- **Geri bildirim döngüsü:** TV Denetçisi'ndeki rapor QR'ı hazır bir GitHub kaydı açar, cihaz uyumluluk listesine işlenir; `ANTHROPIC_API_KEY` tanımlıysa Claude Code sorunu inceleyip düzeltme PR'ı açar (kendiliğinden birleştirmez). Uyumluluk listesi yalnızca gerçekten denenmiş TV'leri içerir.
+- Akıllı ev uç noktaları (Siri/Alexa/Google) artık eşleştirme anahtarı ister.
+- Özel günler: Ramazan ve Kurban Bayramı (arife dahil), Anneler, Babalar, Öğretmenler ve Sevgililer Günü; Ramazan modu Diyanet tablosundaki yıllarda bir gün kaymıyor.
+
+### 1.0.0.10 – 1.0.0.19 (sürüm notlarına yazılmamış olanlar)
+- Gamze kimliği ve sesi (EMA-Lightning nöral Türkçe TTS), “Kiminle izliyorsun?” bağlamı, yerel hafıza, his/atmosfer araması (Vibe Seeker), benzer filmler.
+- AirPods ve Bluetooth kulaklık entegrasyonu, uzamsal ses HUD'ı, Bluetooth mikrofonla sesli komut.
+- Tek sayfa ayarlar ve iOS anahtarları, TV Denetçisi, Ambilight senkronu, gece izleme modu, renkli tuş atamaları (HDMI-CEC).
+- Kırmızı Halı, Film Dolabı ve kadife perdeli Sinema Salonu temaları, HUD vizörü ipuçları, kitapçık filigranı.
+- Telefon: PWA olarak kurulum, 3D jiroskop hava faresi, 16:9 akıllı duvar kâğıdı kırpma, ortak izleme listesi, Letterboxd günlüğü.
+- Özel gün kutlamaları ve balonlar, Ramazan iftar/sahur sayacı, sessiz açılış güncelleyicisi, Windows masaüstü sürümü, Samsung Tizen paketi.
+
 ## 1.0.0.9
 
 ### Yenilikler & Düzeltmeler

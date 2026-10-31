@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="1200" height="380" role="img" aria-label="CineTV by Alptuğ Dağ">
+  <defs>
+    <radialGradient id="room" cx="50%" cy="78%" r="70%">
+      <stop offset="0" stop-color="#5a0710" stop-opacity=".85"/>
+      <stop offset=".45" stop-color="#1a0b10" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#07070c"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".10"/>
+      <stop offset=".5" stop-color="#fff" stop-opacity=".02"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#fff" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-50%" width="140%" height="200%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <clipPath id="word"><text x="600" y="215" text-anchor="middle" font-family="Poppins, 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="150" letter-spacing="4">CineTV</text></clipPath>
+    <style>
+      @keyframes pulse { 0%,100% { opacity: .45 } 50% { opacity: .95 } }
+      @keyframes pass { 0% { transform: translateX(-760px) } 60%,100% { transform: translateX(760px) } }
+      @keyframes rise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+      .tvglow { animation: pulse 3.2s ease-in-out infinite }
+      .sweep { animation: pass 5.5s cubic-bezier(.4,0,.2,1) infinite }
+      .by { animation: rise 1.2s .3s both }
+    </style>
+  </defs>
+  <rect width="1200" height="380" rx="36" fill="url(#room)"/>
+  <rect x="1" y="1" width="1198" height="378" rx="35" fill="url(#glass)" stroke="#fff" stroke-opacity=".14"/>
+  <text class="tvglow" x="600" y="215" text-anchor="middle" font-family="Poppins, 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="150" letter-spacing="4" filter="url(#glow)"><tspan fill="#ff1e1e" fill-opacity="0">Cine</tspan><tspan fill="#ff1e1e">TV</tspan></text>
+  <text x="600" y="215" text-anchor="middle" font-family="Poppins, 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="150" letter-spacing="4" fill="#f5f5f7">Cine<tspan fill="#ff1e1e">TV</tspan></text>
+  <g clip-path="url(#word)"><rect class="sweep" x="200" y="60" width="260" height="200" fill="url(#sweep)" transform="skewX(-18)"/></g>
+  <text class="by" x="600" y="272" text-anchor="middle" font-family="Poppins, 'Helvetica Neue', Arial, sans-serif" font-weight="500" font-size="30" letter-spacing="10" fill="#f5d59a">BY ALPTUĞ DAĞ</text>
+  <text x="600" y="336" text-anchor="middle" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif" font-size="17" letter-spacing="3" fill="#f5f5f7" fill-opacity=".55">ANDROID TV · GOOGLE TV · PHONE · v1.0.0.20</text>
+</svg>
