@@ -154,7 +154,7 @@ public final class IFrameTrailerBackend implements TrailerBackend {
                     + "* { margin:0; padding:0; box-sizing:border-box; }"
                     + "html, body { width:100%; height:100%; overflow:hidden; background:#000; position:fixed; pointer-events:none; user-select:none; }"
                     + "#stage { width:100%; height:100%; overflow:hidden; position:relative; background:#000; }"
-                    + "#box { position:absolute; width:130%; height:130%; left:-15%; top:-15%; pointer-events:none; }"
+                    + "#box { position:absolute; width:100%; height:100%; left:0; top:0; pointer-events:none; }"
                     + "#box iframe, #player { width:100%; height:100%; border:none; pointer-events:none; }"
                     + ".ytp-chrome-top, .ytp-chrome-bottom, .ytp-watermark, .ytp-cued-thumbnail-overlay, .ytp-show-cards-title, .ytp-title-link, .ytp-pause-overlay { display:none !important; opacity:0 !important; visibility:hidden !important; }"
                     + "</style>"

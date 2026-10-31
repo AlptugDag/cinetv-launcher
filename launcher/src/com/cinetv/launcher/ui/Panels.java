@@ -448,10 +448,8 @@ public final class Panels {
         String tierName = ctx.getString(tierRes(PerformanceProfile.tier(ctx)));
         cAnim.addView(Controls.tile(ctx, ctx.getString(R.string.performance),
                 ctx.getString(perfModeRes(perfMode)) + " · " + tierName, false, v -> host.push(() -> buildPerformancePicker(ctx, host, a))));
-        cAnim.addView(Controls.tile(ctx, ctx.getString(R.string.screensaver), ctx.getString(R.string.screensaver_preview), false, v -> {
-            host.close();
-            a.previewScreensaver();
-        }));
+        cAnim.addView(Controls.tile(ctx, ctx.getString(R.string.screensaver), screensaverLabel(ctx, tr), false,
+                v -> host.push(() -> buildScreensaverPicker(ctx, host, a))));
 
         cAnim.addView(Controls.tile(ctx,
                 tr ? "Arayüz Ölçeği & Yazı Boyutu" : "UI Scale & Typography Size",
@@ -887,6 +885,54 @@ public final class Panels {
     // ---- Performance --------------------------------------------------------------------------------
 
     /** Low, Medium or High, each adapting by itself; or a benchmark picks one. */
+    /** Screensaver minutes; 0 means never. Read by Home and by the remote-button service over other apps. */
+    public static final String SCREENSAVER_MINUTES = "screensaver_minutes";
+    public static final String SCREENSAVER_OVER_APPS = "screensaver_over_apps";
+
+    public static int screensaverMinutes(Context ctx) {
+        return Prefs.get(ctx).getInt(SCREENSAVER_MINUTES, 5);
+    }
+
+    private static String screensaverLabel(Context ctx, boolean tr) {
+        int m = screensaverMinutes(ctx);
+        if (m <= 0) return tr ? "Kapalı" : "Off";
+        return (tr ? m + " dakika sonra" : "After " + m + " min")
+                + (Prefs.get(ctx).getBoolean(SCREENSAVER_OVER_APPS, true) ? (tr ? " · uygulamalarda da" : " · over apps too") : "");
+    }
+
+    private static View buildScreensaverPicker(final Context ctx, final ModalHost host, final Actions a) {
+        final boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+        final LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.addView(Controls.header(ctx, ctx.getString(R.string.screensaver)));
+        root.addView(Controls.tile(ctx, tr ? "Şimdi Önizle" : "Preview Now", ctx.getString(R.string.screensaver_preview), false, v -> {
+            host.close();
+            a.previewScreensaver();
+        }));
+        int current = screensaverMinutes(ctx);
+        int[] options = {1, 3, 5, 10, 15, 30, 60, 0};
+        for (final int m : options) {
+            String title = m == 0 ? (tr ? "Hiçbir Zaman" : "Never") : (tr ? m + " Dakika" : m + " Minutes");
+            String hint = m == 0 ? (tr ? "Ekran koruyucu kendiliğinden açılmaz" : "The screensaver never starts by itself")
+                    : (tr ? "Kumandaya dokunulmazsa " + m + " dakika sonra açılır" : "Starts after " + m + " min without a key press");
+            root.addView(Controls.tile(ctx, title, hint, m == current, v -> {
+                Prefs.get(ctx).edit().putInt(SCREENSAVER_MINUTES, m).apply();
+                host.replace(() -> buildScreensaverPicker(ctx, host, a));
+            }));
+        }
+        boolean over = Prefs.get(ctx).getBoolean(SCREENSAVER_OVER_APPS, true);
+        root.addView(Controls.toggleTile(ctx, tr ? "Uygulamaların Üzerinde de" : "Over Other Apps Too",
+                over ? (tr ? "Açık · Nuvio/YouTube menülerinde boşta kalınca" : "On · when idle in Nuvio/YouTube menus") : ctx.getString(R.string.state_off),
+                over, (newActive, subLabel, sw) -> {
+                    Prefs.get(ctx).edit().putBoolean(SCREENSAVER_OVER_APPS, newActive).apply();
+                    subLabel.setText(newActive ? (tr ? "Açık · Nuvio/YouTube menülerinde boşta kalınca" : "On · when idle in Nuvio/YouTube menus") : ctx.getString(R.string.state_off));
+                }));
+        root.setLayoutParams(new LinearLayout.LayoutParams(UiKit.px(680), ViewGroup.LayoutParams.WRAP_CONTENT));
+        ScrollView sv = new ScrollView(ctx);
+        sv.addView(root);
+        return sv;
+    }
+
     private static View buildPerformancePicker(final Context ctx, final ModalHost host, final Actions a) {
         final LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);

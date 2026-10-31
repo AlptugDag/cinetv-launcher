@@ -80,8 +80,14 @@ public class GlassKeyboard extends FrameLayout {
         suggestionRow.setOrientation(LinearLayout.HORIZONTAL);
         suggestionRow.setGravity(Gravity.CENTER);
         suggestionRow.setClipChildren(false);
-        suggestionRow.setPadding(0, 0, 0, UiKit.px(10));
-        panel.addView(suggestionRow);
+        suggestionRow.setPadding(UiKit.px(8), UiKit.px(4), UiKit.px(8), UiKit.px(10));
+        // Film names are shown whole: the row scrolls sideways instead of squeezing the pills.
+        android.widget.HorizontalScrollView suggestionScroll = new android.widget.HorizontalScrollView(ctx);
+        suggestionScroll.setHorizontalScrollBarEnabled(false);
+        suggestionScroll.setFillViewport(true);
+        suggestionScroll.setClipChildren(false);
+        suggestionScroll.addView(suggestionRow, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        panel.addView(suggestionScroll);
         updateSuggestions("");
 
         // 2. Keyboard Key Rows
@@ -169,6 +175,10 @@ public class GlassKeyboard extends FrameLayout {
             TextView pill = new TextView(ctx);
             pill.setText("✦ " + sug);
             pill.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.px(14));
+            pill.setSingleLine(true);
+            pill.setEllipsize(null);
+            pill.setMinWidth(UiKit.px(120));
+            pill.setGravity(Gravity.CENTER);
             pill.setTextColor(Color.parseColor("#E2E8F0"));
             pill.setPadding(UiKit.px(16), UiKit.px(8), UiKit.px(16), UiKit.px(8));
             pill.setFocusable(true);

@@ -84,7 +84,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     public static volatile MainActivity instance;
 
-    private static final long SCREENSAVER_AFTER_MS = 5 * 60 * 1000L;
     private static final long SLEEP_AFTER_SAVER_MS = 5 * 60 * 1000L;
     private static final long AI_SHELF_EVERY_MS = 3 * 60 * 60 * 1000L;
     private static final String SHELF_CACHE = "shelf_cache";
@@ -679,10 +678,27 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         userInteractedDuringBanner = true;
     }
 
+    private int lastNavCode;
+    private long lastNavAt;
+
+    private static boolean isDpad(int code) {
+        return code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN
+                || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT;
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         if (home == null) return super.dispatchKeyEvent(e);
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
+        if (down && isDpad(e.getKeyCode())) {
+            // Some remotes deliver one press twice (IR + CEC, or a bouncing key): the focus jumped two items.
+            // A second press of the same arrow within 90 ms is dropped, and a held arrow moves at most every 110 ms.
+            long t = e.getEventTime();
+            boolean same = e.getKeyCode() == lastNavCode;
+            if (same && (e.getRepeatCount() == 0 ? t - lastNavAt < 90 : t - lastNavAt < 110)) return true;
+            lastNavCode = e.getKeyCode();
+            lastNavAt = t;
+        }
         if (down) {
             userInteractedDuringBanner = true;
             conversationTurns = 0;
@@ -698,14 +714,20 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         if (liveCineDuelView != null) {
             if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-                if (down) hideLiveCineDuelScene();
+                if (down) {
+                    hideLiveCineDuelScene();
+                    backToGames();
+                }
                 return true;
             }
             return liveCineDuelView.dispatchKeyEvent(e);
         }
         if (liveSnakePhileView != null) {
             if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-                if (down) hideLiveSnakePhileScene();
+                if (down) {
+                    hideLiveSnakePhileScene();
+                    backToGames();
+                }
                 return true;
             }
             return liveSnakePhileView.dispatchKeyEvent(e);
@@ -803,7 +825,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         com.cinetv.launcher.ui.CinemaScreensaverView.warmUp(this);
         handler.removeCallbacks(idle);
         handler.removeCallbacks(sleepPanel);
-        handler.postDelayed(idle, SCREENSAVER_AFTER_MS);
+        int minutes = com.cinetv.launcher.ui.Panels.screensaverMinutes(this);
+        if (minutes > 0) handler.postDelayed(idle, minutes * 60_000L);
     }
 
     private void hideScreensaver() {
@@ -894,7 +917,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void onRefreshShelf() {
-        refreshShelf();
+        // The refresh key always brings a different shelf: a new theme, new films, never the same list again.
+        shelfSpin++;
+        if (isCurating) return;
+        lastShelfAt = android.os.SystemClock.elapsedRealtime();
+        if (LlmClient.isConfigured(this)) {
+            String now = home.shelfLabel.getText().toString();
+            curate("Şu anki raftan (\"" + now + "\") tamamen farklı bir tema seç ve bu raftaki filmlerin hiçbirini tekrar etme; "
+                    + "farklı tür, dönem ve ülkelerden sürpriz seçimler yap. Çeşitlilik #" + shelfSpin, true);
+        } else {
+            categoryShelf();
+        }
         toast(R.string.refresh_shelf_hint);
     }
 
@@ -1166,6 +1199,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void curate(final String mood) {
+        curate(mood, false);
+    }
+
+    /** Each press of the refresh key moves the shelf on to another category and page. */
+    private static int shelfSpin;
+
+    private void curate(final String mood, final boolean refresh) {
         if (isCurating) return;
         isCurating = true;
         String provider = LlmClient.providerName(this);
@@ -1177,7 +1217,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 ui(() -> {
                     try {
                         if (s != null && !s.movies.isEmpty()) setShelf(s.title, s.movies, true);
-                        else if (mood == null) categoryShelf();
+                        else if (mood == null || refresh) categoryShelf();
                         else restoreShelfLabel();
                     } finally {
                         isCurating = false;
@@ -1186,7 +1226,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             } catch (Throwable t) {
                 ui(() -> {
                     isCurating = false;
-                    if (mood == null) categoryShelf();
+                    if (mood == null || refresh) categoryShelf();
                     else restoreShelfLabel();
                 });
             }
@@ -1270,11 +1310,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         final Context app = getApplicationContext();
         String current = Prefs.get(this).getString(SHELF_TITLE, "");
         Calendar cal = Calendar.getInstance();
-        int slot = (cal.get(Calendar.DAY_OF_YEAR) * 24 + cal.get(Calendar.HOUR_OF_DAY));
+        int slot = (cal.get(Calendar.DAY_OF_YEAR) * 24 + cal.get(Calendar.HOUR_OF_DAY)) + shelfSpin;
+        String currentUp = current.toUpperCase(Locale.getDefault());
         MovieCatalog.Category pick = null;
         for (int i = 0; i < MovieCatalog.CATEGORIES.length; i++) {
             MovieCatalog.Category c = MovieCatalog.CATEGORIES[(slot + i) % MovieCatalog.CATEGORIES.length];
-            if (!getString(c.nameRes).equals(current)) {
+            // the saved title is the long "Pazar Gece · ... KATEGORİ" form: compare by its ending
+            if (!currentUp.endsWith(getString(c.nameRes).toUpperCase(Locale.getDefault()))) {
                 pick = c;
                 break;
             }
@@ -1298,7 +1340,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 dayStr, timeSegment, (weather.isEmpty() ? monthStr : weather), getString(cat.nameRes)).toUpperCase(Locale.getDefault());
 
         background(() -> {
-            List<Movie> list = MovieCatalog.category(app, cat, PerformanceProfile.shelfSize(app));
+            List<Movie> list = MovieCatalog.category(app, cat, PerformanceProfile.shelfSize(app), shelfSpin);
             if (!list.isEmpty()) ui(() -> setShelf(richTitle, list, true));
         });
     }
@@ -1332,6 +1374,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             return true;
         }
         return false;
+    }
+
+    /** Leaving a game lands on the games menu, so the next game is one press away. */
+    private void backToGames() {
+        // after the Back key's release, which would otherwise close the menu it opens
+        handler.postDelayed(() -> {
+            if (isFinishing() || home == null || home.modal == null || home.modal.isShowing()) return;
+            if (partyStage != null || liveCineDuelView != null || liveSnakePhileView != null) return;
+            showPartyGamesFolderModal();
+        }, 350);
     }
 
     public void showPartyGamesFolderModal() {
@@ -1428,6 +1480,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 @Override
                 public void exit() {
                     hidePartyStage();
+                    backToGames();
                 }
 
                 @Override
@@ -1463,6 +1516,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     public void doLaunchFilm(final Movie m) {
         if (m == null) return;
+        // Without its IMDb id Nuvio could only be opened on its home: look the id up first.
+        if ((m.imdbId == null || !m.imdbId.startsWith("tt")) && m.tmdbId > 0 && !m.imdbLookupTried) {
+            m.imdbLookupTried = true;
+            final Context app = getApplicationContext();
+            background(() -> {
+                String id = MovieCatalog.imdbFor(app, m.tmdbId, m.type);
+                if (id != null && id.startsWith("tt")) m.imdbId = id;
+                ui(() -> doLaunchFilm(m));
+            });
+            return;
+        }
         boolean ok = AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl);
         if (!ok) {
             showNuvioNotFoundDialog(m);
@@ -2386,6 +2450,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             @Override
             public void onGameExit() {
                 hideLiveCineDuelScene();
+                backToGames();
             }
         });
         liveCineDuelView = duelView;
@@ -2421,6 +2486,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             @Override
             public void onExit() {
                 hideLiveSnakePhileScene();
+                backToGames();
             }
         });
         liveSnakePhileView = snake;

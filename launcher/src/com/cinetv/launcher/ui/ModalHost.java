@@ -67,6 +67,7 @@ public class ModalHost extends FrameLayout {
 
     /** Opens a window on top of the current one. */
     public void push(Builder builder) {
+        rememberReturnFocus();
         anchor = null;
         stack.push(builder);
         showTop();
@@ -74,6 +75,7 @@ public class ModalHost extends FrameLayout {
 
     /** A contextual bar right under (or above) {@code near}, e.g. the actions of a long-pressed tile. */
     public void pushAnchored(Builder builder, View near) {
+        rememberReturnFocus();
         stack.push(builder);
         anchor = near;
         showTop();
@@ -91,6 +93,27 @@ public class ModalHost extends FrameLayout {
         else showTop();
     }
 
+    /** The Home item that had the focus when the first window opened: Back returns there, not to the top. */
+    private View returnFocus;
+
+    private void rememberReturnFocus() {
+        if (isShowing()) return;
+        android.view.ViewParent p = getParent();
+        View f = p instanceof ViewGroup ? ((ViewGroup) p).findFocus() : null;
+        returnFocus = f != null && !isInside(f) ? f : null;
+    }
+
+    private void restoreFocus() {
+        final View f = returnFocus;
+        returnFocus = null;
+        if (f == null) return;
+        Runnable r = () -> {
+            if (f.isAttachedToWindow() && f.isShown() && f.isFocusable()) f.requestFocus();
+        };
+        r.run();
+        post(r); // again after the system's own focus search, which would pick the first item at the top
+    }
+
     public void closeImmediate() {
         animate().cancel();
         alarmOn = false;
@@ -99,6 +122,7 @@ public class ModalHost extends FrameLayout {
         setVisibility(GONE);
         removeAllViews();
         if (onClosed != null) onClosed.run();
+        restoreFocus();
     }
 
     public void close() {
@@ -111,6 +135,7 @@ public class ModalHost extends FrameLayout {
                 setVisibility(GONE);
                 removeAllViews();
                 if (onClosed != null) onClosed.run();
+                restoreFocus();
             }
         }).start();
     }
@@ -208,6 +233,13 @@ public class ModalHost extends FrameLayout {
             env.focusOn(target, env.glowColor());
         }
         // Identical to system HUD visor: stays rock-solid on the HUD plane without extra dynamic card warping
+    }
+
+    @Override
+    public void setVisibility(int visibility) {
+        super.setVisibility(visibility);
+        // Home behind a panel stays still: focus slipping out of the panel must not scroll it.
+        GlideScrollView.frozen = visibility == VISIBLE;
     }
 
     /** Called from the activity's key dispatch while visible. */

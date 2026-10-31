@@ -267,6 +267,12 @@ public final class AppLauncher {
     }
 
     /** Opens a title on Nuvio's detail/stream page; falls back to Nuvio's start screen. */
+    private static boolean isNuvioInFront() {
+        com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
+        String top = svc != null ? svc.getLastPackage() : null;
+        return top != null && (NUVIO.equals(top) || top.contains("nuvio") || top.contains("stremio"));
+    }
+
     public static boolean openInNuvio(Context ctx, String title, String imdbId, String type, String posterUrl) {
         if ((title != null && "sessiz".equals(Creator.fold(title))) || "tt38983576".equals(imdbId)) {
             return openYouTubeVideo(ctx, Creator.SESSIZ_YOUTUBE_URL);
@@ -284,7 +290,22 @@ public final class AppLauncher {
         }
         if (imdbId != null && imdbId.startsWith("tt")) {
             String kind = "series".equals(type) ? "series" : "movie";
-            // Deep link directly to Nuvio detail page so external media player handles catalog details and user playback
+            // A film goes straight to its sources (detail/movie/<id>/<id>), one OK from playing; a series to its page.
+            String link = "stremio:///detail/" + kind + "/" + imdbId + ("movie".equals(kind) ? "/" + imdbId : "");
+            Intent streams = new Intent(Intent.ACTION_VIEW, Uri.parse(link));
+            if (targetPkg != null) streams.setPackage(targetPkg);
+            streams.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            boolean wasInFront = isNuvioInFront();
+            if (start(ctx, streams)) {
+                // Nuvio starting cold shows its own home and drops the link: hand it over once more when it is up.
+                if (!wasInFront) {
+                    final Context app = ctx.getApplicationContext();
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        if (isNuvioInFront() && !com.cinetv.launcher.device.DeviceTweaks.isMediaPlaying(app)) start(app, new Intent(streams));
+                    }, 3500);
+                }
+                return true;
+            }
             Intent detail = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/" + kind + "/" + imdbId));
             if (targetPkg != null) detail.setPackage(targetPkg);
             detail.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -357,6 +378,8 @@ public final class AppLauncher {
     }
 
     public static boolean start(Context ctx, Intent intent) {
+        // Anything the viewer opens from CineTV (the TV's settings and menus included) is theirs: never suppressed.
+        com.cinetv.launcher.device.DeviceTweaks.markUserOpenedTv();
         try {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
             ctx.startActivity(intent);

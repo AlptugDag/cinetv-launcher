@@ -1,5 +1,20 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.20b · Beta 2
+
+- Erişilebilirlik, cihaz ayarları ve dosya yöneticisi artık açılır açılmaz kapanmıyor (MediaTek TV menüleri tuner sanılmıyor).
+- Kumandanın mikrofonu Google asistanı yerine Gamze'yi açıyor.
+- "Kendini Yok Et" çalışıyor: kaldırma sırasında CineTV kendini geri getirmiyor.
+- Oyundan çıkınca oyun menüsüne dönülüyor.
+- Ayarlar açıkken arkadaki ana sayfa kaymıyor; Geri'ye basınca odak açılan öğeye dönüyor.
+- Kumandada çift basışta odağın iki öğe atlaması engellendi.
+- Rafı yenile her basışta başka tema ve filmler getiriyor.
+- Nuvio'da kataloglar Geri ile kapanıyor (film oynarken Geri yine CineTV'ye döner).
+- YouTube fragmanı çerçeveye tam sığıyor, büyütülmüyor.
+- Oynat: Nuvio doğrudan filmin kaynaklarına gidiyor; IMDb kimliği eksikse önce bulunuyor; Nuvio soğuk açılırsa bağlantı yeniden veriliyor.
+- Ekran koruyucu seçenekleri: süre (1-60 dk / hiçbir zaman), uygulamaların üzerinde açılma, önizleme.
+- Klavyedeki film önerileri tam adlarıyla gösteriliyor.
+
 ## 1.0.0.20 · Büyük Güncelleme
 
 Bu sürüm, 1.0.0.9'dan bu yana sürüm notlarına hiç yazılmamış her şeyi de kapsar (1.0.0.10–1.0.0.19 arasındaki yenilikler en altta).

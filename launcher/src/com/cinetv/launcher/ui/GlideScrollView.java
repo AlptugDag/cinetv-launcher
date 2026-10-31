@@ -28,10 +28,13 @@ public class GlideScrollView extends ScrollView {
         return 0;
     }
 
+    /** True while a panel covers Home: Home does not scroll under it. */
+    public static volatile boolean frozen;
+
     @Override
     public void requestChildFocus(View child, View focused) {
         super.requestChildFocus(child, focused);
-        if (focused != null) post(() -> glideTo(focused));
+        if (focused != null && !frozen) post(() -> glideTo(focused));
     }
 
     private void glideTo(View focused) {

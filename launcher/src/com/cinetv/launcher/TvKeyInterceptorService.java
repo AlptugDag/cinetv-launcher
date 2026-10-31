@@ -36,10 +36,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
     public static volatile boolean launchedYouTubeFromCineTv;
     public static volatile boolean launchedNuvioFromCineTv;
 
-    private static final long APP_IDLE_SAVER_MS = 3 * 60 * 1000L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String lastPackage;
+    /** The Back press now in progress belongs to Nuvio (decided on its DOWN, kept for its UP). */
+    private boolean backToNuvio;
 
     public String getLastPackage() {
         return lastPackage;
@@ -308,11 +309,13 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (event == null || event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || event.getPackageName() == null) return;
         String pkg = event.getPackageName().toString();
         if ("com.android.systemui".equals(pkg) || "android".equals(pkg)) return;
+        // While CineTV removes itself it must not pull the viewer back from the TV's own Home.
+        if (com.cinetv.launcher.device.Uninstaller.isRemoving(this)) { lastPackage = pkg; return; }
 
         CharSequence cls = event.getClassName();
         if (cls != null) {
             String cName = cls.toString().toLowerCase(java.util.Locale.US);
-            if ((cName.contains("screensaver") || cName.contains("dream")) && !getPackageName().equals(pkg)) {
+            if ((cName.contains("screensaver") || cName.contains("dream")) && !getPackageName().equals(pkg) && !isSystemTool(pkg)) {
                 if (!DeviceTweaks.isMediaPlaying(this)) {
                     startActivity(new Intent(this, ScreensaverActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION));
@@ -337,7 +340,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
             case "com.google.android.tv":
                 // The OEM tuner MediaTek/Arçelik TVs push on boot/wake: suppress immediately and stay in CineTV
                 // If user deliberately pressed Inputs / Live TV, it is left alone.
-                if (DeviceTweaks.isUnwantedTuner()) {
+                // MediaTek TVs draw their own settings, picture and sound menus inside the tuner app: those stay open.
+                if (DeviceTweaks.isUnwantedTuner() && !isTvMenu(cls)) {
                     new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(this, "am force-stop " + pkg + " 2>/dev/null; am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null; am force-stop com.arcelik.smartremoteservice 2>/dev/null", 800)).start();
                     performGlobalAction(GLOBAL_ACTION_HOME);
                     startActivity(new Intent(this, MainActivity.class)
@@ -351,8 +355,13 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 // If CineTV did not deliberately start listening, dismiss Katniss/Assistant immediately,
                 // pause any playing content on screen if possible, and NEVER dump the viewer to the home screen.
                 if (android.os.SystemClock.elapsedRealtime() - MainActivity.ourVoiceAt > 20_000) {
+                    // The remote's mic woke Google's assistant: close it and open Gamze instead.
                     performGlobalAction(GLOBAL_ACTION_BACK);
                     DeviceTweaks.pauseMedia(this);
+                    MainActivity.ourVoiceAt = android.os.SystemClock.elapsedRealtime();
+                    handler.postDelayed(() -> startActivity(new Intent(this, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                            .putExtra("action", "voice")), 250);
                     return;
                 }
                 break;
@@ -393,6 +402,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
     /** Stock TV launchers (Xiaomi Mi TV, Google TV, Android TV, Next Media Box, Amlogic, Droidlogic, Mstar, Rockchip). */
     private boolean isStockLauncher(String pkg) {
         if (pkg == null || pkg.equals(getPackageName())) return false;
+        // Settings, accessibility and file managers are never the launcher, even when they carry a fallback Home.
+        if (isSystemTool(pkg)) return false;
         if (pkg.equals("com.google.android.tvlauncher")
                 || pkg.equals("com.google.android.apps.tv.launcherx")
                 || pkg.equals("com.xiaomi.mitv.tvhome")
@@ -413,12 +424,33 @@ public class TvKeyInterceptorService extends AccessibilityService {
             Intent homeIntent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
             List<ResolveInfo> homes = getPackageManager().queryIntentActivities(homeIntent, 0);
             for (ResolveInfo ri : homes) {
-                if (ri.activityInfo != null && pkg.equals(ri.activityInfo.packageName)) {
+                // FallbackHome (Settings) declares HOME at priority -1000: only real launchers count.
+                if (ri.activityInfo != null && ri.priority >= 0 && pkg.equals(ri.activityInfo.packageName)) {
                     return true;
                 }
             }
         } catch (Throwable ignored) {}
         return false;
+    }
+
+    /** A settings / menu screen of the TV's own tuner app, as opposed to its live-TV picture. */
+    private static boolean isTvMenu(CharSequence cls) {
+        if (cls == null) return false;
+        String c = cls.toString().toLowerCase(java.util.Locale.US);
+        return c.contains("setting") || c.contains("menu") || c.contains("setup") || c.contains("option")
+                || c.contains("picture") || c.contains("sound") || c.contains("network") || c.contains("system")
+                || c.contains("dialog") || c.contains("wizard") || c.contains("source") || c.contains("input")
+                || c.contains("preference") || c.contains("accessib") || c.contains("timer") || c.contains("parental");
+    }
+
+    /** The TV's own settings, accessibility pages and file managers: left alone when the viewer opens them. */
+    private static boolean isSystemTool(String pkg) {
+        String p = pkg.toLowerCase(java.util.Locale.US);
+        return p.contains("settings") || p.contains("accessibility") || p.contains("talkback")
+                || p.contains("documentsui") || p.contains("filemanager") || p.contains("file.manager")
+                || p.contains("fileexplorer") || p.contains("explorer") || p.contains(".files")
+                || p.contains("packageinstaller") || p.contains("permissioncontroller") || p.contains("mediacenter")
+                || p.contains("mediabrowser") || p.contains("tv.settings") || p.contains("provision");
     }
 
     /** A real change of app (not a keyboard, toast or pop-up drawn over Nuvio). */
@@ -431,7 +463,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
     private void armIdleSaver() {
         com.cinetv.launcher.ui.CinemaScreensaverView.warmUp(this);
         handler.removeCallbacks(idleSaver);
-        long timeout = AppLauncher.NUVIO.equals(lastPackage) ? 45_000L : APP_IDLE_SAVER_MS;
+        int minutes = com.cinetv.launcher.ui.Panels.screensaverMinutes(this);
+        if (minutes <= 0 || !com.cinetv.launcher.service.Prefs.get(this).getBoolean(com.cinetv.launcher.ui.Panels.SCREENSAVER_OVER_APPS, true)) return;
+        long timeout = minutes * 60_000L;
         handler.postDelayed(idleSaver, timeout);
     }
 
@@ -475,6 +509,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
             }
             return true;
         }
+        if (com.cinetv.launcher.device.Uninstaller.isRemoving(this)) return false;
         armIdleSaver();
         int code = event.getKeyCode();
         // Aggressive Home capture: Home button on any remote returns instantly to CineTV
@@ -516,6 +551,15 @@ public class TvKeyInterceptorService extends AccessibilityService {
         boolean inNuvio = isNuvioApp(lastPackage) || launchedNuvioFromCineTv;
         boolean inYouTube = isYouTubeApp(lastPackage) || launchedYouTubeFromCineTv;
         if ((inNuvio || inYouTube) && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
+            // Browsing Nuvio (a catalog, a film's page, search): Back is Nuvio's own and closes that page.
+            // Only from a playing film does Back go straight to CineTV's Home.
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                backToNuvio = inNuvio && !DeviceTweaks.isMediaPlaying(this);
+            }
+            if (backToNuvio) {
+                if (event.getAction() == KeyEvent.ACTION_UP) backToNuvio = false;
+                return false;
+            }
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 return true; // absorb DOWN so Nuvio does not pop backstack fragments
             }

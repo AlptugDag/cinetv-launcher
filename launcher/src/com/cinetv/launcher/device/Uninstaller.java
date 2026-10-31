@@ -25,12 +25,16 @@ public final class Uninstaller {
 
     /** While CineTV removes itself nothing may bring it back to the front (Home guard, boot rescue, key service). */
     public static boolean isRemoving(Context ctx) {
-        return com.cinetv.launcher.service.Prefs.get(ctx).getBoolean(REMOVING, false);
+        android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(ctx);
+        // never sticks: a removal that has not finished in three minutes did not happen
+        return p.getBoolean(REMOVING, false) && System.currentTimeMillis() - p.getLong(REMOVING_AT, 0) < 180_000L;
     }
+
+    private static final String REMOVING_AT = "cinetv_removing_at";
 
     /** Null when uninstalling started, otherwise the message to show. Blocks briefly; call off the main thread. */
     public static String run(Context ctx) {
-        com.cinetv.launcher.service.Prefs.get(ctx).edit().putBoolean(REMOVING, true).commit();
+        com.cinetv.launcher.service.Prefs.get(ctx).edit().putBoolean(REMOVING, true).putLong(REMOVING_AT, System.currentTimeMillis()).commit();
         // The TV's own launcher may have been switched off by the clean-up: bring it back first, then check.
         LocalAdb.shell(ctx,
                 "if [ -f /sdcard/cinetv-debloat.txt ]; then "
@@ -63,7 +67,8 @@ public final class Uninstaller {
         // CineTV ends this process.
         String pkg = ctx.getPackageName();
         if (LocalAdb.exec(ctx, "nohup sh -c 'pm clear-package-preferred-activities " + pkg + " 2>/dev/null; sleep 1; "
-                + "am start -a android.intent.action.MAIN -c android.intent.category.HOME >/dev/null 2>&1; sleep 1; pm uninstall " + pkg + "' >/dev/null 2>&1 &", 4000) != null) {
+                + "am start -a android.intent.action.MAIN -c android.intent.category.HOME >/dev/null 2>&1; sleep 1; "
+                + "pm uninstall " + pkg + " || pm uninstall --user 0 " + pkg + "' >/dev/null 2>&1 &", 4000) != null) {
             return null;
         }
         // Otherwise Android asks.
@@ -85,6 +90,9 @@ public final class Uninstaller {
 
     /** The viewer backed out of Android's uninstall dialog: CineTV is staying, so it may guard Home again. */
     public static void cancelled(Context ctx) {
+        // CineTV coming back to the front during the first seconds is the removal itself (Home switching over),
+        // not the viewer saying no.
+        if (System.currentTimeMillis() - com.cinetv.launcher.service.Prefs.get(ctx).getLong(REMOVING_AT, 0) < 25_000L) return;
         com.cinetv.launcher.service.Prefs.get(ctx).edit().putBoolean(REMOVING, false).apply();
     }
 

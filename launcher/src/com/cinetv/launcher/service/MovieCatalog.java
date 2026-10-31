@@ -50,6 +50,8 @@ public final class MovieCatalog {
         public int year;
         public String imdbId = "";
         public int tmdbId;
+        /** The IMDb id was already looked up once for opening Nuvio. */
+        public transient boolean imdbLookupTried;
         public String type = "movie";
         public String posterUrl = "";
         public String backdropUrl = "";
@@ -151,11 +153,16 @@ public final class MovieCatalog {
     }
 
     public static List<Movie> category(Context ctx, Category category, int max) {
+        return category(ctx, category, max, 0);
+    }
+
+    /** {@code spin} moves on to another page of the category, so a refresh brings other films. */
+    public static List<Movie> category(Context ctx, Category category, int max, int spin) {
         if (hasTmdb(ctx)) {
             try {
                 java.util.Calendar cal = java.util.Calendar.getInstance();
                 int slot = (cal.get(java.util.Calendar.DAY_OF_YEAR) * 24 + cal.get(java.util.Calendar.HOUR_OF_DAY));
-                int page = (slot % 4) + 1; // Rotates pages 1-4 dynamically every hour
+                int page = ((slot + spin * 3) % 8) + 1; // pages 1-8, another every hour and at every refresh
                 String path = category.tmdbPath;
                 if (!path.contains("page=")) {
                     path = path + (path.endsWith("&") || path.endsWith("?") ? "" : "&") + "page=" + page + "&";
