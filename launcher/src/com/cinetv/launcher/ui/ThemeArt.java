@@ -61,9 +61,11 @@ final class ThemeArt {
         else c.drawColor(Color.parseColor("#0B1628"));
 
         PerformanceProfile.Tier tier = PerformanceProfile.tier(ctx);
+        // Droplets live in the margins: never over the clock, the search bar, the focused case or the dock labels.
         float[][] drops = tier == PerformanceProfile.Tier.LOW
-                ? new float[][]{{170, 130, 115}, {640, 390, 140}, {760, 110, 75}}
-                : new float[][]{{170, 130, 120}, {760, 110, 80}, {640, 400, 150}, {110, 440, 70}, {880, 330, 55}, {380, 260, 46}};
+                ? new float[][]{{W * 0.955f, H * 0.52f, H * 0.11f}, {W * 0.03f, H * 0.58f, H * 0.08f}, {W * 0.97f, H * 0.86f, H * 0.06f}}
+                : new float[][]{{W * 0.955f, H * 0.52f, H * 0.11f}, {W * 0.03f, H * 0.58f, H * 0.08f}, {W * 0.97f, H * 0.86f, H * 0.06f},
+                        {W * 0.015f, H * 0.93f, H * 0.05f}, {W * 0.985f, H * 0.30f, H * 0.035f}, {W * 0.045f, H * 0.40f, H * 0.03f}};
 
         for (float[] d : drops) {
             float x = d[0], y = d[1], r = d[2];

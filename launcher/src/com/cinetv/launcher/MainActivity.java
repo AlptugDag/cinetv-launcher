@@ -1158,7 +1158,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (isCurating) return;
         isCurating = true;
         String provider = LlmClient.providerName(this);
-        home.shelfLabel.setText(getString(R.string.shelf_curating, provider == null ? "AI" : provider).toUpperCase(Locale.getDefault()));
+        home.shelfLabel.setText(getString(R.string.shelf_curating, "Gamze").toUpperCase(Locale.getDefault()));
         final String moment = MovieAssistant.momentContext(this, com.cinetv.launcher.service.WeatherService.getLastFull());
         background(() -> {
             try {

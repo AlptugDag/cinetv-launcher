@@ -70,7 +70,7 @@ public final class CinemaMoments {
 
     /** Extended curated cinematic masterworks to expand screensaver variety across all eras. */
     static final String[][] EXTENDED_FILMS = {
-            {"Pulp Fiction", "1994", "tt0110912", "You won't know the facts until you've seen the fiction.", "Mutluluk cesurları sever."},
+            {"Pulp Fiction", "1994", "tt0110912", "You won't know the facts until you've seen the fiction.", "Zed öldü bebeğim. Zed öldü."},
             {"The Silence of the Lambs", "1991", "tt0102926", "To enter the mind of a killer she must challenge the mind of a madman.", "Kuzuların çığlığı dindi mi Clarice?"},
             {"Apocalypse Now", "1979", "tt0078788", "This is the end.", "Sabahları napalm kokusunu severim."},
             {"Taxi Driver", "1976", "tt0075314", "On every street in every city, there's a nobody who dreams of being a somebody.", "Bana mı dedin?"},

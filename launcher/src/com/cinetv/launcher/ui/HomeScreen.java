@@ -120,6 +120,21 @@ public class HomeScreen {
 
         environment = new SpatialEnvironment(ctx);
         root.addView(environment, match());
+        // A soft shade under the header: the clock, date and shelf title stay readable on every
+        // photographic theme (bookshelves, press walls, theatres) without dimming the shelf itself.
+        View headerShade = new View(ctx) {
+            private final android.graphics.Paint shade = new android.graphics.Paint();
+
+            @Override
+            protected void onDraw(android.graphics.Canvas c) {
+                float h = getHeight() * 0.34f;
+                shade.setShader(new android.graphics.LinearGradient(0, 0, 0, h,
+                        new int[]{Color.argb(150, 0, 0, 0), Color.argb(70, 0, 0, 0), Color.TRANSPARENT}, new float[]{0f, 0.55f, 1f},
+                        android.graphics.Shader.TileMode.CLAMP));
+                c.drawRect(0, 0, getWidth(), h, shade);
+            }
+        };
+        root.addView(headerShade, match());
 
         scroll = new GlideScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
@@ -133,6 +148,21 @@ public class HomeScreen {
         content.setPadding(UiKit.px(64), UiKit.px(22), UiKit.px(64), UiKit.px(80));
         scroll.addView(content, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(scroll, match());
+        // The next row of apps shows a little below the dock as a hint; fade it out at the edge so it reads
+        // as "more below" rather than a cut-off tile.
+        View bottomFade = new View(ctx) {
+            private final android.graphics.Paint fade = new android.graphics.Paint();
+
+            @Override
+            protected void onDraw(android.graphics.Canvas c) {
+                float h = UiKit.pxf(120);
+                fade.setShader(new android.graphics.LinearGradient(0, getHeight() - h, 0, getHeight(),
+                        Color.TRANSPARENT, Color.argb(235, 0, 0, 0), android.graphics.Shader.TileMode.CLAMP));
+                c.drawRect(0, getHeight() - h, getWidth(), getHeight(), fade);
+            }
+        };
+        bottomFade.setFocusable(false);
+        root.addView(bottomFade, match());
 
         // Full-height proscenium velvet curtains framing the TV screen
         cinemaCurtains = new CinemaCurtainsView(ctx);
@@ -173,6 +203,7 @@ public class HomeScreen {
         timeCol.addView(clock);
         LinearLayout sub = new LinearLayout(ctx);
         date = UiKit.label(ctx, 20, UiKit.INK_DIM);
+        date.setShadowLayer(UiKit.pxf(8), 0, UiKit.pxf(1), Color.argb(190, 0, 0, 0));
         weather = UiKit.label(ctx, 20, Color.parseColor("#7DD3FC"));
         weather.setPadding(UiKit.px(16), 0, 0, 0);
         sub.addView(date);
@@ -366,10 +397,18 @@ public class HomeScreen {
 
         // ---- shelf
         shelfLabel = UiKit.bold(ctx, 20, UiKit.INK_DIM);
+        shelfLabel.setShadowLayer(UiKit.pxf(10), 0, UiKit.pxf(2), Color.argb(200, 0, 0, 0));
+        // A frosted capsule under the shelf title: readable on bookshelves, press walls and theatres alike.
+        android.graphics.drawable.GradientDrawable pill = new android.graphics.drawable.GradientDrawable();
+        pill.setCornerRadius(UiKit.pxf(22));
+        pill.setColor(Color.argb(120, 8, 8, 12));
+        pill.setStroke(Math.max(1, UiKit.px(1.5f)), Color.argb(46, 255, 255, 255));
+        shelfLabel.setBackground(pill);
+        shelfLabel.setPadding(UiKit.px(18), UiKit.px(7), UiKit.px(18), UiKit.px(7));
         shelfLabel.setLetterSpacing(0.14f);
         shelfLabel.setTranslationZ(200f);
         LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        llp.setMargins(UiKit.px(80), UiKit.px(30), 0, 0);
+        llp.setMargins(UiKit.px(62), UiKit.px(24), 0, 0);
         content.addView(shelfLabel, llp);
 
         shelf = new PosterShelf(ctx);

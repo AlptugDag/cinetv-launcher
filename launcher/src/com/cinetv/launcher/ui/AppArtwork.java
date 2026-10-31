@@ -1483,7 +1483,7 @@ public final class AppArtwork {
         float tx = 248f;
         float ty = CARD_H / 2f - 4f;
         canvas.drawText(tr ? "Parti & Oyunlar" : "Party & Games", tx, ty, textWhite);
-        canvas.drawText(tr ? "CineParty Hub · 4 Oyun" : "CineParty Hub · 4 Games", tx, ty + 34f, subPaint);
+        canvas.drawText(tr ? "CineParty · 5 Oyun" : "CineParty · 5 Games", tx, ty + 34f, subPaint);
         return bmp;
     }
 
