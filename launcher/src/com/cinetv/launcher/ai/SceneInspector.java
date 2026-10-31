@@ -109,9 +109,12 @@ public final class SceneInspector {
                     : "This app protects its picture (DRM); CineSUB can't see this scene.";
             return scene;
         }
-        scene.film = NowPlaying.describe(ctx);
+        // The last film started from CineTV is only a hint: the viewer may be watching anything since. The title
+        // shown on screen is the one the model recognises in this frame (it used to stay "Oldboy" whatever played).
+        String hint = NowPlaying.describe(ctx);
         String lang = tr ? "Turkish" : "English";
-        String context = scene.film.isEmpty() ? "" : "The viewer is probably watching " + scene.film + ". ";
+        String context = hint.isEmpty() ? "" : "The last film opened from the launcher was " + hint
+                + ", but the viewer may be watching something else: trust only what the frame shows. ";
         String sys = "You are CineSUB, a cinephile's trivia companion that tells a film viewer what is worth knowing about what they see, "
                 + "without spoiling anything that has not happened yet. " + context
                 + "Only state facts you are confident about; if you can't identify something, describe what it is instead of naming it. "
@@ -152,7 +155,7 @@ public final class SceneInspector {
         }
         try {
             JSONObject root = LlmClient.extractJsonObject(r.text);
-            if (scene.film.isEmpty()) scene.film = root.optString("film", "").trim();
+            scene.film = root.optString("film", "").trim();
             JSONArray items = root.optJSONArray("items");
             for (int i = 0; items != null && i < items.length() && scene.pois.size() < 5; i++) {
                 JSONObject o = items.optJSONObject(i);

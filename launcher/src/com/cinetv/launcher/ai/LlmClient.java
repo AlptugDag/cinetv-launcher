@@ -42,7 +42,9 @@ public final class LlmClient {
     /** Gemini 3.8 Flash: the newest stable Flash (thinking kept low for a TV's patience). */
     static final String DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
     /** Search and spoken answers: about a second, which a remote in hand needs. */
-    static final String FAST_GEMINI_MODEL = "gemini-3.8-flash";
+    // Flash's free tier allows only 20 requests a day: quick text jobs go to Flash-Lite (500 a day), so the
+    // vision model is left for CineSUB.
+    static final String FAST_GEMINI_MODEL = "gemini-3.5-flash-lite";
     static final String FALLBACK_GEMINI_MODEL = "gemini-3.5-flash-lite";
 
     private static final String TAG = "CineTvLlm";
@@ -275,10 +277,14 @@ public final class LlmClient {
         String[] models;
         if (compat != null) models = new String[]{compat[2], compat[4]};
         else if (PROVIDER_CLAUDE.equals(provider)) models = new String[]{FAST_CLAUDE_MODEL, DEFAULT_CLAUDE_MODEL};
-        else models = new String[]{"gemini-3.8-flash", "gemini-flash-latest"};
+        // Each model has its own per-minute quota: a busy one (429) hands over to the next instead of giving up.
+        else models = new String[]{"gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"};
         Result r = null;
         for (String model : models) {
             r = visionCall(ctx, provider, compat, model, key, system, user, b64, maxTokens);
+            if (r.status == 429 || r.status == 503) {
+                try { Thread.sleep(500); } catch (Throwable ignored) {}
+            }
             if (r.success || !(r.status == 404 || r.status == 429 || r.status >= 500 || r.status == -1 || r.status == 408)) return r;
         }
         return r;
@@ -330,8 +336,10 @@ public final class LlmClient {
             }
             int status = conn.getResponseCode();
             if (status != 200) {
-                Log.w(TAG, "Vision HTTP " + status + " for " + model);
-                return new Result(false, errorText(ctx, status), status);
+                String errBody = "";
+                try { if (conn.getErrorStream() != null) errBody = read(conn.getErrorStream()); } catch (Throwable ignored) {}
+                Log.w(TAG, "Vision HTTP " + status + " for " + model + " -> " + (errBody.length() > 600 ? errBody.substring(0, 600) : errBody));
+                return new Result(false, errorText(ctx, status, errBody), status);
             }
             JSONObject resp = new JSONObject(read(conn.getInputStream()));
             String text = "";
@@ -358,6 +366,23 @@ public final class LlmClient {
         } finally {
             if (conn != null) conn.disconnect();
         }
+    }
+
+    /** A spent daily quota says so, with when it comes back, instead of "too many requests". */
+    private static String errorText(Context ctx, int status, String body) {
+        if (status == 429 && body != null && body.contains("per day")) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("retry in (?:(\\d+)h)?(?:(\\d+)m)?").matcher(body);
+            String when = "";
+            if (m.find() && (m.group(1) != null || m.group(2) != null)) {
+                when = (m.group(1) != null ? m.group(1) + " sa " : "") + (m.group(2) != null ? m.group(2) + " dk" : "");
+            }
+            boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+            return tr ? "Yapay zekâ anahtarının günlük ücretsiz kotası doldu" + (when.isEmpty() ? "." : "; " + when.trim() + " sonra yenilenir.")
+                    + " Sınırsız kullanım için Google AI Studio'da faturalandırmayı açın."
+                    : "The AI key's free daily quota is used up" + (when.isEmpty() ? "." : "; it resets in " + when.trim() + ".")
+                    + " Turn on billing in Google AI Studio for unlimited use.";
+        }
+        return errorText(ctx, status);
     }
 
     private static String errorText(Context ctx, int status) {

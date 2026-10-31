@@ -92,7 +92,7 @@ public final class SpatialAudioOverlay {
         panel.addView(title);
 
         TextView sub = UiKit.label(app, 14, Color.parseColor("#34D399"));
-        sub.setText(tr ? "● Bağlı · Uzamsal Ses Aktif" : "● Connected · Spatial Audio Active");
+        sub.setText(tr ? "● Bağlı · Ses ayarları" : "● Connected · Audio settings");
         sub.setPadding(0, UiKit.px(6), 0, UiKit.px(24));
         panel.addView(sub);
 
@@ -102,27 +102,15 @@ public final class SpatialAudioOverlay {
         panel.addView(s1);
 
         String[] spatialModes = tr
-                ? new String[]{"Kapalı", "Sabit", "Kafa Takibi"}
-                : new String[]{"Off", "Fixed", "Head Track"};
-        final int currentSpatial = Prefs.get(app).getInt(Prefs.AIRPODS_SPATIAL_MODE, 1);
+                ? new String[]{"Kapalı", "Sanal Surround", "Geniş Sahne"}
+                : new String[]{"Off", "Virtual Surround", "Wide Stage"};
+        // Head tracking needs Apple's own link to the AirPods, which Android does not offer: these are real
+        // virtualizer strengths applied to the TV's output.
+        final int currentSpatial = Math.min(2, Prefs.get(app).getInt(Prefs.AIRPODS_SPATIAL_MODE, 1));
         panel.addView(createChipRow(app, spatialModes, currentSpatial, idx -> {
             Prefs.get(app).edit().putInt(Prefs.AIRPODS_SPATIAL_MODE, idx).apply();
+            com.cinetv.launcher.device.AirPodsLink.applySpatialMode(app);
             Toast.makeText(app, (tr ? "Uzamsal Ses: " : "Spatial Audio: ") + spatialModes[idx], Toast.LENGTH_SHORT).show();
-        }));
-
-        // Section 2: Noise Control
-        TextView s2 = UiKit.bold(app, 15, UiKit.INK_DIM);
-        s2.setText(tr ? "GÜRÜLTÜ DENETİMİ" : "NOISE CONTROL");
-        s2.setPadding(0, UiKit.px(20), 0, 0);
-        panel.addView(s2);
-
-        String[] noiseModes = tr
-                ? new String[]{"Gürültü Engelleme", "Şeffaf", "Kapalı"}
-                : new String[]{"Noise Cancel", "Transparency", "Off"};
-        final int currentNoise = Prefs.get(app).getInt(Prefs.AIRPODS_NOISE_CONTROL, 0);
-        panel.addView(createChipRow(app, noiseModes, currentNoise, idx -> {
-            Prefs.get(app).edit().putInt(Prefs.AIRPODS_NOISE_CONTROL, idx).apply();
-            Toast.makeText(app, (tr ? "Gürültü Denetimi: " : "Noise Control: ") + noiseModes[idx], Toast.LENGTH_SHORT).show();
         }));
 
         // Section 3: Auto-connect toggle

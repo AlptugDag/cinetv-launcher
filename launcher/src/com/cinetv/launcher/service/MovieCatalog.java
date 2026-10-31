@@ -52,6 +52,8 @@ public final class MovieCatalog {
         public int tmdbId;
         /** The IMDb id was already looked up once for opening Nuvio. */
         public transient boolean imdbLookupTried;
+        /** The case is open: its synopsis may be rewritten by the AI (once per film, cached). */
+        public transient boolean hookWanted;
         public String type = "movie";
         public String posterUrl = "";
         public String backdropUrl = "";
@@ -757,6 +759,13 @@ public final class MovieCatalog {
      * ending on the question that makes one press play. Cached per film and language; the original text
      * stays when no AI key is set, the call fails or the answer looks wrong.
      */
+    /** The opened case's synopsis as the AI's hook (from the cache when it was written before). Blocks briefly. */
+    public static void ensureHook(Context ctx, Movie m) {
+        if (m == null) return;
+        m.hookWanted = true;
+        m.overview = curatedPlot(ctx, m);
+    }
+
     static String curatedPlot(final Context ctx, final Movie m) {
         final String base = m.overview == null ? "" : m.overview.trim();
         if (base.length() < 40 || Creator.isSessiz(m)) return base;
@@ -764,6 +773,9 @@ public final class MovieCatalog {
         String ck = "plot_v3_" + lang + "_" + m.type + "_" + (m.tmdbId > 0 ? m.tmdbId : m.imdbId);
         String saved = Prefs.get(ctx).getString(ck, null);
         if (saved != null && !saved.isEmpty()) return saved;
+        // Only for a case the viewer actually opens: writing one for every film the shelf prefetched spent the
+        // AI key's whole daily quota (20 a day on Gemini's free Flash), and CineSUB then had nothing left.
+        if (!m.hookWanted) return base;
 
         Future<String> f = resolver.submit(() -> curatedPlotNow(ctx, m, base));
         try {

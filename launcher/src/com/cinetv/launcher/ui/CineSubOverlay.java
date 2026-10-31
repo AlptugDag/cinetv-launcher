@@ -87,7 +87,7 @@ public final class CineSubOverlay {
                     if (active != o) return;
                     o.stage.setScene(scene);
                     SystemAudio.play(app, scene.pois.isEmpty() ? SystemAudio.Sfx.ERROR : SystemAudio.Sfx.CHIME);
-                    o.keepFor(scene.pois.isEmpty() ? 7000 : 45000);
+                    o.keepFor(scene.pois.isEmpty() ? (scene.error.isEmpty() ? 7000 : 14000) : 45000);
                 });
             }, "cinesub-inspect").start();
         });

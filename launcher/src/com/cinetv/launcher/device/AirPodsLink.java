@@ -80,7 +80,7 @@ public final class AirPodsLink {
                 if (d != null && isHeadphones(d)) {
                     disconnectedAt = 0L;
                     Toast.makeText(ctx, ctx.getString(R.string.airpods_connected, name(d)), Toast.LENGTH_SHORT).show();
-                    applyHeadphoneSpatialAudio(ctx, com.cinetv.launcher.service.Prefs.get(ctx).getBoolean("airpods_spatial_binaural", true));
+                    applySpatialMode(ctx);
                     // The case opened by the TV: the AirPods panel comes up by itself (it is no longer in Settings).
                     try {
                         com.cinetv.launcher.ui.SpatialAudioOverlay.show(ctx);
@@ -90,6 +90,7 @@ public final class AirPodsLink {
             } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
                 disconnectedAt = System.currentTimeMillis();
                 applyHeadphoneSpatialAudio(ctx, false);
+                releaseVirtualizer();
                 if (d != null && isHeadphones(d)) com.cinetv.launcher.ui.SpatialAudioOverlay.dismiss();
             }
         }
@@ -229,5 +230,37 @@ public final class AirPodsLink {
         } catch (Throwable t) {
             Log.w(TAG, "Failed setting spatial audio virtualizer: " + t);
         }
+    }
+
+    private static android.media.audiofx.Virtualizer virtualizer;
+
+    /** The panel's spatial mode, made real: a virtualizer on the TV's output mix (0 off, 1 surround, 2 wide). */
+    public static synchronized void applySpatialMode(Context ctx) {
+        int mode = Math.min(2, com.cinetv.launcher.service.Prefs.get(ctx).getInt(com.cinetv.launcher.service.Prefs.AIRPODS_SPATIAL_MODE, 1));
+        applyHeadphoneSpatialAudio(ctx, mode > 0);
+        try {
+            if (mode == 0) {
+                releaseVirtualizer();
+                return;
+            }
+            if (virtualizer == null) virtualizer = new android.media.audiofx.Virtualizer(0, 0);
+            if (virtualizer.getStrengthSupported()) virtualizer.setStrength((short) (mode == 2 ? 1000 : 600));
+            virtualizer.setEnabled(true);
+            Log.i(TAG, "virtualizer on, mode " + mode);
+        } catch (Throwable t) {
+            // some TVs do not allow effects on the output mix: the TV's own surround setting above still applies
+            Log.w(TAG, "virtualizer unavailable: " + t);
+            releaseVirtualizer();
+        }
+    }
+
+    static synchronized void releaseVirtualizer() {
+        if (virtualizer == null) return;
+        try {
+            virtualizer.setEnabled(false);
+            virtualizer.release();
+        } catch (Throwable ignored) {
+        }
+        virtualizer = null;
     }
 }

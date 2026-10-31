@@ -1,5 +1,12 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.20d · Beta 4
+
+- CineSUB: "çok fazla istek" aslında Gemini ücretsiz anahtarının günlük kotasıydı (Flash günde 20 istek). Raftaki her film için arka planda yazılan yapay zekâ özetleri bu kotayı bitiriyordu; özet artık yalnızca açılan kutu için yazılıyor, hızlı metin işleri Flash-Lite'a gidiyor. Kota dolunca ne zaman yenileneceği yazıyor; meşgul model bir sonrakine devrediliyor.
+- CineSUB sol üstte artık eski filmin adını ("Oldboy") göstermiyor; yalnızca karede tanınan filmi yazıyor.
+- Arama: "Emekli Ajan filmleri" gibi tema istekleri artık başlık araması değil; "vampirli filmler" konu odaklıları önce, vampirin geçtiği diğer filmleri sonra getiriyor; uzun tarifli istemler.
+- AirPods paneli: uzamsal ses gerçek bir sanal surround efektine bağlandı (Kapalı / Sanal Surround / Geniş Sahne); işlevsiz gürültü denetimi seçenekleri kaldırıldı.
+
 ## 1.0.0.20c · Beta 3
 
 - Oynat (kutu ya da telefon): Nuvio her seferinde temiz açılıp doğrudan filmin kaynaklarına gidiyor; ana ekranda ya da son filmde kalmıyor, film kaldığı yerden sürüyor.

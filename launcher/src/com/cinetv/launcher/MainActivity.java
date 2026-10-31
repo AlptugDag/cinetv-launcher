@@ -1829,6 +1829,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 if (needsDetails) {
                     MovieCatalog.details(app, m);
                 }
+                MovieCatalog.ensureHook(app, m);
                 Bitmap still = null;
                 if (m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
                     still = PosterCache.getFast(m.backdropUrl);

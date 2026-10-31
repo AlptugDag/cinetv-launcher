@@ -186,7 +186,14 @@ public final class MovieAssistant {
                 + "- 'chat' is for small talk (greetings, how are you, thanks, jokes): answer warmly in voice, maybe suggest one film in titles; no shelf title needed.\n"
                 + "How to choose:\n"
                 + "- A person's films ('Kitano filmleri'): intent shelf, person = exact full name, role as asked.\n"
-                + "- Moods, vibes, themes, 'like X but darker', 'daha eskisi': intent shelf, titles = up to 14 well-known films that truly match, interpreted against the current shelf and the conversation.\n"                + "- Content descriptions (a plot point, a scene, a character, an actor's role, an object, a place, a line of dialogue, a feeling: "
+                + "- Moods, vibes, themes, 'like X but darker', 'daha eskisi': intent shelf, titles = up to 20 well-known films that truly match, interpreted against the current shelf and the conversation.\n"                + "- query is ONLY for intent play. 'X filmleri' where X is a theme, a character type or a situation ('Emekli Ajan filmleri' = "
+                + "films about retired agents/assassins pulled back in: John Wick, Taken, Nobody, Red, The Equalizer...) is a theme shelf: list "
+                + "films in titles, never a title search for X.\n"
+                + "- A subject ('vampirli filmler', 'içinde satranç geçen filmler'): up to 20 titles; films built around it first, then well-known "
+                + "films where it appears in any meaningful way (a vampire episode, a side character, a key scene).\n"
+                + "- Long descriptive requests ('üç kardeşin babalarının öldüğü ve memleketlerine döndükleri filmler'): every element must hold; "
+                + "find the films whose story actually matches, best match first.\n"
+                + "- Content descriptions (a plot point, a scene, a character, an actor's role, an object, a place, a line of dialogue, a feeling: "
                 + "'adamın karısının kafasının kutuda çıktığı film', 'sonunda trenin kara düştüğü', 'kırmızı balonlu palyaço'): work out the exact film(s), "
                 + "put the best match first in titles with its year, then close matches; never answer with a generic list.\n"
                 + "- Complex searches ('Hollywood'un en iyi intikam filmleri'): keywords, genres and country, plus your own titles.\n"
@@ -196,7 +203,7 @@ public final class MovieAssistant {
                 + "- Constraints are strict: an age, a decade, a country, a language or a theme the viewer gives must hold for EVERY title you list; put a year range in from/to.\n"
                 + "- 'aç/oynat/izle X': intent play, query = X, voice = a short go-ahead.\n"
                 + "- learned: only what the viewer actually said in THIS message (their name, who they watch with, kids, a film they loved or hated); leave the rest empty.";
-        LlmClient.Result r = LlmClient.generate(ctx, system, query, 1400, true);
+        LlmClient.Result r = LlmClient.generate(ctx, system, query, 2000, true);
         if (!r.success) return null;
         JSONObject plan;
         try {
@@ -251,10 +258,13 @@ public final class MovieAssistant {
             final String role = plan.optString("role", "any");
             jobs.add(pool.submit(() -> MovieCatalog.personWork(ctx, person, role, max)));
         }
-        if (!title.isEmpty()) jobs.add(pool.submit(() -> MovieCatalog.titled(ctx, title, type, max)));
         // The AI's own picks first for themes and plots: they match the meaning, keywords only the words.
+        // "Emekli Ajan filmleri" used to become a title search for a film called "Emekli Ajan" and nothing else:
+        // a title search now only fills in when the AI named no films.
         JSONArray titles = plan.optJSONArray("titles");
-        if (titles != null && person.isEmpty() && title.isEmpty()) {
+        boolean aiPicked = titles != null && titles.length() > 0;
+        if (!title.isEmpty() && !aiPicked) jobs.add(pool.submit(() -> MovieCatalog.titled(ctx, title, type, max)));
+        if (aiPicked && person.isEmpty()) {
             for (int i = 0; i < titles.length() && i < max; i++) {
                 final JSONObject t = titles.optJSONObject(i);
                 if (t == null) continue;
@@ -271,7 +281,7 @@ public final class MovieAssistant {
         final String country = plan.optString("country", "");
         // The AI's own picks are the answer; keyword discovery only tops up a short list.
         int picked = titles == null ? 0 : titles.length();
-        if (person.isEmpty() && title.isEmpty() && picked < 6 && (!keywords.isEmpty() || !genres.isEmpty() || country.length() == 2)) {
+        if (person.isEmpty() && picked < 6 && (!keywords.isEmpty() || !genres.isEmpty() || country.length() == 2)) {
             final int from = plan.optInt("from"), to = plan.optInt("to");
             jobs.add(pool.submit(() -> MovieCatalog.discover(ctx, keywords, genres, type, country, from, to, max)));
         }
