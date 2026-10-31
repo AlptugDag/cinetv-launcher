@@ -5,6 +5,7 @@
 Bu sürüm, 1.0.0.9'dan bu yana sürüm notlarına hiç yazılmamış her şeyi de kapsar (1.0.0.10–1.0.0.19 arasındaki yenilikler en altta).
 
 ### CineParty baştan yazıldı
+- CineSUB altyazıları okuyup içlerindeki kavramları, deyimleri ve göndermeleri açıklıyor ("bu replikle Apocalypse Now'a gönderme yapıyor"); tablolarda eser adı, ressam ve yıl veriyor.
 - Sarı tuş CineSUB'u artık Nuvio/YouTube üstünde gerçekten açıyor (CineTV'nin kendi katmanları ön plandaki uygulama sanılıyordu). CineSUB isimsiz kişileri işaretlemiyor, ekrandaki yemeği adıyla ve kökeniyle anlatıyor.
 - Raflarda her filmin kendi logosu DVD sırtına basılıyor; odaktaki filmin sahnesi ana ekranda yumuşak bir ortam ışığı olarak beliriyor (zayıf GPU'larda kapalı).
 - **Tek oyun motoru, iki ekran.** TV ortak sahneyi, her telefon o oyuncunun kendi ekranını gösterir. Telefonlar değişiklikleri anında alır (uzun yoklama); her telefon odanın yalnızca kendine düşen halini görür.
