@@ -240,7 +240,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         getWindow().addOnFrameMetricsAvailableListener((window, metrics, dropped) -> {
             long total = metrics.getMetric(android.view.FrameMetrics.TOTAL_DURATION);
             if (PerformanceProfile.noteFrame(getApplicationContext(), total) && home != null) {
-                handler.post(() -> home.shelf.qualityChanged());
+                handler.post(() -> {
+                    // The effects adapt in place to what holds this TV back (no rebuild of Home).
+                    home.shelf.qualityChanged();
+                    home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this));
+                });
             }
         }, frameMetricsHandler());
         TvWebRemoteServer.setController(this);
@@ -273,9 +277,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         home.shelf.post(() -> {
             home.shelf.requestFocus();
-            // Real frame times decide whether this TV keeps its effects (auto mode only).
-            // The mode stays; its effects adapt to what holds this TV back, in place (no rebuild of Home).
-            PerformanceProfile.watchFrames(this, 6000, () -> home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this)));
         });
         handleIntent(getIntent());
 
@@ -682,6 +683,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             if (down && !com.cinetv.launcher.ui.CineSubOverlay.isShowing()) hideLiveCineSubScene();
             return true;
         }
+        if (down && home.skipSplash()) return true;
         if (partyStage != null && !home.modal.isShowing()) {
             return partyStage.dispatchKeyEvent(e);
         }

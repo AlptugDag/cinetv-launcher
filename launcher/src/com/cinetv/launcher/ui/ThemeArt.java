@@ -26,7 +26,41 @@ final class ThemeArt {
 
     private ThemeArt() {}
 
+    /** Bump when a scene's drawing changes, so TVs redraw their cached copy. */
+    private static final int ART_VERSION = 3;
+
+    /**
+     * The theme's room, drawn once and kept on disk: drawing the bookshelves or the droplets takes a
+     * weak TV most of a second, decoding the cached picture a fraction of that, so Home opens faster.
+     */
     static Bitmap render(Context ctx, String scene) {
+        java.io.File dir = new java.io.File(ctx.getCacheDir(), "themeart");
+        java.io.File f = new java.io.File(dir, scene + "_v" + ART_VERSION + "_" + com.cinetv.launcher.device.PerformanceProfile.tier(ctx) + ".png");
+        if (f.isFile()) {
+            Bitmap cached = android.graphics.BitmapFactory.decodeFile(f.getAbsolutePath());
+            if (cached != null) return cached;
+        }
+        Bitmap drawn = draw(ctx, scene);
+        if (drawn != null) {
+            final Bitmap keep = drawn;
+            new Thread(() -> {
+                try {
+                    String[] old = dir.list();
+                    if (old != null) for (String o : old) if (o.startsWith(scene + "_")) new java.io.File(dir, o).delete();
+                    if (!dir.isDirectory()) dir.mkdirs();
+                    java.io.File tmp = new java.io.File(dir, f.getName() + ".tmp");
+                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(tmp)) {
+                        keep.compress(Bitmap.CompressFormat.PNG, 100, out);
+                    }
+                    tmp.renameTo(f);
+                } catch (Throwable ignored) {
+                }
+            }, "cinetv-themeart").start();
+        }
+        return drawn;
+    }
+
+    private static Bitmap draw(Context ctx, String scene) {
         if ("closet".equals(scene)) return Closet.render(ctx);
         try {
             Bitmap b = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888);

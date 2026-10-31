@@ -93,6 +93,7 @@ public final class NetworkOptimizer {
     }
 
     public static boolean privateDnsActive(Context ctx, String host) {
+        if (android.os.Build.VERSION.SDK_INT < 28) return false; // Private DNS arrived in Android 9
         try {
             ConnectivityManager cm = (ConnectivityManager) ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
             Network n = cm.getActiveNetwork();

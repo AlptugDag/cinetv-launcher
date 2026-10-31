@@ -10,7 +10,6 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.util.Log;
-import android.view.Choreographer;
 
 import com.cinetv.launcher.service.Prefs;
 
@@ -344,53 +343,4 @@ public final class PerformanceProfile {
 
     // ---- Frame watchdog ---------------------------------------------------------------------------
 
-    /**
-     * Samples frames for {@code durationMs} while Home animates. Too many slow frames marks graphics as
-     * the bottleneck (the mode stays; its effects lighten); three smooth runs in a row clear it again.
-     */
-    public static void watchFrames(final Context ctx, final long durationMs, final Runnable onChanged) {
-        final Choreographer ch = Choreographer.getInstance();
-        ch.postFrameCallback(new Choreographer.FrameCallback() {
-            long start, last;
-            int frames, slow;
-
-            @Override
-            public void doFrame(long nanos) {
-                if (start == 0) {
-                    start = last = nanos;
-                    ch.postFrameCallback(this);
-                    return;
-                }
-                frames++;
-                if (nanos - last > 34_000_000L) slow++;
-                last = nanos;
-                if ((nanos - start) / 1_000_000L < durationMs) {
-                    ch.postFrameCallback(this);
-                    return;
-                }
-                if (frames < 30) return;
-                boolean struggling = slow * 4 > frames;
-                boolean was = limited(ctx, LIMIT_GPU);
-                int smooth = Prefs.get(ctx).getInt(KEY_SMOOTH_RUNS, 0);
-                if (struggling) {
-                    Prefs.get(ctx).edit().putInt(KEY_SMOOTH_RUNS, 0).apply();
-                    if (!was) changed();
-                } else if (was) {
-                    smooth++;
-                    Prefs.get(ctx).edit().putInt(KEY_SMOOTH_RUNS, smooth).apply();
-                    if (smooth >= 3) changed();
-                }
-                Log.i(TAG, "Frames: " + slow + "/" + frames + " slow, graphics limit " + limited(ctx, LIMIT_GPU));
-            }
-
-            private void changed() {
-                setLimit(ctx, LIMIT_GPU, !limited(ctx, LIMIT_GPU));
-                Prefs.get(ctx).edit().putInt(KEY_SMOOTH_RUNS, 0).apply();
-                synchronized (PerformanceProfile.class) {
-                    cached = null;
-                }
-                if (onChanged != null) onChanged.run();
-            }
-        });
-    }
 }

@@ -1048,6 +1048,14 @@ public class HomeScreen {
 
     /** The signature is written left to right, "CineTV" types itself in, then "by Alptuğ Dağ" rises. */
     /** The first-run tour: CineTV's best parts, each card pointing at its place on Home. */
+    /** Any key during the intro skips it. True when it was showing. */
+    public boolean skipSplash() {
+        if (splash == null || splash.getVisibility() != View.VISIBLE || splash.getAlpha() < 0.05f) return false;
+        splash.animate().cancel();
+        splash.animate().alpha(0f).setStartDelay(0).setDuration(180).withEndAction(() -> splash.setVisibility(View.GONE)).start();
+        return true;
+    }
+
     public TourView.Step[] tourSteps() {
         View phone = headerButtons[1], gear = headerButtons[headerButtons.length - 1], inputs = headerButtons[3];
         return new TourView.Step[]{
@@ -1130,25 +1138,25 @@ public class HomeScreen {
         android.animation.PropertyValuesHolder pvhA = android.animation.PropertyValuesHolder.ofKeyframe(View.ALPHA, a0, a1, a2, a3, a4, a5);
 
         android.animation.ObjectAnimator heartbeat = android.animation.ObjectAnimator.ofPropertyValuesHolder(aura, pvhX, pvhY, pvhA);
-        heartbeat.setDuration(1100);
-        heartbeat.setRepeatCount(2);
+        heartbeat.setDuration(1000);
+        heartbeat.setRepeatCount(0);
         heartbeat.setInterpolator(new android.view.animation.LinearInterpolator());
         heartbeat.start();
 
         mark.setAlpha(0f);
         mark.setScaleX(0.85f);
         mark.setScaleY(0.85f);
-        mark.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(1200)
+        mark.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(700)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
 
         word.setAlpha(0f);
         word.setScaleX(0.92f);
         word.setScaleY(0.92f);
-        word.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(200).setDuration(1400)
+        word.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(100).setDuration(800)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
 
         android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(0f, 1f);
-        a.setDuration(1600);
+        a.setDuration(900);
         a.setInterpolator(new android.view.animation.DecelerateInterpolator());
         a.addUpdateListener(v -> {
             float t = (float) v.getAnimatedValue();
@@ -1164,18 +1172,18 @@ public class HomeScreen {
 
         // Collector's specular sheen glint passing across the logo mark & letters
         android.animation.ValueAnimator sheenAnim = android.animation.ValueAnimator.ofFloat(-0.25f, 1.25f);
-        sheenAnim.setStartDelay(1050);
-        sheenAnim.setDuration(950);
+        sheenAnim.setStartDelay(700);
+        sheenAnim.setDuration(600);
         sheenAnim.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
         sheenAnim.addUpdateListener(anim -> col.setSheenProgress((float) anim.getAnimatedValue()));
         sheenAnim.start();
 
         by.setAlpha(0f);
         by.setTranslationY(UiKit.pxf(24));
-        by.animate().alpha(1f).translationY(0f).setStartDelay(1000).setDuration(700)
+        by.animate().alpha(1f).translationY(0f).setStartDelay(600).setDuration(400)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
 
-        splash.animate().alpha(0f).setStartDelay(2800).setDuration(600)
+        splash.animate().alpha(0f).setStartDelay(1500).setDuration(400)
                 .withEndAction(() -> {
                     heartbeat.cancel();
                     sheenAnim.cancel();
