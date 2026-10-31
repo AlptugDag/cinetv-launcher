@@ -146,7 +146,9 @@ public final class MovieAssistant {
                 + "- Moods, vibes, themes, 'like X but darker', 'daha eskisi': intent shelf, titles = up to 14 well-known films that truly match, interpreted against the current shelf and the conversation.\n"
                 + "- Complex searches ('Hollywood'un en iyi intikam filmleri'): keywords, genres and country, plus your own titles.\n"
                 + "- Family with children: nothing violent, sexual or traumatic, suited to their age. Couples: chemistry and tension. Friends: pace and laughs. Alone: anything goes.\n"
-                + "- Questions about films or people: intent answer, answer = 1-3 accurate sentences; voice = the gist. If unsure of a fact, say so briefly instead of inventing.\n"
+                + "- Questions about films or people: intent answer, answer = 1-3 accurate sentences; voice = the gist. If unsure of a fact, say so briefly instead of inventing. "
+                + "When the answer is or names films (\"the film where...\", \"which film...\"), also list them in titles.\n"
+                + "- Constraints are strict: an age, a decade, a country, a language or a theme the viewer gives must hold for EVERY title you list; put a year range in from/to.\n"
                 + "- 'aç/oynat/izle X': intent play, query = X, voice = a short go-ahead.\n"
                 + "- learned: only what the viewer actually said in THIS message (their name, who they watch with, kids, a film they loved or hated); leave the rest empty.";
         LlmClient.Result r = LlmClient.generate(ctx, system, query, 1400, true);
@@ -179,6 +181,14 @@ public final class MovieAssistant {
         if ("answer".equals(intent)) {
             out.kind = Kind.ANSWER;
             out.answer = plan.optString("answer", "").trim();
+            // An answer that names films ("which film was...") also puts them on the shelf.
+            JSONArray named = plan.optJSONArray("titles");
+            for (int i = 0; named != null && i < named.length() && i < 6; i++) {
+                JSONObject t = named.optJSONObject(i);
+                if (t == null || t.optString("t").isEmpty()) continue;
+                Movie m = MovieCatalog.resolveQuick(ctx, t.optString("t"), t.optInt("y"), t.optBoolean("tv"));
+                if (m != null) out.movies.add(m);
+            }
             return out.answer.isEmpty() ? null : out;
         }
         final String type = plan.optString("type", "any");
@@ -214,11 +224,22 @@ public final class MovieAssistant {
         final List<String> keywords = strings(plan.optJSONArray("keywords"));
         final List<String> genres = strings(plan.optJSONArray("genres"));
         final String country = plan.optString("country", "");
-        if (person.isEmpty() && title.isEmpty() && (!keywords.isEmpty() || !genres.isEmpty() || country.length() == 2)) {
+        // The AI's own picks are the answer; keyword discovery only tops up a short list.
+        int picked = titles == null ? 0 : titles.length();
+        if (person.isEmpty() && title.isEmpty() && picked < 6 && (!keywords.isEmpty() || !genres.isEmpty() || country.length() == 2)) {
             final int from = plan.optInt("from"), to = plan.optInt("to");
             jobs.add(pool.submit(() -> MovieCatalog.discover(ctx, keywords, genres, type, country, from, to, max)));
         }
         out.movies = collect(jobs, max);
+        // A decade or "after 2010" the viewer asked for is a rule, not a hint: enforce it here.
+        final int yFrom = plan.optInt("from"), yTo = plan.optInt("to");
+        if (yFrom > 1900 || yTo > 1900) {
+            List<Movie> kept = new ArrayList<>();
+            for (Movie m : out.movies) {
+                if (m.year <= 0 || ((yFrom <= 1900 || m.year >= yFrom) && (yTo <= 1900 || m.year <= yTo))) kept.add(m);
+            }
+            if (!kept.isEmpty()) out.movies = kept;
+        }
         if (out.title.isEmpty()) out.title = person.isEmpty() ? cleanShelfName(query) : person;
         return out.movies.isEmpty() ? null : out;
     }

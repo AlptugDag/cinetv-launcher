@@ -34,15 +34,16 @@ public final class LlmClient {
     private static final String[][] COMPATIBLE = {
             {PROVIDER_OPENAI, "https://api.openai.com/v1/chat/completions", "gpt-5-mini", "gpt-5-nano", "gpt-4o-mini"},
             {PROVIDER_GROK, "https://api.x.ai/v1/chat/completions", "grok-4-fast", "grok-4-fast", "grok-3-mini"},
-            {PROVIDER_OPENROUTER, "https://openrouter.ai/api/v1/chat/completions", "google/gemini-2.5-flash", "google/gemini-2.5-flash-lite", "openai/gpt-4o-mini"}};
+            {PROVIDER_OPENROUTER, "https://openrouter.ai/api/v1/chat/completions", "google/gemini-3.8-flash", "google/gemini-3.5-flash-lite", "openai/gpt-5-mini"}};
 
     static final String DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
     static final String FAST_CLAUDE_MODEL = "claude-haiku-5-5";
     static final String FALLBACK_CLAUDE_MODEL = "claude-haiku-5-5";
-    static final String DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
+    /** Gemini 3.8 Flash: the newest stable Flash (thinking kept low for a TV's patience). */
+    static final String DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
     /** Search and spoken answers: about a second, which a remote in hand needs. */
-    static final String FAST_GEMINI_MODEL = "gemini-flash-lite-latest";
-    static final String FALLBACK_GEMINI_MODEL = "gemini-flash-latest";
+    static final String FAST_GEMINI_MODEL = "gemini-3.8-flash";
+    static final String FALLBACK_GEMINI_MODEL = "gemini-3.5-flash-lite";
 
     private static final String TAG = "CineTvLlm";
 
@@ -118,8 +119,8 @@ public final class LlmClient {
                 : Prefs.get(ctx).getString(claude ? "ai_claude_model" : "ai_gemini_model", claude ? DEFAULT_CLAUDE_MODEL : DEFAULT_GEMINI_MODEL);
         // Busy (429/5xx), missing for this key (404) or slow: walk down a short chain of models.
         String[] chain = claude ? new String[]{first, FALLBACK_CLAUDE_MODEL}
-                : fast ? new String[]{first, "gemini-flash-lite-latest", "gemini-flash-latest", "gemini-3.1-flash-lite"}
-                : new String[]{first, "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.1-flash-lite"};
+                : fast ? new String[]{first, "gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"}
+                : new String[]{first, "gemini-flash-latest", "gemini-3.5-flash-lite", "gemini-flash-lite-latest"};
         Result r = null;
         java.util.Set<String> tried = new java.util.HashSet<>();
         for (String model : chain) {
@@ -158,8 +159,9 @@ public final class LlmClient {
                 body.put("contents", new JSONArray().put(new JSONObject().put("role", "user")
                         .put("parts", new JSONArray().put(new JSONObject().put("text", user)))));
                 JSONObject genCfg = new JSONObject().put("maxOutputTokens", maxTokens);
-                if (model.contains("2.5")) {
-                    try { genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", 0)); } catch (Throwable ignored) {}
+                // Gemini 3 Flash thinks at "medium" by default: "low" answers a TV request about twice as fast.
+                if (model.startsWith("gemini-3") && model.contains("flash") && !model.contains("lite")) {
+                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", "low"));
                 }
                 body.put("generationConfig", genCfg);
             }
@@ -259,7 +261,7 @@ public final class LlmClient {
         String[] models;
         if (compat != null) models = new String[]{compat[2], compat[4]};
         else if (PROVIDER_CLAUDE.equals(provider)) models = new String[]{FAST_CLAUDE_MODEL, DEFAULT_CLAUDE_MODEL};
-        else models = new String[]{"gemini-flash-latest", "gemini-flash-lite-latest"};
+        else models = new String[]{"gemini-3.8-flash", "gemini-flash-latest"};
         Result r = null;
         for (String model : models) {
             r = visionCall(ctx, provider, compat, model, key, system, user, b64, maxTokens);
