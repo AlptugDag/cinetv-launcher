@@ -213,6 +213,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 com.cinetv.launcher.device.AmbilightSync.updateColor(MainActivity.this, accent);
                 final Movie m = home.shelf.focusedMovie();
                 if (m != null) prefetchMovie(m);
+                home.setAmbience(m == null ? null : m.backdropUrl);
             }
 
             @Override
@@ -326,8 +327,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         handleIntent(intent);
     }
 
+    /** True only while Home itself is on screen (CineTV's overlays over other apps don't count). */
+    public static volatile boolean foreground;
+
     @Override
     protected void onResume() {
+        foreground = true;
         super.onResume();
         overridePendingTransition(0, 0);
         TvWebRemoteServer.setController(this);
@@ -545,6 +550,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     protected void onPause() {
+        foreground = false;
         inFront = false;
         if (home == null) {
             super.onPause();

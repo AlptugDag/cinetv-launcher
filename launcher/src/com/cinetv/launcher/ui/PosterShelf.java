@@ -46,6 +46,12 @@ public class PosterShelf extends FrameLayout {
 
     private static final ExecutorService baker = Executors.newFixedThreadPool(Math.max(3, Runtime.getRuntime().availableProcessors()));
     private static final int VISIBLE_RANGE = 14;
+    /** Spine logos come after the shelf, one at a time, at low priority. */
+    private static final java.util.concurrent.ExecutorService logos = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "cinetv-spine-logos");
+        t.setPriority(Thread.MIN_PRIORITY);
+        return t;
+    });
     private static final float SIDE_ANGLE = 62f;
     private static final float PROFILE_ANGLE = -16f;
     /** The focused case comes far forward, as if taken off the shelf. */
@@ -220,6 +226,23 @@ public class PosterShelf extends FrameLayout {
                     v.setCase(dvd);
                     if (slot == index && hasFocus() && listener != null) listener.onFocusCase(v, dvd.accent);
                 });
+                // Then, without holding the shelf up: the film's own title logo on the spine.
+                if (asCases && m.tmdbId > 0) {
+                    logos.execute(() -> {
+                        if (gen != generation) return;
+                        if (m.logoUrl == null || m.logoUrl.isEmpty()) {
+                            String url = MovieCatalog.logoFor(getContext(), m.tmdbId, m.type);
+                            m.logoUrl = url == null ? "-" : url;
+                        }
+                        if ("-".equals(m.logoUrl)) return;
+                        Bitmap logo = PosterCache.load(getContext(), m.logoUrl, 400, 160);
+                        if (logo == null || gen != generation) return;
+                        final DvdCase withLogo = DvdCase.bake(getContext(), poster, logo, m.coverTitle(), m.year, accent, caseW, Math.round(caseW / DvdCase.ASPECT), glowPad, true);
+                        main.post(() -> {
+                            if (gen == generation) v.setCase(withLogo);
+                        });
+                    });
+                }
             });
         }
         post(this::layoutCases);

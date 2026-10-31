@@ -59,10 +59,15 @@ public final class DvdCase {
 
     /** With {@code asCase} false only a borderless poster is baked (the plain poster shelf). */
     public static DvdCase bake(Context ctx, Bitmap poster, String title, int year, int accent, int w, int h, int glowPad, boolean asCase) {
+        return bake(ctx, poster, null, title, year, accent, w, h, glowPad, asCase);
+    }
+
+    /** With the film's own title logo, printed down the spine like a studio release. */
+    public static DvdCase bake(Context ctx, Bitmap poster, Bitmap logo, String title, int year, int accent, int w, int h, int glowPad, boolean asCase) {
         if (!asCase) {
             return new DvdCase(bakePoster(poster, w, h), null, accent, glowPad > 0 ? Glow.bloom(w, h, glowPad, w * 0.085f, accent) : null, false);
         }
-        return new DvdCase(bakeCover(poster, w, h), bakeSpine(ctx, title, year, accent, Math.max(6, Math.round(w * DEPTH)), h), accent,
+        return new DvdCase(bakeCover(poster, w, h), bakeSpine(ctx, title, logo, year, accent, Math.max(6, Math.round(w * DEPTH)), h), accent,
                 glowPad > 0 ? bakeHalo(accent) : null, true);
     }
 
@@ -190,7 +195,7 @@ public final class DvdCase {
         return out;
     }
 
-    static Bitmap bakeSpine(Context ctx, String title, int year, int accent, int w, int h) {
+    static Bitmap bakeSpine(Context ctx, String title, Bitmap logo, int year, int accent, int w, int h) {
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         float[] hsv = new float[3];
@@ -225,13 +230,27 @@ public final class DvdCase {
         tp.setTextSize(w * 0.46f);
         tp.setLetterSpacing(0.06f);
         float available = h * 0.68f;
-        String text = TextUtils.ellipsize(title == null ? "" : title.toUpperCase(), tp, available, TextUtils.TruncateAt.END).toString();
-        c.save();
-        c.translate(w / 2f, h * 0.06f);
-        c.rotate(90);
-        Paint.FontMetrics fm = tp.getFontMetrics();
-        c.drawText(text, 0, -(fm.ascent + fm.descent) / 2f, tp);
-        c.restore();
+        if (logo != null && logo.getWidth() > 0 && logo.getHeight() > 0) {
+            // The film's own title treatment, run down the spine in white foil (any colour reads on any spine).
+            float thick = w * 0.72f, len = available;
+            float sc = Math.min(len / logo.getWidth(), thick / logo.getHeight());
+            float lw = logo.getWidth() * sc, lh = logo.getHeight() * sc;
+            Paint lp = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+            lp.setColorFilter(new android.graphics.PorterDuffColorFilter(Color.argb(240, 255, 255, 255), android.graphics.PorterDuff.Mode.SRC_IN));
+            c.save();
+            c.translate(w / 2f, h * 0.06f);
+            c.rotate(90);
+            c.drawBitmap(logo, null, new RectF(0, -lh / 2f, lw, lh / 2f), lp);
+            c.restore();
+        } else {
+            String text = TextUtils.ellipsize(title == null ? "" : title.toUpperCase(), tp, available, TextUtils.TruncateAt.END).toString();
+            c.save();
+            c.translate(w / 2f, h * 0.06f);
+            c.rotate(90);
+            Paint.FontMetrics fm = tp.getFontMetrics();
+            c.drawText(text, 0, -(fm.ascent + fm.descent) / 2f, tp);
+            c.restore();
+        }
 
         // Bottom: a small studio-style badge.
         tp.setTextSize(w * 0.26f);

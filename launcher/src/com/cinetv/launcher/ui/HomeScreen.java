@@ -63,6 +63,8 @@ public class HomeScreen {
     /** Names the focused header icon; for the gear it also says how to reach the TV's own settings. */
     private TextView buttonHint;
     public final SpatialEnvironment environment;
+    public final ImageView ambience;
+    private String ambienceUrl;
     public final GlideScrollView scroll;
     public final PosterShelf shelf;
     public final CinemaCurtainsView cinemaCurtains;
@@ -120,6 +122,12 @@ public class HomeScreen {
 
         environment = new SpatialEnvironment(ctx);
         root.addView(environment, match());
+        // visionOS-style ambience: the focused film's scene, tiny and stretched (a free blur), very dim.
+        ambience = new ImageView(ctx);
+        ambience.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        ambience.setAlpha(0f);
+        ambience.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        root.addView(ambience, match());
 
         scroll = new GlideScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
@@ -1532,5 +1540,31 @@ public class HomeScreen {
 
     private static FrameLayout.LayoutParams match() {
         return new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+    }
+
+    /** Fades the home ambience to this film's scene (null clears it). Skipped where the GPU is the limit. */
+    public void setAmbience(String backdropUrl) {
+        Context ctx = root.getContext();
+        if (backdropUrl == null || backdropUrl.isEmpty() || com.cinetv.launcher.device.PerformanceProfile.gpuLimited(ctx)) {
+            ambienceUrl = null;
+            ambience.animate().alpha(0f).setDuration(300).start();
+            return;
+        }
+        if (backdropUrl.equals(ambienceUrl)) return;
+        ambienceUrl = backdropUrl;
+        final String want = backdropUrl;
+        new Thread(() -> {
+            android.graphics.Bitmap b = com.cinetv.launcher.service.PosterCache.load(ctx, want, 96, 54);
+            if (b == null) return;
+            root.post(() -> {
+                if (!want.equals(ambienceUrl)) return;
+                ambience.animate().cancel();
+                ambience.animate().alpha(0f).setDuration(140).withEndAction(() -> {
+                    if (!want.equals(ambienceUrl)) return;
+                    ambience.setImageBitmap(b);
+                    ambience.animate().alpha(0.22f).setDuration(520).start();
+                }).start();
+            });
+        }, "cinetv-ambience").start();
     }
 }

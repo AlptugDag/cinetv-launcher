@@ -126,6 +126,8 @@ public final class SceneInspector {
                 + "\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":false}]} with box in 0-1000 screen coordinates (empty for subtitle mentions)."
                 : "List up to 5 things in this frame worth knowing about: identifiable places and landmarks, artworks, notable objects, vehicles, clothing, "
                 + "food and drink, characters, and any name, place, event, book or song mentioned in the visible subtitles. "
+                + "Food comes first when it is on screen: name the dish itself (e.g. 'Ratatouille', 'Spaghetti alla puttanesca') and say where it comes from or why it matters. "
+                + "Never return an unnamed person ('a man', 'male character'): a person needs a character or actor name, otherwise leave them out. "
                 + "JSON: {\"film\":\"the film or series if you recognise it, else empty\",\"items\":[{\"kind\":\"person|place|object|food|art|text|event\",\"label\":\"2-4 words\",\"title\":\"what or who it is\","
                 + "\"fact\":\"one or two sentences, under 220 characters\",\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":true if it came from the subtitles}]} "
                 + "with box in 0-1000 screen coordinates, tight around the thing.";
@@ -147,6 +149,7 @@ public final class SceneInspector {
                 p.title = o.optString("title", p.label);
                 p.fact = o.optString("fact").trim();
                 p.fromSubtitle = o.optBoolean("subtitle");
+                if (generic(p)) continue;
                 JSONArray b = o.optJSONArray("box");
                 if (b != null && b.length() == 4 && !p.fromSubtitle) {
                     float y0 = clamp(b.optDouble(0)), x0 = clamp(b.optDouble(1)), y1 = clamp(b.optDouble(2)), x1 = clamp(b.optDouble(3));
@@ -183,5 +186,18 @@ public final class SceneInspector {
 
     private static float clamp(double v) {
         return (float) Math.max(0, Math.min(1, v / 1000.0));
+    }
+
+    /** An anonymous person or a vague label teaches nothing ("Erkek Karakter", "A man standing"). */
+    static boolean generic(Poi p) {
+        String t = (p.title == null ? "" : p.title).toLowerCase(Locale.ROOT).trim();
+        if (t.isEmpty()) return true;
+        String[] vague = {"karakter", "character", "erkek", "kadın", "kadin", "adam", "kız", "çocuk", "man", "woman", "person", "kişi", "biri", "someone", "unknown", "bilinmeyen"};
+        if ("person".equals(p.kind) || t.split("\\s+").length <= 2) {
+            for (String v : vague) {
+                if (t.equals(v) || t.startsWith(v + " ") || t.endsWith(" " + v)) return "person".equals(p.kind) || t.split("\\s+").length == 1;
+            }
+        }
+        return false;
     }
 }

@@ -530,11 +530,12 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
 
         // The yellow key opens CineSUB over any player. Subtitles and Info stay with the player: they have jobs there.
-        if (code == KeyEvent.KEYCODE_PROG_YELLOW && !(lastPackage != null && lastPackage.equals(getPackageName()))) {
+        // (Asked of the activity, not lastPackage: CineTV's own overlays over Nuvio report CineTV's package.)
+        if (code == KeyEvent.KEYCODE_PROG_YELLOW && !MainActivity.foreground) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
                 com.cinetv.launcher.ui.CineSubOverlay.trigger(this);
-                return true;
             }
+            return true;
         }
 
         int source = event.getSource();
