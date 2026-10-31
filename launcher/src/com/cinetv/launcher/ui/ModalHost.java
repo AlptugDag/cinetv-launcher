@@ -91,14 +91,27 @@ public class ModalHost extends FrameLayout {
         else showTop();
     }
 
+    public void closeImmediate() {
+        animate().cancel();
+        alarmOn = false;
+        stack.clear();
+        anchor = null;
+        setVisibility(GONE);
+        removeAllViews();
+        if (onClosed != null) onClosed.run();
+    }
+
     public void close() {
+        animate().cancel();
         alarmOn = false;
         stack.clear();
         anchor = null;
         animate().alpha(0f).setDuration(PerformanceProfile.animationMs(getContext(), 160)).withEndAction(() -> {
-            setVisibility(GONE);
-            removeAllViews();
-            if (onClosed != null) onClosed.run();
+            if (stack.isEmpty()) {
+                setVisibility(GONE);
+                removeAllViews();
+                if (onClosed != null) onClosed.run();
+            }
         }).start();
     }
 
@@ -110,6 +123,9 @@ public class ModalHost extends FrameLayout {
     private String lastFocusedTag;
 
     private void showTop() {
+        animate().cancel();
+        setAlpha(1f);
+        setVisibility(VISIBLE);
         View currentFocused = findFocus();
         if (currentFocused != null && currentFocused.getTag() != null) {
             lastFocusedTag = currentFocused.getTag().toString();
@@ -129,8 +145,11 @@ public class ModalHost extends FrameLayout {
             clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
         card.addView(content, clp);
-        card.setClipChildren(false);
-        card.setClipToPadding(false);
+        card.setClipChildren(true);
+        card.setClipToPadding(true);
+        if (android.os.Build.VERSION.SDK_INT >= 21) {
+            card.setClipToOutline(true);
+        }
         LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                 near != null ? Gravity.TOP | Gravity.START : Gravity.CENTER);
         addView(card, lp);

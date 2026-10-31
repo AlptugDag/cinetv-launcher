@@ -74,6 +74,13 @@ public final class Brand {
         return s;
     }
 
+    /** "CineDuel" with an electric crimson/cyan "Duel". */
+    public static CharSequence cineduelWordmark() {
+        android.text.SpannableString s = new android.text.SpannableString("CineDuel");
+        s.setSpan(new android.text.style.ForegroundColorSpan(0xFFEF4444), 4, 8, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return s;
+    }
+
     /** "CineQuiz" with a purple "Quiz". */
     public static CharSequence cinequizWordmark() {
         android.text.SpannableString s = new android.text.SpannableString("CineQuiz");

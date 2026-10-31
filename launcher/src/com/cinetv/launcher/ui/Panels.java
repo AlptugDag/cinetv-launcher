@@ -115,8 +115,8 @@ public final class Panels {
 
         LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setClipChildren(false);
-        root.setClipToPadding(false);
+        root.setClipChildren(true);
+        root.setClipToPadding(true);
         root.setLayoutParams(new LinearLayout.LayoutParams(settingsW, settingsH));
 
         LinearLayout head = new LinearLayout(ctx);
@@ -140,14 +140,14 @@ public final class Panels {
 
         final LinearLayout cols = new LinearLayout(ctx);
         cols.setOrientation(LinearLayout.VERTICAL);
-        cols.setClipChildren(false);
-        cols.setClipToPadding(false);
+        cols.setClipChildren(true);
+        cols.setClipToPadding(true);
         cols.setPadding(UiKit.px(16), UiKit.px(12), UiKit.px(16), UiKit.px(16));
 
         final ScrollView scroll = new ScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
-        scroll.setClipChildren(false);
-        scroll.setClipToPadding(false);
+        scroll.setClipChildren(true);
+        scroll.setClipToPadding(true);
         scroll.setFillViewport(true);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.addView(cols, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -488,9 +488,9 @@ public final class Panels {
                 v -> host.push(() -> buildLetterboxdModal(ctx, host))));
 
         cAi.addView(Controls.tile(ctx,
-                tr ? "CineParty & Sinefil Parti Oyunları" : "CineParty & Games",
-                tr ? "10 Soruluk Bilmece Quiz'i ve Film Ruleti" : "10-Question Trivia Quiz & Movie Roulette",
-                false, v -> host.push(() -> buildPartyQuizModal(ctx, host))));
+                tr ? "CineSUB Apple Vision Öğreticisi" : "CineSUB Apple Vision Tutorial",
+                tr ? "Tam ekran uzamsal kültürel altyazı ve sahne keşif rehberi" : "Fullscreen spatial cultural subtitle & scene discovery guide",
+                false, v -> host.push(() -> buildCineSubTutorialModal(ctx, host))));
 
         LinearLayout cNet = column(ctx, cols, tr ? "Ağ & Ortam" : "Network & Environment", colWidth);
         String city = Prefs.city(ctx);
@@ -506,16 +506,21 @@ public final class Panels {
         LinearLayout cTv = column(ctx, cols, R.string.col_tv, colWidth);
         cTv.setTag("sec_system");
         com.cinetv.launcher.device.AcousticsCalibrator.AudioOutputInfo outInfo = com.cinetv.launcher.device.AcousticsCalibrator.detectAudioOutput(ctx);
+        boolean isCalibrated = com.cinetv.launcher.device.AcousticsCalibrator.isCalibrated(ctx);
         cTv.addView(Controls.tile(ctx,
-                tr ? "Oda Akustiği & Hoparlör Testi" : "Room Acoustics & Speaker Sweep",
-                tr ? (outInfo.name + " (" + outInfo.type + ") · 40 Hz - 14 kHz akustik sweep")
-                   : (outInfo.name + " (" + outInfo.type + ") · 40 Hz - 14 kHz acoustic sweep"),
-                outInfo.isExternal, v -> {
-                    Toast.makeText(ctx, tr ? (outInfo.name + " üzerinden akustik test sinyali çalınıyor...") : "Playing acoustic test sweep...", Toast.LENGTH_SHORT).show();
-                    com.cinetv.launcher.device.AcousticsCalibrator.playSweep(ctx, () -> {
-                        Toast.makeText(ctx, tr ? "Akustik testi tamamlandı." : "Acoustics sweep finished.", Toast.LENGTH_SHORT).show();
-                    });
-                }));
+                tr ? "Oda Akustiği & Ses Kalibrasyonu" : "Room Acoustics & Sound Calibration",
+                isCalibrated ? (tr ? "Kalibre Edildi · " + outInfo.name : "Calibrated · " + outInfo.name)
+                             : (tr ? outInfo.name + " · Kalibre etmek veya test etmek için dokunun" : outInfo.name + " · Tap to test & calibrate"),
+                isCalibrated || outInfo.isExternal,
+                v -> host.push(() -> buildAcousticsCalibrationModal(ctx, host))));
+
+        boolean hpConnected = com.cinetv.launcher.device.AirPodsLink.isHeadphoneConnected(ctx);
+        cTv.addView(Controls.tile(ctx,
+                tr ? "AirPods & Kulaklık Zenginleştirme" : "AirPods & Headphone Spatial Audio",
+                hpConnected ? (tr ? "Kulaklık Bağlı · Uzamsal Ses ve Netlik" : "Connected · Spatial Audio & Clarity")
+                            : (tr ? "Uzamsal ses, gürültü engelleme ve netlik ayarları" : "Spatial audio, ANC profiles & clarity"),
+                hpConnected, v -> host.push(() -> buildAirPodsSettingsModal(ctx, host))));
+
         cTv.addView(Controls.tile(ctx, tr ? "Kurulum Sihirbazı & Bileşen Kontrolü" : "Setup Wizard & Component Health",
                 tr ? "Eksik bileşenleri kontrol et ve kur" : "Check and setup components", false,
                 v -> wizard(ctx, host)));
@@ -527,12 +532,9 @@ public final class Panels {
         boolean a11y = com.cinetv.launcher.TvKeyInterceptorService.getInstance() != null;
         cTv.addView(Controls.tile(ctx,
                 tr ? "Kumanda Tuş Entegrasyonu" : "Remote Key Integration",
-                a11y ? (tr ? "Yerel tuşlar & global servis devrede" : "Native keys & global service active")
-                     : (tr ? "Yerel kumanda tuşları aktif · Erişilebilirlik zorunlu değil" : "Native keys active · Accessibility optional"),
-                true, v -> {
-                    com.cinetv.launcher.HomeGuard.ensureDefault(ctx);
-                    com.cinetv.launcher.HomeGuard.openAccessibilitySettings(ctx);
-                }));
+                a11y ? (tr ? "Yerel tuşlar & global servis devrede · Özelleştirmek için dokunun" : "Native keys & global service active · Tap to customize")
+                     : (tr ? "Yerel kumanda tuşları aktif · Tuşları özelleştirmek için dokunun" : "Native keys active · Tap to customize"),
+                true, v -> host.push(() -> buildKeyCapture(ctx, host, a))));
         cTv.addView(Controls.tile(ctx, ctx.getString(R.string.tv_settings), ctx.getString(R.string.tv_settings_hint), false,
                 v -> AppLauncher.openSystemSettings(ctx)));
         if (AppLauncher.liveTvPackage(ctx.getPackageManager()) != null || AppLauncher.hasHdmiSource(ctx)) {
@@ -1938,7 +1940,12 @@ public final class Panels {
                 {tr ? "Kırmızı Tuş" : "Red Button", KeyEvent.KEYCODE_PROG_RED, 183},
                 {tr ? "Yeşil Tuş" : "Green Button", KeyEvent.KEYCODE_PROG_GREEN, 184},
                 {tr ? "Sarı Tuş" : "Yellow Button", KeyEvent.KEYCODE_PROG_YELLOW, 185},
-                {tr ? "Mavi Tuş" : "Blue Button", KeyEvent.KEYCODE_PROG_BLUE, 186}
+                {tr ? "Mavi Tuş" : "Blue Button", KeyEvent.KEYCODE_PROG_BLUE, 186},
+                {"Netflix", KeyEvent.KEYCODE_BUTTON_1, 188},
+                {"Prime Video", KeyEvent.KEYCODE_BUTTON_3, 192},
+                {"YouTube", KeyEvent.KEYCODE_BUTTON_2, 190},
+                {"Disney+ / App", KeyEvent.KEYCODE_BUTTON_4, 191},
+                {tr ? "Rehber / TV" : "Guide / TV", KeyEvent.KEYCODE_GUIDE, 172}
         };
 
         for (int i = 0; i < presets.length; i++) {
@@ -3017,7 +3024,7 @@ public final class Panels {
         final LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
-        root.setBackground(Glass.panel(root, 28));
+        root.setBackgroundColor(0xFF000000); // Pure pitch black arena for maximum tension & revolver realism
 
         LinearLayout head = new LinearLayout(ctx);
         head.setGravity(Gravity.CENTER_VERTICAL);
@@ -3031,9 +3038,9 @@ public final class Panels {
         stageRow.setGravity(Gravity.CENTER_VERTICAL);
         stageRow.setPadding(0, UiKit.px(16), 0, UiKit.px(16));
 
-        // Left Column: Custom luxury spinning wheel
+        // Left Column: Custom luxury photorealistic gunmetal cylinder
         final com.cinetv.launcher.party.RouletteWheelView wheel = new com.cinetv.launcher.party.RouletteWheelView(ctx);
-        int wheelSize = UiKit.px(340);
+        int wheelSize = UiKit.px(380);
         LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(wheelSize, wheelSize);
         wlp.rightMargin = UiKit.px(36);
         stageRow.addView(wheel, wlp);
@@ -3076,6 +3083,14 @@ public final class Panels {
 
         final TextView winnerUserTv = UiKit.label(ctx, 14, Color.parseColor("#38BDF8"));
         winnerCard.addView(winnerUserTv);
+
+        final TextView launchFilmBtn = Controls.button(ctx, tr ? "▶ Filmi TV'de Başlat" : "▶ Launch Movie on TV", v -> {
+            String win = winnerTv.getText().toString();
+            if (!win.isEmpty() && ctx instanceof com.cinetv.launcher.MainActivity) {
+                ((com.cinetv.launcher.MainActivity) ctx).launchFilmByTitle(win);
+            }
+        });
+        winnerCard.addView(launchFilmBtn);
 
         infoCol.addView(winnerCard);
 
@@ -3499,11 +3514,11 @@ public final class Panels {
         // Exactly 4 Party Games (CineSUB is NOT a game!)
         final Object[][] games = {
                 {AppCatalog.PKG_SNAKE,
-                 Brand.snakephileWordmark(),
-                 tr ? "3D Gerçekçi Yılan & Film Afişi Avı. Film afişlerini yedikçe uzayan 3D yılan; yiyemediğin film TV'de açılır!"
-                    : "3D realistic snake hunting movie posters. The last uncaught film launches on TV!",
+                 Brand.cineduelWordmark(),
+                 tr ? "Sinema Nişancısı & Gyro Hedef Arenası. Telefonunuzu jiroskopla hareket ettirip TV ekranındaki replik, sahne, aktör ve trivia hedeflerine nişan alın ve vurun!"
+                    : "Cinema shooter & gyro target arena. Aim your phone and shoot floating lines, scenes, actors and trivia!",
                  (Runnable) () -> { if (launcher != null) launcher.launchSnake(); },
-                 (Runnable) () -> host.push(() -> buildSnakePhileHowToPlayModal(ctx, host))},
+                 (Runnable) () -> host.push(() -> buildCineDuelHowToPlayModal(ctx, host))},
 
                 {AppCatalog.PKG_QUIZ,
                  Brand.cinequizWordmark(),
@@ -3936,9 +3951,6 @@ public final class Panels {
 
         final com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(ctx);
         if (!party.isSessizActive()) {
-            party.registerPlayer("p1", "Alptuğ");
-            party.registerPlayer("p2", "Elif");
-            party.registerPlayer("p3", "Can");
             party.startSessiz();
         }
 
@@ -4120,6 +4132,324 @@ public final class Panels {
 
         root.addView(btns);
         root.post(nextBtn::requestFocus);
+        return root;
+    }
+
+    public static View buildUpdateModal(final Context ctx, final ModalHost host, final com.cinetv.launcher.service.AppUpdater.ReleaseInfo info) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(26), UiKit.px(36), UiKit.px(26));
+        root.setBackground(Glass.panel(root, 24));
+        root.setFocusable(true);
+
+        TextView title = UiKit.bold(ctx, 26, UiKit.INK);
+        title.setText(tr ? ("CineTV Güncellemesi Hazır (" + info.tagName + ")") : ("CineTV Update Ready (" + info.tagName + ")"));
+        root.addView(title);
+
+        TextView notes = UiKit.label(ctx, 16, UiKit.INK_DIM);
+        notes.setPadding(0, UiKit.px(10), 0, UiKit.px(22));
+        notes.setLineSpacing(UiKit.pxf(5), 1.15f);
+        notes.setMaxWidth(UiKit.px(740));
+        String text = info.releaseNotes != null && !info.releaseNotes.isEmpty() ? info.releaseNotes : (tr ? "Performans iyileştirmeleri ve hata düzeltmeleri." : "Performance improvements and bug fixes.");
+        if (text.length() > 320) text = text.substring(0, 318) + "...";
+        notes.setText(text);
+        root.addView(notes);
+
+        LinearLayout btns = new LinearLayout(ctx);
+        btns.setOrientation(LinearLayout.HORIZONTAL);
+
+        TextView updateBtn = Controls.button(ctx, tr ? "Şimdi Güncelle" : "Update Now", v -> {
+            host.closeImmediate();
+            if (ctx instanceof android.app.Activity) {
+                com.cinetv.launcher.service.AppUpdater.downloadAndInstall((android.app.Activity) ctx, info);
+            }
+        });
+        btns.addView(updateBtn);
+
+        View sp = new View(ctx);
+        btns.addView(sp, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+
+        TextView closeBtn = Controls.button(ctx, tr ? "Daha Sonra / Kapat" : "Later / Close", v -> host.back());
+        btns.addView(closeBtn);
+
+        root.addView(btns);
+        root.post(updateBtn::requestFocus);
+        return root;
+    }
+
+    public static View buildUpToDateModal(final Context ctx, final ModalHost host, final String currentVersion) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(26), UiKit.px(36), UiKit.px(26));
+        root.setBackground(Glass.panel(root, 24));
+        root.setFocusable(true);
+
+        TextView title = UiKit.bold(ctx, 26, UiKit.INK);
+        title.setText(tr ? "CineTV En Güncel Sürümde" : "CineTV is Up to Date");
+        root.addView(title);
+
+        TextView desc = UiKit.label(ctx, 16, UiKit.INK_DIM);
+        desc.setPadding(0, UiKit.px(10), 0, UiKit.px(22));
+        desc.setText(tr
+                ? ("Televizyonunuzda en son CineTV sürümü (v" + currentVersion + ") kurulu. Tüm özellikler günceldir.")
+                : ("Your TV is running the latest CineTV version (v" + currentVersion + "). Everything is up to date."));
+        root.addView(desc);
+
+        TextView okBtn = Controls.button(ctx, tr ? "Tamam" : "OK", v -> host.back());
+        root.addView(okBtn);
+        root.post(okBtn::requestFocus);
+        return root;
+    }
+
+    public static View buildAcousticsCalibrationModal(final Context ctx, final ModalHost host) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        final LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
+        root.setBackground(Glass.panel(root, 26));
+        root.setFocusable(true);
+
+        TextView badge = UiKit.bold(ctx, 13, Color.parseColor("#38BDF8"));
+        badge.setText(tr ? "ODA AKUSTİĞİ & KALİBRASYON" : "ROOM ACOUSTICS & CALIBRATION");
+        root.addView(badge);
+
+        TextView title = UiKit.bold(ctx, 26, UiKit.INK);
+        title.setText(tr ? "Oda Akustiğini Ayarla" : "Tune Living Room Acoustics");
+        title.setPadding(0, UiKit.px(6), 0, UiKit.px(12));
+        root.addView(title);
+
+        final com.cinetv.launcher.device.AcousticsCalibrator.AudioOutputInfo outInfo =
+                com.cinetv.launcher.device.AcousticsCalibrator.detectAudioOutput(ctx);
+        boolean isCal = com.cinetv.launcher.device.AcousticsCalibrator.isCalibrated(ctx);
+
+        TextView statusTv = UiKit.bold(ctx, 15, isCal ? Color.parseColor("#10B981") : UiKit.INK_DIM);
+        statusTv.setText((tr ? "Ses Çıkışı: " : "Audio Output: ") + outInfo.name + " (" + outInfo.type + ")\n"
+                + (isCal ? (tr ? "✓ Telefon ile kalibre edildi (Özel EQ aktif)" : "✓ Calibrated via phone mic (Active EQ)")
+                         : (tr ? "Varsayılan Akustik Profil Devrede" : "Default Acoustics Profile Active")));
+        statusTv.setPadding(0, 0, 0, UiKit.px(16));
+        root.addView(statusTv);
+
+        TextView desc = UiKit.label(ctx, 15, UiKit.INK_DIM);
+        desc.setLineSpacing(UiKit.pxf(4), 1.15f);
+        desc.setMaxWidth(UiKit.px(740));
+        desc.setText(tr
+                ? "Telefonunuzun mikrofonu ile TV'den çalınacak 4 saniyelik akustik test sesini dinleyerek salonunuzun yankı ve frekans profilini otomatik olarak hesaplayabilirsiniz.\n\n"
+                + "1. Telefonunuzdan CineTV uzaktan kumandasını açın.\n"
+                + "2. Ayar çarkına dokunup 'Oda Akustiğini Kalibre Et' butonuna basın.\n"
+                + "3. TV'den gelen test sesini dinleyin; kalibrasyon saniyeler içinde tamamlanır."
+                : "Tune living room reverb and frequency response automatically using your phone's microphone.\n\n"
+                + "1. Open CineTV web remote on your phone.\n"
+                + "2. Tap the gear icon and select 'Calibrate Room Acoustics'.\n"
+                + "3. Listen to the 4-second sweep tone from the TV.");
+        desc.setPadding(0, 0, 0, UiKit.px(20));
+        root.addView(desc);
+
+        LinearLayout btns = new LinearLayout(ctx);
+        btns.setOrientation(LinearLayout.HORIZONTAL);
+
+        TextView sweepBtn = Controls.button(ctx, tr ? "▶ Akustik Sweep Testi Çal" : "▶ Play Test Sweep", v -> {
+            Toast.makeText(ctx, tr ? "Akustik test sinyali çalınıyor..." : "Playing acoustic sweep...", Toast.LENGTH_SHORT).show();
+            com.cinetv.launcher.device.AcousticsCalibrator.playSweep(ctx, () -> {
+                Toast.makeText(ctx, tr ? "Akustik test tamamlandı." : "Sweep finished.", Toast.LENGTH_SHORT).show();
+            });
+        });
+        btns.addView(sweepBtn);
+
+        View sp1 = new View(ctx);
+        btns.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+
+        TextView resetBtn = Controls.button(ctx, tr ? "Varsayılana Sıfırla" : "Reset to Default", v -> {
+            com.cinetv.launcher.device.AcousticsCalibrator.resetCalibration(ctx);
+            Toast.makeText(ctx, tr ? "Akustik kalibrasyon sıfırlandı." : "Calibration reset to defaults.", Toast.LENGTH_SHORT).show();
+            host.back();
+        });
+        btns.addView(resetBtn);
+
+        View sp2 = new View(ctx);
+        btns.addView(sp2, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+
+        TextView closeBtn = Controls.button(ctx, tr ? "Kapat" : "Close", v -> host.back());
+        btns.addView(closeBtn);
+
+        root.addView(btns);
+        root.post(sweepBtn::requestFocus);
+        return root;
+    }
+
+    public static View buildAirPodsSettingsModal(final Context ctx, final ModalHost host) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        final LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
+        root.setBackground(Glass.panel(root, 26));
+        root.setFocusable(true);
+
+        TextView badge = UiKit.bold(ctx, 13, Color.parseColor("#A855F7"));
+        badge.setText(tr ? "KULAKLIK & UZAMSAL SES ZENGİNLEŞTİRME" : "HEADPHONE & SPATIAL AUDIO ENHANCEMENT");
+        root.addView(badge);
+
+        TextView title = UiKit.bold(ctx, 26, UiKit.INK);
+        title.setText(tr ? "AirPods & Kulaklık Ayarları" : "AirPods & Headphone Settings");
+        title.setPadding(0, UiKit.px(6), 0, UiKit.px(14));
+        root.addView(title);
+
+        boolean connected = com.cinetv.launcher.device.AirPodsLink.isHeadphoneConnected(ctx);
+        TextView status = UiKit.bold(ctx, 15, connected ? Color.parseColor("#10B981") : UiKit.INK_DIM);
+        status.setText(connected ? (tr ? "✓ Kulaklık TV'ye Bağlı · Aktif Ses Çıkışı" : "✓ Headphones Connected · Active Audio Output")
+                                 : (tr ? "Kulaklık Bağlı Değil (Kutuyu TV'nin yanında açarak bağlanabilirsiniz)" : "Headphones Disconnected"));
+        status.setPadding(0, 0, 0, UiKit.px(16));
+        root.addView(status);
+
+        final LinearLayout list = new LinearLayout(ctx);
+        list.setOrientation(LinearLayout.VERTICAL);
+
+        boolean autoConn = com.cinetv.launcher.service.Prefs.get(ctx).getBoolean(com.cinetv.launcher.service.Prefs.AIRPODS_AUTO_CONNECT, true);
+        list.addView(Controls.toggleTile(ctx,
+                tr ? "Kapak Açılınca Otomatik Bağlan" : "Auto-Connect on Lid Open",
+                autoConn ? (tr ? "Açık · Kulaklık kutusu açıldığında ses doğrudan kulaklığa geçer" : "On · Audio shifts automatically")
+                         : (tr ? "Kapalı · Yalnızca menüden bağlanır" : "Off"),
+                autoConn, (active, sub, sw) -> {
+                    com.cinetv.launcher.service.Prefs.get(ctx).edit().putBoolean(com.cinetv.launcher.service.Prefs.AIRPODS_AUTO_CONNECT, active).apply();
+                }));
+
+        boolean curSpatial = com.cinetv.launcher.service.Prefs.get(ctx).getBoolean("airpods_spatial_binaural", true);
+        list.addView(Controls.toggleTile(ctx,
+                tr ? "Sinematik Uzamsal Ses (3D Binaural)" : "Cinematic Spatial Audio (3D Binaural)",
+                curSpatial ? (tr ? "Açık · Çok kanallı 5.1/7.1 film sesleri kulaklıkta 3D sahnelenir" : "On · Multichannel 5.1/7.1 spatialized in 3D")
+                           : (tr ? "Kapalı · Düz stereo çıkış" : "Off · Flat stereo"),
+                curSpatial, (active, sub, sw) -> {
+                    com.cinetv.launcher.service.Prefs.get(ctx).edit().putBoolean("airpods_spatial_binaural", active).apply();
+                    com.cinetv.launcher.device.AirPodsLink.applyHeadphoneSpatialAudio(ctx, active);
+                    Toast.makeText(ctx, active ? (tr ? "Uzamsal Ses Açıldı" : "Spatial Audio Enabled")
+                                               : (tr ? "Uzamsal Ses Kapatıldı" : "Spatial Audio Disabled"), Toast.LENGTH_SHORT).show();
+                }));
+
+        boolean curVocal = com.cinetv.launcher.service.Prefs.get(ctx).getBoolean("headphone_dialog_clarity", true);
+        list.addView(Controls.toggleTile(ctx,
+                tr ? "Diyalog Netleştirme & Vokal Güçlendirme" : "Dialog Clarity & Vocal Intelligibility",
+                curVocal ? (tr ? "Açık · Fısıltılar ve film konuşmaları öne çıkarılır" : "On · Whispers and dialogue boosted")
+                         : (tr ? "Kapalı" : "Off"),
+                curVocal, (active, sub, sw) -> {
+                    com.cinetv.launcher.service.Prefs.get(ctx).edit().putBoolean("headphone_dialog_clarity", active).apply();
+                    Toast.makeText(ctx, active ? (tr ? "Diyalog Netleştirme Açık" : "Dialog Clarity On")
+                                               : (tr ? "Diyalog Netleştirme Kapalı" : "Dialog Clarity Off"), Toast.LENGTH_SHORT).show();
+                }));
+
+        root.addView(list);
+
+        LinearLayout btns = new LinearLayout(ctx);
+        btns.setOrientation(LinearLayout.HORIZONTAL);
+        btns.setPadding(0, UiKit.px(16), 0, 0);
+
+        TextView reconnectBtn = Controls.button(ctx, tr ? "Yeniden Bağlan" : "Reconnect", v -> {
+            com.cinetv.launcher.device.AirPodsLink.clearDisconnectCooldown();
+            com.cinetv.launcher.device.AirPodsLink.ensureStarted(ctx);
+            Toast.makeText(ctx, tr ? "Kulaklık aranıyor ve bağlanılıyor..." : "Connecting headphones...", Toast.LENGTH_SHORT).show();
+            host.back();
+        });
+        btns.addView(reconnectBtn);
+
+        View sp = new View(ctx);
+        btns.addView(sp, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+
+        TextView closeBtn = Controls.button(ctx, tr ? "Tamam" : "Done", v -> host.back());
+        btns.addView(closeBtn);
+
+        root.addView(btns);
+        root.post(closeBtn::requestFocus);
+        return root;
+    }
+
+    public static View buildCineSubTutorialModal(final Context ctx, final ModalHost host) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        final LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
+        root.setBackground(Glass.panel(root, 26));
+        root.setFocusable(true);
+
+        TextView badge = UiKit.bold(ctx, 13, Color.parseColor("#F59E0B"));
+        badge.setText(tr ? "APPLE VISION UZAMSAL ALTYAZI SİSTEMİ" : "APPLE VISION SPATIAL SUBTITLE SYSTEM");
+        root.addView(badge);
+
+        TextView title = UiKit.bold(ctx, 26, UiKit.INK);
+        title.setText(Brand.cinesubWordmark());
+        title.setPadding(0, UiKit.px(6), 0, UiKit.px(14));
+        root.addView(title);
+
+        TextView desc = UiKit.label(ctx, 15.5f, UiKit.INK_DIM);
+        desc.setLineSpacing(UiKit.pxf(5), 1.15f);
+        desc.setMaxWidth(UiKit.px(760));
+        desc.setText(tr
+                ? "CineSUB, video oynatılırken sahnedeki kültürel ögeleri, gizli detayları, tarihi göndermeleri ve oyuncu bilgilerini Apple visionOS anlayışıyla tüm ekrana yayılan uzamsal bir katmanda inceler.\n\n"
+                + "• Kumandanızın CineSub / Mavi / Kırmızı tuşuna veya mobil kumandadaki CineSUB butonuna basarak tetikleyebilirsiniz.\n"
+                + "• Ekrandaki ögeye nişan alan optik tarama retikülü ve lazer kılavuz hattı ile doğrudan sahneyle etkileşime geçer.\n"
+                + "• 26sp başlık ve 19sp gövde metni ile salondaki herkes tarafından rahatça okunur; 22 saniye boyunca ekranda kalır.\n"
+                + "• Video sesini bastırmamak için sesli okuma (TTS) KULLANMAZ, tamamen sessiz bir kültürel keşif vizörüdür.\n"
+                + "• İstediğiniz an [GERİ] veya [OK] tuşuna basarak anında kapatabilirsiniz."
+                : "CineSUB is an Apple visionOS-inspired spatial cultural subtitle engine exploring scene details and cinematic lore.\n\n"
+                + "• Trigger anytime using the CineSub/Color remote key or the CineSUB button on mobile remote.\n"
+                + "• Connects to screen elements via optical reticles and laser filament lines.\n"
+                + "• High-contrast 26sp/19sp typography, 22-second reading timer, and zero TTS to avoid drowning film audio.\n"
+                + "• Dismiss instantly with [BACK] or [OK].");
+        desc.setPadding(0, 0, 0, UiKit.px(20));
+        root.addView(desc);
+
+        LinearLayout btns = new LinearLayout(ctx);
+        btns.setOrientation(LinearLayout.HORIZONTAL);
+
+        TextView testBtn = Controls.button(ctx, tr ? "CineSUB'ı Ekranda Dene" : "Test CineSUB", v -> {
+            host.closeImmediate();
+            com.cinetv.launcher.ui.CineSubOverlay.trigger(ctx);
+        });
+        btns.addView(testBtn);
+
+        View sp = new View(ctx);
+        btns.addView(sp, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+
+        TextView closeBtn = Controls.button(ctx, tr ? "Tamam" : "Done", v -> host.back());
+        btns.addView(closeBtn);
+
+        root.addView(btns);
+        root.post(testBtn::requestFocus);
+        return root;
+    }
+
+    public static View buildCineDuelHowToPlayModal(final Context ctx, final ModalHost host) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        final LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
+        root.setBackground(Glass.panel(root, 26));
+        root.setFocusable(true);
+
+        TextView badge = UiKit.bold(ctx, 13, Color.parseColor("#EF4444"));
+        badge.setText(tr ? "SİNEMA NİŞANCISI & GYRO ARENASI" : "CINEMA SHOOTER & GYRO ARENA");
+        root.addView(badge);
+
+        TextView title = UiKit.bold(ctx, 26, UiKit.INK);
+        title.setText(Brand.cineduelWordmark());
+        title.setPadding(0, UiKit.px(6), 0, UiKit.px(14));
+        root.addView(title);
+
+        TextView desc = UiKit.label(ctx, 15.5f, UiKit.INK_DIM);
+        desc.setLineSpacing(UiKit.pxf(5), 1.15f);
+        desc.setMaxWidth(UiKit.px(760));
+        desc.setText(tr
+                ? "SineDüello, telefonunuzu bir joystick gibi kullanarak TV ekranındaki hareketli sinema hedeflerini vurduğunuz yüksek rekabetli bir arena oyunudur!\n\n"
+                + "• Ekrandaki replik, sahne, yönetmen, aktör ve trivia soruları 4 adet süzülen hedefle salona gelir.\n"
+                + "• Telefonunuzun 3D jiroskop sensörüyle (veya TV kumandası D-pad ile) hedefi nişan alıp [ATEŞ] tuşuna basın!\n"
+                + "• Gamze AI da kendi nişangâhıyla aynı anda yarışır; doğru hedefi ilk vuran +100 puan kazanır!\n"
+                + "• Düellonun sonunda şampiyon olan oyuncunun seçtiği başyapıt TV'de otomatik olarak açılır!"
+                : "CineDuel turns your phone into a gyro motion crosshair controller aiming at floating cinema trivia targets on the TV!");
+        desc.setPadding(0, 0, 0, UiKit.px(20));
+        root.addView(desc);
+
+        TextView closeBtn = Controls.button(ctx, tr ? "Anladım, Oyuna Dön" : "Back to Game", v -> host.back());
+        root.addView(closeBtn);
+        root.post(closeBtn::requestFocus);
         return root;
     }
 }

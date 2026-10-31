@@ -160,12 +160,7 @@ public final class AppUpdater {
                 long lastInstalledAssetSize = prefs.getLong("last_installed_asset_size", 0L);
 
                 boolean versionNewer = isNewer(cleanRemote, current);
-                // Force update even if version is identical if release asset was re-published / size changed!
-                boolean assetFresh = !assetUpdatedAt.isEmpty() && !assetUpdatedAt.equals(lastInstalledAssetAt);
-                if (assetSize > 0 && lastInstalledAssetSize > 0 && assetSize != lastInstalledAssetSize) {
-                    assetFresh = true;
-                }
-                boolean updateAvailable = (versionNewer || assetFresh) && downloadUrl != null;
+                boolean updateAvailable = versionNewer && downloadUrl != null;
 
                 isChecking = false;
                 if (updateAvailable) {
@@ -254,6 +249,10 @@ public final class AppUpdater {
 
     /** Shows leanback styled dialog offering update. */
     public static void showUpdateDialog(final Activity activity, final ReleaseInfo info) {
+        if (activity instanceof com.cinetv.launcher.MainActivity) {
+            ((com.cinetv.launcher.MainActivity) activity).showUpdateAvailableModal(info);
+            return;
+        }
         new AlertDialog.Builder(activity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle("CineTV Güncellemesi Hazır (" + info.tagName + ")")
                 .setMessage("Yeni sürüm indirilebilir:\n" +

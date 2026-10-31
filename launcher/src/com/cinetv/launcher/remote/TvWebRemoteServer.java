@@ -952,11 +952,49 @@ public final class TvWebRemoteServer {
                 com.cinetv.launcher.party.CinePartyManager.get(app).requestGeminiSessizCards(3, null);
                 return ok;
             }
-            case "/api/game/snake/launch": {
+            case "/api/game/snake/launch":
+            case "/api/game/duel/launch": {
                 post(() -> {
                     com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                    if (ma != null) ma.showLiveSnakePhileScene();
+                    if (ma != null) ma.showLiveCineDuelScene();
                 });
+                return ok;
+            }
+            case "/api/game/duel/aim": {
+                final float x = parseFloat(q.get("x")), y = parseFloat(q.get("y"));
+                post(() -> {
+                    com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                    if (ma != null && ma.getLiveCineDuelView() != null) {
+                        ma.getLiveCineDuelView().setPlayerReticle(x, y);
+                    }
+                });
+                return ok;
+            }
+            case "/api/game/duel/shoot": {
+                post(() -> {
+                    com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                    if (ma != null && ma.getLiveCineDuelView() != null) {
+                        ma.getLiveCineDuelView().shootPlayer();
+                    }
+                });
+                return ok;
+            }
+            case "/api/acoustics/sweep": {
+                com.cinetv.launcher.device.AcousticsCalibrator.playSweep(app, null);
+                return ok;
+            }
+            case "/api/acoustics/calibrate": {
+                try {
+                    org.json.JSONObject prof = new org.json.JSONObject();
+                    for (Map.Entry<String, String> entry : q.entrySet()) {
+                        prof.put(entry.getKey(), entry.getValue());
+                    }
+                    com.cinetv.launcher.device.AcousticsCalibrator.applyCalibrationProfile(app, prof);
+                } catch (Throwable ignored) {}
+                return ok;
+            }
+            case "/api/acoustics/reset": {
+                com.cinetv.launcher.device.AcousticsCalibrator.resetCalibration(app);
                 return ok;
             }
             case "/api/game/cinesub/launch": {

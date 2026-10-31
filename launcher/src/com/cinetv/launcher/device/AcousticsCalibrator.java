@@ -124,4 +124,46 @@ public final class AcousticsCalibrator {
             }
         } catch (Throwable ignored) {}
     }
+
+    public static boolean isCalibrated(Context ctx) {
+        if (ctx == null) return false;
+        return com.cinetv.launcher.service.Prefs.get(ctx).getBoolean("acoustics_calibrated", false);
+    }
+
+    public static void applyCalibrationProfile(Context ctx, org.json.JSONObject profile) {
+        if (ctx == null) return;
+        try {
+            android.content.SharedPreferences.Editor edit = com.cinetv.launcher.service.Prefs.get(ctx).edit();
+            edit.putBoolean("acoustics_calibrated", true);
+            if (profile != null) {
+                edit.putString("acoustics_profile_json", profile.toString());
+            }
+            edit.apply();
+
+            // Apply system sound adjustments for MediaTek / Android TV
+            android.content.ContentResolver cr = ctx.getContentResolver();
+            android.provider.Settings.Global.putInt(cr, "sound_room_acoustics_tuned", 1);
+            android.provider.Settings.Global.putInt(cr, "sound_speech_enhancement", 1);
+            android.provider.Settings.Global.putInt(cr, "sound_bass_control", 1);
+            Log.i(TAG, "Room acoustics calibration applied successfully.");
+        } catch (Throwable t) {
+            Log.w(TAG, "applyCalibrationProfile failed: " + t.getMessage());
+        }
+    }
+
+    public static void resetCalibration(Context ctx) {
+        if (ctx == null) return;
+        try {
+            com.cinetv.launcher.service.Prefs.get(ctx).edit()
+                    .putBoolean("acoustics_calibrated", false)
+                    .remove("acoustics_profile_json")
+                    .apply();
+
+            android.content.ContentResolver cr = ctx.getContentResolver();
+            android.provider.Settings.Global.putInt(cr, "sound_room_acoustics_tuned", 0);
+            Log.i(TAG, "Room acoustics calibration reset to defaults.");
+        } catch (Throwable t) {
+            Log.w(TAG, "resetCalibration failed: " + t.getMessage());
+        }
+    }
 }

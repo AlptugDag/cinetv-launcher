@@ -145,10 +145,6 @@ public final class AppCatalog {
             AppTileItem item = found.remove(pkg);
             if (item != null) snap.dock.add(item);
         }
-        // Ensure party folder is in dock even if an existing viewer has a saved dock order from older releases
-        if (found.containsKey(PKG_PARTY_FOLDER)) {
-            snap.dock.add(0, found.remove(PKG_PARTY_FOLDER));
-        }
         snap.grid.addAll(found.values());
         final List<String> gridOrder = Arrays.asList(prefs.getString(Prefs.APP_ORDER, "").split(","));
         Collections.sort(snap.grid, (a, b) -> {

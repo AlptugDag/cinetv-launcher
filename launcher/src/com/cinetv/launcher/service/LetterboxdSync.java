@@ -30,6 +30,7 @@ public final class LetterboxdSync {
     private static final String TAG = "CineTvLetterboxd";
     private static final String PREF_LETTERBOXD_USER = "letterboxd_username";
     private static final String PREF_LETTERBOXD_HISTORY = "letterboxd_history_json";
+    private static final String PREF_LETTERBOXD_AUTO_RECORD = "letterboxd_auto_record";
     private static final String CSV_HEADER = "Date,Name,Year,LetterboxdURI,Rating,Rewatch,Tags,WatchedDate";
 
     private LetterboxdSync() {}
@@ -45,6 +46,18 @@ public final class LetterboxdSync {
     public static boolean isConfigured(Context ctx) {
         String u = getUsername(ctx);
         return u != null && !u.isEmpty();
+    }
+
+    public static boolean isAutoRecord(Context ctx) {
+        return Prefs.get(ctx).getBoolean(PREF_LETTERBOXD_AUTO_RECORD, false);
+    }
+
+    public static void setAutoRecord(Context ctx, boolean auto) {
+        Prefs.get(ctx).edit().putBoolean(PREF_LETTERBOXD_AUTO_RECORD, auto).apply();
+    }
+
+    public static boolean shouldPromptBeforeWatch(Context ctx) {
+        return isConfigured(ctx) && !isAutoRecord(ctx);
     }
 
     /**

@@ -150,6 +150,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     protected void onCreate(Bundle savedInstanceState) {
         instance = this;
         super.onCreate(savedInstanceState);
+        // Suppress OEM MediaTek/Arçelik TV tuner window immediately on boot before its window can display
+        background(() -> com.cinetv.launcher.remote.LocalAdb.shell(this, "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.mediatek.tv.oneworld.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null; am force-stop com.google.android.tv.dtvprovider 2>/dev/null", 500));
         getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.BLACK));
         overridePendingTransition(0, 0);
         UiKit.init(this);
@@ -244,9 +246,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             @Override
             public void onMovieLaunchRequested(String movieTitle) {
                 handler.post(() -> {
-                    if (home != null && home.modal != null && home.modal.isShowing()) home.modal.close();
+                    if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
+                    hideLiveCineDuelScene();
                     hideLiveSnakePhileScene();
-                    onSearch(movieTitle);
+                    launchFilmByTitle(movieTitle);
                 });
             }
         });
@@ -363,6 +366,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         lastShelfHour = curHour;
         lastShelfDay = curDay;
         // Suppress unwanted OEM TV tuner attempting to steal focus
+        background(() -> {
+            if (DeviceTweaks.isUnwantedTuner()) {
+                LocalAdb.shell(this, "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.mediatek.tv.oneworld.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null", 500);
+            }
+        });
         handler.postDelayed(() -> {
             TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
             String currentPkg = svc != null ? svc.getLastPackage() : null;
@@ -375,7 +383,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 } catch (Throwable ignored) {
                 }
             }
-        }, 300);
+        }, 150);
         checkNuvioUpdatePrompt();
         checkPendingUpdateBanner();
         checkNightViewingPrompt();
@@ -682,6 +690,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (liveCineSubView != null) {
             if (down) hideLiveCineSubScene();
             return true;
+        }
+        if (liveCineDuelView != null) {
+            if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+                if (down) hideLiveCineDuelScene();
+                return true;
+            }
+            return liveCineDuelView.dispatchKeyEvent(e);
         }
         if (liveSnakePhileView != null) {
             if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
@@ -1276,8 +1291,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             showPartyGamesFolderModal();
             return true;
         }
-        if (AppCatalog.PKG_SNAKE.equals(pkg)) {
-            showLiveSnakePhileScene();
+        if (AppCatalog.PKG_SNAKE.equals(pkg) || "com.cinetv.party.duel".equals(pkg)) {
+            showLiveCineDuelScene();
             return true;
         }
         if (AppCatalog.PKG_QUIZ.equals(pkg)) {
@@ -1300,25 +1315,25 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.modal.push(() -> Panels.buildPartyGamesFolderModal(this, home.modal, new Panels.PartyLauncher() {
             @Override
             public void launchSnake() {
-                home.modal.close();
-                showLiveSnakePhileScene();
+                home.modal.closeImmediate();
+                showLiveCineDuelScene();
             }
 
             @Override
             public void launchQuiz() {
-                home.modal.close();
+                home.modal.closeImmediate();
                 showPartyQuizModal();
             }
 
             @Override
             public void launchRoulette() {
-                home.modal.close();
+                home.modal.closeImmediate();
                 showMovieRouletteModal();
             }
 
             @Override
             public void launchSessiz() {
-                home.modal.close();
+                home.modal.closeImmediate();
                 showCineSessizModal();
             }
         }));
@@ -1326,7 +1341,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     public void showPartyHowToPlay(String pkg) {
         if (home == null || home.modal == null) return;
-        if (AppCatalog.PKG_SNAKE.equals(pkg)) {
+        if (AppCatalog.PKG_SNAKE.equals(pkg) || "com.cinetv.party.duel".equals(pkg)) {
             home.modal.push(() -> Panels.buildSnakePhileHowToPlayModal(this, home.modal));
         } else if (AppCatalog.PKG_QUIZ.equals(pkg)) {
             home.modal.push(() -> Panels.buildCineQuizHowToPlayModal(this, home.modal));
@@ -1355,7 +1370,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         showMovieRouletteModal();
     }
 
-    private void launchFilm(Movie m) {
+    public void launchFilm(final Movie m) {
+        if (m == null) return;
+        if (com.cinetv.launcher.service.LetterboxdSync.shouldPromptBeforeWatch(this)) {
+            promptLetterboxdWatch(m);
+        } else {
+            doLaunchFilm(m);
+        }
+    }
+
+    public void doLaunchFilm(final Movie m) {
         if (m == null) return;
         boolean ok = AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl);
         if (!ok) {
@@ -1363,6 +1387,101 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         } else {
             com.cinetv.launcher.service.LetterboxdSync.recordWatch(this, m);
         }
+    }
+
+    public void promptLetterboxdWatch(final Movie m) {
+        if (home == null || home.modal == null) {
+            doLaunchFilm(m);
+            return;
+        }
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        final String user = com.cinetv.launcher.service.LetterboxdSync.getUsername(this);
+        home.modal.push(() -> {
+            LinearLayout root = new LinearLayout(this);
+            root.setOrientation(LinearLayout.VERTICAL);
+            root.setPadding(UiKit.px(36), UiKit.px(26), UiKit.px(36), UiKit.px(26));
+            root.setBackground(Glass.panel(root, 24));
+            root.setFocusable(true);
+
+            TextView title = UiKit.bold(this, 26, UiKit.INK);
+            title.setText(tr ? "Letterboxd Sinema Günlüğü" : "Letterboxd Cinema Diary");
+            root.addView(title);
+
+            TextView desc = UiKit.label(this, 16, UiKit.INK_DIM);
+            desc.setPadding(0, UiKit.px(10), 0, UiKit.px(22));
+            desc.setLineSpacing(UiKit.pxf(5), 1.15f);
+            desc.setMaxWidth(UiKit.px(720));
+            desc.setText(tr
+                    ? ("'" + m.title + "' filmini izliyorsunuz. Bu izleme @" + user + " Letterboxd hesabınıza eklensin mi?")
+                    : ("You are watching '" + m.title + "'. Would you like to log this watch to @" + user + "?"));
+            root.addView(desc);
+
+            LinearLayout btns = new LinearLayout(this);
+            btns.setOrientation(LinearLayout.HORIZONTAL);
+
+            TextView btnYes = Controls.button(this, tr ? "Evet, Bu Sefer Ekle" : "Yes, Log Watch", v -> {
+                home.modal.closeImmediate();
+                doLaunchFilm(m);
+            });
+            btns.addView(btnYes);
+
+            View sp1 = new View(this);
+            btns.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+
+            TextView btnAlways = Controls.button(this, tr ? "Her Zaman Otomatik Ekle" : "Always Auto-Log", v -> {
+                com.cinetv.launcher.service.LetterboxdSync.setAutoRecord(this, true);
+                home.modal.closeImmediate();
+                doLaunchFilm(m);
+            });
+            btns.addView(btnAlways);
+
+            View sp2 = new View(this);
+            btns.addView(sp2, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+
+            TextView btnNo = Controls.button(this, tr ? "Bu Sefer Ekleme / Hayır" : "Don't Log / Launch", v -> {
+                home.modal.closeImmediate();
+                boolean ok = AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl);
+                if (!ok) showNuvioNotFoundDialog(m);
+            });
+            btns.addView(btnNo);
+
+            root.addView(btns);
+            root.post(btnYes::requestFocus);
+            return root;
+        });
+    }
+
+    public void showUpdateAvailableModal(final com.cinetv.launcher.service.AppUpdater.ReleaseInfo info) {
+        if (home == null || home.modal == null || info == null) return;
+        home.modal.push(() -> Panels.buildUpdateModal(this, home.modal, info));
+    }
+
+    public void launchFilmByTitle(String title) {
+        if (title == null || title.trim().isEmpty()) return;
+        final String clean = title.trim();
+        background(() -> {
+            Movie match = null;
+            try {
+                List<Movie> all = MovieCatalog.category(this, MovieCatalog.CATEGORIES[0], 100);
+                for (Movie m : all) {
+                    if (clean.equalsIgnoreCase(m.title) || (m.originalTitle != null && clean.equalsIgnoreCase(m.originalTitle))) {
+                        match = m;
+                        break;
+                    }
+                }
+            } catch (Throwable ignored) {}
+            final Movie finalMatch = match;
+            ui(() -> {
+                if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
+                hideLiveCineDuelScene();
+                hideLiveSnakePhileScene();
+                if (finalMatch != null) {
+                    launchFilm(finalMatch);
+                } else {
+                    onSearch(clean);
+                }
+            });
+        });
     }
 
     public void showNuvioNotFoundDialog(final Movie m) {
@@ -1614,17 +1733,22 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     home.modal.close();
                     handlePartyAppLaunch(item.packageName);
                 })));
+                if (index >= 0) {
+                    row.addView(spaced(Controls.button(this, getString(R.string.move), v -> {
+                        home.modal.close();
+                        home.moveHint.setVisibility(View.VISIBLE);
+                        home.apps.startMove(item, inDock, index);
+                    })));
+                }
                 row.addView(spaced(Controls.button(this, tr ? "ℹ Nasıl Oynanır?" : "ℹ Rules", v -> {
                     home.modal.close();
                     showPartyHowToPlay(item.packageName);
                 })));
-                if (!AppCatalog.PKG_PARTY_FOLDER.equals(item.packageName)) {
-                    row.addView(spaced(Controls.button(this, getString(R.string.hide), v -> {
-                        home.modal.close();
-                        AppCatalog.hide(this, item.packageName);
-                        loadApps(true);
-                    })));
-                }
+                row.addView(spaced(Controls.button(this, getString(R.string.hide), v -> {
+                    home.modal.close();
+                    AppCatalog.hide(this, item.packageName);
+                    loadApps(true);
+                })));
                 return row;
             };
             if (tile != null) home.modal.pushAnchored(bar, tile);
@@ -2140,72 +2264,85 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     public void showLiveSineRouletteScene() {
+        hideLiveCineDuelScene();
         hideLiveSnakePhileScene();
         hideLiveCineSubScene();
-        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.close();
+        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
         showMovieRouletteModal();
     }
 
     public void showLiveSineQuizScene() {
+        hideLiveCineDuelScene();
         hideLiveSnakePhileScene();
         hideLiveCineSubScene();
-        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.close();
+        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
         com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(this);
-        party.registerPlayer("p1", "Alptuğ");
-        party.registerPlayer("p2", "Elif");
-        party.registerPlayer("p3", "Can");
         party.startQuiz();
         showPartyQuizModal();
     }
 
     public void showCineSessizModal() {
+        hideLiveCineDuelScene();
         hideLiveSnakePhileScene();
         hideLiveCineSubScene();
-        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.close();
+        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
         com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(this);
-        party.registerPlayer("p1", "Alptuğ");
-        party.registerPlayer("p2", "Elif");
-        party.registerPlayer("p3", "Can");
         party.startSessiz();
         if (home != null && home.modal != null) {
             home.modal.push(() -> Panels.buildCineSessizModal(this, home.modal));
         }
     }
 
+    private com.cinetv.launcher.party.CineDuelView liveCineDuelView;
+
+    public com.cinetv.launcher.party.CineDuelView getLiveCineDuelView() {
+        return liveCineDuelView;
+    }
+
+    public void showLiveCineDuelScene() {
+        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
+        hideLiveCineSubScene();
+        hideLiveSnakePhileScene();
+        if (liveCineDuelView != null) {
+            home.root.removeView(liveCineDuelView);
+            liveCineDuelView = null;
+        }
+
+        com.cinetv.launcher.party.CineDuelView duelView = new com.cinetv.launcher.party.CineDuelView(this);
+        duelView.setOnCineDuelListener(new com.cinetv.launcher.party.CineDuelView.OnCineDuelListener() {
+            @Override
+            public void onMovieChosen(String movieTitle) {
+                hideLiveCineDuelScene();
+                launchFilmByTitle(movieTitle);
+            }
+
+            @Override
+            public void onGameExit() {
+                hideLiveCineDuelScene();
+            }
+        });
+        liveCineDuelView = duelView;
+        home.root.addView(liveCineDuelView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        liveCineDuelView.requestFocus();
+        liveCineDuelView.startNewGame();
+    }
+
+    public void hideLiveCineDuelScene() {
+        if (liveCineDuelView != null) {
+            home.root.removeView(liveCineDuelView);
+            liveCineDuelView = null;
+        }
+    }
+
     private com.cinetv.launcher.party.SnakePhileView liveSnakePhileView;
 
     public void showLiveSnakePhileScene() {
-        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.close();
-        hideLiveCineSubScene();
-        if (liveSnakePhileView != null) {
-            home.root.removeView(liveSnakePhileView);
-            liveSnakePhileView = null;
-        }
-
-        com.cinetv.launcher.party.SnakePhileView snakeView = new com.cinetv.launcher.party.SnakePhileView(this);
-        snakeView.setOnSnakePhileListener(new com.cinetv.launcher.party.SnakePhileView.OnSnakePhileListener() {
-            @Override
-            public void onMovieLaunch(String cleanMovieTitle) {
-                hideLiveSnakePhileScene();
-                onSearch(cleanMovieTitle);
-            }
-
-            @Override
-            public void onExit() {
-                hideLiveSnakePhileScene();
-            }
-        });
-        liveSnakePhileView = snakeView;
-        home.root.addView(liveSnakePhileView, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        liveSnakePhileView.requestFocus();
+        showLiveCineDuelScene();
     }
 
     public void hideLiveSnakePhileScene() {
-        if (liveSnakePhileView != null) {
-            home.root.removeView(liveSnakePhileView);
-            liveSnakePhileView = null;
-        }
+        hideLiveCineDuelScene();
     }
 
     private void showScreensaverInternal() {

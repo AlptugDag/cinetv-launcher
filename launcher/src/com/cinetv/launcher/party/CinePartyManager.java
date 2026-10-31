@@ -300,8 +300,22 @@ public final class CinePartyManager {
         initDefaultRouletteSuggestions();
     }
 
+    private final List<Listener> listeners = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public void addListener(Listener l) {
+        if (l != null && !listeners.contains(l)) {
+            listeners.add(l);
+        }
+    }
+
+    public void removeListener(Listener l) {
+        if (l != null) {
+            listeners.remove(l);
+        }
+    }
+
     public void setListener(Listener l) {
-        this.listener = l;
+        addListener(l);
     }
 
     public void registerPlayer(String id, String name) {
@@ -466,8 +480,14 @@ public final class CinePartyManager {
 
     public void launchChampionMovie(String movieTitle) {
         if (movieTitle == null || movieTitle.trim().isEmpty()) return;
-        if (listener != null) {
-            listener.onMovieLaunchRequested(cleanMovieName(movieTitle));
+        requestMovieLaunch(movieTitle);
+    }
+
+    public void requestMovieLaunch(String movieTitle) {
+        if (movieTitle == null || movieTitle.trim().isEmpty()) return;
+        String clean = cleanMovieName(movieTitle);
+        for (Listener l : listeners) {
+            try { l.onMovieLaunchRequested(clean); } catch (Throwable ignored) {}
         }
     }
 
@@ -548,7 +568,9 @@ public final class CinePartyManager {
                 result.put("movie", rouletteWinnerMovie);
                 result.put("user", winObj.optString("user"));
                 if (rouletteTimerRunnable != null) main.removeCallbacks(rouletteTimerRunnable);
-                if (listener != null) listener.onRouletteFinished(rouletteWinnerMovie, winObj.optString("user"));
+                for (Listener l : listeners) {
+                    try { l.onRouletteFinished(rouletteWinnerMovie, winObj.optString("user")); } catch (Throwable ignored) {}
+                }
                 com.cinetv.launcher.ai.EmaLightningTts.speakGame(context, "Güm! Kurşun patladı! Bu akşam izleyeceğimiz başyapıt: " + rouletteWinnerMovie + "!");
             } else {
                 // CLICK! Empty blank! Tension escalates! Advance to next chamber
@@ -617,6 +639,9 @@ public final class CinePartyManager {
         int winIdx = (int) (Math.random() * rouletteSuggestions.size());
         JSONObject winner = rouletteSuggestions.get(winIdx);
         rouletteWinnerMovie = winner.optString("title");
+        for (Listener l : listeners) {
+            try { l.onRouletteFinished(rouletteWinnerMovie, winner.optString("user")); } catch (Throwable ignored) {}
+        }
         notifyState();
         return winner;
     }
@@ -1027,8 +1052,12 @@ public final class CinePartyManager {
 
     private void notifyState() {
         JSONObject state = getState();
-        if (listener != null) {
-            main.post(() -> listener.onGameStateChanged(state));
+        if (!listeners.isEmpty()) {
+            main.post(() -> {
+                for (Listener l : listeners) {
+                    try { l.onGameStateChanged(state); } catch (Throwable ignored) {}
+                }
+            });
         }
     }
 
