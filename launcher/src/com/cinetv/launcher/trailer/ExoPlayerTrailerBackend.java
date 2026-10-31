@@ -68,7 +68,22 @@ public final class ExoPlayerTrailerBackend implements TrailerBackend {
     private final Player.Listener playerListener = new Player.Listener() {
         @Override
         public void onRenderedFirstFrame() {
-            // Instant seamless crossfade: reveal native video only once the first valid frame is rendered
+            // Most trailers open on black (a fade, a rating card): the still stays until the picture has light in it.
+            final long since = System.currentTimeMillis();
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (!(currentMovie != null && posterView.getVisibility() == View.VISIBLE)) return;
+                    if (!hasLight() && System.currentTimeMillis() - since < 4000) {
+                        mainHandler.postDelayed(this, 150);
+                        return;
+                    }
+                    reveal();
+                }
+            });
+        }
+
+        private void reveal() {
             mainHandler.post(() -> {
                 isPlaying = true;
                 posterView.animate()
@@ -116,7 +131,7 @@ public final class ExoPlayerTrailerBackend implements TrailerBackend {
         if (pv == null) {
             pv = new PlayerView(context);
             pv.setUseController(false);
-            pv.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_ZOOM);
+            pv.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
         }
         pv.setShutterBackgroundColor(Color.TRANSPARENT);
         pv.setKeepContentOnPlayerReset(true);
@@ -178,7 +193,11 @@ public final class ExoPlayerTrailerBackend implements TrailerBackend {
         this.fallbackCallback = onFallback;
         this.loopCount = 0;
         this.isPlaying = false;
-        cancelInFlight();
+        // Keep the focus-time prefetch running: it is this very trailer's opening seconds.
+        if (inFlightResolve != null) {
+            inFlightResolve.cancel(true);
+            inFlightResolve = null;
+        }
 
         // Update container layout params to fill parent slot (TrailerPlayer already has screen offsets)
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
@@ -265,6 +284,25 @@ public final class ExoPlayerTrailerBackend implements TrailerBackend {
         } catch (Throwable t) {
             Log.w(TAG, "Failed to start media source: " + t.getMessage(), t);
             handleError();
+        }
+    }
+
+    /** A 32x18 sample of the video: true once it is no longer (nearly) black. */
+    private boolean hasLight() {
+        try {
+            View v = playerView.getVideoSurfaceView();
+            if (!(v instanceof android.view.TextureView)) return true;
+            Bitmap b = ((android.view.TextureView) v).getBitmap(32, 18);
+            if (b == null) return true;
+            long sum = 0;
+            for (int y = 0; y < 18; y += 2) for (int x = 0; x < 32; x += 2) {
+                int c = b.getPixel(x, y);
+                sum += ((c >> 16) & 0xFF) + ((c >> 8) & 0xFF) + (c & 0xFF);
+            }
+            b.recycle();
+            return sum / (16 * 9 * 3) > 22;
+        } catch (Throwable t) {
+            return true;
         }
     }
 

@@ -401,6 +401,38 @@ public final class Panels {
         sysAudioTile.setTag("opt_sys_audio");
         cVisual.addView(sysAudioTile);
 
+        boolean gameAudio = com.cinetv.launcher.device.SystemAudio.isGameEnabled(ctx);
+        LinearLayout gameAudioTile = Controls.toggleTile(ctx, tr ? "Oyun Sesleri" : "Game Sounds",
+                gameAudio ? (tr ? "Açık · TV ve telefonlarda" : "On · TV and phones") : ctx.getString(R.string.state_off),
+                gameAudio, (newActive, subLabel, sw) -> {
+            com.cinetv.launcher.device.SystemAudio.setGameEnabled(ctx, newActive);
+            subLabel.setText(newActive ? (tr ? "Açık · TV ve telefonlarda" : "On · TV and phones") : ctx.getString(R.string.state_off));
+        });
+        gameAudioTile.setTag("opt_game_audio");
+        cVisual.addView(gameAudioTile);
+
+        boolean gameVoice = Prefs.get(ctx).getBoolean("game_voice", true);
+        LinearLayout gameVoiceTile = Controls.toggleTile(ctx, tr ? "Gamze Oyun Sunuculuğu" : "Gamze Hosts Games",
+                gameVoice ? (tr ? "Açık · Soruları ve sonuçları okur" : "On · Reads questions and results") : ctx.getString(R.string.state_off),
+                gameVoice, (newActive, subLabel, sw) -> {
+            Prefs.get(ctx).edit().putBoolean("game_voice", newActive).apply();
+            subLabel.setText(newActive ? (tr ? "Açık · Soruları ve sonuçları okur" : "On · Reads questions and results") : ctx.getString(R.string.state_off));
+        });
+        gameVoiceTile.setTag("opt_game_voice");
+        cVisual.addView(gameVoiceTile);
+
+        boolean ambient = Prefs.get(ctx).getBoolean("cinesub_ambient", false);
+        LinearLayout ambientTile = Controls.toggleTile(ctx, tr ? "CineSUB Eşlik Modu" : "CineSUB Companion",
+                ambient ? (tr ? "Açık · İzlerken ara sıra kısa notlar" : "On · Short notes now and then while you watch")
+                        : (tr ? "Kapalı · Sarı tuşla istediğinde açılır" : "Off · Yellow key opens it when you ask"),
+                ambient, (newActive, subLabel, sw) -> {
+            Prefs.get(ctx).edit().putBoolean("cinesub_ambient", newActive).apply();
+            subLabel.setText(newActive ? (tr ? "Açık · İzlerken ara sıra kısa notlar" : "On · Short notes now and then while you watch")
+                    : (tr ? "Kapalı · Sarı tuşla istediğinde açılır" : "Off · Yellow key opens it when you ask"));
+        });
+        ambientTile.setTag("opt_cinesub_ambient");
+        cVisual.addView(ambientTile);
+
         LinearLayout cAnim = column(ctx, cols, tr ? "Animasyon & Performans" : "Animation & Performance", colWidth);
         boolean dvd = Prefs.dvdAnimation(ctx);
         LinearLayout dvdTile = Controls.toggleTile(ctx, ctx.getString(R.string.dvd_animation),
