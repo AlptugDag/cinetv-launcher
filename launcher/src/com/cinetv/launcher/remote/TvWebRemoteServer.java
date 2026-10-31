@@ -286,9 +286,13 @@ public final class TvWebRemoteServer {
                 asset(out, "remote/icon-192.png", "image/png");
                 return;
             }
-            if (path.equals("/favicon.ico") || path.equals("/icon.png") || path.endsWith("/icon.png")
-                    || path.contains("apple-touch-icon")) {
+            if (path.equals("/favicon.ico") || path.equals("/icon.png") || path.endsWith("/icon.png")) {
                 asset(out, "remote/icon.png", "image/png");
+                return;
+            }
+            // iPhone and Android home-screen icons (full-bleed and maskable), as the manifest names them.
+            if (path.matches(".*/(apple-touch-icon(-precomposed)?|icon-maskable-(192|512))\\.png")) {
+                asset(out, "remote/" + path.substring(path.lastIndexOf('/') + 1), "image/png");
                 return;
             }
             if (path.equals("/sw.js") || path.equals("/static/sw.js")) {
