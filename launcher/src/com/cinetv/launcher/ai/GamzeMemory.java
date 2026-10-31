@@ -33,20 +33,60 @@ public final class GamzeMemory {
         }
     }
 
+    /**
+     * Merges what Gamze learned in a reply. Empty or default values never overwrite what is known (the
+     * model fills every field of its schema), and likes/dislikes accumulate instead of replacing.
+     */
     public static synchronized void update(Context ctx, JSONObject learned) {
         if (learned == null || learned.length() == 0) return;
         try {
             JSONObject current = getMemory(ctx);
+            boolean changed = false;
             Iterator<String> keys = learned.keys();
             while (keys.hasNext()) {
                 String k = keys.next();
-                current.put(k, learned.get(k));
+                Object v = learned.opt(k);
+                if (v == null || v == JSONObject.NULL) continue;
+                if (v instanceof String) {
+                    String sv = ((String) v).trim();
+                    if (sv.isEmpty() || sv.equalsIgnoreCase("unknown") || sv.equalsIgnoreCase("none")) continue;
+                    if ("likes".equals(k) || "dislikes".equals(k) || "preferred_genres".equals(k) || "avoid_content".equals(k)) {
+                        sv = mergeList(current.optString(k, ""), sv);
+                    }
+                    if (!sv.equals(current.optString(k, null))) {
+                        current.put(k, sv);
+                        changed = true;
+                    }
+                } else if (v instanceof Boolean) {
+                    if ((Boolean) v && !current.optBoolean(k)) {
+                        current.put(k, true);
+                        changed = true;
+                    }
+                } else if (v instanceof Number) {
+                    if (((Number) v).doubleValue() > 0 && current.optDouble(k, 0) != ((Number) v).doubleValue()) {
+                        current.put(k, v);
+                        changed = true;
+                    }
+                }
             }
-            Prefs.get(ctx).edit().putString(PREF_GAMZE_MEMORY, current.toString()).apply();
-            Log.i(TAG, "Gamze local memory updated: " + learned.toString());
+            if (changed) Prefs.get(ctx).edit().putString(PREF_GAMZE_MEMORY, current.toString()).apply();
         } catch (Throwable t) {
             Log.w(TAG, "Failed to update Gamze memory: " + t.getMessage());
         }
+    }
+
+    /** "a, b" + "b, c" = "a, b, c", keeping the newest twelve. */
+    private static String mergeList(String old, String add) {
+        java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>();
+        for (String part : (old + "," + add).split(",")) {
+            String p = part.trim();
+            if (!p.isEmpty()) {
+                set.remove(p);
+                set.add(p);
+            }
+        }
+        java.util.List<String> list = new java.util.ArrayList<>(set);
+        return android.text.TextUtils.join(", ", list.subList(Math.max(0, list.size() - 12), list.size()));
     }
 
     public static synchronized void clear(Context ctx) {
@@ -59,16 +99,24 @@ public final class GamzeMemory {
     public static synchronized String formatForPrompt(Context ctx) {
         JSONObject mem = getMemory(ctx);
         if (mem.length() == 0) return "";
-        StringBuilder sb = new StringBuilder("\nVIEWER LOCAL CONTEXT & HOUSEHOLD MEMORY (Persisted across sessions):\n");
-        if (mem.has("household")) sb.append("- İzleme Ortamı: ").append(mem.optString("household")).append("\n");
-        if (mem.has("has_children") && mem.optBoolean("has_children")) {
-            sb.append("- Çocuk Durumu: Evde çocuk var");
-            if (mem.has("child_age")) sb.append(" (Yaş: ").append(mem.optInt("child_age")).append(")");
-            sb.append(". Aile ortamında şiddet, aşırı cinsellik ve travmatik unsurlardan kaçın.\n");
+        StringBuilder sb = new StringBuilder("\nWHAT YOU KNOW ABOUT THIS HOUSEHOLD (from earlier conversations; use it naturally, never recite it):\n");
+        if (mem.has("name")) sb.append("- The viewer's name: ").append(mem.optString("name")).append("\n");
+        if (mem.has("household")) sb.append("- Usually watches: ").append(mem.optString("household")).append("\n");
+        if (mem.optBoolean("has_children")) {
+            sb.append("- There are children at home");
+            if (mem.optInt("child_age") > 0) sb.append(" (about ").append(mem.optInt("child_age")).append(")");
+            sb.append(": in family settings avoid violence, sex and trauma.\n");
         }
-        if (mem.has("preferred_genres")) sb.append("- Sevilen Türler: ").append(mem.optString("preferred_genres")).append("\n");
-        if (mem.has("avoid_content")) sb.append("- Kaçınılacak Temalar: ").append(mem.optString("avoid_content")).append("\n");
-        if (mem.has("preferred_tone")) sb.append("- İletişim Tonu: ").append(mem.optString("preferred_tone")).append("\n");
+        if (mem.has("preferred_genres")) sb.append("- Likes: ").append(mem.optString("preferred_genres")).append("\n");
+        if (mem.has("likes")) sb.append("- Loved titles: ").append(mem.optString("likes")).append("\n");
+        if (mem.has("dislikes")) sb.append("- Did not enjoy: ").append(mem.optString("dislikes")).append("\n");
+        if (mem.has("avoid_content")) sb.append("- Avoid: ").append(mem.optString("avoid_content")).append("\n");
+        if (mem.has("preferred_tone")) sb.append("- Prefers this tone: ").append(mem.optString("preferred_tone")).append("\n");
         return sb.toString();
+    }
+
+    /** The viewer's name, if they ever told Gamze; empty otherwise. */
+    public static String name(Context ctx) {
+        return getMemory(ctx).optString("name", "");
     }
 }

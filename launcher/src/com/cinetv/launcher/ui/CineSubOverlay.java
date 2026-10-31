@@ -1,7 +1,5 @@
 package com.cinetv.launcher.ui;
 
-import android.accessibilityservice.AccessibilityService;
-import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -9,489 +7,585 @@ import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
+import android.graphics.RadialGradient;
+import android.graphics.RectF;
 import android.graphics.Shader;
+import android.graphics.Typeface;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.DisplayMetrics;
-import android.util.Log;
+import android.os.SystemClock;
+import android.text.Layout;
+import android.text.StaticLayout;
+import android.text.TextPaint;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.view.animation.DecelerateInterpolator;
-import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 
 import com.cinetv.launcher.FontManager;
 import com.cinetv.launcher.TvKeyInterceptorService;
 import com.cinetv.launcher.ai.SceneInspector;
+import com.cinetv.launcher.ai.SceneInspector.Poi;
+import com.cinetv.launcher.device.PerformanceProfile;
+import com.cinetv.launcher.device.SystemAudio;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
- * CineSub: Apple visionOS Spatial Cinema Overlay & Cultural Inspection Guide.
+ * CineSUB: a see-through layer over whatever is playing (Nuvio, YouTube, the external player).
  *
- * <p>Floats across the TV screen with spatial depth and visionOS glassmorphism:
- * <ul>
- *   <li><b>Spatial Focus Reticle:</b> Places an optical tracking reticle over scene focal points (props, actors, artworks).</li>
- *   <li><b>Connecting Laser Filament:</b> Connects the inspection target to a floating frosted glass card.</li>
- *   <li><b>Crystal Legibility:</b> 26sp title and 19sp body text with high-contrast typography, readable from 3+ meters away.</li>
- *   <li><b>Zero Audio Disturbance:</b> Operates 100% silently (zero TTS) during movie playback.</li>
- *   <li><b>Instant Dismiss:</b> Back key, OK key, or timeout dismisses without interrupting video playback.</li>
- * </ul>
+ * <p>Asked (yellow key, the phone, or a colour key you assign), it looks at the frame and marks what
+ * is worth knowing: soft rings around people, places, objects, food and art, each with a glass card
+ * that sits beside its subject where the picture is emptiest, never over the subtitles. Left and
+ * right move between them, OK tells more, Back closes. The film keeps playing underneath.
+ *
+ * <p>Unasked (ambient mode), every few minutes it may float one small note in a quiet corner, about
+ * something on screen or a name, place or event in the dialogue, and let it fade on its own.
  */
 public final class CineSubOverlay {
 
-    private static final String TAG = "CineSubOverlay";
-    private static volatile CineSubOverlay activeInstance;
+    private static final Handler main = new Handler(Looper.getMainLooper());
+    private static CineSubOverlay active;
+    private static long lastAmbientAt;
 
-    private final Context context;
-    private final WindowManager windowManager;
-    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Context ctx;
+    private final WindowManager wm;
+    private final Stage stage;
+    private final boolean ambient;
+    private final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+    private final Runnable autoClose = this::close;
 
-    private View rootOverlay;
-    private FrameLayout cardView;
-    private TextView titleView;
-    private TextView contentView;
-    private ProgressBar progressBar;
-    private SpatialVisionCanvas spatialCanvas;
-    private View readingBar;
-    private final Runnable autoDismiss = this::dismiss;
-
-    private static int fallbackCursor = 0;
-    private static final String[][] CURATED_CULTURAL_INSIGHTS = {
-            {
-                    "KÜLTÜREL REHBER · THE GODFATHER (1972)",
-                    "\"Silahı bırak, cannoli'yi al.\" — Clemenza'nın bu repliği senaryoda yoktu; aktör Richard Castellano tarafından doğaçlama eklendi. Sicilya kültüründe aileye sadakat ile soğukkanlı infaz arasındaki tezatı simgeler."
-            },
-            {
-                    "FELSEFİ ALT METİN · INTERSTELLAR (2014)",
-                    "\"O güzel geceye uysalca gitme...\" — Dylan Thomas'ın 1951 tarihli villanelle şiiri. Filmde insanlığın yok oluşa karşı verdiği kozmik hayatta kalma mücadelesinin temel leitmotifi olarak kullanılır."
-            },
-            {
-                    "EDEBİ GÖNDERME · BİR ZAMANLAR ANADOLU'DA (2011)",
-                    "Doktor Cemal ile Savcı Nusret'in gece yarısı otopsi ve ölüm üzerine diyaloğu, Anton Çehov'un bozkır öykülerinden uyarlanmıştır. Bozkırın ortasında bürokrasi ile vicdanın sessiz çatışmasını işler."
-            },
-            {
-                    "YÖNETMEN SAYGI DURUŞU · PULP FICTION (1994)",
-                    "Mia Wallace ve Vincent Vega'nın Twist dansı, Federico Fellini'nin '8½' (1963) ve Jean-Luc Godard'ın 'Bande à part' (1964) filmlerindeki ikonik dans sahnelerine birebir sinematik saygı duruşudur."
-            },
-            {
-                    "GÖRSEL SEMBOLİZM · BLADE RUNNER 2049 (2017)",
-                    "Görüntü yönetmeni Roger Deakins'in kullandığı kehribar turuncusu toz fırtınası, Vladimir Nabokov'un 'Solgun Ateş' (Pale Fire) şiirindeki varoluşsal yalnızlık metaforunu görselleştirir."
-            },
-            {
-                    "SANAT TARİHİ · KIŞ UYKUSU (2014)",
-                    "Aydın'ın çalışma odasındaki gravürler ve yılkı atı sahnesi, Tolstoy ve Dostoyevski'nin 'kötülüğe direnmeme' (non-resistance) felsefesini Kapadokya coğrafyasında yeniden yorumlar."
-            }
-    };
-
-    private CineSubOverlay(Context ctx) {
-        this.context = ctx;
-        this.windowManager = (WindowManager) ctx.getSystemService(Context.WINDOW_SERVICE);
+    private CineSubOverlay(Context ctx, boolean ambient) {
+        this.ctx = ctx;
+        this.ambient = ambient;
+        this.wm = (WindowManager) ctx.getSystemService(Context.WINDOW_SERVICE);
+        this.stage = new Stage(ctx);
     }
 
-    public static synchronized void trigger(Context ctx) {
+    private static Context host(Context ctx) {
         TvKeyInterceptorService acc = TvKeyInterceptorService.getInstance();
-        Context targetCtx = acc != null ? acc : ctx;
-        if (activeInstance != null) {
-            activeInstance.dismiss();
-        }
-        CineSubOverlay overlay = new CineSubOverlay(targetCtx);
-        activeInstance = overlay;
-        overlay.showAndInspect();
+        return acc != null ? acc : ctx.getApplicationContext();
     }
 
-    public static synchronized void showInsight(Context ctx, String title, String insight) {
-        TvKeyInterceptorService acc = TvKeyInterceptorService.getInstance();
-        Context targetCtx = acc != null ? acc : ctx;
-        if (activeInstance != null) {
-            activeInstance.dismiss();
-        }
-        CineSubOverlay overlay = new CineSubOverlay(targetCtx);
-        activeInstance = overlay;
-        overlay.showStaticCard(title, insight);
-    }
+    // ---- Entry points ----------------------------------------------------------------------------
 
-    public static synchronized void searchTriviaAndDiscovery(Context ctx, final String query, final java.util.function.Consumer<String> onResultCallback) {
-        TvKeyInterceptorService acc = TvKeyInterceptorService.getInstance();
-        final Context targetCtx = acc != null ? acc : ctx;
-        if (activeInstance != null) {
-            activeInstance.dismiss();
-        }
-        final CineSubOverlay overlay = new CineSubOverlay(targetCtx);
-        activeInstance = overlay;
-        overlay.showDiscoverySearch(query, onResultCallback);
-    }
-
-    public static synchronized void dismissActive() {
-        if (activeInstance != null) {
-            activeInstance.dismiss();
-            activeInstance = null;
-        }
-    }
-
-    public static boolean isShowing() {
-        return activeInstance != null && activeInstance.rootOverlay != null;
-    }
-
-    private void buildFullscreenSpatialStage(boolean showProgress) {
-        UiKit.init(context);
-        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-
-        DisplayMetrics dm = context.getResources().getDisplayMetrics();
-        int screenW = dm.widthPixels;
-        int screenH = dm.heightPixels;
-
-        FrameLayout root = new FrameLayout(context) {
-            @Override
-            public boolean dispatchKeyEvent(KeyEvent event) {
-                if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                    int code = event.getKeyCode();
-                    if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE
-                            || code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
-                            || code == KeyEvent.KEYCODE_PROG_YELLOW || code == KeyEvent.KEYCODE_CAPTIONS) {
-                        dismiss();
-                        return true;
-                    }
-                }
-                return super.dispatchKeyEvent(event);
-            }
-        };
-        root.setFocusable(true);
-        root.setFocusableInTouchMode(true);
-
-        // 1. Spatial Background Canvas with Optical Reticle & Laser Spline
-        float targetX = screenW * 0.32f;
-        float targetY = screenH * 0.38f;
-        float cardX = screenW * 0.52f;
-        float cardY = screenH * 0.54f;
-
-        spatialCanvas = new SpatialVisionCanvas(context, targetX, targetY, cardX, cardY);
-        root.addView(spatialCanvas, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        // 2. Spatial visionOS Floating Frosted Glass Card
-        cardView = new FrameLayout(context);
-        int cardW = Math.min(UiKit.px(820), (int) (screenW * 0.55f));
-        cardView.setBackground(Glass.panel(cardView, 32));
-        cardView.setPadding(UiKit.px(32), UiKit.px(24), UiKit.px(32), UiKit.px(24));
-        cardView.setClipToOutline(true);
-
-        LinearLayout contentLayout = new LinearLayout(context);
-        contentLayout.setOrientation(LinearLayout.VERTICAL);
-
-        // Header Pill Row
-        LinearLayout badgeRow = new LinearLayout(context);
-        badgeRow.setOrientation(LinearLayout.HORIZONTAL);
-        badgeRow.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView dot = UiKit.bold(context, 16, Color.parseColor("#F59E0B"));
-        dot.setText("• ");
-        badgeRow.addView(dot);
-
-        TextView wordmark = UiKit.bold(context, 15, Color.WHITE);
-        wordmark.setText(Brand.cinesubWordmark());
-        wordmark.setLetterSpacing(0.06f);
-        badgeRow.addView(wordmark);
-
-        TextView guide = UiKit.bold(context, 12.5f, Color.parseColor("#F59E0B"));
-        guide.setText(tr ? " · SPATIAL KÜLTÜREL REHBER" : " · SPATIAL CULTURAL GUIDE");
-        guide.setLetterSpacing(0.06f);
-        badgeRow.addView(guide);
-        contentLayout.addView(badgeRow);
-
-        // Large 26sp Cinematic Title
-        titleView = UiKit.bold(context, 26, Color.WHITE);
-        titleView.setPadding(0, UiKit.px(8), 0, UiKit.px(6));
-        contentLayout.addView(titleView);
-
-        // Large 19sp Body Text with generous line height for effortless TV viewing
-        contentView = UiKit.label(context, 19, Color.parseColor("#E2E8F0"));
-        contentView.setLineSpacing(UiKit.pxf(6f), 1.25f);
-        contentLayout.addView(contentView);
-
-        // Progress bar for live inspections
-        progressBar = new ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal);
-        progressBar.setIndeterminate(true);
-        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, UiKit.px(4));
-        plp.topMargin = UiKit.px(12);
-        progressBar.setVisibility(showProgress ? View.VISIBLE : View.GONE);
-        contentLayout.addView(progressBar, plp);
-
-        // Reading Countdown Bar
-        readingBar = new View(context);
-        readingBar.setBackgroundColor(Color.parseColor("#F59E0B"));
-        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, UiKit.px(3));
-        rlp.topMargin = UiKit.px(14);
-        contentLayout.addView(readingBar, rlp);
-
-        // Bottom Dismiss Hint Pill
-        TextView hint = UiKit.label(context, 13, Color.parseColor("#94A3B8"));
-        hint.setPadding(0, UiKit.px(8), 0, 0);
-        hint.setText(tr ? "Kapatmak için [GERİ] veya [OK] tuşuna basın · 22 saniye sonra otomatik kapanır"
-                        : "Press [BACK] or [OK] to close · Auto-dismisses in 22 seconds");
-        contentLayout.addView(hint);
-
-        cardView.addView(contentLayout);
-
-        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(cardW, ViewGroup.LayoutParams.WRAP_CONTENT);
-        clp.gravity = Gravity.BOTTOM | Gravity.END;
-        clp.rightMargin = UiKit.px(64);
-        clp.bottomMargin = UiKit.px(64);
-        root.addView(cardView, clp);
-
-        this.rootOverlay = root;
-
-        int winType = (context instanceof AccessibilityService)
-                ? WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
-                : (android.os.Build.VERSION.SDK_INT >= 26
-                        ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                        : WindowManager.LayoutParams.TYPE_PHONE);
-
-        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                winType,
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                PixelFormat.TRANSLUCENT
-        );
-        lp.gravity = Gravity.TOP | Gravity.START;
-
-        rootOverlay.setAlpha(0f);
-        cardView.setTranslationY(UiKit.pxf(60));
-        windowManager.addView(rootOverlay, lp);
-
-        com.cinetv.launcher.device.SystemAudio.tick(context);
-
-        rootOverlay.animate().alpha(1f).setDuration(320).start();
-        cardView.animate().translationY(0f).setDuration(320).setInterpolator(new DecelerateInterpolator()).start();
-
-        root.requestFocus();
-    }
-
-    private void startReadingBarTimer(int seconds) {
-        if (readingBar != null) {
-            readingBar.setPivotX(0f);
-            readingBar.setScaleX(1f);
-            readingBar.animate().scaleX(0f).setDuration(seconds * 1000L).setInterpolator(new android.view.animation.LinearInterpolator()).start();
-        }
-        handler.removeCallbacks(autoDismiss);
-        handler.postDelayed(autoDismiss, seconds * 1000L);
-    }
-
-    private void showStaticCard(String customTitle, String insight) {
-        try {
-            buildFullscreenSpatialStage(false);
-            boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-            titleView.setText(customTitle != null && !customTitle.isEmpty()
-                    ? customTitle
-                    : (tr ? "Sinematografik Detay" : "Cinematographic Detail"));
-            contentView.setText(insight != null ? insight.trim() : "");
-            startReadingBarTimer(22);
-        } catch (Throwable t) {
-            Log.w(TAG, "Failed to display spatial CineSubOverlay: " + t.getMessage());
-        }
-    }
-
-    private void showAndInspect() {
-        try {
-            buildFullscreenSpatialStage(true);
-            boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-            titleView.setText(tr ? "Sahne İnceleniyor..." : "Analyzing Scene...");
-            contentView.setText(tr
-                    ? "Altyazı ve sahnedeki sanat eseri, tarihi olay, felsefi kavram veya yönetmen göndermesi tespit ediliyor..."
-                    : "Detecting background artworks, historical events, philosophy, or director homages...");
-
-            SceneInspector.inspectScene(context, new SceneInspector.Callback() {
-                @Override
-                public void onResult(String insight) {
-                    handler.post(() -> {
-                        if (rootOverlay == null) return;
-                        if (progressBar != null) progressBar.setVisibility(View.GONE);
-                        com.cinetv.launcher.device.SystemAudio.tick(context);
-
-                        if (insight.contains(":") && insight.indexOf(":") < 45) {
-                            int colon = insight.indexOf(":");
-                            titleView.setText(insight.substring(0, colon).trim());
-                            contentView.setText(insight.substring(colon + 1).trim());
-                        } else {
-                            titleView.setText(tr ? "Sinematografik Detay" : "Cinematographic Detail");
-                            contentView.setText(insight.trim());
-                        }
-                        startReadingBarTimer(22);
-                    });
-                }
-
-                @Override
-                public void onError(String message) {
-                    handler.post(() -> {
-                        if (rootOverlay == null) return;
-                        if (progressBar != null) progressBar.setVisibility(View.GONE);
-                        com.cinetv.launcher.device.SystemAudio.tick(context);
-                        String[] fallback = CURATED_CULTURAL_INSIGHTS[fallbackCursor % CURATED_CULTURAL_INSIGHTS.length];
-                        fallbackCursor++;
-                        titleView.setText(fallback[0]);
-                        contentView.setText(fallback[1]);
-                        startReadingBarTimer(22);
-                    });
-                }
-            });
-        } catch (Throwable t) {
-            Log.w(TAG, "Failed to inspect scene in CineSub: " + t.getMessage());
-        }
-    }
-
-    private void showDiscoverySearch(final String query, final java.util.function.Consumer<String> onResultCallback) {
-        try {
-            buildFullscreenSpatialStage(true);
-            boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-            titleView.setText(query != null && !query.isEmpty() ? ("\"" + query + "\"") : (tr ? "Sinematik Arama" : "Cinema Search"));
-            contentView.setText(tr
-                    ? "Gamze AI ile kültürel referanslar, gizli detaylar ve benzeri sinematik keşifler taranıyor..."
-                    : "Scanning cultural references, hidden easter eggs and cinematic discoveries via Gamze AI...");
-
+    /** Look at the current frame and mark what is worth knowing. */
+    public static void trigger(Context ctx) {
+        main.post(() -> {
+            dismissActive();
+            final CineSubOverlay o = new CineSubOverlay(host(ctx), false);
+            if (!o.attach()) return;
+            active = o;
+            SystemAudio.play(ctx, SystemAudio.Sfx.RISER);
+            final Context app = ctx.getApplicationContext();
             new Thread(() -> {
-                String system = "Sen CineTV'nin usta sinema küratörü ve Sinefil Dedektifi Gamze'sin. "
-                        + "Kullanıcının film izlerken sorduğu/arattığı sinema kavramı, sahne detayı, yönetmen göndermesi veya trivia sorusu için "
-                        + "tam 2-3 cümlelik çok vurucu, entelektüel ve keşif odaklı bir sinema notu hazırla. "
-                        + "Başlık olarak en çarpıcı temayı 'BAŞLIK: İçerik' formatında ver.";
-                String user = "Arama ve Keşif Talebi: " + (query != null ? query : "İzlenen sahnenin kültürel ve felsefi kökenleri");
-                com.cinetv.launcher.ai.LlmClient.Result res = com.cinetv.launcher.ai.LlmClient.generate(context, system, user, 350, true);
-                final String finalInsight;
-                if (res != null && res.success && res.text != null && !res.text.trim().isEmpty()) {
-                    finalInsight = res.text.trim();
-                } else {
-                    String[] fb = CURATED_CULTURAL_INSIGHTS[fallbackCursor % CURATED_CULTURAL_INSIGHTS.length];
-                    fallbackCursor++;
-                    finalInsight = fb[0] + ": " + fb[1];
-                }
-
-                handler.post(() -> {
-                    if (rootOverlay == null) return;
-                    if (progressBar != null) progressBar.setVisibility(View.GONE);
-                    com.cinetv.launcher.device.SystemAudio.tick(context);
-
-                    if (finalInsight.contains(":") && finalInsight.indexOf(":") < 45) {
-                        int colon = finalInsight.indexOf(":");
-                        titleView.setText(finalInsight.substring(0, colon).trim());
-                        contentView.setText(finalInsight.substring(colon + 1).trim());
-                    } else {
-                        titleView.setText(tr ? "Sinematik Trivia & Keşif" : "Cinematic Trivia & Discovery");
-                        contentView.setText(finalInsight);
-                    }
-
-                    if (onResultCallback != null) onResultCallback.accept(finalInsight);
-                    startReadingBarTimer(22);
+                final SceneInspector.Scene scene = SceneInspector.inspect(app, false);
+                main.post(() -> {
+                    if (active != o) return;
+                    o.stage.setScene(scene);
+                    SystemAudio.play(app, scene.pois.isEmpty() ? SystemAudio.Sfx.ERROR : SystemAudio.Sfx.CHIME);
+                    o.keepFor(scene.pois.isEmpty() ? 7000 : 45000);
                 });
-            }, "cinesub-trivia-search").start();
-        } catch (Throwable t) {
-            Log.w(TAG, "Failed discovery search in CineSub: " + t.getMessage());
-        }
+            }, "cinesub-inspect").start();
+        });
     }
 
-    public void dismiss() {
-        handler.removeCallbacks(autoDismiss);
-        if (rootOverlay != null) {
-            final View v = rootOverlay;
-            rootOverlay = null;
-            try {
-                if (spatialCanvas != null) spatialCanvas.stop();
-                v.animate().alpha(0f).setDuration(240).withEndAction(() -> {
-                    try {
-                        windowManager.removeView(v);
-                    } catch (Throwable ignored) {}
-                }).start();
-            } catch (Throwable t) {
-                try {
-                    windowManager.removeView(v);
-                } catch (Throwable ignored) {}
-            }
-        }
-        if (activeInstance == this) {
-            activeInstance = null;
-        }
+    /** A ready-made note (from the phone, or a demo). */
+    public static void showInsight(Context ctx, String title, String insight) {
+        main.post(() -> {
+            dismissActive();
+            CineSubOverlay o = new CineSubOverlay(host(ctx), false);
+            if (!o.attach()) return;
+            active = o;
+            SceneInspector.Scene s = new SceneInspector.Scene();
+            Poi p = new Poi();
+            p.kind = "text";
+            p.title = title == null || title.isEmpty() ? "CineSUB" : title;
+            p.fact = insight;
+            p.fromSubtitle = true;
+            s.pois.add(p);
+            o.stage.setScene(s);
+            SystemAudio.play(ctx, SystemAudio.Sfx.CHIME);
+            o.keepFor(Math.max(9000, 4000 + insight.length() * 55L));
+        });
+    }
+
+    /** A question typed on the phone, answered on the TV. */
+    public static void searchTriviaAndDiscovery(Context ctx, final String query, final java.util.function.Consumer<String> done) {
+        main.post(() -> {
+            dismissActive();
+            final CineSubOverlay o = new CineSubOverlay(host(ctx), false);
+            if (!o.attach()) return;
+            active = o;
+            final Context app = ctx.getApplicationContext();
+            new Thread(() -> {
+                final String a = SceneInspector.answer(app, query);
+                main.post(() -> {
+                    if (done != null) done.accept(a);
+                    if (active != o) return;
+                    SceneInspector.Scene s = new SceneInspector.Scene();
+                    Poi p = new Poi();
+                    p.kind = "text";
+                    p.title = query;
+                    p.fact = a;
+                    p.fromSubtitle = true;
+                    s.pois.add(p);
+                    o.stage.setScene(s);
+                    SystemAudio.play(app, SystemAudio.Sfx.CHIME);
+                    o.keepFor(Math.max(9000, 4000 + a.length() * 55L));
+                });
+            }, "cinesub-ask").start();
+        });
     }
 
     /**
-     * Spatial Vision Canvas:
-     * Renders Apple visionOS inspired optical inspection reticle ring and curved luminous laser filament.
+     * Ambient mode, called by the key service every half minute while something plays: now and then,
+     * one short note in a quiet corner. Never while CineSUB is already showing.
      */
-    private static final class SpatialVisionCanvas extends View {
-        private final Paint reticlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint corePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint splinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Path splinePath = new Path();
-
-        private final float focusX, focusY, endX, endY;
-        private float pulseFraction = 0f;
-        private ValueAnimator pulseAnim;
-
-        SpatialVisionCanvas(Context c, float fx, float fy, float ex, float ey) {
-            super(c);
-            this.focusX = fx;
-            this.focusY = fy;
-            this.endX = ex;
-            this.endY = ey;
-
-            reticlePaint.setStyle(Paint.Style.STROKE);
-            reticlePaint.setColor(Color.argb(220, 245, 158, 11)); // Amber Gold
-            reticlePaint.setStrokeWidth(3f);
-
-            corePaint.setStyle(Paint.Style.FILL);
-            corePaint.setColor(Color.WHITE);
-
-            splinePaint.setStyle(Paint.Style.STROKE);
-            splinePaint.setStrokeWidth(2.5f);
-            splinePaint.setColor(Color.argb(160, 245, 158, 11));
-
-            pulseAnim = ValueAnimator.ofFloat(0f, 1f);
-            pulseAnim.setDuration(1600);
-            pulseAnim.setRepeatMode(ValueAnimator.REVERSE);
-            pulseAnim.setRepeatCount(ValueAnimator.INFINITE);
-            pulseAnim.addUpdateListener(a -> {
-                pulseFraction = (Float) a.getAnimatedValue();
-                invalidate();
+    public static void ambientTick(final Context ctx) {
+        if (active != null || !com.cinetv.launcher.service.Prefs.get(ctx).getBoolean("cinesub_ambient", false)) return;
+        if (!com.cinetv.launcher.ai.LlmClient.isConfigured(ctx)) return;
+        long gap = PerformanceProfile.lowMemory(ctx) ? 300_000L : 180_000L;
+        if (SystemClock.elapsedRealtime() - lastAmbientAt < gap) return;
+        lastAmbientAt = SystemClock.elapsedRealtime();
+        final Context app = ctx.getApplicationContext();
+        new Thread(() -> {
+            final SceneInspector.Scene scene = SceneInspector.inspect(app, true);
+            if (scene.pois.isEmpty()) return;
+            main.post(() -> {
+                if (active != null) return;
+                CineSubOverlay o = new CineSubOverlay(host(ctx), true);
+                if (!o.attach()) return;
+                active = o;
+                o.stage.setScene(scene);
+                o.keepFor(11000);
             });
-            pulseAnim.start();
+        }, "cinesub-ambient").start();
+    }
+
+    public static void dismissActive() {
+        CineSubOverlay o = active;
+        if (o != null) o.close();
+    }
+
+    /** Showing and taking the remote's arrows (ambient notes don't). */
+    public static boolean isShowing() {
+        return active != null && !active.ambient;
+    }
+
+    /** From the key service while CineSUB is open: arrows move between notes, OK tells more. */
+    public static boolean onKey(int code) {
+        CineSubOverlay o = active;
+        if (o == null || o.ambient) return false;
+        switch (code) {
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+            case KeyEvent.KEYCODE_DPAD_UP:
+                o.stage.move(-1);
+                o.keepFor(45000);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                o.stage.move(1);
+                o.keepFor(45000);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+                o.more();
+                o.keepFor(60000);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    // ---- Window ----------------------------------------------------------------------------------
+
+    private boolean attach() {
+        try {
+            int type = ctx instanceof TvKeyInterceptorService ? WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+                    : Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
+            WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
+                    WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT, type,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                            | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                            | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                    PixelFormat.TRANSLUCENT);
+            lp.gravity = Gravity.TOP | Gravity.START;
+            lp.setTitle("CineSUB");
+            stage.ambient = ambient;
+            stage.setAlpha(0f);
+            wm.addView(stage, lp);
+            stage.animate().alpha(1f).setDuration(320).start();
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private void keepFor(long ms) {
+        main.removeCallbacks(autoClose);
+        main.postDelayed(autoClose, ms);
+    }
+
+    private void close() {
+        main.removeCallbacks(autoClose);
+        if (active == this) active = null;
+        stage.animate().alpha(0f).setDuration(260).withEndAction(() -> {
+            try {
+                wm.removeView(stage);
+            } catch (Throwable ignored) {
+            }
+        }).start();
+    }
+
+    private void more() {
+        final Poi p = stage.focused();
+        if (p == null || stage.expanding) return;
+        stage.expanding = true;
+        stage.invalidate();
+        SystemAudio.click(ctx);
+        final Context app = ctx.getApplicationContext();
+        final String film = com.cinetv.launcher.service.NowPlaying.describe(app);
+        new Thread(() -> {
+            final String more = SceneInspector.more(app, p, film);
+            main.post(() -> {
+                stage.expanding = false;
+                if (!more.isEmpty()) {
+                    p.fact = more;
+                    stage.relayout();
+                }
+                stage.invalidate();
+            });
+        }, "cinesub-more").start();
+    }
+
+    // ---- Drawing ---------------------------------------------------------------------------------
+
+    private final class Stage extends View {
+        private static final int ORANGE = 0xFFF59E0B;
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final TextPaint title = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        private final TextPaint body = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        private final TextPaint small = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF r = new RectF();
+        private final Path path = new Path();
+        private final boolean lite;
+        private final Typeface black;
+        boolean ambient, expanding;
+        private SceneInspector.Scene scene;
+        private int focus;
+        private long shownAt = SystemClock.elapsedRealtime(), focusAt;
+        private final List<RectF> cards = new ArrayList<>();
+        private final List<StaticLayout> texts = new ArrayList<>();
+
+        Stage(Context c) {
+            super(c);
+            lite = PerformanceProfile.lowMemory(c);
+            black = FontManager.getBlack(c);
+            Typeface bold = FontManager.getBold(c), medium = FontManager.getMedium(c);
+            stroke.setStyle(Paint.Style.STROKE);
+            title.setTypeface(bold);
+            title.setColor(0xFFF5F5F7);
+            body.setTypeface(medium);
+            body.setColor(0xE6F5F5F7);
+            small.setTypeface(bold);
+            small.setColor(ORANGE);
+            small.setLetterSpacing(0.14f);
         }
 
-        void stop() {
-            if (pulseAnim != null) pulseAnim.cancel();
+        void setScene(SceneInspector.Scene s) {
+            scene = s;
+            focus = 0;
+            focusAt = SystemClock.elapsedRealtime();
+            relayout();
+            invalidate();
+        }
+
+        Poi focused() {
+            return scene == null || scene.pois.isEmpty() ? null : scene.pois.get(focus);
+        }
+
+        void move(int d) {
+            if (scene == null || scene.pois.size() < 2) return;
+            focus = (focus + d + scene.pois.size()) % scene.pois.size();
+            focusAt = SystemClock.elapsedRealtime();
+            SystemAudio.tick(getContext());
+            relayout();
+            invalidate();
+        }
+
+        @Override
+        protected void onSizeChanged(int w, int h, int ow, int oh) {
+            relayout();
+        }
+
+        private float u() {
+            return Math.max(getWidth(), 1) / 1920f;
+        }
+
+        /** Places every card: beside its subject on the emptiest side, inside the safe area, off the subtitles. */
+        void relayout() {
+            cards.clear();
+            texts.clear();
+            if (scene == null || getWidth() == 0) return;
+            float u = u(), W = getWidth(), H = getHeight();
+            title.setTextSize(30 * u);
+            body.setTextSize(25 * u);
+            small.setTextSize(17 * u);
+            float safeL = W * 0.05f, safeT = H * 0.06f, safeR = W * 0.95f, subtitleTop = H * 0.80f;
+            int stackIdx = 0;
+            for (int i = 0; i < scene.pois.size(); i++) {
+                Poi p = scene.pois.get(i);
+                boolean f = i == focus || ambient;
+                float cw = (ambient ? 520 : f ? 600 : 360) * u;
+                String text = f ? p.fact : p.title;
+                StaticLayout sl = new StaticLayout(text == null ? "" : text, f ? body : title, (int) (cw - 56 * u),
+                        Layout.Alignment.ALIGN_NORMAL, 1.18f, 0, false);
+                if (f && sl.getLineCount() > 7) {
+                    sl = new StaticLayout(text.substring(0, Math.min(text.length(), sl.getLineEnd(6) - 1)) + "…", body, (int) (cw - 56 * u),
+                            Layout.Alignment.ALIGN_NORMAL, 1.18f, 0, false);
+                }
+                float ch = (f ? 112 : 64) * u + sl.getHeight() + (f && !ambient ? 50 * u : 0);
+                RectF card = new RectF();
+                if (p.box.isEmpty() || ambient) {
+                    // Notes without a place on screen stack in the top corner farthest from what's on screen.
+                    boolean left = !p.box.isEmpty() && p.box.centerX() > 0.5f;
+                    float x = left ? safeL : safeR - cw;
+                    float y = safeT + 70 * u + stackIdx * (ch + 18 * u);
+                    if (!p.box.isEmpty() && ambient && p.box.centerY() < 0.45f) y = subtitleTop - ch - 20 * u;
+                    card.set(x, y, x + cw, y + ch);
+                    stackIdx++;
+                } else {
+                    RectF b = new RectF(p.box.left * W, p.box.top * H, p.box.right * W, p.box.bottom * H);
+                    float gap = 34 * u;
+                    float spaceR = safeR - b.right, spaceL = b.left - safeL;
+                    float x = spaceR >= cw + gap || spaceR >= spaceL ? b.right + gap : b.left - gap - cw;
+                    x = Math.max(safeL, Math.min(x, safeR - cw));
+                    float y = Math.max(safeT + 70 * u, Math.min(b.centerY() - ch / 2, subtitleTop - ch));
+                    card.set(x, y, x + cw, y + ch);
+                    // Don't sit on another card.
+                    for (RectF other : cards) {
+                        if (RectF.intersects(card, other)) card.offsetTo(card.left, Math.min(subtitleTop - ch, other.bottom + 16 * u));
+                    }
+                }
+                cards.add(card);
+                texts.add(sl);
+            }
         }
 
         @Override
         protected void onDraw(Canvas c) {
-            super.onDraw(c);
-            float r = 24f + pulseFraction * 8f;
+            long now = SystemClock.elapsedRealtime();
+            float u = u(), W = getWidth(), H = getHeight();
+            if (!ambient) {
+                // A light vignette lifts the cards without dimming the film.
+                fill.setShader(new RadialGradient(W / 2, H / 2, W * 0.75f, 0x00000000, 0x38000000, Shader.TileMode.CLAMP));
+                c.drawRect(0, 0, W, H, fill);
+                fill.setShader(null);
+                drawBadge(c, u, now);
+            }
+            if (scene != null && !scene.film.isEmpty() && !ambient) {
+                small.setTextSize(18 * u);
+                small.setColor(0xCCF5F5F7);
+                c.drawText(scene.film, 64 * u + 8 * u, 132 * u, small);
+                small.setColor(ORANGE);
+            }
+            if (scene == null) {
+                drawScanning(c, u, W, H, now);
+                postInvalidateOnAnimation();
+                return;
+            }
+            if (scene.pois.isEmpty()) {
+                drawMessage(c, u, W, H, scene.error.isEmpty() ? (tr ? "Bu sahnede öne çıkan bir şey bulamadım." : "Nothing stands out in this scene.") : scene.error);
+                return;
+            }
+            float t = (now - shownAt) / 1000f;
+            for (int i = 0; i < scene.pois.size(); i++) {
+                Poi p = scene.pois.get(i);
+                boolean f = i == focus || ambient;
+                float enter = ease(Math.min(1f, (now - shownAt - i * 90) / 420f));
+                if (enter <= 0) continue;
+                if (!p.box.isEmpty() && !ambient) drawRing(c, p, f, u, W, H, t, enter);
+                RectF card = new RectF(cards.get(i));
+                float drift = lite ? 0 : (float) Math.sin(t * 0.9 + i) * 3 * u;
+                card.offset(0, drift + (1 - enter) * 16 * u);
+                if (!p.box.isEmpty() && f && !ambient) drawConnector(c, p, card, u, W, H, enter);
+                drawCard(c, p, card, texts.get(i), f, u, enter, now);
+            }
+            if (!ambient && scene.pois.size() > 1) drawDots(c, u, W, H);
+            if (!lite || now - shownAt < 1200 || expanding) postInvalidateDelayed(lite ? 120 : 33);
+        }
 
-            // 1. Concentric Optical Reticles
-            reticlePaint.setAlpha(Math.round(140 + pulseFraction * 110));
-            c.drawCircle(focusX, focusY, r, reticlePaint);
-            reticlePaint.setAlpha(80);
-            c.drawCircle(focusX, focusY, r * 1.6f, reticlePaint);
+        private void drawBadge(Canvas c, float u, long now) {
+            float x = 64 * u, y = 52 * u, h = 52 * u;
+            title.setTypeface(black);
+            title.setTextSize(28 * u);
+            float w = title.measureText("CineSUB") + 56 * u;
+            glass(c, x, y, x + w, y + h, h / 2, 0xB8141418);
+            title.setColor(0xFFF5F5F7);
+            c.drawText("Cine", x + 26 * u, y + h * 0.68f, title);
+            title.setColor(ORANGE);
+            c.drawText("SUB", x + 26 * u + title.measureText("Cine"), y + h * 0.68f, title);
+            title.setColor(0xFFF5F5F7);
+            title.setTypeface(FontManager.getBold(getContext()));
+        }
 
-            // 4 optical ticks (North, South, East, West)
-            float tickLen = 8f;
-            c.drawLine(focusX, focusY - r - 4f, focusX, focusY - r - 4f - tickLen, reticlePaint);
-            c.drawLine(focusX, focusY + r + 4f, focusX, focusY + r + 4f + tickLen, reticlePaint);
-            c.drawLine(focusX - r - 4f, focusY, focusX - r - 4f - tickLen, focusY, reticlePaint);
-            c.drawLine(focusX + r + 4f, focusY, focusX + r + 4f + tickLen, focusY, reticlePaint);
+        private void drawScanning(Canvas c, float u, float W, float H, long now) {
+            // A light sweeping across the frame while the model looks: the visionOS "thinking" edge.
+            float p = (now % 1800L) / 1800f;
+            float x = -W * 0.3f + p * W * 1.6f;
+            fill.setShader(new LinearGradient(x - W * 0.25f, 0, x + W * 0.25f, 0,
+                    new int[]{0x00F59E0B, 0x26FFD9A0, 0x00F59E0B}, null, Shader.TileMode.CLAMP));
+            c.drawRect(0, 0, W, H, fill);
+            fill.setShader(null);
+            stroke.setStrokeWidth(3 * u);
+            stroke.setColor(Color.argb((int) (90 + 60 * Math.sin(now / 300.0)), 245, 158, 11));
+            r.set(18 * u, 18 * u, W - 18 * u, H - 18 * u);
+            c.drawRoundRect(r, 36 * u, 36 * u, stroke);
+            drawMessage(c, u, W, H, tr ? "Sahneye bakıyorum…" : "Looking at the scene…");
+        }
 
-            // Core optical laser pip
-            c.drawCircle(focusX, focusY, 4.5f, corePaint);
+        private void drawMessage(Canvas c, float u, float W, float H, String msg) {
+            body.setTextSize(27 * u);
+            StaticLayout sl = new StaticLayout(msg, body, (int) (760 * u), Layout.Alignment.ALIGN_CENTER, 1.2f, 0, false);
+            float w = 820 * u, h = sl.getHeight() + 56 * u, x = (W - w) / 2, y = H * 0.70f - h;
+            glass(c, x, y, x + w, y + h, 30 * u, 0xC8141418);
+            c.save();
+            c.translate(x + 30 * u, y + 28 * u);
+            sl.draw(c);
+            c.restore();
+        }
 
-            // 2. Curved Luminous Laser Filament linking reticle to the floating glass card
-            splinePath.reset();
-            splinePath.moveTo(focusX + r, focusY);
-            float ctrlX = (focusX + endX) / 2f;
-            float ctrlY = focusY + 80f;
-            splinePath.quadTo(ctrlX, ctrlY, endX, endY);
-            c.drawPath(splinePath, splinePaint);
+        private void drawRing(Canvas c, Poi p, boolean f, float u, float W, float H, float t, float enter) {
+            float pad = 10 * u;
+            r.set(p.box.left * W - pad, p.box.top * H - pad, p.box.right * W + pad, p.box.bottom * H + pad);
+            float rad = Math.min(36 * u, Math.min(r.width(), r.height()) * 0.2f);
+            float breath = lite ? 1 : 0.75f + 0.25f * (float) Math.sin(t * 2.4);
+            if (f) {
+                for (int g = 3; g >= 1; g--) {
+                    stroke.setStrokeWidth(g * 6 * u);
+                    stroke.setColor(Color.argb((int) (28 * breath * enter / g), 255, 200, 120));
+                    c.drawRoundRect(r, rad, rad, stroke);
+                }
+            }
+            stroke.setStrokeWidth((f ? 3f : 1.6f) * u);
+            stroke.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
+                    Color.argb((int) ((f ? 255 : 150) * enter), 255, 255, 255), Color.argb((int) ((f ? 230 : 110) * enter), 245, 158, 11), Shader.TileMode.CLAMP));
+            c.drawRoundRect(r, rad, rad, stroke);
+            stroke.setShader(null);
+            if (!f) {
+                // Unfocused: a small pill with its name at the ring's top edge.
+                small.setTextSize(17 * u);
+                String label = p.label.isEmpty() ? p.title : p.label;
+                float w = small.measureText(label) + 28 * u;
+                glass(c, r.left, r.top - 40 * u, r.left + w, r.top - 6 * u, 17 * u, 0xB0141418);
+                small.setColor(0xFFF5F5F7);
+                c.drawText(label, r.left + 14 * u, r.top - 17 * u, small);
+                small.setColor(ORANGE);
+            }
+        }
+
+        private void drawConnector(Canvas c, Poi p, RectF card, float u, float W, float H, float enter) {
+            float bx = card.centerX() > p.box.centerX() * W ? p.box.right * W + 10 * u : p.box.left * W - 10 * u;
+            float by = Math.max(p.box.top * H, Math.min(p.box.bottom * H, card.centerY()));
+            float cx = card.centerX() > p.box.centerX() * W ? card.left : card.right;
+            float cy = card.top + 46 * u;
+            path.reset();
+            path.moveTo(bx, by);
+            float mx = (bx + cx) / 2;
+            path.cubicTo(mx, by, mx, cy, cx, cy);
+            stroke.setStrokeWidth(2 * u);
+            stroke.setColor(Color.argb((int) (200 * enter), 255, 255, 255));
+            c.drawPath(path, stroke);
+            fill.setColor(ORANGE);
+            c.drawCircle(bx, by, 5 * u, fill);
+        }
+
+        private void drawCard(Canvas c, Poi p, RectF card, StaticLayout text, boolean f, float u, float enter, long now) {
+            c.save();
+            float sc = 0.94f + 0.06f * enter;
+            c.scale(sc, sc, card.centerX(), card.centerY());
+            int a = (int) (255 * enter);
+            // Shadow, body, sheen, rim.
+            fill.setColor(Color.argb(a / 3, 0, 0, 0));
+            r.set(card.left + 6 * u, card.top + 14 * u, card.right + 6 * u, card.bottom + 18 * u);
+            c.drawRoundRect(r, 30 * u, 30 * u, fill);
+            glass(c, card.left, card.top, card.right, card.bottom, 30 * u, Color.argb((int) (205 * enter), 18, 18, 22));
+            float x = card.left + 28 * u, y = card.top + 40 * u;
+            small.setTextSize(16 * u);
+            small.setColor(Color.argb(a, 245, 158, 11));
+            String eyebrow = (p.fromSubtitle ? (tr ? "ALTYAZIDA GEÇTİ" : "IN THE DIALOGUE") : kindName(p.kind)).toUpperCase(new Locale("tr"));
+            if (ambient) eyebrow = "CINESUB  ·  " + eyebrow;
+            c.drawText(eyebrow, x, y, small);
+            if (f) {
+                title.setTextSize(31 * u);
+                title.setColor(Color.argb(a, 245, 245, 247));
+                c.drawText(ellipsize(p.title, card.width() - 56 * u), x, y + 44 * u, title);
+                c.translate(x, y + 62 * u);
+            } else {
+                c.translate(x, y + 12 * u);
+            }
+            text.getPaint().setAlpha(a);
+            text.draw(c);
+            c.restore();
+            if (f && !ambient) {
+                small.setTextSize(16 * u);
+                small.setColor(Color.argb((int) (150 * enter), 245, 245, 247));
+                String hint = expanding ? (tr ? "Gamze anlatıyor…" : "Gamze is writing…")
+                        : (tr ? "OK  ·  Daha fazla" : "OK  ·  Tell me more") + (scene.pois.size() > 1 ? (tr ? "     ◀ ▶  Diğerleri" : "     ◀ ▶  Others") : "");
+                c.drawText(hint, card.left + 28 * u, card.bottom - 22 * u, small);
+            }
+        }
+
+        private void drawDots(Canvas c, float u, float W, float H) {
+            int n = scene.pois.size();
+            float y = H * 0.94f, x0 = W / 2 - (n - 1) * 11 * u;
+            for (int i = 0; i < n; i++) {
+                fill.setColor(i == focus ? 0xFFF5F5F7 : 0x66F5F5F7);
+                c.drawCircle(x0 + i * 22 * u, y, (i == focus ? 6 : 4) * u, fill);
+            }
+        }
+
+        private void glass(Canvas c, float l, float t, float rr, float b, float rad, int tint) {
+            r.set(l, t, rr, b);
+            fill.setColor(tint);
+            c.drawRoundRect(r, rad, rad, fill);
+            fill.setShader(new LinearGradient(0, t, 0, t + Math.min(90 * u(), (b - t) * 0.5f), 0x22FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+            c.drawRoundRect(r, rad, rad, fill);
+            fill.setShader(null);
+            stroke.setStrokeWidth(1.5f * u());
+            stroke.setShader(new LinearGradient(0, t, 0, b, 0x70FFFFFF, 0x18FFFFFF, Shader.TileMode.CLAMP));
+            c.drawRoundRect(r, rad, rad, stroke);
+            stroke.setShader(null);
+        }
+
+        private String kindName(String k) {
+            switch (k) {
+                case "person": return tr ? "Kişi" : "Person";
+                case "place": return tr ? "Mekân" : "Place";
+                case "food": return tr ? "Yemek" : "Food";
+                case "art": return tr ? "Sanat" : "Art";
+                case "event": return tr ? "Tarih" : "History";
+                case "text": return tr ? "Not" : "Note";
+                default: return tr ? "Obje" : "Object";
+            }
+        }
+
+        private String ellipsize(String s, float w) {
+            if (s == null) return "";
+            if (title.measureText(s) <= w) return s;
+            int n = s.length();
+            while (n > 1 && title.measureText(s, 0, n) + title.measureText("…") > w) n--;
+            return s.substring(0, n) + "…";
+        }
+
+        private float ease(float x) {
+            if (x <= 0) return 0;
+            return 1 - (float) Math.pow(1 - x, 3);
         }
     }
 }

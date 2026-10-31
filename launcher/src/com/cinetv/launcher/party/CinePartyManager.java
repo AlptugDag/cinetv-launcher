@@ -689,13 +689,9 @@ public final class CinePartyManager {
         if (!"setup".equals(phase)) return;
         if (sessizDeck == null) sessizDeck = new SessizDeck(ctx);
         tellerIdx = -1;
-        phase = "loading";
-        status = tr ? "Kartlar karılıyor…" : "Shuffling the cards…";
-        say(tr ? "CineSessiz başlıyor. Anlatıcı kartını telefonundan görecek; yasaklı kelimeleri söylemek yok!"
-                : "CineSessiz is on. The teller sees the card on their phone, and the forbidden words are off limits!");
-        bump();
-        if (cardQueue.isEmpty()) fetchCards(gen);
-        else nextCard();
+        say(tr ? "CineSessiz başlıyor. Anlatıcı telefonundan bir film, dizi ya da oyuncu seçecek; siz tahmin edeceksiniz. Yasaklı kelimeleri söylemek yok!"
+                : "CineSessiz is on. The teller picks a film, series or actor on their phone, and you guess. No forbidden words!");
+        nextCard();
     }
 
     private void fetchCards(final int g) {
@@ -708,20 +704,13 @@ public final class CinePartyManager {
                 fetchingCards = false;
                 if (g != gen) return;
                 cardQueue.addAll(got);
-                if ("loading".equals(phase)) nextCard();
+                if ("loading".equals(phase)) takeSuggestion();
             }
         });
     }
 
+    /** The next teller's turn: they pick what to describe (or ask Gamze for a suggestion). */
     private void nextCard() {
-        card = cardQueue.pollFirst();
-        if (card == null) {
-            phase = "loading";
-            bump();
-            fetchCards(gen);
-            return;
-        }
-        if (cardQueue.size() < 2) fetchCards(gen);
         List<Player> act = active();
         if (!act.isEmpty()) {
             tellerIdx = (tellerIdx + 1) % act.size();
@@ -729,15 +718,81 @@ public final class CinePartyManager {
         } else {
             tellerId = "";
         }
-        cardNo++;
+        card = null;
         hint = "";
         hinted = false;
         solvedBy = "";
+        phase = "choosing";
+        status = "";
+        Player t = players.get(tellerId);
+        if (t != null) say(tr ? "Sıra " + t.name + "'da. Telefonundan anlatacağı şeyi seçiyor." : t.name + " is picking what to describe.");
+        bump();
+    }
+
+    /**
+     * The teller's own pick: something they believe the room knows, which beats any random card. The
+     * forbidden words are worked out in the background (Gamze, or the title's own words without AI).
+     */
+    public synchronized boolean sessizChoose(String id, String title, String original, String image, String type, String year) {
+        touch(id);
+        if (mode != Mode.SESSIZ || !"choosing".equals(phase) || id == null || !id.equals(tellerId)) return false;
+        if (title == null || title.trim().isEmpty()) return false;
+        final SessizDeck.Card c = new SessizDeck.Card();
+        c.title = title.trim();
+        c.accepted.add(c.title);
+        if (original != null && !original.trim().isEmpty() && !MovieCatalog.nonLatin(original)) c.accepted.add(original.trim());
+        c.image = image != null && image.startsWith("https://") ? image : "";
+        c.type = "series".equals(type) || "tv".equals(type) ? "dizi" : "person".equals(type) ? "oyuncu" : "movie".equals(type) ? "film" : "serbest";
+        c.year = year == null ? "" : year;
+        startCard(c);
+        if (sessizDeck == null) sessizDeck = new SessizDeck(ctx);
+        final int g = gen;
+        work.execute(() -> {
+            List<String> words = sessizDeck.tabooFor(c);
+            if (!c.image.isEmpty()) PosterCache.load(ctx, c.image, 500, 750);
+            synchronized (CinePartyManager.this) {
+                if (g != gen || card != c) return;
+                c.taboo.clear();
+                c.taboo.addAll(words);
+                bump();
+            }
+        });
+        return true;
+    }
+
+    /** The teller can't think of anything: Gamze suggests a well-known one. */
+    public synchronized void sessizSuggest(String id) {
+        touch(id);
+        if (mode != Mode.SESSIZ || !"choosing".equals(phase) || (id != null && !id.equals(tellerId))) return;
+        if (sessizDeck == null) sessizDeck = new SessizDeck(ctx);
+        if (!cardQueue.isEmpty()) {
+            takeSuggestion();
+            return;
+        }
+        phase = "loading";
+        status = tr ? "Gamze bir öneri arıyor…" : "Gamze is finding one…";
+        bump();
+        fetchCards(gen);
+    }
+
+    private void takeSuggestion() {
+        SessizDeck.Card c = cardQueue.pollFirst();
+        if (c == null) {
+            phase = "choosing";
+            status = tr ? "Öneri alınamadı; kendin seçebilirsin." : "No suggestion right now; pick one yourself.";
+            bump();
+            return;
+        }
+        startCard(c);
+    }
+
+    private void startCard(SessizDeck.Card c) {
+        card = c;
+        cardNo++;
         phase = "card";
         status = "";
         sfx(Sfx.FLIP);
-        Player t = players.get(tellerId);
-        if (t != null) say(tr ? "Sıra " + t.name + "'da. " + typeName(card.type) + " anlatılıyor." : t.name + " is up. It's a " + typeName(card.type) + ".");
+        say(tr ? typeName(c.type) + " anlatılıyor. Tahminler telefondan!" : "A " + typeName(c.type) + ". Guess on your phones!");
         bump();
     }
 
@@ -786,6 +841,7 @@ public final class CinePartyManager {
         sfx(Sfx.WHOOSH);
         tellerIdx--;
         nextCard();
+        status = tr ? "Pas geçildi; yeni bir şey seç." : "Passed; pick something else.";
     }
 
     /** The teller asks Gamze for a cryptic hint, shown on the TV; the card is then worth less. */
@@ -813,6 +869,7 @@ public final class CinePartyManager {
         switch (type) {
             case "dizi": return tr ? "Bir dizi" : "series";
             case "oyuncu": return tr ? "Bir oyuncu" : "actor";
+            case "serbest": return tr ? "Bir sinema sorusu" : "something from cinema";
             case "yonetmen": return tr ? "Bir yönetmen" : "director";
             default: return tr ? "Bir film" : "film";
         }

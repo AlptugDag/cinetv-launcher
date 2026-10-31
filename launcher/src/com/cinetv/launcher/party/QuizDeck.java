@@ -120,9 +120,10 @@ final class QuizDeck {
     private void fillPool() throws Exception {
         if (MovieCatalog.hasTmdb(ctx)) {
             String lang = MovieCatalog.language();
-            addTmdb("discover/movie?sort_by=vote_count.desc&vote_count.gte=3000&page=" + (1 + rnd.nextInt(12)) + "&language=" + lang);
-            addTmdb("discover/movie?sort_by=popularity.desc&vote_count.gte=1200&page=" + (1 + rnd.nextInt(5)) + "&language=" + lang);
-            if (tr) addTmdb("discover/movie?with_original_language=tr&sort_by=vote_count.desc&vote_count.gte=120&page=" + (1 + rnd.nextInt(3)) + "&language=" + lang);
+            addTmdb("discover/movie?sort_by=vote_count.desc&vote_count.gte=9000&page=" + (1 + rnd.nextInt(8)) + "&language=" + lang);
+            addTmdb("discover/movie?sort_by=popularity.desc&vote_count.gte=4000&page=" + (1 + rnd.nextInt(3)) + "&language=" + lang);
+            // Only Turkish films most of the room has seen.
+            if (tr) addTmdb("discover/movie?with_original_language=tr&sort_by=vote_count.desc&vote_count.gte=500&page=1&language=" + lang);
         } else {
             JSONArray metas = Http.getJson("https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json", null, TIMEOUT).optJSONArray("metas");
             for (int i = 0; metas != null && i < metas.length(); i++) {

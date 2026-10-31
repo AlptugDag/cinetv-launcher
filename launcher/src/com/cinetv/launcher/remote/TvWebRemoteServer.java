@@ -947,6 +947,14 @@ public final class TvWebRemoteServer {
             case "/api/party/sessiz/guess": {
                 return new JSONObject().put("ok", true).put("correct", party.sessizGuess(q.get("id"), q.get("guess")));
             }
+            case "/api/party/sessiz/choose": {
+                return new JSONObject().put("ok", party.sessizChoose(q.get("id"), clip(q.get("title"), 120), clip(q.get("original"), 120),
+                        q.get("image"), q.get("type"), clip(q.get("year"), 4)));
+            }
+            case "/api/party/sessiz/suggest": {
+                party.sessizSuggest(q.get("id"));
+                return ok;
+            }
             case "/api/party/sessiz/pass": {
                 party.sessizPass(q.get("id"));
                 return ok;

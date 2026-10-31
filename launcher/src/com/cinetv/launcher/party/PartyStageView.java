@@ -757,11 +757,16 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
         if (z == null) return false;
         if ("setup".equals(phase)) {
             setupCard(c, tr ? "Süre yok, soru sınırı yok" : "No timer, no limit",
-                    tr ? "Anlatıcı kartı yalnızca kendi telefonunda görür ve yasaklı kelimeleri söylemeden anlatır. İlk doğru tahmin +10, anlatıcı +5."
-                            : "Only the teller sees the card, and describes it without the forbidden words. First right guess +10, teller +5.");
+                    tr ? "Anlatıcı telefonundan bir film, dizi ya da oyuncu seçer ve Gamze'nin yasakladığı kelimeleri söylemeden anlatır. İlk doğru tahmin +10, anlatıcı +5."
+                            : "The teller picks a film, series or actor on their phone and describes it without the words Gamze forbids. First right guess +10, teller +5.");
             return false;
         }
         if ("loading".equals(phase)) return spinner(c, now, st.optString("status"));
+        if ("choosing".equals(phase)) {
+            String who = z.optString("tellerName");
+            return spinner(c, now, who.isEmpty() ? (tr ? "Oyuncu bekleniyor" : "Waiting for players")
+                    : (tr ? who + " anlatacağı şeyi seçiyor…" : who + " is picking what to describe…"));
+        }
         boolean solved = "solved".equals(phase);
         float k = solved ? ease(Math.min(1f, (now - solvedAt) / 700f)) : 0;
         // The card: face down until someone gets it.

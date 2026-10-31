@@ -75,6 +75,47 @@ public final class LocalAdb {
         }
     }
 
+    /**
+     * Runs a command and returns what it printed (binary-safe), or null. The TV must already trust
+     * CineTV's key (granted once during setup); this never prompts.
+     */
+    public static byte[] exec(Context ctx, String command, int timeoutMs) {
+        try (Socket s = new Socket()) {
+            s.connect(new InetSocketAddress("127.0.0.1", 5555), 1500);
+            s.setSoTimeout(2500);
+            InputStream in = s.getInputStream();
+            OutputStream out = s.getOutputStream();
+            KeyPair keys = keys(ctx);
+            write(out, CNXN, 0x01000001, 256 * 1024, "host::\0".getBytes(StandardCharsets.UTF_8));
+            while (true) {
+                Msg m = read(in);
+                if (m.cmd == CNXN) break;
+                if (m.cmd != AUTH || m.arg0 != AUTH_TOKEN) return null;
+                write(out, AUTH, AUTH_SIGNATURE, 0, sign((RSAPrivateKey) keys.getPrivate(), m.data));
+                Msg next = read(in);
+                if (next.cmd != CNXN) return null;
+                break;
+            }
+            write(out, OPEN, 1, 0, ("shell:" + command + "\0").getBytes(StandardCharsets.UTF_8));
+            java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream(512 * 1024);
+            s.setSoTimeout(timeoutMs);
+            long deadline = System.currentTimeMillis() + timeoutMs;
+            while (System.currentTimeMillis() < deadline) {
+                Msg m = read(in);
+                if (m.cmd == WRTE) {
+                    if (m.data != null) buf.write(m.data);
+                    write(out, OKAY, 1, m.arg0, new byte[0]);
+                } else if (m.cmd == CLSE) {
+                    break;
+                }
+            }
+            return buf.toByteArray();
+        } catch (Throwable t) {
+            Log.d(TAG, "local adb exec: " + t);
+            return null;
+        }
+    }
+
     private static final class Msg {
         int cmd, arg0, arg1;
         byte[] data;

@@ -3212,8 +3212,8 @@ public final class Panels {
 
                 {AppCatalog.PKG_SESSIZ,
                  Brand.cinesessizWordmark(),
-                 tr ? "Sinema tabusu: kart yalnızca anlatıcının telefonunda, yasaklı kelimeler yasak. Salon telefondan tahmin eder. Süre ve soru sınırı yok."
-                    : "Cinema taboo: only the teller's phone shows the card and its forbidden words. The room guesses on their phones. No timer, no limit.",
+                 tr ? "Sen seç, onlar bilsin: anlatıcı salonun bileceği bir yapımı seçer, Gamze yasaklı kelimeleri koyar, salon telefondan tahmin eder. Süre ve soru sınırı yok."
+                    : "You pick, they guess: the teller chooses something the room knows, Gamze sets the forbidden words, everyone guesses by phone. No timer, no limit.",
                  (Runnable) () -> { if (launcher != null) launcher.launchSessiz(); },
                  (Runnable) () -> host.push(() -> buildCineSessizHowToPlayModal(ctx, host))},
 
@@ -3441,9 +3441,9 @@ public final class Panels {
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         return rulesModal(ctx, host, Brand.cinesessizWordmark(), Brand.CINESESSIZ_GOLD,
                 tr ? "SİNEMA TABUSU · SÜRESİZ" : "CINEMA TABOO · NO TIMER", new String[][]{
-                {tr ? "Kart yalnızca anlatıcıda" : "Only the teller sees the card",
-                 tr ? "Bir film, dizi, oyuncu ya da yönetmen ve beş yasaklı kelime yalnızca anlatıcının telefonuna gelir. TV kartı göstermez."
-                    : "A film, series, actor or director and five forbidden words reach only the teller's phone. The TV never shows the card."},
+                {tr ? "Anlatıcı seçer" : "The teller picks",
+                 tr ? "Sırası gelen, salondakilerin bileceğini düşündüğü bir film, dizi ya da oyuncuyu telefonundan seçer (aklına gelmezse Gamze önerir). Gamze beş yasaklı kelime belirler; TV hiçbirini göstermez."
+                    : "Whoever's turn it is picks a film, series or actor the room will know, on their phone (Gamze suggests one if they're stuck). Gamze sets five forbidden words; the TV shows none of it."},
                 {tr ? "Diğerleri telefondan tahmin eder" : "Everyone else guesses by phone",
                  tr ? "Tahminler TV'deki akışta görünür. Yazım hataları, Türkçe ya da orijinal adlar sorun değil."
                     : "Guesses show on the TV feed. Typos, translated or original titles all count."},

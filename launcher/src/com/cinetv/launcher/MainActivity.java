@@ -244,6 +244,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         MemoryOptimizer.ensureAirPlayReceiver(this);
         com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
         com.cinetv.launcher.ai.EmaLightningTts.prewarmNativeFallback(this);
+        handler.postDelayed(() -> com.cinetv.launcher.ai.EmaLightningTts.prewarmFillers(this), 25_000);
 
         if (!Prefs.get(this).getBoolean("tv_opt_auto_applied", false)) {
             Prefs.get(this).edit().putBoolean("tv_opt_auto_applied", true).apply();
@@ -414,37 +415,33 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     };
 
     private void performStartupGreeting() {
-        if (!inFront || isFinishing()) return;
+        if (!inFront || isFinishing() || partyStage != null) return;
         lastGreetingMs = System.currentTimeMillis();
         int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         String city = Prefs.city(this);
-        if (city == null || city.trim().isEmpty()) city = "İstanbul";
         String weather = com.cinetv.launcher.service.WeatherService.getLastFull();
+        String name = com.cinetv.launcher.ai.GamzeMemory.name(this);
 
         String greeting;
         if (tr) {
-            String timeSalute;
-            if (hour >= 5 && hour < 12) timeSalute = "Günaydın";
-            else if (hour >= 12 && hour < 18) timeSalute = "İyi günler";
-            else if (hour >= 18 && hour < 23) timeSalute = "İyi akşamlar";
-            else timeSalute = "İyi geceler";
-
-            String[] templates = {
-                    timeSalute + ", Sine TV'ye hoş geldiniz. Sinema arşiviniz vitrinde hazır.",
-                    timeSalute + "! Sine TV açıldı, bugünün seçkisine göz atabilirsiniz.",
-                    timeSalute + ", Sine TV'ye hoş geldiniz. Harika bir film akşamı dilerim.",
-                    timeSalute + "! 4K sinema koleksiyonunuz hazır.",
-                    timeSalute + ", Sine TV hazır. Keyifli seyirler dilerim."
-            };
-            int rIdx = (int) (System.currentTimeMillis() % templates.length);
-            StringBuilder sb = new StringBuilder(templates[rIdx]);
-            if (weather != null && !weather.isEmpty() && (hour >= 6 && hour <= 20)) {
-                sb.append(" ").append(city).append("'da hava ").append(weather).append(".");
+            String salute = hour >= 5 && hour < 12 ? "Günaydın" : hour >= 12 && hour < 18 ? "İyi günler"
+                    : hour >= 18 && hour < 23 ? "İyi akşamlar" : "İyi geceler";
+            if (!name.isEmpty()) salute += " " + name;
+            String[] lines = hour >= 23 || hour < 5
+                    ? new String[]{"Gece yarısı filmi için tam vakit.", "Sessiz bir gece, iyi bir film. Vitrin hazır.", "Uykun yoksa sana göre birkaç şey seçtim."}
+                    : hour >= 18
+                    ? new String[]{"Bu akşam için vitrini hazırladım.", "Akşamın filmi seni bekliyor.", "Ne izlemek istersin? Bana söylemen yeterli."}
+                    : new String[]{"Vitrin hazır.", "Bugün için birkaç güzel seçim yaptım.", "Bir şey arıyorsan bana söyle, bulayım."};
+            StringBuilder sb = new StringBuilder(salute).append(". ").append(lines[(int) (System.currentTimeMillis() / 1000 % lines.length)]);
+            if (weather != null && !weather.isEmpty() && city != null && !city.trim().isEmpty() && hour >= 6 && hour <= 21) {
+                String w = weather.substring(0, 1).toLowerCase(new Locale("tr")) + weather.substring(1);
+                sb.append(" ").append(city.trim()).append("'da hava ").append(w).append(".");
             }
             greeting = sb.toString();
         } else {
-            greeting = "Welcome to CineTV. Today's cinema curation is ready on the shelf.";
+            String salute = hour >= 5 && hour < 12 ? "Good morning" : hour >= 12 && hour < 18 ? "Good afternoon" : "Good evening";
+            greeting = salute + (name.isEmpty() ? "" : " " + name) + ". The shelf is ready; just tell me what you feel like watching.";
         }
 
         com.cinetv.launcher.ai.EmaLightningTts.speak(this, greeting);
@@ -672,6 +669,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         if (down) {
             userInteractedDuringBanner = true;
+            conversationTurns = 0;
             resetIdle();
         }
         if (liveCineSubView != null) {
@@ -905,20 +903,27 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private int searchGen;
     private boolean lastSearchFromVoice = false;
 
+    /** Spoken turns in a row without the viewer touching the remote; Gamze stops asking back after three. */
+    private int conversationTurns;
+
     @Override
     public void onSearch(final String query) {
+        search(query, false);
+    }
+
+    private void search(final String query, final boolean fromVoice) {
         if (query == null || query.trim().isEmpty()) return;
-        lastSearchFromVoice = false;
+        lastSearchFromVoice = fromVoice;
+        if (!fromVoice) conversationTurns = 0;
         com.cinetv.launcher.ai.EmaLightningTts.stop();
         home.keyboard.hide();
         home.search.setText(query);
         final int gen = ++searchGen;
 
-        // Immediate verbal acknowledgment for all searches (voice, TV keyboard, or phone remote)
-        String ack = MovieAssistant.acknowledgmentPhrase(query);
-        if (ack != null && !ack.isEmpty()) {
+        // Spoken requests get an instant, cached "hmm" while Gamze thinks: silence feels like a machine.
+        if (fromVoice && LlmClient.isConfigured(this)) {
             com.cinetv.launcher.ai.EmaLightningTts.speakMoment(this,
-                    com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SEARCH, ack);
+                    com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SEARCH, com.cinetv.launcher.ai.EmaLightningTts.filler(query));
         }
 
         // Questions get the answer bubble; film, people and theme searches only change the shelf.
@@ -946,8 +951,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 if (!r.answer.isEmpty()) {
                     // Stays long enough to read, then leaves by itself.
                     home.showBubble(r.answer, false, Math.max(6000, 2500 + 60L * r.answer.length()));
-                    com.cinetv.launcher.ai.EmaLightningTts.speakMoment(MainActivity.this,
-                            com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SEARCH, r.answer);
+                    String spoken = r.voice.isEmpty() ? r.answer : r.voice;
+                    com.cinetv.launcher.ai.GamzeConversation.record(query, spoken);
+                    reply(spoken, r.followUp, gen);
                 } else if (r.movies.isEmpty()) {
                     if (question) {
                         String msg = getString(LlmClient.isConfigured(this) || MovieCatalog.hasTmdb(this)
@@ -966,11 +972,25 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     String voiceSpeech = (r.voice != null && !r.voice.isEmpty()) ? r.voice
                             : ((r.title.isEmpty() ? MovieAssistant.cleanShelfName(query) : r.title) + " seçkisi vitrine getirildi.");
                     home.showBubble(voiceSpeech, false, Math.max(6500, 2500 + 65L * voiceSpeech.length()));
-                    com.cinetv.launcher.ai.EmaLightningTts.speakMoment(MainActivity.this,
-                            com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SEARCH, voiceSpeech);
+                    com.cinetv.launcher.ai.GamzeConversation.record(query, voiceSpeech);
+                    reply(voiceSpeech, r.followUp, gen);
                 }
             });
         });
+    }
+
+    /**
+     * Gamze answers out loud. When she asked something back and the viewer was talking (not typing),
+     * the microphone reopens by itself after her last word, like a conversation; any key press ends it.
+     */
+    private void reply(String text, boolean askedBack, final int gen) {
+        final boolean listenAgain = askedBack && lastSearchFromVoice && conversationTurns < 3;
+        com.cinetv.launcher.ai.EmaLightningTts.speakMoment(this, com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SEARCH, text,
+                listenAgain ? () -> {
+                    if (gen != searchGen || !isInFront() || home.modal.isShowing() || partyStage != null) return;
+                    conversationTurns++;
+                    onVoice();
+                } : null);
     }
 
     /** When CineTV itself last started listening (the key service leaves Google's voice window open then). */
@@ -1044,8 +1064,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
             return;
         }
-        lastSearchFromVoice = true;
-        onSearch(said);
+        search(said, true);
     }
 
     private final com.cinetv.launcher.ai.VoiceCommands.Host voiceHost = new com.cinetv.launcher.ai.VoiceCommands.Host() {
@@ -1426,6 +1445,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (!ok) {
             showNuvioNotFoundDialog(m);
         } else {
+            com.cinetv.launcher.device.SystemAudio.launch(this);
+            com.cinetv.launcher.service.NowPlaying.set(this, m);
             com.cinetv.launcher.service.LetterboxdSync.recordWatch(this, m);
         }
     }

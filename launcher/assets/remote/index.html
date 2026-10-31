@@ -419,7 +419,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         <div class="pt-games">
           <button class="pt-game" data-game="quiz"><b>Cine<span style="color:#8b5cf6">Quiz</span></b><small>Süreli bilmece · kazanan filmi seçer</small></button>
           <button class="pt-game" data-game="roulette"><b>Cine<span style="color:#38bdf8">Roulette</span></b><small>Altı film, tek kurşun</small></button>
-          <button class="pt-game" data-game="sessiz"><b>Cine<span style="color:#f59e0b">Sessiz</span></b><small>Sinema tabusu · süresiz</small></button>
+          <button class="pt-game" data-game="sessiz"><b>Cine<span style="color:#f59e0b">Sessiz</span></b><small>Sen seç, onlar bilsin</small></button>
           <button class="pt-game" data-game="duel"><b>Cine<span style="color:#ef4444">Duel</span></b><small>Telefon nişangâh olur</small></button>
           <button class="pt-game" data-game="snake"><b>Snake<span style="color:#10b981">Phile</span></b><small>TV'de sinefil yılan</small></button>
         </div>
@@ -1975,12 +1975,29 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       const n = (st.players || []).filter(p => !p.away).length;
       return ptScreen("z-s-" + ptHost(st) + n, `<div class="pt-card glass">
         <div class="pt-h">Sinema tabusu</div>
-        <p class="pt-sub" style="margin:0">Anlatıcı kartı yalnızca kendi telefonunda görür; kırmızı kelimeleri söylemeden anlatır. Diğerleri tahminlerini yazar. İlk doğru tahmin +10, anlatıcı +5. Süre ve soru sınırı yok.</p>
+        <p class="pt-sub" style="margin:0">Sırası gelen, salonun bileceği bir film, dizi ya da oyuncu seçer ve Gamze'nin yasakladığı kelimeleri söylemeden anlatır. Diğerleri tahminlerini telefonlarına yazar. İlk doğru tahmin +10, anlatıcı +5. Süre ve soru sınırı yok.</p>
         ${n < 2 ? `<div class="pt-note" style="color:#ff9f0a">En az iki telefon gerekli.</div>` : ""}
         ${ptHost(st) ? `<button class="pt-btn wide" id="zStart" ${n < 2 ? "disabled" : ""}>Başlat</button>` : `<div class="pt-note">Ev sahibi başlatacak.</div>`}
       </div>`, () => { if ($("zStart")) $("zStart").onclick = () => ptAct("party/sessiz/start"); });
     }
-    if (st.phase === "loading") return ptScreen("z-l", ptSpinner(st.status || "Kartlar karılıyor…"));
+    if (st.phase === "loading") return ptScreen("z-l", ptSpinner(st.status || "Gamze bir öneri arıyor…"));
+    if (st.phase === "choosing") {
+      if (z.teller !== ptId) return ptScreen("z-c-" + z.tellerName, ptSpinner((z.tellerName || "Anlatıcı") + " anlatacağı şeyi seçiyor…"));
+      return ptScreen("z-c-me-" + st.status, `<div class="pt-secret glass">
+        <div class="pt-eyebrow" style="color:#fbbf24">Sıra sende</div>
+        <div class="pt-h">Ne anlatacaksın?</div>
+        <p class="pt-sub" style="margin:0">Salondakilerin bileceği bir film, dizi ya da oyuncu seç. Sadece sen göreceksin; yasaklı kelimeleri Gamze belirler.</p>
+        <div class="pt-row"><input id="zQ" placeholder="Film, dizi ya da oyuncu" enterkeyhint="search" autocomplete="off"><button class="pt-btn" id="zGo">Ara</button></div>
+        <div class="pt-results" id="zRes"></div>
+        ${st.status ? `<div class="pt-note" style="color:#ff9f0a">${esc(st.status)}</div>` : ""}
+        <div class="pt-row"><button class="pt-btn ghost" id="zOwn" style="flex:1">Yazdığımı seç</button><button class="pt-btn ghost" id="zSug" style="flex:1">Gamze önersin</button></div>
+      </div>`, () => {
+        ptBuzz([30, 60, 30]);
+        ptFilmSearch($("zQ"), $("zGo"), $("zRes"), m => ptAct("party/sessiz/choose", {title: m.title, original: m.original || "", image: m.poster || "", type: m.type || "movie", year: m.year || ""}, "flip"));
+        $("zOwn").onclick = () => { const v = ($("zQ").value || "").trim(); if (v) ptAct("party/sessiz/choose", {title: v, type: "free"}, "flip"); else $("zQ").focus(); };
+        $("zSug").onclick = () => ptAct("party/sessiz/suggest");
+      });
+    }
     const feed = `<div class="pt-feed" id="zFeed">${(z.feed || []).map(f => `<div class="${f.ok ? "ok" : ""}"><b>${esc(f.name)}</b> · ${esc(f.text)}</div>`).join("")}</div>`;
     if (st.phase === "card") {
       const s = z.secret;
@@ -1992,7 +2009,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
           ${s.year ? `<div class="pt-note" style="margin-top:-6px">${esc(s.year)}</div>` : ""}
           <div class="pt-lbl" style="color:#ff6961">Söylemek yasak</div>
           <div class="pt-taboo">${(s.taboo || []).map(w => `<span>${esc(w)}</span>`).join("")}</div>
-          <div class="pt-row"><button class="pt-btn ghost" id="zPass" style="flex:1">Pas</button><button class="pt-btn" id="zHint" style="flex:2" ${z.hinted ? "disabled" : ""}>${z.hinted ? "İpucu TV'de" : "Gamze ipucu versin"}</button></div>
+          <div class="pt-row"><button class="pt-btn ghost" id="zPass" style="flex:1">Değiştir</button><button class="pt-btn" id="zHint" style="flex:2" ${z.hinted ? "disabled" : ""}>${z.hinted ? "İpucu TV'de" : "Gamze ipucu versin"}</button></div>
         </div>${feed}`, () => {
           ptBuzz([30, 60, 30]);
           $("zPass").onclick = () => ptAct("party/sessiz/pass", {}, "whoosh");

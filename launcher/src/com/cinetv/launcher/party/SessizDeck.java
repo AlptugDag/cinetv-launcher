@@ -71,9 +71,9 @@ final class SessizDeck {
         while (out.size() < n && guard++ < n * 3) {
             String k = kinds[rnd.nextInt(kinds.length)];
             Card c = null;
-            if ("film".equals(k)) c = title("movie", "discover/movie?sort_by=vote_count.desc&vote_count.gte=4000&page=" + (1 + rnd.nextInt(10)) + "&language=" + lang);
-            else if ("dizi".equals(k)) c = title("tv", "discover/tv?sort_by=vote_count.desc&vote_count.gte=1500&page=" + (1 + rnd.nextInt(5)) + "&language=" + lang);
-            else if ("oyuncu".equals(k)) c = person("person/popular?page=" + (1 + rnd.nextInt(4)) + "&language=" + lang, false);
+            if ("film".equals(k)) c = title("movie", "discover/movie?sort_by=vote_count.desc&vote_count.gte=8000&page=" + (1 + rnd.nextInt(6)) + "&language=" + lang);
+            else if ("dizi".equals(k)) c = title("tv", "discover/tv?sort_by=vote_count.desc&vote_count.gte=3000&page=" + (1 + rnd.nextInt(3)) + "&language=" + lang);
+            else if ("oyuncu".equals(k)) c = star();
             else c = director();
             if (c != null) out.add(c);
         }
@@ -116,29 +116,27 @@ final class SessizDeck {
         return null;
     }
 
-    private Card person(String path, boolean director) throws Exception {
-        JSONArray res = MovieCatalog.tmdbJson(ctx, path).optJSONArray("results");
+    /** A lead actor of a film nearly everyone has seen (TMDB's "popular people" is mostly strangers). */
+    private Card star() throws Exception {
+        JSONArray res = MovieCatalog.tmdbJson(ctx, "discover/movie?sort_by=vote_count.desc&vote_count.gte=10000&page=" + (1 + rnd.nextInt(5))).optJSONArray("results");
         if (res == null || res.length() == 0) return null;
-        for (int tries = 0; tries < 8; tries++) {
-            JSONObject o = res.optJSONObject(rnd.nextInt(res.length()));
-            if (o == null || o.optString("profile_path").isEmpty()) continue;
-            if (!director && !"Acting".equals(o.optString("known_for_department"))) continue;
-            String name = o.optString("name");
+        JSONObject film = res.optJSONObject(rnd.nextInt(res.length()));
+        JSONArray cast = MovieCatalog.tmdbJson(ctx, "movie/" + film.optInt("id") + "/credits").optJSONArray("cast");
+        for (int i = 0; cast != null && i < Math.min(2, cast.length()); i++) {
+            JSONObject p = cast.optJSONObject(i);
+            if (p == null || p.optString("profile_path").isEmpty()) continue;
+            String name = p.optString("name");
             if (!used.add(name)) continue;
             Card c = new Card();
-            c.type = director ? "yonetmen" : "oyuncu";
+            c.type = "oyuncu";
             c.title = name;
             c.accepted.add(name);
             String[] parts = name.split(" ");
             if (parts.length > 1 && parts[parts.length - 1].length() >= 4) c.accepted.add(parts[parts.length - 1]);
-            c.image = IMG + "w500" + o.optString("profile_path");
-            JSONArray known = o.optJSONArray("known_for");
-            for (int i = 0; known != null && i < known.length() && c.taboo.size() < 3; i++) {
-                JSONObject k = known.optJSONObject(i);
-                String t = k.optString("title", k.optString("name"));
-                if (!t.isEmpty()) c.taboo.add(t);
-            }
-            c.taboo.add(tr ? (director ? "Yönetmen" : "Oyuncu") : (director ? "Director" : "Actor"));
+            c.image = IMG + "w500" + p.optString("profile_path");
+            c.taboo.add(film.optString("title"));
+            c.taboo.add(p.optString("character"));
+            c.taboo.add(tr ? "Oyuncu" : "Actor");
             c.taboo.add(parts[0]);
             return c;
         }
@@ -171,11 +169,23 @@ final class SessizDeck {
         return null;
     }
 
+    /** Forbidden words for a card the teller chose. Blocking; never empty. */
+    List<String> tabooFor(Card c) {
+        List<Card> one = new ArrayList<>();
+        one.add(c);
+        if (LlmClient.isConfigured(ctx)) sharpenTaboo(one);
+        if (c.taboo.isEmpty()) {
+            for (String w : c.title.split("[\\s:,.-]+")) if (w.length() >= 3 && c.taboo.size() < 4) c.taboo.add(w);
+            if (!c.year.isEmpty()) c.taboo.add(c.year);
+        }
+        return new ArrayList<>(c.taboo);
+    }
+
     /** Gamze replaces the mechanical words with the five a good player would actually reach for. */
     private void sharpenTaboo(List<Card> cards) {
         JSONArray items = new JSONArray();
         for (Card c : cards) items.put(c.type + ": " + c.title + (c.year.isEmpty() ? "" : " (" + c.year + ")"));
-        String sys = "This is a Taboo-style charades game about cinema. For each item list the 5 words or short names "
+        String sys = "This is a Taboo-style charades game about cinema. Identify each item (it may be a film, a series or a person). For each list the 5 words or short names "
                 + "a player would most naturally use to describe it (main actors, character names, famous objects, places, the director). "
                 + "Words must be in " + (tr ? "Turkish" : "English") + " unless they are names. Reply only as a JSON array of arrays of 5 strings, same order.";
         LlmClient.Result r = LlmClient.generate(ctx, sys, items.toString(), 900, true);

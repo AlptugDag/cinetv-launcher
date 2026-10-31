@@ -221,6 +221,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
     protected void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
+        handler.removeCallbacks(cinesubAmbient);
+        handler.postDelayed(cinesubAmbient, 30_000);
         try {
             IntentFilter f = new IntentFilter(Intent.ACTION_TIME_TICK);
             f.addAction(Intent.ACTION_TIME_CHANGED);
@@ -433,6 +435,20 @@ public class TvKeyInterceptorService extends AccessibilityService {
         handler.postDelayed(idleSaver, timeout);
     }
 
+    /** CineSUB's unprompted notes: checked every half minute, only while a player shows something. */
+    private final Runnable cinesubAmbient = new Runnable() {
+        @Override
+        public void run() {
+            handler.postDelayed(this, 30_000);
+            String pkg = lastPackage;
+            if (pkg == null || pkg.equals(getPackageName())) return;
+            boolean player = isNuvioApp(pkg) || isYouTubeApp(pkg) || pkg.contains("nova") || pkg.contains("vlc")
+                    || pkg.contains("mxtech") || pkg.contains("kodi") || pkg.contains("player");
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+            if (player && am != null && am.isMusicActive()) com.cinetv.launcher.ui.CineSubOverlay.ambientTick(TvKeyInterceptorService.this);
+        }
+    };
+
     private boolean isNuvioApp(String pkg) {
         if (pkg == null) return false;
         for (String p : AppLauncher.NUVIO_PACKAGES) {
@@ -482,13 +498,17 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return true;
         }
 
-        // Dismiss active CineSUB overlay cleanly on Back key without interrupting video playback
-        if (com.cinetv.launcher.ui.CineSubOverlay.isShowing()
-                && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
-            if (event.getAction() == KeyEvent.ACTION_UP) {
-                com.cinetv.launcher.ui.CineSubOverlay.dismissActive();
+        // CineSUB open over a film: Back closes it, the arrows and OK belong to it; the film keeps playing.
+        if (com.cinetv.launcher.ui.CineSubOverlay.isShowing()) {
+            if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE) {
+                if (event.getAction() == KeyEvent.ACTION_UP) com.cinetv.launcher.ui.CineSubOverlay.dismissActive();
+                return true;
             }
-            return true;
+            if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT || code == KeyEvent.KEYCODE_DPAD_UP
+                    || code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) com.cinetv.launcher.ui.CineSubOverlay.onKey(code);
+                return true;
+            }
         }
 
         // Direct return to CineTV: when exiting Nuvio or YouTube, Back returns straight to CineTV Launcher Home
@@ -509,9 +529,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return true;
         }
 
-        // Dedicated CineSUB key trigger: Subtitle, Info, or Yellow color button during playback across any player
-        if (code == KeyEvent.KEYCODE_CAPTIONS || code == 175
-                || code == KeyEvent.KEYCODE_INFO || code == 165 || code == KeyEvent.KEYCODE_PROG_YELLOW || code == 185) {
+        // The yellow key opens CineSUB over any player. Subtitles and Info stay with the player: they have jobs there.
+        if (code == KeyEvent.KEYCODE_PROG_YELLOW && !(lastPackage != null && lastPackage.equals(getPackageName()))) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
                 com.cinetv.launcher.ui.CineSubOverlay.trigger(this);
                 return true;
