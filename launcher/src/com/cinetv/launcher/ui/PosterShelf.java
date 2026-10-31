@@ -36,6 +36,10 @@ public class PosterShelf extends FrameLayout {
         void onOpen(Movie movie, DvdCaseView view);
         void onFocusCase(DvdCaseView view, int accent);
         boolean onEdge(int keyCode);
+
+        /** The focus is a few cases from the end of the row: a search may bring more. */
+        default void onNearEnd() {
+        }
     }
 
     public interface MotionListener {
@@ -209,10 +213,49 @@ public class PosterShelf extends FrameLayout {
         index = Math.min(index, Math.max(0, max - 1));
         targetPos = index;
         focusPos = index;
-        for (int i = 0; i < max; i++) {
-            final int slot = i;
-            final Movie m = movies.get(i);
-            final DvdCaseView v = cases.get(i);
+        for (int i = 0; i < max; i++) bake(i, gen);
+        post(this::layoutCases);
+        if (!movies.isEmpty() && index < movies.size()) {
+            MovieCatalog.prefetchTrailer(getContext(), movies.get(index));
+        }
+    }
+
+    /** More results at the end of the row (search keeps going as the viewer scrolls); the focus stays put. */
+    public void appendMovies(List<Movie> more) {
+        if (more == null || more.isEmpty()) return;
+        final int gen = generation;
+        // the ring grows: pin the position to the real index so the next step does not jump
+        if (anim == null || !anim.isRunning()) {
+            targetPos = index;
+            focusPos = index;
+        }
+        java.util.Set<String> have = new java.util.HashSet<>();
+        for (Movie m : movies) have.add(key(m));
+        int added = 0;
+        for (Movie m : more) {
+            if (movies.size() >= MAX_APPENDED || !have.add(key(m))) continue;
+            movies.add(m);
+            DvdCaseView v = new DvdCaseView(getContext(), caseW, glowPad);
+            if (currentThemeFilter != null) v.setThemeFilter(currentThemeFilter);
+            addView(v, new LayoutParams(v.viewWidth(), v.viewHeight()));
+            cases.add(v);
+            bake(movies.size() - 1, gen);
+            added++;
+        }
+        if (added > 0) post(this::layoutCases);
+    }
+
+    /** A search row grows to at most this many cases (memory on a TV). */
+    private static final int MAX_APPENDED = 96;
+
+    private static String key(Movie m) {
+        return m.imdbId != null && !m.imdbId.isEmpty() ? m.imdbId : (m.title + "|" + m.year).toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private void bake(final int slot, final int gen) {
+        {
+            final Movie m = movies.get(slot);
+            final DvdCaseView v = cases.get(slot);
             v.setCase(null);
             baker.execute(() -> {
                 Bitmap poster = m.posterUrl.startsWith("asset:")
@@ -244,10 +287,6 @@ public class PosterShelf extends FrameLayout {
                     });
                 }
             });
-        }
-        post(this::layoutCases);
-        if (!movies.isEmpty() && index < movies.size()) {
-            MovieCatalog.prefetchTrailer(getContext(), movies.get(index));
         }
     }
 
@@ -326,6 +365,7 @@ public class PosterShelf extends FrameLayout {
         stopSway();
         targetPos += delta;
         index = Math.floorMod(targetPos, n);
+        if (listener != null && n - index <= 5) listener.onNearEnd();
         main.removeCallbacks(prefetchRunnable);
         main.postDelayed(prefetchRunnable, 150);
         if (anim != null) anim.cancel();
@@ -365,10 +405,9 @@ public class PosterShelf extends FrameLayout {
     private void sway() {
         if (!hasFocus() || cases.isEmpty() || !isShown()) return;
         if (swayAnim != null) swayAnim.cancel();
-        swayAnim = ValueAnimator.ofFloat(0f, 1f);
-        swayAnim.setDuration(SWAY_MS);
-        swayAnim.setRepeatMode(ValueAnimator.RESTART);
-        swayAnim.setRepeatCount(1);
+        // two turns in one run (0..2), so the reflection can ease in at the start and out at the end
+        swayAnim = ValueAnimator.ofFloat(0f, 2f);
+        swayAnim.setDuration(SWAY_MS * 2);
         swayAnim.setInterpolator(new android.view.animation.LinearInterpolator());
         swayAnim.addUpdateListener(a -> {
             sway = (float) a.getAnimatedValue();
@@ -417,7 +456,8 @@ public class PosterShelf extends FrameLayout {
         float anchor = w * 0.5f;
         // A TV whose frames run slow draws a shorter shelf: the far cases are tiny anyway.
         boolean light = PerformanceProfile.gpuLimited(getContext());
-        float range = Math.min(light ? 7 : VISIBLE_RANGE, n / 2f);
+        // Every TV shows the full row again (weak TVs were cut to 7 a side, leaving the edges empty).
+        float range = Math.min(VISIBLE_RANGE, n / 2f);
         float step1 = caseW * (focused ? 1.14f : 0.98f);
         // Fewer films spread a little wider so both sides of the screen are always filled.
         int perSide = Math.max(1, (n - 1) / 2);
@@ -429,7 +469,7 @@ public class PosterShelf extends FrameLayout {
             float d = i - focusPos;
             d = d - n * (float) Math.floor((d + n / 2f) / n);
             float ad = Math.abs(d);
-            if (ad > range + 0.8f) {
+            if (!asCases && ad > range + 0.8f) {
                 v.setVisibility(INVISIBLE);
                 continue;
             }
@@ -472,24 +512,25 @@ public class PosterShelf extends FrameLayout {
                 // across its sleeve.
                 swaySine = (float) Math.sin(2 * Math.PI * sway);
                 turn = 7.5f * swaySine;
-                glint = 0.5f + 0.5f * swaySine;
+                // the sleeve's reflection fades in over the first second and out over the last, never switching on
+                float in = Math.min(1f, sway / 0.3f), out = Math.min(1f, (2f - sway) / 0.3f);
+                float env = in * in * (3f - 2f * in) * out * out * (3f - 2f * out);
+                glint = (0.5f + 0.5f * swaySine) * env;
             }
 
             // Continuous subtle architectural bow (apex in center, NO flat zone, NO artificial vertical climb):
             float norm = Math.min(1f, ad / Math.max(1f, perSide));
             float bow = spatial ? UiKit.pxf(5f) * (1f - norm * norm) : 0f;
 
-            // Smooth edge fade: cases coming from outside the screen fade in gradually instead of popping
-            float edgeFade = 1f;
-            float leftBound = -caseW * 0.2f, rightBound = w + caseW * 0.2f;
-            if (x < leftBound) edgeFade = Math.max(0f, 1f - (leftBound - x) / (caseW * 0.75f));
-            else if (x > rightBound) edgeFade = Math.max(0f, 1f - (x - rightBound) / (caseW * 0.75f));
-            if (edgeFade <= 0f) {
+            // The row runs to the very edges: a case is drawn whole until it has slid fully off the screen,
+            // and new ones enter from beyond the edge (no fading or popping in short of it).
+            float half = caseW * scale * 0.75f;
+            if (x + half < 0f || x - half > w || ad > n / 2f + 0.5f) {
                 v.setVisibility(INVISIBLE);
                 continue;
             }
             v.setVisibility(VISIBLE);
-            v.setAlpha(edgeFade);
+            v.setAlpha(1f);
             v.setTranslationX(x - v.getWidth() / 2f);
             // Grounded shelf baseline: subtle bow and anchor contact keep all cases firmly planted on shelf plane:
             v.setTranslationY((h - v.getHeight()) / 2f + (UiKit.pxf(5f) - bow) + UiKit.pxf(2f) * lift);

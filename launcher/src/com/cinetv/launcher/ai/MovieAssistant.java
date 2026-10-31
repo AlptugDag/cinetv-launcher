@@ -106,6 +106,49 @@ public final class MovieAssistant {
         return heuristic(ctx, q, currentShelf, max);
     }
 
+    /** The next page of a search: more films for the same request, none of those already on the row. */
+    public static List<Movie> more(Context ctx, String query, List<Movie> shown, int count) {
+        List<Movie> out = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        StringBuilder ex = new StringBuilder();
+        for (Movie m : shown) {
+            seen.add((m.title + "|" + m.year).toLowerCase(Locale.ROOT));
+            if (ex.length() < 2400) ex.append(m.title).append(m.year > 1900 ? " (" + m.year + ")" : "").append("; ");
+        }
+        if (LlmClient.isConfigured(ctx)) {
+            String system = "You are a film search engine with encyclopedic knowledge of plots, scenes, characters, cast, "
+                    + "objects, settings, quotes and moods. Reply ONLY with compact JSON: {\"titles\":[{\"t\":\"original title\",\"y\":1999,\"tv\":false}]}";
+            String user = "Request: " + query + "\nGive " + count + " MORE titles that match it just as well, best first, "
+                    + "none of these: " + ex + "\nEvery constraint in the request must hold for every title.";
+            LlmClient.Result r = LlmClient.generateQuick(ctx, system, user, 900);
+            if (r.success) {
+                try {
+                    JSONArray arr = LlmClient.extractJsonObject(r.text).optJSONArray("titles");
+                    List<Future<List<Movie>>> jobs = new ArrayList<>();
+                    for (int i = 0; arr != null && i < arr.length() && i < count; i++) {
+                        final JSONObject t = arr.getJSONObject(i);
+                        jobs.add(pool.submit(() -> {
+                            List<Movie> one = new ArrayList<>();
+                            Movie found = MovieCatalog.resolveQuick(ctx, t.optString("t"), t.optInt("y"), t.optBoolean("tv"));
+                            if (found != null) one.add(found);
+                            return one;
+                        }));
+                    }
+                    for (Movie m : collect(jobs, count)) {
+                        if (seen.add((m.title + "|" + m.year).toLowerCase(Locale.ROOT))) out.add(m);
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        if (out.isEmpty()) {
+            for (Movie m : MovieCatalog.search(ctx, query, shown.size() + count)) {
+                if (seen.add((m.title + "|" + m.year).toLowerCase(Locale.ROOT))) out.add(m);
+            }
+        }
+        return out;
+    }
+
     // ---- with AI ----------------------------------------------------------------------------------
 
     private static Reply planned(Context ctx, String query, List<MovieCatalog.Movie> currentShelf, int max) {
@@ -143,7 +186,9 @@ public final class MovieAssistant {
                 + "- 'chat' is for small talk (greetings, how are you, thanks, jokes): answer warmly in voice, maybe suggest one film in titles; no shelf title needed.\n"
                 + "How to choose:\n"
                 + "- A person's films ('Kitano filmleri'): intent shelf, person = exact full name, role as asked.\n"
-                + "- Moods, vibes, themes, 'like X but darker', 'daha eskisi': intent shelf, titles = up to 14 well-known films that truly match, interpreted against the current shelf and the conversation.\n"
+                + "- Moods, vibes, themes, 'like X but darker', 'daha eskisi': intent shelf, titles = up to 14 well-known films that truly match, interpreted against the current shelf and the conversation.\n"                + "- Content descriptions (a plot point, a scene, a character, an actor's role, an object, a place, a line of dialogue, a feeling: "
+                + "'adamın karısının kafasının kutuda çıktığı film', 'sonunda trenin kara düştüğü', 'kırmızı balonlu palyaço'): work out the exact film(s), "
+                + "put the best match first in titles with its year, then close matches; never answer with a generic list.\n"
                 + "- Complex searches ('Hollywood'un en iyi intikam filmleri'): keywords, genres and country, plus your own titles.\n"
                 + "- Family with children: nothing violent, sexual or traumatic, suited to their age. Couples: chemistry and tension. Friends: pace and laughs. Alone: anything goes.\n"
                 + "- Questions about films or people: intent answer, answer = 1-3 accurate sentences; voice = the gist. If unsure of a fact, say so briefly instead of inventing. "
@@ -489,20 +534,24 @@ public final class MovieAssistant {
         if (!recentTitles.isEmpty()) {
             recentInstruction += " CRITICAL TITLE RULE: DO NOT use or imitate any of these previous shelf titles: [" + recentTitles.replace(";;;", " | ") + "]. ";
         }
-        int askCount = Math.min(24, max + 4);
+        int askCount = Math.min(22, max + 2);
 
+        // A themed shelf for this very moment, not a narrow pick: the title fuses the day, the hour, the month and
+        // season, the weather, the city (only when the TV knows it) and a mood inferred from all of them, e.g.
+        // "ANKARA AYAZINDA DİSTOPİK SİSTEM BAŞKALDIRISI" or "PAZAR ÖĞLEDEN SONRASI AİLE MACERALARI".
         String request = mood != null && !mood.trim().isEmpty() ? mood.trim() + "." + recentInstruction
-                : "Right now the real-world temporal and atmospheric moment is:\n" + context + "\n" + recentInstruction
-                + "\nRigorously curate " + askCount + " acclaimed films or series strictly and sequentially inspired by all 6 real-world factors in order: "
-                + "(1. SAAT, 2. GÜN, 3. ŞEHİR, 4. HAVA DURUMU, 5. AY, 6. MEVSİM) fused through the chosen ÖZEL SİNEMA MERCEĞİ.\n"
-                + "CRITICAL TITLE INSTRUCTION: NEVER include numerical clock times (e.g. NEVER write '15:00', '18:30', '21:00' or clock digits in the title). "
-                + "NEVER use vague, lazy or generic phrases. The category_title MUST be uniquely imaginative, poetic, ultra-specific (max 6 words in TURKISH UPPERCASE), "
-                + "synthesizing the atmosphere, city, weather, and cinema mood (e.g. 'İSTANBUL YAĞMURUNDA NEO-NOIR', 'SONBAHAR RÜZGARINDA ZİHİN BÜKÜCÜLER', 'GECE YARISI SİSLİ SOKAKLARDA DEDEKTİFLER', 'AKDENİZ BÜYÜLÜ GERÇEKÇİLİĞİ').\n"
-                + "Selection criteria: IMDb >= 7.2, non-repeating world cinema auteurs (Criterion, Cannes, Venice, Berlin, Japanese, French, Korean, Scandinavian, Italian, Turkish), no more than one film per director.";
-        String system = "You are a world-class film curator and cinema historian. Reply ONLY with JSON, no markdown: "
-                + "{\"category_title\": \"SHORT EVOCATIVE TITLE IN " + language().toUpperCase(Locale.ROOT) + " (max 6 words)\", "
-                + "\"movies\": [{\"title\": \"original or international title\", \"year\": 1999, \"tv\": false}]}";
-        LlmClient.Result r = LlmClient.generate(ctx, system, request, 2400);
+                : "The moment (use every factor that is present; skip what is missing, never invent a city):\n" + context + "\n"
+                + recentInstruction
+                + "\nInfer the mood this moment calls for (weekday evening fatigue, weekend freedom, late-night solitude, a cold rainy "
+                + "morning, a summer night...). Invent ONE shelf theme that fuses that moment with a cinematic idea (a genre, a "
+                + "movement, a feeling or a subject) broad enough for " + askCount + " varied films, and pick them.\n"
+                + "category_title: max 6 words, " + language().toUpperCase(Locale.ROOT) + ", uppercase, vivid and specific to the moment, "
+                + "no clock times, no generic words like 'ÖNERİLER' or 'FİLMLER' alone.\n"
+                + "Films: well rated (IMDb >= 7), different decades and countries, at most one per director, mostly films, "
+                + "a series only when it truly fits.";
+        String system = "You are a world-class film curator. Reply ONLY with compact JSON: "
+                + "{\"category_title\":\"...\",\"movies\":[{\"title\":\"original or international title\",\"year\":1999,\"tv\":false}]}";
+        LlmClient.Result r = LlmClient.generateQuick(ctx, system, request, 1500);
         if (!r.success) return null;
         try {
             JSONObject o = LlmClient.extractJsonObject(r.text);

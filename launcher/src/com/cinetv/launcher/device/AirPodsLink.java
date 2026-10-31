@@ -80,11 +80,17 @@ public final class AirPodsLink {
                 if (d != null && isHeadphones(d)) {
                     disconnectedAt = 0L;
                     Toast.makeText(ctx, ctx.getString(R.string.airpods_connected, name(d)), Toast.LENGTH_SHORT).show();
-                    applyHeadphoneSpatialAudio(ctx, true);
+                    applyHeadphoneSpatialAudio(ctx, com.cinetv.launcher.service.Prefs.get(ctx).getBoolean("airpods_spatial_binaural", true));
+                    // The case opened by the TV: the AirPods panel comes up by itself (it is no longer in Settings).
+                    try {
+                        com.cinetv.launcher.ui.SpatialAudioOverlay.show(ctx);
+                    } catch (Throwable ignored) {
+                    }
                 }
             } else if (state == BluetoothProfile.STATE_DISCONNECTED) {
                 disconnectedAt = System.currentTimeMillis();
                 applyHeadphoneSpatialAudio(ctx, false);
+                if (d != null && isHeadphones(d)) com.cinetv.launcher.ui.SpatialAudioOverlay.dismiss();
             }
         }
     };

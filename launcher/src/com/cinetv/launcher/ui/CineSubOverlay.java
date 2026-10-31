@@ -571,6 +571,9 @@ public final class CineSubOverlay {
                 case "art": return tr ? "Sanat" : "Art";
                 case "event": return tr ? "Tarih" : "History";
                 case "text": return tr ? "Not" : "Note";
+                case "music": return tr ? "Müzik" : "Music";
+                case "cameo": return tr ? "Kamera Arkası" : "Cameo";
+                case "landmark": return tr ? "Tarihi Yapı" : "Landmark";
                 default: return tr ? "Obje" : "Object";
             }
         }

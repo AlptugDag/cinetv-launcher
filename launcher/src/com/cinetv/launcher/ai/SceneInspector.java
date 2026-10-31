@@ -124,9 +124,13 @@ public final class SceneInspector {
                 + "a dish, a historical event, a person, a book or a song mentioned in the dialogue), return it; otherwise return an empty list. "
                 + "Artworks get title, artist and year; never point at an unnamed person. "
                 + "A concept, quote or allusion in the subtitles counts too: say what it means or what it refers to. "
-                + "JSON: {\"items\":[{\"kind\":\"person|place|object|food|art|text|event\",\"label\":\"2-4 words\",\"title\":\"name\",\"fact\":\"under 150 characters\","
+                + "JSON: {\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 words\",\"title\":\"name\",\"fact\":\"under 150 characters\","
                 + "\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":false}]} with box in 0-1000 screen coordinates (empty for subtitle mentions)."
-                : "List up to 5 things in this frame worth knowing about: identifiable places and landmarks, artworks, notable objects, vehicles, clothing, "
+                : "List the 1 to 4 most rewarding things in this frame (quality over quantity: a weak or obvious item is worse than none): "
+                + "cameos (a director, writer, musician or other real celebrity appearing briefly in a known film: kind cameo, say who and why it is there), "
+                + "historic buildings and landmarks (kind landmark: name, city, era, architect when known) and filming locations (kind place), "
+                + "the music playing in this scene when the film is known and the scene is recognisable, or a song named or shown on screen "
+                + "(kind music: song, artist, year and why it was chosen; no box), artworks, notable objects, vehicles, clothing, "
                 + "food and drink, characters, and any name, place, event, book or song mentioned in the visible subtitles. "
                 + "Read the visible subtitles closely: explain any specific concept, term, slang, idiom or historical reference in them, "
                 + "and when a line quotes or alludes to something (another film, a book, the Bible, a myth, a famous speech, a song, a real event), "
@@ -136,9 +140,11 @@ public final class SceneInspector {
                 + "a landmark its name and city; a car, weapon, watch or record its exact model and era; a prop or costume the story behind it in this film. "
                 + "Food comes first when it is on screen: name the dish itself (e.g. 'Ratatouille', 'Spaghetti alla puttanesca') and say where it comes from or why it matters. "
                 + "Never return an unnamed person ('a man', 'male character'): a person needs a character or actor name, otherwise leave them out. "
-                + "JSON: {\"film\":\"the film or series if you recognise it, else empty\",\"items\":[{\"kind\":\"person|place|object|food|art|text|event\",\"label\":\"2-4 words\",\"title\":\"what or who it is\","
+                + "JSON: {\"film\":\"the film or series if you recognise it, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 words\",\"title\":\"what or who it is\","
                 + "\"fact\":\"one or two sentences, under 220 characters\",\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":true if it came from the subtitles}]} "
-                + "with box in 0-1000 screen coordinates, tight around the thing.";
+                + "with box in 0-1000 screen coordinates. The box must enclose exactly that one thing and nothing else: the painting's frame, "
+                + "the plate, the building's facade, the car's body, the cameo's face and shoulders; never a whole region, never a box around "
+                + "several things. If you cannot place it precisely, leave box empty rather than guess.";
         LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, ambient ? 400 : 1200);
         if (!r.success) {
             scene.error = r.text;

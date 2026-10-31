@@ -171,7 +171,9 @@ public final class NightCare {
     }
 
     private static void capVolume(Context app) {
-        if ((!quietHours(app) && !isAudioActive(app)) || !isNight()) return;
+        // Only when the viewer turned quiet hours on, only at night, and never on headphones (they wake nobody):
+        // the old check also capped any playing audio at 30% with quiet hours off.
+        if (!quietHours(app) || !isNight() || AirPodsLink.isHeadphoneConnected(app)) return;
         try {
             AudioManager am = (AudioManager) app.getSystemService(Context.AUDIO_SERVICE);
             if (am == null) return;

@@ -1,5 +1,21 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.20c · Beta 3
+
+- Oynat (kutu ya da telefon): Nuvio her seferinde temiz açılıp doğrudan filmin kaynaklarına gidiyor; ana ekranda ya da son filmde kalmıyor, film kaldığı yerden sürüyor.
+- Letterboxd sorusu filmi artık hiç bekletmiyor: film hemen başlıyor, soru TV'ye dönünce en üstte soruluyor.
+- AirPods: kulaklık bağlanınca paneli kendiliğinden açılıyor (Ayarlar'dan çıkarıldı); ses gece kendiliğinden %30'a inmiyor (sessiz saatler hatası).
+- Gamze İngilizce adları ve kelimeleri İngilizce okunuşuyla söylüyor.
+- "Ağ" düğmesiyle açılan Wi-Fi ayarları kapanmıyor.
+- Vitrin yine tam sayıda kutu gösteriyor, kutular ekranın tam kenarından giriyor; odaktaki parlama yumuşadı; yansıma yavaşça beliriyor.
+- DVD kutusu Geri ile, açılışın tam tersi bir animasyonla kapanıyor.
+- Fragman kutuya odaklanınca yüklenmeye başlıyor; siyah kare yerine hemen fotoğraf, gecikirse "Yükleniyor...".
+- Kaldırıldı: CineSUB öğreticisi, CineDuel, telefondaki arama altı çipleri, "vitrini beklemeden..." yazısı. Telefonda 3D Gyro ikinci basışta kapanıyor.
+- Raflar daha hızlı hazırlanıyor ve ana göre temalı (gün, saat, ay, mevsim, hava, varsa şehir).
+- Arama: içerik tarifinden (sahne, karakter, replik, nesne) film bulma; vitrinde kaydırdıkça yeni sonuçlar ekleniyor.
+- CineSUB: kameolar, tarihi yapılar, sahnedeki müzik; çerçeve tam nesnenin etrafında, daha az ama daha iyi bilgi.
+- SnakePhile: afişler görünüyor, yılan kenara çarpınca oyun bitiyor; telefondan SnakePhile açınca artık doğru oyun açılıyor.
+
 ## 1.0.0.20b · Beta 2
 
 - Erişilebilirlik, cihaz ayarları ve dosya yöneticisi artık açılır açılmaz kapanmıyor (MediaTek TV menüleri tuner sanılmıyor).

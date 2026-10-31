@@ -344,14 +344,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <main>
   <section id="tab-search" class="on">
     <div class="wait glass" id="waitBox" hidden><i></i><span id="waitText"></span></div>
-    <div class="vibe-chips" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
-      <button type="button" class="glass chip" data-vibe="Gamze ailece izleyeceğimiz sürükleyici bir film bul" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Ailece</button>
-      <button type="button" class="glass chip" data-vibe="Arkadaş ortamı için eğlenceli ve gerilimli bir şey aç" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Arkadaşlar</button>
-      <button type="button" class="glass chip" data-vibe="Sevgilimle baş başa izleyeceğimiz büyüleyici bir film" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Sevgiliyle</button>
-      <button type="button" class="glass chip" data-vibe="Bana Interstellar'daki o derin uzay yalnızlığını hissettiren filmleri getir" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Uzay Yalnızlığı</button>
-      <button type="button" class="glass chip" data-vibe="Blade Runner'daki gibi yağmurlu neon hüznü filmleri" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Neon Hüznü</button>
-      <button type="button" class="glass chip" id="watchlistChip" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:#f59e0b;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.15)">Ortak Liste</button>
-    </div>
     <h2 id="listTitle" data-i="trending"></h2>
     <div class="grid" id="results"></div>
   </section>
@@ -420,7 +412,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
           <button class="pt-game" data-game="quiz"><b>Cine<span style="color:#8b5cf6">Quiz</span></b><small>Süreli bilmece · kazanan filmi seçer</small></button>
           <button class="pt-game" data-game="roulette"><b>Cine<span style="color:#38bdf8">Roulette</span></b><small>Altı film, tek kurşun</small></button>
           <button class="pt-game" data-game="sessiz"><b>Cine<span style="color:#f59e0b">Sessiz</span></b><small>Sen seç, onlar bilsin</small></button>
-          <button class="pt-game" data-game="duel"><b>Cine<span style="color:#ef4444">Duel</span></b><small>Telefon nişangâh olur</small></button>
           <button class="pt-game" data-game="snake"><b>Snake<span style="color:#10b981">Phile</span></b><small>TV'de sinefil yılan</small></button>
         </div>
       </div>
@@ -837,15 +828,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const cleanSearchQuery = text => (text || "").replace(/\b(filmleri|filmler|filmi|dizileri|dizisi|dizi|movies|movie|films|film|tavsiyesi|önerisi|seçkisi)\b/gi, "").replace(/\s+/g, " ").trim();
 
   // Typing shows in the TV's search bar; Enter (or the keyboard's Search) fills the TV's shelf.
-  document.querySelectorAll(".vibe-chips button[data-vibe]").forEach(btn => {
-    btn.onclick = () => {
-      const q = btn.dataset.vibe;
-      $("q").value = q;
-      $("q").dispatchEvent(new Event("input"));
-      api("tv/voice", {q}).catch(() => {});
-      toast("Gamze AI: " + q);
-    };
-  });
   if ($("watchlistChip")) {
     $("watchlistChip").onclick = async () => {
       skeleton();
@@ -1161,7 +1143,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     smoothDx = 0; smoothDy = 0;
     lastBeta = null; lastGamma = null;
     mx = 0; my = 0;
-    api("mouse/off").catch(() => {});
+    // the TV's pointer stays while the touchpad is still in use
+    if (!mouse) api("mouse/off").catch(() => {});
   };
 
   const gyroBtn = $("gyroBtn"), calBtn = $("calBtn"), gyroTrigger = $("gyroTrigger");
@@ -1180,8 +1163,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         window.addEventListener("deviceorientation", onOrientation);
         toast("VR Lazer Kumandası Açıldı. TV'ye doğrultup hareket ettirin.");
       } else {
+        // second press: every motion control stops; the pad stays a touchpad
         stopGyro();
-        if (mouse) addEventListener("devicemotion", onMotion);
+        removeEventListener("devicemotion", onMotion);
+        toast("3D Gyro kapatıldı");
       }
     };
   }
@@ -1675,8 +1660,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   // ---- CineParty: the phone half. The TV draws the shared stage; each phone draws its own player's
   // screen from its own view of the room (a Sessiz card reaches only its teller), long-polling for changes.
-  const PT_COLORS = {quiz: "#8b5cf6", roulette: "#38bdf8", sessiz: "#f59e0b", duel: "#ef4444", snake: "#10b981"};
-  const PT_WORD = {quiz: "Quiz", roulette: "Roulette", sessiz: "Sessiz", duel: "Duel", snake: "Phile"};
+  const PT_COLORS = {quiz: "#8b5cf6", roulette: "#38bdf8", sessiz: "#f59e0b", snake: "#10b981"};
+  const PT_WORD = {quiz: "Quiz", roulette: "Roulette", sessiz: "Sessiz", snake: "Phile"};
   let ptId = null, ptName = "";
   try {
     ptId = localStorage.getItem("cinetv.party.id");
@@ -1739,10 +1724,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     const g = b.dataset.game;
     ptUnlock(); ptBuzz(10);
     try { await api("party/open", {game: g}); } catch (e) { toast(t("offline")); return; }
-    if (g === "duel" || g === "snake") ptOpenPad(g);
+    if (g === "snake") ptOpenPad(g);
   });
   $("ptLeave").onclick = () => api("party/close").catch(() => {});
-  $("ptPadBack").onclick = () => { ptPad = ""; ptStopAim(); press(4); ptRender(ptSt); };
+  $("ptPadBack").onclick = () => { ptPad = ""; press(4); ptRender(ptSt); };
 
   const ptLoop = async () => {
     while (ptOn) {
@@ -2068,40 +2053,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   const ptClock = ms => { const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
 
-  // ---- CineDuel and SnakePhile: the phone becomes the controller ----
-  let ptAimOn = false, ptAimLast = 0, ptAimBase = null;
-  const ptOnAim = e => {
-    if (!ptAimOn || e.beta == null) return;
-    if (!ptAimBase) ptAimBase = {b: e.beta, g: e.gamma};
-    const now = Date.now();
-    if (now - ptAimLast < 33) return;
-    ptAimLast = now;
-    const x = Math.max(0, Math.min(1, .5 + (e.gamma - ptAimBase.g) / 50));
-    const y = Math.max(0, Math.min(1, .5 + (e.beta - ptAimBase.b) / 36));
-    api("game/duel/aim", {x: x.toFixed(3), y: y.toFixed(3)}).catch(() => {});
-  };
-  const ptStopAim = () => { ptAimOn = false; removeEventListener("deviceorientation", ptOnAim); };
+  // ---- SnakePhile: the phone becomes the controller ----
   function ptOpenPad(game) {
     ptPad = game;
     ptShow("ptPad");
     $("ptPad").style.setProperty("--pt", PT_COLORS[game]);
     $("ptPadWord").innerHTML = ptWordHtml(game);
-    if (game === "duel") {
-      $("ptPadBody").innerHTML = `<div class="pt-card glass" style="text-align:center">
-        <div class="pt-note">Telefonu TV'ye doğrult ve eğerek nişan al. Ortalamak için "Merkez".</div>
-        <button class="pt-trigger" id="dFire" style="background:radial-gradient(circle at 35% 30%,#fca5a5,#b91c1c 70%);box-shadow:0 0 0 10px rgba(239,68,68,.12),0 0 60px rgba(239,68,68,.45)">ATEŞ</button>
-        <button class="pt-btn ghost wide" id="dCenter">Merkez</button></div>`;
-      const startAim = async () => {
-        try { if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); } catch (e) {}
-        ptAimBase = null; ptAimOn = true; addEventListener("deviceorientation", ptOnAim);
-      };
-      $("dFire").onclick = () => { if (!ptAimOn) startAim(); ptBuzz(25); ptSfx("bang"); api("game/duel/shoot").catch(() => {}); };
-      $("dCenter").onclick = () => { ptAimBase = null; if (!ptAimOn) startAim(); };
-    } else {
-      $("ptPadBody").innerHTML = `<div class="pt-card glass"><div class="pt-note">Yılanı yönlendir. TV'de afişleri ye, kuyruğunu ısırma.</div>
-        <div class="pt-pad"><span></span><button data-k="19">▲</button><span></span><button data-k="21">◀</button><button data-k="23">●</button><button data-k="22">▶</button><span></span><button data-k="20">▼</button><span></span></div></div>`;
-      $("ptPadBody").querySelectorAll("[data-k]").forEach(b => b.onpointerdown = e => { e.preventDefault(); ptBuzz(8); press(b.dataset.k); });
-    }
+    $("ptPadBody").innerHTML = `<div class="pt-card glass"><div class="pt-note">Yılanı yönlendir. TV'de afişleri ye, kuyruğunu ısırma.</div>
+      <div class="pt-pad"><span></span><button data-k="19">▲</button><span></span><button data-k="21">◀</button><button data-k="23">●</button><button data-k="22">▶</button><span></span><button data-k="20">▼</button><span></span></div></div>`;
+    $("ptPadBody").querySelectorAll("[data-k]").forEach(b => b.onpointerdown = e => { e.preventDefault(); ptBuzz(8); press(b.dataset.k); });
   }
 
   const triggerCineSubHelper = async () => {

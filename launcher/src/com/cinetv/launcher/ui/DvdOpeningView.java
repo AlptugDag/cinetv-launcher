@@ -151,6 +151,7 @@ public class DvdOpeningView extends View {
             cb.onLaunch();
             return;
         }
+        closing = false;
         this.dvd = dvd;
         this.from = fromScreen;
         this.callback = cb;
@@ -324,6 +325,50 @@ public class DvdOpeningView extends View {
         disc = null;
     }
 
+    private boolean closing;
+
+    /** Back: the opening played backwards (same path, same timing and easing), then the case is on the shelf again. */
+    private void close() {
+        if (closing) return;
+        if (play >= 0 || launched || t <= 0) {
+            dismiss();
+            if (callback != null && !launched) callback.onCancelled();
+            return;
+        }
+        closing = true;
+        com.cinetv.launcher.ai.EmaLightningTts.stop();
+        if (slot != null) slot.hide();
+        trailerShown = true; // the trailer does not come back while the cover closes
+        removeCallbacks(autoPlay);
+        if (anim != null) anim.cancel();
+        setLayerType(LAYER_TYPE_HARDWARE, null);
+        final long from = t;
+        anim = ValueAnimator.ofFloat(from, 0);
+        anim.setDuration(from);
+        anim.setInterpolator(new LinearInterpolator());
+        anim.addUpdateListener(a -> {
+            t = (long) (float) a.getAnimatedValue();
+            invalidate();
+        });
+        anim.addListener(new android.animation.AnimatorListenerAdapter() {
+            private boolean cancelled;
+
+            @Override
+            public void onAnimationCancel(android.animation.Animator animation) {
+                cancelled = true;
+            }
+
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                closing = false;
+                if (cancelled) return;
+                dismiss();
+                if (callback != null && !launched) callback.onCancelled();
+            }
+        });
+        anim.start();
+    }
+
     private void launch() {
         launched = true;
         com.cinetv.launcher.ai.EmaLightningTts.stop();
@@ -332,9 +377,9 @@ public class DvdOpeningView extends View {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (closing) return true;
         if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
-            dismiss();
-            if (callback != null && !launched) callback.onCancelled();
+            if (event.getRepeatCount() == 0) close();
             return true;
         }
         if ((keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER

@@ -347,7 +347,7 @@ public class HomeScreen {
         rightGroup.setGravity(Gravity.CENTER_VERTICAL);
         rightGroup.setClipChildren(false);
         headerButtons = new View[]{
-                headerButton(R.drawable.ic_refresh, R.string.refresh_shelf, R.string.refresh_shelf_hint, Color.parseColor("#10B981"), v -> listener.onRefreshShelf()),
+                headerButton(R.drawable.ic_refresh, R.string.refresh_shelf, 0, Color.parseColor("#10B981"), v -> listener.onRefreshShelf()),
                 headerButton(R.drawable.ic_phone, R.string.connect_phone, R.string.connect_phone, Color.parseColor("#38BDF8"), v -> listener.onPhone()),
                 headerButton(R.drawable.ic_network, R.string.network, R.string.network, Color.parseColor("#F59E0B"), v -> listener.onNetwork()),
                 headerButton(R.drawable.ic_inputs, R.string.inputs, R.string.inputs, Color.parseColor("#8B5CF6"), v -> listener.onInputs()),
@@ -513,7 +513,7 @@ public class HomeScreen {
             if (inner != null) inner.onFocusChange(v, has);
             if (has) {
                 listener.onFocusLight(v, glowColor);
-                showButtonHint(v, ctx.getString(hint));
+                if (hint != 0) showButtonHint(v, ctx.getString(hint));
             } else if (buttonHint != null) {
                 buttonHint.animate().cancel();
                 buttonHint.setVisibility(View.GONE);

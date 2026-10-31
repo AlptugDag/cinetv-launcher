@@ -47,6 +47,19 @@ public final class LlmClient {
 
     private static final String TAG = "CineTvLlm";
 
+    /** Set around a call that needs speed over deliberation (the shelf at power-on): Gemini thinks "minimal". */
+    static final ThreadLocal<Boolean> MINIMAL_THINKING = ThreadLocal.withInitial(() -> false);
+
+    /** A JSON answer as fast as the provider gives one: the quick model, minimal thinking. */
+    public static Result generateQuick(Context ctx, String system, String user, int maxTokens) {
+        MINIMAL_THINKING.set(true);
+        try {
+            return generate(ctx, system, user, maxTokens, true);
+        } finally {
+            MINIMAL_THINKING.set(false);
+        }
+    }
+
     public static final class Result {
         public final boolean success;
         public final String text;
@@ -161,8 +174,9 @@ public final class LlmClient {
                 JSONObject genCfg = new JSONObject().put("maxOutputTokens", maxTokens);
                 // Gemini 3 Flash thinks at "medium" by default: "low" answers a TV request about twice as fast.
                 if (model.startsWith("gemini-3") && model.contains("flash") && !model.contains("lite")) {
-                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", "low"));
+                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", MINIMAL_THINKING.get() ? "minimal" : "low"));
                 }
+                if (MINIMAL_THINKING.get()) genCfg.put("responseMimeType", "application/json");
                 body.put("generationConfig", genCfg);
             }
             conn.setRequestMethod("POST");

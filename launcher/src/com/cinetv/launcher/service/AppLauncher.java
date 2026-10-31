@@ -267,12 +267,6 @@ public final class AppLauncher {
     }
 
     /** Opens a title on Nuvio's detail/stream page; falls back to Nuvio's start screen. */
-    private static boolean isNuvioInFront() {
-        com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
-        String top = svc != null ? svc.getLastPackage() : null;
-        return top != null && (NUVIO.equals(top) || top.contains("nuvio") || top.contains("stremio"));
-    }
-
     public static boolean openInNuvio(Context ctx, String title, String imdbId, String type, String posterUrl) {
         if ((title != null && "sessiz".equals(Creator.fold(title))) || "tt38983576".equals(imdbId)) {
             return openYouTubeVideo(ctx, Creator.SESSIZ_YOUTUBE_URL);
@@ -294,16 +288,11 @@ public final class AppLauncher {
             String link = "stremio:///detail/" + kind + "/" + imdbId + ("movie".equals(kind) ? "/" + imdbId : "");
             Intent streams = new Intent(Intent.ACTION_VIEW, Uri.parse(link));
             if (targetPkg != null) streams.setPackage(targetPkg);
-            streams.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            boolean wasInFront = isNuvioInFront();
+            // Root cause of "Oynat" landing on Nuvio's home or on the last film: a Nuvio already running was only
+            // brought to the front (its last screen) and ignored the link. A fresh task always opens the link; Nuvio
+            // keeps each title's watch progress, so the film resumes from where it was left.
+            streams.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             if (start(ctx, streams)) {
-                // Nuvio starting cold shows its own home and drops the link: hand it over once more when it is up.
-                if (!wasInFront) {
-                    final Context app = ctx.getApplicationContext();
-                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                        if (isNuvioInFront() && !com.cinetv.launcher.device.DeviceTweaks.isMediaPlaying(app)) start(app, new Intent(streams));
-                    }, 3500);
-                }
                 return true;
             }
             Intent detail = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/" + kind + "/" + imdbId));

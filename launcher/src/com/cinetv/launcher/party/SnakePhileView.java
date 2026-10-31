@@ -93,17 +93,6 @@ public final class SnakePhileView extends View {
     private final RectF btnRestartRect = new RectF();
     private final RectF btnExitRect = new RectF();
 
-    private static final String[] POSTER_ASSETS = {
-            "posters/interstellar.jpg",
-            "posters/pulp_fiction.jpg",
-            "posters/godfather.jpg",
-            "posters/inception.jpg",
-            "posters/fight_club.jpg",
-            "posters/taxi_driver.jpg",
-            "posters/blade_runner.jpg",
-            "posters/whiplash.jpg"
-    };
-
     private static final String[] POSTER_TITLES = {
             "Interstellar (2014) · 8.7/10",
             "Pulp Fiction (1994) · 8.9/10",
@@ -142,15 +131,28 @@ public final class SnakePhileView extends View {
         setFocusableInTouchMode(true);
         setClickable(true);
 
-        // Load TMDB posters from assets
-        for (String assetPath : POSTER_ASSETS) {
-            try (InputStream in = getContext().getAssets().open(assetPath)) {
-                Bitmap bmp = BitmapFactory.decodeStream(in);
-                posterBitmaps.add(bmp);
-            } catch (Throwable ignored) {
-                posterBitmaps.add(null);
+        // The posters were never shipped in the APK: each film's real poster is fetched from TMDB instead.
+        for (int i = 0; i < POSTER_TITLES.length; i++) posterBitmaps.add(null);
+        final Context app = getContext().getApplicationContext();
+        new Thread(() -> {
+            for (int i = 0; i < POSTER_TITLES.length; i++) {
+                try {
+                    String raw = POSTER_TITLES[i];
+                    String name = cleanMovieTitle(raw);
+                    java.util.List<com.cinetv.launcher.service.MovieCatalog.Movie> found =
+                            com.cinetv.launcher.service.MovieCatalog.titled(app, name, "movie", 1);
+                    if (found.isEmpty() || found.get(0).posterUrl == null || found.get(0).posterUrl.isEmpty()) continue;
+                    Bitmap b = com.cinetv.launcher.service.PosterCache.load(app, found.get(0).posterUrl, 240, 360);
+                    if (b == null) continue;
+                    final int at = i;
+                    post(() -> {
+                        posterBitmaps.set(at, b);
+                        invalidate();
+                    });
+                } catch (Throwable ignored) {
+                }
             }
-        }
+        }, "snake-posters").start();
 
         resetGame();
 
@@ -362,7 +364,11 @@ public final class SnakePhileView extends View {
         headX += speed * (float) Math.cos(headAngle);
         headY += speed * (float) Math.sin(headAngle);
 
-        // Screen boundary safety wrap/bounce
+        // The player's snake dies on the screen's edge; only the demo snake turns back from it.
+        if (isManualControl && (headX < UiKit.pxf(60) || headX > w - UiKit.pxf(60) || headY < UiKit.pxf(100) || headY > h - UiKit.pxf(80))) {
+            triggerGameOver();
+            return;
+        }
         if (headX < UiKit.pxf(60)) { headX = UiKit.pxf(60); targetAngle = 0f; }
         if (headX > w - UiKit.pxf(60)) { headX = w - UiKit.pxf(60); targetAngle = (float) Math.PI; }
         if (headY < UiKit.pxf(100)) { headY = UiKit.pxf(100); targetAngle = (float) (Math.PI / 2.0); }

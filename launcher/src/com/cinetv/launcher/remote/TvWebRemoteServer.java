@@ -883,7 +883,6 @@ public final class TvWebRemoteServer {
                     com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
                     if (ma == null) return;
                     if ("snake".equals(game)) ma.showLiveSnakePhileScene();
-                    else if ("duel".equals(game)) ma.showLiveCineDuelScene();
                     else {
                         try {
                             ma.showParty(com.cinetv.launcher.party.CinePartyManager.Mode.valueOf(game.toUpperCase(Locale.ROOT)));
@@ -962,30 +961,10 @@ public final class TvWebRemoteServer {
                 party.sessizHint(q.get("id"));
                 return ok;
             }
-            case "/api/game/snake/launch":
-            case "/api/game/duel/launch": {
+            case "/api/game/snake/launch": {
                 post(() -> {
                     com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                    if (ma != null) ma.showLiveCineDuelScene();
-                });
-                return ok;
-            }
-            case "/api/game/duel/aim": {
-                final float x = parseFloat(q.get("x")), y = parseFloat(q.get("y"));
-                post(() -> {
-                    com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                    if (ma != null && ma.getLiveCineDuelView() != null) {
-                        ma.getLiveCineDuelView().setPlayerReticle(x, y);
-                    }
-                });
-                return ok;
-            }
-            case "/api/game/duel/shoot": {
-                post(() -> {
-                    com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                    if (ma != null && ma.getLiveCineDuelView() != null) {
-                        ma.getLiveCineDuelView().shootPlayer();
-                    }
+                    if (ma != null) ma.showLiveSnakePhileScene();
                 });
                 return ok;
             }

@@ -74,13 +74,6 @@ public final class Brand {
         return s;
     }
 
-    /** "CineDuel" with an electric crimson/cyan "Duel". */
-    public static CharSequence cineduelWordmark() {
-        android.text.SpannableString s = new android.text.SpannableString("CineDuel");
-        s.setSpan(new android.text.style.ForegroundColorSpan(0xFFEF4444), 4, 8, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        return s;
-    }
-
     /** "CineParty" with a red "Party", like the TV of the wordmark. */
     public static CharSequence cinepartyWordmark() {
         android.text.SpannableString s = new android.text.SpannableString("CineParty");

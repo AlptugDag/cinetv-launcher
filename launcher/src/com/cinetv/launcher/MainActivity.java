@@ -213,6 +213,15 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 final Movie m = home.shelf.focusedMovie();
                 if (m != null) prefetchMovie(m);
                 home.setAmbience(m == null ? null : m.backdropUrl);
+                // the trailer starts buffering while the viewer is still looking at the case
+                handler.removeCallbacks(preloadTrailer);
+                preloadFor = m;
+                if (m != null) handler.postDelayed(preloadTrailer, 650);
+            }
+
+            @Override
+            public void onNearEnd() {
+                loadMoreResults();
             }
 
             @Override
@@ -386,6 +395,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         checkNuvioUpdatePrompt();
         // Back on Home with the uninstall still pending means the viewer said no in Android's dialog.
         if (com.cinetv.launcher.device.Uninstaller.isRemoving(this)) com.cinetv.launcher.device.Uninstaller.cancelled(this);
+        if (pendingLetterboxd != null) {
+            final Movie asked = pendingLetterboxd;
+            pendingLetterboxd = null;
+            handler.postDelayed(() -> {
+                if (!isFinishing() && foreground) promptLetterboxdWatch(asked);
+            }, 1200);
+        }
         checkPendingUpdateBanner();
         if (pendingBanner != null) {
             String[] b = pendingBanner;
@@ -653,9 +669,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 }
             }, 300);
         }
-        else if ("show_cinesub_live".equals(action)) {
-            handler.postDelayed(this::showLiveCineSubScene, 300);
-        }
         else if ("show_cineroulette_live".equals(action)) {
             handler.postDelayed(() -> showParty(com.cinetv.launcher.party.CinePartyManager.Mode.ROULETTE), 300);
         }
@@ -704,23 +717,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             conversationTurns = 0;
             resetIdle();
         }
-        if (liveCineSubView != null) {
-            if (down && !com.cinetv.launcher.ui.CineSubOverlay.isShowing()) hideLiveCineSubScene();
-            return true;
-        }
         if (down && home.skipSplash()) return true;
         if (partyStage != null && !home.modal.isShowing()) {
             return partyStage.dispatchKeyEvent(e);
-        }
-        if (liveCineDuelView != null) {
-            if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-                if (down) {
-                    hideLiveCineDuelScene();
-                    backToGames();
-                }
-                return true;
-            }
-            return liveCineDuelView.dispatchKeyEvent(e);
         }
         if (liveSnakePhileView != null) {
             if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
@@ -928,7 +927,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         } else {
             categoryShelf();
         }
-        toast(R.string.refresh_shelf_hint);
     }
 
     @Override
@@ -990,6 +988,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 }
                 if (!r.movies.isEmpty()) {
                     setShelf(r.title.isEmpty() ? MovieAssistant.cleanShelfName(query) : r.title, r.movies, true);
+                    searchShelfQuery = query;
                     home.shelf.requestFocus();
                 }
                 if (!r.answer.isEmpty()) {
@@ -1273,7 +1272,28 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.shelfLabel.setText(Prefs.get(this).getString(SHELF_TITLE, getString(R.string.cat_trending)).toUpperCase(Locale.getDefault()));
     }
 
+    /** The request behind the row on screen when it came from a search (more results load as it is scrolled). */
+    private String searchShelfQuery;
+    private boolean loadingMore;
+
+    private void loadMoreResults() {
+        final String q = searchShelfQuery;
+        if (q == null || loadingMore || home == null) return;
+        loadingMore = true;
+        final Context app = getApplicationContext();
+        final List<Movie> shown = home.shelf.movies();
+        background(() -> {
+            List<Movie> more = MovieAssistant.more(app, q, shown, 14);
+            ui(() -> {
+                loadingMore = false;
+                if (!q.equals(searchShelfQuery) || more.isEmpty()) return;
+                home.shelf.appendMovies(more);
+            });
+        });
+    }
+
     private void setShelf(String title, List<Movie> movies, boolean remember) {
+        searchShelfQuery = null;
         String cleanTitle = (title != null) ? title.replaceAll("\\b\\d{1,2}[:.]\\d{2}\\b\\s*", "").trim() : "";
         if (cleanTitle.isEmpty()) cleanTitle = getString(R.string.cat_trending);
         home.shelfLabel.setText(cleanTitle.toUpperCase(Locale.getDefault()));
@@ -1357,10 +1377,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             showLiveSnakePhileScene();
             return true;
         }
-        if (AppCatalog.PKG_DUEL.equals(pkg)) {
-            showLiveCineDuelScene();
-            return true;
-        }
         if (AppCatalog.PKG_QUIZ.equals(pkg)) {
             showParty(com.cinetv.launcher.party.CinePartyManager.Mode.QUIZ);
             return true;
@@ -1381,7 +1397,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // after the Back key's release, which would otherwise close the menu it opens
         handler.postDelayed(() -> {
             if (isFinishing() || home == null || home.modal == null || home.modal.isShowing()) return;
-            if (partyStage != null || liveCineDuelView != null || liveSnakePhileView != null) return;
+            if (partyStage != null || liveSnakePhileView != null) return;
             showPartyGamesFolderModal();
         }, 350);
     }
@@ -1393,12 +1409,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             public void launchSnake() {
                 home.modal.closeImmediate();
                 showLiveSnakePhileScene();
-            }
-
-            @Override
-            public void launchDuel() {
-                home.modal.closeImmediate();
-                showLiveCineDuelScene();
             }
 
             @Override
@@ -1423,7 +1433,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     public void showPartyHowToPlay(String pkg) {
         if (home == null || home.modal == null) return;
-        if (AppCatalog.PKG_SNAKE.equals(pkg) || AppCatalog.PKG_DUEL.equals(pkg)) {
+        if (AppCatalog.PKG_SNAKE.equals(pkg)) {
             home.modal.push(() -> Panels.buildSnakePhileHowToPlayModal(this, home.modal));
         } else if (AppCatalog.PKG_QUIZ.equals(pkg)) {
             home.modal.push(() -> Panels.buildCineQuizHowToPlayModal(this, home.modal));
@@ -1458,7 +1468,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             handler.post(() -> {
                 if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
                 hidePartyStage();
-                hideLiveCineDuelScene();
                 hideLiveSnakePhileScene();
                 launchFilmByTitle(movieTitle);
             });
@@ -1469,8 +1478,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     public void showParty(com.cinetv.launcher.party.CinePartyManager.Mode mode) {
         if (home == null) return;
         if (home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
-        hideLiveCineSubScene();
-        hideLiveCineDuelScene();
         hideLiveSnakePhileScene();
         com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(this);
         if (party.mode() != mode) party.open(mode);
@@ -1507,14 +1514,28 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     public void launchFilm(final Movie m) {
         if (m == null) return;
+        // Letterboxd never stands between the viewer and the film: it plays now, the question waits for the return.
         if (com.cinetv.launcher.service.LetterboxdSync.shouldPromptBeforeWatch(this)) {
-            promptLetterboxdWatch(m);
+            pendingLetterboxd = m;
+            doLaunchFilm(m, false);
         } else {
-            doLaunchFilm(m);
+            doLaunchFilm(m, true);
         }
     }
 
+    private Movie preloadFor;
+    private final Runnable preloadTrailer = () -> {
+        if (home != null && preloadFor != null && !home.opening.isPlaying() && preloadFor == home.shelf.focusedMovie()) home.trailer.prepare(preloadFor);
+    };
+
+    /** The film started without logging; asked about once CineTV is back in front. */
+    private Movie pendingLetterboxd;
+
     public void doLaunchFilm(final Movie m) {
+        doLaunchFilm(m, true);
+    }
+
+    private void doLaunchFilm(final Movie m, final boolean log) {
         if (m == null) return;
         // Without its IMDb id Nuvio could only be opened on its home: look the id up first.
         if ((m.imdbId == null || !m.imdbId.startsWith("tt")) && m.tmdbId > 0 && !m.imdbLookupTried) {
@@ -1523,7 +1544,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             background(() -> {
                 String id = MovieCatalog.imdbFor(app, m.tmdbId, m.type);
                 if (id != null && id.startsWith("tt")) m.imdbId = id;
-                ui(() -> doLaunchFilm(m));
+                ui(() -> doLaunchFilm(m, log));
             });
             return;
         }
@@ -1533,15 +1554,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         } else {
             com.cinetv.launcher.device.SystemAudio.launch(this);
             com.cinetv.launcher.service.NowPlaying.set(this, m);
-            com.cinetv.launcher.service.LetterboxdSync.recordWatch(this, m);
+            if (log) com.cinetv.launcher.service.LetterboxdSync.recordWatch(this, m);
         }
     }
 
+    /** Asked after the film, on top of everything, and it never starts or delays anything. */
     public void promptLetterboxdWatch(final Movie m) {
-        if (home == null || home.modal == null) {
-            doLaunchFilm(m);
-            return;
-        }
+        if (home == null || home.modal == null || m == null) return;
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         final String user = com.cinetv.launcher.service.LetterboxdSync.getUsername(this);
         home.modal.push(() -> {
@@ -1549,7 +1568,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             root.setOrientation(LinearLayout.VERTICAL);
             root.setPadding(UiKit.px(36), UiKit.px(26), UiKit.px(36), UiKit.px(26));
             root.setBackground(Glass.panel(root, 24));
-            root.setFocusable(true);
 
             TextView title = UiKit.bold(this, 26, UiKit.INK);
             title.setText(tr ? "Letterboxd Sinema Günlüğü" : "Letterboxd Cinema Diary");
@@ -1560,39 +1578,25 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             desc.setLineSpacing(UiKit.pxf(5), 1.15f);
             desc.setMaxWidth(UiKit.px(720));
             desc.setText(tr
-                    ? ("'" + m.title + "' filmini izliyorsunuz. Bu izleme @" + user + " Letterboxd hesabınıza eklensin mi?")
-                    : ("You are watching '" + m.title + "'. Would you like to log this watch to @" + user + "?"));
+                    ? ("'" + m.title + "' filmini izlediniz. @" + user + " Letterboxd günlüğünüze eklensin mi?")
+                    : ("You watched '" + m.title + "'. Log it to @" + user + "'s Letterboxd diary?"));
             root.addView(desc);
 
             LinearLayout btns = new LinearLayout(this);
             btns.setOrientation(LinearLayout.HORIZONTAL);
-
-            TextView btnYes = Controls.button(this, tr ? "Evet, Bu Sefer Ekle" : "Yes, Log Watch", v -> {
-                home.modal.closeImmediate();
-                doLaunchFilm(m);
+            TextView btnYes = Controls.button(this, tr ? "Evet, Ekle" : "Yes, Log It", v -> {
+                home.modal.back();
+                com.cinetv.launcher.service.LetterboxdSync.recordWatch(this, m);
             });
             btns.addView(btnYes);
-
-            View sp1 = new View(this);
-            btns.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(14), 1));
-
-            TextView btnAlways = Controls.button(this, tr ? "Her Zaman Otomatik Ekle" : "Always Auto-Log", v -> {
+            btns.addView(new View(this), new LinearLayout.LayoutParams(UiKit.px(14), 1));
+            btns.addView(Controls.button(this, tr ? "Her Zaman Otomatik Ekle" : "Always Auto-Log", v -> {
                 com.cinetv.launcher.service.LetterboxdSync.setAutoRecord(this, true);
-                home.modal.closeImmediate();
-                doLaunchFilm(m);
-            });
-            btns.addView(btnAlways);
-
-            View sp2 = new View(this);
-            btns.addView(sp2, new LinearLayout.LayoutParams(UiKit.px(14), 1));
-
-            TextView btnNo = Controls.button(this, tr ? "Bu Sefer Ekleme / Hayır" : "Don't Log / Launch", v -> {
-                home.modal.closeImmediate();
-                boolean ok = AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl);
-                if (!ok) showNuvioNotFoundDialog(m);
-            });
-            btns.addView(btnNo);
-
+                home.modal.back();
+                com.cinetv.launcher.service.LetterboxdSync.recordWatch(this, m);
+            }));
+            btns.addView(new View(this), new LinearLayout.LayoutParams(UiKit.px(14), 1));
+            btns.addView(Controls.button(this, tr ? "Hayır" : "No", v -> home.modal.back()));
             root.addView(btns);
             root.post(btnYes::requestFocus);
             return root;
@@ -1624,7 +1628,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             final Movie m = match;
             ui(() -> {
                 if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
-                hideLiveCineDuelScene();
                 hideLiveSnakePhileScene();
                 if (m != null) {
                     launchFilm(m);
@@ -2363,116 +2366,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (home.screensaver.getVisibility() != View.VISIBLE) showScreensaverInternal();
     }
 
-    private View liveCineSubView;
-
-    public void showLiveCineSubScene() {
-        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.close();
-        hideLiveSnakePhileScene();
-        if (liveCineSubView != null) {
-            home.root.removeView(liveCineSubView);
-            liveCineSubView = null;
-        }
-
-        FrameLayout container = new FrameLayout(this);
-        container.setBackgroundColor(Color.BLACK);
-        container.setFocusable(true);
-        container.setClickable(true);
-
-        try {
-            java.io.InputStream in = getAssets().open("brand/sessiz_frame.jpg");
-            Bitmap frame = BitmapFactory.decodeStream(in);
-            in.close();
-
-            if (frame != null) {
-                ImageView iv = new ImageView(this);
-                iv.setImageBitmap(frame);
-                iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                FrameLayout.LayoutParams ivLp = new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER);
-                container.addView(iv, ivLp);
-            }
-        } catch (Throwable ignored) {}
-
-        // Subtitle bar at bottom center matching the exact film dialogue
-        FrameLayout subBar = new FrameLayout(this);
-        subBar.setBackground(Glass.panel(subBar, 14));
-        subBar.setPadding(UiKit.px(28), UiKit.px(10), UiKit.px(28), UiKit.px(10));
-        TextView subText = UiKit.text(this, 22, Color.parseColor("#FEF08A"), FontManager.getMedium(this));
-        subText.setText("“Cellatları dilsizlerden seçerlermiş derler... ama ya ben?”");
-        subBar.addView(subText);
-
-        FrameLayout.LayoutParams sLp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        sLp.bottomMargin = UiKit.px(54);
-        container.addView(subBar, sLp);
-
-        liveCineSubView = container;
-        home.root.addView(liveCineSubView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        // The real thing on a real frame: CineSUB looks at this still exactly as it would at a film.
-        com.cinetv.launcher.service.NowPlaying.set(this, "Sessiz", 2023);
-        handler.postDelayed(() -> com.cinetv.launcher.ui.CineSubOverlay.trigger(this), 600);
-
-        liveCineSubView.setOnClickListener(v -> hideLiveCineSubScene());
-    }
-
-    public void hideLiveCineSubScene() {
-        if (liveCineSubView != null) {
-            home.root.removeView(liveCineSubView);
-            liveCineSubView = null;
-            com.cinetv.launcher.ui.CineSubOverlay.dismissActive();
-        }
-    }
-
-    private com.cinetv.launcher.party.CineDuelView liveCineDuelView;
-
-    public com.cinetv.launcher.party.CineDuelView getLiveCineDuelView() {
-        return liveCineDuelView;
-    }
-
-    public void showLiveCineDuelScene() {
-        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
-        hideLiveCineSubScene();
-        hideLiveSnakePhileScene();
-        if (liveCineDuelView != null) {
-            home.root.removeView(liveCineDuelView);
-            liveCineDuelView = null;
-        }
-
-        com.cinetv.launcher.party.CineDuelView duelView = new com.cinetv.launcher.party.CineDuelView(this);
-        duelView.setOnCineDuelListener(new com.cinetv.launcher.party.CineDuelView.OnCineDuelListener() {
-            @Override
-            public void onMovieChosen(String movieTitle) {
-                hideLiveCineDuelScene();
-                launchFilmByTitle(movieTitle);
-            }
-
-            @Override
-            public void onGameExit() {
-                hideLiveCineDuelScene();
-                backToGames();
-            }
-        });
-        liveCineDuelView = duelView;
-        home.root.addView(liveCineDuelView, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        liveCineDuelView.requestFocus();
-        liveCineDuelView.startNewGame();
-    }
-
-    public void hideLiveCineDuelScene() {
-        if (liveCineDuelView != null) {
-            home.root.removeView(liveCineDuelView);
-            liveCineDuelView = null;
-        }
-    }
-
     private com.cinetv.launcher.party.SnakePhileView liveSnakePhileView;
 
     public void showLiveSnakePhileScene() {
         if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
-        hideLiveCineSubScene();
-        hideLiveCineDuelScene();
         hidePartyStage();
         hideLiveSnakePhileScene();
         com.cinetv.launcher.party.SnakePhileView snake = new com.cinetv.launcher.party.SnakePhileView(this);

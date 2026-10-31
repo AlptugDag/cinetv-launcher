@@ -275,7 +275,6 @@ public final class EmaLightningTts {
                 .replaceAll("(?i)\\bCineQuiz\\b", "Sine Kviz")
                 .replaceAll("(?i)\\bCineRoulette\\b", "Sine Rulet")
                 .replaceAll("(?i)\\bCineSessiz\\b", "Sine Sessiz")
-                .replaceAll("(?i)\\bCineDuel\\b", "Sine Düello")
                 .replaceAll("(?i)\\bCine\\b", "Sine")
                 .replaceAll("(?i)\\bTV\\b", "Tivi")
                 .replaceAll("(?i)\\bSearching for\\b", "")
@@ -296,6 +295,7 @@ public final class EmaLightningTts {
                 .replaceAll("(?i)\\b\\bthe\\b", "dı")
                 .replaceAll("\\s+", " ")
                 .trim();
+        s = turkishPhonetics(s);
         if (s.length() > 300) {
             int cut = s.lastIndexOf('.', 300);
             if (cut < 120) cut = s.lastIndexOf(' ', 300);
@@ -626,5 +626,79 @@ public final class EmaLightningTts {
         } catch (Throwable t) {
             return String.valueOf(Math.abs(s.hashCode()));
         }
+    }
+
+    /** English names and words she would otherwise read letter by letter the Turkish way. */
+    private static final java.util.Map<String, String> SAYS = new java.util.HashMap<>();
+    static {
+        String[] pairs = {
+                "christopher", "kristofır", "nolan", "nolın", "steven", "stiivın", "spielberg", "spilbörg", "quentin", "kventin",
+                "tarantino", "tarantino", "martin", "martin", "scorsese", "skorsezi", "stanley", "stenli", "kubrick", "kubrik",
+                "david", "deyvid", "fincher", "finçır", "denis", "denis", "villeneuve", "vilnöv", "ridley", "ridli", "scott", "skat",
+                "james", "ceyms", "cameron", "kemırın", "leonardo", "leonardo", "dicaprio", "dikaprio", "brad", "bred", "pitt", "pit",
+                "tom", "tam", "hanks", "henks", "cruise", "kruz", "keanu", "kiyanu", "reeves", "riivs", "morgan", "morgın",
+                "freeman", "friimın", "robert", "rabırt", "niro", "niro", "pacino", "paçino", "joaquin", "vakiin", "phoenix", "fiiniks",
+                "heath", "hiis", "ledger", "leccır", "matthew", "metyu", "mcconaughey", "mıkonahey", "hathaway", "hetıvey",
+                "scarlett", "skarlıt", "johansson", "cohansın", "natalie", "netıli", "portman", "portmın", "emma", "ema", "stone", "ston",
+                "ryan", "rayın", "gosling", "gazling", "margot", "margo", "robbie", "rabi", "cillian", "kilian", "murphy", "mörfi",
+                "wes", "ves", "anderson", "endırsın", "greta", "greta", "gerwig", "görvig", "jordan", "cordın", "peele", "piil",
+                "night", "nayt", "knight", "nayt", "dark", "dark", "batman", "betmın", "joker", "cokır", "star", "star", "wars", "vors",
+                "love", "lav", "story", "stori", "life", "layf", "world", "vörld", "new", "nyu", "york", "york", "city", "siti",
+                "woman", "vumın", "girl", "görl", "house", "haus", "home", "hom", "alone", "ılon",
+                "the", "dı", "of", "ov", "and", "end", "to", "tu", "with", "viz", "for", "for",
+                "you", "yu", "my", "may", "we", "vi", "they", "dey", "she", "şi",
+                "are", "ar", "was", "vaz", "last", "lest", "first", "först", "good", "gud", "bad", "bed", "big", "big",
+                "little", "lıtıl", "time", "taym", "day", "dey", "back", "bek", "future", "fyuçır", "space", "speys", "odyssey", "odısi",
+                "apocalypse", "ıpakılips", "now", "nav", "taxi", "teksi", "driver", "drayvır", "shining", "şayning", "psycho", "sayko",
+                "jaws", "cos", "alien", "eyliın", "titanic", "taytenik", "avatar", "evıtar", "gladiator", "gledieytır", "matrix", "metriks",
+                "oppenheimer", "opınhaymır", "barbie", "barbi", "dune", "dyun", "parasite", "perısayt", "whiplash", "viples",
+                "netflix", "netfliks", "youtube", "yutub", "google", "gugıl", "apple", "epıl", "airpods", "erpadz", "letterboxd", "letırboks",
+                "trailer", "treylır", "netflix", "netfliks", "series", "siiriz", "season", "siizın", "episode", "epizod", "show", "şov"
+        };
+        for (int i = 0; i + 1 < pairs.length; i += 2) SAYS.put(pairs[i], pairs[i + 1]);
+    }
+
+    private static final java.util.regex.Pattern WORD = java.util.regex.Pattern.compile("(?<![\\p{L}])[A-Za-z][A-Za-z']*(?![\\p{L}])");
+    /** Letters and pairs Turkish never writes: a word with one of them is English (or another foreign tongue). */
+    private static final java.util.regex.Pattern FOREIGN = java.util.regex.Pattern.compile("(?i)[wxq]|th|sh|ch|ph|ck|ee|oo|ea|gh|ou");
+
+    /** Respells English words in Turkish letters so the Turkish voice says them the English way. */
+    static String turkishPhonetics(String text) {
+        java.util.regex.Matcher m = WORD.matcher(text);
+        StringBuffer out = new StringBuffer();
+        while (m.find()) {
+            String w = m.group();
+            String lower = w.toLowerCase(java.util.Locale.ROOT);
+            String said = SAYS.get(lower);
+            if (said == null && FOREIGN.matcher(lower).find() && lower.length() > 1) said = respell(lower);
+            if (said == null) said = w;
+            else if (Character.isUpperCase(w.charAt(0)) && !said.isEmpty()) said = said.substring(0, 1).toUpperCase(new java.util.Locale("tr")) + said.substring(1);
+            m.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(said));
+        }
+        m.appendTail(out);
+        return out.toString();
+    }
+
+    private static String respell(String w) {
+        String s = w.replace("'", "");
+        String[][] rules = {
+                {"tion", "şın"}, {"sion", "jın"}, {"ough", "of"}, {"augh", "of"}, {"igh", "ay"}, {"tch", "ç"}, {"sch", "sk"},
+                {"sh", "ş"}, {"ch", "ç"}, {"th", "t"}, {"ph", "f"}, {"ck", "k"}, {"qu", "kv"}, {"wh", "v"}, {"gh", "g"},
+                {"ee", "i"}, {"ea", "i"}, {"oo", "u"}, {"ou", "au"}, {"ow", "ov"}, {"ai", "ey"}, {"ay", "ey"}, {"ey", "ey"},
+                {"oa", "o"}, {"ie", "i"}, {"x", "ks"}, {"q", "k"}, {"w", "v"}, {"j", "c"}
+        };
+        for (String[] r : rules) s = s.replace(r[0], r[1]);
+        StringBuilder b = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            char next = i + 1 < s.length() ? s.charAt(i + 1) : ' ';
+            if (c == 'c') b.append(next == 'e' || next == 'i' || next == 'y' ? 's' : 'k');
+            else if (c == 'y' && i == s.length() - 1 && i > 0) b.append('i');
+            else b.append(c);
+        }
+        String r = b.toString();
+        // the silent final e: "made" -> "meyd" is beyond rules; at least it is not read aloud
+        if (r.length() > 3 && r.endsWith("e") && "aeiouı".indexOf(r.charAt(r.length() - 2)) < 0) r = r.substring(0, r.length() - 1);
+        return r;
     }
 }

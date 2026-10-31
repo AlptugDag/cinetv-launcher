@@ -343,8 +343,8 @@ public class DvdCaseView extends View {
             int off = (int) (smooth * (wrap.getWidth() - win));
             mapTo(tex, 0, tex.getWidth());
             // Velvety soft reflection with harmonic glint boost
-            float wrapStrength = (0.16f + 0.12f * lift + 0.14f * glint) * (0.5f + 0.5f * facing) * dim;
-            wrapPaint.setAlpha((int) (255 * Math.min(0.36f, wrapStrength)));
+            float wrapStrength = (0.12f + 0.07f * lift + 0.14f * glint) * (0.5f + 0.5f * facing) * dim;
+            wrapPaint.setAlpha((int) (255 * Math.min(0.28f, wrapStrength)));
             sliceSrc.set(off, 0, off + win, wrap.getHeight());
             rect.set(0, 0, tex.getWidth(), tex.getHeight());
             canvas.save();
@@ -358,7 +358,7 @@ public class DvdCaseView extends View {
                 float travel = 0.5f + 0.5f * Math.max(-1f, Math.min(1f, x1)) * 0.6f + (glint - 0.5f) * 0.55f;
                 float cxs = tw * (0.08f + 0.84f * Math.max(0f, Math.min(1f, travel)));
                 float slant = th * 0.32f;
-                int halo = Math.round(46f * lift * dim), core = Math.round(92f * lift * dim);
+                int halo = Math.round(24f * lift * dim), core = Math.round(46f * lift * dim);
                 sheenPaint.setShader(new android.graphics.LinearGradient(cxs - tw * 0.42f - slant, 0, cxs + tw * 0.42f - slant, th,
                         new int[]{Color.TRANSPARENT, Color.argb(halo, 230, 240, 255), Color.argb(halo, 255, 250, 240), Color.TRANSPARENT},
                         new float[]{0f, 0.42f, 0.58f, 1f}, Shader.TileMode.CLAMP));
@@ -368,7 +368,7 @@ public class DvdCaseView extends View {
                         null, Shader.TileMode.CLAMP));
                 canvas.drawRect(0, 0, tw, th, sheenPaint);
                 sheenPaint.setShader(new android.graphics.LinearGradient(0, 0, 0, th * 0.035f,
-                        Color.argb(Math.round(70f * lift * dim), 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+                        Color.argb(Math.round(38f * lift * dim), 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
                 canvas.drawRect(0, 0, tw, th * 0.035f, sheenPaint);
                 sheenPaint.setShader(null);
             }
