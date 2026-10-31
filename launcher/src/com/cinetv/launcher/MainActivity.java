@@ -433,8 +433,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         lastGreetingMs = System.currentTimeMillis();
         int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        String city = Prefs.city(this);
-        String weather = com.cinetv.launcher.service.WeatherService.getLastFull();
         String name = com.cinetv.launcher.ai.GamzeMemory.name(this);
 
         String greeting;
@@ -448,10 +446,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     ? new String[]{"Bu akşam için vitrini hazırladım.", "Akşamın filmi seni bekliyor.", "Ne izlemek istersin? Bana söylemen yeterli."}
                     : new String[]{"Vitrin hazır.", "Bugün için birkaç güzel seçim yaptım.", "Bir şey arıyorsan bana söyle, bulayım."};
             StringBuilder sb = new StringBuilder(salute).append(". ").append(lines[(int) (System.currentTimeMillis() / 1000 % lines.length)]);
-            if (weather != null && !weather.isEmpty() && city != null && !city.trim().isEmpty() && hour >= 6 && hour <= 21) {
-                String w = weather.substring(0, 1).toLowerCase(new Locale("tr")) + weather.substring(1);
-                sb.append(" ").append(city.trim()).append("'da hava ").append(w).append(".");
-            }
             greeting = sb.toString();
         } else {
             String salute = hour >= 5 && hour < 12 ? "Good morning" : hour >= 12 && hour < 18 ? "Good afternoon" : "Good evening";
@@ -1540,29 +1534,35 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.modal.push(() -> Panels.buildUpdateModal(this, home.modal, info));
     }
 
+    /**
+     * A game picked a film by name: find exactly that film and start it in Nuvio. Never through the
+     * search or the opening case (which could land on a trailer or another title).
+     */
     public void launchFilmByTitle(String title) {
         if (title == null || title.trim().isEmpty()) return;
         final String clean = title.trim();
+        final Context app = getApplicationContext();
         background(() -> {
             Movie match = null;
             try {
-                List<Movie> all = MovieCatalog.category(this, MovieCatalog.CATEGORIES[0], 100);
-                for (Movie m : all) {
-                    if (clean.equalsIgnoreCase(m.title) || (m.originalTitle != null && clean.equalsIgnoreCase(m.originalTitle))) {
-                        match = m;
-                        break;
-                    }
-                }
-            } catch (Throwable ignored) {}
-            final Movie finalMatch = match;
+                List<Movie> found = MovieCatalog.titled(app, clean, "movie", 1);
+                if (found.isEmpty()) found = MovieCatalog.search(app, clean, 1);
+                if (!found.isEmpty()) match = found.get(0);
+                if (match != null) MovieCatalog.ensureImdb(app, match);
+            } catch (Throwable ignored) {
+            }
+            final Movie m = match;
             ui(() -> {
                 if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
                 hideLiveCineDuelScene();
                 hideLiveSnakePhileScene();
-                if (finalMatch != null) {
-                    launchFilm(finalMatch);
+                if (m != null) {
+                    launchFilm(m);
                 } else {
-                    onSearch(clean);
+                    // Not found anywhere: Nuvio's own search for the name.
+                    Movie byName = new Movie();
+                    byName.title = clean;
+                    launchFilm(byName);
                 }
             });
         });

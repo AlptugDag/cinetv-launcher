@@ -417,8 +417,8 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
         text.setTextSize(tall ? 52 : 44);
         text.setColor(0xFFF5F5F7);
         float ty = drawWrapped(c, q.optString("prompt"), px, iy + 50, pw, 3, 1.18f);
-        long left = Math.max(0, q.optLong("left") - (now - stateAt));
         long total = Math.max(1, q.optLong("total"));
+        long left = q.optBoolean("reading") ? total : Math.max(0, q.optLong("left") - (now - stateAt));
         if (!revealing) ring(c, px + 64, ty + 90, 54, left / (float) total, String.valueOf((left + 999) / 1000), left < 5500 ? 0xFFFF453A : accent);
         JSONArray opts = q.optJSONArray("options");
         float oy = revealing ? ty + 30 : ty + 190;

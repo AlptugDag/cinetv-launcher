@@ -1883,7 +1883,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         const send = async () => { const v = ($("qAns").value || "").trim(); if (v) await ptAct("party/quiz/answer", {answer: v}, "pop"); };
         if ($("qSend")) { $("qSend").onclick = send; $("qAns").onkeydown = e => { if (e.key === "Enter") send(); }; setTimeout(() => $("qAns") && $("qAns").focus(), 250); }
       });
-      if (fresh || !ptTimer) ptBar($("qBar"), q.left, q.total, st._at);
+      // While Gamze reads the question out the clock waits, full.
+      if (q.reading) { if (ptTimer) cancelAnimationFrame(ptTimer); ptTimer = null; const i = $("qBar") && $("qBar").querySelector("i"); if (i) i.style.transform = "scaleX(1)"; }
+      else if (fresh || !ptTimer) ptBar($("qBar"), q.left, q.total, st._at);
       return;
     }
     if (st.phase === "reveal") {
@@ -1933,6 +1935,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       });
       return;
     }
+    if (st.phase === "loading") return ptScreen("r-l", ptSpinner("Gamze kuralları anlatıyor…"));
     if (st.phase === "turn" || st.phase === "pulling") {
       const mineTurn = r.turn === ptId;
       const top = ch[r.aligned] || {};

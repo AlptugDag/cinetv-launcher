@@ -403,19 +403,17 @@ public final class CineDuelView extends View {
         }, 3200);
     }
 
+    private String crownMovie;
+
     private void endGame() {
         gameOver = true;
         roundActive = false;
         main.removeCallbacks(timerTick);
 
-        String champion = p1Score >= aiScore ? "Tebrikler! Sen Kazandın!" : "Gamze AI Kazandı!";
-        String crownMovie = CHALLENGES[(int) (Math.random() * CHALLENGES.length)].correctMovie;
-
-        EmaLightningTts.speakGame(getContext(), "Oyun Bitti! " + champion + " Bu akşamın kazanan filmi: " + crownMovie + " açılıyor!");
-
-        if (listener != null) {
-            listener.onMovieChosen(crownMovie);
-        }
+        String champion = p1Score >= aiScore ? "Tebrikler, sen kazandın!" : "Bu sefer Gamze kazandı.";
+        crownMovie = CHALLENGES[(int) (Math.random() * CHALLENGES.length)].correctMovie;
+        // Nothing starts by itself: the result stays on screen until the viewer presses OK (or Back to leave).
+        EmaLightningTts.speakGame(getContext(), "Oyun bitti. " + champion + " Önerim " + crownMovie + ". İzlemek istersen OK'e bas.");
         invalidate();
     }
 
@@ -427,7 +425,7 @@ public final class CineDuelView extends View {
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-                if (listener != null) listener.onMovieChosen(CHALLENGES[0].correctMovie);
+                if (listener != null && crownMovie != null) listener.onMovieChosen(crownMovie);
                 return true;
             }
             return super.onKeyDown(keyCode, event);

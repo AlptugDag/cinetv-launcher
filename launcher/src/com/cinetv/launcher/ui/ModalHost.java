@@ -269,11 +269,13 @@ public class ModalHost extends FrameLayout {
         for (int i = 0; i < g.getChildCount(); i++) {
             View c = g.getChildAt(i);
             if (c.getVisibility() != VISIBLE) continue;
-            if (c.isFocusable()) return c;
+            // A container that is focusable itself but holds buttons hands focus to its first button:
+            // otherwise the panel opens with focus on nothing pressable and OK does nothing.
             if (c instanceof ViewGroup) {
                 View f = firstFocusable((ViewGroup) c);
                 if (f != null) return f;
             }
+            if (c.isFocusable()) return c;
         }
         return null;
     }

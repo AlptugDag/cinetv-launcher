@@ -1917,7 +1917,6 @@ public final class Panels {
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         final LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setFocusable(true);
         root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
 
         TextView title = UiKit.bold(ctx, 28, UiKit.INK);
@@ -3495,7 +3494,6 @@ public final class Panels {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(UiKit.px(36), UiKit.px(26), UiKit.px(36), UiKit.px(26));
         root.setBackground(Glass.panel(root, 24));
-        root.setFocusable(true);
 
         TextView title = UiKit.bold(ctx, 26, UiKit.INK);
         title.setText(tr ? ("CineTV Güncellemesi Hazır (" + info.tagName + ")") : ("CineTV Update Ready (" + info.tagName + ")"));
@@ -3538,7 +3536,6 @@ public final class Panels {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
         root.setBackground(Glass.panel(root, 26));
-        root.setFocusable(true);
 
         TextView badge = UiKit.bold(ctx, 13, Color.parseColor("#38BDF8"));
         badge.setText(tr ? "ODA AKUSTİĞİ & KALİBRASYON" : "ROOM ACOUSTICS & CALIBRATION");
@@ -3613,7 +3610,6 @@ public final class Panels {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
         root.setBackground(Glass.panel(root, 26));
-        root.setFocusable(true);
 
         TextView badge = UiKit.bold(ctx, 13, Color.parseColor("#A855F7"));
         badge.setText(tr ? "KULAKLIK & UZAMSAL SES ZENGİNLEŞTİRME" : "HEADPHONE & SPATIAL AUDIO ENHANCEMENT");
@@ -3704,7 +3700,6 @@ public final class Panels {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
         root.setBackground(Glass.panel(root, 26));
-        root.setFocusable(true);
 
         TextView badge = UiKit.bold(ctx, 13, Brand.CINESUB_ORANGE);
         badge.setText(tr ? "İZLERKEN EKRANDA NE VAR?" : "WHAT'S ON SCREEN?");
@@ -3758,7 +3753,6 @@ public final class Panels {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
         root.setBackground(Glass.panel(root, 26));
-        root.setFocusable(true);
 
         TextView badge = UiKit.bold(ctx, 13, Color.parseColor("#EF4444"));
         badge.setText(tr ? "SİNEMA NİŞANCISI & GYRO ARENASI" : "CINEMA SHOOTER & GYRO ARENA");

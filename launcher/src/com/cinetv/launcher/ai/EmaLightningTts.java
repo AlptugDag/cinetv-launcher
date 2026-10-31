@@ -138,8 +138,16 @@ public final class EmaLightningTts {
 
     /** Game narration: always speaks (the games are built around her), unless the voice is switched off. */
     public static void speakGame(final Context ctx, final CharSequence rawText) {
-        if (ctx == null || rawText == null || !Prefs.get(ctx).getBoolean("game_voice", true)) return;
-        start(ctx.getApplicationContext(), rawText.toString(), null);
+        speakGame(ctx, rawText, null);
+    }
+
+    /** Game narration that tells the game when she has finished ({@code onDone} runs even with the voice off). */
+    public static void speakGame(final Context ctx, final CharSequence rawText, final Runnable onDone) {
+        if (ctx == null || rawText == null || !Prefs.get(ctx).getBoolean("game_voice", true)) {
+            if (onDone != null) MAIN.post(onDone);
+            return;
+        }
+        start(ctx.getApplicationContext(), rawText.toString(), onDone);
     }
 
     public static void speak(final Context ctx, final CharSequence rawText) {

@@ -111,7 +111,7 @@ public final class CinePartyManager {
 
     // CineRoulette
     private final Chamber[] chambers = new Chamber[6];
-    private int aligned, bullet, turnIdx, turnSeconds;
+    private int aligned, turnIdx, turnSeconds, pulls;
     private long turnEndsAt;
     private String turnId = "", lastShot = "", winnerTitle = "";
     private final Runnable rouletteTick = this::rouletteTick;
@@ -257,11 +257,15 @@ public final class CinePartyManager {
         if (quizDeck == null) quizDeck = new QuizDeck(ctx);
         phase = "loading";
         status = tr ? "Gamze soruları hazırlıyor…" : "Gamze is writing the questions…";
-        say(tr ? "CineQuiz başlıyor. " + quizMinutes + " dakikanız var. Telefonlar hazır mı?"
-                : "CineQuiz is starting. You have " + quizMinutes + " minutes. Phones ready?");
+        introDone = false;
         sfx(Sfx.RISER);
         bump();
         fetchQuiz(gen);
+        sayThen(tr ? "CineQuiz başlıyor. " + quizMinutes + " dakikanız var. Telefonlar hazır mı?"
+                : "CineQuiz is starting. You have " + quizMinutes + " minutes. Phones ready?", 600, () -> {
+            introDone = true;
+            if ("loading".equals(phase) && !quizQueue.isEmpty()) startFirstQuestion();
+        });
     }
 
     private void fetchQuiz(final int g) {
@@ -279,13 +283,21 @@ public final class CinePartyManager {
                         status = tr ? "Sorular alınamadı. İnternet bağlantısını kontrol edip tekrar deneyin."
                                 : "Couldn't fetch questions. Check the connection and try again.";
                         bump();
+                    } else if (questionNo == 0) {
+                        if (introDone) startFirstQuestion();
                     } else {
-                        if (quizEndsAt == 0 || questionNo == 0) quizEndsAt = SystemClock.elapsedRealtime() + quizMinutes * 60_000L;
                         nextQuestion();
                     }
                 }
             }
         });
+    }
+
+    private boolean introDone;
+
+    private void startFirstQuestion() {
+        quizEndsAt = SystemClock.elapsedRealtime() + quizMinutes * 60_000L;
+        nextQuestion();
     }
 
     private void nextQuestion() {
@@ -306,14 +318,21 @@ public final class CinePartyManager {
         phase = "question";
         status = "";
         questionStartedAt = now;
-        questionEndsAt = now + quizSeconds * 1000L;
+        // The clock starts once Gamze has read the question out: nobody loses seconds to her voice.
+        questionEndsAt = Long.MAX_VALUE;
         for (Player p : players.values()) p.answer = null;
         if (quizQueue.size() < 2) fetchQuiz(gen);
         sfx(Sfx.REVEAL);
-        say(question.prompt);
         bump();
         main.removeCallbacks(quizTick);
-        main.postDelayed(quizTick, 1000);
+        final QuizDeck.Question asked = question;
+        sayThen(question.prompt, 200, () -> {
+            if (question != asked || !"question".equals(phase)) return;
+            questionStartedAt = SystemClock.elapsedRealtime();
+            questionEndsAt = questionStartedAt + quizSeconds * 1000L;
+            bump();
+            main.postDelayed(quizTick, 1000);
+        });
     }
 
     private void quizTick() {
@@ -362,14 +381,19 @@ public final class CinePartyManager {
         else if (right.size() == 1) line.append(tr ? "Sadece " + right.get(0) + " bildi! " : "Only " + right.get(0) + " got it! ");
         else line.append(tr ? right.size() + " kişi bildi. " : right.size() + " of you got it. ");
         if (!question.fact.isEmpty()) line.append(question.fact);
-        say(line.toString());
         bump();
-        final int g = gen;
-        main.postDelayed(() -> {
-            synchronized (CinePartyManager.this) {
-                if (g == gen && "reveal".equals(phase)) nextQuestion();
-            }
-        }, question.fact.isEmpty() ? 5000 : 7500);
+        // Everyone sees the answers while Gamze comments; the next question waits for her.
+        final long shownAt = SystemClock.elapsedRealtime();
+        sayThen(line.toString(), 1500, () -> {
+            if (!"reveal".equals(phase)) return;
+            long wait = Math.max(0, 4000 - (SystemClock.elapsedRealtime() - shownAt));
+            final int g = gen;
+            main.postDelayed(() -> {
+                synchronized (CinePartyManager.this) {
+                    if (g == gen && "reveal".equals(phase)) nextQuestion();
+                }
+            }, wait);
+        });
     }
 
     private void finishQuiz() {
@@ -552,16 +576,16 @@ public final class CinePartyManager {
             bump();
             return;
         }
-        bullet = rnd.nextInt(chambers.length);
         aligned = rnd.nextInt(chambers.length);
         turnIdx = -1;
         turnSeconds = 13;
         for (Player p : players.values()) p.spins = 2;
-        phase = "turn";
+        phase = "loading";
+        pulls = 0;
         sfx(Sfx.SPIN);
-        say(tr ? "Altı hazne, altı film, tek kurşun. Boş çıkan film elenir; kurşun hangi filmdeyse bu gece o izlenir."
-                : "Six chambers, six films, one bullet. Every empty chamber knocks a film out; the bullet picks tonight's film.");
-        nextTurn();
+        bump();
+        sayThen(tr ? "Altı hazne, altı film, tek kurşun. Boş çıkan film elenir; kurşun hangi filmdeyse bu gece o izlenir."
+                : "Six chambers, six films, one bullet. Every empty chamber knocks a film out; the bullet picks tonight's film.", 500, this::nextTurn);
     }
 
     private void nextTurn() {
@@ -616,7 +640,13 @@ public final class CinePartyManager {
                 if (g != gen) return;
                 Player p = players.get(who);
                 Chamber c = chambers[aligned];
-                if (aligned == bullet) {
+                // The bullet is never in the first two chambers pulled (a game shouldn't end on its first
+                // shot); after that each live chamber is equally likely, and the last one always fires.
+                int live = 0;
+                for (Chamber x : chambers) if (!x.out) live++;
+                boolean bang = pulls >= 2 && (live <= 1 || rnd.nextInt(live) == 0);
+                pulls++;
+                if (bang) {
                     lastShot = "bang";
                     winnerTitle = c.title;
                     phase = "finished";
@@ -639,14 +669,12 @@ public final class CinePartyManager {
                 if (p != null && !forced) p.score += 5;
                 sfx(Sfx.DRY);
                 event("out", c.title);
-                say(tr ? (forced ? "Süre doldu! " : "Klik. ") + c.title + " elendi." : (forced ? "Time's up! " : "Click. ") + c.title + " is out.");
                 advanceAligned();
                 bump();
-                main.postDelayed(() -> {
-                    synchronized (CinePartyManager.this) {
-                        if (g == gen && "pulling".equals(phase)) nextTurn();
-                    }
-                }, 1800);
+                sayThen(tr ? (forced ? "Süre doldu! " : "Klik. ") + c.title + " elendi." : (forced ? "Time's up! " : "Click. ") + c.title + " is out.",
+                        700, () -> {
+                            if ("pulling".equals(phase)) nextTurn();
+                        });
             }
         }, 1100);
     }
@@ -819,14 +847,10 @@ public final class CinePartyManager {
             if (t != null) t.score += hinted ? 3 : 5;
             phase = "solved";
             sfx(Sfx.CORRECT);
-            say(tr ? solvedBy + " bildi! " + card.title + "." : solvedBy + " got it! " + card.title + ".");
             bump();
-            final int g2 = gen;
-            main.postDelayed(() -> {
-                synchronized (CinePartyManager.this) {
-                    if (g2 == gen && "solved".equals(phase)) nextCard();
-                }
-            }, 4200);
+            sayThen(tr ? solvedBy + " bildi! " + card.title + "." : solvedBy + " got it! " + card.title + ".", 1800, () -> {
+                if ("solved".equals(phase)) nextCard();
+            });
         } else {
             sfx(Sfx.POP);
             bump();
@@ -894,6 +918,24 @@ public final class CinePartyManager {
 
     private void say(String line) {
         EmaLightningTts.speakGame(ctx, line);
+    }
+
+    /**
+     * Gamze says it, and the game moves on only after her last word (plus {@code pauseMs}), never over
+     * her. If the voice is interrupted or slow, the game still moves on after 20 s.
+     */
+    private void sayThen(String line, final long pauseMs, final Runnable then) {
+        final int g = gen;
+        final boolean[] once = {false};
+        final Runnable step = () -> {
+            synchronized (CinePartyManager.this) {
+                if (once[0] || g != gen) return;
+                once[0] = true;
+                then.run();
+            }
+        };
+        EmaLightningTts.speakGame(ctx, line, () -> main.postDelayed(step, pauseMs));
+        main.postDelayed(step, 20_000);
     }
 
     private void sfx(Sfx s) {
@@ -980,7 +1022,8 @@ public final class CinePartyManager {
                 if (question != null && ("question".equals(phase) || "reveal".equals(phase))) {
                     q.put("kind", question.kind).put("prompt", question.prompt).put("image", question.image)
                             .put("shape", question.shape).put("caption", question.caption)
-                            .put("left", Math.max(0, questionEndsAt - now)).put("total", quizSeconds * 1000L);
+                            .put("left", questionEndsAt == Long.MAX_VALUE ? quizSeconds * 1000L : Math.max(0, questionEndsAt - now))
+                            .put("total", quizSeconds * 1000L).put("reading", questionEndsAt == Long.MAX_VALUE);
                     if (question.options != null) q.put("options", new JSONArray(java.util.Arrays.asList(question.options)));
                     if (me != null && me.answer != null) q.put("mine", displayAnswer(me.answer));
                     if ("reveal".equals(phase)) q.put("answer", question.answer).put("fact", question.fact).put("correct", question.correct);
