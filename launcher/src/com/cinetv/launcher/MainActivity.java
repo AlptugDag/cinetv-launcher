@@ -381,6 +381,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }, 150);
         checkNuvioUpdatePrompt();
         checkPendingUpdateBanner();
+        if (pendingBanner != null) {
+            String[] b = pendingBanner;
+            pendingBanner = null;
+            presentUpdateBannerGuaranteed(b[0], b[1], !b[2].isEmpty());
+        }
         checkNightViewingPrompt();
         maybeSpeakStartupGreeting();
     }
@@ -458,6 +463,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     private boolean wokenForBanner = false;
+    private String[] pendingBanner;
     private boolean userInteractedDuringBanner = false;
 
     public void presentUpdateBannerGuaranteed(final String title, final String message, final boolean isError) {
@@ -465,17 +471,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         final boolean screenWasOn = pm != null && pm.isInteractive();
 
         if (!screenWasOn) {
-            wokenForBanner = true;
-            userInteractedDuringBanner = false;
-            try {
-                if (pm != null) {
-                    android.os.PowerManager.WakeLock wl = pm.newWakeLock(
-                            android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK | android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP | android.os.PowerManager.ON_AFTER_RELEASE,
-                            "cinetv:banner_wakeup");
-                    wl.acquire(25_000L);
-                }
-            } catch (Throwable ignored) {}
-            com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent KEYCODE_WAKEUP", 1000);
+            // Never light up a sleeping TV for a notice: it waits for the next time the screen is on.
+            pendingBanner = new String[]{title, message, isError ? "1" : ""};
+            return;
         } else {
             wokenForBanner = false;
             userInteractedDuringBanner = false;
@@ -508,10 +506,19 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     private void checkPendingUpdateBanner() {
         android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(this);
-        String updatedVer = p.getString("just_updated_version", null);
-        if (updatedVer != null) {
-            p.edit().remove("just_updated_version").apply();
-            presentUpdateBannerGuaranteed("CineTV " + updatedVer + " Sürümüne Güncellendi!", "Yeniliklerin keyfini çıkarın.", false);
+        // An update installed while the viewer was away: say so the next time they are here.
+        String pending = p.getString("pending_update_version", null);
+        if (pending != null) {
+            String now = AppUpdater.currentVersion(this);
+            boolean done = !AppUpdater.isNewer(pending, now);
+            if (done || System.currentTimeMillis() - p.getLong("pending_update_at", 0) > 6 * 3600_000L) {
+                p.edit().remove("pending_update_version").remove("pending_update_at").apply();
+            }
+            if (done) {
+                presentUpdateBannerGuaranteed("CineTV v" + now + " yüklendi", "Yenilikler için Ayarlar › CineTV Turu.", false);
+                com.cinetv.launcher.ai.EmaLightningTts.speakMoment(this, com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SYSTEM,
+                        "CineTV yeni sürüme güncellendi.");
+            }
         }
         String updateErr = p.getString("update_error_message", null);
         if (updateErr != null) {

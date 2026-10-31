@@ -203,12 +203,8 @@ fi
 
 # --- 5. install -------------------------------------------------------------------------------------
 bold "Installing"
-# Disable package verifier blocking during installation to prevent timeouts or false security warnings
+# Installs from this computer skip the verifier's slow upload check; Play Protect itself stays on.
 tv settings put global verifier_verify_adb_installs 0 >/dev/null 2>&1 || true
-tv settings put global package_verifier_user_consent -1 >/dev/null 2>&1 || true
-tv settings put global package_verifier_enable 0 >/dev/null 2>&1 || true
-tv settings put global upload_apk_enable 0 >/dev/null 2>&1 || true
-tv settings put global play_protect_enabled 0 >/dev/null 2>&1 || true
 
 if tv pm list packages | grep -qx "package:$LEGACY_PKG"; then
     warn "An older CineTV build ($LEGACY_PKG) is installed; replacing it."

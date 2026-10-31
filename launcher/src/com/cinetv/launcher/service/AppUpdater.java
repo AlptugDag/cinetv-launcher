@@ -182,6 +182,61 @@ public final class AppUpdater {
         }).start();
     }
 
+    /** True when the APK is signed with the same certificate as the installed CineTV. */
+    static boolean sameSigner(Context ctx, File apk) {
+        try {
+            android.content.pm.PackageManager pm = ctx.getPackageManager();
+            android.content.pm.PackageInfo mine = pm.getPackageInfo(ctx.getPackageName(), android.content.pm.PackageManager.GET_SIGNATURES);
+            android.content.pm.PackageInfo theirs = pm.getPackageArchiveInfo(apk.getAbsolutePath(), android.content.pm.PackageManager.GET_SIGNATURES);
+            if (theirs == null || theirs.signatures == null || mine.signatures == null) return false;
+            if (!ctx.getPackageName().equals(theirs.packageName)) return false;
+            return java.util.Arrays.equals(mine.signatures, theirs.signatures);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /**
+     * Hands the APK to Android's package installer, which shows its own confirmation. Works without
+     * adb; needs "install unknown apps" for CineTV, which the setup grants.
+     */
+    static boolean installWithPrompt(final Context ctx, File apk) {
+        try {
+            android.content.pm.PackageInstaller pi = ctx.getPackageManager().getPackageInstaller();
+            android.content.pm.PackageInstaller.SessionParams params =
+                    new android.content.pm.PackageInstaller.SessionParams(android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+            params.setAppPackageName(ctx.getPackageName());
+            int id = pi.createSession(params);
+            try (android.content.pm.PackageInstaller.Session session = pi.openSession(id);
+                 java.io.InputStream in = new java.io.FileInputStream(apk);
+                 java.io.OutputStream out = session.openWrite("cinetv.apk", 0, apk.length())) {
+                byte[] buf = new byte[65536];
+                int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                session.fsync(out);
+                out.close();
+                String action = ctx.getPackageName() + ".INSTALL_RESULT";
+                ctx.getApplicationContext().registerReceiver(new android.content.BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context c, Intent i) {
+                        if (i.getIntExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, -99) == android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                            Intent confirm = i.getParcelableExtra(Intent.EXTRA_INTENT);
+                            if (confirm != null) c.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                        }
+                    }
+                }, new android.content.IntentFilter(action));
+                android.app.PendingIntent pend = android.app.PendingIntent.getBroadcast(ctx, id,
+                        new Intent(action).setPackage(ctx.getPackageName()),
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT | (android.os.Build.VERSION.SDK_INT >= 31 ? android.app.PendingIntent.FLAG_MUTABLE : 0));
+                session.commit(pend.getIntentSender());
+            }
+            return true;
+        } catch (Throwable t) {
+            Log.w(TAG, "Package installer failed: " + t);
+            return false;
+        }
+    }
+
     private static void postError(final UpdateCheckCallback cb, final String msg) {
         MAIN_HANDLER.post(() -> {
             if (cb != null) cb.onError(msg);
@@ -296,67 +351,43 @@ public final class AppUpdater {
                     MAIN_HANDLER.post(() -> Toast.makeText(ctx, "İndirme tamamlandı! Güncelleme kuruluyor...", Toast.LENGTH_SHORT).show());
                 }
 
-                // Suppress Google Play Protect / package verifier before running package install
-                LocalAdb.shell(ctx, "settings put global package_verifier_enable 0; settings put global package_verifier_user_consent -1; settings put global upload_apk_enable 0; settings put global play_protect_enabled 0", 2000);
-
-                // 1. Try silent background install via LocalAdb (stage in /data/local/tmp for Android 11-14 SELinux compatibility, with --dont-kill to never disrupt active playback)
-                String path = target.getAbsolutePath();
-                String installCmd = "cp '" + path + "' /data/local/tmp/cinetv_update.apk 2>/dev/null && (pm install -r -d -g --dont-kill /data/local/tmp/cinetv_update.apk || pm install -r -g /data/local/tmp/cinetv_update.apk || pm install -r /data/local/tmp/cinetv_update.apk) && rm -f /data/local/tmp/cinetv_update.apk '" + path + "'";
-                boolean installed = LocalAdb.shell(ctx, installCmd, 90_000);
-                if (!installed) {
-                    installed = LocalAdb.shell(ctx, "(pm install -r -d -g --dont-kill '" + path + "' || pm install -r -g '" + path + "' || pm install -r '" + path + "') && rm -f '" + path + "'", 90_000);
-                }
-                if (installed) {
-                    Log.i(TAG, "Silent install successful via LocalAdb!");
-                    Prefs.get(ctx).edit()
-                            .putString("just_updated_version", info.tagName)
-                            .putString("last_installed_asset_at", info.assetUpdatedAt != null ? info.assetUpdatedAt : "")
-                            .putLong("last_installed_asset_size", info.sizeBytes)
-                            .apply();
-                    MAIN_HANDLER.post(() -> {
-                        com.cinetv.launcher.MainActivity a = com.cinetv.launcher.MainActivity.instance;
-                        if (a != null && !a.isFinishing()) {
-                            a.showUpdateBanner("CineTV " + info.tagName + " Sürümüne Güncellendi!", "Yeniliklerin keyfini çıkarın.", false);
-                            Prefs.get(ctx).edit().remove("just_updated_version").apply();
-                        }
-                        com.cinetv.launcher.ai.EmaLightningTts.speakMoment(ctx, com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SYSTEM,
-                                "CineTV " + info.cleanVersion + " sürümüne güncellendi.");
-                    });
-                    LocalAdb.shell(ctx, "am start -n " + ctx.getPackageName() + "/.MainActivity", 5000);
+                // Only ever install what CineTV's own key signed: a swapped or corrupted download stops here.
+                if (!sameSigner(ctx, target)) {
+                    isDownloading = false;
+                    target.delete();
+                    Log.e(TAG, "Downloaded APK is not signed by CineTV's key: refused");
+                    if (!silent) MAIN_HANDLER.post(() -> Toast.makeText(ctx, "İndirilen dosya doğrulanamadı; güncelleme iptal edildi.", Toast.LENGTH_LONG).show());
                     return;
                 }
+                // Installing replaces this very process, so whatever must happen afterwards is decided now:
+                // the next start compares its version with this note and tells the viewer.
+                Prefs.get(ctx).edit().putString("pending_update_version", info.cleanVersion)
+                        .putLong("pending_update_at", System.currentTimeMillis())
+                        .putString("last_installed_asset_at", info.assetUpdatedAt != null ? info.assetUpdatedAt : "")
+                        .putLong("last_installed_asset_size", info.sizeBytes).commit();
 
-                if (silent) {
-                    Log.w(TAG, "Silent install via LocalAdb could not complete.");
-                    Prefs.get(ctx).edit().putString("update_error_message", "CineTV Güncellemesi Tamamlanamadı").apply();
-                    MAIN_HANDLER.post(() -> {
-                        com.cinetv.launcher.MainActivity a = com.cinetv.launcher.MainActivity.instance;
-                        if (a != null && !a.isFinishing()) {
-                            a.showUpdateBanner("CineTV Güncellemesi Tamamlanamadı", "Lütfen Ayarlar › Sistem › Sürüm menüsünden manuel güncellemeyi deneyin.", true);
-                            Prefs.get(ctx).edit().remove("update_error_message").apply();
-                        }
-                    });
+                // 1. Silently, through the TV's own adb: detached, so the install and the relaunch finish
+                //    even though Android stops this process to replace it.
+                String path = target.getAbsolutePath();
+                String pkg = ctx.getPackageName();
+                String log = "/data/local/tmp/cinetv_update.log";
+                String job = "cp '" + path + "' /data/local/tmp/cinetv_update.apk && pm install -r /data/local/tmp/cinetv_update.apk > " + log + " 2>&1; "
+                        + "rm -f /data/local/tmp/cinetv_update.apk; am start -n " + pkg + "/.MainActivity >/dev/null 2>&1";
+                boolean started = LocalAdb.exec(ctx, "nohup sh -c \"" + job + "\" >/dev/null 2>&1 &", 5000) != null;
+                if (started) {
+                    // Still alive a while later means the install did not replace us: read why.
+                    Thread.sleep(45_000);
+                    byte[] why = LocalAdb.exec(ctx, "cat " + log, 4000);
+                    String res = why == null ? "" : new String(why, "UTF-8");
+                    Log.w(TAG, "Silent install did not complete: " + res.trim());
                 }
-
-                // 2. Fallback: Native system PackageInstaller intent (relax StrictMode for file:// URI on Android 7+)
+                isDownloading = false;
+                // 2. No adb (network debugging off) or it failed: Android's own installer asks the viewer.
                 MAIN_HANDLER.post(() -> {
-                    try {
-                        android.os.StrictMode.VmPolicy oldPolicy = android.os.StrictMode.getVmPolicy();
-                        android.os.StrictMode.setVmPolicy(new android.os.StrictMode.VmPolicy.Builder().build());
-                        try {
-                            Intent prompt = new Intent(Intent.ACTION_VIEW);
-                            prompt.setDataAndType(Uri.fromFile(target), "application/vnd.android.package-archive");
-                            prompt.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                            ctx.startActivity(prompt);
-                        } finally {
-                            android.os.StrictMode.setVmPolicy(oldPolicy);
-                        }
-                    } catch (Throwable t) {
-                        Log.e(TAG, "Fallback package install failed: " + t.getMessage());
-                        if (!silent) Toast.makeText(ctx, "Kurulum başlatılamadı: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                    if (!installWithPrompt(ctx, target) && !silent) {
+                        Toast.makeText(ctx, "Kurulum başlatılamadı.", Toast.LENGTH_LONG).show();
                     }
                 });
-
             } catch (Throwable t) {
                 isDownloading = false;
                 Log.e(TAG, "Download failed: " + t.getMessage(), t);
