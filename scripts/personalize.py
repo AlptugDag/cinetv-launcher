@@ -649,9 +649,7 @@ def apply(plan, data, out_dir):
 
     if "nuvio" in plan["apps"]:
         assets_dir = os.path.join(os.path.dirname(__file__), "assets")
-        for cfg in ("alptugun-filmleri-2026-10-28.22-47-00-l1cz377-template.json", "alptugun-filmleri-template.json",
-                    "xperience-kategori-setup-profile.json", "xperience-profile.json",
-                    "aiometadata-config-2026-10-28.json", "aiometadata-config.json"):
+        for cfg in ("alptugun-filmleri-template.json", "xperience-kategori-setup-profile.json", "aiometadata-config.json"):
             cfg_path = os.path.join(assets_dir, cfg)
             if os.path.exists(cfg_path):
                 subprocess.run(["adb", "push", cfg_path, f"/sdcard/Download/{cfg}"], capture_output=True)

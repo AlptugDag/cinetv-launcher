@@ -138,8 +138,8 @@
     <string name="tour_trailers">Trailer moments are on by default: an opened DVD turns sideways and its trailer plays automatically and muted, with the story across the other side. Switch it off with the Trailer moments tile in Settings.</string>
     <string name="tour_search_t">Search the way you talk</string>
     <string name="tour_search">“car films”, “Nolan films”, “a father whose daughter is kidnapped”, or any question. The shelf fills with the answer.</string>
-    <string name="tour_voice_t">Just say it</string>
-    <string name="tour_voice">The remote\'s microphone key: say a film (“open Inception”), a person (“list Kubrick\'s films”), or a command: “volume down”, “HDMI 2”, “open YouTube”, “sleep in 30 minutes”.</string>
+    <string name="tour_voice_t">Just talk to Gamze</string>
+    <string name="tour_voice">Press the remote\'s microphone key and talk: a film (“open Inception”), a person (“Kubrick\'s films”), a mood, or a command (“volume down”, “HDMI 2”). Gamze remembers what you just said, so “an older one?” works, and when she asks you something back the microphone opens again by itself.</string>
     <string name="tour_phone_t">Your phone is the remote</string>
     <string name="tour_phone">Press here and scan the code: your phone becomes a touchpad remote that works in every app, with an air mouse, its keyboard typing on the TV, and a real power-off.</string>
     <string name="tour_cast_t">Send to the TV</string>
@@ -166,16 +166,16 @@
     <string name="tour_allow">If the TV asks “Allow USB debugging?” for CineTV, tick “Always allow” and press OK. That is what makes the phone remote work in every app and keeps CineTV your Home. Leave network debugging on in Developer options.</string>
     <string name="tour_perf_t">Let it fit this TV</string>
     <string name="tour_perf">Once: Settings › Performance › Determine automatically. A short test picks Low, Medium or High for this TV, and each keeps adapting by itself.</string>
-    <string name="tour_spatial_t">3D Spatial Audio &amp; Headphones</string>
-    <string name="tour_spatial">Experience personalized head-tracking spatial audio, Dolby Atmos virtualization and acoustic room depth with Apple AirPods and Bluetooth headphones.</string>
+    <string name="tour_spatial_t">Headphones and spatial audio</string>
+    <string name="tour_spatial">AirPods and Bluetooth headphones reconnect to the TV by themselves, and the spatial audio panel (Settings › AirPods) widens the sound for films.</string>
     <string name="tour_night_t">Smart Night Viewing Mode (23:00 - 05:00)</string>
     <string name="tour_night">Between 23:00 and 05:00, CineTV activates warm eye-care amber lighting and dynamic whisper audio leveling, ensuring you enjoy cinema without disturbing anyone at home.</string>
-    <string name="tour_cinesub_t">CineSub &amp; Visual AI Scene Inspector</string>
-    <string name="tour_cinesub">Instantly inspect any object, painting, costume, or scene location with Gemini Vision AI while watching, and enjoy multilingual smart subtitles.</string>
-    <string name="tour_acoustics_t">Acoustic Room Calibration</string>
-    <string name="tour_acoustics">Calibrate TV speakers and soundbars with room resonance frequency tests and custom EQ curves for studio-quality crystal clear dialogue.</string>
-    <string name="tour_gamze_social_t">Gamze AI: Witty Social Context</string>
-    <string name="tour_gamze_social">Ask Gamze for recommendations tailored to family movie night, date night with your partner, or deep solo viewing. Cultured, witty rapport with zero clichés.</string>
+    <string name="tour_cinesub_t">CineSUB: what\'s on screen?</string>
+    <string name="tour_cinesub">While a film plays in Nuvio, YouTube or the player, press the yellow key (or CineSUB on your phone). Rings appear around the people, places, objects, food and art worth knowing, with a note beside each; ◀ ▶ moves between them, OK tells more, Back closes. The film never stops.</string>
+    <string name="tour_acoustics_t">Room acoustics</string>
+    <string name="tour_acoustics">Play a test sweep from your phone in your seat; CineTV measures the room and sets the TV\'s equaliser so dialogue stays clear.</string>
+    <string name="tour_gamze_social_t">Gamze knows your household</string>
+    <string name="tour_gamze_social">Tell her who you watch with, what you loved or hated; she keeps it on this TV only and chooses with it: no violence with the kids around, chemistry for a date, anything goes alone.</string>
     <string name="tour_smarthome_t">Smart Home &amp; Voice Integration</string>
     <string name="tour_smarthome">Seamless integration with Apple Siri Shortcuts, Google Home and Amazon Alexa: trigger movie night scenes, launch titles or power down by voice.</string>
     <string name="dvd_cases">DVD cases</string>
@@ -274,8 +274,8 @@
     <string name="setup_dns_off">Encrypted DNS not active (%s)</string>
     <string name="setup_picture_manual">Sound was tuned automatically. This TV accepts picture changes only from its own menu (Settings or the remote\'s menu key › Picture). For the film as it was mastered: Picture mode Cinema/Movie · Motion smoothing (MEMC) Off · Noise reduction Off · Dynamic contrast Off · Sharpness 0 · Colour temperature Warm · Local contrast/dimming Low · Film mode On.</string>
     <string name="party_folder_title">Party &amp; Games</string>
-    <string name="tour_party_games_t">Party &amp; Games Hub</string>
-    <string name="tour_party_games">Inside the Party &amp; Games folder in your apps dock, discover SnakePhile, CineQuiz, CineRoulette, CineSessiz, and CineSUB. Friends can join with their smartphones or play using the TV remote!</string>
+    <string name="tour_party_games_t">CineParty: five games for the room</string>
+    <string name="tour_party_games">Open the Party &amp; Games folder in the apps row, scan the QR code with every phone, and play together: the TV is the stage, each phone is a player\'s own screen.</string>
     <string name="ai_err_no_key">Add an AI key in Settings to use the assistant.</string>
     <string name="ai_err_empty">The AI returned an empty answer.</string>
     <string name="ai_err_timeout">The AI took too long. Try again.</string>
@@ -292,4 +292,14 @@
         <item>Nineties classics</item>
         <item>Feel-good crowd pleasers</item>
     </string-array>
+    <string name="tour_cinesub_ambient_t">CineSUB companion mode</string>
+    <string name="tour_cinesub_ambient">Switch it on in Settings and, every few minutes, CineSUB may float one short note in a quiet corner: a real place, a painting, a name or an event mentioned in the dialogue. It never covers subtitles and fades on its own.</string>
+    <string name="tour_quiz_t">CineQuiz</string>
+    <string name="tour_quiz">You set the clock. Real stills, portraits and casts from TMDB plus Gamze\'s own questions; everyone answers on their phone, answers open together on the TV, each right one is 10 points. The winner picks tonight\'s film.</string>
+    <string name="tour_roulette_t">CineRoulette</string>
+    <string name="tour_roulette">Six films in a revolver, one bullet. Take turns on the trigger: an empty chamber knocks its film out, the bullet picks tonight\'s film. The clock shrinks every turn; two spins each.</string>
+    <string name="tour_sessiz_t">CineSessiz</string>
+    <string name="tour_sessiz">Cinema taboo with no timer: whoever\'s turn it is picks a film, series or actor the room will know, Gamze forbids five words, and everyone guesses on their phones.</string>
+    <string name="tour_sounds_t">Sound design</string>
+    <string name="tour_sounds">Glass and wood taps for moving around, a low swell when a case opens, a deep hit when a film starts. Interface and game sounds can each be switched off in Settings.</string>
 </resources>

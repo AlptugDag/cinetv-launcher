@@ -1,0 +1,142 @@
+name: TV feedback
+
+# A TV sends feedback as a pre-filled issue (TV Inspector › "Report" shows a QR code; the phone opens
+# GitHub with the report already written). This workflow files the device into the compatibility list,
+# labels the issue, and, when the ANTHROPIC_API_KEY secret is set, asks Claude Code to investigate and
+# open a pull request with a fix for a person to review. Nothing is merged automatically.
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  file:
+    if: github.event_name == 'issues' && (startsWith(github.event.issue.title, '[Cihaz Raporu]') || startsWith(github.event.issue.title, '[Geri Bildirim]'))
+    runs-on: ubuntu-latest
+    outputs:
+      needs_fix: ${{ steps.parse.outputs.needs_fix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the report and update the device list
+        id: parse
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          body = os.environ.get("ISSUE_BODY", "")
+          m = re.search(r"```json\s*(\{.*?\})\s*```", body, re.S)
+          report = {}
+          if m:
+              try:
+                  report = json.loads(m.group(1))
+              except ValueError:
+                  report = {}
+          needs_fix = bool(report.get("anomalies")) or bool(report.get("user_notes"))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"needs_fix={'true' if needs_fix else 'false'}\n")
+          if not report.get("model"):
+              print("No machine-readable report; nothing to file.")
+              raise SystemExit(0)
+          path = "devices/tested_devices.json"
+          db = json.load(open(path, encoding="utf-8"))
+          devices = db.setdefault("tested_devices", [])
+          entry = {
+              "brand": report.get("brand", ""),
+              "model": report.get("model", ""),
+              "board": report.get("board", ""),
+              "os": f"Android {report.get('android_release', '')} (SDK {report.get('android_sdk', '')})",
+              "display": report.get("display_panel", ""),
+              "ram_mb": int(report.get("ram_mb") or 0),
+              "tier": report.get("tier", ""),
+              "status": "Kullanıcı raporu",
+              "cinetv": report.get("app_version", ""),
+              "notes": f"#{os.environ['ISSUE_NUMBER']}" + (f" · {report['anomalies']}" if report.get("anomalies") else ""),
+          }
+          for i, d in enumerate(devices):
+              if d.get("model", "").lower() == entry["model"].lower():
+                  if d.get("status", "").startswith("Geliştirici"):
+                      raise SystemExit(0)
+                  devices[i] = entry
+                  break
+          else:
+              devices.append(entry)
+          json.dump(db, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          open(path, "a").write("\n")
+          rows = ["# CineTV uyumlu cihazlar", "",
+                  "Geliştirici cihazları her sürümde elle test edilir; diğerleri kullanıcıların TV'lerinden gelen raporlardır.", "",
+                  "| Marka | Model | Yonga | Android | RAM | CineTV | Durum |", "|---|---|---|---|---|---|---|"]
+          for d in devices:
+              rows.append(f"| {d.get('brand','')} | {d.get('model','')} | {d.get('board','')} | {d.get('os','')} | {d.get('ram_mb','')} MB | {d.get('cinetv','')} | {d.get('status','')} |")
+          open("docs/COMPATIBLE_DEVICES.md", "w", encoding="utf-8").write("\n".join(rows) + "\n")
+          PY
+
+      - name: Commit the device list
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add devices/tested_devices.json docs/COMPATIBLE_DEVICES.md
+          git diff --staged --quiet || { git commit -m "devices: file report #${{ github.event.issue.number }}"; git push; }
+
+      - name: Label and acknowledge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fix = '${{ steps.parse.outputs.needs_fix }}' === 'true';
+            await github.rest.issues.addLabels({ ...context.repo, issue_number: context.issue.number,
+              labels: fix ? ['tv-report', 'needs-fix'] : ['tv-report'] });
+            await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number,
+              body: fix
+                ? 'Teşekkürler! Rapor cihaz listesine işlendi. Bildirilen sorun inceleniyor; bir düzeltme hazır olduğunda bu konuya bağlı bir pull request açılacak.'
+                : 'Teşekkürler! Televizyonunuz uyumlu cihazlar listesine eklendi.' });
+
+  fix:
+    needs: file
+    if: needs.file.outputs.needs_fix == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for an AI key
+        id: key
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: echo "ready=$([ -n "$KEY" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ready == 'true'
+      - name: Investigate and propose a fix
+        if: steps.key.outputs.ready == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Issue #${{ github.event.issue.number }} is a report sent from a TV running CineTV (an Android TV launcher in this repo).
+            Read the issue, reproduce the reasoning from the code under launcher/src, and if you find a real, specific cause,
+            fix it on a new branch and open a pull request that references the issue. Keep the change minimal, follow the
+            surrounding code style, and run ./gradlew :launcher:testDebugUnitTest. If you can't find a cause, comment on the
+            issue with what you checked and what information would help. Never merge.
+
+  mention:
+    # Anyone with write access can ask for help on any issue or PR by writing @claude.
+    if: github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for an AI key
+        id: key
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: echo "ready=$([ -n "$KEY" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ready == 'true'
+      - uses: anthropics/claude-code-action@v1
+        if: steps.key.outputs.ready == 'true'
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

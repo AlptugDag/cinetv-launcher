@@ -134,8 +134,8 @@
     <string name="tour_trailers">Fragman anları varsayılan olarak açıktır: açılan DVD yan yatar ve filmin fragmanı kendiliğinden, sessizce oynar; konusu diğer iç kapakta yazar. Ayarlar sayfasındaki Fragman Anları düğmesiyle kapatabilirsin.</string>
     <string name="tour_search_t">Konuşur gibi ara</string>
     <string name="tour_search">“araba temalı filmler”, “Nolan filmleri”, “kızı kaçırılan baba filmleri” ya da herhangi bir soru. Raf cevapla dolar.</string>
-    <string name="tour_voice_t">Söylemen yeter</string>
-    <string name="tour_voice">Kumandanın mikrofon tuşu: bir film (“Inception\'ı aç”), bir kişi (“Kubrick\'in filmlerini listele”) ya da bir komut: “sesi kıs”, “HDMI 2”, “YouTube\'u aç”, “30 dakika sonra kapan”.</string>
+    <string name="tour_voice_t">Gamze ile konuş</string>
+    <string name="tour_voice">Kumandanın mikrofon tuşuna bas ve konuş: bir film (“Inception\'ı aç”), bir kişi (“Kubrick filmleri”), bir ruh hali ya da bir komut (“sesi kıs”, “HDMI 2”). Gamze az önce ne dediğini hatırlar; “daha eskisi?” demen yeter. Sana bir şey sorarsa mikrofon kendiliğinden yeniden açılır.</string>
     <string name="tour_phone_t">Telefonun kumandan olur</string>
     <string name="tour_phone">Buraya bas, kodu okut: telefonun her uygulamada çalışan dokunmatik bir kumanda olur; hava faresi, televizyona yazan klavyesi ve gerçekten kapatan güç tuşuyla.</string>
     <string name="tour_cast_t">Televizyona gönder</string>
@@ -162,16 +162,16 @@
     <string name="tour_allow">Televizyon CineTV için “USB hata ayıklamaya izin verilsin mi?” diye sorarsa “Her zaman izin ver”i işaretleyip Tamam\'a bas. Telefondaki kumandanın her uygulamada çalışmasını ve CineTV\'nin ana ekranın olarak kalmasını bu sağlar.</string>
     <string name="tour_perf_t">Performans ve TV Denetçisi</string>
     <string name="tour_perf">Ayarlar › 2. Görsel Deneyim › Performans Testi ile televizyonun hız modunu seç. Ayarlar › 4. Sistem sayfasındaki TV Denetçisi ile de tüm ekran, HDR ve ses çözücülerini görüntüle.</string>
-    <string name="tour_spatial_t">3D Uzamsal Ses ve AirPods / Kulaklık</string>
-    <string name="tour_spatial">Kişiselleştirilmiş baş takipli uzamsal ses sahnesi, Dolby Atmos sanallaştırma ve Apple AirPods / Bluetooth kulaklıklarla sinema salonu akustiği.</string>
+    <string name="tour_spatial_t">Kulaklık ve uzamsal ses</string>
+    <string name="tour_spatial">AirPods ve Bluetooth kulaklıklar TV\'ye kendiliğinden yeniden bağlanır; uzamsal ses paneli (Ayarlar › AirPods) filmler için sesi genişletir.</string>
     <string name="tour_night_t">Akıllı Gece İzleme Modu (23:00 - 05:00)</string>
     <string name="tour_night">Gece saatlerinde beliren otomatik bildirimle sıcak amber tonu (göz koruma) ve fısıltı ses seviyesi dinamik olarak devreye girer; evdekileri rahatsız etmeden film keyfi sunar.</string>
-    <string name="tour_cinesub_t">CineSub &amp; Görsel AI Sahne Dedektifi (Ne Bu?)</string>
-    <string name="tour_cinesub">Film oynarken sahnedeki bir nesneyi, tabloyu, tarihi yapıyı veya oyuncunun giydiği ceketi AI vizyonuyla anında tanımlayın ve akıllı altyazı desteği alın.</string>
-    <string name="tour_acoustics_t">Akustik Oda Kalibrasyonu</string>
-    <string name="tour_acoustics">TV hoparlörleri ve soundbar için oda rezonans testi ve frekans eğrisi kalibrasyonu ile stüdyo seviyesi net diyaloglar.</string>
-    <string name="tour_gamze_social_t">Gamze AI: Sosyal Bağlam ve Zeki Küratör</string>
-    <string name="tour_gamze_social">‘Kiminle izliyorsun?’ sorusuyla aileye, sevgiliye veya yalnız izlemeye özel, nüktedan ve zeki film önerileri. Sıfır klişe, tam hedef tavsiyeler.</string>
+    <string name="tour_cinesub_t">CineSUB: ekranda ne var?</string>
+    <string name="tour_cinesub">Nuvio, YouTube ya da oynatıcıda film dönerken sarı tuşa (veya telefondaki CineSUB\'a) bas. Bilinmeye değer kişi, mekân, obje, yemek ve tabloların etrafında halkalar, yanlarında notlar belirir; ◀ ▶ aralarında gezer, OK daha fazlasını anlatır, Geri kapatır. Film hiç durmaz.</string>
+    <string name="tour_acoustics_t">Oda akustiği</string>
+    <string name="tour_acoustics">Koltuğunda telefonundan bir test sesi çal; CineTV odayı ölçüp TV\'nin ekolayzırını diyaloglar net duyulacak şekilde ayarlar.</string>
+    <string name="tour_gamze_social_t">Gamze evini tanır</string>
+    <string name="tour_gamze_social">Kiminle izlediğini, neyi sevip sevmediğini söyle; yalnızca bu TV\'de saklar ve seçerken kullanır: çocuklar varken şiddet yok, sevgiliyle kimya, yalnızken her şey serbest.</string>
     <string name="tour_smarthome_t">Akıllı Ev Entegrasyonu (Siri, Google Home &amp; Alexa)</string>
     <string name="tour_smarthome">Apple Siri Shortcuts, Google Home ve Amazon Alexa üzerinden CineTV\'yi sesle açıp kapatabilir, film başlatabilir veya film gecesi sahneleri tetikleyebilirsiniz.</string>
     <string name="dvd_cases">DVD kutuları</string>
@@ -270,8 +270,8 @@
     <string name="setup_dns_off">Şifreli DNS etkin değil (%s)</string>
     <string name="setup_picture_manual">Ses otomatik ayarlandı. Bu TV görüntü değişikliklerini yalnızca kendi menüsünden kabul ediyor (Ayarlar ya da kumandadaki menü tuşu › Görüntü). Filmi stüdyoda çıktığı gibi görmek için: Görüntü modu Sinema · Hareket yumuşatma (MEMC) Kapalı · Gürültü azaltma Kapalı · Dinamik kontrast Kapalı · Keskinlik 0 · Renk sıcaklığı Sıcak · Yerel kontrast/karartma Düşük · Film modu Açık.</string>
     <string name="party_folder_title">Parti &amp; Oyunlar</string>
-    <string name="tour_party_games_t">Parti &amp; Sinefil Oyunları</string>
-    <string name="tour_party_games">Uygulamalar satırındaki Parti &amp; Oyunlar klasöründe SnakePhile, CineQuiz, CineRoulette, CineSessiz ve CineSUB yer alır. Arkadaşlarınız telefonlarıyla katılabilir veya TV kumandasıyla oynayabilirsiniz!</string>
+    <string name="tour_party_games_t">CineParty: salon için beş oyun</string>
+    <string name="tour_party_games">Uygulamalar satırındaki Parti &amp; Oyunlar klasörünü aç, QR kodu herkes telefonuyla okutsun ve birlikte oynayın: TV sahnedir, her telefon oyuncunun kendi ekranı.</string>
     <string name="ai_err_no_key">Asistanı kullanmak için Ayarlar\'dan bir yapay zekâ anahtarı ekleyin.</string>
     <string name="ai_err_empty">Yapay zekâ boş yanıt verdi.</string>
     <string name="ai_err_timeout">Yapay zekâ çok uzun sürdü. Tekrar deneyin.</string>
@@ -288,4 +288,14 @@
         <item>90\'ların klasikleri</item>
         <item>İçini ısıtan eğlenceli filmler</item>
     </string-array>
+    <string name="tour_cinesub_ambient_t">CineSUB eşlik modu</string>
+    <string name="tour_cinesub_ambient">Ayarlar\'dan açarsan CineSUB birkaç dakikada bir sessiz bir köşede kısa bir not gösterebilir: gerçek bir mekân, bir tablo, diyalogda geçen bir isim ya da olay. Altyazının üstüne çıkmaz, kendiliğinden kaybolur.</string>
+    <string name="tour_quiz_t">CineQuiz</string>
+    <string name="tour_quiz">Süreyi siz seçin. TMDB\'den gerçek sahneler, portreler ve kadrolar, üstüne Gamze\'nin kendi soruları; herkes telefonundan cevaplar, cevaplar TV\'de birlikte açılır, her doğru 10 puan. Kazanan bu gecenin filmini seçer.</string>
+    <string name="tour_roulette_t">CineRoulette</string>
+    <string name="tour_roulette">Altı haznede altı film, tek kurşun. Tetiği sırayla çekin: boş çıkan hazne filmini eler, kurşun bu gecenin filmini seçer. Süre her turda kısalır; herkesin iki çevirme hakkı var.</string>
+    <string name="tour_sessiz_t">CineSessiz</string>
+    <string name="tour_sessiz">Süresiz sinema tabusu: sırası gelen, salonun bileceği bir film, dizi ya da oyuncu seçer; Gamze beş kelimeyi yasaklar, herkes telefonundan tahmin eder.</string>
+    <string name="tour_sounds_t">Ses tasarımı</string>
+    <string name="tour_sounds">Gezinirken cam ve ahşap tıkırtıları, kutu açılırken alçak bir yükseliş, film başlarken derin bir vuruş. Arayüz ve oyun sesleri Ayarlar\'dan ayrı ayrı kapatılabilir.</string>
 </resources>

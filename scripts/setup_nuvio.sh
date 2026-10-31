@@ -54,9 +54,7 @@ install_addon "Xperience" "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b
 
 echo "Deploying Alptuğ'un Filmleri, Xperience and AIOMetadata configs to /sdcard/Download/"
 ASSETS_DIR="$(dirname "$0")/assets"
-for cfg in "alptugun-filmleri-2026-10-28.22-47-00-l1cz377-template.json" "alptugun-filmleri-template.json" \
-           "xperience-kategori-setup-profile.json" "xperience-profile.json" \
-           "aiometadata-config-2026-10-28.json" "aiometadata-config.json"; do
+for cfg in "alptugun-filmleri-template.json" "xperience-kategori-setup-profile.json" "aiometadata-config.json"; do
     if [ -f "$ASSETS_DIR/$cfg" ]; then
         adb push "$ASSETS_DIR/$cfg" "/sdcard/Download/$cfg" >/dev/null 2>&1 || true
         adb shell "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/$cfg" >/dev/null 2>&1 || true

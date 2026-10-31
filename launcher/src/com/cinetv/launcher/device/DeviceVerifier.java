@@ -106,6 +106,14 @@ public final class DeviceVerifier {
                     + "- Durum & Anomaliler: " + anomalies + "\n"
                     + "- CineTV: v" + p.optString("app_version") + "\n"
                     + (notes != null && !notes.isEmpty() ? "- Not: " + notes + "\n" : "");
+            // The machine-readable copy the feedback workflow files into the device list.
+            JSONObject report = new JSONObject().put("brand", brand).put("model", model).put("board", board)
+                    .put("android_release", p.optString("android_release")).put("android_sdk", p.optInt("android_sdk"))
+                    .put("ram_mb", p.optInt("ram_mb")).put("display_panel", p.optString("display_panel"))
+                    .put("tier", p.optString("tier")).put("app_version", p.optString("app_version"));
+            if (!"Cihaz Sağlıklı (Sorun Yok)".equals(anomalies)) report.put("anomalies", anomalies);
+            if (notes != null && !notes.isEmpty() && !notes.startsWith("Verified")) report.put("user_notes", notes);
+            body += "\n```json\n" + report.toString() + "\n```\n";
             return "https://github.com/AlptugDag/cinetv-launcher/issues/new?title="
                     + java.net.URLEncoder.encode(title, "UTF-8")
                     + "&body=" + java.net.URLEncoder.encode(body, "UTF-8");
@@ -150,8 +158,7 @@ public final class DeviceVerifier {
                 boolean ok = sendReport(ctx, profile, notes);
                 new Handler(Looper.getMainLooper()).post(() -> {
                     if (cb != null) {
-                        if (ok) cb.onSuccess("Televizyonunun uyumluluk bilgileri başarıyla iletildi ve onaylandı!");
-                        else cb.onSuccess("Donanım raporu kaydedildi.");
+                        cb.onSuccess(ok ? "Rapor hazır. Göndermek için QR kodunu telefonla okutun." : "Rapor hazırlanamadı.");
                     }
                 });
             } catch (Throwable t) {

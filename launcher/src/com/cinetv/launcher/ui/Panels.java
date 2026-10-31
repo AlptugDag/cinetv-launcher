@@ -3030,56 +3030,33 @@ public final class Panels {
         scroll.addView(root);
 
         TextView title = UiKit.bold(ctx, 30, UiKit.INK);
-        title.setText(tr ? "CineTV Turu & Yenilikler (v1.0.0.19)" : "CineTV Tour & What's New (v1.0.0.19)");
+        String ver = "";
+        try {
+            ver = ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0).versionName;
+        } catch (Throwable ignored) {
+        }
+        title.setText((tr ? "Yenilikler · v" : "What's new · v") + ver);
         root.addView(title);
 
         TextView sub = UiKit.label(ctx, 16, UiKit.INK_DIM);
         sub.setPadding(0, UiKit.px(8), 0, UiKit.px(20));
-        sub.setText(tr
-                ? "Sürüm 1.0.0.16'dan bu yana eklenen ve geliştirilen tüm çığır açıcı özellikler:"
-                : "All breakthrough features introduced and refined since version 1.0.0.16:");
+        sub.setText(tr ? "Turu baştan almak için ayarlardaki CineTV Turu'nu açın." : "Take the tour again from CineTV Tour in Settings.");
         root.addView(sub);
 
-        final String[][] features = {
-                {"CineSub (İnteraktif Kültürel Altyazı & Gamze Vision Sahne Taraması)",
-                 tr ? "Film izlerken kumandadaki Sarı tuşa veya mobil kumandaya basıldığında sahneyi durdurmadan kenarda beliren mini sinema notu kartı. Altyazıdaki tarihi olayları, felsefi kavramları ve arka plandaki tabloları/sanat eserlerini Gamze Vision ile tanır."
-                    : "Press the Yellow key or phone remote during playback to inspect cultural trivia, paintings, and philosophical homages without pausing the video."},
-
-                {"Çoklu Telefon Deneyimi & Sinefil Parti Oyunları",
-                 tr ? "Aynı anda birden fazla telefonun TV'ye bağlanıp yarışabileceği 10 soruluk Sinefil Bilmece Quiz'i (kazananın seçtiği film izlenir!), film öneri ruleti ve gyro sensörüyle oynanan Sinefil Yılanı mini oyunu."
-                    : "Multiplayer 10-question cinephile quiz with live mobile buzzers, movie roulette, and gyro-controlled poster snake game."},
-
-                {"PWA Bağımsız Mobil Kumanda (Tarayıcısız Tam Ekran)",
-                 tr ? "Mobil kumanda artık hem Android hem iOS'ta güvenlik engellerine takılmadan 1 tıkla cihaza yerel bir uygulama gibi kuruluyor. Apple Liquid Glass uyumlu şık simgesi ve pürüzsüz gyro VR lazer reticle'ı ile çalışır."
-                    : "Installable PWA remote with native standalone fullscreen experience on iOS and Android, VR laser reticle, and zero browser chrome."},
-
-                {"Letterboxd Otomatik Sinema Günlüğü (Scrobble)",
-                 tr ? "CineTV'de izlediğiniz tüm filmler anında /sdcard/Download/cinetv_letterboxd_diary.csv kütüğüne işlenir ve profilinizle senkronize edilir."
-                    : "Automatically records watched movies to an official Letterboxd-compatible diary CSV with one-click export."},
-
-                {"Fiziksel Kumanda Renkli Tuş Özelleştirmesi",
-                 tr ? "Kumandanızdaki Kırmızı, Yeşil, Sarı ve Mavi tuşlara CineSub, Gamze AI, Nuvio, YouTube veya dilediğiniz eylemleri atayabilme özgürlüğü."
-                    : "Custom action bindings for Red, Green, Yellow, and Blue remote buttons."},
-
-                {"Gamze AI \"Kiminle İzliyorsun?\" & Yerel Bağlam Hafızası",
-                 tr ? "Gamze artık aile, sevgili, arkadaş veya yalnız izleme ortamına göre akıllı sansür ve yaş filtreleri uyguluyor; ev halkı zevklerini yerel depoda hatırlayıp kişiselleştiriyor."
-                    : "Social context-aware curation with persistent local memory for household preferences and age restrictions."},
-
-                {"Hans Zimmer & Apple Akustik Ses Motoru",
-                 tr ? "44.1 kHz PCM sentezlenmiş dokunsal ahşap-akrilik tıklamalar, sinematik açılış akoru ve ayarlardan arayüz seslerini açıp kapatabilme seçeneği."
-                    : "Pure 44.1 kHz PCM acoustic UI sounds with an option to toggle on/off in settings."},
-
-                {"Fiziksel DVD Kutusu Mikro-Nefes & Fresnel Plastik Yansıması",
-                 tr ? "Çiğ salınımlar yerine 2.2 derecelik ultra zarif mikro-nefes, polipropilen şeffaf kılıfın organik prizmatik ışık kırılması ve tema tabanlı renk derecelendirmesi."
-                    : "Subtle 2.2-degree organic micro-breathing yaw with realistic thin-film Fresnel cellophane reflections and theme color grading."},
-
-                {"Nuvio Akıllı Oynatma & Tanılama Rehberi",
-                 tr ? "Televizyonda Nuvio veya Stremio bulunmadığında sessizce durmak yerine kullanıcıyı QR kodlu hızlı kurulum rehberiyle karşılayan akıllı sistem."
-                    : "Friendly in-app setup guide modal if a compatible video player is missing."},
-
-                {"TV Denetçisi & Harici Ses Sistemi Tespiti",
-                 tr ? "HDMI ARC, eARC, Optik SPDIF, Bluetooth ve USB DAC ses sistemlerinin otomatik tespiti ve tek tıkla GitHub uyumluluk raporu QR kodu oluşturma."
-                    : "Automatic detection of HDMI ARC/eARC, Optical, and Bluetooth audio devices, plus community hardware report QR code."}
+        final String[][] features = tr ? new String[][]{
+                {"CineParty baştan yazıldı", "CineQuiz (süreyi siz seçersiniz, TMDB görselleri, Gamze'nin soruları, kazanan filmi seçer), CineRoulette (altı film, tek kurşun) ve CineSessiz (anlatıcı seçer, salon bilir). TV sahne, her telefon oyuncunun kendi ekranı; sesler iki tarafta da."},
+                {"CineSUB her oynatıcının üstünde", "Sarı tuş: sahnedeki kişi, mekân, obje, yemek, tablo ve altyazıda geçen isimler halkalarla işaretlenir, notlar konunun yanında belirir. Eşlik modu izlerken ara sıra kısa notlar bırakır."},
+                {"Gamze sohbet ediyor", "Konuşmayı hatırlar, gerektiğinde geri soru sorar ve mikrofonu kendisi açar; cümle cümle konuştuğu için hemen cevap verir."},
+                {"Yeni ses tasarımı", "Cam ve ahşap dokunuşlar, kutu açılışında alçak bir yükseliş, film başlarken derin bir vuruş. Artık sistem sesi kapalı TV'lerde de duyulur; ayarlardan kapatılabilir."},
+                {"Fragmanlar", "Kadraja tam oturur (kırpma yok), siyah açılış yerine afişten doğrudan görüntüye geçer, odaklanınca önceden yüklenir."},
+                {"Geri bildirim", "TV Denetçisi'ndeki rapor QR'ı GitHub'da hazır bir kayıt açar; cihazınız uyumluluk listesine işlenir, sorunlar incelenir."}
+        } : new String[][]{
+                {"CineParty rebuilt", "CineQuiz (you set the clock, TMDB stills, Gamze's questions, the winner picks the film), CineRoulette (six films, one bullet) and CineSessiz (the teller picks, the room guesses). The TV is the stage, each phone a player's own screen."},
+                {"CineSUB over any player", "Yellow key: people, places, objects, food, art and names from the subtitles get rings and notes beside them. Companion mode drops a short note now and then."},
+                {"Gamze talks back", "She remembers the conversation, asks one question back when it helps and reopens the microphone; she speaks sentence by sentence, so she answers at once."},
+                {"New sound design", "Glass and wood taps, a low swell when a case opens, a deep hit when a film starts. Now heard on TVs whose system sounds are muted; can be switched off."},
+                {"Trailers", "Fit the frame (no cropping), go from the still straight to the picture instead of black, preload on focus."},
+                {"Feedback", "The report QR in the TV Inspector opens a ready GitHub issue; your TV joins the compatibility list and problems get looked at."}
         };
 
         for (String[] f : features) {
@@ -3792,6 +3769,13 @@ public final class Panels {
             host.back();
         });
         btns.addView(reconnectBtn);
+
+        View sp0 = new View(ctx);
+        btns.addView(sp0, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+        btns.addView(Controls.button(ctx, tr ? "Uzamsal Ses Paneli" : "Spatial Audio Panel", v -> {
+            host.back();
+            com.cinetv.launcher.ui.SpatialAudioOverlay.show(ctx);
+        }));
 
         View sp = new View(ctx);
         btns.addView(sp, new LinearLayout.LayoutParams(UiKit.px(14), 1));
