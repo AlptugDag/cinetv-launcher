@@ -545,30 +545,6 @@ public final class AppArtwork {
     }
 
     /**
-     * Molten Chrome Gradient Paint:
-     * Reflective liquid mercury specular gradient with bright platinum horizons.
-     */
-    public static Paint createArgentChromePaint(float x0, float y0, float x1, float y1) {
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-        p.setShader(new LinearGradient(
-                x0, y0, x1, y1,
-                new int[]{
-                    Color.parseColor("#FFFFFF"), // apex specular highlight
-                    Color.parseColor("#F1F5F9"), // platinum sheen
-                    Color.parseColor("#94A3B8"), // liquid mercury
-                    Color.parseColor("#334155"), // dark reflection horizon
-                    Color.parseColor("#FFFFFF"), // caustic reflection
-                    Color.parseColor("#64748B"), // shadowed steel
-                    Color.parseColor("#CBD5E1"), // soft silver
-                    Color.parseColor("#FFFFFF")  // edge specular
-                },
-                new float[]{0f, 0.14f, 0.32f, 0.48f, 0.64f, 0.78f, 0.89f, 1.0f},
-                Shader.TileMode.CLAMP
-        ));
-        return p;
-    }
-
-    /**
      * Crisp High-Contrast Typography with Volumetric Brand Neon Back-Glow:
      * Premium platinum white text (#F8FAFC) ensures perfect legibility, eliminating
      * dirty grayscale zebra gradients from all app wordmarks.
@@ -1726,49 +1702,4 @@ public final class AppArtwork {
         return bmp;
     }
 
-    /** CineSUB Liquid Glass Card */
-    public static Bitmap createCineSubCard(Context ctx, boolean focused) {
-        Bitmap bmp = Bitmap.createBitmap(CARD_W, CARD_H, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bmp);
-        int neon = Color.parseColor("#F59E0B");
-        drawLiquidGlassCardBase(canvas, neon, 175f, CARD_H / 2f);
-
-        float cx = 165f;
-        float cy = CARD_H / 2f;
-
-        // 3D Orange CC Subtitle & AI Badge
-        Paint ccBadge = new Paint(Paint.ANTI_ALIAS_FLAG);
-        ccBadge.setShader(new LinearGradient(
-                cx - 45f, cy - 45f, cx + 45f, cy + 45f,
-                new int[]{Color.parseColor("#FBBF24"), Color.parseColor("#F59E0B"), Color.parseColor("#92400E")},
-                null, Shader.TileMode.CLAMP
-        ));
-        ccBadge.setShadowLayer(22f, 0f, 4f, Color.argb(180, 245, 158, 11));
-        canvas.drawRoundRect(new RectF(cx - 38f, cy - 28f, cx + 38f, cy + 28f), 12f, 12f, ccBadge);
-
-        // Subtitle horizontal bars inside card
-        Paint bar = new Paint(Paint.ANTI_ALIAS_FLAG);
-        bar.setColor(Color.WHITE);
-        canvas.drawRoundRect(new RectF(cx - 24f, cy - 12f, cx + 24f, cy - 4f), 3f, 3f, bar);
-        canvas.drawRoundRect(new RectF(cx - 20f, cy + 4f, cx + 20f, cy + 12f), 3f, 3f, bar);
-
-        Paint textWhite = createCrispTextPaint(ctx, 48f, neon);
-        Paint textOrange = createCrispTextPaint(ctx, 48f, neon);
-        textOrange.setColor(Color.parseColor("#F59E0B"));
-
-        Paint subPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        subPaint.setTypeface(FontManager.getMedium(ctx));
-        subPaint.setTextSize(22f);
-        subPaint.setColor(Color.parseColor("#FDE68A"));
-        subPaint.setShadowLayer(8f, 0f, 2f, Color.argb(150, 0, 0, 0));
-
-        float tx = 248f;
-        float ty = CARD_H / 2f - 4f;
-        canvas.drawText("Cine", tx, ty, textWhite);
-        float cw = textWhite.measureText("Cine");
-        canvas.drawText("SUB", tx + cw, ty, textOrange);
-        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        canvas.drawText(tr ? "Kültürel Altyazı & Sahne Dedektifi" : "Cultural Subtitles & AI Inspector", tx, ty + 34f, subPaint);
-        return bmp;
-    }
 }

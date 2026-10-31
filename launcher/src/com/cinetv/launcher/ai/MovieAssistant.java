@@ -91,27 +91,6 @@ public final class MovieAssistant {
         return false;
     }
 
-    /**
-     * Immediate verbal response sentence as soon as any search is entered (voice, TV keyboard, or phone remote).
-     */
-    public static String acknowledgmentPhrase(String query) {
-        if (query == null || query.trim().isEmpty()) return "";
-        String q = query.trim().toLowerCase(Locale.getDefault());
-        String name = cleanShelfName(query);
-        if (name.isEmpty()) name = query.trim();
-
-        if (isQuestion(query)) {
-            return "tr".equals(Locale.getDefault().getLanguage()) ? "Hemen bakıyorum..." : "Checking for you...";
-        }
-
-        if (q.startsWith("aç") || q.startsWith("oynat") || q.startsWith("izle")
-                || q.endsWith("aç") || q.endsWith("oynat") || q.endsWith("izle")) {
-            return name + " başlatılıyor...";
-        }
-        // Robotic "Searching for..." or "Aranıyor..." prefixes are strictly eliminated per user directive.
-        return "";
-    }
-
     /** Understands the request and fetches its shelf or answer. */
     public static Reply ask(Context ctx, String query, int max) {
         return ask(ctx, query, Collections.emptyList(), max);

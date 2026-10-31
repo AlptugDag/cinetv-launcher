@@ -297,12 +297,12 @@ public final class Panels {
                 tr ? "Gece İzleme Modu (23:00 - 05:00)" : "Night Viewing Mode (23:00 - 05:00)",
                 nightViewActive
                         ? (tr ? "Açık · 23:00-05:00 saatleri aktif" : "On · Active 23:00-05:00")
-                        : (tr ? "Kapalı · 23:00-05:00 arası ekran açılınca sorulur" : "Off · Prompted between 23:00 and 05:00"),
+                        : (tr ? "Kapalı" : "Off"),
                 nightViewActive, (newActive, subLabel, sw) -> {
                     com.cinetv.launcher.device.NightCare.setNightViewingMode(ctx, newActive);
                     subLabel.setText(newActive
                             ? (tr ? "Açık · 23:00-05:00 saatleri aktif" : "On · Active 23:00-05:00")
-                            : (tr ? "Kapalı · 23:00-05:00 arası ekran açılınca sorulur" : "Off · Prompted between 23:00 and 05:00"));
+                            : (tr ? "Kapalı" : "Off"));
                     visualTile.setAlpha(newActive ? 1.0f : 0.5f);
                     audioTileNight.setAlpha(newActive ? 1.0f : 0.5f);
                     a.applyAppearance();
@@ -2724,10 +2724,6 @@ public final class Panels {
 
     // ---- Nuvio Addon Update Selection Window ----------------------------------------------------
 
-    public static void nuvioUpdateAddons(final Context ctx, final ModalHost host) {
-        host.push(() -> buildNuvioUpdateAddons(ctx, host));
-    }
-
     private static View buildNuvioUpdateAddons(final Context ctx, final ModalHost host) {
         final ScrollView scroll = new ScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
@@ -3493,67 +3489,6 @@ public final class Panels {
         return scroll;
     }
 
-    public static View buildCineSubHowToPlayModal(final Context ctx, final ModalHost host) {
-        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        final ScrollView scroll = new ScrollView(ctx);
-        scroll.setVerticalScrollBarEnabled(false);
-        final LinearLayout root = new LinearLayout(ctx);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
-        root.setBackground(Glass.panel(root, 28));
-        scroll.addView(root);
-
-        TextView title = UiKit.bold(ctx, 28, UiKit.INK);
-        title.setText(Brand.cinesubWordmark());
-        root.addView(title);
-
-        TextView sub = UiKit.bold(ctx, 14, Color.parseColor("#F59E0B"));
-        sub.setText(tr ? "KÜLTÜREL ALTYAZI REHBERİ · NASIL ÇALIŞIR?" : "CULTURAL SUBTITLES · HOW IT WORKS");
-        sub.setPadding(0, UiKit.px(4), 0, UiKit.px(18));
-        root.addView(sub);
-
-        root.addView(buildRuleSectionCard(ctx, "01",
-                tr ? "Kültürel Not & Sahne Analizi" : "Cultural Notes & Scene Trivia",
-                tr ? "Film oynarken sahneyi durdurmadan altyazıda geçen tarihi şahsiyetleri, felsefi kavramları ve arka plandaki sanat eserlerini tanıtan mini kenar bilgi kartı."
-                   : "Inspect cultural homages, philosophical terms, and paintings during playback without pausing the movie.",
-                Color.parseColor("#F59E0B")));
-
-        root.addView(buildRuleSectionCard(ctx, "02",
-                tr ? "Kumandadaki Sarı Tuş (Yellow Key)" : "Remote Yellow Key",
-                tr ? "Fiziksel TV kumandanızdaki SARI (Yellow) tuşa basarak veya mobil kumandadaki CineSUB butonuna dokunarak kartı istediğiniz an ekrana getirebilirsiniz."
-                   : "Press the YELLOW key on your TV remote or tap the CineSUB button on your phone remote to trigger the card instantly.",
-                Color.parseColor("#F59E0B")));
-
-        root.addView(buildRuleSectionCard(ctx, "03",
-                tr ? "Tüm Oynatıcılara Tam Entegre" : "Fully Integrated",
-                tr ? "Nuvio, YouTube dahili oynatıcı ve APK ile kurulan tüm harici video oynatıcılarla tam uyumlu çalışır; altyazı alanını asla kapatmaz ve izleme deneyimini bölmez."
-                   : "Fully integrated into Nuvio, YouTube, and external APK video players without blocking subtitle zone.",
-                Color.parseColor("#F59E0B")));
-
-        LinearLayout bRow = new LinearLayout(ctx);
-        bRow.setOrientation(LinearLayout.HORIZONTAL);
-        bRow.setPadding(0, UiKit.px(14), 0, 0);
-
-        TextView testBtn = Controls.button(ctx, tr ? "Canlı Sahne Kartını Test Et ›" : "Test Live Subtitle Card ›", v -> {
-            host.back();
-            if (ctx instanceof com.cinetv.launcher.MainActivity) {
-                ((com.cinetv.launcher.MainActivity) ctx).showLiveCineSubScene();
-            } else {
-                com.cinetv.launcher.ui.CineSubOverlay.trigger(ctx);
-            }
-        });
-        bRow.addView(testBtn);
-
-        View spSub = new View(ctx);
-        bRow.addView(spSub, new LinearLayout.LayoutParams(UiKit.px(16), 1));
-
-        TextView ok = Controls.button(ctx, tr ? "Anladım / Geri" : "Got It / Back", v -> host.back());
-        bRow.addView(ok);
-        root.addView(bRow);
-        root.post(testBtn::requestFocus);
-        return scroll;
-    }
-
     public static View buildUpdateModal(final Context ctx, final ModalHost host, final com.cinetv.launcher.service.AppUpdater.ReleaseInfo info) {
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         LinearLayout root = new LinearLayout(ctx);
@@ -3594,31 +3529,6 @@ public final class Panels {
 
         root.addView(btns);
         root.post(updateBtn::requestFocus);
-        return root;
-    }
-
-    public static View buildUpToDateModal(final Context ctx, final ModalHost host, final String currentVersion) {
-        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        LinearLayout root = new LinearLayout(ctx);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiKit.px(36), UiKit.px(26), UiKit.px(36), UiKit.px(26));
-        root.setBackground(Glass.panel(root, 24));
-        root.setFocusable(true);
-
-        TextView title = UiKit.bold(ctx, 26, UiKit.INK);
-        title.setText(tr ? "CineTV En Güncel Sürümde" : "CineTV is Up to Date");
-        root.addView(title);
-
-        TextView desc = UiKit.label(ctx, 16, UiKit.INK_DIM);
-        desc.setPadding(0, UiKit.px(10), 0, UiKit.px(22));
-        desc.setText(tr
-                ? ("Televizyonunuzda en son CineTV sürümü (v" + currentVersion + ") kurulu. Tüm özellikler günceldir.")
-                : ("Your TV is running the latest CineTV version (v" + currentVersion + "). Everything is up to date."));
-        root.addView(desc);
-
-        TextView okBtn = Controls.button(ctx, tr ? "Tamam" : "OK", v -> host.back());
-        root.addView(okBtn);
-        root.post(okBtn::requestFocus);
         return root;
     }
 
@@ -3796,11 +3706,12 @@ public final class Panels {
         root.setBackground(Glass.panel(root, 26));
         root.setFocusable(true);
 
-        TextView badge = UiKit.bold(ctx, 13, Color.parseColor("#F59E0B"));
-        badge.setText(tr ? "APPLE VISION UZAMSAL ALTYAZI SİSTEMİ" : "APPLE VISION SPATIAL SUBTITLE SYSTEM");
+        TextView badge = UiKit.bold(ctx, 13, Brand.CINESUB_ORANGE);
+        badge.setText(tr ? "İZLERKEN EKRANDA NE VAR?" : "WHAT'S ON SCREEN?");
+        badge.setLetterSpacing(0.12f);
         root.addView(badge);
 
-        TextView title = UiKit.bold(ctx, 26, UiKit.INK);
+        TextView title = UiKit.text(ctx, 34, UiKit.INK, com.cinetv.launcher.FontManager.getBlack(ctx));
         title.setText(Brand.cinesubWordmark());
         title.setPadding(0, UiKit.px(6), 0, UiKit.px(14));
         root.addView(title);
@@ -3809,26 +3720,24 @@ public final class Panels {
         desc.setLineSpacing(UiKit.pxf(5), 1.15f);
         desc.setMaxWidth(UiKit.px(760));
         desc.setText(tr
-                ? "CineSUB, video oynatılırken sahnedeki kültürel ögeleri, gizli detayları, tarihi göndermeleri ve oyuncu bilgilerini Apple visionOS anlayışıyla tüm ekrana yayılan uzamsal bir katmanda inceler.\n\n"
-                + "• Kumandanızın CineSub / Mavi / Kırmızı tuşuna veya mobil kumandadaki CineSUB butonuna basarak tetikleyebilirsiniz.\n"
-                + "• Ekrandaki ögeye nişan alan optik tarama retikülü ve lazer kılavuz hattı ile doğrudan sahneyle etkileşime geçer.\n"
-                + "• 26sp başlık ve 19sp gövde metni ile salondaki herkes tarafından rahatça okunur; 22 saniye boyunca ekranda kalır.\n"
-                + "• Video sesini bastırmamak için sesli okuma (TTS) KULLANMAZ, tamamen sessiz bir kültürel keşif vizörüdür.\n"
-                + "• İstediğiniz an [GERİ] veya [OK] tuşuna basarak anında kapatabilirsiniz."
-                : "CineSUB is an Apple visionOS-inspired spatial cultural subtitle engine exploring scene details and cinematic lore.\n\n"
-                + "• Trigger anytime using the CineSub/Color remote key or the CineSUB button on mobile remote.\n"
-                + "• Connects to screen elements via optical reticles and laser filament lines.\n"
-                + "• High-contrast 26sp/19sp typography, 22-second reading timer, and zero TTS to avoid drowning film audio.\n"
-                + "• Dismiss instantly with [BACK] or [OK].");
+                ? "Nuvio, YouTube ya da oynatıcıda film dönerken kumandanın sarı tuşuna (veya telefondaki CineSUB'a) basın. CineSUB kareye bakar; bilinmeye değer kişi, mekân, obje, yemek ve tabloların etrafına halka çizer, notunu konunun yanına, altyazıya değmeden yerleştirir. Altyazıda geçen isim, yer ve olayları da yakalar.\n\n"
+                + "• ◀ ▶ notlar arasında gezer, OK daha fazlasını anlatır, Geri kapatır. Film hiç durmaz, ses kesilmez.\n"
+                + "• Eşlik modu (Ayarlar › Görünüm & Ses) açıkken birkaç dakikada bir köşede kısa bir not belirir ve kendiliğinden kaybolur.\n"
+                + "• Korumalı (DRM) içerikte görüntü yakalanamaz; CineSUB bunu söyler, uydurmaz."
+                : "While a film plays in Nuvio, YouTube or the player, press the yellow key (or CineSUB on your phone). CineSUB looks at the frame, rings the people, places, objects, food and art worth knowing and puts each note beside it, clear of the subtitles. Names, places and events in the subtitles count too.\n\n"
+                + "• ◀ ▶ moves between notes, OK tells more, Back closes. The film never stops.\n"
+                + "• With companion mode on (Settings › Look & Sound) a short note appears in a corner every few minutes and fades on its own.\n"
+                + "• Protected (DRM) video can't be captured; CineSUB says so instead of guessing.");
         desc.setPadding(0, 0, 0, UiKit.px(20));
         root.addView(desc);
 
         LinearLayout btns = new LinearLayout(ctx);
         btns.setOrientation(LinearLayout.HORIZONTAL);
 
-        TextView testBtn = Controls.button(ctx, tr ? "CineSUB'ı Ekranda Dene" : "Test CineSUB", v -> {
+        TextView testBtn = Controls.button(ctx, tr ? "Bir sahnede dene" : "Try it on a scene", v -> {
             host.closeImmediate();
-            com.cinetv.launcher.ui.CineSubOverlay.trigger(ctx);
+            if (ctx instanceof com.cinetv.launcher.MainActivity) ((com.cinetv.launcher.MainActivity) ctx).showLiveCineSubScene();
+            else com.cinetv.launcher.ui.CineSubOverlay.trigger(ctx);
         });
         btns.addView(testBtn);
 

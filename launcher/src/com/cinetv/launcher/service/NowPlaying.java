@@ -15,6 +15,11 @@ public final class NowPlaying {
                 .putString("now_playing_type", m.type).putLong("now_playing_at", System.currentTimeMillis()).apply();
     }
 
+    public static void set(Context ctx, String title, int year) {
+        Prefs.get(ctx).edit().putString("now_playing_title", title).putInt("now_playing_year", year)
+                .putLong("now_playing_at", System.currentTimeMillis()).apply();
+    }
+
     /** "Heat (1995)", or empty when nothing was started recently. */
     public static String describe(Context ctx) {
         long at = Prefs.get(ctx).getLong("now_playing_at", 0);

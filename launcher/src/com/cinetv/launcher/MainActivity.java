@@ -673,7 +673,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             resetIdle();
         }
         if (liveCineSubView != null) {
-            if (down) hideLiveCineSubScene();
+            if (down && !com.cinetv.launcher.ui.CineSubOverlay.isShowing()) hideLiveCineSubScene();
             return true;
         }
         if (partyStage != null && !home.modal.isShowing()) {
@@ -2317,14 +2317,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         liveCineSubView = container;
         home.root.addView(liveCineSubView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // Trigger CineSUB overlay
-        handler.postDelayed(() -> {
-            com.cinetv.launcher.ui.CineSubOverlay.showInsight(
-                    this,
-                    "Osmanlı Saray Geleneği & Vicdan Metaforu",
-                    "Alptuğ Dağ'ın yönettiği Sessiz (2023) filminde geçen “Cellatları dilsizlerden seçerlermiş derler... ama ya ben?” repliği, Osmanlı sarayında cellatların dilsizlerden seçilerek kurbanların yalvarışlarını duymalarının engellenmesi tarihsel gerçeğine doğrudan bir göndermedir.\n\nMinimalist ses tasarımı ve diejetik sessizlik, Robert Bresson ve Nuri Bilge Ceylan sinemasındaki 'sessizliğin dramatik ağırlığı' geleneğine saygı duruşudur."
-            );
-        }, 300);
+        // The real thing on a real frame: CineSUB looks at this still exactly as it would at a film.
+        com.cinetv.launcher.service.NowPlaying.set(this, "Sessiz", 2023);
+        handler.postDelayed(() -> com.cinetv.launcher.ui.CineSubOverlay.trigger(this), 600);
 
         liveCineSubView.setOnClickListener(v -> hideLiveCineSubScene());
     }

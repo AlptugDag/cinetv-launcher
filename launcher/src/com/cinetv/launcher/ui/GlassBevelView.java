@@ -59,10 +59,6 @@ public class GlassBevelView extends View {
         }
     }
 
-    public static boolean isAberrationEnabled() {
-        return isChromaticAberrationEnabled;
-    }
-
     public static void setAberrationEnabled(boolean enabled) {
         isChromaticAberrationEnabled = enabled;
         refreshAllBorders();

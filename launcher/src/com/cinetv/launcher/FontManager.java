@@ -48,10 +48,6 @@ public final class FontManager {
         return getBold(context);
     }
 
-    public static Typeface medium(Context context) {
-        return getMedium(context);
-    }
-
     public static Typeface regular(Context context) {
         return getMedium(context);
     }

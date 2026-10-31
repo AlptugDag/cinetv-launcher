@@ -128,11 +128,6 @@ public final class TvWebRemoteServer {
         DialServer.start(app);
     }
 
-    /** True once the secure page (no "not secure" warning) is being served. */
-    public static boolean secureAvailable() {
-        return secureUp;
-    }
-
     private static void secureLoop() {
         javax.net.ssl.SSLServerSocketFactory f = TlsCert.factory(app);
         if (f == null) return;

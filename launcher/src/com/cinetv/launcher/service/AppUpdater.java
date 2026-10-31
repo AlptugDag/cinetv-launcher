@@ -221,32 +221,6 @@ public final class AppUpdater {
         }, 10000L); // Allow network to stabilize after boot/wake
     }
 
-    /**
-     * Automatic startup check with debounce. If an update is detected, presents an update dialog to the viewer.
-     */
-    public static void checkInBackground(final Activity activity) {
-        MAIN_HANDLER.postDelayed(() -> {
-            if (activity == null || activity.isFinishing()) return;
-            checkForUpdates(activity, new UpdateCheckCallback() {
-                @Override
-                public void onUpdateAvailable(ReleaseInfo info) {
-                    if (activity.isFinishing()) return;
-                    showUpdateDialog(activity, info);
-                }
-
-                @Override
-                public void onUpToDate(String currentVersion) {
-                    Log.i(TAG, "CineTV is up-to-date: v" + currentVersion);
-                }
-
-                @Override
-                public void onError(String message) {
-                    Log.w(TAG, "Silent update check: " + message);
-                }
-            });
-        }, 8000);
-    }
-
     /** Shows leanback styled dialog offering update. */
     public static void showUpdateDialog(final Activity activity, final ReleaseInfo info) {
         if (activity instanceof com.cinetv.launcher.MainActivity) {

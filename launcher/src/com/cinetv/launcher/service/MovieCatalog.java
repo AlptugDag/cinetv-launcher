@@ -941,13 +941,6 @@ public final class MovieCatalog {
         });
     }
 
-    /** Marks a movie's trailer as unavailable (missing, unembeddable, or country-blocked) so future opens use vertical disc mode. */
-    public static void markTrailerUnavailable(Movie m) {
-        if (m == null) return;
-        if (m.imdbId != null && !m.imdbId.isEmpty()) trailers.put(m.type + ":" + m.imdbId, "");
-        if (m.tmdbId > 0) trailers.put(m.type + ":" + m.tmdbId, "");
-    }
-
     /**
      * Checks whether a movie has a playable, non-restricted YouTube trailer.
      * Uses cached result immediately if available, or waits up to {@code maxWaitMs} for resolution.

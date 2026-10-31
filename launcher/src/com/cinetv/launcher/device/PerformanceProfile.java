@@ -123,11 +123,6 @@ public final class PerformanceProfile {
         return totalRamMb(ctx) < 2000 || (am != null && am.isLowRamDevice()) || tier(ctx) == Tier.LOW || limited(ctx, LIMIT_RAM);
     }
 
-    /** Opaque art (wallpapers, backdrops, posters) is stored as RGB_565 on tight TVs: half the memory. */
-    public static android.graphics.Bitmap.Config opaqueConfig(Context ctx) {
-        return lowMemory(ctx) ? android.graphics.Bitmap.Config.RGB_565 : android.graphics.Bitmap.Config.ARGB_8888;
-    }
-
     static synchronized Tier detect(Context ctx) {
         if (detectedCache != null) return detectedCache;
         ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);

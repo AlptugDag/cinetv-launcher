@@ -39,10 +39,6 @@ public final class UiKit {
         INK_FAINT = light ? Color.argb(115, 18, 22, 34) : Color.argb(96, 235, 235, 245);
     }
 
-    public static float fontScale() {
-        return userFontMultiplier;
-    }
-
     public static boolean isLight() {
         return light;
     }

@@ -99,14 +99,6 @@ public final class NightCare {
     public static final String PREF_NIGHT_PROMPTED_NIGHT = "pref_night_prompted_night";
 
     /**
-     * Checks if current local time is in the night window: 23:00 to 05:00.
-     */
-    public static boolean isNightViewingHours() {
-        int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        return h >= 23 || h < 5;
-    }
-
-    /**
      * True when the user has enabled Night Viewing Mode in Settings.
      */
     public static boolean isNightViewingModeEnabled(Context ctx) {
@@ -162,15 +154,6 @@ public final class NightCare {
             cal.add(Calendar.DATE, -1);
         }
         return cal.get(Calendar.YEAR) + "-" + (cal.get(Calendar.MONTH) + 1) + "-" + cal.get(Calendar.DAY_OF_MONTH);
-    }
-
-    public static boolean shouldPromptNightViewingMode(Context ctx) {
-        // Canceled per user request: night viewing prompt is disabled
-        return false;
-    }
-
-    public static void markNightPromptDismissed(Context ctx) {
-        Prefs.get(ctx).edit().putString(PREF_NIGHT_PROMPTED_NIGHT, currentNightKey()).apply();
     }
 
     public static boolean quietHours(Context ctx) {
