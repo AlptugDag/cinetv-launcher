@@ -112,7 +112,7 @@ public final class SceneInspector {
         scene.film = NowPlaying.describe(ctx);
         String lang = tr ? "Turkish" : "English";
         String context = scene.film.isEmpty() ? "" : "The viewer is probably watching " + scene.film + ". ";
-        String sys = "You are CineSUB, a quiet companion that tells a film viewer what is worth knowing about what they see, "
+        String sys = "You are CineSUB, a cinephile's trivia companion that tells a film viewer what is worth knowing about what they see, "
                 + "without spoiling anything that has not happened yet. " + context
                 + "Only state facts you are confident about; if you can't identify something, describe what it is instead of naming it. "
                 + "Never identify a real person from their face alone: name actors only when the film is known or the name appears on screen, "
@@ -122,10 +122,13 @@ public final class SceneInspector {
         String ask = ambient
                 ? "If, and only if, something in this frame or its subtitles deserves a short, surprising piece of trivia (a real place, a painting, "
                 + "a dish, a historical event, a person, a book or a song mentioned in the dialogue), return it; otherwise return an empty list. "
+                + "Artworks get title, artist and year; never point at an unnamed person. "
                 + "JSON: {\"items\":[{\"kind\":\"person|place|object|food|art|text|event\",\"label\":\"2-4 words\",\"title\":\"name\",\"fact\":\"under 150 characters\","
                 + "\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":false}]} with box in 0-1000 screen coordinates (empty for subtitle mentions)."
                 : "List up to 5 things in this frame worth knowing about: identifiable places and landmarks, artworks, notable objects, vehicles, clothing, "
                 + "food and drink, characters, and any name, place, event, book or song mentioned in the visible subtitles. "
+                + "Think like a film buff and an art historian: an artwork gets its title, artist and year (e.g. 'Napoleon Crossing the Alps, Jacques-Louis David, 1801'); "
+                + "a landmark its name and city; a car, weapon, watch or record its exact model and era; a prop or costume the story behind it in this film. "
                 + "Food comes first when it is on screen: name the dish itself (e.g. 'Ratatouille', 'Spaghetti alla puttanesca') and say where it comes from or why it matters. "
                 + "Never return an unnamed person ('a man', 'male character'): a person needs a character or actor name, otherwise leave them out. "
                 + "JSON: {\"film\":\"the film or series if you recognise it, else empty\",\"items\":[{\"kind\":\"person|place|object|food|art|text|event\",\"label\":\"2-4 words\",\"title\":\"what or who it is\","
