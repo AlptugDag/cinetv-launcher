@@ -79,6 +79,7 @@ public final class Panels {
 
     public interface PartyLauncher {
         void launchSnake();
+        void launchDuel();
         void launchQuiz();
         void launchRoulette();
         void launchSessiz();
@@ -2873,323 +2874,6 @@ public final class Panels {
         return box;
     }
 
-    public static View buildPartyQuizModal(final Context ctx, final ModalHost host) {
-        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        final LinearLayout root = new LinearLayout(ctx);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiKit.px(32), UiKit.px(20), UiKit.px(32), UiKit.px(20));
-        root.setBackground(Glass.panel(root, 28));
-
-        LinearLayout head = new LinearLayout(ctx);
-        head.setGravity(Gravity.CENTER_VERTICAL);
-        TextView badge = UiKit.bold(ctx, 14, Color.parseColor("#F59E0B"));
-        badge.setText(tr ? "CINETV SİNEFİL BİLMECE PARTİSİ" : "CINETV CINEPHILE TRIVIA PARTY");
-        head.addView(badge);
-        root.addView(head);
-
-        final TextView qTitle = UiKit.bold(ctx, 24, UiKit.INK);
-        qTitle.setPadding(0, UiKit.px(10), 0, UiKit.px(8));
-        root.addView(qTitle);
-
-        final TextView qHint = UiKit.label(ctx, 16, UiKit.INK_DIM);
-        root.addView(qHint);
-
-        final LinearLayout bodyRow = new LinearLayout(ctx);
-        bodyRow.setOrientation(LinearLayout.HORIZONTAL);
-        bodyRow.setGravity(Gravity.CENTER_VERTICAL);
-        bodyRow.setPadding(0, UiKit.px(16), 0, UiKit.px(16));
-
-        final ImageView qImg = new ImageView(ctx);
-        qImg.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(UiKit.px(380), UiKit.px(220));
-        ilp.rightMargin = UiKit.px(28);
-        bodyRow.addView(qImg, ilp);
-
-        final LinearLayout countdownBox = new LinearLayout(ctx);
-        countdownBox.setOrientation(LinearLayout.VERTICAL);
-        countdownBox.setGravity(Gravity.CENTER);
-        final TextView timerTv = UiKit.bold(ctx, 48, Color.parseColor("#38BDF8"));
-        countdownBox.addView(timerTv);
-        final TextView timerLabel = UiKit.label(ctx, 14, UiKit.INK_DIM);
-        timerLabel.setText(tr ? "Saniye Kaldı" : "Seconds Left");
-        countdownBox.addView(timerLabel);
-        bodyRow.addView(countdownBox);
-
-        root.addView(bodyRow);
-
-        final LinearLayout playersContainer = new LinearLayout(ctx);
-        playersContainer.setOrientation(LinearLayout.HORIZONTAL);
-        playersContainer.setPadding(0, UiKit.px(8), 0, UiKit.px(16));
-        root.addView(playersContainer);
-
-        final TextView answerReveal = UiKit.bold(ctx, 22, Color.parseColor("#34D399"));
-        answerReveal.setVisibility(View.GONE);
-        answerReveal.setPadding(0, UiKit.px(8), 0, UiKit.px(16));
-        root.addView(answerReveal);
-
-        LinearLayout bRow = new LinearLayout(ctx);
-        bRow.setOrientation(LinearLayout.HORIZONTAL);
-        TextView stopBtn = Controls.button(ctx, tr ? "Oyunu Bitir" : "End Game", v -> {
-            com.cinetv.launcher.party.CinePartyManager.get(ctx).stopQuiz();
-            host.back();
-        });
-        bRow.addView(stopBtn);
-        root.addView(bRow);
-
-        com.cinetv.launcher.party.CinePartyManager.get(ctx).setListener(new com.cinetv.launcher.party.CinePartyManager.Listener() {
-            @Override
-            public void onGameStateChanged(JSONObject state) {
-                root.post(() -> {
-                    boolean active = state.optBoolean("quizActive", false);
-                    int qIdx = state.optInt("questionIndex", 0) + 1;
-                    int total = state.optInt("totalQuestions", 10);
-                    int count = state.optInt("countdown", 0);
-                    boolean revealing = state.optBoolean("revealing", false);
-
-                    if (!active && qIdx > total) {
-                        qTitle.setText(tr ? "OYUN BİTTİ · ŞAMPİYON BELLİ OLDU!" : "GAME OVER · CHAMPION CROWNED!");
-                        JSONArray pls = state.optJSONArray("players");
-                        String winnerName = (pls != null && pls.length() > 0) ? pls.optJSONObject(0).optString("name") : "Sinefil";
-                        qHint.setText(tr
-                                ? "Tebrikler " + winnerName + "! Bugün, kazanan hangi filmi seçerse o izlenir!"
-                                : "Congratulations " + winnerName + "! The winner picks tonight's movie!");
-                        timerTv.setText("00:00");
-                        bodyRow.setVisibility(View.VISIBLE);
-                        answerReveal.setVisibility(View.GONE);
-                        return;
-                    }
-
-                    qTitle.setText((tr ? "Soru " : "Question ") + qIdx + " / " + total + ": " + state.optString("question"));
-                    qHint.setText(tr ? ("İpucu: " + state.optString("hint")) : ("Hint: " + state.optString("hint")));
-                    timerTv.setText(String.valueOf(count));
-                    if (count <= 3) timerTv.setTextColor(Color.parseColor("#F87171"));
-                    else timerTv.setTextColor(Color.parseColor("#38BDF8"));
-
-                    String imgUrl = state.optString("image");
-                    if (!imgUrl.isEmpty()) {
-                        new Thread(() -> {
-                            android.graphics.Bitmap bmp = com.cinetv.launcher.service.PosterCache.load(ctx, imgUrl, 400, 400);
-                            if (bmp != null) {
-                                root.post(() -> qImg.setImageBitmap(bmp));
-                            }
-                        }).start();
-                    }
-
-                    if (revealing) {
-                        answerReveal.setVisibility(View.VISIBLE);
-                        answerReveal.setText((tr ? "DOĞRU CEVAP: " : "CORRECT ANSWER: ") + state.optString("displayAnswer"));
-                    } else {
-                        answerReveal.setVisibility(View.GONE);
-                    }
-
-                    playersContainer.removeAllViews();
-                    JSONArray pls = state.optJSONArray("players");
-                    if (pls != null) {
-                        for (int i = 0; i < pls.length(); i++) {
-                            JSONObject po = pls.optJSONObject(i);
-                            if (po == null) continue;
-                            TextView pBadge = UiKit.bold(ctx, 14, UiKit.INK);
-                            String pName = po.optString("name");
-                            int pScore = po.optInt("score");
-                            boolean answered = po.optBoolean("answered");
-                            if (revealing) {
-                                boolean cor = po.optBoolean("correct");
-                                String ans = po.optString("answer");
-                                pBadge.setText(pName + ": " + (ans.isEmpty() ? (tr ? "Cevapsız" : "No answer") : ("\"" + ans + "\"")) + " (" + pScore + "p)");
-                                pBadge.setTextColor(cor ? Color.parseColor("#34D399") : Color.parseColor("#F87171"));
-                            } else {
-                                pBadge.setText(pName + " (" + pScore + "p) " + (answered ? "✓" : "..."));
-                                pBadge.setTextColor(answered ? Color.parseColor("#38BDF8") : UiKit.INK_DIM);
-                            }
-                            pBadge.setPadding(UiKit.px(14), UiKit.px(8), UiKit.px(14), UiKit.px(8));
-                            pBadge.setBackground(Glass.panel(pBadge, 14));
-                            LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                            plp.rightMargin = UiKit.px(12);
-                            playersContainer.addView(pBadge, plp);
-                        }
-                    }
-                });
-            }
-
-            @Override
-            public void onRouletteFinished(String movieTitle, String suggestedBy) {}
-        });
-
-        root.post(stopBtn::requestFocus);
-        return root;
-    }
-
-    public static View buildMovieRouletteModal(final Context ctx, final ModalHost host) {
-        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        final LinearLayout root = new LinearLayout(ctx);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
-        root.setBackgroundColor(0xFF000000); // Pure pitch black arena for maximum tension & revolver realism
-
-        LinearLayout head = new LinearLayout(ctx);
-        head.setGravity(Gravity.CENTER_VERTICAL);
-        TextView badge = UiKit.bold(ctx, 14, Color.parseColor("#F59E0B")); // Solar Amber
-        badge.setText(tr ? "SİNEFİL FİLM ÖNERİ RULETİ" : "CINEPHILE MOVIE SUGGESTION ROULETTE");
-        head.addView(badge);
-        root.addView(head);
-
-        LinearLayout stageRow = new LinearLayout(ctx);
-        stageRow.setOrientation(LinearLayout.HORIZONTAL);
-        stageRow.setGravity(Gravity.CENTER_VERTICAL);
-        stageRow.setPadding(0, UiKit.px(16), 0, UiKit.px(16));
-
-        // Left Column: Custom luxury photorealistic gunmetal cylinder
-        final com.cinetv.launcher.party.RouletteWheelView wheel = new com.cinetv.launcher.party.RouletteWheelView(ctx);
-        int wheelSize = UiKit.px(380);
-        LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(wheelSize, wheelSize);
-        wlp.rightMargin = UiKit.px(36);
-        stageRow.addView(wheel, wlp);
-
-        // Right Column: Details, Suggestions, and Live Winner Card
-        LinearLayout infoCol = new LinearLayout(ctx);
-        infoCol.setOrientation(LinearLayout.VERTICAL);
-        infoCol.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-        TextView title = UiKit.bold(ctx, 24, UiKit.INK);
-        title.setText(tr ? "Akşam Hangi Filmi İzleyelim?" : "What Are We Watching Tonight?");
-        infoCol.addView(title);
-
-        TextView sub = UiKit.label(ctx, 15, UiKit.INK_DIM);
-        sub.setPadding(0, UiKit.px(6), 0, UiKit.px(14));
-        sub.setMaxWidth(UiKit.px(640));
-        sub.setText(tr
-                ? "Herkes kendi telefonundan 'Oyunlar' sekmesine girip bir film önersin. Çarkı çevirdiğinizde kazanan film belirlenir!"
-                : "Everyone send a recommendation from their phone's 'Party' tab. Spin the wheel to crown tonight's movie!");
-        infoCol.addView(sub);
-
-        final LinearLayout suggestionsList = new LinearLayout(ctx);
-        suggestionsList.setOrientation(LinearLayout.VERTICAL);
-        suggestionsList.setPadding(0, 0, 0, UiKit.px(14));
-        infoCol.addView(suggestionsList);
-
-        final LinearLayout winnerCard = new LinearLayout(ctx);
-        winnerCard.setOrientation(LinearLayout.VERTICAL);
-        winnerCard.setBackground(Glass.panel(winnerCard, 20));
-        winnerCard.setPadding(UiKit.px(22), UiKit.px(16), UiKit.px(22), UiKit.px(16));
-        winnerCard.setVisibility(View.GONE);
-
-        TextView winBadge = UiKit.bold(ctx, 13, Color.parseColor("#F59E0B"));
-        winBadge.setText(tr ? "BU AKŞAMIN SEÇİLEN BAŞYAPITI" : "TONIGHT'S CHOSEN MASTERPIECE");
-        winnerCard.addView(winBadge);
-
-        final TextView winnerTv = UiKit.bold(ctx, 24, Color.WHITE);
-        winnerTv.setPadding(0, UiKit.px(6), 0, UiKit.px(4));
-        winnerCard.addView(winnerTv);
-
-        final TextView winnerUserTv = UiKit.label(ctx, 14, Color.parseColor("#38BDF8"));
-        winnerCard.addView(winnerUserTv);
-
-        final TextView launchFilmBtn = Controls.button(ctx, tr ? "▶ Filmi TV'de Başlat" : "▶ Launch Movie on TV", v -> {
-            String win = winnerTv.getText().toString();
-            if (!win.isEmpty() && ctx instanceof com.cinetv.launcher.MainActivity) {
-                ((com.cinetv.launcher.MainActivity) ctx).launchFilmByTitle(win);
-            }
-        });
-        winnerCard.addView(launchFilmBtn);
-
-        infoCol.addView(winnerCard);
-
-        stageRow.addView(infoCol);
-        root.addView(stageRow);
-
-        final com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(ctx);
-        final List<String> currentTitles = new ArrayList<>();
-
-        final Runnable updateList = () -> {
-            suggestionsList.removeAllViews();
-            currentTitles.clear();
-            JSONObject st = party.getState();
-            org.json.JSONArray arr = st != null ? st.optJSONArray("suggestions") : null;
-            if (arr != null && arr.length() > 0) {
-                for (int i = 0; i < arr.length(); i++) {
-                    JSONObject s = arr.optJSONObject(i);
-                    if (s != null) {
-                        String t = s.optString("title");
-                        currentTitles.add(t);
-                        TextView item = UiKit.label(ctx, 15, UiKit.INK);
-                        item.setText(t + " (" + s.optString("user") + ")");
-                        item.setPadding(0, UiKit.px(2), 0, UiKit.px(2));
-                        suggestionsList.addView(item);
-                    }
-                }
-            } else {
-                currentTitles.add("The Godfather");
-                currentTitles.add("Interstellar");
-                currentTitles.add("Inception");
-                currentTitles.add("Pulp Fiction");
-                TextView empty = UiKit.label(ctx, 14, UiKit.INK_DIM);
-                empty.setText(tr ? "Telefonda 'Oyunlar' sekmesinden film önerisi fırlatın..." : "Hurl movie suggestions from phone 'Party' tab...");
-                suggestionsList.addView(empty);
-            }
-            wheel.setItems(currentTitles);
-        };
-        updateList.run();
-
-        party.setListener(new com.cinetv.launcher.party.CinePartyManager.Listener() {
-            @Override
-            public void onGameStateChanged(JSONObject state) {
-                root.post(updateList);
-            }
-
-            @Override
-            public void onRouletteFinished(String movieTitle, String suggestedBy) {
-                root.post(() -> {
-                    winnerCard.setVisibility(View.VISIBLE);
-                    winnerTv.setText(movieTitle);
-                    winnerUserTv.setText(tr ? ("Öneren Sinefil: " + suggestedBy) : ("Suggested by: " + suggestedBy));
-                });
-            }
-        });
-
-        LinearLayout btns = new LinearLayout(ctx);
-        btns.setOrientation(LinearLayout.HORIZONTAL);
-        btns.setPadding(0, UiKit.px(10), 0, 0);
-
-        TextView spinBtn = Controls.button(ctx, tr ? "Çarkı Çevir!" : "Spin the Wheel!", v -> {
-            if (currentTitles.isEmpty()) {
-                Toast.makeText(ctx, tr ? "Henüz film önerisi eklenmedi." : "No suggestions added yet.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            winnerCard.setVisibility(View.GONE);
-            int winIdx = (int) (Math.random() * currentTitles.size());
-            wheel.spinTo(winIdx, () -> {
-                JSONObject winObj = party.spinRoulette();
-                String mTitle = winObj != null ? winObj.optString("title") : currentTitles.get(winIdx);
-                String mUser = winObj != null ? winObj.optString("user") : "Misafir";
-                winnerCard.setVisibility(View.VISIBLE);
-                winnerTv.setText(mTitle);
-                winnerUserTv.setText(tr ? ("Öneren Sinefil: " + mUser) : ("Suggested by: " + mUser));
-            });
-        });
-        btns.addView(spinBtn);
-
-        View sp1 = new View(ctx);
-        btns.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(16), 1));
-
-        TextView clearBtn = Controls.button(ctx, tr ? "Temizle" : "Clear", v -> {
-            party.clearRouletteSuggestions();
-            suggestionsList.removeAllViews();
-            winnerCard.setVisibility(View.GONE);
-            updateList.run();
-        });
-        btns.addView(clearBtn);
-
-        View sp2 = new View(ctx);
-        btns.addView(sp2, new LinearLayout.LayoutParams(UiKit.px(16), 1));
-
-        TextView closeBtn = Controls.button(ctx, tr ? "Kapat" : "Close", v -> host.back());
-        btns.addView(closeBtn);
-
-        root.addView(btns);
-        root.post(spinBtn::requestFocus);
-        return root;
-    }
-
     public static View buildLetterboxdModal(final Context ctx, final ModalHost host) {
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         final LinearLayout root = new LinearLayout(ctx);
@@ -3460,11 +3144,11 @@ public final class Panels {
         LinearLayout head = new LinearLayout(ctx);
         head.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView title = UiKit.bold(ctx, 28, UiKit.INK);
-        title.setText(Brand.cinequizWordmark());
+        TextView title = UiKit.text(ctx, 34, UiKit.INK, com.cinetv.launcher.FontManager.getBlack(ctx));
+        title.setText(Brand.cinepartyWordmark());
         head.addView(title);
 
-        TextView subBadge = UiKit.bold(ctx, 13, Color.parseColor("#8B5CF6"));
+        TextView subBadge = UiKit.bold(ctx, 13, UiKit.INK_DIM);
         subBadge.setText(tr ? " · OYUNLAR VE ETKİNLİKLER" : " · GAMES & PARTY HUB");
         subBadge.setLetterSpacing(0.06f);
         head.addView(subBadge);
@@ -3511,35 +3195,41 @@ public final class Panels {
         pclp.bottomMargin = UiKit.px(20);
         root.addView(pairCard, pclp);
 
-        // Exactly 4 Party Games (CineSUB is NOT a game!)
         final Object[][] games = {
-                {AppCatalog.PKG_SNAKE,
-                 Brand.cineduelWordmark(),
-                 tr ? "Sinema Nişancısı & Gyro Hedef Arenası. Telefonunuzu jiroskopla hareket ettirip TV ekranındaki replik, sahne, aktör ve trivia hedeflerine nişan alın ve vurun!"
-                    : "Cinema shooter & gyro target arena. Aim your phone and shoot floating lines, scenes, actors and trivia!",
-                 (Runnable) () -> { if (launcher != null) launcher.launchSnake(); },
-                 (Runnable) () -> host.push(() -> buildCineDuelHowToPlayModal(ctx, host))},
-
                 {AppCatalog.PKG_QUIZ,
                  Brand.cinequizWordmark(),
-                 tr ? "10 Soruluk Canlı Sinefil Bilmecesi & Mobil Buzzer. TMDB aktör portreleri ve Gamze AI bilmeceleri; kazanan akşamın filmini seçer!"
-                    : "10-question live cinephile trivia with mobile buzzers. Champion gets to launch tonight's movie!",
+                 tr ? "Süreyi siz seçin; TMDB görselleriyle sahne, oyuncu ve yönetmen soruları. Herkes telefonundan cevaplar, cevaplar TV'de birlikte açılır. Kazanan gecenin filmini seçer."
+                    : "You set the clock; scene, actor and director questions with real stills. Everyone answers on their phone, answers open together on the TV. The winner picks the film.",
                  (Runnable) () -> { if (launcher != null) launcher.launchQuiz(); },
                  (Runnable) () -> host.push(() -> buildCineQuizHowToPlayModal(ctx, host))},
 
                 {AppCatalog.PKG_ROULETTE,
                  Brand.cinerouletteWordmark(),
-                 tr ? "6 Hazneli 3D Revolver Ruleti. Herkes telefonundan bir film fırlatsın; tetiği çekin, patlayan film salonda başlasın!"
-                    : "6-chamber 3D revolver movie selector. Pull the trigger: blank click or movie explosion!",
+                 tr ? "Altı hazne, altı film, tek kurşun. Boş çıkan film elenir, kurşunun çıktığı film bu gece izlenir. Süre her turda kısalır."
+                    : "Six chambers, six films, one bullet. Every empty chamber knocks a film out; the bullet picks tonight's film. The clock gets shorter every turn.",
                  (Runnable) () -> { if (launcher != null) launcher.launchRoulette(); },
                  (Runnable) () -> host.push(() -> buildCineRouletteHowToPlayModal(ctx, host))},
 
                 {AppCatalog.PKG_SESSIZ,
                  Brand.cinesessizWordmark(),
-                 tr ? "Sinema & Dizi Sessiz Sinema / Tabu. Telefona gelen gizli kartı anlatıcı oynar, salondakiler telefonlarından tahmin eder!"
-                    : "Cinema charades & movie taboo. Guess the film on your phone with zero time or question limits!",
+                 tr ? "Sinema tabusu: kart yalnızca anlatıcının telefonunda, yasaklı kelimeler yasak. Salon telefondan tahmin eder. Süre ve soru sınırı yok."
+                    : "Cinema taboo: only the teller's phone shows the card and its forbidden words. The room guesses on their phones. No timer, no limit.",
                  (Runnable) () -> { if (launcher != null) launcher.launchSessiz(); },
-                 (Runnable) () -> host.push(() -> buildCineSessizHowToPlayModal(ctx, host))}
+                 (Runnable) () -> host.push(() -> buildCineSessizHowToPlayModal(ctx, host))},
+
+                {AppCatalog.PKG_DUEL,
+                 Brand.cineduelWordmark(),
+                 tr ? "Telefonunuz nişangâh olur: jiroskopla replik, sahne ve oyuncu hedeflerine nişan alıp vurun."
+                    : "Your phone becomes the sight: aim with the gyro and shoot lines, scenes and actors.",
+                 (Runnable) () -> { if (launcher != null) launcher.launchDuel(); },
+                 (Runnable) () -> host.push(() -> buildCineDuelHowToPlayModal(ctx, host))},
+
+                {AppCatalog.PKG_SNAKE,
+                 Brand.snakephileWordmark(),
+                 tr ? "Kumandayla oynanan sinefil yılan: afişleri yedikçe uzar, kuyruğunu ısırdığında son afişin filmi açılmaya hazır."
+                    : "The cinephile snake, played with the remote: it grows on posters; bite your tail and the last poster's film is ready to play.",
+                 (Runnable) () -> { if (launcher != null) launcher.launchSnake(); },
+                 (Runnable) () -> host.push(() -> buildSnakePhileHowToPlayModal(ctx, host))}
         };
 
         View firstPlayBtn = null;
@@ -3713,154 +3403,81 @@ public final class Panels {
 
     public static View buildCineQuizHowToPlayModal(final Context ctx, final ModalHost host) {
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        final ScrollView scroll = new ScrollView(ctx);
-        scroll.setVerticalScrollBarEnabled(false);
-        final LinearLayout root = new LinearLayout(ctx);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
-        root.setBackground(Glass.panel(root, 28));
-        scroll.addView(root);
-
-        TextView title = UiKit.bold(ctx, 28, UiKit.INK);
-        title.setText(Brand.cinequizWordmark());
-        root.addView(title);
-
-        TextView sub = UiKit.bold(ctx, 14, Color.parseColor("#8B5CF6"));
-        sub.setText(tr ? "ÇOK OYUNCULU BİLMECELİ SİNEMA YARIŞMASI" : "MULTIPLAYER TRIVIA ARENA");
-        sub.setPadding(0, UiKit.px(4), 0, UiKit.px(18));
-        root.addView(sub);
-
-        root.addView(buildRuleSectionCard(ctx, "01",
-                tr ? "10 Soruluk Yarışma & Süre Kuralı" : "10 Questions & 10s Timer",
-                tr ? "Yarışma başladığında TV ekranına sırayla 10 adet soru gelir. Her soru için 10 saniyelik geri sayım süresi bulunur."
-                   : "10 trivia questions appear on the TV screen, each with a 10-second timer.",
-                Color.parseColor("#8B5CF6")));
-
-        root.addView(buildRuleSectionCard(ctx, "02",
-                tr ? "Çoklu Telefonla Anlık Katılım" : "Multi-Phone Buzzers",
-                tr ? "Salondaki tüm katılımcılar telefonlarından QR veya IP adresiyle odaya bağlanır. Sorular ekrana geldikçe herkes kendi telefonundan A, B, C, D seçeneklerine basarak ya da metin kutusuna cevabını yazarak katılır."
-                   : "Room players connect via phone remote to answer A, B, C, D choices or free-text answers.",
-                Color.parseColor("#8B5CF6")));
-
-        root.addView(buildRuleSectionCard(ctx, "03",
-                tr ? "Puanlama & Doğru Cevaplar" : "Scoring & Results",
-                tr ? "10 saniyelik süre bittiğinde doğru cevap TV'de açılır. Soruyu doğru bilen tüm oyuncular anında +10 puan kazanır."
-                   : "When the timer hits zero, the correct answer reveals. Correct players earn +10 points.",
-                Color.parseColor("#8B5CF6")));
-
-        root.addView(buildRuleSectionCard(ctx, "04",
-                tr ? "Şampiyonun Film Seçimi" : "Champion's Movie Privilege",
-                tr ? "10 soru sonunda en çok puan toplayan oyuncu Şampiyon ilan edilir. Kazananın telefonunda film arama kutusu açılır ve seçtiği film anında televizyonda başlar!"
-                   : "The highest-scoring player is crowned Champion and selects tonight's movie to launch on TV!",
-                Color.parseColor("#8B5CF6")));
-
-        root.addView(buildRuleSectionCard(ctx, "05",
-                tr ? "Gamze AI Dinamik Soruları" : "Gamze AI Live Engine",
-                tr ? "Soruların tekrara düşmesini engellemek için yerleşik Gamze AI devreye girer ve anlık olarak benzersiz yeni sinema bilmeceleri üretir."
-                   : "Gamze AI dynamically generates endless fresh cinema trivia questions so the game never repeats.",
-                Color.parseColor("#8B5CF6")));
-
-        LinearLayout bRow = new LinearLayout(ctx);
-        bRow.setPadding(0, UiKit.px(10), 0, 0);
-        TextView ok = Controls.button(ctx, tr ? "Anladım / Geri" : "Got It / Back", v -> host.back());
-        bRow.addView(ok);
-        root.addView(bRow);
-        root.post(ok::requestFocus);
-        return scroll;
+        return rulesModal(ctx, host, Brand.cinequizWordmark(), Brand.CINEQUIZ_PURPLE,
+                tr ? "SÜRELİ SİNEMA BİLMECESİ" : "TIMED CINEMA TRIVIA", new String[][]{
+                {tr ? "Süreyi siz seçin" : "You set the clock",
+                 tr ? "Ev sahibi telefonundan oyunun süresini (3-15 dk) ve soru başına süreyi seçer. Süre bitene kadar sorular gelmeye devam eder."
+                    : "The host picks the game length (3-15 min) and the time per question on their phone. Questions keep coming until time runs out."},
+                {tr ? "Gerçek sahneler, gerçek oyuncular" : "Real stills, real actors",
+                 tr ? "Sorular TMDB'den gelir: bu sahne hangi filmden, bu oyuncunun oynadığı bir film, bu filmde hangi oyuncu yok, yönetmen kim, hangi yıl. Gamze de kendi sorularını ekler."
+                    : "Questions come from TMDB: which film is this still from, name a film with this actor, who isn't in this film, who directed it, what year. Gamze adds her own."},
+                {tr ? "Herkes telefonundan" : "Everyone on their phone",
+                 tr ? "Cevaplar telefondan verilir ve kilitlenir. Herkes cevaplayınca (ya da süre dolunca) tüm cevaplar TV'de birlikte açılır; doğru bilen +10 alır."
+                    : "Answers are given and locked on the phones. When everyone has answered (or time is up) all answers open together on the TV; each right one is +10."},
+                {tr ? "Kazanan filmi seçer" : "The winner picks the film",
+                 tr ? "Süre bitince en çok doğru bilen şampiyon olur (eşitlikte daha hızlı olan). Şampiyonun telefonunda film arama açılır, seçtiği film TV'de başlar."
+                    : "When time is up, the most right answers wins (the faster on a tie). The champion's phone opens a film search and their pick starts on the TV."}});
     }
 
     public static View buildCineRouletteHowToPlayModal(final Context ctx, final ModalHost host) {
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        final ScrollView scroll = new ScrollView(ctx);
-        scroll.setVerticalScrollBarEnabled(false);
-        final LinearLayout root = new LinearLayout(ctx);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
-        root.setBackground(Glass.panel(root, 28));
-        scroll.addView(root);
-
-        TextView title = UiKit.bold(ctx, 28, UiKit.INK);
-        title.setText(Brand.cinerouletteWordmark());
-        root.addView(title);
-
-        TextView sub = UiKit.bold(ctx, 14, Color.parseColor("#38BDF8"));
-        sub.setText(tr ? "3D REVOLVER FİLM SEÇİCİ · NASIL OYNANIR?" : "3D REVOLVER MOVIE CHOOSER · HOW TO PLAY");
-        sub.setPadding(0, UiKit.px(4), 0, UiKit.px(18));
-        root.addView(sub);
-
-        root.addView(buildRuleSectionCard(ctx, "01",
-                tr ? "Revolver Göbeği & Mermi Delikleri" : "Revolver Cylinder Chambers",
-                tr ? "3D revolver göbeğinde 6 adet mermi deliği bulunur. Her bir mermi deliğine salonun eklediği ya da Gamze AI'ın önerdiği gerçek bir film afişi yerleştirilir."
-                   : "The 3D revolver cylinder contains 6 chambers, each holding a real DVD-boxless movie poster.",
-                Color.parseColor("#38BDF8")));
-
-        root.addView(buildRuleSectionCard(ctx, "02",
-                tr ? "Telefonlardan Film Fırlatma" : "Hurl Movies From Phones",
-                tr ? "Salondaki herkes kendi telefonundan izlemek istediği bir filmi hazneye fırlatır veya tematik hazır listelerden (90'lar Suç, Bilim Kurgu, Kült Sinema) birini seçer."
-                   : "Participants submit their favorite movie picks from their phones or choose curated AI themes.",
-                Color.parseColor("#38BDF8")));
-
-        root.addView(buildRuleSectionCard(ctx, "03",
-                tr ? "Rus Ruleti Kurgusu (Klik veya Güm)" : "Russian Roulette Mechanics",
-                tr ? "10 saniyelik zaman sayacında sırası gelen oyuncu tetiğe basar. Boş kovan denk gelirse 'KLİK' sesiyle sıra geçer; canlı mermi patlarsa 'GÜM' efektiyle o deliğe ait film TV'de başlar!"
-                   : "Players pull the trigger during the 10s tension countdown: blank click passes turn; live round explodes and starts the film on TV!",
-                Color.parseColor("#38BDF8")));
-
-        LinearLayout bRow = new LinearLayout(ctx);
-        bRow.setPadding(0, UiKit.px(10), 0, 0);
-        TextView ok = Controls.button(ctx, tr ? "Anladım / Geri" : "Got It / Back", v -> host.back());
-        bRow.addView(ok);
-        root.addView(bRow);
-        root.post(ok::requestFocus);
-        return scroll;
+        return rulesModal(ctx, host, Brand.cinerouletteWordmark(), Brand.CINEROULETTE_BLUE,
+                tr ? "ALTI FİLM, TEK KURŞUN" : "SIX FILMS, ONE BULLET", new String[][]{
+                {tr ? "Tamburu doldurun" : "Load the cylinder",
+                 tr ? "Herkes telefonundan bir film yükler; boş hazneleri Gamze, söylediğiniz ruh haline göre doldurur."
+                    : "Everyone loads one film from their phone; Gamze fills the empty chambers to the mood you give her."},
+                {tr ? "Tetik sırayla çekilir" : "Take turns on the trigger",
+                 tr ? "Sırası gelen, namludaki haznenin tetiğini çeker. Boş çıkarsa o film elenir. Kurşun hangi filmdeyse bu gece o izlenir."
+                    : "Whoever's turn it is pulls the trigger on the chamber under the hammer. Empty knocks that film out. The bullet picks tonight's film."},
+                {tr ? "Risk ve çevirme hakkı" : "Risk and spins",
+                 tr ? "Kendi filmin namluya gelirse? Çekersen kurşun onu seçebilir ya da eleyebilir. Her oyuncunun iki çevirme hakkı var: tambur rastgele bir hazneye döner."
+                    : "Your own film under the hammer? Pull and the bullet may pick it, or knock it out. Each player has two spins: the cylinder turns to a random chamber."},
+                {tr ? "Saat daralır" : "The clock closes in",
+                 tr ? "Her turda süre bir saniye kısalır. Süre biterse tetik kendiliğinden çekilir ve 5 puan kaybedersin. Kumandada OK tetik, sağ ok çevirir."
+                    : "Every turn is one second shorter. Run out and the trigger pulls itself, and you lose 5 points. On the remote, OK pulls and right spins."}});
     }
 
     public static View buildCineSessizHowToPlayModal(final Context ctx, final ModalHost host) {
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        final ScrollView scroll = new ScrollView(ctx);
+        return rulesModal(ctx, host, Brand.cinesessizWordmark(), Brand.CINESESSIZ_GOLD,
+                tr ? "SİNEMA TABUSU · SÜRESİZ" : "CINEMA TABOO · NO TIMER", new String[][]{
+                {tr ? "Kart yalnızca anlatıcıda" : "Only the teller sees the card",
+                 tr ? "Bir film, dizi, oyuncu ya da yönetmen ve beş yasaklı kelime yalnızca anlatıcının telefonuna gelir. TV kartı göstermez."
+                    : "A film, series, actor or director and five forbidden words reach only the teller's phone. The TV never shows the card."},
+                {tr ? "Diğerleri telefondan tahmin eder" : "Everyone else guesses by phone",
+                 tr ? "Tahminler TV'deki akışta görünür. Yazım hataları, Türkçe ya da orijinal adlar sorun değil."
+                    : "Guesses show on the TV feed. Typos, translated or original titles all count."},
+                {tr ? "Puanlar" : "Points",
+                 tr ? "İlk doğru tahmin +10, anlatıcı +5. Anlatıcı Gamze'den şifreli bir ipucu isterse kart 6 ve 3 puan değerindedir. Pas her zaman serbest."
+                    : "First right guess +10, teller +5. If the teller asks Gamze for a cryptic hint the card is worth 6 and 3. Passing is always free."},
+                {tr ? "Süre de sınır da yok" : "No timer, no limit",
+                 tr ? "Her doğru tahminden sonra sıra bir sonraki oyuncuya geçer. İstediğiniz kadar oynayın."
+                    : "After each right guess the next player tells. Play as long as you like."}});
+    }
+
+    private static View rulesModal(Context ctx, ModalHost host, CharSequence word, int accent, String tagline, String[][] rules) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        ScrollView scroll = new ScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
-        final LinearLayout root = new LinearLayout(ctx);
+        LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
         root.setBackground(Glass.panel(root, 28));
         scroll.addView(root);
-
-        TextView title = UiKit.bold(ctx, 28, UiKit.INK);
-        title.setText(Brand.cinesessizWordmark());
+        TextView title = UiKit.text(ctx, 34, UiKit.INK, com.cinetv.launcher.FontManager.getBlack(ctx));
+        title.setText(word);
         root.addView(title);
-
-        TextView sub = UiKit.bold(ctx, 14, Color.parseColor("#F59E0B"));
-        sub.setText(tr ? "SİNEMA & DİZİ TABU · NASIL OYNANIR?" : "CINEMA CHARADES · HOW TO PLAY");
+        TextView sub = UiKit.bold(ctx, 14, accent);
+        sub.setText(tagline);
+        sub.setLetterSpacing(0.12f);
         sub.setPadding(0, UiKit.px(4), 0, UiKit.px(18));
         root.addView(sub);
-
-        root.addView(buildRuleSectionCard(ctx, "01",
-                tr ? "Oyunun Konsepti & Süresiz Akış" : "Concept & Endless Play",
-                tr ? "Klasik sessiz sinema ve Tabu oyununun sinema-dizi versiyonu! Soru veya zaman sınırı yoktur; dilediğiniz kadar tur oynayabilirsiniz."
-                   : "The cinema-edition of Charades & Taboo. Zero time or question limits; enjoy endless party rounds.",
-                Color.parseColor("#F59E0B")));
-
-        root.addView(buildRuleSectionCard(ctx, "02",
-                tr ? "Anlatıcının Gizli Kasası" : "Teller's Secret Vault",
-                tr ? "Anlatıcı rolündeki kişinin telefonunda gizli sinema kartı ve yasaklı kelimeler gözükür (Örn: Fight Club - Norton, Pitt, Sabun, Marla, İlk Kural). Anlatıcı bu kelimeleri söylemeden filmi anlatır!"
-                   : "The teller's phone reveals the secret film card and taboo words. The teller describes the movie without uttering any taboo words!",
-                Color.parseColor("#F59E0B")));
-
-        root.addView(buildRuleSectionCard(ctx, "03",
-                tr ? "Salondakilerin Canlı Tahminleri" : "Live Guesses",
-                tr ? "Diğer katılımcılar telefonlarındaki tahmin kutusundan cevabı yazıp fırlatırlar. TV'de canlı akış görünür; doğru cevabı ilk yazan +10 puan kazanır!"
-                   : "Other players submit guesses from their phones. The live feed streams on TV; first correct answer scores +10 pts!",
-                Color.parseColor("#F59E0B")));
-
-        root.addView(buildRuleSectionCard(ctx, "04",
-                tr ? "Gamze AI Dinamik Kartlar" : "Gamze Dynamic Cards",
-                tr ? "'Gamze Yeni Kartlar' butonuyla hem yerli hem yabancı binlerce film, yönetmen ve kült dizi sahnesi anında oyuna dahil edilir."
-                   : "Generate thousands of Turkish and global cinema cards on the fly with Gamze AI.",
-                Color.parseColor("#F59E0B")));
-
+        for (int i = 0; i < rules.length; i++) {
+            root.addView(buildRuleSectionCard(ctx, String.format(Locale.ROOT, "%02d", i + 1), rules[i][0], rules[i][1], accent));
+        }
         LinearLayout bRow = new LinearLayout(ctx);
         bRow.setPadding(0, UiKit.px(10), 0, 0);
-        TextView ok = Controls.button(ctx, tr ? "Anladım / Geri" : "Got It / Back", v -> host.back());
+        TextView ok = Controls.button(ctx, tr ? "Anladım" : "Got it", v -> host.back());
         bRow.addView(ok);
         root.addView(bRow);
         root.post(ok::requestFocus);
@@ -3926,213 +3543,6 @@ public final class Panels {
         root.addView(bRow);
         root.post(testBtn::requestFocus);
         return scroll;
-    }
-
-    public static View buildCineSessizModal(final Context ctx, final ModalHost host) {
-        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        final LinearLayout root = new LinearLayout(ctx);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
-        root.setBackground(Glass.panel(root, 28));
-
-        LinearLayout head = new LinearLayout(ctx);
-        head.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView wordmark = UiKit.bold(ctx, 16, UiKit.INK);
-        wordmark.setText(Brand.cinesessizWordmark());
-        wordmark.setLetterSpacing(0.04f);
-        head.addView(wordmark);
-
-        TextView subBadge = UiKit.bold(ctx, 13, Color.parseColor("#F59E0B"));
-        subBadge.setText(tr ? " · SİNEMA VE DİZİ TABU ARENASI" : " · CINEMA & SERIES TABOO ARENA");
-        subBadge.setLetterSpacing(0.06f);
-        head.addView(subBadge);
-        root.addView(head);
-
-        final com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(ctx);
-        if (!party.isSessizActive()) {
-            party.startSessiz();
-        }
-
-        // Two Column Layout
-        LinearLayout stageRow = new LinearLayout(ctx);
-        stageRow.setOrientation(LinearLayout.HORIZONTAL);
-        stageRow.setPadding(0, UiKit.px(16), 0, UiKit.px(16));
-
-        // Left Column: Secret Card Status on TV
-        LinearLayout cardBox = new LinearLayout(ctx);
-        cardBox.setOrientation(LinearLayout.VERTICAL);
-        cardBox.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.1f));
-        cardBox.setBackground(Glass.panel(cardBox, 22));
-        cardBox.setPadding(UiKit.px(24), UiKit.px(20), UiKit.px(24), UiKit.px(20));
-
-        final TextView tellerTv = UiKit.bold(ctx, 18, Color.parseColor("#F59E0B"));
-        cardBox.addView(tellerTv);
-
-        final TextView catBadge = UiKit.bold(ctx, 14, Color.parseColor("#38BDF8"));
-        catBadge.setPadding(0, UiKit.px(8), 0, UiKit.px(12));
-        cardBox.addView(catBadge);
-
-        TextView secretVaultNotice = UiKit.label(ctx, 15, UiKit.INK_DIM);
-        secretVaultNotice.setLineSpacing(UiKit.pxf(4), 1.15f);
-        secretVaultNotice.setText(tr
-                ? "GİZLİ SİNEMA KARTI ANLATICI TELEFONUNDA AÇIK\n\n"
-                + "• Anlatıcı, karttaki 5 yasaklı kelimeyi kullanmadan filmi/diziyi/aktörü salondakilere anlatır.\n"
-                + "• Salondaki oyuncular telefonlarındaki CineTV uzantısından tahminlerini yazar.\n"
-                + "• Doğru bilen oyuncu anında +10 puan kazanır ve sonraki karta geçilir!"
-                : "SECRET CARD IS OPEN ON THE TELLER'S PHONE\n\n"
-                + "• Teller describes the cinema element without saying the 5 taboo words.\n"
-                + "• Room players submit their guesses via the phone remote.\n"
-                + "• First correct guess scores +10 points and advances to next card!");
-        cardBox.addView(secretVaultNotice);
-
-        stageRow.addView(cardBox);
-
-        View spStage = new View(ctx);
-        stageRow.addView(spStage, new LinearLayout.LayoutParams(UiKit.px(24), 1));
-
-        // Right Column: Live Guess Stream & Leaderboard
-        LinearLayout rightCol = new LinearLayout(ctx);
-        rightCol.setOrientation(LinearLayout.VERTICAL);
-        rightCol.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-        TextView feedHeader = UiKit.bold(ctx, 15, UiKit.INK);
-        feedHeader.setText(tr ? "Canlı Tahmin Akışı (Telefonlardan):" : "Live Guesses (From Phones):");
-        rightCol.addView(feedHeader);
-
-        final LinearLayout feedList = new LinearLayout(ctx);
-        feedList.setOrientation(LinearLayout.VERTICAL);
-        feedList.setPadding(0, UiKit.px(8), 0, UiKit.px(14));
-        rightCol.addView(feedList);
-
-        TextView boardHeader = UiKit.bold(ctx, 15, UiKit.INK);
-        boardHeader.setText(tr ? "Puan Tablosu:" : "Leaderboard:");
-        rightCol.addView(boardHeader);
-
-        final LinearLayout leaderboardList = new LinearLayout(ctx);
-        leaderboardList.setOrientation(LinearLayout.HORIZONTAL);
-        leaderboardList.setPadding(0, UiKit.px(8), 0, 0);
-        rightCol.addView(leaderboardList);
-
-        stageRow.addView(rightCol);
-        root.addView(stageRow);
-
-        final Runnable updateSessiz = () -> {
-            JSONObject st = party.getState();
-            if (st == null) return;
-            String tName = st.optString("tellerName", "Sinefil");
-            tellerTv.setText((tr ? "Anlatıcı: " : "Current Teller: ") + tName);
-            String cat = st.optString("sessizCategory", "Kült Film");
-            catBadge.setText((tr ? "Kategori: " : "Category: ") + cat);
-
-            // Update Feed
-            feedList.removeAllViews();
-            JSONArray feed = st.optJSONArray("sessizFeed");
-            if (feed != null && feed.length() > 0) {
-                for (int i = 0; i < Math.min(5, feed.length()); i++) {
-                    JSONObject f = feed.optJSONObject(i);
-                    if (f == null) continue;
-                    boolean cor = f.optBoolean("correct");
-                    String u = f.optString("user");
-                    String g = f.optString("guess");
-
-                    FrameLayout chip = new FrameLayout(ctx);
-                    chip.setBackground(Glass.panel(chip, 14));
-                    chip.setPadding(UiKit.px(14), UiKit.px(8), UiKit.px(14), UiKit.px(8));
-
-                    LinearLayout fRow = new LinearLayout(ctx);
-                    fRow.setGravity(Gravity.CENTER_VERTICAL);
-
-                    TextView uTv = UiKit.bold(ctx, 13, cor ? Color.parseColor("#34D399") : Color.parseColor("#F59E0B"));
-                    uTv.setText(u + ": ");
-                    fRow.addView(uTv);
-
-                    TextView gTv = UiKit.label(ctx, 14, cor ? Color.WHITE : UiKit.INK);
-                    gTv.setText("\"" + g + "\"" + (cor ? "  ✓ (DOĞRU BİLDİ! +10p)" : ""));
-                    if (cor) gTv.setTypeface(FontManager.getBold(ctx));
-                    fRow.addView(gTv);
-
-                    chip.addView(fRow);
-                    LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                    clp.bottomMargin = UiKit.px(6);
-                    feedList.addView(chip, clp);
-                }
-            } else {
-                TextView empty = UiKit.label(ctx, 13, UiKit.INK_DIM);
-                empty.setText(tr ? "Telefonlardan tahmin bekleniyor..." : "Waiting for guesses from phones...");
-                feedList.addView(empty);
-            }
-
-            // Update Leaderboard
-            leaderboardList.removeAllViews();
-            JSONArray pls = st.optJSONArray("players");
-            if (pls != null) {
-                for (int i = 0; i < pls.length(); i++) {
-                    JSONObject po = pls.optJSONObject(i);
-                    if (po == null) continue;
-                    TextView pBadge = UiKit.bold(ctx, 13, UiKit.INK);
-                    pBadge.setText(po.optString("name") + " (" + po.optInt("score") + "p)");
-                    pBadge.setPadding(UiKit.px(12), UiKit.px(6), UiKit.px(12), UiKit.px(6));
-                    pBadge.setBackground(Glass.panel(pBadge, 12));
-                    LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                    plp.rightMargin = UiKit.px(10);
-                    leaderboardList.addView(pBadge, plp);
-                }
-            }
-        };
-        updateSessiz.run();
-
-        party.setListener(new com.cinetv.launcher.party.CinePartyManager.Listener() {
-            @Override
-            public void onGameStateChanged(JSONObject state) {
-                root.post(updateSessiz);
-            }
-            @Override
-            public void onMovieLaunchRequested(String movieTitle) {}
-        });
-
-        // Control Buttons Row
-        LinearLayout btns = new LinearLayout(ctx);
-        btns.setOrientation(LinearLayout.HORIZONTAL);
-        btns.setPadding(0, UiKit.px(12), 0, 0);
-
-        TextView nextBtn = Controls.button(ctx, tr ? "Sonraki Kart ›" : "Next Card ›", v -> party.nextSessizCard(false));
-        btns.addView(nextBtn);
-
-        View spB = new View(ctx);
-        btns.addView(spB, new LinearLayout.LayoutParams(UiKit.px(14), 1));
-
-        TextView passBtn = Controls.button(ctx, tr ? "Pas Geç" : "Pass", v -> party.nextSessizCard(true));
-        btns.addView(passBtn);
-
-        View spG = new View(ctx);
-        btns.addView(spG, new LinearLayout.LayoutParams(UiKit.px(14), 1));
-
-        TextView geminiBtn = Controls.button(ctx, tr ? "Gamze Yeni Kartlar" : "Gamze New Cards", v -> {
-            party.requestGamzeSessizCards(3, () -> {
-                Toast.makeText(ctx, tr ? "Gamze AI Yeni Kartları Hazırladı!" : "Gamze AI Cards Ready!", Toast.LENGTH_SHORT).show();
-            });
-        });
-        btns.addView(geminiBtn);
-
-        View spI = new View(ctx);
-        btns.addView(spI, new LinearLayout.LayoutParams(UiKit.px(14), 1));
-
-        TextView infoBtn = Controls.button(ctx, tr ? "Nasıl Oynanır" : "Rules", v -> host.push(() -> buildCineSessizHowToPlayModal(ctx, host)));
-        btns.addView(infoBtn);
-
-        View spE = new View(ctx);
-        btns.addView(spE, new LinearLayout.LayoutParams(UiKit.px(14), 1));
-
-        TextView endBtn = Controls.button(ctx, tr ? "Oyunu Bitir" : "End Game", v -> {
-            party.stopSessiz();
-            host.back();
-        });
-        btns.addView(endBtn);
-
-        root.addView(btns);
-        root.post(nextBtn::requestFocus);
-        return root;
     }
 
     public static View buildUpdateModal(final Context ctx, final ModalHost host, final com.cinetv.launcher.service.AppUpdater.ReleaseInfo info) {

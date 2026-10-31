@@ -239,20 +239,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         TvWebRemoteServer.setController(this);
         TvWebRemoteServer.start(this);
-        com.cinetv.launcher.party.CinePartyManager.get(this).setListener(new com.cinetv.launcher.party.CinePartyManager.Listener() {
-            @Override
-            public void onGameStateChanged(org.json.JSONObject state) {}
-
-            @Override
-            public void onMovieLaunchRequested(String movieTitle) {
-                handler.post(() -> {
-                    if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
-                    hideLiveCineDuelScene();
-                    hideLiveSnakePhileScene();
-                    launchFilmByTitle(movieTitle);
-                });
-            }
-        });
+        com.cinetv.launcher.party.CinePartyManager.get(this).addListener(partyLauncher);
         AppUpdater.checkAndAutoUpdateOnBoot(this);
         MemoryOptimizer.ensureAirPlayReceiver(this);
         com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
@@ -657,17 +644,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         else if ("show_cinesub_live".equals(action)) {
             handler.postDelayed(this::showLiveCineSubScene, 300);
         }
-        else if ("show_cineroulette_live".equals(action) || "show_sineroulette_live".equals(action)) {
-            handler.postDelayed(this::showMovieRouletteModal, 300);
+        else if ("show_cineroulette_live".equals(action)) {
+            handler.postDelayed(() -> showParty(com.cinetv.launcher.party.CinePartyManager.Mode.ROULETTE), 300);
         }
-        else if ("show_cinequiz_live".equals(action) || "show_sinequiz_live".equals(action)) {
-            handler.postDelayed(this::showLiveSineQuizScene, 300);
+        else if ("show_cinequiz_live".equals(action)) {
+            handler.postDelayed(() -> showParty(com.cinetv.launcher.party.CinePartyManager.Mode.QUIZ), 300);
         }
         else if ("show_snakephile_live".equals(action)) {
             handler.postDelayed(this::showLiveSnakePhileScene, 300);
         }
         else if ("show_cinesessiz_live".equals(action)) {
-            handler.postDelayed(this::showCineSessizModal, 300);
+            handler.postDelayed(() -> showParty(com.cinetv.launcher.party.CinePartyManager.Mode.SESSIZ), 300);
         }
     }
 
@@ -690,6 +677,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (liveCineSubView != null) {
             if (down) hideLiveCineSubScene();
             return true;
+        }
+        if (partyStage != null && !home.modal.isShowing()) {
+            return partyStage.dispatchKeyEvent(e);
         }
         if (liveCineDuelView != null) {
             if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
@@ -1291,20 +1281,24 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             showPartyGamesFolderModal();
             return true;
         }
-        if (AppCatalog.PKG_SNAKE.equals(pkg) || "com.cinetv.party.duel".equals(pkg)) {
+        if (AppCatalog.PKG_SNAKE.equals(pkg)) {
+            showLiveSnakePhileScene();
+            return true;
+        }
+        if (AppCatalog.PKG_DUEL.equals(pkg)) {
             showLiveCineDuelScene();
             return true;
         }
         if (AppCatalog.PKG_QUIZ.equals(pkg)) {
-            showPartyQuizModal();
+            showParty(com.cinetv.launcher.party.CinePartyManager.Mode.QUIZ);
             return true;
         }
         if (AppCatalog.PKG_ROULETTE.equals(pkg)) {
-            showMovieRouletteModal();
+            showParty(com.cinetv.launcher.party.CinePartyManager.Mode.ROULETTE);
             return true;
         }
         if (AppCatalog.PKG_SESSIZ.equals(pkg)) {
-            showCineSessizModal();
+            showParty(com.cinetv.launcher.party.CinePartyManager.Mode.SESSIZ);
             return true;
         }
         return false;
@@ -1316,32 +1310,38 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             @Override
             public void launchSnake() {
                 home.modal.closeImmediate();
+                showLiveSnakePhileScene();
+            }
+
+            @Override
+            public void launchDuel() {
+                home.modal.closeImmediate();
                 showLiveCineDuelScene();
             }
 
             @Override
             public void launchQuiz() {
                 home.modal.closeImmediate();
-                showPartyQuizModal();
+                showParty(com.cinetv.launcher.party.CinePartyManager.Mode.QUIZ);
             }
 
             @Override
             public void launchRoulette() {
                 home.modal.closeImmediate();
-                showMovieRouletteModal();
+                showParty(com.cinetv.launcher.party.CinePartyManager.Mode.ROULETTE);
             }
 
             @Override
             public void launchSessiz() {
                 home.modal.closeImmediate();
-                showCineSessizModal();
+                showParty(com.cinetv.launcher.party.CinePartyManager.Mode.SESSIZ);
             }
         }));
     }
 
     public void showPartyHowToPlay(String pkg) {
         if (home == null || home.modal == null) return;
-        if (AppCatalog.PKG_SNAKE.equals(pkg) || "com.cinetv.party.duel".equals(pkg)) {
+        if (AppCatalog.PKG_SNAKE.equals(pkg) || AppCatalog.PKG_DUEL.equals(pkg)) {
             home.modal.push(() -> Panels.buildSnakePhileHowToPlayModal(this, home.modal));
         } else if (AppCatalog.PKG_QUIZ.equals(pkg)) {
             home.modal.push(() -> Panels.buildCineQuizHowToPlayModal(this, home.modal));
@@ -1354,20 +1354,61 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
     }
 
-    public void showPartyQuizModal() {
-        if (home != null && home.modal != null) {
-            home.modal.push(() -> Panels.buildPartyQuizModal(this, home.modal));
+    // ---- CineParty -------------------------------------------------------------------------------
+
+    private com.cinetv.launcher.party.PartyStageView partyStage;
+
+    /** The room asks for a film (quiz champion, roulette bullet): close the stage and play it. */
+    private final com.cinetv.launcher.party.CinePartyManager.Listener partyLauncher = new com.cinetv.launcher.party.CinePartyManager.Listener() {
+        @Override
+        public void onMovieLaunchRequested(String movieTitle) {
+            handler.post(() -> {
+                if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
+                hidePartyStage();
+                hideLiveCineDuelScene();
+                hideLiveSnakePhileScene();
+                launchFilmByTitle(movieTitle);
+            });
         }
+    };
+
+    /** Opens a CineParty game full screen on the TV; the phones join it from the party tab. */
+    public void showParty(com.cinetv.launcher.party.CinePartyManager.Mode mode) {
+        if (home == null) return;
+        if (home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
+        hideLiveCineSubScene();
+        hideLiveCineDuelScene();
+        hideLiveSnakePhileScene();
+        com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(this);
+        if (party.mode() != mode) party.open(mode);
+        if (partyStage == null) {
+            partyStage = new com.cinetv.launcher.party.PartyStageView(this);
+            partyStage.setHost(new com.cinetv.launcher.party.PartyStageView.Host() {
+                @Override
+                public void exit() {
+                    hidePartyStage();
+                }
+
+                @Override
+                public void play(String title) {
+                    hidePartyStage();
+                    launchFilmByTitle(title);
+                }
+            });
+            // Under the modal layer, so a pairing request or a toast-like dialog still shows on top of the game.
+            home.root.addView(partyStage, home.root.indexOfChild(home.modal),
+                    new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            home.environment.pause();
+        }
+        partyStage.requestFocus();
     }
 
-    public void showMovieRouletteModal() {
-        if (home != null && home.modal != null) {
-            home.modal.push(() -> Panels.buildMovieRouletteModal(this, home.modal));
-        }
-    }
-
-    public void startMovieRoulette() {
-        showMovieRouletteModal();
+    public void hidePartyStage() {
+        if (partyStage == null) return;
+        home.root.removeView(partyStage);
+        partyStage = null;
+        home.environment.resume();
+        if (home.shelf != null) home.shelf.requestFocus();
     }
 
     public void launchFilm(final Movie m) {
@@ -2263,36 +2304,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
     }
 
-    public void showLiveSineRouletteScene() {
-        hideLiveCineDuelScene();
-        hideLiveSnakePhileScene();
-        hideLiveCineSubScene();
-        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
-        showMovieRouletteModal();
-    }
-
-    public void showLiveSineQuizScene() {
-        hideLiveCineDuelScene();
-        hideLiveSnakePhileScene();
-        hideLiveCineSubScene();
-        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
-        com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(this);
-        party.startQuiz();
-        showPartyQuizModal();
-    }
-
-    public void showCineSessizModal() {
-        hideLiveCineDuelScene();
-        hideLiveSnakePhileScene();
-        hideLiveCineSubScene();
-        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
-        com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(this);
-        party.startSessiz();
-        if (home != null && home.modal != null) {
-            home.modal.push(() -> Panels.buildCineSessizModal(this, home.modal));
-        }
-    }
-
     private com.cinetv.launcher.party.CineDuelView liveCineDuelView;
 
     public com.cinetv.launcher.party.CineDuelView getLiveCineDuelView() {
@@ -2338,11 +2349,35 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private com.cinetv.launcher.party.SnakePhileView liveSnakePhileView;
 
     public void showLiveSnakePhileScene() {
-        showLiveCineDuelScene();
+        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
+        hideLiveCineSubScene();
+        hideLiveCineDuelScene();
+        hidePartyStage();
+        hideLiveSnakePhileScene();
+        com.cinetv.launcher.party.SnakePhileView snake = new com.cinetv.launcher.party.SnakePhileView(this);
+        snake.setOnSnakePhileListener(new com.cinetv.launcher.party.SnakePhileView.OnSnakePhileListener() {
+            @Override
+            public void onMovieLaunch(String title) {
+                hideLiveSnakePhileScene();
+                launchFilmByTitle(title);
+            }
+
+            @Override
+            public void onExit() {
+                hideLiveSnakePhileScene();
+            }
+        });
+        liveSnakePhileView = snake;
+        home.root.addView(snake, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        snake.setFocusable(true);
+        snake.requestFocus();
+        snake.resetGame();
     }
 
     public void hideLiveSnakePhileScene() {
-        hideLiveCineDuelScene();
+        if (liveSnakePhileView == null) return;
+        home.root.removeView(liveSnakePhileView);
+        liveSnakePhileView = null;
     }
 
     private void showScreensaverInternal() {

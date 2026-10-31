@@ -1123,6 +1123,12 @@ public final class MovieCatalog {
         return tagline;
     }
 
+    /** A TMDB request for callers outside the catalog (the party games); throws without a key. */
+    public static JSONObject tmdbJson(Context ctx, String pathAndQuery) throws Exception {
+        if (!hasTmdb(ctx)) throw new IllegalStateException("No TMDB key");
+        return tmdb(ctx, pathAndQuery);
+    }
+
     private static JSONObject tmdb(Context ctx, String pathAndQuery) throws Exception {
         if (appCtx == null) appCtx = ctx.getApplicationContext();
         String key = SecretStore.get(ctx, SecretStore.TMDB_KEY);

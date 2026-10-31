@@ -81,6 +81,13 @@ public final class Brand {
         return s;
     }
 
+    /** "CineParty" with a red "Party", like the TV of the wordmark. */
+    public static CharSequence cinepartyWordmark() {
+        android.text.SpannableString s = new android.text.SpannableString("CineParty");
+        s.setSpan(new android.text.style.ForegroundColorSpan(TV_RED), 4, 9, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return s;
+    }
+
     /** "CineQuiz" with a purple "Quiz". */
     public static CharSequence cinequizWordmark() {
         android.text.SpannableString s = new android.text.SpannableString("CineQuiz");
@@ -88,21 +95,11 @@ public final class Brand {
         return s;
     }
 
-    /** Backward compatibility alias */
-    public static CharSequence sinequizWordmark() {
-        return cinequizWordmark();
-    }
-
     /** "CineRoulette" with a blue "Roulette". */
     public static CharSequence cinerouletteWordmark() {
         android.text.SpannableString s = new android.text.SpannableString("CineRoulette");
         s.setSpan(new android.text.style.ForegroundColorSpan(CINEROULETTE_BLUE), 4, 12, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         return s;
-    }
-
-    /** Backward compatibility alias */
-    public static CharSequence sinerouletteWordmark() {
-        return cinerouletteWordmark();
     }
 
     /** "CineSessiz" with a gold "Sessiz". */

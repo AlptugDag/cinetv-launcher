@@ -36,6 +36,7 @@ public class CineTvApp extends Application {
         DeviceTweaks.ensureKeyService(this);
         com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
         com.cinetv.launcher.device.NightCare.start(this);
+        com.cinetv.launcher.device.SystemAudio.warmUp(this);
         new Thread(() -> com.cinetv.launcher.remote.KeyBridge.warmUp(this), "cinetv-keys").start();
         if (SystemClock.elapsedRealtime() > DeviceTweaks.BOOT_GUARD_MS) return;
         Handler h = new Handler(Looper.getMainLooper());

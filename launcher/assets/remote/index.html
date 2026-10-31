@@ -238,55 +238,88 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .pwa-card p{margin:0 0 10px;font-size:12.5px;color:var(--dim);line-height:1.45}
 .pwa-card .pwa-x{position:absolute;top:10px;right:12px;background:none;border:0;color:var(--dim);font-size:16px;cursor:pointer;padding:4px}
 
-/* visionOS Liquid Glass Party & Games UI */
-.party-wrap{display:grid;gap:16px;padding:4px 0 32px}
-.party-filter-bar{display:flex;gap:8px;overflow-x:auto;padding:6px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.party-filter-chip{white-space:nowrap;padding:7px 15px;border-radius:999px;font-size:12px;font-weight:700;color:var(--dim);border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);cursor:pointer;transition:all .2s ease;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
-.party-filter-chip.on{color:#fff;background:linear-gradient(135deg,rgba(139,92,246,.32),rgba(59,130,246,.25));border-color:rgba(167,139,250,.6);box-shadow:0 4px 16px rgba(139,92,246,.35)}
-.party-lobby-hud{padding:12px 16px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);-webkit-backdrop-filter:blur(28px);backdrop-filter:blur(28px);box-shadow:inset 0 1px 1px rgba(255,255,255,.25)}
-.live-pulse{width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 10px #10b981;animation:pulseLive 1.8s infinite}
-@keyframes pulseLive{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
-
-.party-card{padding:18px 20px;position:relative;overflow:hidden;border-radius:22px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);-webkit-backdrop-filter:blur(32px) saturate(180%);backdrop-filter:blur(32px) saturate(180%);box-shadow:inset 0 1px 1px rgba(255,255,255,.28),0 16px 40px rgba(0,0,0,.55)}
-.party-card h3{margin:0 0 8px;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
-.party-card p{margin:0 0 12px;font-size:13.5px;color:var(--dim);line-height:1.5}
-.party-guide-box{background:rgba(0,0,0,.38);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;line-height:1.55;color:#cbd5e1}
-.party-guide-box b{color:#fff}
-.party-guide-toggle{font-size:12px;padding:5px 12px;border-radius:999px;margin-bottom:12px;cursor:pointer;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:var(--ink);display:inline-flex;align-items:center;gap:6px}
-.party-guide-toggle:hover{background:rgba(255,255,255,.1)}
-
-.quiz-options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
-.quiz-opt-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:12px 14px;font-size:13px;font-weight:600;color:#fff;text-align:left;cursor:pointer;transition:all .18s ease;display:flex;align-items:center;gap:8px}
-.quiz-opt-btn span{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:8px;background:rgba(139,92,246,.25);color:#c4b5fd;font-weight:800;font-size:12px}
-.quiz-opt-btn:active{transform:scale(.96);background:rgba(139,92,246,.35);border-color:#a78bfa}
-
-.party-input-row{display:flex;gap:8px;margin-bottom:10px}
-.party-input-row input{flex:1;background:rgba(0,0,0,.35);border:1px solid var(--edge);border-radius:14px;color:var(--ink);padding:10px 14px;font-size:14px;outline:0}
-.party-input-row input:focus{border-color:var(--accent)}
-.party-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(139,92,246,.25);color:var(--accent2);border:1px solid rgba(139,92,246,.4)}
-.quiz-timer-wrap{height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;margin:10px 0}
-.quiz-timer-bar{height:100%;background:linear-gradient(90deg,var(--ok),#f59e0b,#ef4444);width:100%;transition:width 1s linear}
-.party-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
-.party-pill{padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--edge);font-size:12px;color:var(--ink)}
-.party-pill b{color:var(--accent2)}
-
-/* SineRoulette: 3D Gunmetal Revolver Cylinder Container */
-.roulette-box{position:relative;margin:12px auto;width:100%;max-width:320px;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
-#rouletteCanvas{border-radius:50%;box-shadow:0 16px 45px rgba(0,0,0,.85),inset 0 0 20px rgba(0,0,0,.8);touch-action:none;cursor:pointer}
-.roulette-winner-card{margin-top:10px;background:linear-gradient(135deg,rgba(56,189,248,.16),rgba(14,165,233,.06));border:1px solid rgba(56,189,248,.45);border-radius:16px;padding:12px 14px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.5);animation:popIn .3s ease-out}
-.roulette-winner-card .win-tag{font-size:11px;font-weight:800;letter-spacing:1px;color:#38bdf8;text-transform:uppercase;margin-bottom:3px}
-.roulette-winner-card .win-title{font-size:18px;font-weight:800;color:#fff}
-.roulette-winner-card .win-user{font-size:12px;color:var(--dim);margin-top:2px}
-@keyframes popIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
-
-/* SnakePhile: Fullscreen 3D Realistic Snake Game UI */
-.snake-wrap{text-align:center;position:relative}
-.snake-board{position:relative;margin:0 auto;width:100%;max-width:440px;aspect-ratio:1;border-radius:20px;overflow:hidden;box-shadow:0 16px 44px rgba(0,0,0,.85),inset 0 0 25px rgba(0,0,0,.85);border:2px solid rgba(16,185,129,.4)}
-#snakeCanvas{background:#07090e;touch-action:none;display:block;width:100%;height:100%}
-.snake-hud-bar{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:700;margin-bottom:8px;background:rgba(255,255,255,.05);padding:6px 12px;border-radius:12px;border:1px solid var(--edge)}
-.snake-controls{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,46px);gap:6px;justify-content:center;margin-top:12px}
-.snake-btn{background:var(--glass);border:1px solid var(--edge);border-radius:12px;color:#fff;font-size:18px;display:grid;place-items:center;cursor:pointer}
-.snake-btn:active{background:var(--glass-hi);transform:scale(.94)}
+.pt{display:grid;gap:14px;padding:6px 0 40px}
+.pt-eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.pt-h{margin:4px 0 2px;font-size:24px;font-weight:800;letter-spacing:-.02em}
+.pt-sub{margin:0 0 14px;color:var(--dim);font-size:13.5px;line-height:1.5}
+.pt-join{padding:22px}
+.pt-row{display:flex;gap:8px}
+.pt-row input{flex:1;min-width:0;height:50px;padding:0 16px;border-radius:16px;border:1px solid var(--edge);background:rgba(0,0,0,.32);color:var(--ink);font-size:16px;outline:0;transition:border-color .2s,box-shadow .2s}
+.pt-row input:focus{border-color:rgba(255,255,255,.4);box-shadow:0 0 0 3px rgba(255,255,255,.08)}
+.pt-btn{height:50px;padding:0 20px;border:0;border-radius:16px;font-weight:700;font-size:15px;color:#fff;background:var(--pt,#8b5cf6);box-shadow:0 8px 22px -8px var(--pt,#8b5cf6);transition:transform .15s,opacity .2s;white-space:nowrap}
+.pt-btn:active{transform:scale(.96)}
+.pt-btn:disabled{opacity:.4}
+.pt-btn.ghost{background:rgba(255,255,255,.08);box-shadow:none;border:1px solid var(--edge)}
+.pt-btn.wide{width:100%}
+.pt-link{border:0;background:none;color:var(--dim);font-size:13px;font-weight:600;padding:6px 4px;margin-left:auto}
+.pt-me{display:flex;align-items:center;gap:8px;padding:0 4px;font-size:14px}
+.pt-dot{width:10px;height:10px;border-radius:50%;background:#fff;flex-shrink:0;box-shadow:0 0 10px currentColor}
+.pt-games{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pt-game{text-align:left;border:1px solid var(--edge);border-radius:20px;padding:16px 16px 14px;background:linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.03));color:var(--ink);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 rgba(255,255,255,.16);transition:transform .16s}
+.pt-game:first-child{grid-column:1/-1;padding:20px}
+.pt-game:active{transform:scale(.97)}
+.pt-game b{display:block;font-size:20px;font-weight:800;letter-spacing:.01em}
+.pt-game:first-child b{font-size:26px}
+.pt-game small{display:block;margin-top:4px;color:var(--dim);font-size:12px;line-height:1.4}
+.pt-top{display:flex;align-items:center;gap:10px;padding:0 2px}
+.pt-word{font-size:24px;font-weight:800;letter-spacing:.01em}
+.pt-chip{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--edge);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
+.pt-card{padding:18px;display:grid;gap:12px}
+.pt-pic{width:100%;border-radius:18px;object-fit:cover;background:#111;box-shadow:0 18px 40px -16px rgba(0,0,0,.8);aspect-ratio:16/9}
+.pt-pic.tall{aspect-ratio:2/3;max-width:62%;justify-self:center}
+.pt-q{font-size:19px;font-weight:700;line-height:1.3;letter-spacing:-.01em}
+.pt-cap{font-size:13px;color:var(--dim);margin-top:-4px}
+.pt-opts{display:grid;gap:10px}
+.pt-opt{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 14px;border-radius:18px;border:1px solid var(--edge);background:rgba(255,255,255,.07);color:var(--ink);font-size:15.5px;font-weight:600;text-align:left;transition:transform .14s,background .2s,border-color .2s}
+.pt-opt:active{transform:scale(.97)}
+.pt-opt i{font-style:normal;flex-shrink:0;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:13px;background:rgba(255,255,255,.1);color:var(--pt)}
+.pt-opt.sel{background:color-mix(in srgb,var(--pt) 30%,transparent);border-color:var(--pt)}
+.pt-opt.ok{background:rgba(48,209,88,.22);border-color:#30d158}
+.pt-opt.no{opacity:.45}
+.pt-bar{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.pt-bar i{display:block;height:100%;width:100%;background:var(--pt);transform-origin:left;border-radius:3px}
+.pt-bar.hot i{background:#ff453a}
+.pt-note{font-size:13.5px;color:var(--dim);line-height:1.5;text-align:center}
+.pt-big{font-size:32px;font-weight:800;text-align:center;letter-spacing:-.02em;line-height:1.15}
+.pt-res{padding:22px;text-align:center;display:grid;gap:6px}
+.pt-res.ok{background:linear-gradient(160deg,rgba(48,209,88,.28),rgba(48,209,88,.06));border-color:rgba(48,209,88,.5)}
+.pt-res.no{background:linear-gradient(160deg,rgba(255,69,58,.22),rgba(255,69,58,.05));border-color:rgba(255,69,58,.4)}
+.pt-fact{font-size:13.5px;color:var(--ink);opacity:.85;line-height:1.5;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.06)}
+.pt-seg{display:flex;gap:6px;padding:4px;border-radius:16px;background:rgba(0,0,0,.28);border:1px solid var(--edge)}
+.pt-seg button{flex:1;height:40px;border:0;border-radius:12px;background:none;color:var(--dim);font-weight:700;font-size:14px;transition:background .2s,color .2s}
+.pt-seg button.on{background:rgba(255,255,255,.14);color:#fff}
+.pt-lbl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:-4px}
+.pt-board{padding:12px 16px;display:grid;gap:2px}
+.pt-board div{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px;border-bottom:1px solid rgba(255,255,255,.06)}
+.pt-board div:last-child{border:0}
+.pt-board b{margin-left:auto;font-variant-numeric:tabular-nums}
+.pt-board .away{opacity:.4}
+.pt-chambers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pt-ch{position:relative;aspect-ratio:2/3;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.06);border:1px dashed rgba(255,255,255,.18);display:grid;place-items:center;color:var(--faint);font-size:26px}
+.pt-ch img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pt-ch.top{outline:2px solid var(--pt);outline-offset:2px}
+.pt-ch.out img{filter:grayscale(1) brightness(.4)}
+.pt-ch.out::after{content:"✕";position:absolute;inset:0;display:grid;place-items:center;color:#ff453a;font-size:44px;font-weight:800}
+.pt-ch span{position:absolute;left:6px;right:6px;bottom:6px;font-size:10.5px;font-weight:700;color:#fff;text-shadow:0 1px 6px #000;line-height:1.2;text-align:left}
+.pt-ch em{position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%}
+.pt-trigger{width:min(62vw,240px);aspect-ratio:1;justify-self:center;border-radius:50%;border:0;color:#fff;font-size:20px;font-weight:800;letter-spacing:.08em;background:radial-gradient(circle at 35% 30%,#7dd3fc,#0369a1 70%);box-shadow:0 0 0 10px rgba(56,189,248,.12),0 0 60px rgba(56,189,248,.45),inset 0 -10px 30px rgba(0,0,0,.35);transition:transform .12s}
+.pt-trigger:active{transform:scale(.93)}
+.pt-trigger.hot{animation:ptBeat .5s infinite}
+@keyframes ptBeat{0%,100%{transform:scale(1)}20%{transform:scale(1.05)}40%{transform:scale(.99)}}
+.pt-secret{padding:18px;display:grid;gap:12px;background:linear-gradient(170deg,rgba(245,158,11,.22),rgba(245,158,11,.04));border-color:rgba(245,158,11,.45)}
+.pt-taboo{display:flex;flex-wrap:wrap;gap:6px}
+.pt-taboo span{padding:6px 12px;border-radius:999px;background:rgba(255,69,58,.16);border:1px solid rgba(255,69,58,.45);color:#ffb4ae;font-size:13px;font-weight:700;text-decoration:line-through;text-decoration-color:rgba(255,69,58,.7)}
+.pt-feed{display:grid;gap:6px}
+.pt-feed div{font-size:13.5px;padding:8px 12px;border-radius:14px;background:rgba(255,255,255,.05)}
+.pt-feed div.ok{background:rgba(48,209,88,.18);color:#a7f3d0}
+.pt-results{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pt-results button{border:0;padding:0;background:none;color:var(--ink);text-align:left;font-size:11.5px;font-weight:600}
+.pt-results img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:12px;display:block;margin-bottom:4px;background:#111}
+.pt-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:300px;margin:0 auto}
+.pt-pad button{height:76px;border-radius:20px;border:1px solid var(--edge);background:rgba(255,255,255,.08);color:#fff;font-size:24px}
+.pt-pad button:active{background:rgba(255,255,255,.2)}
+.pt-spin{width:46px;height:46px;border-radius:50%;border:4px solid rgba(255,255,255,.12);border-top-color:var(--pt);animation:ptSpin .9s linear infinite;justify-self:center}
+@keyframes ptSpin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -372,227 +405,40 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     </div>
   </section>
 
-      <section id="tab-party">
-    <div class="party-wrap">
-
-      <!-- visionOS Horizontal Filter Pills (Only Party Games) -->
-      <div class="party-filter-bar" id="partyFilterBar">
-        <button class="party-filter-chip on" data-filter="all">Tüm Oyunlar</button>
-        <button class="party-filter-chip" data-filter="card-quiz">CineQuiz</button>
-        <button class="party-filter-chip" data-filter="card-roulette">CineRoulette</button>
-        <button class="party-filter-chip" data-filter="card-sessiz">CineSessiz</button>
-        <button class="party-filter-chip" data-filter="card-snake">SnakePhile</button>
+  <section id="tab-party">
+    <div class="pt">
+      <div class="pt-join glass" id="ptJoin" hidden>
+        <div class="pt-eyebrow">CineParty</div>
+        <h3 class="pt-h">Adın ne?</h3>
+        <p class="pt-sub">TV'deki skor tablosunda bu isim görünecek.</p>
+        <div class="pt-row"><input id="ptName" maxlength="20" autocomplete="nickname" enterkeyhint="go" placeholder="Adın"><button class="pt-btn" id="ptJoinBtn">Katıl</button></div>
       </div>
 
-      <!-- Live Room Multi-Phone Lobby HUD -->
-      <div class="party-lobby-hud">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="live-pulse"></span>
-            <span style="font-size:13px;font-weight:700;color:#fff" id="lobbyCountText">Salonda 1 Telefon Bağlı</span>
-          </div>
-          <span class="party-badge" id="lobbyMyBadge" style="background:rgba(16,185,129,0.18);color:#6ee7b7;border-color:rgba(16,185,129,0.4)">Çevrimiçi</span>
-        </div>
-        <div class="party-list" id="lobbyPhonesList">
-          <span class="party-pill" style="border-color:rgba(16,185,129,0.5)"><b id="lobbyMyName">Alptuğ'un iPhone'u</b> (Bu Cihaz)</span>
+      <div id="ptLobby" hidden>
+        <div class="pt-me"><span class="pt-dot" id="ptMeDot"></span><b id="ptMeName"></b><button class="pt-link" id="ptRename">Değiştir</button></div>
+        <div class="pt-games">
+          <button class="pt-game" data-game="quiz"><b>Cine<span style="color:#8b5cf6">Quiz</span></b><small>Süreli bilmece · kazanan filmi seçer</small></button>
+          <button class="pt-game" data-game="roulette"><b>Cine<span style="color:#38bdf8">Roulette</span></b><small>Altı film, tek kurşun</small></button>
+          <button class="pt-game" data-game="sessiz"><b>Cine<span style="color:#f59e0b">Sessiz</span></b><small>Sinema tabusu · süresiz</small></button>
+          <button class="pt-game" data-game="duel"><b>Cine<span style="color:#ef4444">Duel</span></b><small>Telefon nişangâh olur</small></button>
+          <button class="pt-game" data-game="snake"><b>Snake<span style="color:#10b981">Phile</span></b><small>TV'de sinefil yılan</small></button>
         </div>
       </div>
 
-      <!-- 1. CineQuiz: Multi-User Trivia Arena -->
-      <div class="party-card glass" id="card-quiz">
-        <h3><b>Cine<span style="color:#8b5cf6">Quiz</span></b> (10 Soru & Gamze AI Canlı Yarışma)</h3>
-        <p>Aynı anda birden fazla telefonla bağlanın! Ekrana gelen aktör portresi veya ikonik sahneyi 10 saniye içinde ilk bilen puanı kapar. Kazanan bu akşam hangi filmin izleneceğini seçer!</p>
-        
-        <div class="party-guide-toggle" onclick="toggleGuide('guide-quiz')">ℹ <b>Nasıl Oynanır?</b> (TV & Telefon Bilmecesi)</div>
-        <div class="party-guide-box" id="guide-quiz" hidden>
-          <b>Nasıl Oynanır:</b><br>
-          • TV ekranında TMDB fotoğraflı 10 soru ve 10 saniye geri sayım başlar.<br>
-          • Salondaki herkes telefonundan A, B, C, D seçeneklerine veya serbest metin kutusuna cevabını girer.<br>
-          • Süre bitince tüm oyuncuların cevapları TV'de açılır; doğru bilenler +10 puan kazanır.<br>
-          • 10 soru sonunda en çok puan toplayan <b>Şampiyon</b>, TV'de açılacak gece filmini seçer!
+      <div id="ptStage" hidden>
+        <div class="pt-top">
+          <b class="pt-word" id="ptWord"></b>
+          <span class="pt-chip" id="ptPhase"></span>
+          <button class="pt-link" id="ptLeave">Oyunlar</button>
         </div>
-
-        <div id="quizPlayerSetup" class="party-input-row">
-          <input type="text" id="quizPlayerName" placeholder="Yarışmacı Adınız (Örn: Alptuğ)" maxlength="32">
-          <button class="btn" id="quizJoinBtn" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);padding:0 16px;font-size:13px">Kaydet</button>
-        </div>
-
-        <div id="quizInactiveView" style="margin-top:10px">
-          <button class="btn" id="quizStartBtn" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);width:100%">TV'de CineQuiz'i Başlat</button>
-        </div>
-
-        <div id="quizActiveView" hidden style="margin-top:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span class="party-badge" id="quizQIndex" style="background:rgba(139,92,246,.2);color:#c4b5fd;border-color:rgba(139,92,246,.4)">Soru 1 / 10</span>
-            <span style="font-size:13px;font-weight:700;color:#ef4444" id="quizTimerText">10s</span>
-          </div>
-          <div class="quiz-timer-wrap"><div class="quiz-timer-bar" id="quizTimerBar"></div></div>
-          <div id="quizClueBox" style="background:rgba(0,0,0,.3);border-radius:14px;padding:12px;margin:10px 0;border:1px solid var(--edge)">
-            <img id="quizImg" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;margin-bottom:8px" alt="" hidden>
-            <div id="quizQuestionText" style="font-size:14px;font-weight:600;margin-bottom:4px"></div>
-            <div id="quizHintText" style="font-size:12px;color:var(--dim)"></div>
-          </div>
-          <div id="quizOptionsGrid" style="display:none;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0"></div>
-          <div class="party-input-row" id="quizAnswerRow">
-            <input type="text" id="quizAnswerInput" placeholder="Cevabınızı buraya yazın..." autocomplete="off">
-            <button class="btn" id="quizAnswerBtn" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);padding:0 16px">Gönder</button>
-          </div>
-          <div id="quizFeedback" style="font-size:13px;color:#10b981;font-weight:600;margin:6px 0;display:none"></div>
-          
-          <!-- Şampiyon Film Başlatma Paneli -->
-          <div id="quizChampionBox" style="display:none;margin-top:12px;background:rgba(139,92,246,0.15);padding:14px;border-radius:14px;border:1px solid #8b5cf6">
-            <div style="font-weight:700;color:#c4b5fd;margin-bottom:6px">👑 ŞAMPİYON! Bu Akşam Salonda Hangi Filmi İzleyelim?</div>
-            <div class="party-input-row">
-              <input type="text" id="championMovieInput" placeholder="Film Adı (Örn: Interstellar)">
-              <button class="btn" id="championLaunchBtn" style="background:#8b5cf6;padding:0 14px">TV'de Aç</button>
-            </div>
-          </div>
-
-          <div id="quizLeaderboard" style="margin-top:12px;font-size:12px;color:var(--dim)"></div>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button class="btn ghost" id="quizGamzeBtn" style="flex:1;font-size:12px">Gamze AI Yeni Soru</button>
-            <button class="btn ghost" id="quizStopBtn" style="flex:1;font-size:12px">Yarışmayı Bitir</button>
-          </div>
-        </div>
+        <div id="ptBody"></div>
+        <div class="pt-board glass" id="ptBoard"></div>
       </div>
 
-      <!-- 2. CineRoulette: 3D Revolver Göbeği Film Seçici -->
-      <div class="party-card glass" id="card-roulette">
-        <h3><b>Cine<span style="color:#38bdf8">Roulette</span></b> (3D Revolver & Gamze Tema)</h3>
-        <p>Herkes kendi telefonundan bu akşam izlemek istediği bir filmi fırlatsın. Rus ruleti tansiyonunda her tetiğe basışta ya KLİK ya GÜM!</p>
-        
-        <div class="party-guide-toggle" onclick="toggleGuide('guide-roulette')">ℹ <b>Nasıl Oynanır?</b> (3D Revolver Rulet)</div>
-        <div class="party-guide-box" id="guide-roulette" hidden>
-          <b>Nasıl Oynanır:</b><br>
-          • Herkes kendi telefonundan izlemek istediği bir filmi hazneye fırlatır ya da Gamze temalarından birini seçer.<br>
-          • 6 gözlü revolver tamburunda her gözde bir film afişi yer alır.<br>
-          • Sırası gelen oyuncu tetiği çeker; <b>KLİK</b> gelirse sıra geçer, <b>GÜM</b> patlarsa canlı mermideki film TV'de otomatik açılır!
-        </div>
-
-        <div class="roulette-box">
-          <canvas id="rouletteCanvas" width="320" height="320"></canvas>
-        </div>
-        <div id="rouletteWinnerBanner" class="roulette-winner-card" hidden>
-          <div class="win-tag">BU AKŞAMIN SEÇİMİ</div>
-          <div id="rouletteWinnerTitle" class="win-title">Taxi Driver</div>
-          <div id="rouletteWinnerUser" class="win-user">Öneren: Alptuğ'un iPhone'u</div>
-          <button class="btn" id="rouletteLaunchTvBtn" style="background:linear-gradient(135deg,#38bdf8,#0284c7);width:100%;margin-top:8px">Şimdi TV'de Başlat</button>
-        </div>
-
-        <!-- 10s Tension Bar -->
-        <div class="quiz-timer-wrap"><div class="quiz-timer-bar" id="rouletteTimerBar" style="background:#38bdf8;width:100%"></div></div>
-
-        <button class="btn" id="rTriggerBtn" style="background:linear-gradient(135deg,#38bdf8,#0284c7);width:100%;margin-bottom:8px">Tetiği Çek (KLİK mi GÜM mü?)</button>
-
-        <div class="party-input-row" style="margin-top:12px">
-          <input type="text" id="rouletteInput" placeholder="Film ya da Dizi Adı (Örn: Taxi Driver)">
-          <button class="btn" id="rouletteSendBtn" style="background:linear-gradient(135deg,#38bdf8,#0284c7);padding:0 14px">Fırlat</button>
-        </div>
-        <div style="font-size:12px;color:var(--dim);margin:6px 0">Tambur Haznesindeki Öneriler:</div>
-        <div class="party-list" id="rouletteList"><span style="color:var(--faint);font-size:12px">Henüz öneri eklenmedi</span></div>
-        <div style="font-size:12px;color:var(--dim);margin:8px 0 4px">Gamze AI Tematik Seçki:</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-          <button class="btn ghost" id="rThemeNoir" style="font-size:11px;padding:4px 8px">90'lar Suç</button>
-          <button class="btn ghost" id="rThemeScifi" style="font-size:11px;padding:4px 8px">Kozmik Bilim Kurgu</button>
-          <button class="btn ghost" id="rThemeCult" style="font-size:11px;padding:4px 8px">Kült Klasikler</button>
-          <button class="btn ghost" id="rThemeTr" style="font-size:11px;padding:4px 8px">Festival Sineması</button>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn" id="rouletteSpinBtn" style="flex:2;background:linear-gradient(135deg,#38bdf8,#0284c7)">Tamburu Döndür</button>
-          <button class="btn ghost" id="rouletteClearBtn" style="flex:1">Temizle</button>
-        </div>
+      <div id="ptPad" hidden>
+        <div class="pt-top"><b class="pt-word" id="ptPadWord"></b><button class="pt-link" id="ptPadBack">Oyunlar</button></div>
+        <div id="ptPadBody"></div>
       </div>
-
-      <!-- 3. CineSessiz: Sinema & Dizi Sessiz Sinema / Tabu -->
-      <div class="party-card glass" id="card-sessiz">
-        <h3><b>Cine<span style="color:#f59e0b">Sessiz</span></b> (Sinema & Dizi Tabu)</h3>
-        <p>Zaman veya soru sınırı yok! Bir kişi telefonundaki gizli sinema kartını anlatır, salondakiler telefonlarından tahminlerini yazar!</p>
-        
-        <div class="party-guide-toggle" onclick="toggleGuide('guide-sessiz')">ℹ <b>Nasıl Oynanır?</b> (Sinema & Dizi Sessiz Sinema)</div>
-        <div class="party-guide-box" id="guide-sessiz" hidden>
-          <b>Nasıl Oynanır:</b><br>
-          • Bir kişi <b>Anlatıcı</b> olur; gizli kartı ve yasaklı kelimeleri yalnızca kendi telefonunda görür.<br>
-          • Salondakiler telefonlarından tahminlerini yazar; canlı akışta kimse görmeden doğru cevap aranır.<br>
-          • Doğru bilen hem kendini hem anlatıcıyı +10 puanla ödüllendirir. Zaman sınırı yoktur!
-        </div>
-
-        <div id="sessizInactiveView">
-          <button class="btn" id="sessizStartBtn" style="background:linear-gradient(135deg,#f59e0b,#d97706);width:100%">TV'de CineSessiz'i Başlat</button>
-        </div>
-
-        <div id="sessizActiveView" hidden style="margin-top:12px">
-          <!-- Teller Secret Vault -->
-          <div id="sessizTellerBox" style="display:none;background:rgba(245,158,11,0.12);border:1px solid #f59e0b;border-radius:14px;padding:14px;margin-bottom:12px">
-            <div style="font-size:12px;font-weight:700;color:#f59e0b">ANLATICI SENSİN (GİZLİ KART):</div>
-            <div id="sessizSecretTitle" style="font-size:22px;font-weight:800;color:#fff;margin:4px 0">Fight Club</div>
-            <div id="sessizSecretCategory" style="font-size:13px;color:#fde68a;margin-bottom:10px">Kült Film (1999)</div>
-            <div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:4px">YASAKLI KELİMELER (ASLA SÖYLEME!):</div>
-            <div id="sessizTabooList" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
-            <div style="display:flex;gap:8px">
-              <button class="btn" id="sessizCorrectBtn" style="flex:2;background:#10b981">Bildiler (+10p)</button>
-              <button class="btn ghost" id="sessizPassBtn" style="flex:1">Pas</button>
-            </div>
-          </div>
-
-          <!-- Guesser View -->
-          <div id="sessizGuesserBox" style="display:none;background:rgba(0,0,0,0.3);border:1px solid var(--edge);border-radius:14px;padding:12px;margin-bottom:12px">
-            <div id="sessizTellerNotice" style="font-size:13px;font-weight:700;color:#f59e0b;margin-bottom:4px">Anlatıcı: Alptuğ'un iPhone'u</div>
-            <div id="sessizCategoryHint" style="font-size:12px;color:var(--dim);margin-bottom:10px">Kategori: Kült Film (1999)</div>
-            <div class="party-input-row">
-              <input type="text" id="sessizGuessInput" placeholder="Tahmininizi buraya yazın..." autocomplete="off">
-              <button class="btn" id="sessizGuessBtn" style="background:#f59e0b;padding:0 16px">Fırlat</button>
-            </div>
-          </div>
-
-          <div style="font-size:12px;color:var(--dim);margin:6px 0">Canlı Tahmin Akışı:</div>
-          <div id="sessizFeedList" style="max-height:140px;overflow-y:auto;margin-bottom:10px"></div>
-          <div id="sessizLeaderboard" style="font-size:12px;color:var(--dim)"></div>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button class="btn ghost" id="sessizGamzeBtn" style="flex:1;font-size:12px">Gamze AI Yeni Kartlar</button>
-            <button class="btn ghost" id="sessizStopBtn" style="flex:1;font-size:12px">Oyunu Bitir</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 4. SnakePhile: Fullscreen 3D Gerçekçi Yılan -->
-      <div class="party-card glass snake-wrap" id="card-snake">
-        <h3><b>Snake<span style="color:#10b981">Phile</span></b> (3D Gerçekçi Yılan)</h3>
-        <p>Telefonunuzu sağa-sola, öne-arkaya eğerek yönetin! 3D gerçekçi yılan, salondaki gerçek film afişlerini yedikçe uzar.</p>
-        
-        <div class="party-guide-toggle" onclick="toggleGuide('guide-snake')">ℹ <b>Nasıl Oynanır?</b> (3D Gerçekçi Yılan)</div>
-        <div class="party-guide-box" id="guide-snake" hidden>
-          <b>Nasıl Oynanır:</b><br>
-          • Gerçekçi 3D yılan tahtada hareket eder; telefonun jiroskopuyla (eğerek) veya yön tuşlarıyla yönlendirilir.<br>
-          • Yılan, salondaki gerçek DVD-boxless film afişlerini yedikçe uzar ve her film hakkında sahne bilgisi sunar.<br>
-          • Yılan kendi kuyruğunu ısırdığında yiyemediği son afişin filmi TV'de açılmaya hazır hale gelir!
-        </div>
-
-        <div class="snake-hud-bar">
-          <span>KARE (SKOR): <b id="snakeScore" style="color:#10b981">0</b></span>
-          <span>REKOR: <b id="snakeBest" style="color:var(--accent2)">0</b></span>
-        </div>
-        <div class="snake-board">
-          <canvas id="snakeCanvas" width="340" height="340"></canvas>
-        </div>
-        <div id="snakeFilmTrivia" style="margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);font-size:12px;color:#a7f3d0">
-          <b>Hedef: Interstellar (2014)</b> · Christopher Nolan · 8.7/10<br>
-          <span style="color:var(--dim);font-size:11px">Fizikçi Kip Thorne danışmanlığında modellenen gerçekçi karadelik simülasyonu.</span>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button class="btn" id="snakeStartBtn" style="flex:1;background:linear-gradient(135deg,#10b981,#059669)">Telefonda Oyna</button>
-          <button class="btn ghost" id="snakeGyroToggle" style="flex:1">Gyro: Açık</button>
-        </div>
-        <button class="btn" id="snakeTvLaunchBtn" style="width:100%;background:linear-gradient(135deg,#10b981,#047857);margin-top:8px">🎬 TV Ekranında Fullscreen 3D Oyna</button>
-        <div class="snake-controls">
-          <div></div>
-          <button class="snake-btn" id="snkUp">▲</button>
-          <div></div>
-          <button class="snake-btn" id="snkLeft">◀</button>
-          <button class="snake-btn" id="snkDown">▼</button>
-          <button class="snake-btn" id="snkRight">▶</button>
-        </div>
-      </div>
-
     </div>
   </section>
 
@@ -1827,1144 +1673,422 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register(RELAY ? "sw.js" : "/sw.js").catch(() => {});
 
-    // CineParty: Living Room Interactive Party Manager
-  let partyPollTimer = null;
-  let partyPlayerId = localStorage.getItem("cinetv.party.id");
-  if (!partyPlayerId) {
-    partyPlayerId = "p_" + Math.random().toString(36).substr(2, 9);
-    try { localStorage.setItem("cinetv.party.id", partyPlayerId); } catch (e) {}
-  }
+  // ---- CineParty: the phone half. The TV draws the shared stage; each phone draws its own player's
+  // screen from its own view of the room (a Sessiz card reaches only its teller), long-polling for changes.
+  const PT_COLORS = {quiz: "#8b5cf6", roulette: "#38bdf8", sessiz: "#f59e0b", duel: "#ef4444", snake: "#10b981"};
+  const PT_WORD = {quiz: "Quiz", roulette: "Roulette", sessiz: "Sessiz", duel: "Duel", snake: "Phile"};
+  let ptId = null, ptName = "";
+  try {
+    ptId = localStorage.getItem("cinetv.party.id");
+    if (!ptId) { ptId = "p" + Math.random().toString(36).slice(2, 11); localStorage.setItem("cinetv.party.id", ptId); }
+    ptName = localStorage.getItem("cinetv.party.name") || "";
+  } catch (e) { ptId = ptId || "p" + Math.random().toString(36).slice(2, 11); }
+  let ptOn = false, ptV = 0, ptSt = null, ptKey = "", ptEvt = -1, ptPad = "", ptBusy = false;
+  const ptBuzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} };
 
-  // Pure Web Audio Synthesizer for tactile game feedback
-  const playPartySound = type => {
+  // Sounds: the TV's own sound bank when reachable, so phones and TV sound alike.
+  const ptAudio = {ctx: null, buf: {}};
+  const ptUnlock = () => {
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      if (!playPartySound.ctx) playPartySound.ctx = new AudioCtx();
-      const actx = playPartySound.ctx;
-      if (actx.state === "suspended") actx.resume();
-      const osc = actx.createOscillator();
-      const gain = actx.createGain();
-      osc.connect(gain);
-      gain.connect(actx.destination);
-      const now = actx.currentTime;
-      if (type === "click") {
-        osc.frequency.setValueAtTime(580, now);
-        osc.frequency.exponentialRampToValueAtTime(280, now + 0.05);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-        osc.start(now); osc.stop(now + 0.05);
-      } else if (type === "correct") {
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(523.25, now);
-        osc.frequency.setValueAtTime(659.25, now + 0.09);
-        osc.frequency.setValueAtTime(783.99, now + 0.18);
-        gain.gain.setValueAtTime(0.24, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-        osc.start(now); osc.stop(now + 0.35);
-      } else if (type === "tick") {
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(750, now);
-        gain.gain.setValueAtTime(0.12, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.03);
-        osc.start(now); osc.stop(now + 0.03);
-      } else if (type === "bang") {
-        osc.type = "sawtooth";
-        osc.frequency.setValueAtTime(160, now);
-        osc.frequency.exponentialRampToValueAtTime(36, now + 0.4);
-        gain.gain.setValueAtTime(0.42, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-        osc.start(now); osc.stop(now + 0.4);
+      const A = window.AudioContext || window.webkitAudioContext;
+      if (!A) return;
+      if (!ptAudio.ctx) ptAudio.ctx = new A();
+      if (ptAudio.ctx.state === "suspended") ptAudio.ctx.resume();
+      if (!RELAY && !ptAudio.loaded) {
+        ptAudio.loaded = true;
+        ["join", "count", "heart", "spin", "hammer", "dry", "bang", "correct", "wrong", "reveal", "win", "whoosh", "flip", "pop", "riser", "chime", "click"].forEach(n =>
+          fetch("/sfx/" + n + ".wav").then(r => r.ok ? r.arrayBuffer() : null).then(b => b && ptAudio.ctx.decodeAudioData(b, d => ptAudio.buf[n] = d)).catch(() => {}));
       }
     } catch (e) {}
   };
-
-  // Expandable "Nasıl Oynanır?" Guides
-  window.toggleGuide = id => {
-    const el = $(id);
-    if (el) {
-      el.hidden = !el.hidden;
-      playPartySound("click");
-    }
-  };
-
-  // Turkish Device Naming with Exact Possessive Apostrophe
-  function detectFriendlyDeviceName(customBase) {
-    const ua = navigator.userAgent || "";
-    let base = customBase || localStorage.getItem("cinetv.party.base_name") || "";
-    if (!base) base = "Alptuğ";
-
-    let device = "Telefonu";
-    if (/iPhone/i.test(ua)) device = "iPhone'u";
-    else if (/iPad/i.test(ua)) device = "iPad'i";
-    else if (/SM-|Samsung/i.test(ua)) device = "Galaxy'si";
-    else if (/Pixel/i.test(ua)) device = "Pixel'i";
-    else if (/Xiaomi|Redmi|POCO/i.test(ua)) device = "Xiaomi'si";
-    else if (/Huawei|Honor/i.test(ua)) device = "Huawei'si";
-    else if (/Android/i.test(ua)) device = "Android'i";
-    else if (/Macintosh/i.test(ua)) device = "Mac'i";
-
-    const trimmed = base.trim();
-    if (!trimmed) return "Misafir'in " + device;
-
-    // Apply Turkish possessive apostrophe rule
-    const vowels = "aeıioöuü";
-    let lastVowel = "e";
-    for (let i = trimmed.length - 1; i >= 0; i--) {
-      const c = trimmed[i].toLowerCase();
-      if (vowels.includes(c)) {
-        lastVowel = c;
-        break;
-      }
-    }
-    const endsWithVowel = vowels.includes(trimmed.slice(-1).toLowerCase());
-    let suffix;
-    if (endsWithVowel) {
-      if (["a", "ı"].includes(lastVowel)) suffix = "'nın";
-      else if (["e", "i"].includes(lastVowel)) suffix = "'nin";
-      else if (["o", "u"].includes(lastVowel)) suffix = "'nun";
-      else suffix = "'nün";
-    } else {
-      if (["a", "ı"].includes(lastVowel)) suffix = "'ın";
-      else if (["e", "i"].includes(lastVowel)) suffix = "'in";
-      else if (["o", "u"].includes(lastVowel)) suffix = "'un";
-      else suffix = "'ün";
-    }
-
-    return trimmed + suffix + " " + device;
-  }
-
-  let partyPlayerName = localStorage.getItem("cinetv.party.name") || detectFriendlyDeviceName();
-  if ($("quizPlayerName")) $("quizPlayerName").value = partyPlayerName;
-  if ($("lobbyMyName")) $("lobbyMyName").textContent = partyPlayerName;
-
-  const joinParty = async (forcedName) => {
-    let name = forcedName;
-    if (!name) {
-      const nameInput = $("quizPlayerName");
-      if (nameInput && nameInput.value.trim()) {
-        const val = nameInput.value.trim();
-        name = val.includes("'") ? val : detectFriendlyDeviceName(val);
-      } else {
-        name = partyPlayerName;
-      }
-    }
-    partyPlayerName = name;
+  document.addEventListener("pointerdown", ptUnlock, {passive: true});
+  const ptSfx = name => {
+    const a = ptAudio.ctx;
+    if (!a) return;
     try {
-      localStorage.setItem("cinetv.party.name", name);
-      if ($("quizPlayerName")) $("quizPlayerName").value = name;
-      if ($("lobbyMyName")) $("lobbyMyName").textContent = name;
-    } catch (e) {}
-    try {
-      const st = await api("party/join", { id: partyPlayerId, name });
-      renderPartyState(st);
-      toast("Salona Katıldınız: " + name);
+      const g = a.createGain(); g.connect(a.destination);
+      const b = ptAudio.buf[name];
+      if (b) { const s = a.createBufferSource(); s.buffer = b; s.connect(g); g.gain.value = .85; s.start(); return; }
+      // Offline from the TV (relay page): a soft synthesized stand-in.
+      const o = a.createOscillator(), now = a.currentTime;
+      o.connect(g);
+      const f = {bang: 70, dry: 2600, heart: 55, correct: 880, wrong: 160, win: 523, join: 660}[name] || 440;
+      o.type = name === "bang" ? "sawtooth" : "sine";
+      o.frequency.setValueAtTime(f, now);
+      if (name === "bang") o.frequency.exponentialRampToValueAtTime(30, now + .5);
+      g.gain.setValueAtTime(.25, now); g.gain.exponentialRampToValueAtTime(.001, now + (name === "bang" ? .6 : .18));
+      o.start(now); o.stop(now + .7);
     } catch (e) {}
   };
 
-  if ($("quizJoinBtn")) {
-    $("quizJoinBtn").onclick = () => {
-      playPartySound("click");
-      joinParty();
-    };
-  }
+  const ptShow = which => ["ptJoin", "ptLobby", "ptStage", "ptPad"].forEach(id => $(id).hidden = id !== which);
+  const ptWordHtml = game => (game === "snake" ? "Snake" : "Cine") + `<span style="color:${PT_COLORS[game]}">${PT_WORD[game]}</span>`;
 
-  // Filter chips
-  const filterChips = document.querySelectorAll(".party-filter-chip");
-  filterChips.forEach(chip => {
-    chip.onclick = () => {
-      filterChips.forEach(c => c.classList.remove("on"));
-      chip.classList.add("on");
-      playPartySound("click");
-      const targetId = chip.dataset.filter;
-      if (targetId === "all") {
-        document.querySelectorAll(".party-card").forEach(c => c.style.display = "");
-      } else {
-        document.querySelectorAll(".party-card").forEach(c => {
-          c.style.display = (c.id === targetId) ? "" : "none";
-        });
-        const el = $(targetId);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    };
+  const ptJoin = async () => {
+    const n = ($("ptName").value || "").trim();
+    if (!n) { $("ptName").focus(); return; }
+    ptName = n.slice(0, 20);
+    try { localStorage.setItem("cinetv.party.name", ptName); } catch (e) {}
+    ptUnlock();
+    try { const st = await api("party/join", {id: ptId, name: ptName}); ptRender(st); } catch (e) { toast(t("offline")); }
+  };
+  $("ptJoinBtn").onclick = ptJoin;
+  $("ptName").onkeydown = e => { if (e.key === "Enter") ptJoin(); };
+  $("ptRename").onclick = () => { $("ptName").value = ptName; ptShow("ptJoin"); $("ptName").focus(); };
+  document.querySelectorAll(".pt-game").forEach(b => b.onclick = async () => {
+    const g = b.dataset.game;
+    ptUnlock(); ptBuzz(10);
+    try { await api("party/open", {game: g}); } catch (e) { toast(t("offline")); return; }
+    if (g === "duel" || g === "snake") ptOpenPad(g);
   });
+  $("ptLeave").onclick = () => api("party/close").catch(() => {});
+  $("ptPadBack").onclick = () => { ptPad = ""; ptStopAim(); press(4); ptRender(ptSt); };
 
-  if ($("quizStartBtn")) $("quizStartBtn").onclick = async () => {
-    playPartySound("click");
-    try {
-      await api("game/quiz/start");
-      toast("TV'de CineQuiz Başlatıldı!");
-      updatePartyState();
-    } catch (e) {}
+  const ptLoop = async () => {
+    while (ptOn) {
+      try {
+        const st = await api("party/state", {id: ptId, v: ptV});
+        if (!ptOn) break;
+        ptRender(st);
+      } catch (e) {
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
   };
-  if ($("quizStopBtn")) $("quizStopBtn").onclick = async () => {
-    playPartySound("click");
-    try {
-      await api("game/quiz/stop");
-      toast("CineQuiz Durduruldu");
-      updatePartyState();
-    } catch (e) {}
+  const startPartyPolling = () => {
+    if (ptOn) return;
+    ptOn = true;
+    if (!ptName) { ptShow("ptJoin"); setTimeout(() => $("ptName").focus(), 200); }
+    else api("party/join", {id: ptId, name: ptName}).then(ptRender).catch(() => {});
+    ptLoop();
+  };
+  const stopPartyPolling = () => { ptOn = false; };
+
+  const ptPlayer = id => (ptSt && ptSt.players || []).find(p => p.id === id);
+  const ptLeft = (ms, at) => Math.max(0, ms - (Date.now() - at));
+
+  function ptRender(st) {
+    if (!st || typeof st !== "object") return;
+    const at = Date.now();
+    st._at = at;
+    ptSt = st; ptV = st.v || 0;
+    // Sounds and haptics for what happened since the last look.
+    const ev = st.events || [];
+    const last = ev.length ? ev[ev.length - 1].n : 0;
+    if (ptEvt < 0) ptEvt = last;
+    ev.forEach(e => {
+      if (e.n <= ptEvt) return;
+      if (e.t === "sfx") {
+        ptSfx(e.v);
+        if (e.v === "bang") ptBuzz([60, 40, 200]);
+        else if (e.v === "dry") ptBuzz(30);
+        else if (e.v === "heart" && st.roulette && st.roulette.turn === ptId) ptBuzz([18, 120, 12]);
+      }
+    });
+    ptEvt = last;
+    if (!ptName || !st.me) { if (!ptName) ptShow("ptJoin"); return; }
+    $("ptMeName").textContent = st.me.name;
+    $("ptMeDot").style.background = st.me.color; $("ptMeDot").style.color = st.me.color;
+    if (ptPad) return ptShow("ptPad");
+    if (st.mode === "lobby") { ptKey = ""; return ptShow("ptLobby"); }
+    ptShow("ptStage");
+    const col = PT_COLORS[st.mode] || "#8b5cf6";
+    $("ptStage").style.setProperty("--pt", col);
+    $("ptWord").innerHTML = ptWordHtml(st.mode);
+    ptBoard(st);
+    if (st.mode === "quiz") ptQuiz(st);
+    else if (st.mode === "roulette") ptRoulette(st);
+    else if (st.mode === "sessiz") ptSessiz(st);
+  }
+
+  function ptBoard(st) {
+    const turn = st.roulette && st.phase === "turn" ? st.roulette.turn : st.sessiz && st.phase === "card" ? st.sessiz.teller : "";
+    $("ptBoard").innerHTML = (st.players || []).map(p =>
+      `<div class="${p.away ? "away" : ""}"><span class="pt-dot" style="background:${p.color};color:${p.color}"></span>${esc(p.name)}${p.id === st.host ? " ★" : ""}${p.id === turn ? " ·  <span style='color:var(--pt)'>sırada</span>" : ""}<b>${st.mode === "quiz" && st.phase === "question" ? (p.answered ? "✓" : "…") : p.score}</b></div>`).join("");
+  }
+
+  // Rebuild the body only when the screen itself changes, so typing and images are never interrupted.
+  const ptScreen = (key, html, after) => {
+    if (key === ptKey) return false;
+    ptKey = key;
+    $("ptBody").innerHTML = html;
+    if (after) after();
+    return true;
+  };
+  const ptHost = st => st.me && st.me.host;
+  const ptSpinner = text => `<div class="pt-card glass"><div class="pt-spin"></div><div class="pt-note">${esc(text)}</div></div>`;
+  const ptAct = async (path, params, okSfx) => {
+    if (ptBusy) return null;
+    ptBusy = true; ptBuzz(12);
+    try { const r = await api(path, Object.assign({id: ptId}, params || {})); if (okSfx) ptSfx(okSfx); return r; }
+    catch (e) { toast(t("offline")); return null; }
+    finally { ptBusy = false; }
   };
 
-  window.submitQuizAnswer = async (manualAnswer) => {
-    const inp = $("quizAnswerInput");
-    const ans = (typeof manualAnswer === "string" ? manualAnswer : (inp ? inp.value : "")).trim();
-    if (!ans) return;
-    playPartySound("click");
-    if (navigator.vibrate) navigator.vibrate(25);
-    try {
-      await api("game/quiz/answer", { id: partyPlayerId, answer: ans });
-      $("quizFeedback").style.display = "block";
-      $("quizFeedback").textContent = "✓ Cevabınız TV'ye iletildi: \"" + ans + "\"";
-      if (inp) inp.value = "";
-    } catch (e) {}
-  };
-
-  const loadRouletteTheme = async (theme) => {
-    playPartySound("click");
-    try {
-      const st = await api("party/roulette/theme", { theme });
-      renderPartyState(st);
-      toast("Gamze AI Tematik Seçki Revolvere Yüklendi!");
-    } catch (e) {}
-  };
-
-  if ($("rThemeNoir")) $("rThemeNoir").onclick = () => loadRouletteTheme("noir");
-  if ($("rThemeScifi")) $("rThemeScifi").onclick = () => loadRouletteTheme("scifi");
-  if ($("rThemeCult")) $("rThemeCult").onclick = () => loadRouletteTheme("cult");
-  if ($("rThemeTr")) $("rThemeTr").onclick = () => loadRouletteTheme("turkish");
-
-  if ($("quizAnswerBtn")) $("quizAnswerBtn").onclick = () => window.submitQuizAnswer();
-  if ($("quizAnswerInput")) {
-    $("quizAnswerInput").onkeydown = e => {
-      if (e.key === "Enter") window.submitQuizAnswer();
+  // A smooth countdown bar, driven by the phone's own clock.
+  let ptTimer = null;
+  const ptBar = (el, left, total, at) => {
+    if (ptTimer) cancelAnimationFrame(ptTimer);
+    const bar = el && el.querySelector("i");
+    if (!bar) return;
+    const tick = () => {
+      if (!document.body.contains(el)) return;
+      const l = ptLeft(left, at);
+      bar.style.transform = `scaleX(${Math.max(0, l / Math.max(1, total))})`;
+      el.classList.toggle("hot", l < 5000);
+      if (l > 0) ptTimer = requestAnimationFrame(tick);
     };
+    tick();
+  };
+
+  // ---- CineQuiz ----
+  function ptQuiz(st) {
+    const q = st.quiz || {};
+    $("ptPhase").textContent = st.phase === "question" || st.phase === "reveal" ? `Soru ${q.no} · ${ptClock(ptLeft(q.timeLeft, st._at))}` : st.phase === "finished" ? "Bitti" : "Hazırlık";
+    if (st.phase === "setup") {
+      const host = ptHost(st);
+      ptScreen("q-setup-" + host + q.minutes + q.seconds + st.status, `<div class="pt-card glass">
+        <div class="pt-h">Süreyi seçin</div>
+        <p class="pt-sub" style="margin:0">Süre bitene kadar en çok doğru bilen kazanır ve bu gecenin filmini seçer. Her doğru cevap 10 puan.</p>
+        <div class="pt-lbl">Oyun süresi</div>
+        <div class="pt-seg" id="qMin">${[3, 5, 10, 15].map(m => `<button data-v="${m}" class="${m === q.minutes ? "on" : ""}" ${host ? "" : "disabled"}>${m} dk</button>`).join("")}</div>
+        <div class="pt-lbl">Soru başına</div>
+        <div class="pt-seg" id="qSec">${[15, 20, 30].map(s => `<button data-v="${s}" class="${s === q.seconds ? "on" : ""}" ${host ? "" : "disabled"}>${s} sn</button>`).join("")}</div>
+        ${st.status ? `<div class="pt-note" style="color:#ff9f0a">${esc(st.status)}</div>` : ""}
+        ${host ? `<button class="pt-btn wide" id="qStart">Başlat</button>` : `<div class="pt-note">Ev sahibi başlatacak.</div>`}
+      </div>`, () => {
+        if (!host) return;
+        $("qMin").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: b.dataset.v, seconds: q.seconds}));
+        $("qSec").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: q.minutes, seconds: b.dataset.v}));
+        $("qStart").onclick = () => ptAct("party/quiz/start");
+      });
+      return;
+    }
+    if (st.phase === "loading") return ptScreen("q-load", ptSpinner(st.status || "Hazırlanıyor…"));
+    if (st.phase === "question") {
+      const opts = q.options || [];
+      const fresh = ptScreen("q-" + q.no + "-" + (q.mine ? "done" : "open"), `<div class="pt-card glass">
+        <div class="pt-bar" id="qBar"><i></i></div>
+        ${q.image ? `<img class="pt-pic ${q.shape === "tall" ? "tall" : ""}" src="${esc(q.image)}" alt="">` : ""}
+        ${q.caption ? `<div class="pt-cap">${esc(q.caption)}</div>` : ""}
+        <div class="pt-q">${esc(q.prompt)}</div>
+        ${q.mine ? `<div class="pt-res glass"><div class="pt-note">Cevabın kilitlendi</div><div class="pt-big" style="font-size:22px">${esc(q.mine)}</div><div class="pt-note">Herkes cevaplayınca TV'de açılır.</div></div>`
+          : opts.length ? `<div class="pt-opts">${opts.map((o, i) => `<button class="pt-opt" data-i="${i}"><i>${"ABCD"[i]}</i>${esc(o)}</button>`).join("")}</div>`
+          : `<div class="pt-row"><input id="qAns" autocomplete="off" enterkeyhint="send" placeholder="Film adı"><button class="pt-btn" id="qSend">Gönder</button></div>`}
+      </div>`, () => {
+        document.querySelectorAll(".pt-opt").forEach(b => b.onclick = async () => {
+          b.classList.add("sel");
+          await ptAct("party/quiz/answer", {answer: b.dataset.i}, "pop");
+        });
+        const send = async () => { const v = ($("qAns").value || "").trim(); if (v) await ptAct("party/quiz/answer", {answer: v}, "pop"); };
+        if ($("qSend")) { $("qSend").onclick = send; $("qAns").onkeydown = e => { if (e.key === "Enter") send(); }; setTimeout(() => $("qAns") && $("qAns").focus(), 250); }
+      });
+      if (fresh || !ptTimer) ptBar($("qBar"), q.left, q.total, st._at);
+      return;
+    }
+    if (st.phase === "reveal") {
+      const me = ptPlayer(ptId) || {};
+      const ok = !!me.correct;
+      if (ptScreen("q-r-" + q.no, `<div class="pt-res glass ${ok ? "ok" : "no"}">
+          <div class="pt-big">${ok ? "Doğru! +10" : me.answer ? "Olmadı" : "Süre doldu"}</div>
+          <div class="pt-note">Doğru cevap</div><div style="font-weight:700;font-size:17px">${esc(q.answer)}</div>
+        </div>${q.fact ? `<div class="pt-fact">${esc(q.fact)}</div>` : ""}`)) ptBuzz(ok ? [20, 40, 20] : 40);
+      return;
+    }
+    if (st.phase === "finished") {
+      const champ = q.champion === ptId || (!q.champion && ptHost(st));
+      ptScreen("q-f-" + champ + q.picked, champ && !q.picked ? `<div class="pt-res glass ok"><div class="pt-big">${q.champion ? "Şampiyonsun!" : "Filmi sen seç"}</div><div class="pt-note">Bu gecenin filmini seç; TV'de hemen açılır.</div></div>
+        <div class="pt-card glass"><div class="pt-row"><input id="fQ" placeholder="Film ara" enterkeyhint="search" autocomplete="off"><button class="pt-btn" id="fGo">Ara</button></div><div class="pt-results" id="fRes"></div></div>`
+        : `<div class="pt-res glass"><div class="pt-note">Bu gecenin şampiyonu</div><div class="pt-big">${esc(q.championName || "—")}</div><div class="pt-note">${q.picked ? "▶ " + esc(q.picked) + " açılıyor" : "Film seçiliyor…"}</div></div>
+        ${ptHost(st) ? `<button class="pt-btn wide ghost" id="qAgain">Yeniden oyna</button>` : ""}`, () => {
+        if ($("qAgain")) $("qAgain").onclick = () => ptAct("party/open", {game: "quiz"});
+        if ($("fGo")) ptFilmSearch($("fQ"), $("fGo"), $("fRes"), m => ptAct("party/pick", {title: m.title}, "win"));
+      });
+    }
+  }
+
+  // ---- CineRoulette ----
+  function ptRoulette(st) {
+    const r = st.roulette || {};
+    const ch = r.chambers || [];
+    const live = ch.filter(c => c.title && !c.out).length;
+    $("ptPhase").textContent = st.phase === "setup" ? "Hazneler" : st.phase === "finished" ? "Bang!" : live + " film kaldı";
+    const chambers = () => `<div class="pt-chambers">${ch.map((c, i) => `<div class="pt-ch ${i === r.aligned && st.phase !== "setup" ? "top" : ""} ${c.out ? "out" : ""}">
+        ${c.poster ? `<img src="${esc(c.poster)}" alt="" loading="lazy">` : c.title ? "" : "+"}${c.title ? `<span>${esc(c.title)}</span>` : ""}${c.owner ? `<em style="background:${(ptPlayer(c.owner) || {}).color || "#fff"}"></em>` : ""}</div>`).join("")}</div>`;
+    if (st.phase === "setup") {
+      const mine = ch.find(c => c.owner === ptId);
+      ptScreen("r-s-" + JSON.stringify(ch.map(c => c.title + c.poster)) + ptHost(st) + st.status, `<div class="pt-card glass">
+        <div class="pt-h">${mine ? "Filmin yüklendi" : "Filmini yükle"}</div>
+        <p class="pt-sub" style="margin:0">Tetik boş çıkarsa o haznedeki film elenir; kurşun hangi filmdeyse bu gece o izlenir. Her tur süre kısalır.</p>
+        <div class="pt-row"><input id="rQ" placeholder="${mine ? "Değiştir: film adı" : "Film adı"}" enterkeyhint="search" autocomplete="off"><button class="pt-btn" id="rGo">Ara</button></div>
+        <div class="pt-results" id="rRes"></div>
+        ${chambers()}
+        ${st.status ? `<div class="pt-note" style="color:#ff9f0a">${esc(st.status)}</div>` : ""}
+        <div class="pt-row"><input id="rMood" placeholder="Gamze'ye bir ruh hali söyle (isteğe bağlı)"><button class="pt-btn ghost" id="rFill">Gamze doldursun</button></div>
+        ${ptHost(st) ? `<button class="pt-btn wide" id="rStart">Tamburu kilitle ve başlat</button>` : `<div class="pt-note">Ev sahibi başlatacak.</div>`}
+      </div>`, () => {
+        ptFilmSearch($("rQ"), $("rGo"), $("rRes"), m => ptAct("party/roulette/load", {title: m.title, poster: m.poster || "", year: m.year || 0}, "hammer"));
+        $("rFill").onclick = () => ptAct("party/roulette/fill", {mood: $("rMood").value || ""}, "spin");
+        if ($("rStart")) $("rStart").onclick = () => ptAct("party/roulette/start");
+      });
+      return;
+    }
+    if (st.phase === "turn" || st.phase === "pulling") {
+      const mineTurn = r.turn === ptId;
+      const top = ch[r.aligned] || {};
+      const mineFilm = top.owner === ptId;
+      const fresh = ptScreen("r-t-" + r.aligned + mineTurn + st.phase + (st.me && r.spins), `<div class="pt-card glass" style="text-align:center">
+        <div class="pt-bar" id="rBar"><i></i></div>
+        <div class="pt-note">${mineTurn ? (mineFilm ? "Namluda <b style='color:#fff'>senin filmin</b> var. Riske girecek misin?" : "Namluda bu film var") : "Sıra " + esc(r.turnName || "kumandada")}</div>
+        ${top.poster ? `<img class="pt-pic tall" style="max-width:46%" src="${esc(top.poster)}" alt="">` : ""}
+        <div style="font-weight:800;font-size:18px">${esc(top.title || "")}</div>
+        ${mineTurn && st.phase === "turn" ? `<button class="pt-trigger" id="rPull">TETİK</button>
+          <button class="pt-btn ghost wide" id="rSpin" ${r.spins > 0 ? "" : "disabled"}>Tamburu çevir · ${r.spins} hak</button>`
+          : st.phase === "pulling" ? `<div class="pt-big">…</div>` : `<div class="pt-note">Kalbin de onunla atıyor.</div>`}
+      </div>${chambers()}`, () => {
+        if ($("rPull")) $("rPull").onclick = () => ptAct("party/roulette/pull");
+        if ($("rSpin")) $("rSpin").onclick = () => ptAct("party/roulette/spin");
+      });
+      if (st.phase === "turn" && (fresh || !ptTimer)) ptBar($("rBar"), r.left, r.total, st._at);
+      if ($("rPull")) $("rPull").classList.toggle("hot", ptLeft(r.left, st._at) < 4000);
+      return;
+    }
+    if (st.phase === "finished") {
+      const win = ch[r.aligned] || {};
+      ptScreen("r-f-" + win.title, `<div class="pt-res glass ok">
+        <div class="pt-note">Kurşun bu filmdeydi</div>
+        ${win.poster ? `<img class="pt-pic tall" style="max-width:56%" src="${esc(win.poster)}" alt="">` : ""}
+        <div class="pt-big">${esc(win.title || "")}</div>
+        <div class="pt-note">${win.ownerName ? esc(win.ownerName) + " yükledi" : ""}</div>
+      </div><button class="pt-btn wide" id="rPlay">TV'de izle</button>${ptHost(st) ? `<button class="pt-btn wide ghost" id="rAgain">Yeniden oyna</button>` : ""}`, () => {
+        $("rPlay").onclick = () => ptAct("party/roulette/play", {}, "chime");
+        if ($("rAgain")) $("rAgain").onclick = () => ptAct("party/open", {game: "roulette"});
+      });
+    }
+  }
+
+  // ---- CineSessiz ----
+  function ptSessiz(st) {
+    const z = st.sessiz || {};
+    $("ptPhase").textContent = z.no ? "Kart " + z.no : "Hazırlık";
+    if (st.phase === "setup") {
+      const n = (st.players || []).filter(p => !p.away).length;
+      return ptScreen("z-s-" + ptHost(st) + n, `<div class="pt-card glass">
+        <div class="pt-h">Sinema tabusu</div>
+        <p class="pt-sub" style="margin:0">Anlatıcı kartı yalnızca kendi telefonunda görür; kırmızı kelimeleri söylemeden anlatır. Diğerleri tahminlerini yazar. İlk doğru tahmin +10, anlatıcı +5. Süre ve soru sınırı yok.</p>
+        ${n < 2 ? `<div class="pt-note" style="color:#ff9f0a">En az iki telefon gerekli.</div>` : ""}
+        ${ptHost(st) ? `<button class="pt-btn wide" id="zStart" ${n < 2 ? "disabled" : ""}>Başlat</button>` : `<div class="pt-note">Ev sahibi başlatacak.</div>`}
+      </div>`, () => { if ($("zStart")) $("zStart").onclick = () => ptAct("party/sessiz/start"); });
+    }
+    if (st.phase === "loading") return ptScreen("z-l", ptSpinner(st.status || "Kartlar karılıyor…"));
+    const feed = `<div class="pt-feed" id="zFeed">${(z.feed || []).map(f => `<div class="${f.ok ? "ok" : ""}"><b>${esc(f.name)}</b> · ${esc(f.text)}</div>`).join("")}</div>`;
+    if (st.phase === "card") {
+      const s = z.secret;
+      if (s) {
+        ptScreen("z-t-" + z.no + z.hinted, `<div class="pt-secret glass">
+          <div class="pt-eyebrow" style="color:#fbbf24">Sadece sen görüyorsun · ${esc(z.typeName || "")}</div>
+          ${s.image ? `<img class="pt-pic tall" style="max-width:48%" src="${esc(s.image)}" alt="">` : ""}
+          <div class="pt-big">${esc(s.title)}</div>
+          ${s.year ? `<div class="pt-note" style="margin-top:-6px">${esc(s.year)}</div>` : ""}
+          <div class="pt-lbl" style="color:#ff6961">Söylemek yasak</div>
+          <div class="pt-taboo">${(s.taboo || []).map(w => `<span>${esc(w)}</span>`).join("")}</div>
+          <div class="pt-row"><button class="pt-btn ghost" id="zPass" style="flex:1">Pas</button><button class="pt-btn" id="zHint" style="flex:2" ${z.hinted ? "disabled" : ""}>${z.hinted ? "İpucu TV'de" : "Gamze ipucu versin"}</button></div>
+        </div>${feed}`, () => {
+          ptBuzz([30, 60, 30]);
+          $("zPass").onclick = () => ptAct("party/sessiz/pass", {}, "whoosh");
+          $("zHint").onclick = () => ptAct("party/sessiz/hint");
+        });
+      } else {
+        ptScreen("z-g-" + z.no, `<div class="pt-card glass">
+          <div class="pt-note">Anlatıcı <b style="color:#fff">${esc(z.tellerName || "")}</b> · ${esc(z.typeName || "")}</div>
+          <div class="pt-row"><input id="zG" autocomplete="off" enterkeyhint="send" placeholder="Tahminin"><button class="pt-btn" id="zSend">Gönder</button></div>
+          ${z.hint ? `<div class="pt-fact" id="zHintBox">${esc(z.hint)}</div>` : `<div id="zHintBox"></div>`}
+        </div>${feed}`, () => {
+          const send = async () => {
+            const v = ($("zG").value || "").trim();
+            if (!v) return;
+            const r = await ptAct("party/sessiz/guess", {guess: v});
+            if (r && r.correct) { ptSfx("correct"); ptBuzz([20, 40, 20]); } else { $("zG").value = ""; $("zG").focus(); }
+          };
+          $("zSend").onclick = send;
+          $("zG").onkeydown = e => { if (e.key === "Enter") send(); };
+        });
+        const hb = $("zHintBox");
+        if (hb && z.hint && !hb.textContent) { hb.className = "pt-fact"; hb.textContent = z.hint; }
+      }
+      const zf = $("zFeed");
+      if (zf) zf.outerHTML = feed;
+      return;
+    }
+    if (st.phase === "solved") {
+      ptScreen("z-ok-" + z.no, `<div class="pt-res glass ok">
+        <div class="pt-note">${esc(z.solvedBy)} bildi</div>
+        ${z.image ? `<img class="pt-pic tall" style="max-width:48%" src="${esc(z.image)}" alt="">` : ""}
+        <div class="pt-big">${esc(z.title)}</div></div>`);
+    }
+  }
+
+  // Shared: search TMDB through the TV and pick a film.
+  function ptFilmSearch(input, btn, out, onPick) {
+    const go = async () => {
+      const q = (input.value || "").trim();
+      if (!q) return;
+      out.innerHTML = `<div class="pt-spin" style="grid-column:1/-1"></div>`;
+      try {
+        const r = await api("catalog/search", {q, page: 1});
+        const list = (r && r.results || []).slice(0, 6);
+        out.innerHTML = list.length ? list.map((m, i) => `<button data-i="${i}"><img src="${esc(m.poster)}" alt="" loading="lazy">${esc(m.title)}${m.year ? " · " + m.year : ""}</button>`).join("")
+          : `<div class="pt-note" style="grid-column:1/-1">Bulunamadı</div>`;
+        out.querySelectorAll("button").forEach(b => b.onclick = () => { out.innerHTML = ""; input.value = ""; onPick(list[+b.dataset.i]); });
+      } catch (e) { out.innerHTML = ""; }
+    };
+    btn.onclick = go;
+    input.onkeydown = e => { if (e.key === "Enter") go(); };
+  }
+
+  const ptClock = ms => { const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+
+  // ---- CineDuel and SnakePhile: the phone becomes the controller ----
+  let ptAimOn = false, ptAimLast = 0, ptAimBase = null;
+  const ptOnAim = e => {
+    if (!ptAimOn || e.beta == null) return;
+    if (!ptAimBase) ptAimBase = {b: e.beta, g: e.gamma};
+    const now = Date.now();
+    if (now - ptAimLast < 33) return;
+    ptAimLast = now;
+    const x = Math.max(0, Math.min(1, .5 + (e.gamma - ptAimBase.g) / 50));
+    const y = Math.max(0, Math.min(1, .5 + (e.beta - ptAimBase.b) / 36));
+    api("game/duel/aim", {x: x.toFixed(3), y: y.toFixed(3)}).catch(() => {});
+  };
+  const ptStopAim = () => { ptAimOn = false; removeEventListener("deviceorientation", ptOnAim); };
+  function ptOpenPad(game) {
+    ptPad = game;
+    ptShow("ptPad");
+    $("ptPad").style.setProperty("--pt", PT_COLORS[game]);
+    $("ptPadWord").innerHTML = ptWordHtml(game);
+    if (game === "duel") {
+      $("ptPadBody").innerHTML = `<div class="pt-card glass" style="text-align:center">
+        <div class="pt-note">Telefonu TV'ye doğrult ve eğerek nişan al. Ortalamak için "Merkez".</div>
+        <button class="pt-trigger" id="dFire" style="background:radial-gradient(circle at 35% 30%,#fca5a5,#b91c1c 70%);box-shadow:0 0 0 10px rgba(239,68,68,.12),0 0 60px rgba(239,68,68,.45)">ATEŞ</button>
+        <button class="pt-btn ghost wide" id="dCenter">Merkez</button></div>`;
+      const startAim = async () => {
+        try { if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); } catch (e) {}
+        ptAimBase = null; ptAimOn = true; addEventListener("deviceorientation", ptOnAim);
+      };
+      $("dFire").onclick = () => { if (!ptAimOn) startAim(); ptBuzz(25); ptSfx("bang"); api("game/duel/shoot").catch(() => {}); };
+      $("dCenter").onclick = () => { ptAimBase = null; if (!ptAimOn) startAim(); };
+    } else {
+      $("ptPadBody").innerHTML = `<div class="pt-card glass"><div class="pt-note">Yılanı yönlendir. TV'de afişleri ye, kuyruğunu ısırma.</div>
+        <div class="pt-pad"><span></span><button data-k="19">▲</button><span></span><button data-k="21">◀</button><button data-k="23">●</button><button data-k="22">▶</button><span></span><button data-k="20">▼</button><span></span></div></div>`;
+      $("ptPadBody").querySelectorAll("[data-k]").forEach(b => b.onpointerdown = e => { e.preventDefault(); ptBuzz(8); press(b.dataset.k); });
+    }
   }
 
   const triggerCineSubHelper = async () => {
-    playPartySound("click");
-    if (navigator.vibrate) navigator.vibrate(25);
-    try {
-      await api("cinesub");
-      toast("CineSUB Kültürel Not Kartı TV'de Açıldı");
-    } catch (e) { toast(t("offline")); }
+    navigator.vibrate && navigator.vibrate(20);
+    try { await api("cinesub"); toast("CineSUB açıldı"); } catch (e) { toast(t("offline")); }
   };
   if ($("remoteCineSubBtn")) $("remoteCineSubBtn").onclick = triggerCineSubHelper;
-  if ($("partyCineSubBtn")) $("partyCineSubBtn").onclick = triggerCineSubHelper;
-
-  // CineRoulette: 3D Gunmetal Revolver Cylinder
-  const rCanvas = $("rouletteCanvas");
-  let rCtx = null;
-  const dpr = window.devicePixelRatio || 1;
-  const R_SIZE = 320;
-  if (rCanvas) {
-    rCtx = rCanvas.getContext("2d");
-    rCanvas.width = R_SIZE * dpr;
-    rCanvas.height = R_SIZE * dpr;
-    rCanvas.style.width = "100%";
-    rCanvas.style.maxWidth = R_SIZE + "px";
-  }
-
-  const SLICE_COLORS = [
-    "#881337", "#1e3a8a", "#065f46", "#b45309",
-    "#581c87", "#0f766e", "#991b1b", "#312e81"
-  ];
-
-  let rouletteItems = ["Taxi Driver", "Interstellar", "Pulp Fiction", "The Godfather", "Fight Club", "The Matrix", "Inception", "Whiplash"];
-  let rCurrentAngle = 0;
-  let rNeedleDeflection = 0;
-  let rIsSpinning = false;
-  let rAnimFrame = null;
-
-  const drawRouletteWheel = (angle, deflection) => {
-    if (!rCtx || !rCanvas) return;
-    const ctx = rCtx;
-    const w = rCanvas.width;
-    const h = rCanvas.height;
-    const cx = w / 2;
-    const cy = h / 2;
-    const radius = cx - (16 * dpr);
-
-    ctx.clearRect(0, 0, w, h);
-
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate((angle * Math.PI) / 180);
-
-    // 1. Brushed Gunmetal Steel Cylinder Base
-    const cylGrad = ctx.createRadialGradient(-radius * 0.25, -radius * 0.25, radius * 0.1, 0, 0, radius);
-    cylGrad.addColorStop(0, "#334155");
-    cylGrad.addColorStop(0.55, "#1e293b");
-    cylGrad.addColorStop(1, "#0f172a");
-    ctx.fillStyle = cylGrad;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Outer Chamfer Bevel
-    ctx.strokeStyle = "#64748b";
-    ctx.lineWidth = 2.5 * dpr;
-    ctx.stroke();
-
-    const count = Math.max(4, Math.min(8, rouletteItems.length));
-    const sliceAngle = (Math.PI * 2) / count;
-
-    // 2. Revolver Cylinder Outer Flutes
-    ctx.fillStyle = "rgba(0,0,0,0.32)";
-    const fluteR = radius * 0.22;
-    for (let i = 0; i < count; i++) {
-      const midAng = i * sliceAngle + sliceAngle / 2;
-      const fx = radius * Math.cos(midAng);
-      const fy = radius * Math.sin(midAng);
-      ctx.beginPath();
-      ctx.arc(fx, fy, fluteR, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // 3. Bullet Chambers with DVD-boxless Posters
-    const chDist = radius * 0.60;
-    const chR = radius * 0.26;
-    for (let i = 0; i < count; i++) {
-      const sa = i * sliceAngle;
-      const chX = chDist * Math.cos(sa);
-      const chY = chDist * Math.sin(sa);
-
-      // Bore Hole Deep Shadow
-      ctx.fillStyle = "#090d14";
-      ctx.beginPath();
-      ctx.arc(chX, chY, chR, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Brass Rim
-      ctx.strokeStyle = "#d97706";
-      ctx.lineWidth = 2 * dpr;
-      ctx.stroke();
-
-      // Movie Poster (DVD-boxless, 2:3 ratio)
-      const pw = chR * 1.25;
-      const ph = pw * 1.48;
-      const px = chX - pw / 2;
-      const py = chY - ph / 2;
-      const prad = pw * 0.085;
-
-      ctx.save();
-      ctx.fillStyle = SLICE_COLORS[i % SLICE_COLORS.length];
-      ctx.beginPath();
-      ctx.roundRect(px, py, pw, ph, prad);
-      ctx.fill();
-
-      // Glass sheen
-      ctx.fillStyle = "rgba(255,255,255,0.18)";
-      ctx.fill();
-
-      // Title
-      ctx.fillStyle = "#ffffff";
-      ctx.font = `700 ${8.5 * dpr}px Poppins, -apple-system, sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      let title = rouletteItems[i % rouletteItems.length] || "";
-      if (title.length > 8) title = title.substring(0, 7) + "…";
-      ctx.fillText(title, chX, chY);
-      ctx.restore();
-    }
-
-    // 4. Center Extractor Star Ratchet Gear
-    const ratR = radius * 0.22;
-    ctx.fillStyle = "#0f172a";
-    ctx.beginPath();
-    ctx.arc(0, 0, ratR, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "#38bdf8";
-    ctx.lineWidth = 1.8 * dpr;
-    ctx.stroke();
-
-    // Center Pin
-    ctx.fillStyle = "#94a3b8";
-    ctx.beginPath();
-    ctx.arc(0, 0, ratR * 0.45, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-
-    // 5. Top Hammer Sight Alignment Notch
-    ctx.save();
-    ctx.translate(cx, cy - radius);
-    ctx.beginPath();
-    const iw = 14 * dpr;
-    const ih = 22 * dpr;
-    ctx.moveTo(-iw / 2, -ih * 0.5);
-    ctx.lineTo(iw / 2, -ih * 0.5);
-    ctx.lineTo(0, ih * 0.5);
-    ctx.closePath();
-    ctx.fillStyle = "#38bdf8";
-    ctx.shadowColor = "rgba(56,189,248,0.8)";
-    ctx.shadowBlur = 8 * dpr;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(0, -ih * 0.35, 2.5 * dpr, 0, Math.PI * 2);
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
-    ctx.restore();
-  };
-
-  const spinRouletteMobile = (winningIndex, winTitle, winUser) => {
-    if (rIsSpinning) return;
-    rIsSpinning = true;
-    if ($("rouletteWinnerBanner")) $("rouletteWinnerBanner").hidden = true;
-
-    const count = Math.max(1, rouletteItems.length);
-    const sliceAngle = 360 / count;
-    const targetSliceCenter = winningIndex * sliceAngle + (sliceAngle / 2);
-    const endAngle = 360 * 6 + (270 - targetSliceCenter);
-
-    const startAngle = rCurrentAngle % 360;
-    const totalDelta = endAngle - startAngle;
-    const startTime = performance.now();
-    const duration = 4400;
-    let lastPeg = startAngle;
-
-    const easeOutCubic = t => 1 - Math.pow(1 - t, 3.2);
-
-    const animateSpin = now => {
-      const elapsed = now - startTime;
-      const frac = Math.min(1, elapsed / duration);
-      const eased = easeOutCubic(frac);
-
-      rCurrentAngle = startAngle + totalDelta * eased;
-
-      const degPassed = rCurrentAngle - lastPeg;
-      if (degPassed >= sliceAngle) {
-        lastPeg = rCurrentAngle;
-        rNeedleDeflection = -12 * (1 - frac);
-        playPartySound("tick");
-        if (navigator.vibrate) navigator.vibrate(8);
-      } else {
-        rNeedleDeflection *= 0.86;
-      }
-
-      drawRouletteWheel(rCurrentAngle, rNeedleDeflection);
-
-      if (frac < 1) {
-        rAnimFrame = requestAnimationFrame(animateSpin);
-      } else {
-        rIsSpinning = false;
-        rNeedleDeflection = 0;
-        drawRouletteWheel(rCurrentAngle, 0);
-        playPartySound("correct");
-        if (navigator.vibrate) navigator.vibrate([30, 40, 60]);
-        if ($("rouletteWinnerBanner")) {
-          if ($("rouletteWinnerTitle")) $("rouletteWinnerTitle").textContent = winTitle || rouletteItems[winningIndex] || "";
-          if ($("rouletteWinnerUser")) $("rouletteWinnerUser").textContent = winUser ? ("Öneren: " + winUser) : "CineTV Seçimi";
-          $("rouletteWinnerBanner").hidden = false;
-        }
-      }
-    };
-
-    if (rAnimFrame) cancelAnimationFrame(rAnimFrame);
-    rAnimFrame = requestAnimationFrame(animateSpin);
-  };
-
-  if ($("rouletteSendBtn")) {
-    $("rouletteSendBtn").onclick = async () => {
-      const inp = $("rouletteInput");
-      const title = inp ? inp.value.trim() : "";
-      if (!title) return;
-      playPartySound("click");
-      try {
-        await api("party/suggest", { title, user: partyPlayerName || "Misafir" });
-        toast("'" + title + "' TV Ruletine Fırlatıldı!");
-        if (inp) inp.value = "";
-        updatePartyState();
-      } catch (e) { toast(t("offline")); }
-    };
-  }
-
-  if ($("rouletteSpinBtn")) {
-    $("rouletteSpinBtn").onclick = async () => {
-      playPartySound("click");
-      try {
-        const win = await api("party/roulette/spin");
-        if (win && win.title) {
-          toast("Kazanan: " + win.title);
-          let winIdx = rouletteItems.findIndex(it => it.toLowerCase() === win.title.toLowerCase());
-          if (winIdx < 0) {
-            rouletteItems.push(win.title);
-            winIdx = rouletteItems.length - 1;
-          }
-          spinRouletteMobile(winIdx, win.title, win.user);
-        }
-        updatePartyState();
-      } catch (e) { toast(t("offline")); }
-    };
-  }
-
-  if (rCanvas) {
-    rCanvas.onclick = () => {
-      if (!rIsSpinning && $("rouletteSpinBtn")) $("rouletteSpinBtn").click();
-    };
-  }
-
-  if ($("rouletteClearBtn")) {
-    $("rouletteClearBtn").onclick = async () => {
-      playPartySound("click");
-      try {
-        await api("party/roulette/clear");
-        toast("Rulet Listesi Temizlendi");
-        rouletteItems = ["Taxi Driver", "Interstellar", "Pulp Fiction", "The Godfather", "Fight Club", "The Matrix", "Inception", "Whiplash"];
-        if ($("rouletteWinnerBanner")) $("rouletteWinnerBanner").hidden = true;
-        drawRouletteWheel(rCurrentAngle, 0);
-        updatePartyState();
-      } catch (e) { toast(t("offline")); }
-    };
-  }
-
-  if ($("quizGamzeBtn")) {
-    $("quizGamzeBtn").onclick = async () => {
-      playPartySound("click");
-      try {
-        await api("game/quiz/gemini");
-        toast("Gamze AI Yeni Soru Hazırlıyor...");
-        updatePartyState();
-      } catch (e) {}
-    };
-  }
-
-  if ($("championLaunchBtn")) {
-    $("championLaunchBtn").onclick = async () => {
-      const inp = $("championMovieInput");
-      const movie = inp && inp.value.trim() ? inp.value.trim() : "";
-      if (!movie) return;
-      playPartySound("click");
-      try {
-        await api("game/champion/launch", { movie });
-        toast("Şampiyonun Filmi TV'de Başlatılıyor: " + movie);
-      } catch (e) {}
-    };
-  }
-
-  // Russian Roulette Trigger
-  if ($("rTriggerBtn")) {
-    $("rTriggerBtn").onclick = async () => {
-      try {
-        const res = await api("party/roulette/trigger", { id: partyPlayerId });
-        if (res && res.result === "BANG") {
-          playPartySound("bang");
-          if (navigator.vibrate) navigator.vibrate([80, 50, 120]);
-          toast("GÜM! Kurşun patladı: " + res.movie);
-          if ($("rouletteWinnerBanner")) {
-            $("rouletteWinnerBanner").hidden = false;
-            if ($("rouletteWinnerTitle")) $("rouletteWinnerTitle").textContent = res.movie;
-            if ($("rouletteWinnerUser")) $("rouletteWinnerUser").textContent = "GÜM! Canlı mermi isabet etti!";
-          }
-        } else {
-          playPartySound("click");
-          if (navigator.vibrate) navigator.vibrate(20);
-          toast("KLİK! Boş kovan tıkırdadı... Tansiyon tırmanıyor!");
-        }
-        updatePartyState();
-      } catch (e) {}
-    };
-  }
-
-  if ($("rouletteLaunchTvBtn")) {
-    $("rouletteLaunchTvBtn").onclick = async () => {
-      const m = $("rouletteWinnerTitle") ? $("rouletteWinnerTitle").textContent : "";
-      if (m) {
-        playPartySound("click");
-        try {
-          await api("game/champion/launch", { movie: m });
-          toast("Kazanan Film TV'de Başlatılıyor: " + m);
-        } catch (e) {}
-      }
-    };
-  }
-
-  // CineSessiz Controls
-  if ($("sessizStartBtn")) {
-    $("sessizStartBtn").onclick = async () => {
-      playPartySound("click");
-      try {
-        await api("game/sessiz/start");
-        toast("TV'de CineSessiz Başlatıldı!");
-        updatePartyState();
-      } catch (e) {}
-    };
-  }
-  if ($("sessizStopBtn")) {
-    $("sessizStopBtn").onclick = async () => {
-      playPartySound("click");
-      try {
-        await api("game/sessiz/stop");
-        toast("CineSessiz Durduruldu");
-        updatePartyState();
-      } catch (e) {}
-    };
-  }
-  if ($("sessizCorrectBtn")) {
-    $("sessizCorrectBtn").onclick = async () => {
-      playPartySound("correct");
-      if (navigator.vibrate) navigator.vibrate(40);
-      try {
-        await api("game/sessiz/next", { pass: 0 });
-        toast("Bildiler! +10 Puan & Sonraki Kart");
-        updatePartyState();
-      } catch (e) {}
-    };
-  }
-  if ($("sessizPassBtn")) {
-    $("sessizPassBtn").onclick = async () => {
-      playPartySound("click");
-      try {
-        await api("game/sessiz/next", { pass: 1 });
-        toast("Pas geçildi");
-        updatePartyState();
-      } catch (e) {}
-    };
-  }
-  if ($("sessizGamzeBtn")) {
-    $("sessizGamzeBtn").onclick = async () => {
-      playPartySound("click");
-      try {
-        await api("game/sessiz/gemini");
-        toast("Gamze AI Yeni Tabu Kartları Hazırlıyor...");
-        updatePartyState();
-      } catch (e) {}
-    };
-  }
-  const submitSessizGuess = async () => {
-    const inp = $("sessizGuessInput");
-    const guess = inp && inp.value.trim() ? inp.value.trim() : "";
-    if (!guess) return;
-    playPartySound("click");
-    try {
-      const res = await api("game/sessiz/guess", { id: partyPlayerId, guess });
-      if (res && res.correct) {
-        playPartySound("correct");
-        if (navigator.vibrate) navigator.vibrate([40, 30, 60]);
-        toast("TEBRİKLER! DOĞRU TAHMİN (+10 Puan)");
-      } else {
-        toast("• Tahmin TV'ye iletildi: " + guess);
-      }
-      if (inp) inp.value = "";
-      updatePartyState();
-    } catch (e) {}
-  };
-  if ($("sessizGuessBtn")) $("sessizGuessBtn").onclick = submitSessizGuess;
-  if ($("sessizGuessInput")) {
-    $("sessizGuessInput").onkeydown = e => {
-      if (e.key === "Enter") submitSessizGuess();
-    };
-  }
-
-  // Snake Launch on TV
-  if ($("snakeTvLaunchBtn")) {
-    $("snakeTvLaunchBtn").onclick = async () => {
-      playPartySound("click");
-      try {
-        await api("game/snake/launch");
-        toast("SnakePhile TV Ekranında Açıldı!");
-      } catch (e) {}
-    };
-  }
-
-  const renderPartyState = st => {
-    if (!st) return;
-
-    // Multi-Phone Connected Lobby HUD
-    if (st.players && st.players.length > 0) {
-      if ($("lobbyCountText")) {
-        $("lobbyCountText").textContent = "Salonda " + st.players.length + " Telefon Bağlı";
-      }
-      const lobbyList = $("lobbyPhonesList");
-      if (lobbyList) {
-        lobbyList.innerHTML = st.players.map(p => {
-          const isMe = (p.id === partyPlayerId);
-          return `<span class="party-pill" style="${isMe ? 'border-color:rgba(16,185,129,0.55);background:rgba(16,185,129,0.12)' : ''}">
-            📱 <b>${esc(p.name)}</b> ${isMe ? '(Bu Cihaz)' : ''} · ${p.score}p
-          </span>`;
-        }).join("");
-      }
-    }
-
-    // Quiz state
-    const activeView = $("quizActiveView");
-    const inactiveView = $("quizInactiveView");
-    if (st.quizActive) {
-      if (activeView) activeView.hidden = false;
-      if (inactiveView) inactiveView.hidden = true;
-      if ($("quizQIndex")) $("quizQIndex").textContent = "Soru " + (st.questionIndex + 1) + " / " + st.totalQuestions;
-      if ($("quizTimerText")) $("quizTimerText").textContent = st.countdown + "s";
-      if ($("quizTimerBar")) $("quizTimerBar").style.width = ((st.countdown / 10) * 100) + "%";
-      if ($("quizQuestionText")) $("quizQuestionText").textContent = st.question || "";
-      if ($("quizHintText")) $("quizHintText").textContent = st.hint || "";
-      const qOptGrid = $("quizOptionsGrid");
-      if (qOptGrid) {
-        if (st.options && st.options.length > 0) {
-          qOptGrid.style.display = "grid";
-          qOptGrid.innerHTML = st.options.map((opt, idx) => `
-            <button class="btn glass" onclick="submitQuizAnswer('${esc(opt)}')" style="text-align:left;font-size:12.5px;padding:9px 10px;border:1px solid rgba(139,92,246,0.35);border-radius:10px;background:rgba(139,92,246,0.12);color:#fff">
-              <b style="color:#a78bfa">${['A','B','C','D'][idx]})</b> ${esc(opt)}
-            </button>
-          `).join("");
-        } else {
-          qOptGrid.style.display = "none";
-        }
-      }
-      const qImg = $("quizImg");
-      if (qImg) {
-        if (st.image) { qImg.src = st.image; qImg.hidden = false; }
-        else { qImg.hidden = true; }
-      }
-      if (st.revealing) {
-        if ($("quizFeedback")) {
-          $("quizFeedback").style.display = "block";
-          const ansList = st.players ? st.players.map(p =>
-            `<div style="font-size:12px;margin:3px 0;display:flex;justify-content:space-between;align-items:center;padding:3px 8px;border-radius:8px;background:${p.correct ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)'}">
-              <span><b>${esc(p.name)}:</b> ${p.answer ? `"${esc(p.answer)}"` : '<i style="color:var(--dim)">Cevapsız</i>'}</span>
-              <span style="font-weight:700;font-size:11px;color:${p.correct ? '#10b981' : '#f87171'}">${p.correct ? '✓ DOĞRU (+10)' : '✕ YANLIŞ'}</span>
-            </div>`
-          ).join("") : "";
-          $("quizFeedback").innerHTML = `<div style="font-size:13.5px;font-weight:800;color:#10b981;margin-bottom:8px">DOĞRU CEVAP: ${esc(st.displayAnswer || "")}</div>` + ansList;
-        }
-      } else {
-        if ($("quizFeedback")) $("quizFeedback").style.display = "none";
-      }
-      // Leaderboard
-      if ($("quizLeaderboard") && st.players) {
-        const html = st.players.map(p =>
-          `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-            <span>${p.id === partyPlayerId ? "" : ""}${esc(p.name)}</span>
-            <b>${p.score} puan</b>
-          </div>`
-        ).join("");
-        $("quizLeaderboard").innerHTML = `<div style="font-weight:700;margin-bottom:4px">Liderlik Tablosu:</div>` + (html || "Yarışmacı bekleniyor");
-      }
-
-      // Champion Box
-      const champBox = $("quizChampionBox");
-      if (champBox) {
-        if (st.quizCompleted && (st.championId === partyPlayerId || !st.championId)) {
-          champBox.style.display = "block";
-        } else {
-          champBox.style.display = "none";
-        }
-      }
-    } else {
-      if (activeView) activeView.hidden = true;
-      if (inactiveView) inactiveView.hidden = false;
-    }
-
-    // Roulette tension timer
-    if ($("rouletteTimerBar") && st.rouletteSeconds !== undefined) {
-      $("rouletteTimerBar").style.width = ((st.rouletteSeconds / 10) * 100) + "%";
-    }
-
-    // CineSessiz state
-    const sActiveView = $("sessizActiveView");
-    const sInactiveView = $("sessizInactiveView");
-    if (st.sessizActive) {
-      if (sActiveView) sActiveView.hidden = false;
-      if (sInactiveView) sInactiveView.hidden = true;
-
-      const isTeller = (st.tellerId === partyPlayerId);
-      const tellerBox = $("sessizTellerBox");
-      const guesserBox = $("sessizGuesserBox");
-
-      if (isTeller) {
-        if (tellerBox) tellerBox.style.display = "block";
-        if (guesserBox) guesserBox.style.display = "none";
-        if (st.sessizSecret) {
-          if ($("sessizSecretTitle")) $("sessizSecretTitle").textContent = st.sessizSecret.title || "";
-          if ($("sessizSecretCategory")) $("sessizSecretCategory").textContent = st.sessizSecret.category || "";
-          const tList = $("sessizTabooList");
-          if (tList && st.sessizSecret.tabooWords) {
-            tList.innerHTML = st.sessizSecret.tabooWords.map(w =>
-              `<span style="background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);border-radius:8px;padding:4px 8px;font-size:12px;font-weight:700">${esc(w)}</span>`
-            ).join("");
-          }
-        }
-      } else {
-        if (tellerBox) tellerBox.style.display = "none";
-        if (guesserBox) guesserBox.style.display = "block";
-        if ($("sessizTellerNotice")) $("sessizTellerNotice").textContent = "Anlatıcı: " + (st.tellerName || "Sinefil");
-        if ($("sessizCategoryHint")) $("sessizCategoryHint").textContent = "Kategori: " + (st.sessizCategory || "Kült Film");
-      }
-
-      const sFeed = $("sessizFeedList");
-      if (sFeed && st.sessizFeed) {
-        sFeed.innerHTML = st.sessizFeed.map(f =>
-          `<div style="font-size:12px;padding:3px 6px;margin:2px 0;border-radius:6px;background:${f.correct ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)'};color:${f.correct ? '#10b981' : '#e2e8f0'}">
-            <b>${esc(f.user)}:</b> "${esc(f.guess)}" ${f.correct ? '(DOĞRU BİLDİ! +10p)' : ''}
-          </div>`
-        ).join("");
-      }
-
-      const sBoard = $("sessizLeaderboard");
-      if (sBoard && st.players) {
-        sBoard.innerHTML = `<div style="font-weight:700;margin-bottom:4px">Puan Durumu:</div>` + st.players.map(p =>
-          `<div style="display:flex;justify-content:space-between;padding:2px 0">
-            <span>${p.id === partyPlayerId ? "" : ""}${esc(p.name)}</span>
-            <b>${p.score}p</b>
-          </div>`
-        ).join("");
-      }
-    } else {
-      if (sActiveView) sActiveView.hidden = true;
-      if (sInactiveView) sInactiveView.hidden = false;
-    }
-
-    // Roulette suggestions
-    const rList = $("rouletteList");
-    if (rList) {
-      if (st.suggestions && st.suggestions.length > 0) {
-        rList.innerHTML = st.suggestions.map(s =>
-          `<span class="party-pill"><b>${esc(s.title)}</b> (${esc(s.user)})</span>`
-        ).join("");
-        rouletteItems = st.suggestions.map(s => s.title);
-      } else {
-        rList.innerHTML = `<span style="color:var(--faint);font-size:12px">Henüz öneri eklenmedi</span>`;
-        if (rouletteItems.length === 0) {
-          rouletteItems = ["Taxi Driver", "Interstellar", "Pulp Fiction", "The Godfather", "Fight Club", "The Matrix", "Inception", "Whiplash"];
-        }
-      }
-      if (!rIsSpinning) drawRouletteWheel(rCurrentAngle, 0);
-    }
-  };
-
-  const updatePartyState = async () => {
-    try {
-      const st = await api("party/state");
-      renderPartyState(st);
-    } catch (e) {}
-  };
-
-  const startPartyPolling = () => {
-    if (partyPollTimer) clearInterval(partyPollTimer);
-    updatePartyState();
-    partyPollTimer = setInterval(updatePartyState, 1400);
-  };
-
-  const stopPartyPolling = () => {
-    if (partyPollTimer) {
-      clearInterval(partyPollTimer);
-      partyPollTimer = null;
-    }
-  };
-
-  // SnakePhile: Fullscreen 3D Organic Snake with Retina DPR
-  const snakeCanvas = $("snakeCanvas");
-  let snakeCtx = null;
-  const sDpr = window.devicePixelRatio || 1;
-  const S_BOARD_SIZE = 340;
-  if (snakeCanvas) {
-    snakeCtx = snakeCanvas.getContext("2d");
-    snakeCanvas.width = S_BOARD_SIZE * sDpr;
-    snakeCanvas.height = S_BOARD_SIZE * sDpr;
-    snakeCanvas.style.width = "100%";
-    snakeCanvas.style.maxWidth = S_BOARD_SIZE + "px";
-  }
-
-  const CINE_POSTERS = [
-    { title: "Interstellar", code: "INTERSTELLAR", year: "2014", dir: "Christopher Nolan", rating: "8.7", lore: "Fizikçi Kip Thorne danışmanlığında modellenen ilk gerçekçi solucan deliği ve karadelik simülasyonu.", color: "#0284c7", glow: "#38bdf8" },
-    { title: "Pulp Fiction", code: "PULP FICTION", year: "1994", dir: "Quentin Tarantino", rating: "8.9", lore: "Doğrusal olmayan kurgusu ve Ezekiel 25:17 monoloğuyla sinema tarihini dönüştüren başyapıt.", color: "#991b1b", glow: "#ef4444" },
-    { title: "The Godfather", code: "THE GODFATHER", year: "1972", dir: "Francis Ford Coppola", rating: "9.2", lore: "Gordon Willis'in çığır açan tepe aydınlatması ve gölgeleriyle 'Karanlıklar Prensi' lakabını aldığı sahne.", color: "#78350f", glow: "#d97706" },
-    { title: "Inception", code: "INCEPTION", year: "2010", dir: "Christopher Nolan", rating: "8.8", lore: "Dönen koridor sahnesi için Paris banliyösünde inşa edilen devasa döner santrifüj seti.", color: "#b45309", glow: "#f59e0b" },
-    { title: "Fight Club", code: "FIGHT CLUB", year: "1999", dir: "David Fincher", rating: "8.8", lore: "Fincher'ın tek karelik subliminal Tyler Durden parlamaları ve IKEA katalog hicvi.", color: "#831843", glow: "#ec4899" },
-    { title: "Taxi Driver", code: "TAXI DRIVER", year: "1976", dir: "Martin Scorsese", rating: "8.2", lore: "Travis Bickle'ın meşhur 'You talkin' to me?' sahnesi senaryoda yazmaksızın tamamen De Niro doğaçlamasıdır.", color: "#713f12", glow: "#eab308" },
-    { title: "Blade Runner", code: "BLADE RUNNER", year: "1982", dir: "Ridley Scott", rating: "8.1", lore: "Roy Batty'nin yağmur altındaki 'Tears in rain' vedası sinema tarihinin en unutulmaz monoloğudur.", color: "#155e75", glow: "#06b6d4" },
-    { title: "Whiplash", code: "WHIPLASH", year: "2014", dir: "Damien Chazelle", rating: "8.5", lore: "Caravan parçası ve ziller üzerindeki gerçek ter damlalarıyla sınırları zorlayan mükemmeliyetçilik arayışı.", color: "#9a3412", glow: "#f97316" }
-  ];
-
-  const TILE_COUNT = 14;
-  const TILE_PX = S_BOARD_SIZE / TILE_COUNT;
-  let snake = [{x: 7, y: 7}, {x: 7, y: 8}, {x: 7, y: 9}];
-  let snakeDir = {x: 0, y: -1};
-  let nextSnakeDir = {x: 0, y: -1};
-  let food = {x: 4, y: 4, poster: CINE_POSTERS[0]};
-  let snakeScore = 0;
-  let snakeBest = 0;
-  try { snakeBest = parseInt(localStorage.getItem("cinetv.snakeBest") || "0", 10); } catch (e) {}
-  if ($("snakeBest")) $("snakeBest").textContent = snakeBest;
-
-  let snakeLoopTimer = null;
-  let snakeRunning = false;
-  let snakeGyroActive = true;
-  let foodPulseTime = 0;
-
-  const placeFood = () => {
-    const idx = Math.floor(Math.random() * CINE_POSTERS.length);
-    food = {
-      x: Math.floor(Math.random() * TILE_COUNT),
-      y: Math.floor(Math.random() * TILE_COUNT),
-      poster: CINE_POSTERS[idx]
-    };
-    if ($("snakeFilmTrivia")) {
-      $("snakeFilmTrivia").innerHTML = `<b>Hedef: ${food.poster.title} (${food.poster.year})</b> · ${food.poster.dir} · ${food.poster.rating} /10<br>` +
-        `<span style="color:var(--dim);font-size:11px">${food.poster.lore}</span>`;
-    }
-  };
-
-  const drawSnakeGame = () => {
-    if (!snakeCtx || !snakeCanvas) return;
-    const ctx = snakeCtx;
-    const w = S_BOARD_SIZE * sDpr;
-    const h = S_BOARD_SIZE * sDpr;
-    const tile = TILE_PX * sDpr;
-
-    // 1. Photorealistic 3D Obsidian Editing Deck Background
-    const bgGrad = ctx.createRadialGradient(w / 2, h / 2, tile * 2, w / 2, h / 2, w * 0.75);
-    bgGrad.addColorStop(0, "#0d111a");
-    bgGrad.addColorStop(1, "#050609");
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    // Subtle golden cinema projection grid lines
-    ctx.strokeStyle = "rgba(16, 185, 129, 0.05)";
-    ctx.lineWidth = 1 * sDpr;
-    for (let c = 1; c < TILE_COUNT; c++) {
-      ctx.beginPath();
-      ctx.moveTo(c * tile, 0);
-      ctx.lineTo(c * tile, h);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(0, c * tile);
-      ctx.lineTo(w, c * tile);
-      ctx.stroke();
-    }
-
-    // 2. Draw Food: Realistic DVD-boxless Movie Poster matching CineTV Home
-    foodPulseTime += 0.08;
-    const floatY = Math.sin(foodPulseTime * 2.5) * (1.2 * sDpr);
-    const pw = tile - 3 * sDpr;
-    const ph = pw * 1.48; // 2:3 aspect ratio
-    const fx = food.x * tile + 1.5 * sDpr;
-    const fy = food.y * tile + (tile - ph) / 2 + floatY;
-    const prad = pw * 0.085;
-
-    ctx.save();
-    ctx.shadowColor = food.poster.glow;
-    ctx.shadowBlur = (Math.sin(foodPulseTime) * 0.4 + 0.6) * (12 * sDpr);
-    ctx.shadowOffsetY = 2 * sDpr;
-
-    // Poster Card
-    const pGrad = ctx.createLinearGradient(fx, fy, fx + pw, fy + ph);
-    pGrad.addColorStop(0, food.poster.color);
-    pGrad.addColorStop(1, "#070b12");
-    ctx.fillStyle = pGrad;
-    ctx.beginPath();
-    ctx.roundRect(fx, fy, pw, ph, prad);
-    ctx.fill();
-
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-
-    // Subtle edge bevel
-    ctx.strokeStyle = "rgba(255,255,255,0.22)";
-    ctx.lineWidth = 1 * sDpr;
-    ctx.stroke();
-
-    // Specular diagonal glass sheen
-    const sheen = ctx.createLinearGradient(fx, fy, fx + pw, fy + ph * 0.6);
-    sheen.addColorStop(0, "rgba(255, 255, 255, 0.45)");
-    sheen.addColorStop(0.3, "rgba(255, 255, 255, 0.12)");
-    sheen.addColorStop(0.7, "transparent");
-    ctx.fillStyle = sheen;
-    ctx.beginPath();
-    ctx.roundRect(fx, fy, pw, ph, prad);
-    ctx.fill();
-
-    // Poster Title text
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `bold ${Math.round(6.5 * sDpr)}px Poppins, -apple-system, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(food.poster.code.substring(0, 5), fx + pw / 2, fy + ph * 0.68);
-    ctx.restore();
-
-    // 3. Draw Snake: Realistic 3D Organic Viper Snake
-    const tongueOut = (Math.sin(foodPulseTime * 4) > 0.35);
-
-    snake.forEach((seg, i) => {
-      const sx = seg.x * tile + tile / 2;
-      const sy = seg.y * tile + tile / 2;
-      const r = (tile / 2) - 1.5 * sDpr;
-      const t = i / snake.length;
-      const segR = r * Math.max(0.45, 1 - t * 0.52);
-
-      ctx.save();
-      ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
-      ctx.shadowBlur = 6 * sDpr;
-      ctx.shadowOffsetY = 2.5 * sDpr;
-
-      if (i === 0) {
-        // HEAD: Realistic 3D Viper Head
-        const hGrad = ctx.createRadialGradient(sx - segR * 0.3, sy - segR * 0.3, segR * 0.1, sx, sy, segR * 1.15);
-        hGrad.addColorStop(0, "#4ade80");
-        hGrad.addColorStop(0.4, "#16a34a");
-        hGrad.addColorStop(0.85, "#15803d");
-        hGrad.addColorStop(1, "#052e16");
-        ctx.fillStyle = hGrad;
-
-        ctx.beginPath();
-        ctx.arc(sx, sy, segR * 1.08, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.shadowColor = "transparent";
-
-        // Eyes: Golden Reptilian Slit Eyes
-        const eyeDist = segR * 0.58;
-        const perpX = -snakeDir.y;
-        const perpY = snakeDir.x;
-        const eye1X = sx + snakeDir.x * (segR * 0.3) + perpX * eyeDist;
-        const eye1Y = sy + snakeDir.y * (segR * 0.3) + perpY * eyeDist;
-        const eye2X = sx + snakeDir.x * (segR * 0.3) - perpX * eyeDist;
-        const eye2Y = sy + snakeDir.y * (segR * 0.3) - perpY * eyeDist;
-
-        [ [eye1X, eye1Y], [eye2X, eye2Y] ].forEach(([ex, ey]) => {
-          ctx.beginPath();
-          ctx.arc(ex, ey, segR * 0.28, 0, Math.PI * 2);
-          ctx.fillStyle = "#fbbf24";
-          ctx.fill();
-          ctx.beginPath();
-          ctx.ellipse(ex, ey, segR * 0.08, segR * 0.24, 0, 0, Math.PI * 2);
-          ctx.fillStyle = "#022c22";
-          ctx.fill();
-        });
-
-        // Flicking Forked Red Tongue
-        if (tongueOut) {
-          const tx = sx + snakeDir.x * (segR * 1.1);
-          const ty = sy + snakeDir.y * (segR * 1.1);
-          const tipX = tx + snakeDir.x * (6 * sDpr);
-          const tipY = ty + snakeDir.y * (6 * sDpr);
-          ctx.strokeStyle = "#ef4444";
-          ctx.lineWidth = 1.6 * sDpr;
-          ctx.beginPath();
-          ctx.moveTo(tx, ty);
-          ctx.lineTo(tipX, tipY);
-          ctx.lineTo(tipX + (snakeDir.x + perpX) * (3 * sDpr), tipY + (snakeDir.y + perpY) * (3 * sDpr));
-          ctx.moveTo(tipX, tipY);
-          ctx.lineTo(tipX + (snakeDir.x - perpX) * (3 * sDpr), tipY + (snakeDir.y - perpY) * (3 * sDpr));
-          ctx.stroke();
-        }
-
-      } else {
-        // BODY SEGMENT: 3D Cylindrical Scales
-        const bGrad = ctx.createRadialGradient(sx - segR * 0.25, sy - segR * 0.25, segR * 0.08, sx, sy, segR);
-        bGrad.addColorStop(0, "#86efac");
-        bGrad.addColorStop(0.35, "#22c55e");
-        bGrad.addColorStop(0.75, "#15803d");
-        bGrad.addColorStop(1, "#052e16");
-        ctx.fillStyle = bGrad;
-
-        ctx.beginPath();
-        ctx.arc(sx, sy, segR, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = "rgba(255,255,255,0.18)";
-        ctx.lineWidth = 0.8 * sDpr;
-        ctx.stroke();
-      }
-      ctx.restore();
-    });
-  };
-
-  const stepSnake = () => {
-    snakeDir = nextSnakeDir;
-    const head = { x: snake[0].x + snakeDir.x, y: snake[0].y + snakeDir.y };
-
-    if (head.x < 0) head.x = TILE_COUNT - 1;
-    if (head.x >= TILE_COUNT) head.x = 0;
-    if (head.y < 0) head.y = TILE_COUNT - 1;
-    if (head.y >= TILE_COUNT) head.y = 0;
-
-    for (let i = 0; i < snake.length; i++) {
-      if (snake[i].x === head.x && snake[i].y === head.y) {
-        stopSnakeGame();
-        playPartySound("bang");
-        if (navigator.vibrate) navigator.vibrate([60, 40, 100]);
-        toast("Yılan Kendini Isırdı! Skor: " + snakeScore);
-        return;
-      }
-    }
-
-    snake.unshift(head);
-
-    if (head.x === food.x && head.y === food.y) {
-      snakeScore += 10;
-      if ($("snakeScore")) $("snakeScore").textContent = snakeScore;
-      if (snakeScore > snakeBest) {
-        snakeBest = snakeScore;
-        if ($("snakeBest")) $("snakeBest").textContent = snakeBest;
-        try { localStorage.setItem("cinetv.snakeBest", String(snakeBest)); } catch (e) {}
-      }
-      playPartySound("correct");
-      if (navigator.vibrate) navigator.vibrate(35);
-      placeFood();
-    } else {
-      snake.pop();
-    }
-
-    drawSnakeGame();
-  };
-
-  const startSnakeGame = () => {
-    snake = [{x: 7, y: 7}, {x: 7, y: 8}, {x: 7, y: 9}];
-    snakeDir = {x: 0, y: -1};
-    nextSnakeDir = {x: 0, y: -1};
-    snakeScore = 0;
-    if ($("snakeScore")) $("snakeScore").textContent = "0";
-    placeFood();
-    snakeRunning = true;
-    if ($("snakeStartBtn")) $("snakeStartBtn").textContent = "Oyunu Duraklat";
-    if (snakeLoopTimer) clearInterval(snakeLoopTimer);
-    snakeLoopTimer = setInterval(stepSnake, 120);
-    drawSnakeGame();
-  };
-
-  const stopSnakeGame = () => {
-    snakeRunning = false;
-    if (snakeLoopTimer) { clearInterval(snakeLoopTimer); snakeLoopTimer = null; }
-    if ($("snakeStartBtn")) $("snakeStartBtn").textContent = "Yeniden Başlat";
-  };
-
-  if ($("snakeStartBtn")) {
-    $("snakeStartBtn").onclick = () => {
-      playPartySound("click");
-      if (snakeRunning) stopSnakeGame();
-      else startSnakeGame();
-    };
-  }
-
-  if ($("snakeGyroToggle")) {
-    $("snakeGyroToggle").onclick = async () => {
-      snakeGyroActive = !snakeGyroActive;
-      playPartySound("click");
-      $("snakeGyroToggle").textContent = "Gyro: " + (snakeGyroActive ? "Açık" : "Kapalı");
-      if (snakeGyroActive) {
-        try { if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); } catch (err) {}
-      }
-    };
-  }
-
-  window.addEventListener("deviceorientation", e => {
-    if (!snakeRunning || !snakeGyroActive) return;
-    if (e.gamma > 12 && snakeDir.x === 0) nextSnakeDir = {x: 1, y: 0};
-    else if (e.gamma < -12 && snakeDir.x === 0) nextSnakeDir = {x: -1, y: 0};
-    else if (e.beta > 48 && snakeDir.y === 0) nextSnakeDir = {x: 0, y: 1};
-    else if (e.beta < 22 && snakeDir.y === 0) nextSnakeDir = {x: 0, y: -1};
-  });
-
-  if ($("snkUp")) $("snkUp").onclick = () => { playPartySound("click"); if (snakeDir.y === 0) nextSnakeDir = {x: 0, y: -1}; };
-  if ($("snkDown")) $("snkDown").onclick = () => { playPartySound("click"); if (snakeDir.y === 0) nextSnakeDir = {x: 0, y: 1}; };
-  if ($("snkLeft")) $("snkLeft").onclick = () => { playPartySound("click"); if (snakeDir.x === 0) nextSnakeDir = {x: -1, y: 0}; };
-  if ($("snkRight")) $("snkRight").onclick = () => { playPartySound("click"); if (snakeDir.x === 0) nextSnakeDir = {x: 1, y: 0}; };
-
-  drawRouletteWheel(0, 0);
-  drawSnakeGame();
-  joinParty(); // Auto-join room lobby on mobile remote connection
 
   // several CineTV TVs on this network: tap the status to switch
   open("info").then(info => {

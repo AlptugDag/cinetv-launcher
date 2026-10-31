@@ -115,11 +115,11 @@ public final class HardwareKeys {
                 return true;
             case ROULETTE:
                 if (ctx instanceof com.cinetv.launcher.MainActivity) {
-                    ((com.cinetv.launcher.MainActivity) ctx).startMovieRoulette();
+                    ((com.cinetv.launcher.MainActivity) ctx).showParty(com.cinetv.launcher.party.CinePartyManager.Mode.ROULETTE);
                 } else {
                     ctx.startActivity(new android.content.Intent(ctx, com.cinetv.launcher.MainActivity.class)
                             .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                            .putExtra("action", "roulette"));
+                            .putExtra("action", "show_cineroulette_live"));
                 }
                 return true;
             case ALL_APPS:

@@ -91,7 +91,9 @@ public final class TvWebRemoteServer {
     private static volatile boolean secureUp;
 
     private static final Handler main = new Handler(Looper.getMainLooper());
-    private static final ExecutorService clients = Executors.newFixedThreadPool(8);
+    /** Party long polls park a thread each, so the pool grows on demand (bounded) instead of starving key presses. */
+    private static final ExecutorService clients = new java.util.concurrent.ThreadPoolExecutor(4, 40, 30, java.util.concurrent.TimeUnit.SECONDS,
+            new java.util.concurrent.SynchronousQueue<>(), new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
     private static volatile ServerSocket server;
     private static volatile int port = PORTS[0];
     private static volatile Controller controller;
@@ -315,7 +317,28 @@ public final class TvWebRemoteServer {
                     Log.w(TAG, "Cannot serve companion APK: " + t);
                 }
             }
+            if (path.startsWith("/sfx/")) {
+                // The game sounds, so every phone hears exactly what the TV plays.
+                java.io.File f = com.cinetv.launcher.device.SystemAudio.file(app, path.substring(5));
+                if (f == null) {
+                    send(out, 404, "text/plain", new byte[0]);
+                    return;
+                }
+                byte[] bytes = java.nio.file.Files.readAllBytes(f.toPath());
+                String head = "HTTP/1.1 200 OK\r\nContent-Type: audio/wav\r\nCache-Control: public, max-age=604800\r\n"
+                        + "Access-Control-Allow-Origin: *\r\nContent-Length: " + bytes.length + "\r\nConnection: close\r\n\r\n";
+                out.write(head.getBytes(StandardCharsets.UTF_8));
+                out.write(bytes);
+                out.flush();
+                return;
+            }
             if (path.equals("/api/siri") || path.equals("/api/google/smarthome") || path.equals("/api/alexa")) {
+                // Shortcuts and smart-home bridges control the TV: they carry the pairing token like the phone does.
+                String key = q.containsKey("k") ? q.get("k") : tokenHeader;
+                if (!constantTimeEquals(key, RemotePairing.token(app))) {
+                    send(out, 401, "application/json", "{\"error\":\"token\"}".getBytes(StandardCharsets.UTF_8));
+                    return;
+                }
                 JSONObject res = handleSmartHome(path, q);
                 sendCors(out, res.toString(), origin);
                 return;
@@ -609,6 +632,7 @@ public final class TvWebRemoteServer {
 
     private static JSONObject api(String path, Map<String, String> q) throws Exception {
         JSONObject ok = new JSONObject().put("ok", true);
+        final com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(app);
         switch (path) {
             case "/api/status":
                 return ok.put("inputFocused", TvKeyInterceptorService.isInputFocused() || com.cinetv.launcher.MainActivity.isTvInputActive());
@@ -842,114 +866,93 @@ public final class TvWebRemoteServer {
                 return ok;
             }
             case "/api/party/join": {
-                final String id = q.get("id");
-                final String name = q.get("name");
-                com.cinetv.launcher.party.CinePartyManager.get(app).registerPlayer(id, name);
-                return com.cinetv.launcher.party.CinePartyManager.get(app).getState();
+                return party.join(q.get("id"), q.get("name"));
+            }
+            case "/api/party/leave": {
+                party.leave(q.get("id"));
+                return ok;
             }
             case "/api/party/state": {
-                return com.cinetv.launcher.party.CinePartyManager.get(app).getState();
+                // Long poll: answers as soon as the room changes past the phone's version, or after 12 s.
+                long seen = parseLong(q.get("v"));
+                if (seen > 0 && seen >= party.version()) party.awaitChange(seen, 12_000);
+                return party.state(q.get("id"));
             }
-            case "/api/party/player/register": {
-                final String id = q.get("id");
-                final String name = q.get("name");
-                com.cinetv.launcher.party.CinePartyManager.get(app).registerPlayer(id, name);
-                return ok;
-            }
-            case "/api/game/quiz/start": {
+            case "/api/party/open": {
+                final String game = q.get("game") == null ? "" : q.get("game");
                 post(() -> {
                     com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                    if (ma != null) ma.showPartyQuizModal();
-                    com.cinetv.launcher.party.CinePartyManager.get(app).startQuiz();
+                    if (ma == null) return;
+                    if ("snake".equals(game)) ma.showLiveSnakePhileScene();
+                    else if ("duel".equals(game)) ma.showLiveCineDuelScene();
+                    else {
+                        try {
+                            ma.showParty(com.cinetv.launcher.party.CinePartyManager.Mode.valueOf(game.toUpperCase(Locale.ROOT)));
+                        } catch (IllegalArgumentException ignored) {
+                        }
+                    }
                 });
                 return ok;
             }
-            case "/api/game/quiz/stop": {
-                com.cinetv.launcher.party.CinePartyManager.get(app).stopQuiz();
-                return ok;
-            }
-            case "/api/game/quiz/answer": {
-                final String id = q.get("id");
-                final String answer = q.get("answer");
-                com.cinetv.launcher.party.CinePartyManager.get(app).submitAnswer(id, answer);
-                return ok;
-            }
-            case "/api/game/quiz/gemini": {
-                com.cinetv.launcher.party.CinePartyManager.get(app).requestGeminiAiQuestions(1, null);
-                return ok;
-            }
-            case "/api/game/champion/launch": {
-                final String movie = q.get("movie");
-                com.cinetv.launcher.party.CinePartyManager.get(app).launchChampionMovie(movie);
-                return ok;
-            }
-            case "/api/party/suggest": {
-                final String title = q.get("title");
-                final String user = q.get("user");
-                com.cinetv.launcher.party.CinePartyManager.get(app).addRouletteSuggestion(title, user);
+            case "/api/party/close": {
+                party.close();
                 post(() -> {
                     com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                    if (ma != null) ma.showMovieRouletteModal();
+                    if (ma != null) ma.hidePartyStage();
                 });
                 return ok;
             }
-            case "/api/party/roulette/trigger": {
-                final String id = q.get("id");
-                JSONObject trig = com.cinetv.launcher.party.CinePartyManager.get(app).pullRouletteTrigger(id);
-                return trig != null ? trig : ok;
+            case "/api/party/quiz/settings": {
+                party.quizSettings(q.get("id"), (int) parseLong(q.get("minutes")), (int) parseLong(q.get("seconds")));
+                return ok;
+            }
+            case "/api/party/quiz/start": {
+                party.quizStart(q.get("id"));
+                return ok;
+            }
+            case "/api/party/quiz/answer": {
+                return new JSONObject().put("ok", party.quizAnswer(q.get("id"), q.get("answer")));
+            }
+            case "/api/party/pick": {
+                return new JSONObject().put("ok", party.pickFilm(q.get("id"), q.get("title")));
+            }
+            case "/api/party/roulette/load": {
+                String poster = q.get("poster");
+                if (poster != null && !poster.startsWith("https://")) poster = null;
+                return new JSONObject().put("ok", party.rouletteLoad(q.get("id"), clip(q.get("title"), 120), poster, (int) parseLong(q.get("year"))));
+            }
+            case "/api/party/roulette/fill": {
+                party.rouletteFill(q.get("id"), q.get("mood"));
+                return ok;
+            }
+            case "/api/party/roulette/start": {
+                party.rouletteStart(q.get("id"));
+                return ok;
+            }
+            case "/api/party/roulette/pull": {
+                return new JSONObject().put("ok", party.roulettePull(q.get("id")));
             }
             case "/api/party/roulette/spin": {
-                JSONObject winner = com.cinetv.launcher.party.CinePartyManager.get(app).spinRoulette();
-                return winner != null ? winner : ok;
+                return new JSONObject().put("ok", party.rouletteSpin(q.get("id")));
             }
-            case "/api/party/roulette/theme": {
-                final String theme = q.get("theme");
-                com.cinetv.launcher.party.CinePartyManager.get(app).loadAiTheme(theme);
-                post(() -> {
-                    com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                    if (ma != null) ma.showMovieRouletteModal();
-                });
-                return com.cinetv.launcher.party.CinePartyManager.get(app).getState();
-            }
-            case "/api/party/roulette/gemini": {
-                final String prompt = q.get("prompt");
-                com.cinetv.launcher.party.CinePartyManager.get(app).loadGeminiAiTheme(prompt, null);
+            case "/api/party/roulette/play": {
+                String film = party.chosenFilm();
+                if (!film.isEmpty()) party.launch(film);
                 return ok;
             }
-            case "/api/party/roulette/clear": {
-                com.cinetv.launcher.party.CinePartyManager.get(app).clearRouletteSuggestions();
+            case "/api/party/sessiz/start": {
+                party.sessizStart(q.get("id"));
                 return ok;
             }
-            case "/api/game/sessiz/start": {
-                post(() -> {
-                    com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                    if (ma != null) ma.showCineSessizModal();
-                    com.cinetv.launcher.party.CinePartyManager.get(app).startSessiz();
-                });
+            case "/api/party/sessiz/guess": {
+                return new JSONObject().put("ok", true).put("correct", party.sessizGuess(q.get("id"), q.get("guess")));
+            }
+            case "/api/party/sessiz/pass": {
+                party.sessizPass(q.get("id"));
                 return ok;
             }
-            case "/api/game/sessiz/stop": {
-                com.cinetv.launcher.party.CinePartyManager.get(app).stopSessiz();
-                return ok;
-            }
-            case "/api/game/sessiz/guess": {
-                final String id = q.get("id");
-                final String guess = q.get("guess");
-                boolean hit = com.cinetv.launcher.party.CinePartyManager.get(app).submitSessizGuess(id, guess);
-                return new JSONObject().put("ok", true).put("correct", hit);
-            }
-            case "/api/game/sessiz/next": {
-                final boolean pass = "1".equals(q.get("pass"));
-                com.cinetv.launcher.party.CinePartyManager.get(app).nextSessizCard(pass);
-                return ok;
-            }
-            case "/api/game/sessiz/teller": {
-                final String id = q.get("id");
-                com.cinetv.launcher.party.CinePartyManager.get(app).setSessizTeller(id);
-                return ok;
-            }
-            case "/api/game/sessiz/gemini": {
-                com.cinetv.launcher.party.CinePartyManager.get(app).requestGeminiSessizCards(3, null);
+            case "/api/party/sessiz/hint": {
+                party.sessizHint(q.get("id"));
                 return ok;
             }
             case "/api/game/snake/launch":
@@ -1298,6 +1301,14 @@ public final class TvWebRemoteServer {
     private static String safeUrl(String s) {
         s = clip(s, 400);
         return s.startsWith("https://") ? s : "";
+    }
+
+    private static long parseLong(String s) {
+        try {
+            return s == null ? 0 : Long.parseLong(s.trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     private static float parseFloat(String s) {

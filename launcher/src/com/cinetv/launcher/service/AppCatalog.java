@@ -26,6 +26,7 @@ public final class AppCatalog {
     public static final String PKG_QUIZ = "com.cinetv.party.quiz";
     public static final String PKG_ROULETTE = "com.cinetv.party.roulette";
     public static final String PKG_SESSIZ = "com.cinetv.party.sessiz";
+    public static final String PKG_DUEL = "com.cinetv.party.duel";
 
     public static final class Snapshot {
         public final List<AppTileItem> dock = new ArrayList<>();
