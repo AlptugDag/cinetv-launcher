@@ -50,7 +50,7 @@ public class PosterShelf extends FrameLayout {
     private static final float PROFILE_ANGLE = -16f;
     /** The focused case comes far forward, as if taken off the shelf. */
     private static final float FOCUS_SCALE = 1.52f;
-    private static final long SWAY_AFTER_MS = 2200L, SWAY_MS = 5600L;
+    private static final long SWAY_AFTER_MS = 1800L, SWAY_MS = 6500L;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<Movie> movies = new ArrayList<>();
@@ -142,6 +142,11 @@ public class PosterShelf extends FrameLayout {
 
     public void setListener(Listener l) {
         listener = l;
+    }
+
+    /** The frame budget changed: lay the shelf out again for it. */
+    public void qualityChanged() {
+        post(this::layoutCases);
     }
 
     /** Switches between DVD cases and plain posters; the shelf re-bakes its films. */
@@ -248,24 +253,8 @@ public class PosterShelf extends FrameLayout {
         if (n == 0) return super.onKeyDown(keyCode, event);
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_LEFT:
-                if (event.getRepeatCount() > 0) {
-                    long now = android.os.SystemClock.uptimeMillis();
-                    if (now - lastStepMs < 220L) return true;
-                    lastStepMs = now;
-                } else {
-                    lastStepMs = android.os.SystemClock.uptimeMillis();
-                }
-                step(-1);
-                return true;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                if (event.getRepeatCount() > 0) {
-                    long now = android.os.SystemClock.uptimeMillis();
-                    if (now - lastStepMs < 220L) return true;
-                    lastStepMs = now;
-                } else {
-                    lastStepMs = android.os.SystemClock.uptimeMillis();
-                }
-                step(1);
+                if (acceptStep(keyCode, event)) step(keyCode == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
                 return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
@@ -282,6 +271,28 @@ public class PosterShelf extends FrameLayout {
                 break;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    private int pressKey;
+    private long pressAt;
+
+    /**
+     * One press is one step. TV remotes send auto-repeats 100-300 ms into an ordinary press (and some
+     * send the press twice), which used to skip two films: repeats only count once the key has been
+     * held like a deliberate hold (400 ms), and then at most one step every 170 ms.
+     */
+    private boolean acceptStep(int keyCode, KeyEvent e) {
+        long now = android.os.SystemClock.uptimeMillis();
+        if (e.getRepeatCount() == 0) {
+            if (keyCode == pressKey && now - pressAt < 90L) return false;
+            pressKey = keyCode;
+            pressAt = now;
+            lastStepMs = now;
+            return true;
+        }
+        if (keyCode != pressKey || now - pressAt < 400L || now - lastStepMs < 170L) return false;
+        lastStepMs = now;
+        return true;
     }
 
     /** Moves along the ring; the shelf has no ends, so the focus always sits in the middle with films on both sides. */
@@ -324,18 +335,32 @@ public class PosterShelf extends FrameLayout {
         if (v != null && v.dvdCase() != null && listener != null) listener.onFocusCase(v, v.dvdCase().accent);
     }
 
-    /** The focused case continuously breathes with a harmonic yaw turn and synchronized looping reflection sweep. */
+    /**
+     * Once the shelf settles, the focused case turns slowly on its axis, one way then the other, twice,
+     * and comes to rest facing you. It doesn't loop forever: an idle home screen draws nothing.
+     */
     private void sway() {
         if (!hasFocus() || cases.isEmpty() || !isShown()) return;
         if (swayAnim != null) swayAnim.cancel();
         swayAnim = ValueAnimator.ofFloat(0f, 1f);
         swayAnim.setDuration(SWAY_MS);
-        swayAnim.setRepeatMode(ValueAnimator.REVERSE);
-        swayAnim.setRepeatCount(ValueAnimator.INFINITE);
-        swayAnim.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+        swayAnim.setRepeatMode(ValueAnimator.RESTART);
+        swayAnim.setRepeatCount(1);
+        swayAnim.setInterpolator(new android.view.animation.LinearInterpolator());
         swayAnim.addUpdateListener(a -> {
             sway = (float) a.getAnimatedValue();
             layoutCases();
+        });
+        swayAnim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                if (swayAnim != animation) return;
+                swayAnim = null;
+                sway = 0f;
+                layoutCases();
+                DvdCaseView v = focusedCase();
+                if (v != null) v.setGlint(0f);
+            }
         });
         swayAnim.start();
     }
@@ -367,7 +392,9 @@ public class PosterShelf extends FrameLayout {
         if (w == 0 || n == 0) return;
         boolean focused = hasFocus();
         float anchor = w * 0.5f;
-        float range = Math.min(VISIBLE_RANGE, n / 2f);
+        // A TV whose frames run slow draws a shorter shelf: the far cases are tiny anyway.
+        boolean light = PerformanceProfile.gpuLimited(getContext());
+        float range = Math.min(light ? 7 : VISIBLE_RANGE, n / 2f);
         float step1 = caseW * (focused ? 1.14f : 0.98f);
         // Fewer films spread a little wider so both sides of the screen are always filled.
         int perSide = Math.max(1, (n - 1) / 2);
@@ -410,18 +437,19 @@ public class PosterShelf extends FrameLayout {
             // Further down the shelf: darker and out of focus, like a real room lit at the front.
             float dim = (focused ? 1f : 0.94f) - 0.10f * near - Math.min(0.52f, 0.075f * far);
             // Only a hint of depth of field: soft, never smeared.
-            float blur = 0.55f * Math.max(0f, Math.min(1f, (far - 2f) / 4f));
+            float blur = light ? 0f : 0.55f * Math.max(0f, Math.min(1f, (far - 2f) / 4f));
             float spatialWrap = spatial ? -Math.signum(d) * Math.min(7.5f, far * 1.8f) : 0f;
             float yaw = Math.signum(d) * SIDE_ANGLE * near + PROFILE_ANGLE * (1f - near) + spatialWrap;
             float lift = focused ? 1f - near : 0f;
             float tilt = spatial ? (7.0f - 1.2f * lift) : 0f;
             float turn = 0f, glint = 0f;
             float swaySine = 0f;
-            if (i == index && sway > 0f) {
-                // Ultra-refined physical micro-breathing (calm ±2.2 deg yaw and organic Fresnel sheen):
-                swaySine = (float) Math.sin(Math.PI * (sway - 0.5f)); // -1.0 to +1.0
-                turn = 2.2f * swaySine;
-                glint = (float) (0.5f + 0.5f * Math.sin(Math.PI * (sway - 0.5f)));
+            if (i == index && swayAnim != null) {
+                // The focused case turns slowly on its axis (±7.5°, starting and ending square) so the light runs
+                // across its sleeve.
+                swaySine = (float) Math.sin(2 * Math.PI * sway);
+                turn = 7.5f * swaySine;
+                glint = 0.5f + 0.5f * swaySine;
             }
 
             // Continuous subtle architectural bow (apex in center, NO flat zone, NO artificial vertical climb):
@@ -445,8 +473,10 @@ public class PosterShelf extends FrameLayout {
             v.setTranslationZ(100f - ad * 10f);
             v.setDepthBlur(blur);
             v.setGlint(glint);
+            v.setSleeve(!light || ad < 1.5f);
             // Continuous drift without discontinuity: uses swaySine so it returns exactly to 0 at animation end
-            v.setPose(yaw + turn, tilt, scale, lift, lean * (0.5f + 0.5f * near), dim, d > 0.5f, focusPos + swaySine * 0.8f);
+            // Only the focused case drifts while it turns: the rest of the shelf stays still and is not redrawn.
+            v.setPose(yaw + turn, tilt, scale, lift, lean * (0.5f + 0.5f * near), dim, d > 0.5f, i == index ? focusPos + swaySine * 0.8f : focusPos);
         }
         updateShelfFurniture(w, h);
     }

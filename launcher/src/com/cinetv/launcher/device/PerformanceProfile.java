@@ -27,8 +27,8 @@ import java.util.concurrent.atomic.AtomicLong;
  *   memory     little RAM free (or a low-RAM device)  fewer films on the shelf, smaller caches
  *   processor  slow cores                              fewer films, no focus light on Low
  *
- * The limits are measured again and again while CineTV runs (frame times while Home animates, free
- * memory on every return to Home) and can also clear again, so a TV that was busy once is not stuck
+ * The limits are measured again and again while CineTV runs (the time of every frame Home draws,
+ * free memory on every return to Home) and can also clear again, so a TV that was busy once is not stuck
  * on the lightest look. "Determine automatically" runs a short benchmark (processor, drawing, memory)
  * and picks the mode.
  */
@@ -271,6 +271,40 @@ public final class PerformanceProfile {
             }
         } catch (Throwable ignored) {
         }
+    }
+
+    // ---- Frame timing ---------------------------------------------------------------------------
+
+    private static volatile Boolean gpuLimitedCache;
+    private static final long[] frames = new long[48];
+    private static int frameCount;
+
+    /** True once frames have been measured too slow for the full shelf (cleared again when they recover). */
+    public static boolean gpuLimited(Context ctx) {
+        Boolean b = gpuLimitedCache;
+        if (b == null) gpuLimitedCache = b = limited(ctx, LIMIT_GPU);
+        return b;
+    }
+
+    /**
+     * Fed with every drawn frame's total time (ns) by the home screen. Idle screens draw nothing, so
+     * these are frames of real motion: the median of the last 48 decides. Slow (over 24 ms, under ~40
+     * fps) switches the light shelf on; fast (under 14 ms) switches it off again. Returns true when it changed.
+     */
+    public static synchronized boolean noteFrame(Context ctx, long totalNs) {
+        frames[frameCount++ % frames.length] = totalNs;
+        if (frameCount < frames.length || frameCount % 12 != 0) return false;
+        long[] sorted = frames.clone();
+        java.util.Arrays.sort(sorted);
+        long median = sorted[sorted.length / 2];
+        boolean was = gpuLimited(ctx);
+        boolean now = was ? median > 14_000_000L : median > 24_000_000L;
+        if (now == was) return false;
+        setLimit(ctx, LIMIT_GPU, now);
+        gpuLimitedCache = now;
+        cached = null;
+        Log.i(TAG, "Frames median " + median / 1_000_000 + " ms: light shelf " + (now ? "on" : "off"));
+        return true;
     }
 
     // ---- Feature switches: the mode, then what holds this TV back ---------------------------------

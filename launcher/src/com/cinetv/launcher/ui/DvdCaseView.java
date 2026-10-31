@@ -148,6 +148,15 @@ public class DvdCaseView extends View {
     }
 
     /** Extra shrink-wrap reflection while the focused case turns on its own (0..1). */
+    private boolean sleeve = true;
+
+    /** Whether the cellophane sleeve's reflection is drawn (off down the shelf on slow TVs). */
+    public void setSleeve(boolean on) {
+        if (sleeve == on) return;
+        sleeve = on;
+        invalidate();
+    }
+
     public void setGlint(float glint) {
         if (Math.abs(this.glint - glint) < 0.002f) return;
         this.glint = glint;
@@ -226,10 +235,12 @@ public class DvdCaseView extends View {
         float hw = caseW / 2f, hh = caseH / 2f;
         float hd = dvd != null && dvd.spine == null ? caseW * 0.05f : depth / 2f;
         float up = lift * caseH * 0.05f;
-        // Wide penumbra.
-        footprint(cx, cy, -hw * 1.10f + hw * 0.10f, hw * 1.10f + hw * 0.16f, -hd - caseW * 0.10f, hd + caseW * 0.34f, hh + up);
-        fxPaint.setAlpha((int) (120 * shadowVisibility * dim));
-        drawQuad(canvas, sh, floor, fxPaint);
+        // Wide penumbra (near the focus only: down the shelf the core alone reads the same, at half the cost).
+        if (dim > 0.7f) {
+            footprint(cx, cy, -hw * 1.10f + hw * 0.10f, hw * 1.10f + hw * 0.16f, -hd - caseW * 0.10f, hd + caseW * 0.34f, hh + up);
+            fxPaint.setAlpha((int) (120 * shadowVisibility * dim));
+            drawQuad(canvas, sh, floor, fxPaint);
+        }
         // Tight core right under the box.
         footprint(cx, cy, -hw * 1.03f, hw * 1.03f, -hd - caseW * 0.03f, hd + caseW * 0.06f, hh + up);
         fxPaint.setAlpha((int) (200 * shadowVisibility * dim));
@@ -306,7 +317,9 @@ public class DvdCaseView extends View {
             dst[k * 2 + 1] = proj[idx[k] * 2 + 1];
         }
         bmpPaint.setColorFilter(themeFilter != null ? themeFilter : filter);
-        if (soft == null || blur < 0.98f) {
+        // Depth of field cross-fades the soft print over the sharp one; past half-way the sharp one is
+        // invisible anyway, so it is not drawn (one bitmap per face instead of two down the shelf).
+        if (soft == null || blur < 0.5f) {
             mapTo(tex, 0, tex.getWidth());
             bmpPaint.setAlpha(255);
             canvas.drawBitmap(tex, matrix, bmpPaint);
@@ -314,12 +327,12 @@ public class DvdCaseView extends View {
         if (soft != null && blur > 0.02f) {
             // Depth of field: the out-of-focus print fades in over the sharp one.
             mapTo(soft, 0, soft.getWidth());
-            bmpPaint.setAlpha((int) (255 * Math.min(1f, blur)));
+            bmpPaint.setAlpha(blur >= 0.5f ? 255 : (int) (255 * blur * 2f));
             canvas.drawBitmap(soft, matrix, bmpPaint);
             bmpPaint.setAlpha(255);
         }
 
-        if (wrapped) {
+        if (wrapped && sleeve) {
             // Soft collectors' satin cellophane sheen (subtle and realistic, never blown-out CGI):
             Bitmap wrap = DvdCase.wrap();
             float facing = Math.max(0f, -z2);
@@ -338,25 +351,26 @@ public class DvdCaseView extends View {
             canvas.concat(matrix);
             canvas.drawBitmap(wrap, sliceSrc, rect, wrapPaint);
 
-            // Physical Fresnel cellophane sleeve reflection: subtle, organic and true to physical keepcases
-            if (lift > 0.05f && glint > 0.01f) {
-                float sheenCenter = tex.getWidth() * (0.20f + glint * 0.60f);
-                float sheenW = tex.getWidth() * 0.45f;
-                int maxAlpha = Math.min(38, Math.round(36f * lift * (0.6f + 0.4f * glint)));
-                sheenPaint.setShader(new android.graphics.LinearGradient(
-                        sheenCenter - sheenW, -tex.getHeight() * 0.15f,
-                        sheenCenter + sheenW, tex.getHeight() * 1.15f,
-                        new int[]{
-                                Color.TRANSPARENT,
-                                Color.argb(Math.round(maxAlpha * 0.45f), 224, 242, 254),
-                                Color.argb(maxAlpha, 255, 252, 240),
-                                Color.argb(Math.round(maxAlpha * 0.50f), 254, 240, 224),
-                                Color.TRANSPARENT
-                        },
-                        new float[]{0f, 0.32f, 0.50f, 0.68f, 1f},
-                        Shader.TileMode.CLAMP
-                ));
-                canvas.drawRect(0, 0, tex.getWidth(), tex.getHeight(), sheenPaint);
+            // The sleeve catches the light: a broad soft glow with a crisp streak in it, angled like a window
+            // reflection, travelling across the cover as the case turns. Plus the gloss on the top edge.
+            if (lift > 0.05f) {
+                float tw = tex.getWidth(), th = tex.getHeight();
+                float travel = 0.5f + 0.5f * Math.max(-1f, Math.min(1f, x1)) * 0.6f + (glint - 0.5f) * 0.55f;
+                float cxs = tw * (0.08f + 0.84f * Math.max(0f, Math.min(1f, travel)));
+                float slant = th * 0.32f;
+                int halo = Math.round(46f * lift * dim), core = Math.round(92f * lift * dim);
+                sheenPaint.setShader(new android.graphics.LinearGradient(cxs - tw * 0.42f - slant, 0, cxs + tw * 0.42f - slant, th,
+                        new int[]{Color.TRANSPARENT, Color.argb(halo, 230, 240, 255), Color.argb(halo, 255, 250, 240), Color.TRANSPARENT},
+                        new float[]{0f, 0.42f, 0.58f, 1f}, Shader.TileMode.CLAMP));
+                canvas.drawRect(0, 0, tw, th, sheenPaint);
+                sheenPaint.setShader(new android.graphics.LinearGradient(cxs - tw * 0.07f - slant, 0, cxs + tw * 0.07f - slant, th,
+                        new int[]{Color.TRANSPARENT, Color.argb(core, 255, 255, 255), Color.TRANSPARENT},
+                        null, Shader.TileMode.CLAMP));
+                canvas.drawRect(0, 0, tw, th, sheenPaint);
+                sheenPaint.setShader(new android.graphics.LinearGradient(0, 0, 0, th * 0.035f,
+                        Color.argb(Math.round(70f * lift * dim), 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+                canvas.drawRect(0, 0, tw, th * 0.035f, sheenPaint);
+                sheenPaint.setShader(null);
             }
             canvas.restore();
         }

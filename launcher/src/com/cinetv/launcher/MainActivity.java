@@ -121,7 +121,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private DateFormat dateFmt;
     private int lastShelfHour = -1;
     private int lastShelfDay = -1;
-    private long lastDpadRepeatMs = 0L;
 
     private final Runnable clockTick = new Runnable() {
         @Override
@@ -237,6 +236,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
         }, 2500);
 
+        // Every frame Home draws is timed; slow ones switch on the light shelf, fast ones switch it off.
+        getWindow().addOnFrameMetricsAvailableListener((window, metrics, dropped) -> {
+            long total = metrics.getMetric(android.view.FrameMetrics.TOTAL_DURATION);
+            if (PerformanceProfile.noteFrame(getApplicationContext(), total) && home != null) {
+                handler.post(() -> home.shelf.qualityChanged());
+            }
+        }, frameMetricsHandler());
         TvWebRemoteServer.setController(this);
         TvWebRemoteServer.start(this);
         com.cinetv.launcher.party.CinePartyManager.get(this).addListener(partyLauncher);
@@ -699,13 +705,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             if (code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_DPAD_UP) {
                 return true;
             }
-            if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                long now = android.os.SystemClock.uptimeMillis();
-                if (now - lastDpadRepeatMs < 220L) {
-                    return true;
-                }
-                lastDpadRepeatMs = now;
-            }
+            // Left/right repeats are paced by whoever owns the focus (the shelf counts its own steps).
         }
         if (home.screensaver.getVisibility() == View.VISIBLE) {
             if (down) hideScreensaver();
@@ -1371,6 +1371,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         } else {
             showPartyGamesFolderModal();
         }
+    }
+
+    private static android.os.Handler frameHandler;
+
+    private static synchronized android.os.Handler frameMetricsHandler() {
+        if (frameHandler == null) {
+            android.os.HandlerThread t = new android.os.HandlerThread("cinetv-frames", android.os.Process.THREAD_PRIORITY_BACKGROUND);
+            t.start();
+            frameHandler = new android.os.Handler(t.getLooper());
+        }
+        return frameHandler;
     }
 
     // ---- CineParty -------------------------------------------------------------------------------

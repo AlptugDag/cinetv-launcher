@@ -153,6 +153,7 @@ public class SpatialEnvironment extends View {
             Canvas cc = new Canvas(cache);
             cc.scale(cw / (float) w, ch / (float) h);
             drawBase(cc, w, h, false);
+            headerShade(cc, w, h);
             baseCache = cache;
         } else {
             baseCache = null;
@@ -227,6 +228,7 @@ public class SpatialEnvironment extends View {
             }
         } else {
             drawBase(canvas, w, h, true);
+            headerShade(canvas, w, h);
         }
         if (focusLight) {
             int r = Color.red(glowColor), g = Color.green(glowColor), b = Color.blue(glowColor);
@@ -235,8 +237,12 @@ public class SpatialEnvironment extends View {
             lightPaint.setColorFilter(filter(Color.argb(light ? 34 : 54, r, g, b)));
             dst.set(glowX - rx, glowY - ry, glowX + rx, glowY + ry);
             canvas.drawBitmap(lightSprite, null, dst, lightPaint);
-            // ...and the brighter neon core right behind the focused item.
+            // ...and the brighter neon core right behind the focused item (weak GPUs: the spill alone).
             float core = Math.max(w, h) * 0.19f;
+            if (lite) {
+                if (com.cinetv.launcher.device.NightCare.isVisualActive(getContext())) canvas.drawColor(Color.argb(26, 255, 140, 20), PorterDuff.Mode.SRC_OVER);
+                return;
+            }
             lightPaint.setColorFilter(filter(Color.argb(light ? 42 : 70, r, g, b)));
             dst.set(glowX - core * 1.25f, glowY - core, glowX + core * 1.25f, glowY + core);
             canvas.drawBitmap(lightSprite, null, dst, lightPaint);
@@ -253,6 +259,22 @@ public class SpatialEnvironment extends View {
             canvas.drawColor(Color.argb(26, 255, 140, 20), PorterDuff.Mode.SRC_OVER);
         }
     }
+
+    /**
+     * A soft shade under the header so the clock, date and shelf title read on every photographic theme.
+     * Baked into the cached backdrop: it costs nothing per frame.
+     */
+    private void headerShade(Canvas c, int w, int h) {
+        float sh = h * 0.34f;
+        shadePaint.setShader(new LinearGradient(0, 0, 0, sh, new int[]{Color.argb(150, 0, 0, 0), Color.argb(70, 0, 0, 0), Color.TRANSPARENT},
+                new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, sh, shadePaint);
+        shadePaint.setShader(null);
+    }
+
+    private final Paint shadePaint = new Paint();
+    /** Weak GPUs: one light layer instead of three. */
+    private final boolean lite = com.cinetv.launcher.device.PerformanceProfile.lowMemory(getContext());
 
     private void drawBase(Canvas canvas, int w, int h, boolean withParallax) {
         float px = withParallax ? (glowX - w / 2f) * -0.035f : 0f;

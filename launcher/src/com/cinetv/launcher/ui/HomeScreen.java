@@ -120,21 +120,6 @@ public class HomeScreen {
 
         environment = new SpatialEnvironment(ctx);
         root.addView(environment, match());
-        // A soft shade under the header: the clock, date and shelf title stay readable on every
-        // photographic theme (bookshelves, press walls, theatres) without dimming the shelf itself.
-        View headerShade = new View(ctx) {
-            private final android.graphics.Paint shade = new android.graphics.Paint();
-
-            @Override
-            protected void onDraw(android.graphics.Canvas c) {
-                float h = getHeight() * 0.34f;
-                shade.setShader(new android.graphics.LinearGradient(0, 0, 0, h,
-                        new int[]{Color.argb(150, 0, 0, 0), Color.argb(70, 0, 0, 0), Color.TRANSPARENT}, new float[]{0f, 0.55f, 1f},
-                        android.graphics.Shader.TileMode.CLAMP));
-                c.drawRect(0, 0, getWidth(), h, shade);
-            }
-        };
-        root.addView(headerShade, match());
 
         scroll = new GlideScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
@@ -607,7 +592,6 @@ public class HomeScreen {
                 bounceY = (float) a.getAnimatedValue();
                 invalidate();
             });
-            anim.start();
         }
 
         public void setAlertMode(boolean alert) {
@@ -625,6 +609,15 @@ public class HomeScreen {
         protected void onDetachedFromWindow() {
             super.onDetachedFromWindow();
             if (anim != null) anim.cancel();
+        }
+
+        /** Bounces only while it can be seen: a hidden banner must not keep the screen redrawing. */
+        @Override
+        public void onVisibilityAggregated(boolean visible) {
+            super.onVisibilityAggregated(visible);
+            if (anim == null) return;
+            if (visible && !anim.isStarted()) anim.start();
+            else if (!visible && anim.isStarted()) anim.cancel();
         }
 
         @Override
