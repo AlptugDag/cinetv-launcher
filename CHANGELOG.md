@@ -1,5 +1,10 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.20h · Beta 8
+
+- AlptugPlayer: CineTV'nin oynatıcısı artık kendi kendini düzeltiyor. Tünelli oynatma hiç kullanılmıyor (birçok TV'de sesi verip görüntüyü vermiyor). Bir ayar çakışırsa (ses var görüntü yok, kod çözücü hatası) film aynı saniyeden bir sonraki profille sürüyor: Tam kalite → Dolby Vision kapalı → Güvenli mod (1080p, AVC, stereo). TV'de işe yarayan profil yayın türüne göre hatırlanıyor.
+- Oynatıcıda CineTV yazı stiliyle "AlptugPlayer" yazıyor (kontrollerle ve filmin ilk saniyelerinde).
+
 ## 1.0.0.20g · Beta 7
 
 - CineTV Oynatıcı: CineTV'nin kendi film oynatıcısı (ExoPlayer). Nuvio'nun harici oynatıcı seçeneğinde "CineTV Oynatıcı" seçilince filmler onunla açılır; Nuvio'nun ayarlarına CineTV dokunmaz.
