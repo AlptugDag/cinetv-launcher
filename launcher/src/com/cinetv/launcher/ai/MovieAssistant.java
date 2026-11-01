@@ -211,7 +211,8 @@ public final class MovieAssistant {
                 + "still fill the shelf with your best guess AND ask ONE short question in voice; set follow_up true. Otherwise follow_up false. Never ask twice in a row.\n"
                 + "- 'chat' is for small talk (greetings, how are you, thanks, jokes): answer warmly in voice, maybe suggest one film in titles; no shelf title needed.\n"
                 + "How to choose:\n"
-                + "- A person's films ('Kitano filmleri'): intent shelf, person = exact full name, role as asked.\n"
+                + "- A person's films ('Kitano filmleri'): intent shelf, person = exact full name, role as asked. Only a real, famous person's name; "
+                + "a common word that is also a first name (deniz, umut, barış, aşk, bahar, yağmur, deniz filmleri = films set at sea) is a theme: person empty.\n"
                 + "- Moods, vibes, themes, 'like X but darker', 'daha eskisi': intent shelf, titles = up to 20 well-known films that truly match, interpreted against the current shelf and the conversation.\n"                + "- Length: 'bir saatten kısa' = runtime_max 60, '90 dakikanın altında' = runtime_max 89, '3 saatten uzun' = runtime_min 180. Minutes, always set when the viewer mentions length.\n"
                 + "- language = the original language as ISO 639-1 ('Türk filmleri' = tr, 'Japon' = ja); country = production country (ISO 3166). "
                 + "Where a film is SET is a theme, not a country: 'Almanya'da geçen Türk filmleri' = language tr AND the story takes place in Germany "
@@ -418,6 +419,12 @@ public final class MovieAssistant {
             if (q.contains("gerçek hikaye") || q.contains("gerçek olay")) keywords.add("based on true story");
             if (q.contains("boks")) keywords.add("boxing");
             if (q.contains("köpek")) keywords.add("dog");
+            // nature and places are themes, never a person's name ("deniz filmleri")
+            if (q.contains("deniz") || q.contains("okyanus")) keywords.add("ocean");
+            if (q.contains("orman")) keywords.add("forest");
+            if (q.contains("çöl")) keywords.add("desert");
+            if (q.contains("dağ ") || q.contains("dağda") || q.contains("dağcı")) keywords.add("mountain");
+            if (q.contains("uzay")) keywords.add("space");
             if (q.contains("kasvet") || q.contains("karanlık") || q.contains("noir")) { genres.add("crime"); genres.add("thriller"); keywords.add("dark"); }
             if (q.contains("korku") || q.contains("gerilim")) { genres.add("horror"); genres.add("thriller"); }
             if (q.contains("komedi") || q.contains("eğlence")) { genres.add("comedy"); }

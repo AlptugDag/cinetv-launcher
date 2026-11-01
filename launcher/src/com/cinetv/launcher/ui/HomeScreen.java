@@ -68,6 +68,8 @@ public class HomeScreen {
     /** The cinematic stage: the focused film's card left of the case, the half-watched film right of it. */
     public final FilmBillboard billboard;
     public final ContinueCard continueCard;
+    /** "Raflar": every shelf, as cards under the DVD row. */
+    public final ShelfRail rail;
     private boolean cinematic = true;
     public final CinemaCurtainsView cinemaCurtains;
     /** Trailer moments (Settings): the trailer in the opened DVD's tray. */
@@ -420,8 +422,9 @@ public class HomeScreen {
 
         billboard = new FilmBillboard(ctx);
         FrameLayout.LayoutParams billboardLp = new FrameLayout.LayoutParams(UiKit.px(560), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START);
-        billboardLp.setMargins(UiKit.px(62), UiKit.px(18), 0, 0);
+        billboardLp.setMargins(UiKit.px(62), 0, 0, 0);
         billboard.setTranslationZ(200f);
+        billboard.setVisibility(View.GONE); // film details only inside an opened case
         stage.addView(billboard, billboardLp);
 
         continueCard = new ContinueCard(ctx);
@@ -438,6 +441,12 @@ public class HomeScreen {
             }
         });
         content.addView(stage, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        rail = new ShelfRail(ctx);
+        LinearLayout.LayoutParams railLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        railLp.rightMargin = -UiKit.px(64);
+        railLp.topMargin = -UiKit.px(34); // tucked under the shelf deck, part of the shelf
+        content.addView(rail, railLp);
 
         // ---- apps
         apps = new AppGrid(ctx, appHost);
@@ -1557,8 +1566,9 @@ public class HomeScreen {
     /** The cinematic stage on or off (Settings): off brings the classic shelf capsule back. */
     public void setCinematic(boolean on) {
         cinematic = on;
-        billboard.setVisibility(on ? View.VISIBLE : View.GONE);
-        shelfLabel.setVisibility(on ? View.INVISIBLE : View.VISIBLE);
+        // the film's details stay inside the opened case; Home keeps only the shelf's name
+        billboard.setVisibility(View.GONE);
+        shelfLabel.setVisibility(View.VISIBLE);
         if (!on) continueCard.setVisibility(View.GONE);
     }
 

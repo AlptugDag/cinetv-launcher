@@ -668,11 +668,30 @@ public final class TvWebRemoteServer {
                     found.addAll(MovieCatalog.search(app, text, page, 30));
                     return ok.put("results", toJson(found));
                 }
+                String key = text.toLowerCase(java.util.Locale.ROOT);
+                if (page > 1) {
+                    // Scrolling a curated list ("Ailece", "Arkadaşlar"...): more films that fit just as well, none repeated.
+                    List<MovieCatalog.Movie> shown;
+                    synchronized (aiLists) {
+                        shown = aiLists.get(key);
+                    }
+                    if (shown == null || shown.isEmpty()) return ok.put("results", new JSONArray());
+                    List<MovieCatalog.Movie> more = com.cinetv.launcher.ai.MovieAssistant.more(app, text, shown, 14);
+                    more = freshOnly(more, shown);
+                    if (more.isEmpty()) more = freshOnly(similarTo(shown, page), shown);
+                    synchronized (aiLists) {
+                        shown.addAll(more);
+                    }
+                    return ok.put("results", toJson(more));
+                }
                 com.cinetv.launcher.ai.MovieAssistant.Reply r = com.cinetv.launcher.ai.MovieAssistant.ask(app, text, 30);
                 if (r.movies.isEmpty() && r.answer.isEmpty()) r.movies = MovieCatalog.search(app, text, page, 30);
+                synchronized (aiLists) {
+                    aiLists.put(key, new ArrayList<>(r.movies));
+                }
                 List<MovieCatalog.Movie> merged = new ArrayList<>(live);
                 merged.addAll(r.movies);
-                return ok.put("results", toJson(merged)).put("title", r.title).put("answer", r.answer);
+                return ok.put("results", toJson(merged)).put("title", r.title).put("answer", r.answer).put("more", !r.movies.isEmpty());
             }
             case "/api/catalog/similar": {
                 int tmdb = parseInt(q.get("tmdb"), 0);
@@ -1297,6 +1316,40 @@ public final class TvWebRemoteServer {
                 out.put(pair.substring(0, eq), URLDecoder.decode(pair.substring(eq + 1), "UTF-8"));
             } catch (Throwable ignored) {
             }
+        }
+        return out;
+    }
+
+    /** The phone's last curated lists by request, so scrolling can continue them (a few kept, oldest dropped). */
+    private static final java.util.Map<String, List<MovieCatalog.Movie>> aiLists = new java.util.LinkedHashMap<String, List<MovieCatalog.Movie>>(8, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(java.util.Map.Entry<String, List<MovieCatalog.Movie>> e) {
+            return size() > 6;
+        }
+    };
+
+    private static List<MovieCatalog.Movie> freshOnly(List<MovieCatalog.Movie> list, List<MovieCatalog.Movie> shown) {
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (MovieCatalog.Movie m : shown) seen.add(listKey(m));
+        List<MovieCatalog.Movie> out = new ArrayList<>();
+        for (MovieCatalog.Movie m : list) {
+            if (m.posterUrl == null || m.posterUrl.isEmpty()) continue;
+            if (seen.add(listKey(m))) out.add(m);
+        }
+        return out;
+    }
+
+    private static String listKey(MovieCatalog.Movie m) {
+        return m.tmdbId > 0 ? "t" + m.tmdbId : (m.title + "|" + m.year).toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /** Without the AI (no key, or its quota spent): films like the ones on the list, two of them per page. */
+    private static List<MovieCatalog.Movie> similarTo(List<MovieCatalog.Movie> shown, int page) {
+        List<MovieCatalog.Movie> out = new ArrayList<>();
+        int from = Math.max(0, (page - 2) * 2);
+        for (int i = from; i < shown.size() && i < from + 2; i++) {
+            MovieCatalog.Movie m = shown.get(i);
+            out.addAll(MovieCatalog.similar(app, m.tmdbId, m.type, m.title, 14));
         }
         return out;
     }

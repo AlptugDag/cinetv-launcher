@@ -178,6 +178,13 @@
                 android:resource="@xml/key_service_config" />
         </service>
 
+        <!-- The downloaded update, lent read-only to the system installer by a one-time grant. -->
+        <provider
+            android:name=".service.UpdateApkProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"

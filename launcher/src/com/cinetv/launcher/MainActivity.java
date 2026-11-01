@@ -218,7 +218,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 com.cinetv.launcher.device.AmbilightSync.updateColor(MainActivity.this, accent);
                 final Movie m = home.shelf.focusedMovie();
                 if (m != null) prefetchMovie(m);
-                if (home.isCinematic()) home.billboard.show(m);
                 // the trailer starts buffering while the viewer is still looking at the case
                 handler.removeCallbacks(preloadTrailer);
                 preloadFor = m;
@@ -236,8 +235,47 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     // up from the shelf: the half-watched film first, then the header
                     if (home.continueCard.getVisibility() == View.VISIBLE) home.continueCard.requestFocus();
                     else home.focusHeader();
-                } else home.apps.focusDock(0);
+                } else home.rail.focusFirst();
                 return true;
+            }
+        });
+
+        // "Raflar": a card puts its shelf on the DVD row at once
+        home.rail.setListener(new com.cinetv.launcher.ui.ShelfRail.Listener() {
+            @Override
+            public void onShelf(String name, List<Movie> films, MovieCatalog.Category category) {
+                if (!films.isEmpty()) {
+                    setShelf(name, films, true);
+                    home.shelf.requestFocus();
+                    return;
+                }
+                home.shelfLabel.setText(getString(R.string.shelf_building, name).toUpperCase(Locale.getDefault()));
+                final Context app = getApplicationContext();
+                background(() -> {
+                    List<Movie> got = MovieCatalog.category(app, category, PerformanceProfile.shelfSize(app));
+                    ui(() -> {
+                        if (got != null && !got.isEmpty()) {
+                            setShelf(name, got, true);
+                            home.shelf.requestFocus();
+                        }
+                    });
+                });
+            }
+
+            @Override
+            public void onGamze() {
+                home.shelf.requestFocus();
+                refreshShelf();
+            }
+
+            @Override
+            public void onUp() {
+                home.shelf.requestFocus();
+            }
+
+            @Override
+            public void onDown() {
+                home.apps.focusDock(0);
             }
         });
 
@@ -565,9 +603,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         String updateErr = p.getString("update_error_message", null);
         if (updateErr != null) {
-            p.edit().remove("update_error_message").apply();
-            presentUpdateBannerGuaranteed(updateErr, "Lütfen Ayarlar › Sistem › Sürüm menüsünden manuel güncellemeyi deneyin.", true);
+            String detail = p.getString("update_error_detail", "Lütfen Ayarlar › Sistem › Sürüm menüsünden manuel güncellemeyi deneyin.");
+            p.edit().remove("update_error_message").remove("update_error_detail").apply();
+            presentUpdateBannerGuaranteed(updateErr, detail, true);
         }
+        AppUpdater.onHomeResumed(this);
     }
 
     public void showUpdateBanner(String title, String message, boolean isError) {
@@ -1098,14 +1138,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 } : null);
     }
 
-    /** When CineTV itself last started listening (the key service leaves Google's voice window open then). */
+    /** When CineTV itself last opened Google's own voice window (the key service leaves that one open). */
     public static volatile long ourVoiceAt;
 
     @Override
     public void onVoice() {
         com.cinetv.launcher.ai.EmaLightningTts.stop();
         home.keyboard.hide();
-        ourVoiceAt = android.os.SystemClock.elapsedRealtime();
 
         if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, REQ_VOICE);
@@ -1127,6 +1166,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     private void startSystemVoiceFallback() {
+        ourVoiceAt = android.os.SystemClock.elapsedRealtime();
         try {
             Intent i = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                     .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -1276,9 +1316,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         background(() -> {
             try {
                 MovieAssistant.Shelf s = MovieAssistant.curate(this, mood, moment, PerformanceProfile.shelfSize(this));
+                // A free AI key often names only a handful of films that resolve: the row is completed before it shows,
+                // so it never opens with four cases (and nothing on it changes afterwards).
+                final List<Movie> films = s == null ? null : fillShelf(getApplicationContext(), s.movies, PerformanceProfile.shelfSize(this));
                 ui(() -> {
                     try {
-                        if (s != null && !s.movies.isEmpty()) setShelf(s.title, s.movies, true);
+                        if (films != null && !films.isEmpty()) setShelf(s.title, films, true);
                         else if (mood == null || refresh) categoryShelf();
                         else restoreShelfLabel();
                     } finally {
@@ -1331,6 +1374,34 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
     }
 
+    /**
+     * Tops a short row up to the shelf's size with films like the ones on it (TMDB recommendations of its first
+     * films), never repeating one. Blocking; a full row comes back untouched.
+     */
+    static List<Movie> fillShelf(Context app, List<Movie> base, int want) {
+        if (base == null || base.isEmpty() || base.size() >= want) return base;
+        List<Movie> out = new ArrayList<>(base);
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (Movie m : out) seen.add(shelfKey(m));
+        try {
+            for (int i = 0; i < base.size() && i < 4 && out.size() < want; i++) {
+                Movie src = base.get(i);
+                for (Movie m : MovieCatalog.similar(app, src.tmdbId, src.type, src.title, want)) {
+                    if (out.size() >= want) break;
+                    if (m.posterUrl == null || m.posterUrl.isEmpty()) continue;
+                    if (seen.add(shelfKey(m))) out.add(m);
+                }
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("CineTV", "Shelf top-up failed: " + t.getMessage());
+        }
+        return out;
+    }
+
+    private static String shelfKey(Movie m) {
+        return m.tmdbId > 0 ? "t" + m.tmdbId : "n" + (m.title == null ? "" : m.title.toLowerCase(Locale.ROOT)) + m.year;
+    }
+
     private void restoreShelfLabel() {
         home.shelfLabel.setText(Prefs.get(this).getString(SHELF_TITLE, getString(R.string.cat_trending)).toUpperCase(Locale.getDefault()));
     }
@@ -1360,6 +1431,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         String cleanTitle = (title != null) ? title.replaceAll("\\b\\d{1,2}[:.]\\d{2}\\b\\s*", "").trim() : "";
         if (cleanTitle.isEmpty()) cleanTitle = getString(R.string.cat_trending);
         home.shelfLabel.setText(cleanTitle.toUpperCase(Locale.getDefault()));
+        home.rail.setActive(cleanTitle);
         home.shelf.setMovies(movies);
         final Context app = getApplicationContext();
         for (int i = 0; i < Math.min(4, movies.size()); i++) {
@@ -1434,7 +1506,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 dayStr, timeSegment, (weather.isEmpty() ? monthStr : weather), getString(cat.nameRes)).toUpperCase(Locale.getDefault());
 
         background(() -> {
-            List<Movie> list = MovieCatalog.category(app, cat, PerformanceProfile.shelfSize(app), shelfSpin);
+            List<Movie> list = fillShelf(app, MovieCatalog.category(app, cat, PerformanceProfile.shelfSize(app), shelfSpin), PerformanceProfile.shelfSize(app));
             if (!list.isEmpty()) ui(() -> setShelf(richTitle, list, true));
         });
     }
@@ -1818,10 +1890,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             try {
                 if (m.cast == null || m.cast.isEmpty()) {
                     MovieCatalog.details(app, m);
-                    // the film card fills in (story, length, director, title logo) if the film is still in focus
-                    ui(() -> {
-                        if (home != null && home.isCinematic() && home.billboard.showing() == m) home.billboard.show(m);
-                    });
                 }
                 // Portraits too, even when the details came earlier and a photo didn't make it in time.
                 MovieCatalog.ensureCastPhotos(app, m, 4000);
@@ -2495,8 +2563,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (home == null) return;
         home.setCinematic(Prefs.get(this).getBoolean(Prefs.CINEMATIC_STAGE, true));
         home.continueCard.bind(home.isCinematic() ? com.cinetv.launcher.service.WatchHistory.latest(this) : null);
-        Movie m = home.shelf.focusedMovie();
-        if (home.isCinematic()) home.billboard.show(m);
     }
 
     /** The pairing question can show in CineTV's own modal layer (nothing covers it: no game on top, no case opening). */

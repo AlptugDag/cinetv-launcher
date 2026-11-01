@@ -379,7 +379,7 @@ public final class Panels {
         cVisual.addView(trailersTile);
 
         boolean stageOn = Prefs.get(ctx).getBoolean(Prefs.CINEMATIC_STAGE, true);
-        final String stageSub = tr ? "Açık · Film künyesi ve kaldığın yerden" : "On · Film card and continue watching";
+        final String stageSub = tr ? "Açık · Kaldığın yerden kartı" : "On · Continue watching card";
         LinearLayout stageTile = Controls.toggleTile(ctx, tr ? "Sinematik Sahne" : "Cinematic Stage",
                 stageOn ? stageSub : ctx.getString(R.string.state_off), stageOn, (newActive, subLabel, sw) -> {
                     Prefs.setFlag(ctx, Prefs.CINEMATIC_STAGE, newActive);

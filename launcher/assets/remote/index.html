@@ -365,7 +365,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       <button type="button" class="mtag" data-vibe="ailece izlenecek sürükleyici ve temiz">Ailece</button>
       <button type="button" class="mtag" data-vibe="arkadaşlarla izlenecek eğlenceli ve gerilimli">Arkadaşlar</button>
       <button type="button" class="mtag" data-vibe="sevgiliyle baş başa izlenecek romantik ve büyüleyici">Sevgiliyle</button>
-      <button type="button" class="mtag" data-vibe="Interstellar gibi derin uzay yalnızlığı anlatan">Uzay Yalnızlığı</button>
+      <button type="button" class="mtag" data-vibe="tek başına, yalnızken izlemelik; insanı içine çeken, düşündüren ve kendinle baş başa bırakan">Yalnız</button>
       <button type="button" class="mtag" data-vibe="Blade Runner gibi yağmurlu, neon ışıklı, hüzünlü">Neon Hüznü</button>
       <button type="button" class="mtag" id="watchlistChip" style="color:#f59e0b;border-color:rgba(245,158,11,.4)">Ortak Liste</button>
     </div>
@@ -793,7 +793,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   document.querySelectorAll("nav button").forEach(b => b.onclick = () => { show(b.dataset.tab); location.hash = b.dataset.tab; });
 
   // discover & infinite scroll
-  let currentList = [], currentPage = 1, currentQuery = "", isLoadingMore = false, hasMore = true;
+  let currentList = [], currentPage = 1, currentQuery = "", currentAi = false, isLoadingMore = false, hasMore = true;
   let kind = "movie", freshMode = false, freshSeed = 0;
   const card = (m, i) => `<div class="card" data-i="${i}"><img loading="lazy" decoding="async" src="${esc(m.poster)}" alt="">
       ${m.type === "series" ? `<span class="badge">${t("series")}</span>` : ""}<div class="t">${esc(m.title)}</div></div>`;
@@ -822,7 +822,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const trending = async (fresh = false) => {
     if (!token) return;
     skeleton();
-    currentQuery = ""; currentPage = 1; hasMore = true; freshMode = fresh;
+    currentQuery = ""; currentAi = false; currentPage = 1; hasMore = true; freshMode = fresh;
     // each refresh starts from a different page of well-liked films, and scrolling continues from there
     if (fresh) freshSeed = (freshSeed + 3 + Math.floor(Math.random() * 6)) % 40;
     const my = ++seq;
@@ -857,16 +857,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   let searchTimer, seq = 0;
   let mirrorTimer;
 
-  window.addEventListener("scroll", async () => {
-    if (isLoadingMore || !hasMore || location.hash === "#remote" || location.hash === "#cast") return;
-    // body is height:100% here, so the page's real length is the document's scroll height
-    if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 360) {
+  // a short list loads its next page by itself (there is nothing to scroll yet)
+  const topUp = () => setTimeout(() => {
+    if (hasMore && !isLoadingMore && currentList.length < 18 && document.documentElement.scrollHeight <= window.innerHeight + 360) loadMore();
+  }, 60);
+  const loadMore = async () => {
       isLoadingMore = true;
       currentPage++;
       try {
         let r;
         if (currentQuery) {
-          r = await api("catalog/search", {q: currentQuery, page: currentPage});
+          // a curated list continues with more films that fit it, not a word-for-word title search
+          r = await api("catalog/search", {q: currentQuery, page: currentPage, ai: currentAi ? 1 : 0});
         } else {
           r = await api("catalog/trending", {type: kind, page: currentPage, fresh: freshMode ? 1 : 0, seed: freshSeed});
         }
@@ -880,7 +882,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       } finally {
         isLoadingMore = false;
       }
-    }
+      topUp();
+  };
+  window.addEventListener("scroll", () => {
+    if (isLoadingMore || !hasMore || location.hash === "#remote" || location.hash === "#cast") return;
+    // body is height:100% here, so the page's real length is the document's scroll height
+    if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 360) loadMore();
   });
 
   const cleanSearchQuery = text => (text || "").replace(/\b(filmleri|filmler|filmi|dizileri|dizisi|dizi|movies|movie|films|film|tavsiyesi|önerisi|seçkisi)\b/gi, "").replace(/\s+/g, " ").trim();
@@ -898,6 +905,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         } else {
           render(items, "EV İÇİ ORTAK İZLEME LİSTESİ (" + items.length + ")");
         }
+        hasMore = false; // the shared list is all there is
       } catch (e) { toast(t("offline")); }
     };
   }
@@ -908,13 +916,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   });
   runSearch = (query, ai, label) => {
     currentQuery = query;
+    currentAi = !!ai;
     currentPage = 1;
     hasMore = true;
     const my = ++seq; skeleton();
     api("catalog/search", {q: query, ai: ai ? 1 : 0, page: 1}).then(r => {
       if (my !== seq) return;
       render(r.results || [], label || r.title || t("results"));
-      if (ai) hasMore = false; // a curated list is complete; more pages would be a word-for-word title search
+      hasMore = (r.results || []).length > 0 && (!ai || r.more !== false);
+      if (!r.answer) topUp();
       if (r.answer) {
         if (!(r.results || []).length) $("results").innerHTML = "";
         $("results").insertAdjacentHTML("afterbegin", `<div class="answer glass" style="grid-column:1/-1">${esc(r.answer)}</div>`);

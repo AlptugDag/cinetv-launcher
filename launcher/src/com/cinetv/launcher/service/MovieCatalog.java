@@ -312,14 +312,49 @@ public final class MovieCatalog {
         List<Movie> out = new ArrayList<>();
         if (!hasTmdb(ctx) || person == null || person.trim().isEmpty()) return out;
         try {
-            JSONArray people = tmdb(ctx, "search/person?query=" + enc(person.trim())).optJSONArray("results");
-            if (people == null || people.length() == 0) return out;
-            JSONObject who = people.getJSONObject(0);
+            JSONObject who = matchingPerson(ctx, person);
+            if (who == null) return out;
             return personWork(ctx, who.getInt("id"), role, "Directing".equals(who.optString("known_for_department")), max);
         } catch (Throwable t) {
             Log.w(TAG, "Person search failed: " + t.getMessage());
             return out;
         }
+    }
+
+    /**
+     * The person a name really means, or null. TMDB's person search matches any part of a name, so "deniz filmleri"
+     * used to become the films of someone whose first name is Deniz. Every word asked must be in the name; a single
+     * word only counts as a surname ("Kitano", "Nolan") or as someone's whole name, never as a first name.
+     */
+    static JSONObject matchingPerson(Context ctx, String name) throws Exception {
+        String[] want = foldName(name).split(" ");
+        if (want.length == 0 || want[0].isEmpty()) return null;
+        JSONArray people = tmdb(ctx, "search/person?query=" + enc(name.trim())).optJSONArray("results");
+        for (int i = 0; people != null && i < people.length() && i < 6; i++) {
+            JSONObject p = people.getJSONObject(i);
+            String dept = p.optString("known_for_department");
+            if (!"Acting".equals(dept) && !"Directing".equals(dept) && !"Writing".equals(dept)) continue;
+            String[] have = foldName(p.optString("name")).split(" ");
+            if (want.length == 1) {
+                if (have.length == 1 ? have[0].equals(want[0]) : have[have.length - 1].equals(want[0])) return p;
+                continue;
+            }
+            boolean all = true;
+            for (String w : want) {
+                boolean found = false;
+                for (String h : have) if (h.equals(w)) found = true;
+                if (!found) all = false;
+            }
+            if (all) return p;
+        }
+        return null;
+    }
+
+    private static String foldName(String s) {
+        if (s == null) return "";
+        String t = s.toLowerCase(new Locale("tr")).replace('ı', 'i');
+        t = java.text.Normalizer.normalize(t, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        return t.replaceAll("[^\\p{L}\\p{N} ]", " ").replaceAll("\\s+", " ").trim();
     }
 
     public static List<Movie> personWork(Context ctx, int personId, String role, boolean directs, int max) {
@@ -620,9 +655,9 @@ public final class MovieCatalog {
         List<Movie> out = new ArrayList<>();
         if (!hasTmdb(ctx)) return out;
         try {
-            JSONArray people = tmdb(ctx, "search/person?query=" + enc(person)).optJSONArray("results");
-            if (people == null || people.length() == 0) return out;
-            int id = people.getJSONObject(0).getInt("id");
+            JSONObject who = matchingPerson(ctx, person);
+            if (who == null) return out;
+            int id = who.getInt("id");
             JSONObject credits = tmdb(ctx, "person/" + id + "/movie_credits?language=" + language());
             JSONArray crew = credits.optJSONArray("crew");
             List<JSONObject> picked = new ArrayList<>();

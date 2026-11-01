@@ -213,7 +213,13 @@ public class PosterShelf extends FrameLayout {
         index = Math.min(index, Math.max(0, max - 1));
         targetPos = index;
         focusPos = index;
-        for (int i = 0; i < max; i++) bake(i, gen);
+        // nearest the focus first (the middle case, then outward on both sides of the ring): the cases in
+        // view are ready long before the ones off screen
+        for (int d = 0; max > 0 && d <= max / 2; d++) {
+            int right = Math.floorMod(index + d, max), left = Math.floorMod(index - d, max);
+            bake(right, gen);
+            if (left != right) bake(left, gen);
+        }
         post(this::layoutCases);
         if (!movies.isEmpty() && index < movies.size()) {
             MovieCatalog.prefetchTrailer(getContext(), movies.get(index));

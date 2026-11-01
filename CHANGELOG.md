@@ -1,5 +1,25 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.27
+
+- **Ana sayfa:**
+  - Film bilgileri ana sayfada artık gösterilmiyor; eskisi gibi yalnızca kutu açılınca görünüyor. Rafın adı yine kapsülde.
+  - Vitrinin altındaki kategoriler artık küçük, yalnızca yazıdan oluşan sekmeler. Uygulama tepsisi aşağı kaydırmadan görünüyor.
+  - Kategoriler her 50 dakikada yeni bir sırayla geliyor ve her biri farklı filmler getiriyor.
+- **Vitrin tazeleme:** Yapay zekâ az film önerdiğinde (özellikle ücretsiz anahtarlarda) vitrin artık 4 kutuyla açılmıyor. Raf, ekrana gelmeden önce benzer filmlerle tam boyuta tamamlanıyor; sonradan da hiçbir kutu yer değiştirmiyor.
+- **Güncelleme (Grundig ve diğer TV'ler):**
+  - İndirilen dosyanın boyutu doğrulanıyor; yarım inen dosya bir kez yeniden indiriliyor.
+  - Önceki yarım kalmış kurulum oturumları temizleniyor.
+  - "Bilinmeyen uygulamaları yükle" izni eksikse TV'nin izin sayfası açılıyor; CineTV'ye dönünce kurulum kendiliğinden sürüyor.
+  - Kurulum onayı CineTV arka plandayken gelirse kaybolmuyor; CineTV'ye dönülünce gösteriliyor.
+  - Kurulum başarısız olursa TV'nin kendi yükleyicisi dosyanın üzerinde açılıyor. O da olmazsa gerçek neden Türkçe yazılıyor (yer yok, farklı imza, güvenlik engeli…).
+  - Otomatik güncelleme bulununca ekranda bildirim çıkıyor.
+- **Mikrofon tuşu (Grundig, Arçelik):** Kumandanın sesi doğrudan Google Asistan'a gönderdiği TV'lerde asistan anında kapanıyor ve Gamze açılıyor. Önceden, Gamze'yle konuştuktan sonraki 20 saniye içinde basılırsa asistan açık kalıyordu.
+- **Arama:** "deniz filmleri" gibi aramalara artık adı Deniz olan kişilerin filmleri gelmiyor. Bir kişi ancak sorulan her kelime adında geçiyorsa seçiliyor; tek kelime yalnızca soyadı ya da tam ad olarak sayılıyor. Deniz, orman, çöl, dağ ve uzay konu olarak aranıyor. Ücretsiz yapay zekâ hesaplarında da aynı kural geçerli.
+- **Mobil arayüz:**
+  - "Uzay Yalnızlığı" kategorisinin adı artık "Yalnız"; tek başına izlemelik filmler öneriyor.
+  - "Ailece", "Arkadaşlar", "Sevgiliyle" ve "Yalnız" artık 3-4 sonuçta kalmıyor. Liste kendiliğinden doluyor, kaydırdıkça aynı havada yeni filmler geliyor. Yapay zekâ yoksa benzer filmlerle devam ediyor.
+
 ## 1.0.0.25
 
 - AirPods/kulaklık: "Sanal Surround" ve "Geniş Sahne" artık AlptugPlayer'da her TV'de duyuluyor. Android'in yerleşik Virtualizer efektini birçok TV üreticisi hiç uygulamıyor (açık görünüp sese dokunmuyor); ses artık CineTV'nin kendi işlemcisinde işleniyor. Sanal Surround'da her kulak diğer kanalı biraz gecikmeli ve yumuşamış duyuyor, 5.1 arka kanallar arkaya ve yanlara yerleşiyor. Geniş Sahne'de stereo görüntü genişliyor, orta korunuyor. Seçim film oynarken anında değişiyor.

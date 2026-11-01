@@ -44,8 +44,8 @@ public final class FilmBillboard extends LinearLayout {
         logo = new ImageView(ctx);
         logo.setAdjustViewBounds(true);
         logo.setScaleType(ImageView.ScaleType.FIT_START);
-        logo.setMaxHeight(UiKit.px(92));
-        LayoutParams llp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, UiKit.px(92));
+        logo.setMaxHeight(UiKit.px(74));
+        LayoutParams llp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, UiKit.px(74));
         llp.topMargin = UiKit.px(12);
         logo.setVisibility(GONE);
         addView(logo, llp);
@@ -68,7 +68,7 @@ public final class FilmBillboard extends LinearLayout {
         addView(meta, mlp);
 
         story = UiKit.label(ctx, 18, Color.argb(205, 255, 255, 255));
-        story.setMaxLines(3);
+        story.setMaxLines(2);
         story.setEllipsize(TextUtils.TruncateAt.END);
         story.setLineSpacing(UiKit.pxf(4), 1f);
         shadow(story);

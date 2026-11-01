@@ -196,16 +196,43 @@ public final class AppUpdater {
         }
     }
 
+    /** The installer's "confirm" screen when it arrived while CineTV was not in front: shown on the next return. */
+    private static volatile Intent pendingConfirm;
+    private static volatile File lastApk;
+    private static android.content.BroadcastReceiver resultReceiver;
+
     /**
      * Hands the APK to Android's package installer, which shows its own confirmation. Works without
-     * adb; needs "install unknown apps" for CineTV, which the setup grants.
+     * adb; needs "install unknown apps" for CineTV, which is asked for here when missing.
      */
     static boolean installWithPrompt(final Context ctx, File apk) {
+        final Context app = ctx.getApplicationContext();
+        lastApk = apk;
+        if (android.os.Build.VERSION.SDK_INT >= 26 && !app.getPackageManager().canRequestPackageInstalls()) {
+            // Without this permission some TVs (Grundig, Arçelik, TCL) fail at the very end with a bare "not installed".
+            try {
+                app.startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + app.getPackageName())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                Prefs.get(app).edit().putBoolean("update_retry_after_permission", true).apply();
+                toast(app, "Güncelleme için \"Bilinmeyen uygulamaları yükle\" iznini CineTV'ye verin, sonra geri dönün.");
+                return true;
+            } catch (Throwable ignored) {
+                // no such page on this TV: the installer itself will ask
+            }
+        }
         try {
-            android.content.pm.PackageInstaller pi = ctx.getPackageManager().getPackageInstaller();
+            android.content.pm.PackageInstaller pi = app.getPackageManager().getPackageInstaller();
+            // A session left open by an earlier, interrupted attempt makes some OEM installers refuse the next one.
+            for (android.content.pm.PackageInstaller.SessionInfo old : pi.getMySessions()) {
+                try {
+                    pi.abandonSession(old.getSessionId());
+                } catch (Throwable ignored) {
+                }
+            }
             android.content.pm.PackageInstaller.SessionParams params =
                     new android.content.pm.PackageInstaller.SessionParams(android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL);
-            params.setAppPackageName(ctx.getPackageName());
+            params.setAppPackageName(app.getPackageName());
+            params.setSize(apk.length());
             int id = pi.createSession(params);
             try (android.content.pm.PackageInstaller.Session session = pi.openSession(id);
                  java.io.InputStream in = new java.io.FileInputStream(apk);
@@ -215,30 +242,153 @@ public final class AppUpdater {
                 while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
                 session.fsync(out);
                 out.close();
-                String action = ctx.getPackageName() + ".INSTALL_RESULT";
-                android.content.BroadcastReceiver result = new android.content.BroadcastReceiver() {
-                    @Override
-                    public void onReceive(Context c, Intent i) {
-                        if (i.getIntExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, -99) == android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION) {
-                            Intent confirm = i.getParcelableExtra(Intent.EXTRA_INTENT);
-                            if (confirm != null) c.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                        }
-                    }
-                };
-                // Android 14 refuses an unmarked receiver for an app's own broadcast (the update silently failed there);
-                // not exported: only CineTV's own PendingIntent may deliver the installer's answer
-                if (android.os.Build.VERSION.SDK_INT >= 33)
-                    ctx.getApplicationContext().registerReceiver(result, new android.content.IntentFilter(action), Context.RECEIVER_NOT_EXPORTED);
-                else ctx.getApplicationContext().registerReceiver(result, new android.content.IntentFilter(action));
-                android.app.PendingIntent pend = android.app.PendingIntent.getBroadcast(ctx, id,
-                        new Intent(action).setPackage(ctx.getPackageName()),
+                String action = app.getPackageName() + ".INSTALL_RESULT";
+                registerResultReceiver(app, action);
+                android.app.PendingIntent pend = android.app.PendingIntent.getBroadcast(app, id,
+                        new Intent(action).setPackage(app.getPackageName()),
                         android.app.PendingIntent.FLAG_UPDATE_CURRENT | (android.os.Build.VERSION.SDK_INT >= 31 ? android.app.PendingIntent.FLAG_MUTABLE : 0));
                 session.commit(pend.getIntentSender());
             }
             return true;
         } catch (Throwable t) {
-            Log.w(TAG, "Package installer failed: " + t);
+            Log.w(TAG, "Package installer session failed: " + t);
+            return installLegacy(app, apk);
+        }
+    }
+
+    /** One receiver for the installer's answers (registering one per attempt answered twice on some TVs). */
+    private static synchronized void registerResultReceiver(Context app, String action) {
+        if (resultReceiver != null) return;
+        resultReceiver = new android.content.BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent i) {
+                int status = i.getIntExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, -99);
+                if (status == android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                    Intent confirm = i.getParcelableExtra(Intent.EXTRA_INTENT);
+                    if (confirm == null) return;
+                    confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    // Android 10+ blocks screens opened from the background: keep it for when CineTV is in front.
+                    if (com.cinetv.launcher.MainActivity.foreground) {
+                        try {
+                            c.startActivity(confirm);
+                            return;
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                    pendingConfirm = confirm;
+                    return;
+                }
+                if (status == android.content.pm.PackageInstaller.STATUS_SUCCESS) return;
+                String msg = i.getStringExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE);
+                Log.w(TAG, "Installer status " + status + ": " + msg);
+                if (status == android.content.pm.PackageInstaller.STATUS_FAILURE_ABORTED) return; // the viewer said no
+                // The session route failed on this TV: its own installer screen, the way a file manager installs.
+                File apk = lastApk;
+                if (apk != null && apk.exists() && installLegacy(c.getApplicationContext(), apk)) return;
+                reportFailure(c.getApplicationContext(), reason(status));
+            }
+        };
+        if (android.os.Build.VERSION.SDK_INT >= 33)
+            app.registerReceiver(resultReceiver, new android.content.IntentFilter(action), Context.RECEIVER_NOT_EXPORTED);
+        else app.registerReceiver(resultReceiver, new android.content.IntentFilter(action));
+    }
+
+    /** The system installer opened on the APK itself (served by CineTV's own read-only provider). */
+    static boolean installLegacy(Context app, File apk) {
+        try {
+            Uri uri = Uri.parse("content://" + app.getPackageName() + ".updates/" + apk.getName());
+            Intent i = new Intent(Intent.ACTION_INSTALL_PACKAGE).setDataAndType(uri, "application/vnd.android.package-archive")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    .putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+                    .putExtra(Intent.EXTRA_RETURN_RESULT, false);
+            if (i.resolveActivity(app.getPackageManager()) == null) return false;
+            if (com.cinetv.launcher.MainActivity.foreground) app.startActivity(i);
+            else pendingConfirm = i;
+            return true;
+        } catch (Throwable t) {
+            Log.w(TAG, "Legacy installer failed: " + t);
             return false;
+        }
+    }
+
+    private static String reason(int status) {
+        switch (status) {
+            case android.content.pm.PackageInstaller.STATUS_FAILURE_STORAGE:
+                return "TV'de yeterli boş alan yok. Kullanmadığınız bir uygulamayı kaldırıp tekrar deneyin.";
+            case android.content.pm.PackageInstaller.STATUS_FAILURE_CONFLICT:
+                return "TV'deki CineTV farklı bir imzayla kurulmuş. CineTV-Kur.bat ile bir kez yeniden kurun.";
+            case android.content.pm.PackageInstaller.STATUS_FAILURE_INCOMPATIBLE:
+                return "Bu sürüm TV'nin Android sürümüyle uyumsuz bildirildi.";
+            case android.content.pm.PackageInstaller.STATUS_FAILURE_BLOCKED:
+                return "TV'nin güvenlik ayarı kurulumu engelledi. Ayarlar › Güvenlik'ten CineTV'ye izin verin.";
+            default:
+                return "Kurulum tamamlanamadı. Ayarlar › Sistem › Sürüm'den tekrar deneyin.";
+        }
+    }
+
+    private static void reportFailure(Context app, String why) {
+        Prefs.get(app).edit().putString("update_error_message", "CineTV güncellemesi kurulamadı").putString("update_error_detail", why).apply();
+        MAIN_HANDLER.post(() -> {
+            com.cinetv.launcher.MainActivity a = com.cinetv.launcher.MainActivity.instance;
+            if (a != null && !a.isFinishing() && com.cinetv.launcher.MainActivity.foreground) {
+                Prefs.get(app).edit().remove("update_error_message").remove("update_error_detail").apply();
+                a.showUpdateBanner("CineTV güncellemesi kurulamadı", why, true);
+            }
+        });
+    }
+
+    /** CineTV is in front again: the installer's confirmation that was waiting, or the retry after the permission. */
+    public static void onHomeResumed(Context ctx) {
+        Intent confirm = pendingConfirm;
+        if (confirm != null) {
+            pendingConfirm = null;
+            try {
+                ctx.startActivity(confirm);
+            } catch (Throwable t) {
+                Log.w(TAG, "Confirm screen failed: " + t);
+            }
+            return;
+        }
+        android.content.SharedPreferences p = Prefs.get(ctx);
+        if (p.getBoolean("update_retry_after_permission", false)) {
+            p.edit().remove("update_retry_after_permission").apply();
+            File apk = lastApk;
+            if (apk != null && apk.exists() && (android.os.Build.VERSION.SDK_INT < 26 || ctx.getPackageManager().canRequestPackageInstalls())) {
+                installWithPrompt(ctx, apk);
+            }
+        }
+    }
+
+    private static void toast(Context ctx, String s) {
+        MAIN_HANDLER.post(() -> Toast.makeText(ctx, s, Toast.LENGTH_LONG).show());
+    }
+
+    private static void download(String from, File target) throws java.io.IOException {
+        if (target.exists()) //noinspection ResultOfMethodCallIgnored
+            target.delete();
+        HttpURLConnection conn = (HttpURLConnection) new URL(from).openConnection();
+        conn.setInstanceFollowRedirects(true);
+        conn.setConnectTimeout(15000);
+        conn.setReadTimeout(30000);
+        conn.setRequestProperty("User-Agent", "CineTV-Launcher-Updater");
+        int code = conn.getResponseCode();
+        // GitHub sends release files on to its storage host (https -> https redirects are followed; a few TVs do not)
+        for (int hops = 0; hops < 5 && (code == 301 || code == 302 || code == 303 || code == 307 || code == 308); hops++) {
+            String next = conn.getHeaderField("Location");
+            conn.disconnect();
+            conn = (HttpURLConnection) new URL(new URL(from), next).openConnection();
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(30000);
+            code = conn.getResponseCode();
+        }
+        if (code != 200) throw new java.io.IOException("HTTP " + code);
+        try (InputStream in = conn.getInputStream(); FileOutputStream out = new FileOutputStream(target)) {
+            byte[] buf = new byte[65536];
+            int read;
+            while ((read = in.read(buf)) != -1) out.write(buf, 0, read);
+            out.getFD().sync();
+        } finally {
+            conn.disconnect();
         }
     }
 
@@ -265,6 +415,10 @@ public final class AppUpdater {
                 @Override
                 public void onUpdateAvailable(ReleaseInfo info) {
                     Log.i(TAG, "Auto-update check: newer version found: " + info.tagName + ", downloading in background...");
+                    com.cinetv.launcher.MainActivity m = com.cinetv.launcher.MainActivity.instance;
+                    if (m != null && !m.isFinishing() && com.cinetv.launcher.MainActivity.foreground) {
+                        m.showUpdateBanner("CineTV " + info.tagName + " geliyor", "Yeni sürüm arka planda indiriliyor; kurulum onayı birazdan çıkacak.", false);
+                    }
                     downloadAndInstallBackground(ctx.getApplicationContext(), info, true);
                 }
 
@@ -315,38 +469,18 @@ public final class AppUpdater {
         }
 
         new Thread(() -> {
-            File extDir = ctx.getExternalFilesDir(null);
-            if (extDir == null) extDir = ctx.getExternalCacheDir();
-            if (extDir == null) extDir = ctx.getCacheDir();
-            final File target = new File(extDir, "cinetv_update.apk");
+            File dir = new File(ctx.getCacheDir(), "updates");
+            //noinspection ResultOfMethodCallIgnored
+            dir.mkdirs();
+            final File target = new File(dir, "cinetv_update.apk");
             try {
-                if (target.exists()) target.delete();
-
-                URL url = new URL(info.downloadUrl);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setInstanceFollowRedirects(true);
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(30000);
-
-                int code = conn.getResponseCode();
-                // Follow 302 / 301 redirects from GitHub releases to AWS S3
-                if (code == HttpURLConnection.HTTP_MOVED_TEMP || code == HttpURLConnection.HTTP_MOVED_PERM || code == 307 || code == 308) {
-                    String redirectUrl = conn.getHeaderField("Location");
-                    conn = (HttpURLConnection) new URL(redirectUrl).openConnection();
-                    conn.setConnectTimeout(15000);
-                    conn.setReadTimeout(30000);
+                // A connection that drops part-way leaves a short file the installer can only call "broken": retried once.
+                for (int attempt = 0; ; attempt++) {
+                    download(info.downloadUrl, target);
+                    if (info.sizeBytes <= 0 || target.length() == info.sizeBytes) break;
+                    Log.w(TAG, "Short download: " + target.length() + " of " + info.sizeBytes);
+                    if (attempt >= 1) throw new java.io.IOException("indirme yarım kaldı");
                 }
-
-                InputStream in = conn.getInputStream();
-                FileOutputStream out = new FileOutputStream(target);
-                byte[] buf = new byte[16384];
-                int read;
-                while ((read = in.read(buf)) != -1) {
-                    out.write(buf, 0, read);
-                }
-                out.flush();
-                out.close();
-                in.close();
                 try { target.setReadable(true, false); } catch (Throwable ignored) {}
 
                 Log.i(TAG, "Update APK downloaded successfully: " + target.length() + " bytes");
@@ -373,7 +507,19 @@ public final class AppUpdater {
 
                 // 1. Silently, through the TV's own adb: detached, so the install and the relaunch finish
                 //    even though Android stops this process to replace it.
-                String path = target.getAbsolutePath();
+                // adb's shell cannot read CineTV's private cache: it gets a copy in the app's shared folder
+                File ext = ctx.getExternalFilesDir(null);
+                File shared = ext == null ? null : new File(ext, "cinetv_update.apk");
+                if (shared != null) {
+                    try (java.io.FileInputStream fi = new java.io.FileInputStream(target); FileOutputStream fo = new FileOutputStream(shared)) {
+                        byte[] b = new byte[65536];
+                        int r;
+                        while ((r = fi.read(b)) > 0) fo.write(b, 0, r);
+                    } catch (Throwable t) {
+                        shared = null;
+                    }
+                }
+                String path = (shared != null ? shared : target).getAbsolutePath();
                 String pkg = ctx.getPackageName();
                 String log = "/data/local/tmp/cinetv_update.log";
                 String job = "cp '" + path + "' /data/local/tmp/cinetv_update.apk && pm install -r /data/local/tmp/cinetv_update.apk > " + log + " 2>&1; "
@@ -389,9 +535,7 @@ public final class AppUpdater {
                 isDownloading = false;
                 // 2. No adb (network debugging off) or it failed: Android's own installer asks the viewer.
                 MAIN_HANDLER.post(() -> {
-                    if (!installWithPrompt(ctx, target) && !silent) {
-                        Toast.makeText(ctx, "Kurulum başlatılamadı.", Toast.LENGTH_LONG).show();
-                    }
+                    if (!installWithPrompt(ctx, target)) reportFailure(ctx.getApplicationContext(), "Kurulum başlatılamadı. Ayarlar › Sistem › Sürüm'den tekrar deneyin.");
                 });
             } catch (Throwable t) {
                 isDownloading = false;

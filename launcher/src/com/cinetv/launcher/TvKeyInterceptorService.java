@@ -473,14 +473,20 @@ public class TvKeyInterceptorService extends AccessibilityService {
             case "com.google.android.apps.googleassistant":
                 // If CineTV did not deliberately start listening, dismiss Katniss/Assistant immediately,
                 // pause any playing content on screen if possible, and NEVER dump the viewer to the home screen.
-                if (android.os.SystemClock.elapsedRealtime() - MainActivity.ourVoiceAt > 20_000) {
-                    // The remote's mic woke Google's assistant: close it and open Gamze instead.
+                if (android.os.SystemClock.elapsedRealtime() - MainActivity.ourVoiceAt > 15_000) {
+                    // The remote's mic woke Google's assistant (Grundig, Arçelik and other remotes send the voice
+                    // straight to it, so the key never reaches CineTV): close it at once and open Gamze instead.
                     performGlobalAction(GLOBAL_ACTION_BACK);
                     DeviceTweaks.pauseMedia(this);
-                    MainActivity.ourVoiceAt = android.os.SystemClock.elapsedRealtime();
+                    if ("com.google.android.katniss".equals(pkg)) {
+                        // the TV's voice service lets go of the microphone immediately when stopped (it restarts on its own)
+                        new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(this, "am force-stop com.google.android.katniss 2>/dev/null", 800)).start();
+                    }
+                    startActivity(new Intent(this, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
                     handler.postDelayed(() -> startActivity(new Intent(this, MainActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                            .putExtra("action", "voice")), 800); // after the assistant has let go of the microphone
+                            .putExtra("action", "voice")), 350); // once the assistant has let go of the microphone
                     return;
                 }
                 break;
