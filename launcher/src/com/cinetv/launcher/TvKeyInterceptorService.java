@@ -65,6 +65,23 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
     };
 
+    /** Wake from standby: CineTV first, and the tuner the TV starts by itself is stopped before it shows. */
+    private final BroadcastReceiver screenOn = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            if (com.cinetv.launcher.device.Uninstaller.isRemoving(TvKeyInterceptorService.this)) return;
+            if (!DeviceTweaks.isUnwantedTuner()) return;
+            try {
+                startActivity(new Intent(TvKeyInterceptorService.this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+            } catch (Throwable ignored) {
+            }
+            new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(TvKeyInterceptorService.this,
+                    "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.mediatek.tv.oneworld.tvcenter 2>/dev/null; "
+                            + "am force-stop com.arcelik.tv.livetv 2>/dev/null", 800), "cinetv-wake").start();
+        }
+    };
+
     private final BroadcastReceiver timeTick = new BroadcastReceiver() {
         @Override
         public void onReceive(Context c, Intent i) {
@@ -272,6 +289,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
         handler.removeCallbacks(cinesubAmbient);
         handler.postDelayed(cinesubAmbient, 30_000);
         try {
+            // The moment the screen comes on, before the TV's own tuner / last HDMI input gets its window up.
+            IntentFilter on = new IntentFilter(Intent.ACTION_SCREEN_ON);
+            if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(screenOn, on, Context.RECEIVER_NOT_EXPORTED);
+            else registerReceiver(screenOn, on);
             IntentFilter f = new IntentFilter(Intent.ACTION_TIME_TICK);
             f.addAction(Intent.ACTION_TIME_CHANGED);
             if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -339,6 +360,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (signature != null) signature.hide();
         try {
             unregisterReceiver(timeTick);
+        } catch (Throwable ignored) {}
+        try {
+            unregisterReceiver(screenOn);
         } catch (Throwable ignored) {}
         try {
             unregisterReceiver(celebrationReceiver);

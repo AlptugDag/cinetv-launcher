@@ -1,5 +1,12 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.20i · Beta 9
+
+- TV açılışı: ekran açıldığı anda CineTV öne geliyor ve TV'nin kendiliğinden açtığı tuner/son HDMI girişi durduruluyor (eskiden pencere bir an görünüyordu).
+- CineTV açılışı sakin ve kısa: nabız atışı kaldırıldı, yaklaşık 1,9 saniyeden 1,1 saniyeye indi.
+- AlptugPlayer TV'ye göre kendini ayarlıyor: tünelli oynatma, TV'nin kod çözücüsü destekliyorsa açık; bu TV'de görüntüsüz kalırsa aynı saniyeden tünelsiz sürüyor ve bu TV için bir daha denemiyor.
+- AlptugPlayer kontrolleri CineTV'deki gibi sıvı cam; "AlptugPlayer" yazısı küçük, yarı saydam ve yalnızca kontrollerle birlikte beliriyor.
+
 ## 1.0.0.20h · Beta 8
 
 - AlptugPlayer: CineTV'nin oynatıcısı artık kendi kendini düzeltiyor. Tünelli oynatma hiç kullanılmıyor (birçok TV'de sesi verip görüntüyü vermiyor). Bir ayar çakışırsa (ses var görüntü yok, kod çözücü hatası) film aynı saniyeden bir sonraki profille sürüyor: Tam kalite → Dolby Vision kapalı → Güvenli mod (1080p, AVC, stereo). TV'de işe yarayan profil yayın türüne göre hatırlanıyor.

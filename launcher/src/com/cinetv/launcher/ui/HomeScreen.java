@@ -1127,44 +1127,29 @@ public class HomeScreen {
         aura.setScaleX(0.85f);
         aura.setScaleY(0.85f);
 
-        // Heartbeat pulse animation: rhythmic lub-dub contraction & expansion of the red aura
-        android.animation.Keyframe k0 = android.animation.Keyframe.ofFloat(0f, 0.85f);
-        android.animation.Keyframe k1 = android.animation.Keyframe.ofFloat(0.14f, 1.15f); // lub crest
-        android.animation.Keyframe k2 = android.animation.Keyframe.ofFloat(0.24f, 1.02f); // lub trough
-        android.animation.Keyframe k3 = android.animation.Keyframe.ofFloat(0.38f, 1.26f); // dub crest (strongest)
-        android.animation.Keyframe k4 = android.animation.Keyframe.ofFloat(0.65f, 0.95f); // settling
-        android.animation.Keyframe k5 = android.animation.Keyframe.ofFloat(1.0f, 0.85f);  // rest
-        android.animation.PropertyValuesHolder pvhX = android.animation.PropertyValuesHolder.ofKeyframe(View.SCALE_X, k0, k1, k2, k3, k4, k5);
-        android.animation.PropertyValuesHolder pvhY = android.animation.PropertyValuesHolder.ofKeyframe(View.SCALE_Y, k0, k1, k2, k3, k4, k5);
-
-        android.animation.Keyframe a0 = android.animation.Keyframe.ofFloat(0f, 0.50f);
-        android.animation.Keyframe a1 = android.animation.Keyframe.ofFloat(0.14f, 0.90f);
-        android.animation.Keyframe a2 = android.animation.Keyframe.ofFloat(0.24f, 0.72f);
-        android.animation.Keyframe a3 = android.animation.Keyframe.ofFloat(0.38f, 1.0f);
-        android.animation.Keyframe a4 = android.animation.Keyframe.ofFloat(0.65f, 0.65f);
-        android.animation.Keyframe a5 = android.animation.Keyframe.ofFloat(1.0f, 0.50f);
-        android.animation.PropertyValuesHolder pvhA = android.animation.PropertyValuesHolder.ofKeyframe(View.ALPHA, a0, a1, a2, a3, a4, a5);
-
-        android.animation.ObjectAnimator heartbeat = android.animation.ObjectAnimator.ofPropertyValuesHolder(aura, pvhX, pvhY, pvhA);
-        heartbeat.setDuration(1000);
-        heartbeat.setRepeatCount(0);
-        heartbeat.setInterpolator(new android.view.animation.LinearInterpolator());
+        // A calm glow, no pulsing: the opening should feel like a light coming up, not an alarm.
+        android.animation.ObjectAnimator heartbeat = android.animation.ObjectAnimator.ofPropertyValuesHolder(aura,
+                android.animation.PropertyValuesHolder.ofFloat(View.ALPHA, 0f, 0.45f),
+                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 0.9f, 1f),
+                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.9f, 1f));
+        heartbeat.setDuration(500);
+        heartbeat.setInterpolator(new android.view.animation.DecelerateInterpolator());
         heartbeat.start();
 
         mark.setAlpha(0f);
         mark.setScaleX(0.85f);
         mark.setScaleY(0.85f);
-        mark.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(700)
+        mark.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(400)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
 
         word.setAlpha(0f);
         word.setScaleX(0.92f);
         word.setScaleY(0.92f);
-        word.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(100).setDuration(800)
+        word.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(60).setDuration(450)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
 
         android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(0f, 1f);
-        a.setDuration(900);
+        a.setDuration(500);
         a.setInterpolator(new android.view.animation.DecelerateInterpolator());
         a.addUpdateListener(v -> {
             float t = (float) v.getAnimatedValue();
@@ -1180,18 +1165,18 @@ public class HomeScreen {
 
         // Collector's specular sheen glint passing across the logo mark & letters
         android.animation.ValueAnimator sheenAnim = android.animation.ValueAnimator.ofFloat(-0.25f, 1.25f);
-        sheenAnim.setStartDelay(700);
-        sheenAnim.setDuration(600);
+        sheenAnim.setStartDelay(350);
+        sheenAnim.setDuration(400);
         sheenAnim.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
         sheenAnim.addUpdateListener(anim -> col.setSheenProgress((float) anim.getAnimatedValue()));
         sheenAnim.start();
 
         by.setAlpha(0f);
         by.setTranslationY(UiKit.pxf(24));
-        by.animate().alpha(1f).translationY(0f).setStartDelay(600).setDuration(400)
+        by.animate().alpha(1f).translationY(0f).setStartDelay(300).setDuration(300)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
 
-        splash.animate().alpha(0f).setStartDelay(1500).setDuration(400)
+        splash.animate().alpha(0f).setStartDelay(800).setDuration(300)
                 .withEndAction(() -> {
                     heartbeat.cancel();
                     sheenAnim.cancel();

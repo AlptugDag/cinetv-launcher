@@ -126,7 +126,27 @@ public class CinePlayerActivity extends Activity {
      * without the picture). 0: HDR10/HDR10+/HLG/Dolby Vision and Dolby/DTS passthrough when the TV has them;
      * 1: no Dolby Vision tracks (HEVC/AVC instead) and audio decoded here; 2: up to 1080p, AVC first, stereo.
      */
+    private boolean tunnel;
+    private static final String TUNNEL_BAD = "cineplayer_tunnel_bad";
+
+    /** Tunnelled playback (smoother A/V sync, less CPU) when this TV's decoder offers it and it has not failed here. */
+    private boolean tunnelSupported() {
+        if (Prefs.get(this).getBoolean(TUNNEL_BAD, false)) return false;
+        try {
+            for (android.media.MediaCodecInfo ci : new android.media.MediaCodecList(android.media.MediaCodecList.ALL_CODECS).getCodecInfos()) {
+                if (ci.isEncoder()) continue;
+                for (String t : ci.getSupportedTypes()) {
+                    if (!t.equalsIgnoreCase("video/hevc") && !t.equalsIgnoreCase("video/avc")) continue;
+                    if (ci.getCapabilitiesForType(t).isFeatureSupported(android.media.MediaCodecInfo.CodecCapabilities.FEATURE_TunneledPlayback)) return true;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
     private void build(long position) {
+        tunnel = profile == 0 && tunnelSupported();
         if (player != null) {
             player.release();
             player = null;
@@ -137,7 +157,7 @@ public class CinePlayerActivity extends Activity {
                 .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON);
         androidx.media3.exoplayer.trackselection.DefaultTrackSelector tracks = new androidx.media3.exoplayer.trackselection.DefaultTrackSelector(this);
         androidx.media3.exoplayer.trackselection.DefaultTrackSelector.Parameters.Builder pb = tracks.buildUponParameters()
-                .setTunnelingEnabled(false)
+                .setTunnelingEnabled(tunnel)
                 .setPreferredAudioLanguages("tr", java.util.Locale.getDefault().getLanguage(), "en")
                 .setPreferredTextLanguages("tr", java.util.Locale.getDefault().getLanguage())
                 .setAllowVideoMixedMimeTypeAdaptiveness(true)
@@ -233,6 +253,12 @@ public class CinePlayerActivity extends Activity {
     private void fallback(String why) {
         ui.removeCallbacks(blackCheck);
         long pos = player == null ? 0 : Math.max(0, player.getCurrentPosition());
+        if (tunnel) {
+            // tunnelling is what failed on this TV: never again here, same profile without it
+            Prefs.get(this).edit().putBoolean(TUNNEL_BAD, true).apply();
+            build(pos);
+            return;
+        }
         if (profile < PROFILE_NAMES.length - 1) {
             profile++;
             android.widget.Toast.makeText(this, "AlptugPlayer: " + PROFILE_NAMES[profile] + " ile sürüyor (" + why + ")",
@@ -253,6 +279,7 @@ public class CinePlayerActivity extends Activity {
         pv.setKeepScreenOn(true);
         pv.setControllerShowTimeoutMs(3500);
         root.addView(pv, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        // A small, half-transparent signature that comes and goes with the controls; never over the film alone.
         final android.widget.TextView mark = new android.widget.TextView(this);
         android.text.SpannableString w = new android.text.SpannableString("AlptugPlayer");
         w.setSpan(new android.text.style.ForegroundColorSpan(com.cinetv.launcher.ui.Brand.TV_RED), 6, 12, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -260,16 +287,15 @@ public class CinePlayerActivity extends Activity {
         mark.setTextColor(android.graphics.Color.WHITE);
         mark.setTypeface(com.cinetv.launcher.FontManager.getBlack(this));
         float d = getResources().getDisplayMetrics().density;
-        mark.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 30 * d);
+        mark.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, 15 * d);
         mark.setLetterSpacing(0.04f);
-        mark.setShadowLayer(16 * d, 0, 0, android.graphics.Color.argb(140, 204, 0, 41));
+        mark.setAlpha(0f);
         android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(-2, -2, android.view.Gravity.TOP | android.view.Gravity.START);
-        lp.setMargins((int) (40 * d), (int) (28 * d), 0, 0);
+        lp.setMargins((int) (36 * d), (int) (26 * d), 0, 0);
         root.addView(mark, lp);
-        // with the controls, and for the first moments of the film
         pv.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener) v ->
-                mark.animate().alpha(v == android.view.View.VISIBLE ? 1f : 0f).setDuration(220).start());
-        mark.postDelayed(() -> { if (!pv.isControllerFullyVisible()) mark.animate().alpha(0f).setDuration(400).start(); }, 3500);
+                mark.animate().alpha(v == android.view.View.VISIBLE ? 0.55f : 0f).setDuration(220).start());
+        glassControls(pv, d);
         setContentView(root);
         return pv;
     }
@@ -300,6 +326,40 @@ public class CinePlayerActivity extends Activity {
             WindowManager.LayoutParams lp = getWindow().getAttributes();
             lp.preferredDisplayModeId = best.getModeId();
             getWindow().setAttributes(lp);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** CineTV's liquid glass on the player's controls: frosted panels with a bright rim, a lighter scrim. */
+    private static void glassControls(PlayerView pv, float d) {
+        try {
+            android.view.View scrim = pv.findViewById(androidx.media3.ui.R.id.exo_controls_background);
+            if (scrim != null) scrim.setBackgroundColor(android.graphics.Color.argb(70, 0, 0, 0));
+            int[] ids = {androidx.media3.ui.R.id.exo_bottom_bar, androidx.media3.ui.R.id.exo_center_controls};
+            for (int id : ids) {
+                android.view.View v = pv.findViewById(id);
+                if (v == null) continue;
+                android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable(
+                        android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                        new int[]{android.graphics.Color.argb(70, 255, 255, 255), android.graphics.Color.argb(28, 255, 255, 255)});
+                g.setCornerRadius(28 * d);
+                g.setStroke(Math.max(1, Math.round(d)), android.graphics.Color.argb(90, 255, 255, 255));
+                v.setBackground(g);
+                if (v.getLayoutParams() instanceof android.view.ViewGroup.MarginLayoutParams && id == androidx.media3.ui.R.id.exo_bottom_bar) {
+                    android.view.ViewGroup.MarginLayoutParams m = (android.view.ViewGroup.MarginLayoutParams) v.getLayoutParams();
+                    m.setMargins((int) (32 * d), 0, (int) (32 * d), (int) (20 * d));
+                    v.setLayoutParams(m);
+                }
+                if (id == androidx.media3.ui.R.id.exo_center_controls) v.setPadding((int) (18 * d), (int) (8 * d), (int) (18 * d), (int) (8 * d));
+            }
+            android.view.View bar = pv.findViewById(androidx.media3.ui.R.id.exo_progress);
+            if (bar instanceof androidx.media3.ui.DefaultTimeBar) {
+                androidx.media3.ui.DefaultTimeBar t = (androidx.media3.ui.DefaultTimeBar) bar;
+                t.setPlayedColor(com.cinetv.launcher.ui.Brand.TV_RED);
+                t.setScrubberColor(android.graphics.Color.WHITE);
+                t.setBufferedColor(android.graphics.Color.argb(110, 255, 255, 255));
+                t.setUnplayedColor(android.graphics.Color.argb(50, 255, 255, 255));
+            }
         } catch (Throwable ignored) {
         }
     }
