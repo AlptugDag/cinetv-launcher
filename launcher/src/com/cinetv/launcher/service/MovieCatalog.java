@@ -128,7 +128,6 @@ public final class MovieCatalog {
     public static final Category[] CATEGORIES = {
             new Category(R.string.cat_trending, "trending/movie/day?", CINEMETA_TOP + ".json"),
             new Category(R.string.cat_top_rated, "movie/top_rated?", CINEMETA_TOP + "/genre=Drama.json"),
-            new Category(R.string.cat_now_playing, "movie/now_playing?", CINEMETA_TOP + ".json"),
             new Category(R.string.cat_scifi, "discover/movie?with_genres=878&sort_by=vote_count.desc&vote_average.gte=7.4&", CINEMETA_TOP + "/genre=Sci-Fi.json"),
             new Category(R.string.cat_thriller, "discover/movie?with_genres=53,18&sort_by=vote_count.desc&vote_average.gte=7.4&", CINEMETA_TOP + "/genre=Thriller.json"),
             new Category(R.string.cat_noir, "discover/movie?with_genres=80,18&sort_by=vote_count.desc&vote_average.gte=7.5&", CINEMETA_TOP + "/genre=Crime.json"),

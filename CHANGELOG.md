@@ -6,6 +6,7 @@
   - Film bilgileri ana sayfada artık gösterilmiyor; eskisi gibi yalnızca kutu açılınca görünüyor. Rafın adı yine kapsülde.
   - Vitrinin altındaki kategoriler artık küçük, yalnızca yazıdan oluşan sekmeler. Uygulama tepsisi aşağı kaydırmadan görünüyor.
   - Kategoriler her 50 dakikada yeni bir sırayla geliyor ve her biri farklı filmler getiriyor.
+  - "Şu an sinemalarda" kategorisi kaldırıldı.
 - **Vitrin tazeleme:** Yapay zekâ az film önerdiğinde (özellikle ücretsiz anahtarlarda) vitrin artık 4 kutuyla açılmıyor. Raf, ekrana gelmeden önce benzer filmlerle tam boyuta tamamlanıyor; sonradan da hiçbir kutu yer değiştirmiyor.
 - **Güncelleme (Grundig ve diğer TV'ler):**
   - İndirilen dosyanın boyutu doğrulanıyor; yarım inen dosya bir kez yeniden indiriliyor.
