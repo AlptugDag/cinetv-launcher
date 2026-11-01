@@ -380,6 +380,29 @@ public final class AppLauncher {
         if (!start(ctx, new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + pkg)))) openAppInfo(ctx, pkg);
     }
 
+    /**
+     * Opens a page of the TV's own settings. On Google TV / Android TV the standard Settings actions are often
+     * missing or point at a stub that closes at once (that is why accessibility "closed by itself"): the TV
+     * settings app's real page is tried first, then the standard action, then the settings home. Only opens;
+     * never changes a setting.
+     */
+    public static boolean openSystemPage(Context ctx, String action, String... tvSettingsActivities) {
+        android.content.pm.PackageManager pm = ctx.getPackageManager();
+        for (String cls : tvSettingsActivities) {
+            Intent i = new Intent().setClassName("com.android.tv.settings", "com.android.tv.settings" + cls);
+            if (i.resolveActivity(pm) != null && start(ctx, i)) return true;
+        }
+        if (action != null) {
+            Intent i = new Intent(action);
+            android.content.ComponentName c = i.resolveActivity(pm);
+            // the framework's stub pages finish immediately: they are no page at all
+            if (c != null && !c.getPackageName().contains("frameworkpackagestubs") && start(ctx, i)) return true;
+        }
+        Intent home = new Intent().setClassName("com.android.tv.settings", "com.android.tv.settings.MainSettings");
+        if (home.resolveActivity(pm) != null && start(ctx, home)) return true;
+        return start(ctx, new Intent(Settings.ACTION_SETTINGS));
+    }
+
     public static boolean start(Context ctx, Intent intent) {
         // Anything the viewer opens from CineTV (the TV's settings and menus included) is theirs: never suppressed.
         com.cinetv.launcher.device.DeviceTweaks.markUserOpenedTv();

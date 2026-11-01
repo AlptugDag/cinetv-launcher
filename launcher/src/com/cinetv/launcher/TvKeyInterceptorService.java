@@ -65,20 +65,41 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
     };
 
+    /**
+     * The live-TV / last-input apps TV makers start by themselves at power-on (MediaTek-based Arçelik, Beko,
+     * Grundig, Philips, TCL, Hisense, Sony, Xiaomi, Toshiba, Vestel and stock Android TV). Stopping a package a
+     * TV does not have does nothing.
+     */
+    static final String[] LIVE_TV_APPS = {
+            "com.mediatek.wwtv.tvcenter", "com.mediatek.tv.oneworld.tvcenter", "com.arcelik.tv.livetv", "com.arcelik.smartremoteservice",
+            "org.droidtv.playtv", "org.droidtv.nettvbrowser", "com.tcl.tv", "com.tcl.tvweishi", "com.tcl.esticker",
+            "com.hisense.tv", "com.jamdeo.tv.vod", "com.sony.dtv.tvx", "com.sony.dtv.tvinput.tuner",
+            "com.xiaomi.mitv.tvplayer", "com.mitv.tvhome.atv", "com.toshiba.tv.livetv", "com.vestel.livetv", "com.vestel.tvcenter",
+            "com.android.tv", "com.google.android.tv"};
+
+    /** When the screen last came on: other makers' live TV is only sent away in the seconds after power-on. */
+    private static volatile long wokeAt = -60_000L;
+
+    static boolean isLiveTvApp(String pkg) {
+        for (String p : LIVE_TV_APPS) if (p.equals(pkg)) return true;
+        return pkg.contains("livetv") || pkg.contains("tvcenter") || pkg.contains("tvplayer") || pkg.startsWith("org.droidtv.playtv");
+    }
+
     /** Wake from standby: CineTV first, and the tuner the TV starts by itself is stopped before it shows. */
     private final BroadcastReceiver screenOn = new BroadcastReceiver() {
         @Override
         public void onReceive(Context c, Intent i) {
             if (com.cinetv.launcher.device.Uninstaller.isRemoving(TvKeyInterceptorService.this)) return;
+            wokeAt = android.os.SystemClock.elapsedRealtime();
             if (!DeviceTweaks.isUnwantedTuner()) return;
             try {
                 startActivity(new Intent(TvKeyInterceptorService.this, MainActivity.class)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
             } catch (Throwable ignored) {
             }
-            new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(TvKeyInterceptorService.this,
-                    "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.mediatek.tv.oneworld.tvcenter 2>/dev/null; "
-                            + "am force-stop com.arcelik.tv.livetv 2>/dev/null", 800), "cinetv-wake").start();
+            final StringBuilder stop = new StringBuilder();
+            for (String p : LIVE_TV_APPS) stop.append("am force-stop ").append(p).append(" 2>/dev/null; ");
+            new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(TvKeyInterceptorService.this, stop.toString(), 1500), "cinetv-wake").start();
         }
     };
 
@@ -120,7 +141,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
             String insight = intent.getStringExtra("insight");
             if (insight != null && !insight.isEmpty()) {
                 com.cinetv.launcher.ui.CineSubOverlay.showInsight(TvKeyInterceptorService.this, title, insight);
-            } else {
+            } else if (!(CinePlayerActivity.active && CinePlayerActivity.cinesub())) {
                 com.cinetv.launcher.ui.CineSubOverlay.trigger(TvKeyInterceptorService.this);
             }
         }
@@ -402,6 +423,14 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return;
         }
 
+        // Other makers' live TV, started by the TV itself at power-on (not by the viewer): back to CineTV.
+        if (isLiveTvApp(pkg) && !pkg.startsWith("com.mediatek") && !pkg.startsWith("com.arcelik") && !pkg.equals("com.android.tv")
+                && !pkg.equals("com.google.android.tv") && DeviceTweaks.isUnwantedTuner() && !isTvMenu(cls)
+                && android.os.SystemClock.elapsedRealtime() - wokeAt < 15_000L) {
+            startActivity(new Intent(this, MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+            return;
+        }
         switch (pkg) {
             case "com.mediatek.wwtv.tvcenter":
             case "com.mediatek.tv.oneworld.tvcenter": // Grundig
@@ -650,7 +679,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
         // (Asked of the activity, not lastPackage: CineTV's own overlays over Nuvio report CineTV's package.)
         if (code == KeyEvent.KEYCODE_PROG_YELLOW && !MainActivity.foreground) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-                com.cinetv.launcher.ui.CineSubOverlay.trigger(this);
+                // over AlptugPlayer the player prepares a frame CineSUB can see first
+                if (!(CinePlayerActivity.active && CinePlayerActivity.cinesub())) com.cinetv.launcher.ui.CineSubOverlay.trigger(this);
             }
             return true;
         }

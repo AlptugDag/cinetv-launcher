@@ -1,5 +1,17 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.21
+
+1.0.0.20'nin dokuz betasındaki her şey (aşağıda) ve şunlar:
+
+- Fragman, özet ve oyuncu fotoğrafları her filmde ve hemen geliyor: bağlantı bir an takılınca fragmanın "yok" diye unutulması kaldırıldı; özet ve oyuncular bir kez daha deneniyor; hızlı gezinmede birikmiş ön yüklemeler açılan kutuyu artık bekletmiyor.
+- AlptugPlayer, visionOS düzeninde: oynat/duraklat ve 10 sn ileri/geri alt panelin solunda; ses parçası, kalite, görüntü oranı ve hız ikonları sağda; zaman çizgisi panelin içinde; film bitince saatin kaç olacağı ("Bitiş 23:41"); logo panelin üstünde küçük ve soluk, arayüzle birlikte beliriyor.
+- AlptugPlayer TV'ye göre kendini ayarlıyor: donanım/yazılım kod çözücü (donanım bozuksa o kodek için yazılım), tünelli oynatma, tampon belleği TV'nin gücüne göre, ekran Dolby Vision göstermiyorsa baştan HDR10/SDR, güçlü TV'lerde asenkron kod çözme. Altyazılar TV'nin altyazı stilinde.
+- Sarı tuş (CineSUB) AlptugPlayer'da: tünelli oynatmada görüntü ekran görüntüsüne düşmediği için oynatıcı önce tünelsiz moda geçiyor, CineSUB sonra bakıyor.
+- Sistem merkezi TV'nin gerçek ayar sayfalarını açıyor: Google TV'de standart erişilebilirlik bağlantısı açılıp hemen kapanan boş bir sayfaydı, Bluetooth ve görüntü bağlantıları hiç yoktu.
+- TV açılışında tuner bastırma Philips, TCL, Hisense, Sony, Xiaomi, Toshiba ve Vestel için de (yalnızca açılışın ilk 15 saniyesinde).
+- Sürüm kodu: her sürüme on adım ayrıldı; 1.0.0.20 betalarını kuran TV'ler de 1.0.0.21'i alıyor.
+
 ## 1.0.0.20i · Beta 9
 
 - TV açılışı: ekran açıldığı anda CineTV öne geliyor ve TV'nin kendiliğinden açtığı tuner/son HDMI girişi durduruluyor (eskiden pencere bir an görünüyordu).

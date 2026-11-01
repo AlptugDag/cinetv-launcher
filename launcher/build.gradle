@@ -57,7 +57,11 @@ android {
         def p3 = parts.size() >= 5 ? (part(3) * 10 + part(4)) : part(3)
         def revBoost = (project.findProperty('cineTvRev') ?: '8') as int
         // 1.0.0.19 shipped as 1100219; from there every fourth-part step adds one, so 1.0.0.20 is 1100220.
-        versionCode Math.max(1100200 + p3 + suffixBoost, 1000000 + part(0) * 100000 + part(1) * 1000 + part(2) * 10 + p3 + suffixBoost + revBoost)
+        // From 1.0.0.21 on, each release gets ten codes (room for its b, c, d... betas): the 1.0.0.20 betas reached
+        // 1100229, so 1.0.0.21 is 1100230, 1.0.0.22 is 1100240 and so on.
+        def code = p3 >= 21 && parts.size() < 5 ? 1100230 + (p3 - 21) * 10 + suffixBoost
+                : Math.max(1100200 + p3 + suffixBoost, 1000000 + part(0) * 100000 + part(1) * 1000 + part(2) * 10 + p3 + suffixBoost + revBoost)
+        versionCode code
     }
 
     sourceSets {

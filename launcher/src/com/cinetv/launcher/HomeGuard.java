@@ -100,18 +100,9 @@ public final class HomeGuard {
 
     /** Directly opens system accessibility settings, bypassing custom OEM TV settings menus. */
     public static void openAccessibilitySettings(Context ctx) {
-        try {
-            Intent intent = new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            ctx.startActivity(intent);
-        } catch (Throwable t) {
-            try {
-                Intent intent = new Intent(android.provider.Settings.ACTION_SETTINGS);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                ctx.startActivity(intent);
-            } catch (Throwable ignored) {
-            }
-        }
+        // the TV settings app's real page: on Google TV the standard action is a stub that closes at once
+        com.cinetv.launcher.service.AppLauncher.openSystemPage(ctx, android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS,
+                ".oemlink.AccessibilitySettingsActivity");
     }
 
     /**

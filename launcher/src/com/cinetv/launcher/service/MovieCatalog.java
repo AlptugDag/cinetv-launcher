@@ -57,6 +57,8 @@ public final class MovieCatalog {
         /** TMDB genre ids and the adult flag, when the film came from a TMDB list (for the family filter). */
         public int[] genreIds = new int[0];
         public boolean adult;
+        /** The last details request failed (timeout, network): worth one retry. */
+        public transient boolean detailsFailed;
         public String type = "movie";
         public String posterUrl = "";
         public String backdropUrl = "";
@@ -645,6 +647,16 @@ public final class MovieCatalog {
 
     /** Synopsis, director, runtime, cast and a backdrop for the inside of the DVD case. Blocks; fills what it can. */
     public static Movie details(Context ctx, Movie m) {
+        detailsOnce(ctx, m);
+        // a timeout or a dropped connection: one more try before the case opens without its synopsis and cast
+        if (hasTmdb(ctx) && (m.overview == null || m.overview.isEmpty() || m.cast.isEmpty()) && m.detailsFailed) {
+            m.detailsFailed = false;
+            detailsOnce(ctx, m);
+        }
+        return m;
+    }
+
+    private static Movie detailsOnce(Context ctx, Movie m) {
         if (!hasTmdb(ctx)) {
             m.overview = localized(m.overview); // Cinemeta writes in English only
             m.overview = curatedPlot(ctx, m);
@@ -768,6 +780,7 @@ public final class MovieCatalog {
             }
             ratings(ctx, m);
         } catch (Throwable t) {
+            m.detailsFailed = true;
             Log.w(TAG, "Details failed: " + t.getMessage());
         }
         if (Creator.isSessiz(m)) {
@@ -980,10 +993,24 @@ public final class MovieCatalog {
         return true;
     }
 
+    /**
+     * Focus prefetches run on their own pool, newest first, and drop what the viewer has already scrolled past:
+     * fast scrolling used to queue dozens of lookups ahead of the case actually opened.
+     */
+    private static final java.util.concurrent.ThreadPoolExecutor prefetcher = new java.util.concurrent.ThreadPoolExecutor(
+            3, 3, 30, TimeUnit.SECONDS, new java.util.concurrent.LinkedBlockingDeque<Runnable>() {
+                @Override
+                public boolean offer(Runnable r) {
+                    // newest first, and never more than six waiting
+                    while (size() >= 6) pollLast();
+                    return offerFirst(r);
+                }
+            });
+
     public static void prefetchTrailer(Context ctx, Movie m) {
         if (ctx == null || m == null) return;
         final Context app = ctx.getApplicationContext();
-        resolver.execute(() -> {
+        prefetcher.execute(() -> {
             trailerKey(app, m);
             if (m.cast.isEmpty() || m.overview.isEmpty()) details(app, m);
         });
@@ -1070,6 +1097,8 @@ public final class MovieCatalog {
             }
         } catch (Throwable t) {
             Log.w(TAG, "Trailer lookup failed: " + t.getMessage());
+            // A network hiccup is not "this film has no trailer": nothing is cached, the next look asks again.
+            if (best == null) return null;
         }
         if (best != null) {
             trailers.put(cacheKey, best);
