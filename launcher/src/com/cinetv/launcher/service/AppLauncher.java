@@ -267,6 +267,20 @@ public final class AppLauncher {
     }
 
     /** Opens a title on Nuvio's detail/stream page; falls back to Nuvio's start screen. */
+    /**
+     * Once Nuvio's title page is up, clicks its "Oynat" button itself (found by its label, never a blind OK that
+     * could land on "watched" or "+"), which opens the film's sources or plays it, per the viewer's Nuvio settings.
+     * Tries for up to 15 seconds, then leaves the page as it is.
+     */
+    private static void pressPlayWhenReady(final Context app, final long startedAt) {
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
+            boolean clicked = !com.cinetv.launcher.MainActivity.foreground && svc != null && svc.clickNuvioPlay();
+            if (clicked) android.util.Log.i("CineTvPlay", "Oynat clicked on Nuvio's title page");
+            if (!clicked && System.currentTimeMillis() - startedAt < 15_000) pressPlayWhenReady(app, startedAt);
+        }, 800);
+    }
+
     public static boolean openInNuvio(Context ctx, String title, String imdbId, String type, String posterUrl) {
         if ((title != null && "sessiz".equals(Creator.fold(title))) || "tt38983576".equals(imdbId)) {
             return openYouTubeVideo(ctx, Creator.SESSIZ_YOUTUBE_URL);
@@ -284,15 +298,15 @@ public final class AppLauncher {
         }
         if (imdbId != null && imdbId.startsWith("tt")) {
             String kind = "series".equals(type) ? "series" : "movie";
-            // A film goes straight to its sources (detail/movie/<id>/<id>), one OK from playing; a series to its page.
-            String link = "stremio:///detail/" + kind + "/" + imdbId + ("movie".equals(kind) ? "/" + imdbId : "");
-            Intent streams = new Intent(Intent.ACTION_VIEW, Uri.parse(link));
-            if (targetPkg != null) streams.setPackage(targetPkg);
-            // Root cause of "Oynat" landing on Nuvio's home or on the last film: a Nuvio already running was only
-            // brought to the front (its last screen) and ignored the link. A fresh task always opens the link; Nuvio
-            // keeps each title's watch progress, so the film resumes from where it was left.
-            streams.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            if (start(ctx, streams)) {
+            // Tested on the TV (Nuvio 1.1.0): only nuvio://detail/<type>/<imdb> opens a title, and only when Nuvio
+            // starts fresh. stremio:///detail/... and any link sent to an already running Nuvio are ignored, which is
+            // why "Oynat" left the viewer on Nuvio's home or on the last film. So: a fresh task, the nuvio link,
+            // and then OK on the page's focused "Oynat" (Nuvio resumes from the saved position by itself).
+            Intent open = new Intent(Intent.ACTION_VIEW, Uri.parse("nuvio://detail/" + kind + "/" + imdbId));
+            if (targetPkg != null) open.setPackage(targetPkg);
+            open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            if (start(ctx, open)) {
+                pressPlayWhenReady(ctx.getApplicationContext(), System.currentTimeMillis());
                 return true;
             }
             Intent detail = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/" + kind + "/" + imdbId));

@@ -144,6 +144,53 @@ public class TvKeyInterceptorService extends AccessibilityService {
      * Performs D-pad navigation, click, or global actions in the currently active window via Accessibility
      * when KeyBridge (ADB) is unavailable.
      */
+    private static void findText(android.view.accessibility.AccessibilityNodeInfo n, String label,
+                                 java.util.List<android.view.accessibility.AccessibilityNodeInfo> out, int depth) {
+        if (n == null || depth > 40 || !out.isEmpty()) return;
+        CharSequence t = n.getText() != null ? n.getText() : n.getContentDescription();
+        if (t != null && t.toString().trim().equalsIgnoreCase(label)) {
+            out.add(n);
+            return;
+        }
+        for (int i = 0; i < n.getChildCount(); i++) findText(n.getChild(i), label, out, depth + 1);
+    }
+
+    /** Clicks the play button on Nuvio's title page; false while the page (or the button) is not there yet. */
+    public boolean clickNuvioPlay() {
+        try {
+            // The active window can be CineTV's own signature overlay drawn over Nuvio: look through every window.
+            android.view.accessibility.AccessibilityNodeInfo root = null;
+            for (android.view.accessibility.AccessibilityWindowInfo w : getWindows()) {
+                android.view.accessibility.AccessibilityNodeInfo r = w.getRoot();
+                if (r != null && r.getPackageName() != null && isNuvioApp(r.getPackageName().toString())) {
+                    root = r;
+                    break;
+                }
+            }
+            if (root == null) root = getRootInActiveWindow();
+            if (root == null || root.getPackageName() == null || !isNuvioApp(root.getPackageName().toString())) return false;
+            for (String label : new String[]{"Oynat", "Devam Et", "İzlemeye Devam Et", "Play", "Resume"}) {
+                // Compose text is not always returned by findAccessibilityNodeInfosByText: walk the tree.
+                java.util.List<android.view.accessibility.AccessibilityNodeInfo> found = new java.util.ArrayList<>();
+                findText(root, label, found, 0);
+                for (android.view.accessibility.AccessibilityNodeInfo n : found) {
+                    CharSequence t = n.getText() != null ? n.getText() : n.getContentDescription();
+                    if (t == null || !t.toString().trim().equalsIgnoreCase(label)) continue;
+                    // the label itself is often a child of the button: climb to the clickable one
+                    android.view.accessibility.AccessibilityNodeInfo c = n;
+                    for (int i = 0; c != null && !c.isClickable() && !c.isFocusable() && i < 6; i++) c = c.getParent();
+                    if (c == null) continue;
+                    c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS);
+                    boolean ok = c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);
+                    return ok;
+                }
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("CineTvPlay", "clickNuvioPlay: " + t);
+        }
+        return false;
+    }
+
     public boolean dispatchAccessibilityKey(int code, boolean longPress) {
         try {
             if (code == KeyEvent.KEYCODE_BACK) return performGlobalAction(GLOBAL_ACTION_BACK);

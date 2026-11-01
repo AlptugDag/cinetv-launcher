@@ -51,7 +51,9 @@ android {
         // TVs that had them still take updates (Android refuses a lower code without wiping the app's data).
         // A fourth part counts small fixes: 1.0.0.1 = 1100001. Letter suffixes boost code so 1.0.0.9b > 1.0.0.9.
         def part = { i -> parts.size() > i ? parts[i] : 0 }
-        def suffixBoost = ver.contains('Beta') ? 20 : (ver.endsWith('b') ? 1 : (ver.endsWith('c') ? 2 : (ver.endsWith('d') ? 3 : 0)))
+        // a letter after the fourth part counts on: 1.0.0.20b = +1, c = +2 ... (b, c, d kept their old codes)
+        def letter = (ver =~ /[a-z]$/) ? ver[-1] : ''
+        def suffixBoost = ver.contains('Beta') ? 20 : (letter ? Math.max(0, (letter as char) - ('a' as char)) : 0)
         def p3 = parts.size() >= 5 ? (part(3) * 10 + part(4)) : part(3)
         def revBoost = (project.findProperty('cineTvRev') ?: '8') as int
         // 1.0.0.19 shipped as 1100219; from there every fourth-part step adds one, so 1.0.0.20 is 1100220.

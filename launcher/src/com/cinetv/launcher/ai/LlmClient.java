@@ -50,6 +50,24 @@ public final class LlmClient {
     private static final String TAG = "CineTvLlm";
 
     /** Set around a call that needs speed over deliberation (the shelf at power-on): Gemini thinks "minimal". */
+    /** Until when (wall clock) the key's free daily quota is known to be spent: no point asking before then. */
+    private static volatile long quotaOutUntil;
+
+    public static boolean quotaOut() {
+        return System.currentTimeMillis() < quotaOutUntil;
+    }
+
+    /** A daily-quota refusal on the roomiest model (Flash-Lite) means every model is out until the reset. */
+    private static void noteQuota(String model, int status, String body) {
+        if (status != 429 || body == null || !body.contains("per day") || !model.contains("lite")) return;
+        long wait = 60 * 60_000L;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("retry in (?:(\\d+)h)?(?:(\\d+)m)?").matcher(body);
+        if (m.find() && (m.group(1) != null || m.group(2) != null)) {
+            wait = (m.group(1) != null ? Long.parseLong(m.group(1)) * 3_600_000L : 0) + (m.group(2) != null ? Long.parseLong(m.group(2)) * 60_000L : 0);
+        }
+        quotaOutUntil = System.currentTimeMillis() + Math.max(60_000L, wait);
+    }
+
     static final ThreadLocal<Boolean> MINIMAL_THINKING = ThreadLocal.withInitial(() -> false);
 
     /** A JSON answer as fast as the provider gives one: the quick model, minimal thinking. */
@@ -194,6 +212,7 @@ public final class LlmClient {
                 String errBody = "";
                 try { if (conn.getErrorStream() != null) errBody = read(conn.getErrorStream()); } catch (Throwable ignored) {}
                 Log.w(TAG, "LLM HTTP " + status + " for " + model + " -> " + errBody);
+                noteQuota(model, status, errBody);
                 return new Result(false, errorText(ctx, status), status);
             }
             JSONObject resp = new JSONObject(read(conn.getInputStream()));
@@ -247,6 +266,7 @@ public final class LlmClient {
                 String errBody = "";
                 try { if (conn.getErrorStream() != null) errBody = read(conn.getErrorStream()); } catch (Throwable ignored) {}
                 Log.w(TAG, "LLM HTTP " + status + " for " + model + " -> " + errBody);
+                noteQuota(model, status, errBody);
                 return new Result(false, errorText(ctx, status), status);
             }
             JSONObject resp = new JSONObject(read(conn.getInputStream()));
@@ -339,6 +359,7 @@ public final class LlmClient {
                 String errBody = "";
                 try { if (conn.getErrorStream() != null) errBody = read(conn.getErrorStream()); } catch (Throwable ignored) {}
                 Log.w(TAG, "Vision HTTP " + status + " for " + model + " -> " + (errBody.length() > 600 ? errBody.substring(0, 600) : errBody));
+                noteQuota(model, status, errBody);
                 return new Result(false, errorText(ctx, status, errBody), status);
             }
             JSONObject resp = new JSONObject(read(conn.getInputStream()));

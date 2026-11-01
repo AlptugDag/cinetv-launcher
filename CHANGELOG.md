@@ -1,5 +1,10 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.20e · Beta 5
+
+- Oynat (DVD kutusu, telefon, oyunlar) yeniden doğrudan filmin Nuvio'daki kaynak sekmesini açıyor. TV'de denendi: Nuvio yalnızca nuvio://detail/... bağlantısını, o da yalnızca temiz açılışta tanıyor; CineTV filmin sayfasını açıp "Oynat" düğmesine kendisi basıyor (adıyla bulup; körlemesine OK değil).
+- Vitrin yalnızca TV açılınca, 3 saatten uzun aradan sonra Ana Ekrana dönünce ve yenile tuşuyla yenileniyor; saat başı ve 45 dakikada bir kendiliğinden yenilenmesi kaldırıldı. Yenilenirken eski vitrinin üstünde "hazırlanıyor" yazmıyor. Yapay zekâ kotası dolduysa kategori vitrini beklemeden geliyor.
+
 ## 1.0.0.20d · Beta 4
 
 - CineSUB: "çok fazla istek" aslında Gemini ücretsiz anahtarının günlük kotasıydı (Flash günde 20 istek). Raftaki her film için arka planda yazılan yapay zekâ özetleri bu kotayı bitiriyordu; özet artık yalnızca açılan kutu için yazılıyor, hızlı metin işleri Flash-Lite'a gidiyor. Kota dolunca ne zaman yenileneceği yazıyor; meşgul model bir sonrakine devrediliyor.

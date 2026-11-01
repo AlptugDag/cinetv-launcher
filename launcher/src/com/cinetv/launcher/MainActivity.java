@@ -362,17 +362,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         PerformanceProfile.noteMemory(this);
         AppUpdater.checkAndAutoUpdateOnBoot(this);
         resetIdle();
-        // Back on Home: refresh shelf if hour/day changed, or after shelf timer
-        Calendar c = Calendar.getInstance();
-        int curHour = c.get(Calendar.HOUR_OF_DAY);
-        int curDay = c.get(Calendar.DAY_OF_YEAR);
-        if (lastShelfHour != -1 && (lastShelfHour != curHour || lastShelfDay != curDay)) {
-            refreshShelf();
-        } else if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > SHELF_EVERY_MS) {
-            refreshShelf();
-        }
-        lastShelfHour = curHour;
-        lastShelfDay = curDay;
+        // A new shelf has exactly three triggers: the TV powering on (a new process), coming back to Home after
+        // three hours or more away, and the refresh key. It used to rebuild at every hour change and every 45
+        // minutes too, so "Vitrin hazırlanıyor" kept appearing for no reason.
+        if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > AI_SHELF_EVERY_MS) refreshShelf();
         // Suppress unwanted OEM TV tuner attempting to steal focus
         background(() -> {
             if (DeviceTweaks.isUnwantedTuner()) {
@@ -847,16 +840,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (ThemeManager.MODE_AUTO.equals(ThemeManager.appearance(this))) applyAppearance();
         checkSpecialDayCelebration();
 
-        Calendar c = Calendar.getInstance();
-        int hour = c.get(Calendar.HOUR_OF_DAY);
-        int day = c.get(Calendar.DAY_OF_YEAR);
-        if (lastShelfHour != -1 && (lastShelfHour != hour || lastShelfDay != day)) {
-            if (home != null && !home.modal.isShowing() && home.screensaver.getVisibility() != View.VISIBLE && !isCurating) {
-                refreshShelf();
-            }
-        }
-        lastShelfHour = hour;
-        lastShelfDay = day;
     }
 
     @Override
@@ -920,7 +903,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         shelfSpin++;
         if (isCurating) return;
         lastShelfAt = android.os.SystemClock.elapsedRealtime();
-        if (LlmClient.isConfigured(this)) {
+        if (LlmClient.isConfigured(this) && !LlmClient.quotaOut()) {
             String now = home.shelfLabel.getText().toString();
             curate("Şu anki raftan (\"" + now + "\") tamamen farklı bir tema seç ve bu raftaki filmlerin hiçbirini tekrar etme; "
                     + "farklı tür, dönem ve ülkelerden sürpriz seçimler yap. Çeşitlilik #" + shelfSpin, true);
@@ -1208,7 +1191,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (isCurating) return;
         isCurating = true;
         String provider = LlmClient.providerName(this);
-        home.shelfLabel.setText(getString(R.string.shelf_curating, "Gamze").toUpperCase(Locale.getDefault()));
+        // the current shelf and its title stay until the new one is ready (no "hazırlanıyor" over it)
+        if (mood != null) home.shelfLabel.setText(getString(R.string.shelf_curating, "Gamze").toUpperCase(Locale.getDefault()));
         final String moment = MovieAssistant.momentContext(this, com.cinetv.launcher.service.WeatherService.getLastFull());
         background(() -> {
             try {
@@ -1322,7 +1306,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private void refreshShelf() {
         if (isCurating) return;
         lastShelfAt = android.os.SystemClock.elapsedRealtime();
-        if (LlmClient.isConfigured(this)) curate(null);
+        // With the AI key's daily quota spent, the category shelf comes at once instead of after four refusals.
+        if (LlmClient.isConfigured(this) && !LlmClient.quotaOut()) curate(null);
         else categoryShelf();
     }
 
