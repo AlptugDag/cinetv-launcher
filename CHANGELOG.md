@@ -1,5 +1,24 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.22b · Beta 2
+
+- CineQuiz: soru TV'de her zaman tam görünüyor. Resim küçüldü, soru sütunu genişledi; uzun sorular kesilmek yerine sığana kadar küçülüyor. Süre halkası resmin altına alındı, cevaplar sorunun hemen altında.
+- Oyunlarda Gamze bekletmiyor: yapay zekâ sesi 3,5 saniyede hazır olmazsa TV'nin kendi sesi okuyor. SnakePhile'da film notu bir sonraki cümleyle kesilmiyor.
+- Telefonu eşleştirme: TV'deki izin sorusu artık hangi uygulama açık olursa olsun (Nuvio, oynatıcı, oyun) üstte çıkıyor. Telefon yeniden denediğinde (Samsung'da ana ekrana ekleme) aynı soruya bağlanıyor; eskiden yeni bir istek açıyor ve TV'nin cevabı boşa gidiyordu.
+- CineQuiz ayarları: telefonda zorluk, kategori ve süre herkes tarafından seçilebiliyor, Başlat herkese açık. Odadan çıkan ya da eski bir kimlikte kalan "ev sahibi" devrediliyor.
+- CineSUB otomatik mod:
+  - AlptugPlayer'da hiç çalışmıyordu (oynatıcı CineTV'nin içinde olduğu için atlanıyordu); artık filmin gerçekten oynayıp oynamadığına bakıyor.
+  - Otomatik mod açıkken oynatıcı tünelsiz açılıyor, böylece ekran görüntüsü siyah kalmıyor.
+  - Bakamadığında 3 dakika yerine 1 dakika sonra yeniden deniyor.
+  - Gamze konuşurken, ekran kapalıyken veya kota bittiğinde susuyor.
+  - Android 11+ TV'lerde adb kapalıysa ekranı erişilebilirlik servisiyle yakalıyor.
+- Uyumluluk:
+  - Android 14'te uygulama içi güncelleme sessizce başarısız oluyordu; sistem ses alıcısı da işaretsizdi.
+  - Türkçe TV'de "I" harfinin "ı"ya dönüşmesi HTTP başlıklarını, paket adlarını ve tema anahtarlarını bozuyordu.
+  - Arapça/Farsça dilli TV'lerde eşleşme anahtarı ve renk kodları farklı rakamlarla yazılıyordu.
+  - Android 12+ Bluetooth izni olmadan AirPods kontrolü çökebiliyordu.
+  - Yalnızca kablolu ağı olan veya mikrofonsuz TV'ler de kurabiliyor; küçük harfli HLS türü de oynatıcıya geliyor.
+
 ## 1.0.0.22a · Beta 1
 
 - AlptugPlayer: "io unspecified" hatası giderildi. Android 9 ve sonrası şifresiz `http://` bağlantıyı engelliyordu; Nuvio'nun torrent ve yerel kaynakları bu yüzden açılmıyordu. Yerel sunucuların ilk baytı geç vermesi için bağlantı süreleri de uzatıldı.

@@ -2509,6 +2509,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         return a.home.isSearchOrInputFocused();
     }
 
+    /** The pairing question can show in CineTV's own modal layer (nothing covers it: no game on top, no case opening). */
+    public boolean canAskInPlace() {
+        return home != null && liveSnakePhileView == null && partyStage == null
+                && home.opening.getVisibility() != View.VISIBLE && !home.voice.isShowing();
+    }
+
     @Override
     public void askPairing(String device, Runnable allow, Runnable deny) {
         hideScreensaver();

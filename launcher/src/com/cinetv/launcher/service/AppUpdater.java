@@ -216,7 +216,7 @@ public final class AppUpdater {
                 session.fsync(out);
                 out.close();
                 String action = ctx.getPackageName() + ".INSTALL_RESULT";
-                ctx.getApplicationContext().registerReceiver(new android.content.BroadcastReceiver() {
+                android.content.BroadcastReceiver result = new android.content.BroadcastReceiver() {
                     @Override
                     public void onReceive(Context c, Intent i) {
                         if (i.getIntExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, -99) == android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION) {
@@ -224,7 +224,12 @@ public final class AppUpdater {
                             if (confirm != null) c.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                         }
                     }
-                }, new android.content.IntentFilter(action));
+                };
+                // Android 14 refuses an unmarked receiver for an app's own broadcast (the update silently failed there);
+                // not exported: only CineTV's own PendingIntent may deliver the installer's answer
+                if (android.os.Build.VERSION.SDK_INT >= 33)
+                    ctx.getApplicationContext().registerReceiver(result, new android.content.IntentFilter(action), Context.RECEIVER_NOT_EXPORTED);
+                else ctx.getApplicationContext().registerReceiver(result, new android.content.IntentFilter(action));
                 android.app.PendingIntent pend = android.app.PendingIntent.getBroadcast(ctx, id,
                         new Intent(action).setPackage(ctx.getPackageName()),
                         android.app.PendingIntent.FLAG_UPDATE_CURRENT | (android.os.Build.VERSION.SDK_INT >= 31 ? android.app.PendingIntent.FLAG_MUTABLE : 0));

@@ -230,7 +230,7 @@ public final class TvWebRemoteServer {
             String line;
             int lines = 0;
             while ((line = readLine(in)) != null && !line.isEmpty() && lines++ < MAX_HEADER_LINES) {
-                String lower = line.toLowerCase();
+                String lower = line.toLowerCase(java.util.Locale.ROOT);
                 if (lower.startsWith("host:")) host = line.substring(5).trim();
                 else if (lower.startsWith("x-cinetv-token:")) tokenHeader = line.substring(15).trim();
                 else if (lower.startsWith("user-agent:")) agent = line.substring(11).trim();
@@ -456,7 +456,7 @@ public final class TvWebRemoteServer {
             String act = q.get("action");
             if (act == null) act = q.get("command");
             if (act == null) act = "status";
-            act = act.toLowerCase().trim();
+            act = act.toLowerCase(java.util.Locale.ROOT).trim();
 
             switch (act) {
                 case "play":
@@ -529,27 +529,36 @@ public final class TvWebRemoteServer {
     private static JSONObject publicApi(String path, Map<String, String> q, String agent) throws Exception {
         switch (path) {
             case "/api/pair/request": {
+                // A phone asking again (a reload, or the page added to the home screen) joins the question
+                // already on the TV instead of starting a second one the TV would never answer.
                 PairRequest p = pending;
-                if (p != null && p.state == 0 && System.currentTimeMillis() - p.at < 5_000L) {
-                    return new JSONObject().put("ok", false).put("error", "busy");
+                if (p != null && p.state == 0 && System.currentTimeMillis() - p.at < 55_000L) {
+                    return new JSONObject().put("ok", true).put("id", p.id);
                 }
                 final PairRequest req = new PairRequest();
                 pending = req;
                 final String device = deviceName(agent);
                 post(() -> {
+                    // Whatever is on screen, the question shows on top of it.
+                    Runnable allow = () -> req.state = 1, deny = () -> req.state = -1;
+                    com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                    Controller c = controller;
+                    if (c != null && ma != null && com.cinetv.launcher.MainActivity.isInFront() && ma.canAskInPlace()) {
+                        c.askPairing(device, allow, deny);
+                        return;
+                    }
+                    if (PairingPrompt.show(app, device, allow, deny)) return;
+                    // no overlay possible: bring CineTV forward and ask there
                     try {
                         app.startActivity(new Intent(app, com.cinetv.launcher.MainActivity.class)
                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
                     } catch (Throwable ignored) {
                     }
                     main.postDelayed(() -> {
-                        Controller c = controller;
-                        if (c != null) {
-                            c.askPairing(device, () -> req.state = 1, () -> req.state = -1);
-                        } else {
-                            req.state = -1;
-                        }
-                    }, 400);
+                        Controller c2 = controller;
+                        if (c2 != null) c2.askPairing(device, allow, deny);
+                        else req.state = -1;
+                    }, 600);
                 });
                 return new JSONObject().put("ok", true).put("id", req.id);
             }

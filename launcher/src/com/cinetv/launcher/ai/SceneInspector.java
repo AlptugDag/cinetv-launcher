@@ -45,7 +45,11 @@ public final class SceneInspector {
     public static byte[] captureJpeg(Context ctx) {
         try {
             byte[] raw = com.cinetv.launcher.remote.LocalAdb.exec(ctx, "screencap -p", 8000);
-            if (raw == null || raw.length < 1000) return null;
+            if (raw == null || raw.length < 1000) {
+                // no adb on this TV: Android 11+ lets the key service take the screenshot itself
+                Bitmap shot = serviceScreenshot();
+                return shot == null ? null : encodeFrame(shot);
+            }
             // Some MediaTek firmwares print a line before the PNG: start at its signature.
             int start = 0;
             for (int i = 0; i < Math.min(raw.length - 4, 4096); i++) {
@@ -62,6 +66,16 @@ public final class SceneInspector {
             o.inPreferredConfig = Bitmap.Config.RGB_565;
             Bitmap b = BitmapFactory.decodeByteArray(raw, start, raw.length - start, o);
             if (b == null) return null;
+            return encodeFrame(b);
+        } catch (Throwable t) {
+            Log.w(TAG, "Capture failed: " + t);
+            return null;
+        }
+    }
+
+    /** The frame as a JPEG (empty when the picture is protected and captured black). Recycles {@code b}. */
+    private static byte[] encodeFrame(Bitmap b) {
+        try {
             // Protected video (Netflix and the like) captures as pure black: say so instead of guessing.
             if (isBlank(b)) {
                 b.recycle();
@@ -75,6 +89,46 @@ public final class SceneInspector {
             Log.w(TAG, "Capture failed: " + t);
             return null;
         }
+    }
+
+    /** Android 11+: the accessibility service's own screenshot, scaled to about 960 px. Blocking, null when unavailable. */
+    @android.annotation.TargetApi(30)
+    private static Bitmap serviceScreenshot() {
+        if (android.os.Build.VERSION.SDK_INT < 30) return null;
+        com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
+        if (svc == null) return null;
+        final Bitmap[] out = {null};
+        final java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+        try {
+            svc.takeScreenshot(android.view.Display.DEFAULT_DISPLAY, svc.getMainExecutor(),
+                    new android.accessibilityservice.AccessibilityService.TakeScreenshotCallback() {
+                        @Override
+                        public void onSuccess(android.accessibilityservice.AccessibilityService.ScreenshotResult r) {
+                            try (android.hardware.HardwareBuffer hb = r.getHardwareBuffer()) {
+                                Bitmap hw = Bitmap.wrapHardwareBuffer(hb, r.getColorSpace());
+                                if (hw != null) {
+                                    int w = Math.min(960, hw.getWidth());
+                                    int h = Math.round(hw.getHeight() * (w / (float) hw.getWidth()));
+                                    Bitmap soft = hw.copy(Bitmap.Config.ARGB_8888, false);
+                                    hw.recycle();
+                                    out[0] = soft == null ? null : Bitmap.createScaledBitmap(soft, w, h, true);
+                                    if (soft != null && soft != out[0]) soft.recycle();
+                                }
+                            } catch (Throwable ignored) {
+                            }
+                            done.countDown();
+                        }
+
+                        @Override
+                        public void onFailure(int errorCode) {
+                            done.countDown();
+                        }
+                    });
+            done.await(4, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Throwable t) {
+            return null;
+        }
+        return out[0];
     }
 
     private static boolean isBlank(Bitmap b) {

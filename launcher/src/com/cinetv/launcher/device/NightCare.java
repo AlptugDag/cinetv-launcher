@@ -38,12 +38,15 @@ public final class NightCare {
         started = true;
         final Context app = ctx.getApplicationContext();
         arm(app);
-        app.registerReceiver(new BroadcastReceiver() {
+        BroadcastReceiver volume = new BroadcastReceiver() {
             @Override
             public void onReceive(Context c, Intent i) {
                 capVolume(app);
             }
-        }, new IntentFilter("android.media.VOLUME_CHANGED_ACTION"));
+        };
+        // Android 13+ wants every receiver marked; the volume broadcast comes from the system
+        if (android.os.Build.VERSION.SDK_INT >= 33) app.registerReceiver(volume, new IntentFilter("android.media.VOLUME_CHANGED_ACTION"), Context.RECEIVER_EXPORTED);
+        else app.registerReceiver(volume, new IntentFilter("android.media.VOLUME_CHANGED_ACTION"));
         main.postDelayed(new Runnable() {
             @Override
             public void run() {

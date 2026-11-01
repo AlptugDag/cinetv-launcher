@@ -15,6 +15,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.util.Log;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
@@ -151,25 +152,53 @@ public final class CineSubOverlay {
      * one short note in a quiet corner. Never while CineSUB is already showing.
      */
     public static void ambientTick(final Context ctx) {
-        if (active != null || !com.cinetv.launcher.service.Prefs.get(ctx).getBoolean("cinesub_ambient", false)) return;
-        if (!com.cinetv.launcher.ai.LlmClient.isConfigured(ctx)) return;
+        if (active != null || ambientBusy || !com.cinetv.launcher.service.Prefs.get(ctx).getBoolean("cinesub_ambient", false)) return;
+        if (!com.cinetv.launcher.ai.LlmClient.isConfigured(ctx) || com.cinetv.launcher.ai.LlmClient.quotaOut()) return;
+        // not over the viewer's own CineSUB, Gamze talking, or a screen that is off
+        if (com.cinetv.launcher.ai.EmaLightningTts.isSpeaking()) return;
+        android.os.PowerManager pm = (android.os.PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
+        if (pm != null && !pm.isInteractive()) return;
+        long now = SystemClock.elapsedRealtime();
         long gap = PerformanceProfile.lowMemory(ctx) ? 300_000L : 180_000L;
-        if (SystemClock.elapsedRealtime() - lastAmbientAt < gap) return;
-        lastAmbientAt = SystemClock.elapsedRealtime();
+        if (now - lastAmbientAt < gap || now < ambientRetryAt) return;
+        ambientBusy = true;
         final Context app = ctx.getApplicationContext();
         new Thread(() -> {
-            final SceneInspector.Scene scene = SceneInspector.inspect(app, true);
+            SceneInspector.Scene scene;
+            try {
+                scene = SceneInspector.inspect(app, true);
+            } catch (Throwable t) {
+                scene = new SceneInspector.Scene();
+                scene.error = String.valueOf(t);
+            } finally {
+                ambientBusy = false;
+            }
+            long at = SystemClock.elapsedRealtime();
+            if (scene.error.isEmpty()) {
+                // a look happened (with or without something worth saying): the next one after the full gap
+                lastAmbientAt = at;
+            } else {
+                // couldn't look (capture, protected picture, network, quota): try again in a minute, not in three
+                ambientRetryAt = at + 60_000L;
+                Log.w("CineSub", "Ambient look failed: " + scene.error);
+                return;
+            }
             if (scene.pois.isEmpty()) return;
+            final SceneInspector.Scene found = scene;
             main.post(() -> {
                 if (active != null) return;
                 CineSubOverlay o = new CineSubOverlay(host(ctx), true);
                 if (!o.attach()) return;
                 active = o;
-                o.stage.setScene(scene);
-                o.keepFor(11000);
+                o.stage.setScene(found);
+                SceneInspector.Poi top = found.pois.get(0);
+                o.keepFor(Math.max(11000, 5000 + (top.title.length() + top.fact.length()) * 50L));
             });
         }, "cinesub-ambient").start();
     }
+
+    private static volatile boolean ambientBusy;
+    private static volatile long ambientRetryAt;
 
     public static void dismissActive() {
         CineSubOverlay o = active;

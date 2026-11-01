@@ -179,7 +179,12 @@ public final class AirPodsLink {
     static boolean isHeadphones(BluetoothDevice d) {
         String n = name(d).toLowerCase(Locale.ROOT);
         if (n.contains("airpods") || n.contains("beats") || n.contains("buds")) return true;
-        BluetoothClass c = d.getBluetoothClass();
+        BluetoothClass c;
+        try {
+            c = d.getBluetoothClass();
+        } catch (Throwable noPermission) {
+            return false; // Android 12+ without the Bluetooth permission: the name above is all we know
+        }
         if (c == null) return false;
         int dc = c.getDeviceClass();
         return dc == BluetoothClass.Device.AUDIO_VIDEO_HEADPHONES || dc == BluetoothClass.Device.AUDIO_VIDEO_WEARABLE_HEADSET;

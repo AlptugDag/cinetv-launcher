@@ -187,7 +187,12 @@ public final class CinePartyManager {
 
     private void touch(String id) {
         Player p = id == null ? null : players.get(id);
-        if (p != null) p.lastSeen = SystemClock.elapsedRealtime();
+        if (p != null) {
+            p.lastSeen = SystemClock.elapsedRealtime();
+            // a host who left (or the same phone under an old identity) hands over to whoever is here
+            Player h = players.get(hostId);
+            if (h == null || h.away()) hostId = id;
+        }
     }
 
     private List<Player> active() {
@@ -1040,7 +1045,7 @@ public final class CinePartyManager {
             sorted.sort((a, b) -> b.score - a.score);
             for (Player p : sorted) {
                 JSONObject o = new JSONObject().put("id", p.id).put("name", p.name).put("score", p.score)
-                        .put("color", String.format("#%06X", p.color & 0xFFFFFF)).put("away", p.away());
+                        .put("color", String.format(java.util.Locale.ROOT, "#%06X", p.color & 0xFFFFFF)).put("away", p.away());
                 if (mode == Mode.QUIZ) o.put("answered", p.answer != null);
                 if (mode == Mode.ROULETTE) o.put("spins", p.spins);
                 if (mode == Mode.QUIZ && "reveal".equals(phase) && question != null) {
@@ -1054,7 +1059,7 @@ public final class CinePartyManager {
             s.put("events", ev);
             Player me = viewer == null ? null : players.get(viewer);
             if (me != null) s.put("me", new JSONObject().put("id", me.id).put("name", me.name).put("score", me.score)
-                    .put("host", me.id.equals(hostId)).put("color", String.format("#%06X", me.color & 0xFFFFFF)));
+                    .put("host", me.id.equals(hostId)).put("color", String.format(java.util.Locale.ROOT, "#%06X", me.color & 0xFFFFFF)));
 
             if (mode == Mode.QUIZ) {
                 JSONObject q = new JSONObject().put("minutes", quizMinutes).put("seconds", quizSeconds).put("no", questionNo)

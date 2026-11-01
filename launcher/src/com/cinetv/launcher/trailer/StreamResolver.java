@@ -230,7 +230,7 @@ public final class StreamResolver {
             if (audioList != null && !audioList.isEmpty()) {
                 List<AudioStream> aacList = new ArrayList<>();
                 for (AudioStream as : audioList) {
-                    if (as.getFormat() == MediaFormat.M4A || (as.getCodec() != null && as.getCodec().toLowerCase().contains("mp4a"))) {
+                    if (as.getFormat() == MediaFormat.M4A || (as.getCodec() != null && as.getCodec().toLowerCase(java.util.Locale.ROOT).contains("mp4a"))) {
                         aacList.add(as);
                     }
                 }
@@ -259,7 +259,7 @@ public final class StreamResolver {
     private static boolean isH264(VideoStream vs) {
         if (vs.getFormat() == MediaFormat.MPEG_4) return true;
         String c = vs.getCodec();
-        return c != null && (c.toLowerCase().contains("avc") || c.toLowerCase().contains("h264"));
+        return c != null && (c.toLowerCase(java.util.Locale.ROOT).contains("avc") || c.toLowerCase(java.util.Locale.ROOT).contains("h264"));
     }
 
     private static long parseExpiry(String url) {

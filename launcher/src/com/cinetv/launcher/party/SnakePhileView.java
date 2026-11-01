@@ -427,10 +427,11 @@ public final class SnakePhileView extends View {
                 // Gamze tells something about the film just swallowed (every other one, so she never talks over herself)
                 if (eaten % 2 == 1) {
                     CinePartyManager.get(getContext()).getGamzeMovieLore(eatenMovie, lore -> {
-                        if (lore != null && !lore.isEmpty() && !isGameOver)
+                        if (lore != null && !lore.isEmpty() && !isGameOver && !com.cinetv.launcher.ai.EmaLightningTts.isSpeaking())
                             com.cinetv.launcher.ai.EmaLightningTts.speakGame(getContext(), eatenMovie + " yutuldu. " + lore);
                     });
-                } else {
+                } else if (!com.cinetv.launcher.ai.EmaLightningTts.isSpeaking()) {
+                    // never over a film note still being read
                     com.cinetv.launcher.ai.EmaLightningTts.speakGame(getContext(), "Sıradaki hedef: " + nextMovie + ".");
                 }
             }

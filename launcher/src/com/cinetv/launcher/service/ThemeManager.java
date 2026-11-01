@@ -157,7 +157,7 @@ public final class ThemeManager {
 
     /** dark, light or auto. Earlier builds wrote theme ids into this key; those read as dark. */
     public static String appearance(Context ctx) {
-        String v = Prefs.globalOrLocal(ctx, Prefs.GLOBAL_APPEARANCE, MODE_DARK).toLowerCase();
+        String v = Prefs.globalOrLocal(ctx, Prefs.GLOBAL_APPEARANCE, MODE_DARK).toLowerCase(java.util.Locale.ROOT);
         if (MODE_LIGHT.equals(v) || MODE_AUTO.equals(v)) return v;
         return MODE_DARK;
     }

@@ -199,8 +199,21 @@ public class CinePlayerActivity extends Activity {
         return false;
     }
 
+    /** True while a film is actually playing here (not paused, not buffering): CineSUB's ambient notes go by it. */
+    public static boolean isPlayingNow() {
+        CinePlayerActivity a = current;
+        try {
+            return a != null && a.player != null && a.player.isPlaying();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     private void build(long position) {
-        tunnel = !noTunnel && profile <= 1 && tunnelSupported();
+        // CineSUB's ambient notes look at the picture every few minutes; tunnelled video never reaches a
+        // screenshot, so with them on the film plays untunnelled from the start (no rebuild mid-scene).
+        boolean ambient = Prefs.get(this).getBoolean("cinesub_ambient", false);
+        tunnel = !noTunnel && !ambient && profile <= 1 && tunnelSupported();
         if (player != null) {
             player.release();
             player = null;

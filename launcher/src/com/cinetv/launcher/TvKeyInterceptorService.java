@@ -574,12 +574,22 @@ public class TvKeyInterceptorService extends AccessibilityService {
         @Override
         public void run() {
             handler.postDelayed(this, 30_000);
-            String pkg = lastPackage;
-            if (pkg == null || pkg.equals(getPackageName())) return;
-            boolean player = isNuvioApp(pkg) || isYouTubeApp(pkg) || pkg.contains("nova") || pkg.contains("vlc")
-                    || pkg.contains("mxtech") || pkg.contains("kodi") || pkg.contains("player");
-            android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
-            if (player && am != null && am.isMusicActive()) com.cinetv.launcher.ui.CineSubOverlay.ambientTick(TvKeyInterceptorService.this);
+            try {
+                // AlptugPlayer lives inside CineTV: it counts while a film plays in it (its own state, since
+                // tunnelled or passthrough sound does not show up as "music active")
+                if (CinePlayerActivity.active) {
+                    if (CinePlayerActivity.isPlayingNow()) com.cinetv.launcher.ui.CineSubOverlay.ambientTick(TvKeyInterceptorService.this);
+                    return;
+                }
+                String pkg = lastPackage;
+                if (pkg == null || pkg.equals(getPackageName())) return;
+                boolean player = isNuvioApp(pkg) || isYouTubeApp(pkg) || pkg.contains("nova") || pkg.contains("vlc")
+                        || pkg.contains("mxtech") || pkg.contains("kodi") || pkg.contains("player") || pkg.contains("video");
+                android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+                if (player && am != null && am.isMusicActive()) com.cinetv.launcher.ui.CineSubOverlay.ambientTick(TvKeyInterceptorService.this);
+            } catch (Throwable ignored) {
+                // the half-minute check never dies on one bad tick
+            }
         }
     };
 

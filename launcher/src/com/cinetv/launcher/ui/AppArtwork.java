@@ -67,7 +67,7 @@ public final class AppArtwork {
         if (pkg == null) return false;
         if (pkg.startsWith("com.cinetv.party.")) return true;
         if (AppLauncher.LIVE_TV.equals(pkg) || AppCatalog.isTizenTube(pkg)) return true;
-        String lower = pkg.toLowerCase();
+        String lower = pkg.toLowerCase(java.util.Locale.ROOT);
         return lower.contains("turkcell.ott") || lower.contains("tvplus")
                 || lower.contains("instantbits.cast")
                 || lower.contains("nuvio") || lower.contains("alptugflix")
@@ -451,7 +451,7 @@ public final class AppArtwork {
             return new BitmapDrawable(ctx.getResources(), cached);
         }
 
-        String lower = pkg != null ? pkg.toLowerCase() : "";
+        String lower = pkg != null ? pkg.toLowerCase(java.util.Locale.ROOT) : "";
         Bitmap rawCard;
 
         if (AppLauncher.LIVE_TV.equals(pkg)) {

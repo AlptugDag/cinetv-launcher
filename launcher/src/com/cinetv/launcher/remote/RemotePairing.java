@@ -31,7 +31,7 @@ public final class RemotePairing {
         byte[] b = new byte[bytes];
         new SecureRandom().nextBytes(b);
         StringBuilder sb = new StringBuilder();
-        for (byte x : b) sb.append(String.format("%02x", x));
+        for (byte x : b) sb.append(String.format(java.util.Locale.ROOT, "%02x", x));
         return sb.toString();
     }
 
@@ -123,7 +123,7 @@ public final class RemotePairing {
             String fallback = null;
             for (NetworkInterface nif : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 if (!nif.isUp() || nif.isLoopback()) continue;
-                String name = nif.getName().toLowerCase();
+                String name = nif.getName().toLowerCase(java.util.Locale.ROOT);
                 if (name.contains("tun") || name.contains("p2p") || name.contains("dummy") || name.startsWith("ap")
                         || name.equals("wlan1") || name.startsWith("swlan")) continue;
                 for (InetAddress a : Collections.list(nif.getInetAddresses())) {

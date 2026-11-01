@@ -407,8 +407,9 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
         }
         boolean revealing = "reveal".equals(phase);
         boolean tall = "tall".equals(q.optString("shape"));
+        // the picture leaves the question a wide column (the scores sit right of x=1400)
         float ix = 96, iy = 214;
-        float iw = tall ? 440 : 860, ih = tall ? 660 : 484;
+        float iw = tall ? 400 : 620, ih = tall ? 600 : 349;
         // Picture
         drawPicture(c, q.optString("image"), ix, iy, ix + iw, iy + ih, 34, false);
         String cap = q.optString("caption");
@@ -419,22 +420,26 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
             c.drawText(ellipsize(cap, iw), ix + 6, iy + ih + 50, text);
         }
         // Prompt and timer
-        float px = ix + iw + 60, pw = 1400 - px;
+        float px = ix + iw + 50, pw = 1400 - px;
         text.setTypeface(black);
-        text.setTextSize(tall ? 52 : 44);
         text.setColor(0xFFF5F5F7);
-        float ty = drawWrapped(c, q.optString("prompt"), px, iy + 50, pw, 3, 1.18f);
+        // the whole question, always: the type shrinks until it fits in four lines
+        fitSize(q.optString("prompt"), pw, 4, 50, 28);
+        float ty = drawWrapped(c, q.optString("prompt"), px, iy + 50, pw, 4, 1.18f);
         long total = Math.max(1, q.optLong("total"));
         long left = q.optBoolean("reading") ? total : Math.max(0, q.optLong("left") - (now - stateAt));
-        if (!revealing) ring(c, px + 64, ty + 90, 54, left / (float) total, String.valueOf((left + 999) / 1000), left < 5500 ? 0xFFFF453A : accent);
+        // the clock sits under the picture, so the options follow the question directly
+        if (!revealing) ring(c, ix + 70, iy + ih + (cap.isEmpty() ? 100 : 150), 54, left / (float) total, String.valueOf((left + 999) / 1000), left < 5500 ? 0xFFFF453A : accent);
         JSONArray opts = q.optJSONArray("options");
-        float oy = revealing ? ty + 30 : ty + 190;
+        float oy = ty + 30;
+        float optBottom = oy;
         if (opts != null && opts.length() > 0) {
             int correct = q.optInt("correct", -1);
             float ow = tall ? (pw - 24) / 2 : pw, oh = 92;
             for (int i = 0; i < opts.length(); i++) {
                 float cx = tall ? px + (i % 2) * (ow + 24) : px, cy = tall ? oy + (i / 2) * (oh + 22) : oy + i * (oh - 8);
                 float h2 = tall ? oh : oh - 20;
+                optBottom = Math.max(optBottom, cy + h2);
                 boolean right = revealing && i == correct;
                 int tint = right ? 0x5530D158 : revealing ? 0x0FFFFFFF : 0x1FFFFFFF;
                 glassRect(c, cx, cy, cx + ow, cy + h2, h2 / 2, tint);
@@ -449,7 +454,8 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
                 text.setColor(right ? 0xFF30D158 : withA(accent, revealing ? 120 : 255));
                 c.drawText(String.valueOf((char) ('A' + i)), cx + 30, cy + h2 / 2 + 10, text);
                 text.setTypeface(bold);
-                text.setTextSize(tall ? 28 : 27);
+                text.setTextSize(28);
+                while (text.getTextSize() > 18 && text.measureText(opts.optString(i)) > ow - 100) text.setTextSize(text.getTextSize() - 1);
                 text.setColor(revealing && !right ? 0x66F5F5F7 : 0xFFF5F5F7);
                 c.drawText(ellipsize(opts.optString(i), ow - 100), cx + 72, cy + h2 / 2 + 10, text);
             }
@@ -459,14 +465,14 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
             text.setColor(0x99F5F5F7);
             c.drawText(tr ? "Cevabınızı telefonunuza yazın" : "Type your answer on your phone", px, oy + 20, text);
         }
-        if (revealing) return drawReveal(c, q, px, pw, now);
+        if (revealing) return drawReveal(c, q, px, pw, now, optBottom);
         return true;
     }
 
-    private boolean drawReveal(Canvas c, JSONObject q, float px, float pw, long now) {
+    private boolean drawReveal(Canvas c, JSONObject q, float px, float pw, long now, float optBottom) {
         float k = ease(Math.min(1f, (now - revealAt) / 600f));
         JSONArray opts = q.optJSONArray("options");
-        float y = opts != null && opts.length() > 0 ? 760 : 470;
+        float y = opts != null && opts.length() > 0 ? Math.max(700, optBottom + 24) : 470;
         if (opts == null || opts.length() == 0) {
             glassRect(c, px, 380, px + pw, 470, 30, 0x4030D158);
             text.setTypeface(black);
@@ -500,13 +506,13 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
                 text.setTypeface(black);
                 text.setTextSize(30);
                 text.setColor(withA(0xFF30D158, (int) (255 * (1 - k))));
-                c.drawText("+10", x + w - 60, yy - 20 - 40 * k, text);
+                c.drawText("+" + q.optInt("points", 10), x + w - 60, yy - 20 - 40 * k, text);
             }
             x += w + 16;
         }
         String fact = q.optString("fact");
         if (!fact.isEmpty()) {
-            float fy = 930;
+            float fy = Math.min(964, Math.max(930, y + 84));
             glassRect(c, 96, fy - 10, 1400, fy + 96, 34, 0x24FFFFFF);
             gamzeOrb(c, 150, fy + 43, 24, now);
             text.setTypeface(medium);
@@ -1030,6 +1036,26 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
     private void remember(String url, Bitmap b) {
         if (pics.size() > 14) pics.clear();
         pics.put(url, b);
+    }
+
+    /** Sets the largest text size (from {@code max} down to {@code min}) at which {@code s} wraps into {@code maxLines}. */
+    private void fitSize(String s, float width, int maxLines, float max, float min) {
+        if (s == null) s = "";
+        String[] words = s.split(" ");
+        for (float size = max; size >= min; size -= 2) {
+            text.setTextSize(size);
+            int lines = 1;
+            StringBuilder line = new StringBuilder();
+            for (String w : words) {
+                String t = line.length() == 0 ? w : line + " " + w;
+                if (text.measureText(t) > width && line.length() > 0) {
+                    lines++;
+                    line = new StringBuilder(w);
+                } else line = new StringBuilder(t);
+            }
+            if (lines <= maxLines) return;
+        }
+        text.setTextSize(min);
     }
 
     private float drawWrapped(Canvas c, String s, float x, float y, float width, int maxLines, float lead) {

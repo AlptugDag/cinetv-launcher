@@ -48,7 +48,7 @@ public final class RelayHost {
             byte[] b = new byte[12];
             new SecureRandom().nextBytes(b);
             StringBuilder sb = new StringBuilder("cinetv-");
-            for (byte x : b) sb.append(String.format("%02x", x));
+            for (byte x : b) sb.append(String.format(java.util.Locale.ROOT, "%02x", x));
             id = sb.toString();
             Prefs.get(ctx).edit().putString(KEY, id).apply();
         }

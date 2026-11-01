@@ -1798,17 +1798,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         <div class="pt-h">Oyunu ayarlayın</div>
         <p class="pt-sub" style="margin:0">En çok puanı toplayan kazanır ve bu gecenin filmini seçer. Doğru cevap ${q.points || 10} puan; ilk doğru cevaplayan yarısı kadar fazlasını alır, üst üste üçüncü doğrudan itibaren seri bonusu.</p>
         <div class="pt-lbl">Kategori</div>
-        <div class="pt-seg" id="qCat" style="flex-wrap:wrap">${["Hepsi", "Türk filmleri", "Klasikler", "Yeni filmler", "Animasyon"].map((n, i) => `<button data-v="${i}" class="${i === (q.category || 0) ? "on" : ""}" ${host ? "" : "disabled"}>${n}</button>`).join("")}</div>
+        <div class="pt-seg" id="qCat" style="flex-wrap:wrap">${["Hepsi", "Türk filmleri", "Klasikler", "Yeni filmler", "Animasyon"].map((n, i) => `<button data-v="${i}" class="${i === (q.category || 0) ? "on" : ""}" >${n}</button>`).join("")}</div>
         <div class="pt-lbl">Zorluk</div>
-        <div class="pt-seg" id="qLvl">${qLevels.map((n, i) => `<button data-v="${i}" class="${i === q.difficulty ? "on" : ""}" ${host ? "" : "disabled"}>${n}</button>`).join("")}</div>
+        <div class="pt-seg" id="qLvl">${qLevels.map((n, i) => `<button data-v="${i}" class="${i === q.difficulty ? "on" : ""}" >${n}</button>`).join("")}</div>
         <div class="pt-lbl">Oyun süresi</div>
-        <div class="pt-seg" id="qMin">${[3, 5, 10, 15, 0].map(m => `<button data-v="${m}" class="${m === q.minutes ? "on" : ""}" ${host ? "" : "disabled"}>${m ? m + " dk" : "∞ Sonsuz"}</button>`).join("")}</div>
+        <div class="pt-seg" id="qMin">${[3, 5, 10, 15, 0].map(m => `<button data-v="${m}" class="${m === q.minutes ? "on" : ""}" >${m ? m + " dk" : "∞ Sonsuz"}</button>`).join("")}</div>
         <div class="pt-lbl">Soru başına</div>
-        <div class="pt-seg" id="qSec">${[15, 20, 30].map(s => `<button data-v="${s}" class="${s === q.seconds ? "on" : ""}" ${host ? "" : "disabled"}>${s} sn</button>`).join("")}</div>
+        <div class="pt-seg" id="qSec">${[15, 20, 30].map(s => `<button data-v="${s}" class="${s === q.seconds ? "on" : ""}" >${s} sn</button>`).join("")}</div>
         ${st.status ? `<div class="pt-note" style="color:#ff9f0a">${esc(st.status)}</div>` : ""}
-        ${host ? `<button class="pt-btn wide" id="qStart">Başlat</button>` : `<div class="pt-note">Ev sahibi başlatacak.</div>`}
+        <button class="pt-btn wide" id="qStart">Başlat</button>
       </div>`, () => {
-        if (!host) return;
         $("qCat").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: q.minutes, seconds: q.seconds, difficulty: q.difficulty, category: b.dataset.v}));
         $("qLvl").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: q.minutes, seconds: q.seconds, difficulty: b.dataset.v}));
         $("qMin").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: b.dataset.v, seconds: q.seconds, difficulty: q.difficulty}));

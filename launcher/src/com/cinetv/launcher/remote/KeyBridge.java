@@ -147,7 +147,7 @@ public final class KeyBridge {
             byte[] b = new byte[24];
             new SecureRandom().nextBytes(b);
             StringBuilder sb = new StringBuilder();
-            for (byte x : b) sb.append(String.format("%02x", x));
+            for (byte x : b) sb.append(String.format(java.util.Locale.ROOT, "%02x", x));
             s = sb.toString();
             p.edit().putString(PREF_KEY, s).apply();
         }

@@ -147,7 +147,26 @@ public final class EmaLightningTts {
             if (onDone != null) MAIN.post(onDone);
             return;
         }
-        start(ctx.getApplicationContext(), rawText.toString(), onDone);
+        start(ctx.getApplicationContext(), rawText.toString(), onDone, GAME_WAIT_MS);
+    }
+
+    /** Game narration waits at most this long for the neural voice of a sentence; then the TV's own voice reads it. */
+    private static final long GAME_WAIT_MS = 3500;
+    private static final ExecutorService SYNTH = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r, "ema-synth");
+        t.setDaemon(true);
+        return t;
+    });
+
+    /** Neural voice for {@code text}, or null when it is not ready within {@code waitMs} (it keeps going and is cached for next time). */
+    private static File synthesizeWithin(Context app, String text, int gen, long waitMs) {
+        if (waitMs <= 0) return getOrSynthesizeWav(app, text, gen);
+        java.util.concurrent.Future<File> f = SYNTH.submit(() -> getOrSynthesizeWav(app, text, gen));
+        try {
+            return f.get(waitMs, TimeUnit.MILLISECONDS);
+        } catch (Throwable late) {
+            return null;
+        }
     }
 
     public static void speak(final Context ctx, final CharSequence rawText) {
@@ -164,6 +183,10 @@ public final class EmaLightningTts {
     }
 
     private static void start(final Context app, String raw, final Runnable onDone) {
+        start(app, raw, onDone, 0);
+    }
+
+    private static void start(final Context app, String raw, final Runnable onDone, final long waitMs) {
         final String clean = normalizeForSpeech(raw);
         final int gen = GENERATION.incrementAndGet();
         stopActivePlayback();
@@ -178,7 +201,7 @@ public final class EmaLightningTts {
                 CountDownLatch previous = null;
                 for (String part : parts) {
                     if (gen != GENERATION.get()) return;
-                    File wav = getOrSynthesizeWav(app, part, gen);
+                    File wav = synthesizeWithin(app, part, gen, waitMs);
                     if (gen != GENERATION.get()) return;
                     if (previous != null) previous.await(30, TimeUnit.SECONDS);
                     if (gen != GENERATION.get()) return;
