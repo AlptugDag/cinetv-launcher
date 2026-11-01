@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The window Android shows while CineTV starts (or comes back after the TV closed it): the logo on black,
+     never a blank screen. The banner itself, at a fixed size (no second copy in the APK). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@android:color/black" />
+    <item android:drawable="@drawable/ic_banner" android:width="320dp" android:height="180dp" android:gravity="center" />
+</layer-list>

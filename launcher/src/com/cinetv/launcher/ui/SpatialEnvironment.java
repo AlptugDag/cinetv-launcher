@@ -247,7 +247,7 @@ public class SpatialEnvironment extends View {
             dst.set(glowX - core * 1.25f, glowY - core, glowX + core * 1.25f, glowY + core);
             canvas.drawBitmap(lightSprite, null, dst, lightPaint);
             // Spatial HUD optical visor refraction: subtle anamorphic horizontal streak
-            if (com.cinetv.launcher.service.Prefs.spatial3d(getContext()) && !PerformanceProfile.lowMemory(getContext())) {
+            if (com.cinetv.launcher.service.Prefs.spatial3d(getContext())) {
                 float streakW = w * 0.40f, streakH = h * 0.05f;
                 lightPaint.setColorFilter(filter(Color.argb(light ? 20 : 34, Math.min(255, r + 35), Math.min(255, g + 35), Math.min(255, b + 35))));
                 dst.set(glowX - streakW, glowY - streakH, glowX + streakW, glowY + streakH);
@@ -274,7 +274,7 @@ public class SpatialEnvironment extends View {
 
     private final Paint shadePaint = new Paint();
     /** Weak GPUs: one light layer instead of three. */
-    private final boolean lite = com.cinetv.launcher.device.PerformanceProfile.lowMemory(getContext());
+    private final boolean lite = false; // single High mode: the full light on every TV
 
     private void drawBase(Canvas canvas, int w, int h, boolean withParallax) {
         float px = withParallax ? (glowX - w / 2f) * -0.035f : 0f;

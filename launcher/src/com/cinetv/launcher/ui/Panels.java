@@ -454,10 +454,6 @@ public final class Panels {
         dvdTile.setTag("opt_dvd");
         cAnim.addView(dvdTile);
 
-        String perfMode = PerformanceProfile.mode(ctx);
-        String tierName = ctx.getString(tierRes(PerformanceProfile.tier(ctx)));
-        cAnim.addView(Controls.tile(ctx, ctx.getString(R.string.performance),
-                ctx.getString(perfModeRes(perfMode)) + " · " + tierName, false, v -> host.push(() -> buildPerformancePicker(ctx, host, a))));
         cAnim.addView(Controls.tile(ctx, ctx.getString(R.string.screensaver), screensaverLabel(ctx, tr), false,
                 v -> host.push(() -> buildScreensaverPicker(ctx, host, a))));
 

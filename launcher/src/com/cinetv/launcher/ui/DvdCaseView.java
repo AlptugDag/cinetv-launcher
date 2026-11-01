@@ -75,7 +75,8 @@ public class DvdCaseView extends View {
         invalidate();
     }
 
-    public DvdCase dvdCase() { return dvd; }
+    /** The film's own case, or null while the slot still shows the shared empty one. */
+    public DvdCase dvdCase() { return dvd == null || dvd.placeholder ? null : dvd; }
 
     public void setPose(float yaw, float tilt, float scale, float lift, float extraYaw) {
         setPose(yaw, tilt, scale, lift, extraYaw, 1f, false, 0f);
@@ -182,8 +183,9 @@ public class DvdCaseView extends View {
             }
             canvas.drawBitmap(dvd.bloom, null, rect, fxPaint);
         }
-        drawShadow(canvas, cx, cy);
+        // the case and its shadow always come together (the shadow used to stand alone until the cover was baked)
         if (dvd == null) return;
+        drawShadow(canvas, cx, cy);
 
         project(cx, cy);
         if (dvd.spine == null) {

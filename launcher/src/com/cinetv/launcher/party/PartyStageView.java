@@ -89,7 +89,7 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
     public PartyStageView(Context ctx) {
         super(ctx);
         party = CinePartyManager.get(ctx);
-        lite = PerformanceProfile.lowMemory(ctx);
+        lite = false; // single High mode
         black = FontManager.getBlack(ctx);
         bold = FontManager.getBold(ctx);
         medium = FontManager.getMedium(ctx);

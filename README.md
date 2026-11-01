@@ -79,6 +79,11 @@ Kumandanın mikrofon tuşuna basın ve konuşun: *“90'larda yağmurlu gecelerd
 - **Sahneyi sorabilirsiniz.** Film oynarken mikrofona *“bu sahnede ne var?”*, *“bu yemek ne?”*, *“bu şarkı ne?”* deyin: Gamze filme döner, CineSUB kareye bakar ve en ilginç bulguyu sesli söyler.
 - **Hemen cevap verir.** Hızlı model (Gemini Flash-Lite) ve cümle cümle konuşan doğal Türkçe ses (`canberkkkkkk/ema-lightning`); İngilizce adları İngilizce okunuşuyla söyler. Yapay zekâ anahtarının günlük kotası dolduğunda beklemeden yapay zekâsız aramaya geçer.
 
+> [!NOTE]
+> **Yapay zekâ yanıt ve önerilerinin kalitesi, kullandığınız yapay zekâ hesabına göre değişebilir.** Ücretsiz anahtarlar ve hesaplar daha küçük modellere, daha düşük kotaya ve daha yavaş yanıtlara yönlendirilebilir; arama isabeti, vitrin önerileri ve sohbet bu yüzden ücretli bir hesaba göre daha zayıf olabilir. Kota dolduğunda CineTV yapay zekâsız aramaya geçer.
+>
+> *The quality of AI answers and suggestions can vary with the AI account you use: free keys may get smaller models, lower quotas and slower replies than paid ones.*
+
 <br>
 
 ## CineSUB: Ekranda Ne Var?
@@ -114,7 +119,7 @@ QR kodu okutun; uygulama indirmeden, hesap açmadan telefonunuz CineTV'nin parç
 
 ## Donanımınızı Tanır, Ona Göre Davranır
 
-- **Gerçek ölçüm.** CineTV ana ekranın çizdiği her karenin süresini ölçer; kareler yavaşlarsa rafı kendiliğinden hafifletir, hızlanınca geri açar. Boştayken hiçbir şey çizmez.
+- **Tek mod, canlı ölçüm.** Düşük/Orta/Yüksek seçimi yok: her TV her efektle çalışır. CineTV ana ekranın çizdiği her karenin süresini ölçer; kareler yavaşladığında logolar, kategori önyüklemesi ve fragman hazırlığı gibi arka plan işleri ekran sakinleşene kadar bekler. Hiçbir özellik kapanmaz. Boştayken hiçbir şey çizmez.
 - **TV Denetçisi.** Panelin gerçek çözünürlüğü, HDR biçimleri, ses çıkışı ve kodekler; görüntü, ses, ağ ve DNS ayarları bu rapora göre yapılır.
 - **Sanal bellek ve arındırma.** Root gerektirmeyen ek sanal bellek; üretici izleyicileri dondurulur ve **CineTV'yi Yok Et** ile her şey eski haline döner.
 - **Kendini günceller.** Yeni sürüm imzası doğrulanarak arka planda kurulur, bir sonraki açılışta haber verilir; TV asla gece uyandırılmaz.

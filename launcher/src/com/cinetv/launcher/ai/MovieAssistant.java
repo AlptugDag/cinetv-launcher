@@ -635,18 +635,24 @@ public final class MovieAssistant {
         // A themed shelf for this very moment, not a narrow pick: the title fuses the day, the hour, the month and
         // season, the weather, the city (only when the TV knows it) and a mood inferred from all of them, e.g.
         // "ANKARA AYAZINDA DİSTOPİK SİSTEM BAŞKALDIRISI" or "PAZAR ÖĞLEDEN SONRASI AİLE MACERALARI".
-        String request = mood != null && !mood.trim().isEmpty() ? mood.trim() + "." + recentInstruction
-                : "The moment (use every factor that is present; skip what is missing, never invent a city):\n" + context + "\n"
+        // The refresh key's wish ("a different theme") comes on top of the real moment, never instead of it:
+        // without the moment the AI made one up ("İZMİR EYLÜL SABAHINDA" on a November night).
+        boolean wish = mood != null && !mood.trim().isEmpty();
+        String request = "The moment, as the TV knows it (use only these facts; a city, month, weekday, season or time of day "
+                + "that is not listed here must never appear):\n" + context + "\n"
+                + (wish ? "Wish: " + mood.trim() + "\n" : "")
                 + recentInstruction
                 + "\nInfer the mood this moment calls for (weekday evening fatigue, weekend freedom, late-night solitude, a cold rainy "
                 + "morning, a summer night...). Invent ONE shelf theme that fuses that moment with a cinematic idea (a genre, a "
                 + "movement, a feeling or a subject) broad enough for " + askCount + " varied films, and pick them.\n"
                 + "category_title: max 6 words, " + language().toUpperCase(Locale.ROOT) + ", uppercase, vivid and specific to the moment, "
                 + "no clock times, no generic words like 'ÖNERİLER' or 'FİLMLER' alone.\n"
-                + "Films: well rated (IMDb >= 7), different decades and countries, at most one per director, mostly films, "
-                + "a series only when it truly fits.";
+                + "theme: the same idea in 2-4 words with no place or time (e.g. 'DİSTOPİK BAŞKALDIRI').\n"
+                + "Films: every one must clearly belong to the theme in the title (a viewer reading the title must nod at each "
+                + "film); fewer films rather than loose ones. Well rated (IMDb >= 7), different decades and countries, at most "
+                + "one per director, mostly films, a series only when it truly fits.";
         String system = "You are a world-class film curator. Reply ONLY with compact JSON: "
-                + "{\"category_title\":\"...\",\"movies\":[{\"title\":\"original or international title\",\"year\":1999,\"tv\":false}]}";
+                + "{\"category_title\":\"...\",\"theme\":\"...\",\"movies\":[{\"title\":\"original or international title\",\"year\":1999,\"tv\":false}]}";
         LlmClient.Result r = LlmClient.generateQuick(ctx, system, request, 1500);
         if (!r.success) return null;
         try {
@@ -666,6 +672,11 @@ public final class MovieAssistant {
             List<Movie> resolved = collect(jobs, max);
             String rawTitle = o.optString("category_title", "");
             String title = cleanShelfTitle(rawTitle);
+            // A title naming another month, weekday, time of day or city than the real ones falls back to the theme alone.
+            if (!fitsMoment(ctx, title)) {
+                String theme = cleanShelfTitle(o.optString("theme", ""));
+                title = !theme.isEmpty() && fitsMoment(ctx, theme) ? theme : "";
+            }
             if (!resolved.isEmpty()) {
                 recordRecentCurated(ctx, resolved);
                 recordRecentShelfTitle(ctx, title);
@@ -674,6 +685,40 @@ public final class MovieAssistant {
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    private static final String[] MONTHS = {"ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim", "kasım", "aralık"};
+    private static final String[] WEEKDAYS = {"pazar", "pazartesi", "salı", "çarşamba", "perşembe", "cuma", "cumartesi"};
+    private static final String[] CITIES = {"istanbul", "ankara", "izmir", "bursa", "antalya", "adana", "konya", "gaziantep", "mersin",
+            "kayseri", "eskişehir", "trabzon", "samsun", "diyarbakır", "erzurum", "denizli", "muğla", "bodrum", "kapadokya", "sakarya",
+            "kocaeli", "tekirdağ", "edirne", "çanakkale", "van", "malatya", "hatay", "manisa", "aydın", "balıkesir", "londra", "paris",
+            "berlin", "roma", "new york", "tokyo"};
+
+    /** True when every month, weekday, time of day and city a shelf title names is the real one (or it names none). */
+    static boolean fitsMoment(Context ctx, String title) {
+        if (title == null || title.trim().isEmpty()) return false;
+        Locale tr = new Locale("tr");
+        String t = " " + title.toLowerCase(tr).replaceAll("[^\\p{L} ]", " ") + " ";
+        Calendar c = Calendar.getInstance();
+        for (int i = 0; i < MONTHS.length; i++) {
+            if (i != c.get(Calendar.MONTH) && t.contains(" " + MONTHS[i])) return false;
+        }
+        for (int i = 0; i < WEEKDAYS.length; i++) {
+            // "pazar" is also the start of "pazartesi": whole words only
+            if (i + 1 != c.get(Calendar.DAY_OF_WEEK) && t.matches("(?s).*\\b" + WEEKDAYS[i] + "(sı|si|ı|i|ın|in|ya|ye|da|de|)?\\b.*")) return false;
+        }
+        int h = c.get(Calendar.HOUR_OF_DAY);
+        boolean morning = h >= 5 && h < 12, afternoon = h >= 12 && h < 18, evening = h >= 17 && h < 23, night = h >= 21 || h < 6;
+        if (!morning && (t.contains(" sabah") || t.contains(" şafak") || t.contains(" kuşluk"))) return false;
+        if (!afternoon && (t.contains(" öğle") || t.contains(" ikindi"))) return false;
+        if (!evening && (t.contains(" akşam") || t.contains(" gün batımı") || t.contains(" alacakaranlık"))) return false;
+        if (!night && (t.contains(" gece") || t.contains(" gece yarısı"))) return false;
+        String city = ctx == null ? "" : Prefs.city(ctx);
+        city = city == null ? "" : city.toLowerCase(tr).trim();
+        for (String k : CITIES) {
+            if (t.contains(" " + k) && !city.startsWith(k)) return false;
+        }
+        return true;
     }
 
     public static String cleanShelfTitle(String title) {
@@ -740,22 +785,23 @@ public final class MovieAssistant {
             hourAtmosphere = "Kör Gece & Uykusuzluk (tefekkür, kozmik yalnızlık, yavaş yanan felsefi başyapıtlar)";
         }
 
+        // Only what the TV really knows: an invented city or weather became titles like "İSTANBUL OCAK ŞAFAĞINDA".
         String city = (ctx != null) ? Prefs.city(ctx) : "";
-        if (city == null || city.trim().isEmpty()) city = "İstanbul";
+        if (city == null) city = "";
+        city = city.trim();
 
         String weatherFull = (cityAndWeather != null && !cityAndWeather.trim().isEmpty()) ? cityAndWeather.trim() : "";
         if (weatherFull.isEmpty() && ctx != null) {
             weatherFull = com.cinetv.launcher.service.WeatherService.getLastFull();
         }
-        if (weatherFull.isEmpty()) weatherFull = "Açık 18°C";
 
         String chosenLens = (ctx != null) ? pickFreshLens(ctx) : CINEMA_LENSES[0];
 
         StringBuilder sb = new StringBuilder();
         sb.append("1. SAAT: ").append(hourStr).append(" - ").append(hourAtmosphere).append("\n");
         sb.append("2. GÜN: ").append(dayTr).append("\n");
-        sb.append("3. ŞEHİR: ").append(city).append("\n");
-        sb.append("4. HAVA DURUMU: ").append(weatherFull).append("\n");
+        if (!city.isEmpty()) sb.append("3. ŞEHİR: ").append(city).append("\n");
+        if (!weatherFull.isEmpty()) sb.append("4. HAVA DURUMU: ").append(weatherFull).append("\n");
         sb.append("5. AY: ").append(monthTr).append(" (").append(dayOfMonth).append(" ").append(monthTr).append(")\n");
         sb.append("6. MEVSİM: ").append(seasonTr).append("\n");
         sb.append("7. ÖZEL SİNEMA MERCEĞİ: ").append(chosenLens);

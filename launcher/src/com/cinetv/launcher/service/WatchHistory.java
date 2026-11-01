@@ -70,6 +70,11 @@ public final class WatchHistory {
             Prefs.get(ctx).edit().putString(LIST, out.toString()).apply();
         } catch (Throwable ignored) {
         }
+        // Home shows it at once, whatever order Android resumes and stops the two screens in
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            com.cinetv.launcher.MainActivity a = com.cinetv.launcher.MainActivity.instance;
+            if (a != null && !a.isFinishing()) a.refreshContinueCard();
+        });
     }
 
     /** The film left most recently, or null. */

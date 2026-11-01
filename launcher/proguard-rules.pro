@@ -15,7 +15,7 @@
 -keepclassmembers class * { @android.webkit.JavascriptInterface <methods>; }
 
 # NewPipeExtractor, Rhino JS engine, OkHttp, and Media3 ExoPlayer
--keep class org.schabi.newpipe.extractor.** { *; }
+# NewPipe: only the YouTube parts CineTV calls are kept (R8 follows the references); Rhino below needs reflection.
 -keep class org.mozilla.javascript.** { *; }
 -dontwarn org.mozilla.javascript.**
 -dontwarn org.schabi.newpipe.extractor.**

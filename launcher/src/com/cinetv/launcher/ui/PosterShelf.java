@@ -48,7 +48,11 @@ public class PosterShelf extends FrameLayout {
     private MotionListener motionListener;
     public void setMotionListener(MotionListener l) { this.motionListener = l; }
 
-    private static final ExecutorService baker = Executors.newFixedThreadPool(Math.max(3, Runtime.getRuntime().availableProcessors()));
+    // below the render thread: covers fill in between frames instead of competing with them
+    private static final ExecutorService baker = Executors.newFixedThreadPool(Math.max(3, Runtime.getRuntime().availableProcessors()), r -> new Thread(() -> {
+        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND + android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE);
+        r.run();
+    }, "cinetv-case-bake"));
     private static final int VISIBLE_RANGE = 14;
     /** Spine logos come after the shelf, one at a time, at low priority. */
     private static final java.util.concurrent.ExecutorService logos = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
@@ -107,6 +111,10 @@ public class PosterShelf extends FrameLayout {
         glowPad = UiKit.px(70);
         spatial = Prefs.spatial3d(ctx);
         asCases = Prefs.dvdCases(ctx);
+        if (asCases) {
+            final int bw = caseW, bh = Math.round(caseW / DvdCase.ASPECT);
+            baker.execute(() -> DvdCase.blank(ctx, bw, bh));
+        }
         setFocusable(true);
         setClipChildren(false);
         setClipToPadding(false);
@@ -226,6 +234,45 @@ public class PosterShelf extends FrameLayout {
         }
     }
 
+    private static final ExecutorService warmers = Executors.newFixedThreadPool(6, r -> {
+        Thread t = new Thread(r, "cinetv-poster-warm");
+        t.setPriority(Thread.NORM_PRIORITY - 1);
+        return t;
+    });
+
+    /**
+     * Blocking, off the main thread: the posters of a new row (the first {@code count}) downloaded and decoded in
+     * parallel at exactly the shelf's size, so its cases appear filled instead of one by one. Waits at most waitMs.
+     */
+    public void warm(List<Movie> list, int count, long waitMs) {
+        if (list == null || list.isEmpty()) return;
+        final Context app = getContext().getApplicationContext();
+        final int w = caseW, h = Math.round(caseW / DvdCase.ASPECT);
+        List<java.util.concurrent.Future<?>> jobs = new ArrayList<>();
+        // the same order the shelf bakes in: the focus position first, then outward on both sides of the ring
+        int n = Math.min(list.size(), PerformanceProfile.shelfSize(app)), at = Math.min(index, Math.max(0, n - 1));
+        List<Integer> order = new ArrayList<>();
+        for (int d = 0; n > 0 && d <= n / 2 && order.size() < count; d++) {
+            int r = Math.floorMod(at + d, n), l = Math.floorMod(at - d, n);
+            order.add(r);
+            if (l != r && order.size() < count) order.add(l);
+        }
+        for (int i : order) {
+            final String url = list.get(i).posterUrl;
+            if (url == null || url.isEmpty() || url.startsWith("asset:")) continue;
+            jobs.add(warmers.submit(() -> PosterCache.load(app, url, w, h)));
+        }
+        long end = android.os.SystemClock.uptimeMillis() + waitMs;
+        for (java.util.concurrent.Future<?> f : jobs) {
+            long left = end - android.os.SystemClock.uptimeMillis();
+            if (left <= 0) break;
+            try {
+                f.get(left, java.util.concurrent.TimeUnit.MILLISECONDS);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
     /** More results at the end of the row (search keeps going as the viewer scrolls); the focus stays put. */
     public void appendMovies(List<Movie> more) {
         if (more == null || more.isEmpty()) return;
@@ -262,7 +309,8 @@ public class PosterShelf extends FrameLayout {
         {
             final Movie m = movies.get(slot);
             final DvdCaseView v = cases.get(slot);
-            v.setCase(null);
+            // every slot stands at once as the shared empty case; only the cover arrives per film
+            v.setCase(asCases ? DvdCase.blank(getContext(), caseW, Math.round(caseW / DvdCase.ASPECT)) : null);
             baker.execute(() -> {
                 Bitmap poster = m.posterUrl.startsWith("asset:")
                         ? PosterCache.decodeAsset(getContext(), m.posterUrl.substring(6), caseW, Math.round(caseW / DvdCase.ASPECT))
@@ -279,6 +327,7 @@ public class PosterShelf extends FrameLayout {
                 if (asCases && m.tmdbId > 0) {
                     logos.execute(() -> {
                         if (gen != generation) return;
+                        PerformanceProfile.awaitCalm(8_000);
                         if (m.logoUrl == null || m.logoUrl.isEmpty()) {
                             String url = MovieCatalog.logoFor(getContext(), m.tmdbId, m.type);
                             m.logoUrl = url == null ? "-" : url;

@@ -43,7 +43,8 @@ import java.util.Locale;
  *
  * With trailer moments on (Settings), the case turns sideways as it leaves the shelf and opens wide: the
  * story is written across the inside of the cover and the film's trailer plays in the tray, where the
- * disc would rest (a TrailerSlot lays the player over it). OK then takes the disc out as before.
+ * disc would rest (a TrailerSlot lays the player over it). OK then takes the disc out as before: the trailer
+ * gives way and the disc spins up and comes forward.
  */
 public class DvdOpeningView extends View {
 
@@ -296,12 +297,15 @@ public class DvdOpeningView extends View {
     private void startPlay() {
         if (play >= 0 || dvd == null) return;
         removeCallbacks(autoPlay);
-        if (landscape) {
-            // Trailer mode: the trailer is already playing in the tray, so no disc spin-up; just open the film.
-            if (!launched) launch();
-            return;
-        }
         if (slot != null) slot.hide();
+        if (landscape && disc == null) {
+            // Trailer mode too: the trailer gives way and the film's disc lifts, spins up and comes forward,
+            // exactly as in a case without a trailer.
+            int discSize = Math.round(Math.min(caseW, caseH) * 0.88f);
+            disc = bakeDisc(getContext(), dvd.cover, movie != null ? movie.coverTitle() : "", discSize);
+            discGlowR = discSize * 1.06f * 0.62f;
+            discGlow = new RadialGradient(0, 0, discGlowR, new int[]{UiKit.withAlpha(accent, 120), Color.TRANSPARENT}, null, Shader.TileMode.CLAMP);
+        }
         if (anim != null) anim.cancel();
         t = OPEN_END;
         play = 0;

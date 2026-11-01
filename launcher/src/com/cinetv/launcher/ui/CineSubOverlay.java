@@ -365,7 +365,7 @@ public final class CineSubOverlay {
 
         Stage(Context c) {
             super(c);
-            lite = PerformanceProfile.lowMemory(c);
+            lite = false; // single High mode
             black = FontManager.getBlack(c);
             Typeface bold = FontManager.getBold(c), medium = FontManager.getMedium(c);
             stroke.setStyle(Paint.Style.STROKE);

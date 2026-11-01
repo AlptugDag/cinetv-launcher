@@ -37,7 +37,7 @@ def releaseSigning = { ->
 
 android {
     namespace = 'com.cinetv.launcher'
-    compileSdk = 34
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.cinetv.launcher"
@@ -83,6 +83,12 @@ android {
         coreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    // Only the languages CineTV speaks: the libraries' 80+ other translations were dead weight in resources.arsc.
+    androidResources {
+        localeFilters += ['en', 'tr', 'ar', 'b+sr+Latn', 'bn', 'ca', 'cs', 'de', 'es', 'fi', 'fr', 'in', 'it', 'iw', 'nb', 'nl', 'pl',
+                          'pt', 'ru', 'th', 'uk', 'uz', 'vi', 'zh-rCN', 'zh-rTW']
     }
 
     packaging {
@@ -151,16 +157,16 @@ tasks.configureEach { task ->
 }
 
 dependencies {
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs_nio:2.0.4'
-    implementation 'com.google.zxing:core:3.5.3'
-    implementation 'androidx.media3:media3-exoplayer:1.2.1'
-    implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'
-    implementation 'androidx.media3:media3-exoplayer-dash:1.2.1'
-    implementation 'androidx.media3:media3-ui:1.2.1'
-    implementation 'androidx.media3:media3-datasource:1.2.1'
-    implementation 'androidx.media3:media3-datasource-okhttp:1.2.1'
-    implementation 'androidx.media3:media3-database:1.2.1'
-    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs_nio:2.1.5'
+    implementation 'com.google.zxing:core:3.5.4'
+    implementation 'androidx.media3:media3-exoplayer:1.11.1'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.11.1'
+    implementation 'androidx.media3:media3-exoplayer-dash:1.11.1'
+    implementation 'androidx.media3:media3-ui:1.11.1'
+    implementation 'androidx.media3:media3-datasource:1.11.1'
+    implementation 'androidx.media3:media3-datasource-okhttp:1.11.1'
+    implementation 'androidx.media3:media3-database:1.11.1'
+    implementation 'com.squareup.okhttp3:okhttp:5.5.1'
     implementation 'com.github.TeamNewPipe:NewPipeExtractor:v0.26.5'
     testImplementation 'junit:junit:4.13.2'
 }

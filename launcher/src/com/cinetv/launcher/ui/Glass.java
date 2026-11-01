@@ -38,6 +38,9 @@ public final class Glass extends Drawable {
     /** The current theme's material (ThemeManager.MAT_*), set when the room changes. */
     static volatile String material = com.cinetv.launcher.service.ThemeManager.MAT_GLASS;
 
+    /** How strongly the blurred room covers what is behind a glass panel (0-255). */
+    private static final int FROST_ALPHA = 165;
+
     private final View host;
     private final Paint accentRim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private String rimFor;
@@ -179,6 +182,9 @@ public final class Glass extends Drawable {
                 matrix.postTranslate(-loc[0] / scaleX, -loc[1] / scaleY);
                 shader.setLocalMatrix(matrix);
             }
+            // Frost, not a wall: the blurred room is laid over at part strength, so what is behind the panel still
+            // shows through as on Low (where there is no blur at all). It used to be fully opaque on Medium/High.
+            blurPaint.setAlpha(FROST_ALPHA);
             canvas.drawRoundRect(rect, radius, radius, blurPaint);
         }
         String mat = material;

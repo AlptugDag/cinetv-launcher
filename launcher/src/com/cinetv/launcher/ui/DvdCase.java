@@ -41,6 +41,8 @@ public final class DvdCase {
      */
     public final Bitmap bloom;
     public final boolean halo;
+    /** The shared empty case shown until the film's own cover is baked. */
+    boolean placeholder;
 
     private DvdCase(Bitmap cover, Bitmap spine, int accent, Bitmap bloom, boolean halo) {
         this.cover = cover;
@@ -109,34 +111,32 @@ public final class DvdCase {
         return out;
     }
 
-    static Bitmap bakeCover(Bitmap poster, int w, int h) {
-        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        Canvas c = new Canvas(out);
+    /**
+     * The case without its paper: the plastic shell under the insert, and everything over it (hinge ridges, the
+     * light on the rounded edge, the sleeve's gloss, the lip's hairline). The same for every film, so baked once
+     * per size: a film's cover is then just these two and its poster (identical pixels, a fraction of the work).
+     */
+    private static final java.util.HashMap<String, Bitmap[]> SHELLS = new java.util.HashMap<>();
+
+    private static synchronized Bitmap[] shell(int w, int h) {
+        boolean light = UiKit.isLight();
+        String key = w + "x" + h + (light ? "L" : "D");
+        Bitmap[] cached = SHELLS.get(key);
+        if (cached != null && !cached[0].isRecycled() && !cached[1].isRecycled()) return cached;
+        float corner = w * 0.03f, lip = w * 0.016f;
+        RectF insert = insert(w, h);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-        float corner = w * 0.03f;
 
         // Plastic shell (black, or white in the light room); the paper insert sits slightly inside it.
-        boolean light = UiKit.isLight();
+        Bitmap under = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(under);
         p.setShader(new LinearGradient(0, 0, w, h, Color.parseColor(light ? "#F2F3F6" : "#1A1A1F"),
                 Color.parseColor(light ? "#D3D6DD" : "#08080A"), Shader.TileMode.CLAMP));
         c.drawRoundRect(new RectF(0, 0, w, h), corner, corner, p);
         p.setShader(null);
 
-        float lip = w * 0.016f;
-        RectF insert = new RectF(lip * 0.6f, lip, w - lip, h - lip);
-        if (poster != null) {
-            BitmapShader bs = new BitmapShader(poster, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
-            float s = Math.max(insert.width() / poster.getWidth(), insert.height() / poster.getHeight());
-            Matrix m = new Matrix();
-            m.setScale(s, s);
-            m.postTranslate(insert.left + (insert.width() - poster.getWidth() * s) / 2f,
-                    insert.top + (insert.height() - poster.getHeight() * s) / 2f);
-            bs.setLocalMatrix(m);
-            p.setShader(bs);
-            c.drawRoundRect(insert, corner * 0.4f, corner * 0.4f, p);
-            p.setShader(null);
-        }
-
+        Bitmap over = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        c = new Canvas(over);
         // Hinge: the moulded strip next to the spine, seen through the sleeve as soft ridges.
         float hinge = w * 0.058f;
         p.setShader(new LinearGradient(0, 0, hinge, 0,
@@ -175,7 +175,56 @@ public final class DvdCase {
         inner.setStrokeWidth(Math.max(1f, w * 0.006f));
         inner.setColor(Color.argb(70, 0, 0, 0));
         c.drawRoundRect(insert, corner * 0.4f, corner * 0.4f, inner);
+
+        cached = new Bitmap[]{under, over};
+        SHELLS.put(key, cached);
+        return cached;
+    }
+
+    private static RectF insert(int w, int h) {
+        float lip = w * 0.016f;
+        return new RectF(lip * 0.6f, lip, w - lip, h - lip);
+    }
+
+    static Bitmap bakeCover(Bitmap poster, int w, int h) {
+        Bitmap[] shell = shell(w, h);
+        Bitmap out = shell[0].copy(Bitmap.Config.ARGB_8888, true);
+        Canvas c = new Canvas(out);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        float corner = w * 0.03f;
+        RectF insert = insert(w, h);
+        if (poster != null) {
+            BitmapShader bs = new BitmapShader(poster, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+            float s = Math.max(insert.width() / poster.getWidth(), insert.height() / poster.getHeight());
+            Matrix m = new Matrix();
+            m.setScale(s, s);
+            m.postTranslate(insert.left + (insert.width() - poster.getWidth() * s) / 2f,
+                    insert.top + (insert.height() - poster.getHeight() * s) / 2f);
+            bs.setLocalMatrix(m);
+            p.setShader(bs);
+            c.drawRoundRect(insert, corner * 0.4f, corner * 0.4f, p);
+            p.setShader(null);
+        }
+        c.drawBitmap(shell[1], 0, 0, null);
         return out;
+    }
+
+    /**
+     * The empty case every slot shows the moment the row is laid out (shell, blank spine, shadow), so the whole
+     * shelf stands at once and each cover only slides into its sleeve. One per size, shared by every slot.
+     */
+    private static final java.util.HashMap<String, DvdCase> BLANKS = new java.util.HashMap<>();
+
+    public static synchronized DvdCase blank(Context ctx, int w, int h) {
+        String key = w + "x" + h + (UiKit.isLight() ? "L" : "D");
+        DvdCase d = BLANKS.get(key);
+        if (d == null) {
+            int grey = UiKit.isLight() ? Color.parseColor("#C9CCD3") : Color.parseColor("#2A2A30");
+            d = new DvdCase(bakeCover(null, w, h), bakeSpine(ctx, "", null, 0, grey, Math.max(6, Math.round(w * DEPTH)), h), grey, null, true);
+            d.placeholder = true;
+            BLANKS.put(key, d);
+        }
+        return d;
     }
 
     /** A plain poster with rounded corners and no outline. */

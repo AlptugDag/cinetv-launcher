@@ -57,7 +57,21 @@ public final class RelayHost {
 
     /** The QR code's address: the GitHub page, this TV and the pairing token (in the fragment, never sent to GitHub). */
     public static String pairingUrl(Context ctx, String section) {
+        start(ctx);
         return PAGE + "#p=" + peerId(ctx) + "&k=" + RemotePairing.token(ctx) + (section != null ? "&s=" + section : "");
+    }
+
+    private static final String USED_AT = "relay_used_at";
+
+    /**
+     * After start-up: 40 s later where it was used in the last two weeks (a phone outside the home network may
+     * call), otherwise only when a pairing QR code is shown. On a low-memory TV it is ~55 MB of browser engine.
+     */
+    public static void startLater(Context ctx) {
+        final Context a = ctx.getApplicationContext();
+        long used = Prefs.get(a).getLong(USED_AT, 0);
+        boolean recent = System.currentTimeMillis() - used < 14L * 24 * 3600_000L;
+        if (recent || !com.cinetv.launcher.device.PerformanceProfile.lowMemory(a)) main.postDelayed(() -> start(a), 40_000);
     }
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
@@ -92,6 +106,7 @@ public final class RelayHost {
 
         @android.webkit.JavascriptInterface
         public void request(final String id, final String path, final String query, final String from) {
+            Prefs.get(app).edit().putLong(USED_AT, System.currentTimeMillis()).apply();
             work.execute(() -> {
                 JSONObject body;
                 try {

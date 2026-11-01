@@ -86,6 +86,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     private static final long SLEEP_AFTER_SAVER_MS = 5 * 60 * 1000L;
     private static final long AI_SHELF_EVERY_MS = 3 * 60 * 60 * 1000L;
+    /** Away from Home this long, and the shelf is new on return. */
+    private static final long AWAY_FOR_NEW_SHELF_MS = 60 * 60 * 1000L;
+    /** When Home was last left (elapsed ms), 0 while it is in front. */
+    private long homeLeftAt;
     private static final String SHELF_CACHE = "shelf_cache";
     private static final String SHELF_TITLE = "shelf_title";
 
@@ -221,7 +225,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 // the trailer starts buffering while the viewer is still looking at the case
                 handler.removeCallbacks(preloadTrailer);
                 preloadFor = m;
-                if (m != null) handler.postDelayed(preloadTrailer, 650);
+                if (m != null) handler.postDelayed(preloadTrailer, 1200);
             }
 
             @Override
@@ -304,6 +308,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             return code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT;
         });
 
+        com.cinetv.launcher.device.MainThreadSampler.maybeStart("start", 40_000);
         loadApps(true);
         showCachedShelf();
         Calendar cal = Calendar.getInstance();
@@ -312,22 +317,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         lastShelfAt = android.os.SystemClock.elapsedRealtime();
         // A new shelf on start only after a real power-on, three hours since the last one, or an empty shelf.
         // Low-memory TVs rebuild this screen on the way back from Nuvio: that is not a reason to change the shelf.
-        handler.postDelayed(() -> {
-            if (!isCurating && shelfIsStale()) refreshShelf();
-        }, 2500);
+        // Not at once: start-up already showed the last shelf, and rebuilding it a second later, while the TV is
+        // still starting, made the first minute stutter. The new one comes at the first quiet moment.
+        if (shelfIsStale()) handler.postDelayed(quietShelfRefresh, 4_000);
 
-        // Every frame Home draws is timed; slow ones switch on the light shelf, fast ones switch it off.
-        // Android 7+: frame timing (older TVs keep the light shelf decided by the benchmark)
-        if (android.os.Build.VERSION.SDK_INT >= 24) getWindow().addOnFrameMetricsAvailableListener((window, metrics, dropped) -> {
-            long total = metrics.getMetric(android.view.FrameMetrics.TOTAL_DURATION);
-            if (PerformanceProfile.noteFrame(getApplicationContext(), total) && home != null) {
-                handler.post(() -> {
-                    // The effects adapt in place to what holds this TV back (no rebuild of Home).
-                    home.shelf.qualityChanged();
-                    home.environment.apply(ThemeManager.current(this), ThemeManager.isLight(this));
-                });
-            }
-        }, frameMetricsHandler());
+        // Live frame timing: background work yields to drawing while frames run slow (nothing is switched off).
+        if (android.os.Build.VERSION.SDK_INT >= 24) getWindow().addOnFrameMetricsAvailableListener((window, metrics, dropped) ->
+                PerformanceProfile.noteLiveFrame(metrics.getMetric(android.view.FrameMetrics.TOTAL_DURATION)), frameMetricsHandler());
         TvWebRemoteServer.setController(this);
         TvWebRemoteServer.start(this);
         com.cinetv.launcher.party.CinePartyManager.get(this).addListener(partyLauncher);
@@ -422,7 +418,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.environment.resume();
         // the cinematic stage: on unless switched off in Settings; the half-watched film comes back here
         home.setCinematic(Prefs.get(this).getBoolean(Prefs.CINEMATIC_STAGE, true));
-        home.continueCard.bind(home.isCinematic() ? com.cinetv.launcher.service.WatchHistory.latest(this) : null);
+        refreshContinueCard();
+        // and once more a moment later: the player may still be saving where it stopped
+        handler.postDelayed(this::refreshContinueCard, 900);
         DeviceTweaks.syncNightMode(this);
         handler.removeCallbacks(clockTick);
         handler.post(clockTick);
@@ -440,7 +438,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // A new shelf has exactly three triggers: the TV powering on (a new process), coming back to Home after
         // three hours or more away, and the refresh key. It used to rebuild at every hour change and every 45
         // minutes too, so "Vitrin hazırlanıyor" kept appearing for no reason.
-        if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > AI_SHELF_EVERY_MS && shelfIsStale()) refreshShelf();
+        // Back on Home after an hour or more away (a film, an app, the TV on standby): a brand-new shelf.
+        long away = homeLeftAt > 0 ? android.os.SystemClock.elapsedRealtime() - homeLeftAt : 0;
+        homeLeftAt = 0;
+        if (away >= AWAY_FOR_NEW_SHELF_MS || (android.os.SystemClock.elapsedRealtime() - lastShelfAt > AI_SHELF_EVERY_MS && shelfIsStale())) refreshShelf();
         // Suppress unwanted OEM TV tuner attempting to steal focus
         background(() -> {
             if (DeviceTweaks.isUnwantedTuner()) {
@@ -641,6 +642,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     protected void onPause() {
         foreground = false;
         inFront = false;
+        homeLeftAt = android.os.SystemClock.elapsedRealtime();
         if (home == null) {
             super.onPause();
             return;
@@ -801,11 +803,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             // Some remotes deliver one press twice (IR + CEC, or a bouncing key): the focus jumped two items.
             // A second press of the same arrow within 90 ms is dropped, and a held arrow moves at most every 110 ms.
             long t = e.getEventTime() > 0 ? e.getEventTime() : android.os.SystemClock.uptimeMillis();
+            // While the TV is busy (start-up, a shelf loading) a held arrow's auto-repeats queue up and then all
+            // arrive at once: the focus ran several items for one press. A repeat that is already stale is dropped;
+            // a real new press always counts.
+            if (e.getRepeatCount() > 0 && android.os.SystemClock.uptimeMillis() - t > 150) return true;
             boolean same = e.getKeyCode() == lastNavCode;
             if (same && (e.getRepeatCount() == 0 ? t - lastNavAt < 90 : t - lastNavAt < 110)) return true;
             lastNavCode = e.getKeyCode();
             lastNavAt = t;
         }
+        if (down) lastKeyAt = android.os.SystemClock.uptimeMillis();
         if (down) {
             userInteractedDuringBanner = true;
             conversationTurns = 0;
@@ -1079,6 +1086,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         MovieAssistant.focused = home.shelf.focusedMovie();
         background(() -> {
             MovieAssistant.Reply r = MovieAssistant.ask(app, query, currentShelf, PerformanceProfile.shelfSize(app));
+            // the cases in view come up already filled (posters fetched in parallel, at most 1.5 s)
+            if (r.kind != MovieAssistant.Kind.PLAY && !r.movies.isEmpty() && gen == searchGen) home.shelf.warm(r.movies, 9, 1500);
             ui(() -> {
                 if (gen != searchGen) return;
                 if (r.kind == MovieAssistant.Kind.PLAY && !r.movies.isEmpty()) {
@@ -1137,6 +1146,22 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     onVoice();
                 } : null);
     }
+
+    /** The viewer's last key press (uptime ms): background work waits for a quiet moment. */
+    private long lastKeyAt;
+
+    /** A stale shelf after power-on is replaced once the viewer has left the remote alone for a few seconds. */
+    private final Runnable quietShelfRefresh = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing() || home == null || !shelfIsStale()) return;
+            // the viewer has not touched the remote yet, or has left it alone for a few seconds
+            boolean quiet = lastKeyAt == 0 || android.os.SystemClock.uptimeMillis() - lastKeyAt > 6_000;
+            boolean free = inFront && !isCurating && !home.modal.isShowing() && home.opening.getVisibility() != View.VISIBLE;
+            if (quiet && free) refreshShelf();
+            else handler.postDelayed(this, 3_000);
+        }
+    };
 
     /** When CineTV itself last opened Google's own voice window (the key service leaves that one open). */
     public static volatile long ourVoiceAt;
@@ -1321,7 +1346,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 final List<Movie> films = s == null ? null : fillShelf(getApplicationContext(), s.movies, PerformanceProfile.shelfSize(this));
                 ui(() -> {
                     try {
-                        if (films != null && !films.isEmpty()) setShelf(s.title, films, true);
+                        if (films != null && !films.isEmpty()) setShelf(s.title.isEmpty() ? momentTitle("GAMZE'NİN SEÇKİSİ") : s.title, films, true);
                         else if (mood == null || refresh) categoryShelf();
                         else restoreShelfLabel();
                     } finally {
@@ -1372,6 +1397,15 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (cached.size() < 6) {
             refreshShelf();
         }
+    }
+
+    /** "PAZAR GECESİ · <what>": from the TV's own clock, so it is always right. */
+    private static String momentTitle(String what) {
+        Calendar cal = Calendar.getInstance();
+        int hour = cal.get(Calendar.HOUR_OF_DAY);
+        String[] days = {"", "PAZAR", "PAZARTESİ", "SALI", "ÇARŞAMBA", "PERŞEMBE", "CUMA", "CUMARTESİ"};
+        String part = hour >= 5 && hour < 12 ? "SABAHI" : hour >= 12 && hour < 17 ? "ÖĞLEDEN SONRASI" : hour >= 17 && hour < 22 ? "AKŞAMI" : "GECESİ";
+        return days[cal.get(Calendar.DAY_OF_WEEK)] + " " + part + " · " + what;
     }
 
     /**
@@ -1664,8 +1698,18 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     private Movie preloadFor;
-    private final Runnable preloadTrailer = () -> {
-        if (home != null && preloadFor != null && !home.opening.isPlaying() && preloadFor == home.shelf.focusedMovie()) home.trailer.prepare(preloadFor);
+    private final Runnable preloadTrailer = new Runnable() {
+        @Override
+        public void run() {
+            if (home == null || preloadFor == null || home.opening.isPlaying() || preloadFor != home.shelf.focusedMovie()) return;
+            // only a case the viewer has stopped on: while the arrows are moving, nothing is fetched
+            long since = android.os.SystemClock.uptimeMillis() - lastKeyAt;
+            if (since < 900 || !PerformanceProfile.calm()) {
+                handler.postDelayed(this, Math.max(300, 900 - since));
+                return;
+            }
+            home.trailer.prepare(preloadFor);
+        }
     };
 
     public void doLaunchFilm(final Movie m) {
@@ -2556,6 +2600,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         MainActivity a = instance;
         if (a == null || a.home == null) return false;
         return a.home.isSearchOrInputFocused();
+    }
+
+    /** "Kaldığın yerden": the latest unfinished film, on Home's card (hidden when the stage is off or nothing is left). */
+    public void refreshContinueCard() {
+        if (home == null) return;
+        home.setCinematic(Prefs.get(this).getBoolean(Prefs.CINEMATIC_STAGE, true));
+        home.continueCard.bind(home.isCinematic() ? com.cinetv.launcher.service.WatchHistory.latest(this) : null);
     }
 
     /** Settings switched the cinematic stage: Home follows at once. */

@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.CineTV" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen">
-        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowBackground">@drawable/window_splash</item>
         <item name="android:colorBackground">@android:color/black</item>
         <item name="android:windowAnimationStyle">@style/Animation_CineTV_Null</item>
-        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowDisablePreview">false</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+
+    <!-- AlptugPlayer: the logo while the film opens, instead of a black screen. -->
+    <style name="Theme.CineTV.Player" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+        <item name="android:windowBackground">@drawable/window_splash</item>
         <item name="android:windowContentOverlay">@null</item>
     </style>
 

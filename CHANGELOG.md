@@ -1,5 +1,37 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.28
+
+- **Vitrin başlıkları:**
+  - "İstanbul Ocak şafağında…", "İzmir Eylül sabahında…" gibi yanlış başlıklar artık gelmiyor. Tazele tuşu yapay zekâya gerçek anı (saat, gün, ay, hava) göndermiyordu; şimdi her zaman gönderiyor.
+  - TV şehrini bilmiyorsa artık "İstanbul" uydurulmuyor.
+  - Her başlık kodla denetleniyor: başka bir ay, gün, saat dilimi ya da şehir içerirse yerine temanın kendisi yazılıyor.
+  - Filmlerin başlıktaki temaya açıkça uyması isteniyor.
+- **Vitrin ne zaman yenilenir:** TV her açıldığında ve Ana Sayfa'ya bir saatten uzun bir aradan sonra her dönüşte vitrin yepyeni önerilerle geliyor. Açılışta yenileme kumandaya dokunulmadığı ya da birkaç saniye dokunulmadığı bir anda yapılıyor, gezinmenin ortasında değil.
+- **Açılış:**
+  - Siyah ekran yerine anında CineTV logosu görünüyor; AlptugPlayer açılırken de.
+  - Telefon kumandasının ağ dışı bağlantısı için çalışan gizli tarayıcı motoru artık açılışta başlamıyor; başlangıçta ana iş parçacığını yaklaşık 3 saniye kilitliyordu ve yaklaşık 55 MB bellek kullanıyordu. QR kodu açıldığında ya da son iki haftada kullanıldıysa 40 saniye sonra başlıyor.
+  - Kategori sekmelerinin önyüklemesi açılıştan 45 saniye sonra ve ekran sakinken yapılıyor.
+- **Akıcılık:**
+  - Kutular arasında gezinirken bir basışta odak birkaç kutu ilerlemiyor: TV meşgulken biriken eski tuş tekrarları atılıyor.
+  - Fragman hazırlığı yalnızca bir kutuda durduğunuzda başlıyor ve düşük öncelikte çalışıyor; YouTube çözümleme çizimle yarışmıyor.
+  - Kapak hazırlayan iş parçacıkları çizimin altında öncelikte çalışıyor.
+- **Tek performans modu (Yüksek), canlı ölçümle:**
+  - Düşük/Orta/Yüksek seçimi ve ayarı kaldırıldı; her TV her efektle çalışıyor.
+  - CineTV kareleri anlık ölçüyor; ekran yavaşladığında logolar, kategori önyüklemesi ve fragman hazırlığı ekran sakinleşene kadar bekliyor. Hiçbir efekt kapanmıyor.
+- **DVD kutuları:**
+  - Kutu ve gölgesi artık birlikte geliyor.
+  - Bütün raf, ortak boş kutu olarak anında ayağa kalkıyor; her filmin yalnızca kapağı geliyor. Kutunun plastik gövdesi, menteşe, parlama ve kenar ışığı bir kez hazırlanıyor (aynı piksel, çok daha az iş).
+  - Fragmanlı kutularda da OK'e basınca fragman yerini filmin diskine bırakıyor: disk dönerek kalkıyor ve öne geliyor.
+- **Arama:** Sonuçların ekrandaki kutuları, afişleri paralel indirilip hazır olarak geliyor; tek tek dolmuyor.
+- **Kaldığın yerden kartı:** Oynatıcı konumu kaydettiği anda ana sayfadaki kart güncelleniyor; ayarı kapatıp açmak gerekmiyor.
+- **Cam paneller:** Ayarlar ve diğer cam paneller Orta/Yüksek'te de yarı saydam; buzlu katman arkayı tamamen kapatmıyor.
+- **Daha küçük, daha yeni:**
+  - APK 4,22 MB'tan 3,79 MB'a indi. Yalnızca CineTV'nin konuştuğu diller tutuldu; NewPipe'ın yalnızca kullanılan YouTube kısmı kaldı.
+  - Media3 1.11.1 (oynatıcı ve fragmanlar), OkHttp 5.5.1, Android Gradle Plugin 9.5.0 ve Gradle 9.8.2.
+  - Hâlâ Android 6 ve üzerine kuruluyor; eski paket yükleyicileri için v1 imzası duruyor.
+- **Not:** Yapay zekâ yanıt ve önerilerinin kalitesi, kullandığınız yapay zekâ hesabına göre değişebilir. Ücretsiz anahtarlar daha küçük modellere, daha düşük kotaya ve daha yavaş yanıtlara yönlendirilebilir.
+
 ## 1.0.0.27
 
 - **Ana sayfa:**

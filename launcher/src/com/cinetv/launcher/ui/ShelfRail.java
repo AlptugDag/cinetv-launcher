@@ -152,6 +152,7 @@ public final class ShelfRail extends HorizontalScrollView {
         for (final Card c : cards) {
             if (c.category == null) continue;
             loader.execute(() -> {
+                com.cinetv.launcher.device.PerformanceProfile.awaitCalm(20_000);
                 List<Movie> films = MovieCatalog.category(app, c.category, max, spin);
                 if (films == null || films.isEmpty()) return;
                 // the first posters warm the cache, so the shelf fills at once when chosen
@@ -164,8 +165,8 @@ public final class ShelfRail extends HorizontalScrollView {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        // let the first shelf and its posters come first
-        main.postDelayed(this::preload, 6000);
+        // well after start-up: the first shelf, its posters and the TV's own start come first
+        main.postDelayed(this::preload, 45_000);
         main.postDelayed(refresher, REFRESH_MS);
     }
 

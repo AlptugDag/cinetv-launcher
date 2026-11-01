@@ -38,7 +38,11 @@ public final class StreamResolver {
     private static final int MAX_CACHE_ENTRIES = 20;
 
     /** Bounded background thread pool (max 2 parallel extractions) */
-    private static final ExecutorService executor = Executors.newFixedThreadPool(2);
+    // YouTube extraction runs a JavaScript engine: on a 4-core TV it must never take the CPU from drawing
+    private static final ExecutorService executor = Executors.newFixedThreadPool(2, r -> new Thread(() -> {
+        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
+        r.run();
+    }, "cinetv-trailer-resolve"));
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
     private static volatile boolean initialized = false;
 

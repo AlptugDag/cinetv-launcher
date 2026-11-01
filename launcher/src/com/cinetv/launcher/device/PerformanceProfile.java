@@ -52,14 +52,15 @@ public final class PerformanceProfile {
 
     private PerformanceProfile() {}
 
+    /**
+     * One mode for every TV: High, with every effect. (Low / Medium and the automatic step-downs are gone: the
+     * work that made weak TVs slow is now done once, off the drawing thread, or only when the viewer stops.)
+     */
     public static synchronized Tier tier(Context ctx) {
-        if (cached != null) return cached;
-        String mode = mode(ctx);
-        if (MODE_LOW.equals(mode)) cached = Tier.LOW;
-        else if (MODE_MID.equals(mode)) cached = Tier.MID;
-        else if (MODE_HIGH.equals(mode)) cached = Tier.HIGH;
-        else cached = detect(ctx);
-        Log.i(TAG, "Performance " + cached + " (mode " + mode + ", limits " + limits(ctx) + ")");
+        if (cached == null) {
+            cached = Tier.HIGH;
+            Log.i(TAG, "Performance HIGH (single mode)");
+        }
         return cached;
     }
 
@@ -90,8 +91,9 @@ public final class PerformanceProfile {
         return Prefs.get(ctx).getInt(KEY_LIMITS, 0);
     }
 
+    /** Single mode: no TV is held back by a recorded limit any more. */
     private static boolean limited(Context ctx, int bit) {
-        return (limits(ctx) & bit) != 0;
+        return false;
     }
 
     private static void setLimit(Context ctx, int bit, boolean on) {
@@ -290,7 +292,42 @@ public final class PerformanceProfile {
      * these are frames of real motion: the median of the last 48 decides. Slow (over 24 ms, under ~40
      * fps) switches the light shelf on; fast (under 14 ms) switches it off again. Returns true when it changed.
      */
+    // ---- Live self-tuning (single mode): nothing is switched off; background work waits for calm --------
+
+    private static volatile long lastSlowFrameAt;
+    private static volatile long lastFrameAt;
+
+    /** Every frame Home draws (ns). Slow frames mark the screen as busy for a moment. */
+    public static void noteLiveFrame(long totalNs) {
+        long now = android.os.SystemClock.uptimeMillis();
+        lastFrameAt = now;
+        if (totalNs > 24_000_000L) lastSlowFrameAt = now;
+    }
+
+    /**
+     * True when the screen is calm: no frame is being drawn, or the last ones were fast. Heavy background work
+     * (spine logos, category preloads, trailer preparation) runs only then, so it never takes a frame's time.
+     */
+    public static boolean calm() {
+        long now = android.os.SystemClock.uptimeMillis();
+        return now - lastSlowFrameAt > 1_200 || now - lastFrameAt > 600;
+    }
+
+    /** Blocking, off the main thread: waits (at most maxMs) until the screen is calm. */
+    public static void awaitCalm(long maxMs) {
+        long end = android.os.SystemClock.uptimeMillis() + maxMs;
+        while (!calm() && android.os.SystemClock.uptimeMillis() < end) {
+            try {
+                Thread.sleep(150);
+            } catch (InterruptedException e) {
+                return;
+            }
+        }
+    }
+
     public static synchronized boolean noteFrame(Context ctx, long totalNs) {
+        if (cached == Tier.HIGH) return false; // single mode: nothing steps down
+
         frames[frameCount++ % frames.length] = totalNs;
         if (frameCount < frames.length || frameCount % 12 != 0) return false;
         long[] sorted = frames.clone();

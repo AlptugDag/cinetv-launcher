@@ -123,8 +123,9 @@ public final class TvWebRemoteServer {
         tls.setDaemon(true);
         tls.start();
         PeerDiscovery.start(app);
-        // the phone link that does not depend on the home network (QR codes open it)
-        RelayHost.start(app);
+        // the phone link that does not depend on the home network (QR codes open it): a whole browser engine,
+        // so not during start-up (it held the screen for ~3 s on 1.5 GB TVs); a QR code starts it at once
+        RelayHost.startLater(app);
         DialServer.start(app);
     }
 
