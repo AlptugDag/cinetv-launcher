@@ -1,5 +1,28 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.23
+
+1.0.0.22'nin iki betasındaki her şey ve şunlar:
+
+- **Nuvio'da film açılmıyordu:** "Yüklü eklentilerin hiçbiri movie için yayın desteği sunmuyor" hatasının nedeni bulundu. IMDb kimliği olmayan bir film için CineTV, aynı TMDB numarasıyla bir diziye bakıp alakasız bir IMDb kimliği gönderiyordu. Artık yalnızca filmin kendi kimliği gidiyor; IMDb kimliği hiç yoksa TMDB kimliği gidiyor. Film hiçbir durumda Nuvio'nun arama ya da ana sayfasına düşmüyor.
+- **Fragman oynaması:** Otomatik "Oynat" artık yalnızca gerçek Oynat düğmesine basıyor; fragman alanındaki "Play" simgelerine ve büyük alanlara basmıyor.
+- **AlptugPlayer:**
+  - P2P yayınlarda torrent sunucusu parçaları hazırlarken verdiği geçici hatalar sabırla yeniden deneniyor, film aynı saniyeden sürüyor.
+  - Web'den gönderilen uzantısız HLS/DASH bağlantıları ("container unsupported") tanınıyor.
+- **Ayarlar › Sistem:**
+  - "Erişilebilirlik" artık CineTV'nin kendi sayfası: Yüksek kontrast, Hareketi azalt, Arayüz ve yazı boyutu, TV'nin erişilebilirlik ayarları.
+  - "Varsayılan Başlatıcı" sayfası: CineTV'yi sistem onayıyla varsayılan yapma, diğer başlatıcıları kapatma (isteğe bağlı) ve TV'nin başlatıcısını geri getirme.
+- **Mikrofon:** Google asistanı mikrofonu bırakmadan tanıma başlamıyor. Mikrofon alınamazsa bir kez daha deneniyor, sonra TV'nin kendi sesli araması açılıyor. Bluetooth kulaklık mikrofonu yalnızca gerçekten bağlıysa kullanılıyor.
+- **Kaldırılanlar:** Film görselinin tema arka planına yansıması ve Letterboxd (ayarları, soruları, kayıtlı değerleri ve bağlantılarıyla) tamamen kaldırıldı.
+- **Nuvio güncellemeleri:** Nuvio'ya kendi güncellemesini kurma izni veriliyor. Ayarlar'a "Nuvio'yu Güncelle" eklendi.
+- **Vitrin:** Ana sayfaya her dönüşte değil; yalnızca TV açıldığında, 3 saat sonra ya da yenileme tuşuyla yenileniyor.
+- **Telefon Keşfet:** Aşağı kaydırınca yeni filmler ekleniyor. Yenileme her seferinde farklı filmler getiriyor (TMDB anahtarı olmadan da).
+- **CineSUB:**
+  - Açıkken oynayan film duruyor, kapanınca (yalnızca önceden oynuyorsa) devam ediyor; bitiş, geri, hata ve süre dolması dahil her çıkışta.
+  - Gamze kartın başlığını değil yalnızca içeriği okuyor.
+- **Ana sayfa:** Film künyesi (logo, yıl, süre, tür, puan, özet) ve AlptugPlayer'da yarım kalan film için "Kaldığın yerden" kartı. Ayarlar'da "Sinematik Sahne" ile kapatılabilir.
+- **GitHub iş akışları:** Node.js 24 sürümlerine geçti, Ubuntu sürümü sabitlendi.
+
 ## 1.0.0.22b · Beta 2
 
 - CineQuiz: soru TV'de her zaman tam görünüyor. Resim küçüldü, soru sütunu genişledi; uzun sorular kesilmek yerine sığana kadar küçülüyor. Süre halkası resmin altına alındı, cevaplar sorunun hemen altında.

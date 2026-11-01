@@ -654,7 +654,7 @@ public final class TvWebRemoteServer {
             case "/api/catalog/trending": {
                 String kind = clip(q.get("type"), 16);
                 if (kind.isEmpty()) return ok.put("results", toJson(MovieCatalog.trending(app, 24)));
-                return ok.put("results", toJson(MovieCatalog.trending(app, kind, parseInt(q.get("page"), 1), "1".equals(q.get("fresh")), 24)));
+                return ok.put("results", toJson(MovieCatalog.trending(app, kind, parseInt(q.get("page"), 1), "1".equals(q.get("fresh")), parseInt(q.get("seed"), 0), 24)));
             }
             case "/api/catalog/search": {
                 // The same assistant as the TV: people, themes, plots, series, or an answer.
@@ -755,7 +755,7 @@ public final class TvWebRemoteServer {
                 post(() -> {
                     Controller c = controller;
                     if (c != null) c.openTitle(m);
-                    else AppLauncher.openInNuvio(app, m.title, m.imdbId, m.type, m.posterUrl);
+                    else AppLauncher.openInNuvio(app, m.title, m.imdbId, m.tmdbId, m.type, m.posterUrl);
                 });
                 return ok;
             }

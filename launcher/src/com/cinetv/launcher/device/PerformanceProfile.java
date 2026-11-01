@@ -317,6 +317,7 @@ public final class PerformanceProfile {
     }
 
     public static int animationMs(Context ctx, int base) {
+        if (com.cinetv.launcher.service.Prefs.reduceMotion(ctx)) return Math.max(60, base / 4);
         int ms = tier(ctx) == Tier.LOW ? base * 2 / 3 : base;
         return limited(ctx, LIMIT_GPU) ? ms * 4 / 5 : ms;
     }

@@ -37,6 +37,11 @@ public final class UiKit {
         INK = light ? Color.parseColor("#0B0F19") : Color.parseColor("#F5F5F7");
         INK_DIM = light ? Color.argb(175, 18, 22, 34) : Color.argb(160, 235, 235, 245);
         INK_FAINT = light ? Color.argb(115, 18, 22, 34) : Color.argb(96, 235, 235, 245);
+        if (com.cinetv.launcher.service.Prefs.highContrast(ctx)) {
+            INK = light ? Color.BLACK : Color.WHITE;
+            INK_DIM = light ? Color.argb(235, 0, 0, 0) : Color.argb(240, 255, 255, 255);
+            INK_FAINT = light ? Color.argb(200, 0, 0, 0) : Color.argb(210, 255, 255, 255);
+        }
     }
 
     public static boolean isLight() {

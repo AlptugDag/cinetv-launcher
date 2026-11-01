@@ -47,7 +47,7 @@ Filmlerin soğuk küçük resimlere indirgendiği bu çağda CineTV'nin kalbinde
 <td width="50%"><img src="docs/media/v20-dvd-trailer.jpg" alt="Kutuda fragman"></td>
 </tr>
 <tr>
-<td><b>Kitapçık, filmin ve odanızın baskısıyla.</b> Spoiler vermeyen kısa öncül, yönetmen, süre, IMDb / RT / Letterboxd puanları ve oyuncu portreleri. Kâğıt temaya göre değişir: parşömen, kraft, altın varaklı program, buzlu akrilik, fırçalanmış alüminyum, neon kart.</td>
+<td><b>Kitapçık, filmin ve odanızın baskısıyla.</b> Spoiler vermeyen kısa öncül, yönetmen, süre, IMDb / RT puanları ve oyuncu portreleri. Kâğıt temaya göre değişir: parşömen, kraft, altın varaklı program, buzlu akrilik, fırçalanmış alüminyum, neon kart.</td>
 <td><b>Sıfır YouTube arayüzü.</b> Fragman kendi oynatıcımızda, kadraja tam oturarak oynar; siz kutunun üzerinde dururken yüklenmeye başlar, siyah açılış yerine afişten doğrudan görüntüye geçer.</td>
 </tr>
 </table>
@@ -166,7 +166,7 @@ CineTV is not a streaming service, media host or piracy provider. It is an open-
 [![Instagram](https://img.shields.io/badge/INSTAGRAM-%40alptugdag-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://instagram.com/alptugdag) &nbsp;
 [![LinkedIn](https://img.shields.io/badge/LINKEDIN-ALPTUG%20DAG-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/AlptugDag/)
 
-[YouTube](https://youtube.com/@AlptugDag) · [Letterboxd](https://letterboxd.com/AlptugDag/) · [TMDB](https://www.themoviedb.org/person/6564105) · [IMDb](https://www.imdb.com/name/nm14913967) · [GitHub](https://github.com/AlptugDag)
+[YouTube](https://youtube.com/@AlptugDag) · [TMDB](https://www.themoviedb.org/person/6564105) · [IMDb](https://www.imdb.com/name/nm14913967) · [GitHub](https://github.com/AlptugDag)
 
 [PolyForm Strict License 1.0.0](LICENSE)
 

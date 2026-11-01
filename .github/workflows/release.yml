@@ -17,7 +17,7 @@ jobs:
   # Without the signing secrets the release is built and signed locally instead
   # (scripts/release/), so the job below is skipped rather than failed.
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: release
     outputs:
       ready: ${{ steps.secrets.outputs.ready }}
@@ -33,25 +33,25 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No release signing secrets; skipping. Sign locally with scripts/release/ and upload the APK by hand."
+            echo "No release signing secrets; skipping. Sign locally with scripts/release/ and upload the APK by hand."
           fi
 
   release:
     needs: check
     if: needs.check.outputs.ready == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: release
     env:
       TAG: ${{ github.event.inputs.tag || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ env.TAG }}
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Restore keystore (temporary, deleted after the job)
         env:

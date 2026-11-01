@@ -27,6 +27,13 @@ public class CineTvApp extends Application {
     public void onCreate() {
         super.onCreate();
         appInstance = this;
+        // Letterboxd was removed in 1.0.0.23: its stored settings go too (the diary file in Downloads is the viewer's)
+        android.content.SharedPreferences prefs = com.cinetv.launcher.service.Prefs.get(this);
+        if (prefs.contains("letterboxd_username") || prefs.contains("letterboxd_enabled") || prefs.contains("letterboxd_auto_record")
+                || prefs.contains("letterboxd_history_json")) {
+            prefs.edit().remove("letterboxd_username").remove("letterboxd_enabled").remove("letterboxd_auto_record")
+                    .remove("letterboxd_history_json").apply();
+        }
         com.cinetv.launcher.service.PosterCache.configure(com.cinetv.launcher.device.PerformanceProfile.lowMemory(this));
         HomeGuard.install(this);
         // The phone remote works whatever is on screen: its server and key bridge live with the process

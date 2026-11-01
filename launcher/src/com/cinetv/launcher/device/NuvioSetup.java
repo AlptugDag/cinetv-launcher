@@ -153,6 +153,49 @@ public final class NuvioSetup {
         }, "cinetv-nuvio-sync").start();
     }
 
+    /**
+     * Nuvio updates itself (it downloads its new APK and opens the installer), which needs Android's "install
+     * unknown apps" permission for Nuvio; without it the download finishes and the install never happens.
+     * Granted through the TV's adb, for whichever Nuvio is installed. Play Protect is not touched.
+     */
+    public static void allowSelfUpdate(Context ctx) {
+        final Context app = ctx.getApplicationContext();
+        new Thread(() -> {
+            StringBuilder cmd = new StringBuilder();
+            for (String p : AppLauncher.installedNuvioPackages(app)) {
+                cmd.append("appops set ").append(p).append(" REQUEST_INSTALL_PACKAGES allow 2>/dev/null; ");
+            }
+            if (cmd.length() > 0) LocalAdb.shell(app, cmd.toString(), 4000);
+        }, "cinetv-nuvio-update-permission").start();
+    }
+
+    /** Blocking: the latest Nuvio release over the installed one (its add-ons and settings stay). Null on success, else why not. */
+    public static String updateNuvio(Context ctx) {
+        final Context app = ctx.getApplicationContext();
+        boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+        try {
+            String url = apkUrl("NuvioMedia/NuvioTV", "app-full-", "-release\\.apk");
+            if (url == null) return tr ? "GitHub'a ulaşılamadı" : "GitHub unreachable";
+            File dir = app.getExternalFilesDir(null);
+            if (dir == null) return tr ? "Depolama yok" : "No storage";
+            File apk = new File(dir, "nuvio.apk");
+            if (!Http.download(url, apk, 180_000)) return tr ? "İndirme tamamlanamadı" : "Download failed";
+            try { apk.setReadable(true, false); } catch (Throwable ignored) {}
+            String path = apk.getAbsolutePath();
+            boolean ok = LocalAdb.shell(app, "cp '" + path + "' /data/local/tmp/nuvio.apk 2>/dev/null && pm install -r /data/local/tmp/nuvio.apk; rm -f /data/local/tmp/nuvio.apk", 120_000);
+            if (!ok) {
+                // no adb: the system installer, with CineTV as the source (CineTV holds the permission)
+                promptInstall(app, apk);
+                return null;
+            }
+            apk.delete();
+            allowSelfUpdate(app);
+            return null;
+        } catch (Throwable t) {
+            return String.valueOf(t.getMessage());
+        }
+    }
+
     public static boolean installNuvio(Context ctx, boolean force) {
         final Context app = ctx.getApplicationContext();
         if (!force && Prefs.get(app).getBoolean(DONE, false)) {

@@ -63,10 +63,12 @@ public class HomeScreen {
     /** Names the focused header icon; for the gear it also says how to reach the TV's own settings. */
     private TextView buttonHint;
     public final SpatialEnvironment environment;
-    public final ImageView ambience;
-    private String ambienceUrl;
     public final GlideScrollView scroll;
     public final PosterShelf shelf;
+    /** The cinematic stage: the focused film's card left of the case, the half-watched film right of it. */
+    public final FilmBillboard billboard;
+    public final ContinueCard continueCard;
+    private boolean cinematic = true;
     public final CinemaCurtainsView cinemaCurtains;
     /** Trailer moments (Settings): the trailer in the opened DVD's tray. */
     public final TrailerPlayer trailer;
@@ -122,12 +124,6 @@ public class HomeScreen {
 
         environment = new SpatialEnvironment(ctx);
         root.addView(environment, match());
-        // visionOS-style ambience: the focused film's scene, tiny and stretched (a free blur), very dim.
-        ambience = new ImageView(ctx);
-        ambience.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        ambience.setAlpha(0f);
-        ambience.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        root.addView(ambience, match());
 
         scroll = new GlideScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
@@ -402,7 +398,16 @@ public class HomeScreen {
         shelfLabel.setTranslationZ(200f);
         LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         llp.setMargins(UiKit.px(62), UiKit.px(24), 0, 0);
-        content.addView(shelfLabel, llp);
+        // The shelf's name and the shelf, in one stage: the film card and the continue card float over the
+        // free space above the side cases, left and right of the focused one.
+        FrameLayout stage = new FrameLayout(ctx);
+        stage.setClipChildren(false);
+        stage.setClipToPadding(false);
+        LinearLayout stageColumn = new LinearLayout(ctx);
+        stageColumn.setOrientation(LinearLayout.VERTICAL);
+        stageColumn.setClipChildren(false);
+        stageColumn.setClipToPadding(false);
+        stageColumn.addView(shelfLabel, llp);
 
         shelf = new PosterShelf(ctx);
         shelf.setMotionListener(cinemaCurtains::setMotion);
@@ -410,7 +415,29 @@ public class HomeScreen {
         LinearLayout.LayoutParams shelfLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, shelf.shelfHeight());
         shelfLp.leftMargin = -UiKit.px(64);
         shelfLp.rightMargin = -UiKit.px(64);
-        content.addView(shelf, shelfLp);
+        stageColumn.addView(shelf, shelfLp);
+        stage.addView(stageColumn, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        billboard = new FilmBillboard(ctx);
+        FrameLayout.LayoutParams billboardLp = new FrameLayout.LayoutParams(UiKit.px(560), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START);
+        billboardLp.setMargins(UiKit.px(62), UiKit.px(18), 0, 0);
+        billboard.setTranslationZ(200f);
+        stage.addView(billboard, billboardLp);
+
+        continueCard = new ContinueCard(ctx);
+        FrameLayout.LayoutParams ccp = new FrameLayout.LayoutParams(UiKit.px(500), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
+        ccp.setMargins(0, UiKit.px(22), UiKit.px(30), 0);
+        continueCard.setTranslationZ(200f);
+        stage.addView(continueCard, ccp);
+        // the shelf's name lives on in the film card's top line
+        shelfLabel.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence a, int b, int c, int d) {}
+            @Override public void onTextChanged(CharSequence a, int b, int c, int d) {}
+            @Override public void afterTextChanged(android.text.Editable e) {
+                billboard.setEyebrow(e.toString());
+            }
+        });
+        content.addView(stage, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         // ---- apps
         apps = new AppGrid(ctx, appHost);
@@ -1527,29 +1554,15 @@ public class HomeScreen {
         return new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
     }
 
-    /** Fades the home ambience to this film's scene (null clears it). Skipped where the GPU is the limit. */
-    public void setAmbience(String backdropUrl) {
-        Context ctx = root.getContext();
-        if (backdropUrl == null || backdropUrl.isEmpty() || com.cinetv.launcher.device.PerformanceProfile.gpuLimited(ctx)) {
-            ambienceUrl = null;
-            ambience.animate().alpha(0f).setDuration(300).start();
-            return;
-        }
-        if (backdropUrl.equals(ambienceUrl)) return;
-        ambienceUrl = backdropUrl;
-        final String want = backdropUrl;
-        new Thread(() -> {
-            android.graphics.Bitmap b = com.cinetv.launcher.service.PosterCache.load(ctx, want, 96, 54);
-            if (b == null) return;
-            root.post(() -> {
-                if (!want.equals(ambienceUrl)) return;
-                ambience.animate().cancel();
-                ambience.animate().alpha(0f).setDuration(140).withEndAction(() -> {
-                    if (!want.equals(ambienceUrl)) return;
-                    ambience.setImageBitmap(b);
-                    ambience.animate().alpha(0.22f).setDuration(520).start();
-                }).start();
-            });
-        }, "cinetv-ambience").start();
+    /** The cinematic stage on or off (Settings): off brings the classic shelf capsule back. */
+    public void setCinematic(boolean on) {
+        cinematic = on;
+        billboard.setVisibility(on ? View.VISIBLE : View.GONE);
+        shelfLabel.setVisibility(on ? View.INVISIBLE : View.VISIBLE);
+        if (!on) continueCard.setVisibility(View.GONE);
+    }
+
+    public boolean isCinematic() {
+        return cinematic;
     }
 }

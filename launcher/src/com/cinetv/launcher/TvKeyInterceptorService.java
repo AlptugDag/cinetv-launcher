@@ -207,24 +207,43 @@ public class TvKeyInterceptorService extends AccessibilityService {
             }
             if (root == null) root = getRootInActiveWindow();
             if (root == null || root.getPackageName() == null || !isNuvioApp(root.getPackageName().toString())) return false;
+            android.graphics.Rect screen = new android.graphics.Rect();
+            root.getBoundsInScreen(screen);
             for (String label : new String[]{"Oynat", "Devam Et", "İzlemeye Devam Et", "Play", "Resume"}) {
                 // Compose text is not always returned by findAccessibilityNodeInfosByText: walk the tree.
                 java.util.List<android.view.accessibility.AccessibilityNodeInfo> found = new java.util.ArrayList<>();
                 findText(root, label, found, 0);
                 for (android.view.accessibility.AccessibilityNodeInfo n : found) {
-                    CharSequence t = n.getText() != null ? n.getText() : n.getContentDescription();
+                    // the button's own text only: a "Play" content description is the trailer's icon
+                    CharSequence t = n.getText();
                     if (t == null || !t.toString().trim().equalsIgnoreCase(label)) continue;
-                    // the label itself is often a child of the button: climb to the clickable one
+                    if (insideTrailer(n)) continue;
+                    // the label is often a child of the button: climb to the clickable one, a button-sized one
                     android.view.accessibility.AccessibilityNodeInfo c = n;
-                    for (int i = 0; c != null && !c.isClickable() && !c.isFocusable() && i < 6; i++) c = c.getParent();
-                    if (c == null) continue;
+                    for (int i = 0; c != null && !c.isClickable() && i < 3; i++) c = c.getParent();
+                    if (c == null || !c.isClickable()) continue;
+                    android.graphics.Rect b = new android.graphics.Rect();
+                    c.getBoundsInScreen(b);
+                    if (screen.height() > 0 && (b.height() > screen.height() / 4 || b.width() > screen.width() / 2)) continue;
                     c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS);
-                    boolean ok = c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);
-                    return ok;
+                    return c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);
                 }
             }
         } catch (Throwable t) {
             android.util.Log.w("CineTvPlay", "clickNuvioPlay: " + t);
+        }
+        return false;
+    }
+
+    /** A node in Nuvio's trailer area ("Fragman", "Trailer" in it or its ancestors' text). */
+    private static boolean insideTrailer(android.view.accessibility.AccessibilityNodeInfo n) {
+        android.view.accessibility.AccessibilityNodeInfo c = n;
+        for (int i = 0; c != null && i < 5; i++, c = c.getParent()) {
+            CharSequence t = c.getText() != null ? c.getText() : c.getContentDescription();
+            if (t != null) {
+                String s = t.toString().toLowerCase(java.util.Locale.ROOT);
+                if (s.contains("fragman") || s.contains("trailer") || s.contains("teaser")) return true;
+            }
         }
         return false;
     }
@@ -461,7 +480,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
                     MainActivity.ourVoiceAt = android.os.SystemClock.elapsedRealtime();
                     handler.postDelayed(() -> startActivity(new Intent(this, MainActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION)
-                            .putExtra("action", "voice")), 250);
+                            .putExtra("action", "voice")), 800); // after the assistant has let go of the microphone
                     return;
                 }
                 break;

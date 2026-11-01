@@ -504,7 +504,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         <a class="btn li" href="https://www.linkedin.com/in/AlptugDag/" target="_blank" rel="noopener" data-i="followLi"></a>
         <a class="btn yt" id="ytBtn" target="_blank" rel="noopener" data-i="followYt"></a>
         <div class="row2">
-          <a class="btn lb" href="https://letterboxd.com/AlptugDag/" target="_blank" rel="noopener">Letterboxd</a>
           <a class="btn gh" href="https://github.com/AlptugDag" target="_blank" rel="noopener">GitHub</a>
         </div>
       </div>
@@ -795,7 +794,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   // discover & infinite scroll
   let currentList = [], currentPage = 1, currentQuery = "", isLoadingMore = false, hasMore = true;
-  let kind = "movie", freshMode = false;
+  let kind = "movie", freshMode = false, freshSeed = 0;
   const card = (m, i) => `<div class="card" data-i="${i}"><img loading="lazy" decoding="async" src="${esc(m.poster)}" alt="">
       ${m.type === "series" ? `<span class="badge">${t("series")}</span>` : ""}<div class="t">${esc(m.title)}</div></div>`;
   const ofKind = list => list.filter(m => !m.type || m.type === kind || (kind === "movie" && m.type !== "series"));
@@ -824,9 +823,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     if (!token) return;
     skeleton();
     currentQuery = ""; currentPage = 1; hasMore = true; freshMode = fresh;
+    // each refresh starts from a different page of well-liked films, and scrolling continues from there
+    if (fresh) freshSeed = (freshSeed + 3 + Math.floor(Math.random() * 6)) % 40;
     const my = ++seq;
     try {
-      const r = await api("catalog/trending", {type: kind, page: 1, fresh: fresh ? 1 : 0});
+      const r = await api("catalog/trending", {type: kind, page: 1, fresh: fresh ? 1 : 0, seed: freshSeed});
       if (my !== seq) return;
       render(r.results || [], fresh ? (kind === "series" ? "Yeni dizi önerileri" : "Yeni film önerileri") : (kind === "series" ? "Popüler diziler" : t("trending")));
     } catch (e) {}
@@ -858,7 +859,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   window.addEventListener("scroll", async () => {
     if (isLoadingMore || !hasMore || location.hash === "#remote" || location.hash === "#cast") return;
-    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 360) {
+    // body is height:100% here, so the page's real length is the document's scroll height
+    if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 360) {
       isLoadingMore = true;
       currentPage++;
       try {
@@ -866,7 +868,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         if (currentQuery) {
           r = await api("catalog/search", {q: currentQuery, page: currentPage});
         } else {
-          r = await api("catalog/trending", {type: kind, page: currentPage, fresh: freshMode ? 1 : 0});
+          r = await api("catalog/trending", {type: kind, page: currentPage, fresh: freshMode ? 1 : 0, seed: freshSeed});
         }
         if (r && r.results && r.results.length) {
           render(r.results, "", true);

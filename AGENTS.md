@@ -123,7 +123,7 @@ Glass) · `metal` (Metallic) · `cinema` (Cinema Hall) · `closet` (Film Closet)
 | :--- | :--- | :--- |
 | `CINETV_TMDB_KEY` (or `CINETV_TMDB_TOKEN`) | localized titles, posters, plots, people | themoviedb.org › Settings › API |
 | `CINETV_AI_KEY` | AI search, answers, the mood shelf | any of Gemini (aistudio.google.com), Claude, OpenAI, Grok (xAI), OpenRouter; the key's format picks the provider |
-| `CINETV_MDBLIST_KEY` | ratings from IMDb, Rotten Tomatoes, Letterboxd | mdblist.com › Preferences › API |
+| `CINETV_MDBLIST_KEY` | ratings from IMDb and Rotten Tomatoes | mdblist.com › Preferences › API |
 
 Keys are handed to the TV once and moved into its hardware-backed encrypted store; they cannot be read back.
 

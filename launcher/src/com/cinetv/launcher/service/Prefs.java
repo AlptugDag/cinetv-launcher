@@ -25,6 +25,18 @@ public final class Prefs {
     public static final String THEME = "theme_id";
     public static final String SPATIAL_3D = "pref_hud_visor";
     public static final String DVD_ANIMATION = "pref_dvd_animation";
+    /** Home's cinematic stage (film card, continue card, the film's scene as the room's light). Default on. */
+    public static final String CINEMATIC_STAGE = "pref_cinematic_stage";
+    public static final String HIGH_CONTRAST = "pref_a11y_contrast";
+    public static final String REDUCE_MOTION = "pref_a11y_reduce_motion";
+
+    public static boolean highContrast(Context ctx) {
+        return get(ctx).getBoolean(HIGH_CONTRAST, false);
+    }
+
+    public static boolean reduceMotion(Context ctx) {
+        return get(ctx).getBoolean(REDUCE_MOTION, false);
+    }
     public static final String DVD_CASES = "pref_dvd_cases";
     public static final String GLASS_BEVEL = "pref_chroma_aberration";
     public static final String FIRST_SETUP_DONE = "first_setup_done";
@@ -72,7 +84,7 @@ public final class Prefs {
     }
 
     public static boolean dvdAnimation(Context ctx) {
-        return get(ctx).getBoolean(DVD_ANIMATION, true);
+        return !reduceMotion(ctx) && get(ctx).getBoolean(DVD_ANIMATION, true);
     }
 
     /**

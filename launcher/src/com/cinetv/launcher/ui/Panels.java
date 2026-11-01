@@ -378,6 +378,17 @@ public final class Panels {
         trailersTile.setTag("opt_trailers");
         cVisual.addView(trailersTile);
 
+        boolean stageOn = Prefs.get(ctx).getBoolean(Prefs.CINEMATIC_STAGE, true);
+        final String stageSub = tr ? "Açık · Film künyesi ve kaldığın yerden" : "On · Film card and continue watching";
+        LinearLayout stageTile = Controls.toggleTile(ctx, tr ? "Sinematik Sahne" : "Cinematic Stage",
+                stageOn ? stageSub : ctx.getString(R.string.state_off), stageOn, (newActive, subLabel, sw) -> {
+                    Prefs.setFlag(ctx, Prefs.CINEMATIC_STAGE, newActive);
+                    subLabel.setText(newActive ? stageSub : ctx.getString(R.string.state_off));
+                    if (ctx instanceof com.cinetv.launcher.MainActivity) ((com.cinetv.launcher.MainActivity) ctx).applyCinematic();
+                });
+        stageTile.setTag("opt_cinematic_stage");
+        cVisual.addView(stageTile);
+
         boolean trailerAudio = Prefs.trailerAudio(ctx);
         LinearLayout audioTile = Controls.toggleTile(ctx,
                 tr ? "Fragman Sesi" : "Trailer Audio",
@@ -456,6 +467,20 @@ public final class Panels {
                    : (Prefs.uiScaleLabel(ctx) + " · " + Prefs.fontScaleLabel(ctx) + " (Live Preview)"),
                 false, v -> host.push(() -> buildScalePreviewModal(ctx, host, a))));
 
+        if (AppLauncher.isLaunchable(ctx.getPackageManager(), AppLauncher.NUVIO)) {
+            cAnim.addView(Controls.tile(ctx, tr ? "Nuvio'yu Güncelle" : "Update Nuvio",
+                    tr ? "En son sürüm indirilir ve üstüne kurulur; eklentiler ve ayarlar kalır" : "Downloads the latest release over the installed one; add-ons stay",
+                    false, v -> {
+                        Toast.makeText(ctx, tr ? "Nuvio indiriliyor…" : "Downloading Nuvio…", Toast.LENGTH_SHORT).show();
+                        new Thread(() -> {
+                            String err = com.cinetv.launcher.device.NuvioSetup.updateNuvio(ctx);
+                            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> Toast.makeText(ctx,
+                                    err == null ? (tr ? "Nuvio güncellendi" : "Nuvio updated") : (tr ? "Nuvio güncellenemedi: " : "Nuvio not updated: ") + err,
+                                    Toast.LENGTH_LONG).show());
+                        }, "cinetv-nuvio-update").start();
+                    }));
+        }
+
         java.util.List<String> nuvioPkgs = AppLauncher.installedNuvioPackages(ctx);
         if (nuvioPkgs.size() > 1) {
             String currentSelected = AppLauncher.resolveNuvioPackage(ctx);
@@ -509,22 +534,6 @@ public final class Panels {
         emaTile.setTag("opt_ema_tts");
         cAi.addView(emaTile);
 
-        cAi.addView(Controls.tile(ctx,
-                tr ? "Letterboxd Sinema Günlüğü (Scrobble)" : "Letterboxd Cinema Diary",
-                com.cinetv.launcher.service.LetterboxdSync.isConfigured(ctx)
-                        ? ("@" + com.cinetv.launcher.service.LetterboxdSync.getUsername(ctx) + " · " + (tr ? "Aktif" : "Active"))
-                        : (tr ? "İzlenenleri otomatik kaydet & CSV dışa aktar" : "Auto-log watches & export CSV"),
-                com.cinetv.launcher.service.LetterboxdSync.isConfigured(ctx),
-                v -> host.push(() -> buildLetterboxdModal(ctx, host))));
-        boolean lbOn = com.cinetv.launcher.service.LetterboxdSync.isEnabled(ctx);
-        LinearLayout lbTile = Controls.toggleTile(ctx, tr ? "Letterboxd Sorusu ve Kaydı" : "Letterboxd Prompt & Logging",
-                lbOn ? (tr ? "Açık · İzledikten sonra sorar" : "On · Asks after a film") : ctx.getString(R.string.state_off),
-                lbOn, (newActive, subLabel, sw) -> {
-                    com.cinetv.launcher.service.LetterboxdSync.setEnabled(ctx, newActive);
-                    subLabel.setText(newActive ? (tr ? "Açık · İzledikten sonra sorar" : "On · Asks after a film") : ctx.getString(R.string.state_off));
-                });
-        lbTile.setTag("opt_letterboxd");
-        cAi.addView(lbTile);
 
         // The TV's own settings, opened from CineTV: nothing is changed here, each tile only opens the system page.
         LinearLayout cSys = column(ctx, cols, tr ? "Sistem" : "System", colWidth);
@@ -538,9 +547,19 @@ public final class Panels {
                 {tr ? "Tarih & Saat" : "Date & Time", android.provider.Settings.ACTION_DATE_SETTINGS, ".system.DateTimeActivity"},
                 {tr ? "Dil" : "Language", android.provider.Settings.ACTION_LOCALE_SETTINGS, ".system.LanguageActivity"},
                 {tr ? "Klavye" : "Keyboard", android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS, ".inputmethod.KeyboardActivity"},
-                {tr ? "Erişilebilirlik" : "Accessibility", android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS, ".oemlink.AccessibilitySettingsActivity"},
                 {tr ? "Hakkında" : "About", android.provider.Settings.ACTION_DEVICE_INFO_SETTINGS, ".about.AboutActivity"},
                 {tr ? "Tüm Sistem Ayarları" : "All System Settings", android.provider.Settings.ACTION_SETTINGS, ".MainSettings"}};
+        // CineTV's own accessibility page (the TV's page closes by itself on many models; it is the last tile there)
+        LinearLayout a11yTile = Controls.tile(ctx, tr ? "Erişilebilirlik" : "Accessibility",
+                tr ? "Kontrast, hareket, arayüz ve yazı boyutu" : "Contrast, motion, interface and text size", false,
+                v -> host.push(() -> buildAccessibility(ctx, host, a)));
+        a11yTile.setTag("opt_accessibility");
+        cSys.addView(a11yTile);
+        LinearLayout homeTile = Controls.tile(ctx, tr ? "Varsayılan Başlatıcı" : "Default Launcher",
+                tr ? "CineTV'yi tek ana ekran yap ya da TV'ninkini geri getir" : "Make CineTV the only Home, or bring the TV's back", false,
+                v -> host.push(() -> buildHomeLaunchers(ctx, host)));
+        homeTile.setTag("opt_home_launchers");
+        cSys.addView(homeTile);
         for (final String[] row : sys) {
             cSys.addView(Controls.tile(ctx, row[0], tr ? "Sistem sayfasını açar" : "Opens the system page", false, v -> {
                 host.close();
@@ -1252,7 +1271,7 @@ public final class Panels {
         String page = base == null ? com.cinetv.launcher.service.Creator.LINKEDIN_URL : base + "/me";
         View allQr = followCode(ctx, page,
                 tr ? "Portfolyo & İş Birliği" : "Portfolio & Career",
-                "LinkedIn · YouTube · Letterboxd", 220, 24);
+                "LinkedIn · YouTube", 220, 24);
         qrRow.addView(allQr);
 
         root.addView(qrRow);
@@ -1420,6 +1439,108 @@ public final class Panels {
         return root;
     }
 
+    /** Default launcher: every step needs the viewer's press and each one can be undone from the same page. */
+    private static View buildHomeLaunchers(final Context ctx, final ModalHost host) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(28), UiKit.px(36), UiKit.px(28));
+        TextView title = UiKit.bold(ctx, 28, UiKit.INK);
+        title.setText(tr ? "Varsayılan Başlatıcı" : "Default Launcher");
+        root.addView(title);
+        TextView sub = UiKit.label(ctx, 14, UiKit.INK_DIM);
+        sub.setMaxWidth(UiKit.px(820));
+        sub.setText(tr ? "Diğer başlatıcıları kapatmak için kurulumdaki 'Ağ hata ayıklaması' açık olmalı. Hiçbir uygulama silinmez; "
+                + "'TV'nin başlatıcısını geri getir' ya da 'CineTV'yi yok et' hepsini geri açar."
+                : "Switching other launchers off needs network debugging from setup. Nothing is uninstalled; "
+                + "'Bring back the TV's launcher' or 'Remove CineTV' switches them all on again.");
+        LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        subLp.topMargin = UiKit.px(6);
+        subLp.bottomMargin = UiKit.px(16);
+        root.addView(sub, subLp);
+        root.addView(Controls.tile(ctx, tr ? "CineTV'yi Varsayılan Yap" : "Make CineTV the Default",
+                tr ? "Sistemin kendi onay penceresi açılır" : "Opens the system's own confirmation", false, v -> {
+                    if (ctx instanceof android.app.Activity) com.cinetv.launcher.device.HomeLaunchers.requestDefault((android.app.Activity) ctx);
+                }));
+        final java.util.List<String> others = com.cinetv.launcher.device.HomeLaunchers.others(ctx);
+        root.addView(Controls.tile(ctx, tr ? "Diğer Başlatıcıları Kapat" : "Switch Other Launchers Off",
+                others.isEmpty() ? (tr ? "Başka başlatıcı yok" : "No other launcher")
+                        : (tr ? others.size() + " başlatıcı: " : others.size() + " launcher(s): ") + android.text.TextUtils.join(", ", others),
+                false, v -> {
+                    if (others.isEmpty()) return;
+                    new Thread(() -> {
+                        int n = com.cinetv.launcher.device.HomeLaunchers.disableOthers(ctx);
+                        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> Toast.makeText(ctx, n < 0
+                                ? (tr ? "TV'nin ağ hata ayıklaması kapalı: kurulumdaki adımı yapıp tekrar deneyin" : "Network debugging is off: do the setup step and try again")
+                                : (tr ? n + " başlatıcı kapatıldı. Geri getirmek için bu sayfayı kullanın." : n + " launcher(s) switched off. Use this page to bring them back."),
+                                Toast.LENGTH_LONG).show());
+                    }, "cinetv-home-off").start();
+                }));
+        root.addView(Controls.tile(ctx, tr ? "TV'nin Başlatıcısını Geri Getir" : "Bring Back the TV's Launcher",
+                com.cinetv.launcher.device.HomeLaunchers.hasDisabled(ctx) ? (tr ? "Kapatılan başlatıcılar yeniden açılır" : "The launchers switched off come back")
+                        : (tr ? "Kapatılmış başlatıcı yok" : "None switched off"), false, v -> new Thread(() -> {
+                    boolean ok = com.cinetv.launcher.device.HomeLaunchers.restoreOthers(ctx);
+                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                        Toast.makeText(ctx, ok ? (tr ? "TV'nin başlatıcısı geri geldi. Ana ekran tuşuyla seçebilirsiniz." : "The TV's launcher is back. Choose it with Home.")
+                                : (tr ? "TV'nin ağ hata ayıklaması kapalı" : "Network debugging is off"), Toast.LENGTH_LONG).show();
+                        if (ok) {
+                            try {
+                                ctx.startActivity(new android.content.Intent(android.provider.Settings.ACTION_HOME_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+                            } catch (Throwable ignored) {
+                            }
+                        }
+                    });
+                }, "cinetv-home-on").start()));
+        return root;
+    }
+
+    /** Accessibility: every switch is saved at once and applied to Home (a redraw where sizes or colours change). */
+    private static View buildAccessibility(final Context ctx, final ModalHost host, final Actions a) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(28), UiKit.px(36), UiKit.px(28));
+        TextView title = UiKit.bold(ctx, 28, UiKit.INK);
+        title.setText(tr ? "Erişilebilirlik" : "Accessibility");
+        root.addView(title);
+        TextView sub = UiKit.label(ctx, 14, UiKit.INK_DIM);
+        sub.setText(tr ? "Seçimler hemen kaydedilir ve ana ekrana uygulanır." : "Choices are saved at once and applied to Home.");
+        LinearLayout.LayoutParams subLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        subLp.topMargin = UiKit.px(6);
+        subLp.bottomMargin = UiKit.px(16);
+        root.addView(sub, subLp);
+
+        boolean contrast = Prefs.highContrast(ctx);
+        LinearLayout contrastTile = Controls.toggleTile(ctx, tr ? "Yüksek Kontrast" : "High Contrast",
+                contrast ? (tr ? "Açık · Yazılar tam beyaz, cam paneller daha koyu" : "On · Pure white text, darker glass") : ctx.getString(R.string.state_off),
+                contrast, (on, label, sw) -> {
+                    Prefs.setFlag(ctx, Prefs.HIGH_CONTRAST, on);
+                    label.setText(on ? (tr ? "Açık · Yazılar tam beyaz, cam paneller daha koyu" : "On · Pure white text, darker glass") : ctx.getString(R.string.state_off));
+                    if (ctx instanceof android.app.Activity) ((android.app.Activity) ctx).recreate();
+                });
+        root.addView(contrastTile);
+
+        boolean still = Prefs.reduceMotion(ctx);
+        LinearLayout motionTile = Controls.toggleTile(ctx, tr ? "Hareketi Azalt" : "Reduce Motion",
+                still ? (tr ? "Açık · Kutu açılışı ve salınım kapalı, geçişler kısa" : "On · No case animation or sway, short transitions") : ctx.getString(R.string.state_off),
+                still, (on, label, sw) -> {
+                    Prefs.setFlag(ctx, Prefs.REDUCE_MOTION, on);
+                    label.setText(on ? (tr ? "Açık · Kutu açılışı ve salınım kapalı, geçişler kısa" : "On · No case animation or sway, short transitions") : ctx.getString(R.string.state_off));
+                });
+        root.addView(motionTile);
+
+        root.addView(Controls.tile(ctx, tr ? "Arayüz ve Yazı Boyutu" : "Interface & Text Size",
+                Prefs.uiScaleLabel(ctx) + " · " + Prefs.fontScaleLabel(ctx), false,
+                v -> host.push(() -> buildScalePreviewModal(ctx, host, a))));
+        root.addView(Controls.tile(ctx, tr ? "TV'nin Erişilebilirlik Ayarları" : "TV Accessibility Settings",
+                tr ? "Ekran okuyucu, altyazı stili, renk düzeltme" : "Screen reader, caption style, colour correction", false, v -> {
+                    host.close();
+                    AppLauncher.openSystemPage(ctx, android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS,
+                            ".oemlink.AccessibilitySettingsActivity", ".accessibility.AccessibilityActivity");
+                }));
+        return root;
+    }
+
     static View buildTtsSettings(final Context ctx, final ModalHost host, final Actions a) {
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         LinearLayout root = new LinearLayout(ctx);
@@ -1572,8 +1693,8 @@ public final class Panels {
         } else {
             guideText = tr
                     ? "• Tamamen Ücretsizdir: mdblist.com/preferences adresinden ücretsiz alınır.\n"
-                    + "• Ne İşe Yarar? IMDb, Rotten Tomatoes, Metacritic ve Letterboxd puanlarını ve özel film listelerini zenginleştirir."
-                    : "• 100% Free: Available at mdblist.com/preferences to enrich IMDb, Rotten Tomatoes & Letterboxd ratings.";
+                    + "• Ne İşe Yarar? IMDb, Rotten Tomatoes ve Metacritic puanlarını ve özel film listelerini zenginleştirir."
+                    : "• 100% Free: Available at mdblist.com/preferences to enrich IMDb & Rotten Tomatoes ratings.";
             qrUrl = "https://mdblist.com/preferences/";
             qrSite = "MDBList API";
             qrSub = "mdblist.com/preferences";
@@ -2862,119 +2983,6 @@ public final class Panels {
         box.addView(info);
         box.post(okBtn::requestFocus);
         return box;
-    }
-
-    public static View buildLetterboxdModal(final Context ctx, final ModalHost host) {
-        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        final LinearLayout root = new LinearLayout(ctx);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiKit.px(32), UiKit.px(24), UiKit.px(32), UiKit.px(24));
-        root.setBackground(Glass.panel(root, 28));
-
-        TextView title = UiKit.bold(ctx, 28, UiKit.INK);
-        title.setText(tr ? "Letterboxd Sinema Günlüğü (Scrobble)" : "Letterboxd Cinema Diary");
-        root.addView(title);
-
-        TextView sub = UiKit.label(ctx, 16, UiKit.INK_DIM);
-        sub.setPadding(0, UiKit.px(10), 0, UiKit.px(20));
-        sub.setLineSpacing(UiKit.pxf(6), 1.15f);
-        sub.setMaxWidth(UiKit.px(740));
-        sub.setText(tr
-                ? "CineTV'de izlediğiniz her film otomatik olarak resmi Letterboxd formatında kaydedilir:\n"
-                + "Dosya Yolu: /sdcard/Download/cinetv_letterboxd_diary.csv\n\n"
-                + "Letterboxd kullanıcı adınızı aşağıdan girerek günlüğü profilinizle bağlayabilir veya günlüğünüzü tek tıkla letterboxd.com/import adresine aktarabilirsiniz."
-                : "Every movie you watch on CineTV is automatically recorded in official Letterboxd format:\n"
-                + "File Path: /sdcard/Download/cinetv_letterboxd_diary.csv\n\n"
-                + "Enter your Letterboxd username to link your diary or import into letterboxd.com/import.");
-        root.addView(sub);
-
-        String curUser = com.cinetv.launcher.service.LetterboxdSync.getUsername(ctx);
-        LinearLayout userTile = Controls.tile(ctx,
-                tr ? "Letterboxd Kullanıcı Adı" : "Letterboxd Username",
-                curUser.isEmpty() ? (tr ? "Girilmedi (Girmek için dokunun)" : "Not set") : ("@" + curUser),
-                !curUser.isEmpty(),
-                v -> host.push(() -> buildLetterboxdUserInput(ctx, host)));
-        root.addView(userTile);
-
-        LinearLayout exportTile = Controls.tile(ctx,
-                tr ? "Günlük Dosyasını İncele / QR Kodla Telefona Al" : "Export Diary CSV",
-                tr ? "cinetv_letterboxd_diary.csv dosyasını telefonunuza indirin" : "Download diary to phone",
-                true,
-                v -> host.push(() -> {
-                    LinearLayout qrBox = new LinearLayout(ctx);
-                    qrBox.setGravity(Gravity.CENTER_VERTICAL);
-                    qrBox.setPadding(UiKit.px(24), UiKit.px(20), UiKit.px(24), UiKit.px(20));
-                    int size = UiKit.px(340);
-                    ImageView qr = new ImageView(ctx);
-                    String url = "https://letterboxd.com/import/";
-                    Bitmap code = RemotePairing.qr(url, size, Color.parseColor("#0B1220"), Color.WHITE);
-                    if (code != null) qr.setImageBitmap(code);
-                    qrBox.addView(qr, new LinearLayout.LayoutParams(size, size));
-                    LinearLayout qInfo = new LinearLayout(ctx);
-                    qInfo.setOrientation(LinearLayout.VERTICAL);
-                    qInfo.setPadding(UiKit.px(32), 0, 0, 0);
-                    TextView qTitle = UiKit.bold(ctx, 24, UiKit.INK);
-                    qTitle.setText(tr ? "Letterboxd İçe Aktarma" : "Letterboxd Import");
-                    qInfo.addView(qTitle);
-                    TextView qSub = UiKit.label(ctx, 16, UiKit.INK_DIM);
-                    qSub.setText(tr
-                            ? "QR kodu okutarak doğrudan Letterboxd içe aktarma sayfasına gidin ve televizyonunuzdaki cinetv_letterboxd_diary.csv dosyasını yükleyin."
-                            : "Scan to open Letterboxd Import page and upload cinetv_letterboxd_diary.csv.");
-                    qSub.setPadding(0, UiKit.px(10), 0, UiKit.px(20));
-                    qInfo.addView(qSub);
-                    TextView bBack = Controls.button(ctx, tr ? "Geri" : "Back", b -> host.back());
-                    qInfo.addView(bBack);
-                    qrBox.addView(qInfo);
-                    qrBox.post(bBack::requestFocus);
-                    return qrBox;
-                }));
-        root.addView(exportTile);
-
-        LinearLayout bRow = new LinearLayout(ctx);
-        bRow.setPadding(0, UiKit.px(16), 0, 0);
-        TextView backBtn = Controls.button(ctx, tr ? "Tamam" : "Done", v -> host.back());
-        bRow.addView(backBtn);
-        root.addView(bRow);
-
-        root.post(backBtn::requestFocus);
-        return root;
-    }
-
-    private static View buildLetterboxdUserInput(Context ctx, ModalHost host) {
-        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        String cur = com.cinetv.launcher.service.LetterboxdSync.getUsername(ctx);
-        final EditText et = field(ctx, cur, R.string.not_set, false);
-        et.setHint(tr ? "Letterboxd kullanıcı adınız (örn: alptugdag)" : "Your Letterboxd username");
-        return form(ctx, tr ? "Letterboxd Kullanıcı Adı" : "Letterboxd Username",
-                tr ? "İzlenen filmlerin otomatik günlüğe kaydedilmesi için kullanıcı adınızı girin:" : "Enter your Letterboxd username for automatic cinema scrobbling:",
-                et, v -> {
-                    com.cinetv.launcher.service.LetterboxdSync.setUsername(ctx, et.getText().toString());
-                    Toast.makeText(ctx, tr ? "Letterboxd profili kaydedildi!" : "Letterboxd profile saved!", Toast.LENGTH_SHORT).show();
-                    host.back();
-                });
-    }
-
-    private static View form(Context ctx, String titleStr, String bodyStr, EditText input, View.OnClickListener onSave) {
-        LinearLayout root = new LinearLayout(ctx);
-        root.setOrientation(LinearLayout.VERTICAL);
-        TextView title = UiKit.bold(ctx, 32, UiKit.INK);
-        title.setText(titleStr);
-        root.addView(title);
-        TextView body = UiKit.label(ctx, 20, UiKit.INK_DIM);
-        body.setText(bodyStr);
-        body.setPadding(0, UiKit.px(12), 0, UiKit.px(24));
-        body.setMaxWidth(UiKit.px(760));
-        root.addView(body);
-        root.addView(input, new LinearLayout.LayoutParams(UiKit.px(760), ViewGroup.LayoutParams.WRAP_CONTENT));
-        LinearLayout buttons = new LinearLayout(ctx);
-        buttons.setPadding(0, UiKit.px(26), 0, 0);
-        buttons.addView(Controls.button(ctx, ctx.getString(R.string.save), onSave));
-        root.addView(buttons);
-        input.setOnEditorActionListener((v, id, e) -> {
-            onSave.onClick(v);
-            return true;
-        });
-        return root;
     }
 
     public static View buildCineTvTourModal(final Context ctx, final ModalHost host) {

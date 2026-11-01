@@ -122,6 +122,7 @@ public class VoiceOverlay extends FrameLayout {
     public void start(Listener l) {
         this.listener = l;
         this.active = true;
+        retried = false;
 
         if (getContext().checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             dismiss();
@@ -158,7 +159,7 @@ public class VoiceOverlay extends FrameLayout {
 
         try {
             recognizer = SpeechRecognizer.createSpeechRecognizer(getContext());
-            recognizer.setRecognitionListener(new RecognitionListener() {
+            recognitionListener = new RecognitionListener() {
                 @Override
                 public void onReadyForSpeech(Bundle params) {
                     siriWaves.setListening(true);
@@ -207,7 +208,20 @@ public class VoiceOverlay extends FrameLayout {
                 public void onError(int error) {
                     cleanup();
                     if (!active) return;
-                    if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT || error == SpeechRecognizer.ERROR_AUDIO) {
+                    // The mic not handed over yet (Google's assistant still closing, the remote's mic waking up):
+                    // try once more, then the TV's own voice search, as 1.0.0.17 effectively did.
+                    if (error == SpeechRecognizer.ERROR_AUDIO || error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY
+                            || error == SpeechRecognizer.ERROR_CLIENT || error == SpeechRecognizer.ERROR_SERVER) {
+                        if (!retried) {
+                            retried = true;
+                            main.postDelayed(VoiceOverlay.this::restartListening, 700);
+                        } else {
+                            dismiss();
+                            if (listener != null) listener.onFallback();
+                        }
+                        return;
+                    }
+                    if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
                         boolean tr = "tr".equals(Locale.getDefault().getLanguage());
                         statusTitle.setText(tr ? "Ses anlaşılamadı" : "Could not understand");
                         statusTitle.setTextColor(Color.parseColor("#F87171"));
@@ -258,13 +272,15 @@ public class VoiceOverlay extends FrameLayout {
                 @Override
                 public void onEvent(int eventType, Bundle params) {
                 }
-            });
+            };
+            recognizer.setRecognitionListener(recognitionListener);
 
             Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag());
             intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
             intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
+            listenIntent = intent;
             startBluetoothScoIfConnected();
             recognizer.startListening(intent);
         } catch (Throwable t) {
@@ -288,11 +304,37 @@ public class VoiceOverlay extends FrameLayout {
     }
 
     private boolean scoActive = false;
+    private boolean retried;
+    private Intent listenIntent;
+    private RecognitionListener recognitionListener;
 
+    /** A second attempt with a fresh recognizer (the first one could not get the microphone). */
+    private void restartListening() {
+        if (!active || listenIntent == null || recognitionListener == null) return;
+        try {
+            recognizer = SpeechRecognizer.createSpeechRecognizer(getContext());
+            recognizer.setRecognitionListener(recognitionListener);
+            recognizer.startListening(listenIntent);
+        } catch (Throwable t) {
+            dismiss();
+            if (listener != null) listener.onFallback();
+        }
+    }
+
+    /**
+     * Headset microphone only when a Bluetooth headset (hands-free profile) is really connected. "SCO available"
+     * is true on almost every TV, and switching recording to SCO without a headset silenced the remote's mic.
+     */
     private void startBluetoothScoIfConnected() {
         try {
             android.media.AudioManager am = (android.media.AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
-            if (am != null && (am.isBluetoothA2dpOn() || am.isBluetoothScoAvailableOffCall())) {
+            boolean headset = false;
+            if (am != null) {
+                for (android.media.AudioDeviceInfo d : am.getDevices(android.media.AudioManager.GET_DEVICES_INPUTS)) {
+                    if (d.getType() == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO) headset = true;
+                }
+            }
+            if (headset && am.isBluetoothScoAvailableOffCall()) {
                 am.startBluetoothSco();
                 am.setBluetoothScoOn(true);
                 scoActive = true;

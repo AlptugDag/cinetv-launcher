@@ -161,7 +161,7 @@
     <string name="tour_tmdb_t">TMDB key: posters and Turkish stories</string>
     <string name="tour_tmdb">Enter a free TMDB key (themoviedb.org › Settings › API) in Settings › AI &amp; films. Without it, stories come from an English source and are translated, there are fewer posters and backdrops, no director inside the DVD, no searching by people or genres, and Trailer moments cannot play.</string>
     <string name="tour_mdb_t">MDBList key: ratings</string>
-    <string name="tour_mdb">Optional: a free MDBList key (mdblist.com › Preferences › API) adds IMDb, Rotten Tomatoes and Letterboxd ratings. Without it, only the TMDB score is shown.</string>
+    <string name="tour_mdb">Optional: a free MDBList key (mdblist.com › Preferences › API) adds IMDb and Rotten Tomatoes ratings. Without it, only the TMDB score is shown.</string>
     <string name="tour_allow_t">One question to say yes to</string>
     <string name="tour_allow">If the TV asks “Allow USB debugging?” for CineTV, tick “Always allow” and press OK. That is what makes the phone remote work in every app and keeps CineTV your Home. Leave network debugging on in Developer options.</string>
     <string name="tour_perf_t">Let it fit this TV</string>
@@ -211,7 +211,7 @@
     <string name="save_failed">Could not save</string>
     <string name="not_set">Not set</string>
     <string name="mdblist_key">MDBList key</string>
-    <string name="mdblist_key_hint">MDBList API key (IMDb, Rotten Tomatoes, Letterboxd ratings)</string>
+    <string name="mdblist_key_hint">MDBList API key (IMDb and Rotten Tomatoes ratings)</string>
     <string name="ai_curate">AI curated shelf</string>
     <string name="ai_curate_hint">Pick a mood, get a shelf</string>
     <string name="mood_custom_hint">Or describe it: dark detective stories like Fincher…</string>

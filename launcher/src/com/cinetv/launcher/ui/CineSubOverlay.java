@@ -80,6 +80,7 @@ public final class CineSubOverlay {
             final CineSubOverlay o = new CineSubOverlay(host(ctx), false);
             if (!o.attach()) return;
             active = o;
+            o.pauseFilm();
             SystemAudio.play(ctx, SystemAudio.Sfx.RISER);
             final Context app = ctx.getApplicationContext();
             new Thread(() -> {
@@ -92,7 +93,8 @@ public final class CineSubOverlay {
                     // Gamze says the best find out loud, quietly over the film (her voice setting decides).
                     if (!scene.pois.isEmpty() && com.cinetv.launcher.service.Prefs.get(app).getBoolean("cinesub_voice", true)) {
                         SceneInspector.Poi top = scene.pois.get(0);
-                        com.cinetv.launcher.ai.EmaLightningTts.speak(app, top.title + ". " + top.fact);
+                        // only what it is about, not the card's title read out first
+                        com.cinetv.launcher.ai.EmaLightningTts.speak(app, top.fact);
                     }
                 });
             }, "cinesub-inspect").start();
@@ -126,6 +128,7 @@ public final class CineSubOverlay {
             final CineSubOverlay o = new CineSubOverlay(host(ctx), false);
             if (!o.attach()) return;
             active = o;
+            o.pauseFilm();
             final Context app = ctx.getApplicationContext();
             new Thread(() -> {
                 final String a = SceneInspector.answer(app, query);
@@ -264,9 +267,53 @@ public final class CineSubOverlay {
         main.postDelayed(autoClose, ms);
     }
 
+    /**
+     * The film waits while CineSUB is open: AlptugPlayer through its own player, any other app with the media
+     * pause key. Only a film that was playing is paused, and only that one is resumed ({@link #close}).
+     */
+    private boolean pausedFilm, pausedInPlayer;
+
+    private void pauseFilm() {
+        try {
+            if (com.cinetv.launcher.CinePlayerActivity.active) {
+                pausedInPlayer = com.cinetv.launcher.CinePlayerActivity.pauseForCineSub();
+                pausedFilm = pausedInPlayer;
+                return;
+            }
+            android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null && am.isMusicActive()) {
+                mediaKey(am, KeyEvent.KEYCODE_MEDIA_PAUSE);
+                pausedFilm = true;
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void resumeFilm() {
+        if (!pausedFilm) return;
+        pausedFilm = false;
+        try {
+            if (pausedInPlayer) {
+                com.cinetv.launcher.CinePlayerActivity.resumeAfterCineSub();
+                return;
+            }
+            android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) mediaKey(am, KeyEvent.KEYCODE_MEDIA_PLAY);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void mediaKey(android.media.AudioManager am, int code) {
+        long now = SystemClock.uptimeMillis();
+        am.dispatchMediaKeyEvent(new KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0));
+        am.dispatchMediaKeyEvent(new KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0));
+    }
+
     private void close() {
         main.removeCallbacks(autoClose);
         if (active == this) active = null;
+        // every way out (done, Back, error, timeout, another CineSUB) comes through here
+        resumeFilm();
         stage.animate().alpha(0f).setDuration(260).withEndAction(() -> {
             try {
                 wm.removeView(stage);

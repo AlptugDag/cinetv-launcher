@@ -44,6 +44,7 @@ public final class HomeGuard {
             if (com.cinetv.launcher.service.Prefs.get(app).getBoolean("nuvio_install_allowed", true)) {
                 com.cinetv.launcher.device.NuvioSetup.runOnce(app);
                 com.cinetv.launcher.device.NuvioSetup.playerOnce(app);
+                com.cinetv.launcher.device.NuvioSetup.allowSelfUpdate(app);
             }
             com.cinetv.launcher.device.MemoryOptimizer.applyTvOptimizations(app);
         }, "cinetv-home").start();

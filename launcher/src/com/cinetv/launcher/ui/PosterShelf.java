@@ -428,6 +428,7 @@ public class PosterShelf extends FrameLayout {
      * and comes to rest facing you. It doesn't loop forever: an idle home screen draws nothing.
      */
     private void sway() {
+        if (com.cinetv.launcher.service.Prefs.reduceMotion(getContext())) return;
         if (!hasFocus() || cases.isEmpty() || !isShown()) return;
         if (swayAnim != null) swayAnim.cancel();
         // two turns in one run (0..2), so the reflection can ease in at the start and out at the end

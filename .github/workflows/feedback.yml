@@ -20,11 +20,11 @@ permissions:
 jobs:
   file:
     if: github.event_name == 'issues' && (startsWith(github.event.issue.title, '[Cihaz Raporu]') || startsWith(github.event.issue.title, '[Geri Bildirim]'))
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       needs_fix: ${{ steps.parse.outputs.needs_fix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Read the report and update the device list
         id: parse
@@ -89,7 +89,7 @@ jobs:
           git diff --staged --quiet || { git commit -m "devices: file report #${{ github.event.issue.number }}"; git push; }
 
       - name: Label and acknowledge
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fix = '${{ steps.parse.outputs.needs_fix }}' === 'true';
@@ -103,14 +103,14 @@ jobs:
   fix:
     needs: file
     if: needs.file.outputs.needs_fix == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check for an AI key
         id: key
         env:
           KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: echo "ready=$([ -n "$KEY" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: steps.key.outputs.ready == 'true'
       - name: Investigate and propose a fix
         if: steps.key.outputs.ready == 'true'
@@ -127,14 +127,14 @@ jobs:
   mention:
     # Anyone with write access can ask for help on any issue or PR by writing @claude.
     if: github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check for an AI key
         id: key
         env:
           KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: echo "ready=$([ -n "$KEY" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: steps.key.outputs.ready == 'true'
       - uses: anthropics/claude-code-action@v1
         if: steps.key.outputs.ready == 'true'

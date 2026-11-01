@@ -282,6 +282,16 @@ public final class AppLauncher {
     }
 
     public static boolean openInNuvio(Context ctx, String title, String imdbId, String type, String posterUrl) {
+        return openInNuvio(ctx, title, imdbId, 0, type, posterUrl);
+    }
+
+    /**
+     * Stremio-style stream add-ons answer IMDb ids ("tt…"); only a film with no IMDb id at all goes by its TMDB
+     * id ("tmdb:123"). A film never falls back to Nuvio's search or home: that is how "Oynat" used to land on
+     * Nuvio's home screen.
+     */
+    public static boolean openInNuvio(Context ctx, String title, String imdbId, int tmdbId, String type, String posterUrl) {
+        if ((imdbId == null || !imdbId.startsWith("tt")) && tmdbId > 0 && !"tv".equals(type) && !"channel".equals(type)) imdbId = "tmdb:" + tmdbId;
         if ((title != null && "sessiz".equals(Creator.fold(title))) || "tt38983576".equals(imdbId)) {
             return openYouTubeVideo(ctx, Creator.SESSIZ_YOUTUBE_URL);
         }
@@ -296,8 +306,8 @@ public final class AppLauncher {
             tvIntent.setPackage(null);
             if (start(ctx, tvIntent)) return true;
         }
-        if (imdbId != null && imdbId.startsWith("tt")) {
-            String kind = "series".equals(type) ? "series" : "movie";
+        if (imdbId != null && (imdbId.startsWith("tt") || imdbId.startsWith("tmdb:"))) {
+            String kind = "series".equals(type) || "show".equals(type) ? "series" : "movie";
             // Tested on the TV (Nuvio 1.1.0): only nuvio://detail/<type>/<imdb> opens a title, and only when Nuvio
             // starts fresh. stremio:///detail/... and any link sent to an already running Nuvio are ignored, which is
             // why "Oynat" left the viewer on Nuvio's home or on the last film. So: a fresh task, the nuvio link,

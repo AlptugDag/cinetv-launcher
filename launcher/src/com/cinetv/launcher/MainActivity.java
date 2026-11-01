@@ -218,7 +218,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 com.cinetv.launcher.device.AmbilightSync.updateColor(MainActivity.this, accent);
                 final Movie m = home.shelf.focusedMovie();
                 if (m != null) prefetchMovie(m);
-                home.setAmbience(m == null ? null : m.backdropUrl);
+                if (home.isCinematic()) home.billboard.show(m);
                 // the trailer starts buffering while the viewer is still looking at the case
                 handler.removeCallbacks(preloadTrailer);
                 preloadFor = m;
@@ -232,10 +232,38 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
             @Override
             public boolean onEdge(int keyCode) {
-                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) home.focusHeader();
-                else home.apps.focusDock(0);
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    // up from the shelf: the half-watched film first, then the header
+                    if (home.continueCard.getVisibility() == View.VISIBLE) home.continueCard.requestFocus();
+                    else home.focusHeader();
+                } else home.apps.focusDock(0);
                 return true;
             }
+        });
+
+        // "Kaldığın yerden": OK opens the film's case (Play continues where it stopped), hold OK forgets it
+        home.continueCard.setOnClickListener(v -> {
+            com.cinetv.launcher.service.WatchHistory.Entry e = home.continueCard.entry();
+            if (e != null) openTitle(e.movie, null);
+        });
+        home.continueCard.setOnLongClickListener(v -> {
+            com.cinetv.launcher.service.WatchHistory.Entry e = home.continueCard.entry();
+            if (e != null) com.cinetv.launcher.service.WatchHistory.forget(this, e.movie);
+            home.continueCard.bind(null);
+            home.shelf.requestFocus();
+            return true;
+        });
+        home.continueCard.setOnKeyListener((v, code, ev) -> {
+            if (ev.getAction() != KeyEvent.ACTION_DOWN) return false;
+            if (code == KeyEvent.KEYCODE_DPAD_UP) {
+                home.focusHeader();
+                return true;
+            }
+            if (code == KeyEvent.KEYCODE_DPAD_DOWN) {
+                home.shelf.requestFocus();
+                return true;
+            }
+            return code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT;
         });
 
         loadApps(true);
@@ -244,11 +272,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         lastShelfHour = cal.get(Calendar.HOUR_OF_DAY);
         lastShelfDay = cal.get(Calendar.DAY_OF_YEAR);
         lastShelfAt = android.os.SystemClock.elapsedRealtime();
-        // A single debounced refresh on start to prevent startup shelf collisions
+        // A new shelf on start only after a real power-on, three hours since the last one, or an empty shelf.
+        // Low-memory TVs rebuild this screen on the way back from Nuvio: that is not a reason to change the shelf.
         handler.postDelayed(() -> {
-            if (!isCurating && android.os.SystemClock.elapsedRealtime() - lastShelfAt >= 2000) {
-                refreshShelf();
-            }
+            if (!isCurating && shelfIsStale()) refreshShelf();
         }, 2500);
 
         // Every frame Home draws is timed; slow ones switch on the light shelf, fast ones switch it off.
@@ -354,6 +381,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         inFront = true;
         home.opening.dismiss();
         home.environment.resume();
+        // the cinematic stage: on unless switched off in Settings; the half-watched film comes back here
+        home.setCinematic(Prefs.get(this).getBoolean(Prefs.CINEMATIC_STAGE, true));
+        home.continueCard.bind(home.isCinematic() ? com.cinetv.launcher.service.WatchHistory.latest(this) : null);
         DeviceTweaks.syncNightMode(this);
         handler.removeCallbacks(clockTick);
         handler.post(clockTick);
@@ -371,7 +401,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // A new shelf has exactly three triggers: the TV powering on (a new process), coming back to Home after
         // three hours or more away, and the refresh key. It used to rebuild at every hour change and every 45
         // minutes too, so "Vitrin hazırlanıyor" kept appearing for no reason.
-        if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > AI_SHELF_EVERY_MS) refreshShelf();
+        if (android.os.SystemClock.elapsedRealtime() - lastShelfAt > AI_SHELF_EVERY_MS && shelfIsStale()) refreshShelf();
         // Suppress unwanted OEM TV tuner attempting to steal focus
         background(() -> {
             if (DeviceTweaks.isUnwantedTuner()) {
@@ -397,13 +427,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (splashOnResume && home != null) {
             splashOnResume = false;
             home.showSplash();
-        }
-        if (pendingLetterboxd != null) {
-            final Movie asked = pendingLetterboxd;
-            pendingLetterboxd = null;
-            handler.postDelayed(() -> {
-                if (!isFinishing() && foreground) promptLetterboxdWatch(asked);
-            }, 1200);
         }
         checkPendingUpdateBanner();
         if (pendingBanner != null) {
@@ -1300,7 +1323,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
         }
         setShelf(Prefs.get(this).getString(SHELF_TITLE, getString(R.string.cat_trending)), cached, false);
-        if (cached.size() < 14) {
+        if (cached.size() < 6) {
             refreshShelf();
         }
     }
@@ -1356,7 +1379,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
      * The moment's shelf: with an AI key, one picked for this hour, weekday, city and weather
      * ("Pazar gecesi için suç filmleri"); without one, or if the AI fails, a different category.
      */
+    /** Since the TV booted (its boot time, to the minute) and when the last shelf was built, kept across restarts. */
+    private boolean shelfIsStale() {
+        long boot = (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()) / 60_000L;
+        android.content.SharedPreferences p = Prefs.get(this);
+        if (Math.abs(p.getLong("shelf_boot_min", -1) - boot) > 2) return true;
+        return System.currentTimeMillis() - p.getLong("shelf_built_at", 0) > AI_SHELF_EVERY_MS;
+    }
+
     private void refreshShelf() {
+        Prefs.get(this).edit().putLong("shelf_built_at", System.currentTimeMillis())
+                .putLong("shelf_boot_min", (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()) / 60_000L).apply();
         if (isCurating) return;
         lastShelfAt = android.os.SystemClock.elapsedRealtime();
         // With the AI key's daily quota spent, the category shelf comes at once instead of after four refusals.
@@ -1551,14 +1584,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     public void launchFilm(final Movie m) {
-        if (m == null) return;
-        // Letterboxd never stands between the viewer and the film: it plays now, the question waits for the return.
-        if (com.cinetv.launcher.service.LetterboxdSync.shouldPromptBeforeWatch(this)) {
-            pendingLetterboxd = m;
-            doLaunchFilm(m, false);
-        } else {
-            doLaunchFilm(m, true);
-        }
+        com.cinetv.launcher.service.WatchHistory.noteLaunch(this, m);
+        doLaunchFilm(m);
     }
 
     private Movie preloadFor;
@@ -1566,14 +1593,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (home != null && preloadFor != null && !home.opening.isPlaying() && preloadFor == home.shelf.focusedMovie()) home.trailer.prepare(preloadFor);
     };
 
-    /** The film started without logging; asked about once CineTV is back in front. */
-    private Movie pendingLetterboxd;
-
     public void doLaunchFilm(final Movie m) {
-        doLaunchFilm(m, true);
-    }
-
-    private void doLaunchFilm(final Movie m, final boolean log) {
         if (m == null) return;
         // Without its IMDb id Nuvio could only be opened on its home: look the id up first.
         if ((m.imdbId == null || !m.imdbId.startsWith("tt")) && m.tmdbId > 0 && !m.imdbLookupTried) {
@@ -1582,63 +1602,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             background(() -> {
                 String id = MovieCatalog.imdbFor(app, m.tmdbId, m.type);
                 if (id != null && id.startsWith("tt")) m.imdbId = id;
-                ui(() -> doLaunchFilm(m, log));
+                ui(() -> doLaunchFilm(m));
             });
             return;
         }
-        boolean ok = AppLauncher.openInNuvio(this, m.title, m.imdbId, m.type, m.posterUrl);
+        boolean ok = AppLauncher.openInNuvio(this, m.title, m.imdbId, m.tmdbId, m.type, m.posterUrl);
         if (!ok) {
             showNuvioNotFoundDialog(m);
         } else {
             com.cinetv.launcher.device.SystemAudio.launch(this);
             com.cinetv.launcher.service.NowPlaying.set(this, m);
-            if (log) com.cinetv.launcher.service.LetterboxdSync.recordWatch(this, m);
         }
-    }
-
-    /** Asked after the film, on top of everything, and it never starts or delays anything. */
-    public void promptLetterboxdWatch(final Movie m) {
-        if (home == null || home.modal == null || m == null) return;
-        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        final String user = com.cinetv.launcher.service.LetterboxdSync.getUsername(this);
-        home.modal.push(() -> {
-            LinearLayout root = new LinearLayout(this);
-            root.setOrientation(LinearLayout.VERTICAL);
-            root.setPadding(UiKit.px(36), UiKit.px(26), UiKit.px(36), UiKit.px(26));
-            root.setBackground(Glass.panel(root, 24));
-
-            TextView title = UiKit.bold(this, 26, UiKit.INK);
-            title.setText(tr ? "Letterboxd Sinema Günlüğü" : "Letterboxd Cinema Diary");
-            root.addView(title);
-
-            TextView desc = UiKit.label(this, 16, UiKit.INK_DIM);
-            desc.setPadding(0, UiKit.px(10), 0, UiKit.px(22));
-            desc.setLineSpacing(UiKit.pxf(5), 1.15f);
-            desc.setMaxWidth(UiKit.px(720));
-            desc.setText(tr
-                    ? ("'" + m.title + "' filmini izlediniz. @" + user + " Letterboxd günlüğünüze eklensin mi?")
-                    : ("You watched '" + m.title + "'. Log it to @" + user + "'s Letterboxd diary?"));
-            root.addView(desc);
-
-            LinearLayout btns = new LinearLayout(this);
-            btns.setOrientation(LinearLayout.HORIZONTAL);
-            TextView btnYes = Controls.button(this, tr ? "Evet, Ekle" : "Yes, Log It", v -> {
-                home.modal.back();
-                com.cinetv.launcher.service.LetterboxdSync.recordWatch(this, m);
-            });
-            btns.addView(btnYes);
-            btns.addView(new View(this), new LinearLayout.LayoutParams(UiKit.px(14), 1));
-            btns.addView(Controls.button(this, tr ? "Her Zaman Otomatik Ekle" : "Always Auto-Log", v -> {
-                com.cinetv.launcher.service.LetterboxdSync.setAutoRecord(this, true);
-                home.modal.back();
-                com.cinetv.launcher.service.LetterboxdSync.recordWatch(this, m);
-            }));
-            btns.addView(new View(this), new LinearLayout.LayoutParams(UiKit.px(14), 1));
-            btns.addView(Controls.button(this, tr ? "Hayır" : "No", v -> home.modal.back()));
-            root.addView(btns);
-            root.post(btnYes::requestFocus);
-            return root;
-        });
     }
 
     public void showUpdateAvailableModal(final com.cinetv.launcher.service.AppUpdater.ReleaseInfo info) {
@@ -1841,6 +1815,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             try {
                 if (m.cast == null || m.cast.isEmpty()) {
                     MovieCatalog.details(app, m);
+                    // the film card fills in (story, length, director, title logo) if the film is still in focus
+                    ui(() -> {
+                        if (home != null && home.isCinematic() && home.billboard.showing() == m) home.billboard.show(m);
+                    });
                 }
                 // Portraits too, even when the details came earlier and a photo didn't make it in time.
                 MovieCatalog.ensureCastPhotos(app, m, 4000);
@@ -2507,6 +2485,15 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         MainActivity a = instance;
         if (a == null || a.home == null) return false;
         return a.home.isSearchOrInputFocused();
+    }
+
+    /** Settings switched the cinematic stage: Home follows at once. */
+    public void applyCinematic() {
+        if (home == null) return;
+        home.setCinematic(Prefs.get(this).getBoolean(Prefs.CINEMATIC_STAGE, true));
+        home.continueCard.bind(home.isCinematic() ? com.cinetv.launcher.service.WatchHistory.latest(this) : null);
+        Movie m = home.shelf.focusedMovie();
+        if (home.isCinematic()) home.billboard.show(m);
     }
 
     /** The pairing question can show in CineTV's own modal layer (nothing covers it: no game on top, no case opening). */

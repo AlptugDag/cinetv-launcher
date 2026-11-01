@@ -68,7 +68,7 @@ public final class MovieCatalog {
         public String tagline = "";
         public String logoUrl = "";
         public List<CastMember> cast = new ArrayList<>();
-        /** "IMDb 8.3 · RT 91% · Letterboxd 4.1" with an MDBList key; empty otherwise. */
+        /** "IMDb 8.3 · RT 91%" with an MDBList key; empty otherwise. */
         public String ratings = "";
         public double rating;
 
@@ -202,25 +202,32 @@ public final class MovieCatalog {
      * draws a different well-liked set each time (the refresh button) instead of this week's trending.
      */
     public static List<Movie> trending(Context ctx, String kind, int page, boolean fresh, int max) {
+        return trending(ctx, kind, page, fresh, 0, max);
+    }
+
+    /** {@code seed}: where this refresh's run of pages starts, so the next pages and the next refresh are new films. */
+    public static List<Movie> trending(Context ctx, String kind, int page, boolean fresh, int seed, int max) {
         boolean series = "series".equals(kind);
+        page = Math.max(1, page);
         if (hasTmdb(ctx)) {
             try {
                 String path;
                 if (fresh) {
-                    int p = 1 + new java.util.Random().nextInt(12) + (Math.max(1, page) - 1);
-                    path = "discover/" + (series ? "tv" : "movie") + "?sort_by=popularity.desc&vote_count.gte=400&vote_average.gte=6.5"
-                            + "&include_adult=false&language=" + language() + "&page=" + p;
+                    int p = 1 + Math.max(0, seed) + (page - 1);
+                    path = "discover/" + (series ? "tv" : "movie") + "?sort_by=vote_count.desc&vote_count.gte=300&vote_average.gte=6.5"
+                            + "&include_adult=false&language=" + language() + "&page=" + Math.min(500, p);
                 } else {
-                    path = "trending/" + (series ? "tv" : "movie") + "/week?language=" + language() + "&page=" + Math.max(1, page);
+                    path = "trending/" + (series ? "tv" : "movie") + "/week?language=" + language() + "&page=" + page;
                 }
                 return parseTmdbResults(tmdb(ctx, path), series ? "series" : "movie", max);
             } catch (Throwable t) {
                 Log.w(TAG, "TMDB discover failed: " + t.getMessage());
             }
         }
-        if (page > 1) return new ArrayList<>();
-        return series ? cinemetaList("https://cinemeta-catalogs.strem.io/top/catalog/series/top.json", "series", max)
-                : cinemetaList(CINEMETA_TOP + ".json", "movie", max);
+        // Without a TMDB key: Cinemeta's lists, page by page (skip), the refresh starting further in
+        int skip = ((fresh ? Math.max(0, seed) : 0) + page - 1) * max;
+        String base = series ? "https://cinemeta-catalogs.strem.io/top/catalog/series/top" : CINEMETA_TOP;
+        return cinemetaList(base + (skip > 0 ? "/skip=" + skip : "") + ".json", series ? "series" : "movie", max);
     }
 
     private static final Pattern SEARCH_STOPWORDS = Pattern.compile("(?i)\\b(filmleri|filmler|filmi|dizileri|dizisi|dizi|movies|movie|films|film|sineması|tavsiyesi|önerisi|seçkisi)\\b");
@@ -583,9 +590,8 @@ public final class MovieCatalog {
         try {
             String kind = "series".equals(type) ? "tv" : "movie";
             String id = tmdb(ctx, kind + "/" + tmdbId + "/external_ids?").optString("imdb_id", "");
-            if (id.startsWith("tt")) return id;
-            String altKind = "tv".equals(kind) ? "movie" : "tv";
-            id = tmdb(ctx, altKind + "/" + tmdbId + "/external_ids?").optString("imdb_id", "");
+            // TMDB ids are per kind: the same number under the other kind is a different title, so never ask it
+            // (that sent Nuvio an unrelated series' IMDb id as a "movie" and no add-on had streams for it)
             if (id.startsWith("tt")) return id;
         } catch (Throwable t) {
             return "";
@@ -987,7 +993,7 @@ public final class MovieCatalog {
 
     private static final java.util.Map<String, String> ratingCache = new java.util.concurrent.ConcurrentHashMap<>();
 
-    /** IMDb, Rotten Tomatoes and Letterboxd ratings from MDBList (needs its key and an IMDb id). Blocks. */
+    /** IMDb and Rotten Tomatoes ratings from MDBList (needs its key and an IMDb id). Blocks. */
     static void ratings(Context ctx, Movie m) {
         if (!m.imdbId.startsWith("tt")) return;
         String key = SecretStore.get(ctx, SecretStore.MDBLIST_KEY);
@@ -1008,8 +1014,7 @@ public final class MovieCatalog {
                 double v = x.optDouble("value", 0);
                 if (v <= 0) continue;
                 String part = "imdb".equals(src) ? "IMDb " + String.format(Locale.US, "%.1f", v)
-                        : "tomatoes".equals(src) ? "RT " + Math.round(v) + "%"
-                        : "letterboxd".equals(src) ? "Letterboxd " + String.format(Locale.US, "%.1f", v) : null;
+                        : "tomatoes".equals(src) ? "RT " + Math.round(v) + "%" : null;
                 if (part == null) continue;
                 if (b.length() > 0) b.append("  ·  ");
                 b.append(part);

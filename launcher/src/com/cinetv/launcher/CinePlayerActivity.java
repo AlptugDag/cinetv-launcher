@@ -128,6 +128,8 @@ public class CinePlayerActivity extends Activity {
         long start = in.getIntExtra("position", -1);
         if (start < 0) start = in.getLongExtra("extra_position", -1);
         if (start < 0) start = Prefs.get(this).getLong(resumeKey, 0);
+        // the same film from another source: where the viewer stopped it (films only; a series title matches every episode)
+        if (start <= 0 && !looksLikeEpisode(title)) start = com.cinetv.launcher.service.WatchHistory.positionFor(this, title, -1);
         // The profile that last worked on this TV for this kind of stream comes first.
         profile = Prefs.get(this).getInt(PROFILE_PREF + streamKind(), 0);
         if (profile == 0 && !displayHasDolbyVision()) profile = 1;
@@ -199,6 +201,25 @@ public class CinePlayerActivity extends Activity {
         return false;
     }
 
+    /** CineSUB opened over the film: pause it if it was playing; true when it did. */
+    public static boolean pauseForCineSub() {
+        final CinePlayerActivity a = current;
+        if (a == null || a.player == null || !a.player.isPlaying()) return false;
+        a.runOnUiThread(() -> {
+            if (a.player != null) a.player.pause();
+        });
+        return true;
+    }
+
+    /** CineSUB closed: the film paused for it plays on. */
+    public static void resumeAfterCineSub() {
+        final CinePlayerActivity a = current;
+        if (a == null) return;
+        a.runOnUiThread(() -> {
+            if (a.player != null) a.player.play();
+        });
+    }
+
     /** True while a film is actually playing here (not paused, not buffering): CineSUB's ambient notes go by it. */
     public static boolean isPlayingNow() {
         CinePlayerActivity a = current;
@@ -260,7 +281,8 @@ public class CinePlayerActivity extends Activity {
         player = new ExoPlayer.Builder(this, renderers)
                 .setLoadControl(load)
                 .setTrackSelector(tracks)
-                .setMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(this, http)))
+                .setMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(this, http))
+                        .setLoadErrorHandlingPolicy(patientNetwork()))
                 .setSeekBackIncrementMs(SEEK_MS).setSeekForwardIncrementMs(SEEK_MS)
                 .build();
         player.setAudioAttributes(new androidx.media3.common.AudioAttributes.Builder()
@@ -270,6 +292,7 @@ public class CinePlayerActivity extends Activity {
         String type = source.getType();
         if (type != null && type.contains("mpegurl")) item.setMimeType(MimeTypes.APPLICATION_M3U8);
         if (type != null && type.contains("dash")) item.setMimeType(MimeTypes.APPLICATION_MPD);
+        if (forcedMime != null) item.setMimeType(forcedMime);
         item.setSubtitleConfigurations(subtitles(source));
         player.setMediaItem(item.build());
         if (position > 0) player.seekTo(position);
@@ -289,6 +312,7 @@ public class CinePlayerActivity extends Activity {
 
             @Override
             public void onRenderedFirstFrame() {
+                networkRetries = 0;
                 firstFrame = true;
                 if (cinesubWaiting) {
                     cinesubWaiting = false;
@@ -314,6 +338,28 @@ public class CinePlayerActivity extends Activity {
             public void onPlayerError(PlaybackException e) {
                 // A hardware decoder that cannot start or decode this codec: software first for it on this TV.
                 int c = e.errorCode;
+                // A web video whose address has no extension (".../playlist", "master.txt"): it was read as a
+                // plain file. Try it as HLS, then as DASH, before giving up.
+                if (c == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED || c == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED
+                        || c == PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED) {
+                    String next = forcedMime == null ? MimeTypes.APPLICATION_M3U8 : MimeTypes.APPLICATION_M3U8.equals(forcedMime) ? MimeTypes.APPLICATION_MPD : null;
+                    if (next != null) {
+                        forcedMime = next;
+                        build(Math.max(0, player.getCurrentPosition()));
+                        return;
+                    }
+                }
+                // P2P streams: the local torrent server answers errors while it is still fetching pieces. Wait and
+                // pick up again from the same second (a few times) instead of failing with a network error.
+                if (c >= PlaybackException.ERROR_CODE_IO_UNSPECIFIED && c < PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED
+                        && networkRetries < 6) {
+                    networkRetries++;
+                    final long at = Math.max(0, player.getCurrentPosition());
+                    ui.postDelayed(() -> {
+                        if (!isFinishing()) build(at);
+                    }, 2500L * networkRetries);
+                    return;
+                }
                 if (c == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED || c == PlaybackException.ERROR_CODE_DECODING_FAILED
                         || c == PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED || c == PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED) {
                     androidx.media3.common.Format f = player == null ? null : player.getVideoFormat();
@@ -330,6 +376,20 @@ public class CinePlayerActivity extends Activity {
         player.prepare();
         player.play();
         view.setPlayer(player);
+    }
+
+    private String forcedMime;
+    private int networkRetries;
+
+    /** Network and server errors (also 404/416/5xx from a torrent server still downloading) retried for about a minute. */
+    private static androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy patientNetwork() {
+        return new androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy(12) {
+            @Override
+            public long getRetryDelayMsFor(LoadErrorInfo info) {
+                if (info.exception instanceof androidx.media3.common.ParserException) return C.TIME_UNSET;
+                return Math.min(5000, 1000L * info.errorCount);
+            }
+        };
     }
 
     private boolean hasVideo() {
@@ -749,9 +809,17 @@ public class CinePlayerActivity extends Activity {
         finish();
     }
 
+    /** "S01E02", "1x02", "Bölüm 3": a series episode. */
+    private static boolean looksLikeEpisode(String t) {
+        return t != null && t.matches("(?is).*(s\\d{1,2}\\s?e\\d{1,3}|\\b\\d{1,2}x\\d{2}\\b|bölüm|episode|sezon|season).*");
+    }
+
     private void savePosition() {
-        if (player == null || completed) return;
+        if (player == null) return;
         long pos = player.getCurrentPosition(), dur = player.getDuration();
+        // Home's "Kaldığın yerden" card
+        com.cinetv.launcher.service.WatchHistory.notePlayback(this, title, completed ? Math.max(pos, dur) : pos, dur);
+        if (completed) return;
         SharedPreferences.Editor ed = Prefs.get(this).edit();
         // Not worth resuming the first half minute, nor the end credits.
         if (pos > 30_000 && (dur <= 0 || pos < dur - 90_000)) ed.putLong(resumeKey, pos);

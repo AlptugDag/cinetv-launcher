@@ -157,7 +157,7 @@
     <string name="tour_tmdb_t">TMDB anahtarı: afişler ve Türkçe özetler</string>
     <string name="tour_tmdb">Ayarlar › 3. Yapay Zeka &amp; Ağ sayfasına ücretsiz bir TMDB anahtarı gir (themoviedb.org › API). Afişler, Türkçe özetler, oyuncu fotoğrafları ve fragmanlar anında yüklenir.</string>
     <string name="tour_mdb_t">MDBList anahtarı: puanlar</string>
-    <string name="tour_mdb">İsteğe bağlı: Ayarlar › 3. Yapay Zeka &amp; Ağ sayfasında ücretsiz bir MDBList anahtarı (mdblist.com) IMDb, Rotten Tomatoes ve Letterboxd puanlarını DVD içine ekler.</string>
+    <string name="tour_mdb">İsteğe bağlı: Ayarlar › 3. Yapay Zeka &amp; Ağ sayfasında ücretsiz bir MDBList anahtarı (mdblist.com) IMDb ve Rotten Tomatoes puanlarını DVD içine ekler.</string>
     <string name="tour_allow_t">Evet demen gereken tek soru</string>
     <string name="tour_allow">Televizyon CineTV için “USB hata ayıklamaya izin verilsin mi?” diye sorarsa “Her zaman izin ver”i işaretleyip Tamam\'a bas. Telefondaki kumandanın her uygulamada çalışmasını ve CineTV\'nin ana ekranın olarak kalmasını bu sağlar.</string>
     <string name="tour_perf_t">Performans ve TV Denetçisi</string>
@@ -207,7 +207,7 @@
     <string name="save_failed">Kaydedilemedi</string>
     <string name="not_set">Ayarlanmadı</string>
     <string name="mdblist_key">MDBList anahtarı</string>
-    <string name="mdblist_key_hint">MDBList API anahtarı (IMDb, Rotten Tomatoes, Letterboxd puanları)</string>
+    <string name="mdblist_key_hint">MDBList API anahtarı (IMDb ve Rotten Tomatoes puanları)</string>
     <string name="ai_curate">Yapay zekâ seçkisi</string>
     <string name="ai_curate_hint">Bir ruh hâli seç, rafını al</string>
     <string name="mood_custom_hint">Ya da anlat: Fincher tarzı karanlık dedektif hikâyeleri…</string>

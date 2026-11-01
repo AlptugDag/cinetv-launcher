@@ -14,7 +14,6 @@ public final class Creator {
     public static final String INSTAGRAM_URL = "https://instagram.com/" + INSTAGRAM;
     public static final String YOUTUBE_URL = "https://youtube.com/" + YOUTUBE;
     public static final String LINKEDIN_URL = "https://www.linkedin.com/in/AlptugDag/";
-    public static final String LETTERBOXD_URL = "https://letterboxd.com/AlptugDag/";
     public static final String GITHUB_URL = "https://github.com/AlptugDag";
     public static final String SESSIZ_TRAILER_ID = "jb7BM-NHreg";
     public static final String SESSIZ_TRAILER_URL = "https://youtu.be/" + SESSIZ_TRAILER_ID;

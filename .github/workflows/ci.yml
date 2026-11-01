@@ -16,25 +16,27 @@ permissions:
 jobs:
   secrets:
     name: Secret scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # the gitleaks CLI itself (the gitleaks action still runs on the deprecated Node.js 20)
+      - name: Scan for secrets
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz | tar -xz gitleaks
+          ./gitleaks git --redact --no-banner --exit-code 1 .
 
   build:
     name: Test & build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Shell scripts parse
         run: for f in install.sh scripts/*.sh scripts/*/*.sh; do bash -n "$f"; done
       - name: Unit tests
@@ -46,7 +48,7 @@ jobs:
           if git ls-files | grep -E '\.(jks|keystore)$|keystore\.properties|signature_logo\.png|\.env' | grep -v '^launcher/debug.keystore$'; then
             echo "::error::Private files are tracked"; exit 1
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: cinetv-debug
           path: launcher/build/outputs/apk/debug/*.apk

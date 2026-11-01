@@ -675,7 +675,7 @@ public final class EmaLightningTts {
                 "apocalypse", "ıpakılips", "now", "nav", "taxi", "teksi", "driver", "drayvır", "shining", "şayning", "psycho", "sayko",
                 "jaws", "cos", "alien", "eyliın", "titanic", "taytenik", "avatar", "evıtar", "gladiator", "gledieytır", "matrix", "metriks",
                 "oppenheimer", "opınhaymır", "barbie", "barbi", "dune", "dyun", "parasite", "perısayt", "whiplash", "viples",
-                "netflix", "netfliks", "youtube", "yutub", "google", "gugıl", "apple", "epıl", "airpods", "erpadz", "letterboxd", "letırboks",
+                "netflix", "netfliks", "youtube", "yutub", "google", "gugıl", "apple", "epıl", "airpods", "erpadz",
                 "trailer", "treylır", "netflix", "netfliks", "series", "siiriz", "season", "siizın", "episode", "epizod", "show", "şov"
         };
         for (int i = 0; i + 1 < pairs.length; i += 2) SAYS.put(pairs[i], pairs[i + 1]);
