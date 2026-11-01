@@ -1,5 +1,9 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.25
+
+- AirPods/kulaklık: "Sanal Surround" ve "Geniş Sahne" artık AlptugPlayer'da her TV'de duyuluyor. Android'in yerleşik Virtualizer efektini birçok TV üreticisi hiç uygulamıyor (açık görünüp sese dokunmuyor); ses artık CineTV'nin kendi işlemcisinde işleniyor. Sanal Surround'da her kulak diğer kanalı biraz gecikmeli ve yumuşamış duyuyor, 5.1 arka kanallar arkaya ve yanlara yerleşiyor. Geniş Sahne'de stereo görüntü genişliyor, orta korunuyor. Seçim film oynarken anında değişiyor.
+
 ## 1.0.0.24
 
 - **Android 6 ve üzeri:** CineTV artık Android 6.0'dan itibaren kuruluyor (önce 8.0'dı). Fire TV Stick'lerin çoğu (Fire OS 6) ve eski Android 6/7 TV kutuları da kapsanıyor. Android 7 ve sonrasına özgü her özellik sürüm kontrolüyle korunuyor; eski sürümde o özellik sessizce atlanıyor, uygulama çökmüyor.

@@ -1,0 +1,108 @@
+package com.cinetv.launcher.device;
+
+import androidx.media3.common.C;
+import androidx.media3.common.audio.AudioProcessor;
+import androidx.media3.common.audio.BaseAudioProcessor;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+/**
+ * AlptugPlayer's own spatial sound for headphones. Android's Virtualizer is left unimplemented by many TV
+ * makers, so the effect is done here, on the film's PCM, where every TV hears it:
+ * <ul>
+ *   <li>0 Kapalı: untouched stereo (5.1 folded down plainly).</li>
+ *   <li>1 Sanal Surround: each ear also hears the other side, a fraction of a millisecond later and softer,
+ *       as from speakers in a room (crossfeed); 5.1 rear channels are placed behind and to the sides.</li>
+ *   <li>2 Geniş Sahne: the stereo image widened (side signal raised), the centre kept.</li>
+ * </ul>
+ * 16-bit PCM, stereo or 5.1 in, stereo out. The mode can change while a film plays.
+ */
+public final class SpatialProcessor extends BaseAudioProcessor {
+    /** Set by the AirPods panel; read for every buffer. */
+    public static volatile int mode = 1;
+    /** Only with headphones on: speakers have their own room. */
+    public static volatile boolean headphones = true;
+
+    private int inChannels;
+    private int delay;
+    private float[] histL = new float[64], histR = new float[64];
+    private int pos;
+    private float lpL, lpR;
+
+    @Override
+    protected AudioFormat onConfigure(AudioFormat in) throws UnhandledAudioFormatException {
+        if (in.encoding != C.ENCODING_PCM_16BIT || (in.channelCount != 2 && in.channelCount != 6)) return AudioFormat.NOT_SET;
+        inChannels = in.channelCount;
+        delay = Math.max(1, Math.min(60, Math.round(in.sampleRate * 0.00028f))); // about 0.28 ms between the ears
+        return new AudioFormat(in.sampleRate, 2, C.ENCODING_PCM_16BIT);
+    }
+
+    @Override
+    public void queueInput(ByteBuffer input) {
+        int frames = (input.limit() - input.position()) / (inChannels * 2);
+        ByteBuffer out = replaceOutputBuffer(frames * 4);
+        input.order(ByteOrder.nativeOrder());
+        int m = headphones ? mode : 0;
+        for (int f = 0; f < frames; f++) {
+            float l, r, sl = 0, sr = 0;
+            if (inChannels == 6) {
+                float fl = input.getShort() / 32768f, fr = input.getShort() / 32768f, c = input.getShort() / 32768f;
+                float lfe = input.getShort() / 32768f;
+                sl = input.getShort() / 32768f;
+                sr = input.getShort() / 32768f;
+                l = fl + 0.707f * c + 0.4f * lfe;
+                r = fr + 0.707f * c + 0.4f * lfe;
+            } else {
+                l = input.getShort() / 32768f;
+                r = input.getShort() / 32768f;
+            }
+            float ol, or;
+            if (m == 1) {
+                // crossfeed: the other channel, delayed and low-passed (the head shadows the highs)
+                float dl = histL[(pos - delay + 64) & 63], dr = histR[(pos - delay + 64) & 63];
+                lpL += 0.35f * (dl - lpL);
+                lpR += 0.35f * (dr - lpR);
+                ol = l + 0.45f * lpR + 0.75f * sl + 0.35f * sr;
+                or = r + 0.45f * lpL + 0.75f * sr + 0.35f * sl;
+                histL[pos] = l + sl;
+                histR[pos] = r + sr;
+                pos = (pos + 1) & 63;
+                ol *= 0.72f;
+                or *= 0.72f;
+            } else if (m == 2) {
+                float mid = (l + r) * 0.5f, side = (l - r) * 0.5f + (sl - sr) * 0.6f;
+                mid += (sl + sr) * 0.3f;
+                ol = (mid * 0.9f + side * 1.9f) * 0.8f;
+                or = (mid * 0.9f - side * 1.9f) * 0.8f;
+            } else {
+                ol = (l + 0.7f * sl) * (inChannels == 6 ? 0.6f : 1f);
+                or = (r + 0.7f * sr) * (inChannels == 6 ? 0.6f : 1f);
+            }
+            out.putShort(clip(ol));
+            out.putShort(clip(or));
+        }
+        input.position(input.limit());
+        out.flip();
+    }
+
+    private static short clip(float v) {
+        // soft knee above 0.8 instead of hard clipping
+        float a = Math.abs(v);
+        if (a > 0.8f) v = Math.signum(v) * (0.8f + 0.2f * (float) Math.tanh((a - 0.8f) / 0.2f));
+        return (short) Math.max(-32768, Math.min(32767, Math.round(v * 32767f)));
+    }
+
+    @Override
+    protected void onReset() {
+        histL = new float[64];
+        histR = new float[64];
+        pos = 0;
+        lpL = lpR = 0;
+    }
+
+    /** For DefaultAudioSink's processor list. */
+    public static AudioProcessor[] chain() {
+        return new AudioProcessor[]{new SpatialProcessor()};
+    }
+}

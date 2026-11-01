@@ -244,6 +244,9 @@ public final class AirPodsLink {
     /** The panel's spatial mode, made real: a virtualizer on the TV's output mix (0 off, 1 surround, 2 wide). */
     public static synchronized void applySpatialMode(Context ctx) {
         int mode = Math.min(2, com.cinetv.launcher.service.Prefs.get(ctx).getInt(com.cinetv.launcher.service.Prefs.AIRPODS_SPATIAL_MODE, 1));
+        // AlptugPlayer hears the change at once, mid-film
+        SpatialProcessor.mode = mode;
+        SpatialProcessor.headphones = isHeadphoneConnected(ctx);
         applyHeadphoneSpatialAudio(ctx, mode > 0);
         try {
             if (mode == 0) {

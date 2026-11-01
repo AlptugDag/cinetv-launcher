@@ -245,7 +245,19 @@ public class CinePlayerActivity extends Activity {
             player = null;
         }
         firstFrame = false;
-        androidx.media3.exoplayer.DefaultRenderersFactory renderers = new androidx.media3.exoplayer.DefaultRenderersFactory(this)
+        // AlptugPlayer's own spatial sound (the TV's Virtualizer is often a no-op): processed in the audio sink
+        com.cinetv.launcher.device.SpatialProcessor.mode = Math.min(2, Prefs.get(this).getInt(Prefs.AIRPODS_SPATIAL_MODE, 1));
+        com.cinetv.launcher.device.SpatialProcessor.headphones = com.cinetv.launcher.device.AirPodsLink.isHeadphoneConnected(this);
+        androidx.media3.exoplayer.DefaultRenderersFactory renderers = new androidx.media3.exoplayer.DefaultRenderersFactory(this) {
+            @Override
+            protected androidx.media3.exoplayer.audio.AudioSink buildAudioSink(android.content.Context c, boolean enableFloat, boolean enableParams) {
+                return new androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(c)
+                        .setAudioProcessors(com.cinetv.launcher.device.SpatialProcessor.chain())
+                        .setEnableFloatOutput(false)
+                        .setEnableAudioTrackPlaybackParams(enableParams)
+                        .build();
+            }
+        }
                 .setEnableDecoderFallback(true)
                 .setMediaCodecSelector(codecSelector())
                 .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON);
