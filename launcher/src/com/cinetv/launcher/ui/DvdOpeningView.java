@@ -218,7 +218,7 @@ public class DvdOpeningView extends View {
                         0f, 0.05f, 0.10f, 0.16f, 0.22f, 0.28f, 0.35f, 0.42f,
                         0.50f, 0.55f, 0.60f, 0.66f, 0.72f, 0.78f, 0.85f, 0.92f
                 });
-        trayShade = new LinearGradient(0, 0, caseW, caseH, Color.parseColor("#1B1B21"), Color.parseColor("#0A0A0D"), Shader.TileMode.CLAMP);
+        trayShade = trayShade();
         launched = false;
         t = 0;
         play = -1;
@@ -278,7 +278,7 @@ public class DvdOpeningView extends View {
         if (targetH > maxH) { targetH = maxH; targetW = targetH * DvdCase.ASPECT; }
         caseH = Math.max(2, Math.round(targetH));
         caseW = Math.max(2, Math.round(targetW));
-        trayShade = new LinearGradient(0, 0, caseW, caseH, Color.parseColor("#1B1B21"), Color.parseColor("#0A0A0D"), Shader.TileMode.CLAMP);
+        trayShade = trayShade();
         int discSize = Math.round(Math.min(caseW, caseH) * 0.88f);
         disc = bakeDisc(getContext(), dvd.cover, movie != null ? movie.coverTitle() : "", discSize);
         discGlowR = discSize * 1.06f * 0.62f;
@@ -508,6 +508,12 @@ public class DvdOpeningView extends View {
         c.drawText(l2, curX, textY, hintPaint);
     }
 
+    /** The tray in the room's own colours (walnut in the closet, velvet in the cinema, blue glass, aluminium...). */
+    private Shader trayShade() {
+        Insert stock = Insert.of(com.cinetv.launcher.service.ThemeManager.current(getContext()).id);
+        return new LinearGradient(0, 0, caseW, caseH, stock.trayTop, stock.trayBottom, Shader.TileMode.CLAMP);
+    }
+
     private void drawTray(Canvas c, float l, float t, float w, float h) {
         c.save();
         c.translate(l, t);
@@ -676,7 +682,8 @@ public class DvdOpeningView extends View {
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-        p.setColor(Color.parseColor("#15151A"));
+        Insert stock = Insert.of(com.cinetv.launcher.service.ThemeManager.current(ctx).id);
+        p.setColor(stock.shell);
         c.drawRoundRect(new RectF(0, 0, w, h), w * 0.03f, w * 0.03f, p);
 
         float lip = w * 0.03f;
@@ -684,7 +691,6 @@ public class DvdOpeningView extends View {
         // The insert is printed on the room's own stock: parchment by default, kraft in the closet, a gilded
         // programme in the cinema and on the red carpet, frosted acrylic on glass, brushed aluminium on metal,
         // and a dark card with bright ink under neon.
-        Insert stock = Insert.of(com.cinetv.launcher.service.ThemeManager.current(ctx).id);
         p.setColor(stock.paper);
         c.drawRoundRect(paper, w * 0.01f, w * 0.01f, p);
         stock.decorate(c, paper, w);
@@ -996,7 +1002,13 @@ public class DvdOpeningView extends View {
         final boolean dark;
         final String kind;
 
-        private Insert(String kind, int paper, int ink, int grain, boolean dark) {
+        /** The case's plastic shell and the tray's gradient for this room. */
+        final int shell, trayTop, trayBottom;
+
+        private Insert(String kind, int paper, int ink, int grain, boolean dark, int shell, int trayTop, int trayBottom) {
+            this.shell = shell;
+            this.trayTop = trayTop;
+            this.trayBottom = trayBottom;
             this.kind = kind;
             this.paper = paper;
             this.ink = ink;
@@ -1005,14 +1017,16 @@ public class DvdOpeningView extends View {
         }
 
         static Insert of(String theme) {
+            // Each room has its own case, not just a shade of paper: the plastic shell, the tray and the stock
+            // all change, so switching themes is obvious the moment a case opens.
             switch (theme == null ? "" : theme) {
-                case "closet": return new Insert("kraft", 0xFFE6D8BE, Color.argb(240, 40, 28, 18), Color.argb(10, 90, 60, 30), false);
-                case "cinema": return new Insert("programme", 0xFFF2EBDD, Color.argb(240, 26, 18, 16), Color.argb(6, 60, 40, 20), false);
-                case "redcarpet": return new Insert("gilded", 0xFFF3ECE0, Color.argb(240, 30, 14, 16), Color.argb(6, 70, 30, 30), false);
-                case "glass": return new Insert("acrylic", 0xFFE8F0F7, Color.argb(240, 12, 22, 36), Color.argb(5, 20, 60, 110), false);
-                case "metal": return new Insert("aluminium", 0xFFD9DDE2, Color.argb(240, 22, 26, 32), Color.argb(16, 255, 255, 255), false);
-                case "neon": return new Insert("neon", 0xFF15101F, Color.argb(240, 240, 234, 255), Color.argb(10, 191, 90, 242), true);
-                default: return new Insert("parchment", 0xFFEEE8DC, Color.argb(240, 18, 18, 22), Color.argb(7, 45, 35, 25), false);
+                case "closet": return new Insert("kraft", 0xFFD7BF95, Color.argb(240, 52, 32, 16), Color.argb(14, 90, 60, 30), false, 0xFF2B1D12, 0xFF4A3220, 0xFF1E140C);
+                case "cinema": return new Insert("programme", 0xFFF4E9D2, Color.argb(240, 70, 10, 18), Color.argb(6, 60, 40, 20), false, 0xFF3A0A10, 0xFF5C1119, 0xFF22060A);
+                case "redcarpet": return new Insert("gilded", 0xFFFBF3E2, Color.argb(240, 120, 14, 24), Color.argb(6, 70, 30, 30), false, 0xFF4A0910, 0xFF8A1220, 0xFF2A0508);
+                case "glass": return new Insert("acrylic", 0xFFD8EAFB, Color.argb(240, 10, 40, 80), Color.argb(5, 20, 60, 110), false, 0xFF1A2C42, 0xFF2D4D70, 0xFF0F1B2A);
+                case "metal": return new Insert("aluminium", 0xFFC7CDD5, Color.argb(240, 20, 24, 30), Color.argb(16, 255, 255, 255), false, 0xFF3C424A, 0xFF5A626C, 0xFF262A30);
+                case "neon": return new Insert("neon", 0xFF15101F, Color.argb(240, 240, 234, 255), Color.argb(10, 191, 90, 242), true, 0xFF0B0614, 0xFF2A0F45, 0xFF07030D);
+                default: return new Insert("parchment", 0xFFEEE8DC, Color.argb(240, 18, 18, 22), Color.argb(7, 45, 35, 25), false, 0xFF15151A, 0xFF1B1B21, 0xFF0A0A0D);
             }
         }
 

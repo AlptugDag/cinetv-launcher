@@ -99,11 +99,11 @@ public final class MovieAssistant {
     public static Reply ask(Context ctx, String query, List<MovieCatalog.Movie> currentShelf, int max) {
         String q = query.trim();
         if (Creator.mentioned(q)) return aboutCreator(ctx, q, max);
-        if (LlmClient.isConfigured(ctx)) {
-            Reply r = planned(ctx, q, currentShelf, max);
-            if (r != null) return r;
-        }
-        return heuristic(ctx, q, currentShelf, max);
+        // With the key's daily quota spent, straight to the search that needs no AI (instead of four refusals first).
+        Reply r = LlmClient.isConfigured(ctx) && !LlmClient.quotaOut() ? planned(ctx, q, currentShelf, max) : null;
+        if (r == null) r = heuristic(ctx, q, currentShelf, max);
+        if (r != null && withChildren(ctx, q)) r.movies = familySafe(r.movies);
+        return r;
     }
 
     /** The next page of a search: more films for the same request, none of those already on the row. */
@@ -151,6 +151,29 @@ public final class MovieAssistant {
 
     // ---- with AI ----------------------------------------------------------------------------------
 
+    /** The case in focus when the viewer spoke: what "onu aç", "bunu aç" and "buna benzer" point at. */
+    public static volatile Movie focused;
+
+    private static final java.util.regex.Pattern CHILD_WORDS = java.util.regex.Pattern.compile(
+            "(?iu)çocu|kızım|oğlum|ailece|aile ile|aileyle|\\b\\d{1,2} ?yaş|minik|kids?\\b|children|family");
+
+    /** Watching with children (said now): a rule enforced in code, not only asked of the AI. */
+    static boolean withChildren(Context ctx, String query) {
+        return CHILD_WORDS.matcher(query).find();
+    }
+
+    /** Drops adult titles and horror, thriller, crime and war (TMDB 27, 53, 80, 10752) when children watch. */
+    static List<Movie> familySafe(List<Movie> in) {
+        List<Movie> out = new ArrayList<>();
+        for (Movie m : in) {
+            if (m.adult) continue;
+            boolean bad = false;
+            for (int g : m.genreIds) if (g == 27 || g == 53 || g == 80 || g == 10752) bad = true;
+            if (!bad) out.add(m);
+        }
+        return out.isEmpty() ? in : out;
+    }
+
     private static Reply planned(Context ctx, String query, List<MovieCatalog.Movie> currentShelf, int max) {
         String lang = language();
         StringBuilder shelfContext = new StringBuilder();
@@ -162,6 +185,9 @@ public final class MovieAssistant {
                 shelfContext.append(sm.title);
                 if (sm.year > 1900) shelfContext.append(" (").append(sm.year).append(")");
             }
+            Movie f = focused;
+            if (f != null) shelfContext.append(".\nCASE IN FOCUS: ").append(f.title).append(f.year > 1900 ? " (" + f.year + ")" : "")
+                    .append(". 'onu/bunu aç', 'bunu oynat' mean this film (intent play, query = its title); 'buna benzer' means films like it");
             shelfContext.append(".\nIMPORTANT: If the viewer makes a relative or comparative request (e.g. 'daha kasvetli şeyler istiyorum', 'buna benzer', 'daha eski olsun', 'daha eğlenceli'), interpret their desire in direct relation to what is currently on the shelf! For example, 'daha kasvetli şeyler istiyorum' means noticeably darker, grittier, moodier cinema than the current shelf titles.\n");
         }
         String viewerName = GamzeMemory.name(ctx);
@@ -175,7 +201,7 @@ public final class MovieAssistant {
                 + "Reply with ONE minified JSON object:\n"
                 + "{\"intent\":\"shelf|play|answer|chat\",\"title\":\"short shelf title in " + lang + "\",\"voice\":\"what you say out loud\","
                 + "\"follow_up\":false,\"answer\":\"\",\"person\":\"\",\"role\":\"director|actor|any\",\"query\":\"\",\"keywords\":[],\"genres\":[],"
-                + "\"type\":\"movie|tv|any\",\"country\":\"\",\"from\":0,\"to\":0,\"titles\":[{\"t\":\"original title\",\"y\":1999,\"tv\":false}],"
+                + "\"type\":\"movie|tv|any\",\"country\":\"\",\"language\":\"\",\"runtime_min\":0,\"runtime_max\":0,\"from\":0,\"to\":0,\"titles\":[{\"t\":\"original title\",\"y\":1999,\"tv\":false}],"
                 + "\"learned\":{\"name\":\"\",\"household\":\"\",\"has_children\":false,\"child_age\":0,\"preferred_genres\":\"\",\"likes\":\"\",\"dislikes\":\"\",\"avoid_content\":\"\"}}\n"
                 + "How to talk:\n"
                 + "- voice: 1-2 short spoken sentences in natural " + lang + " (under 28 words), no lists, no symbols, no emoji. Sound like a friend who knows cinema: "
@@ -186,7 +212,14 @@ public final class MovieAssistant {
                 + "- 'chat' is for small talk (greetings, how are you, thanks, jokes): answer warmly in voice, maybe suggest one film in titles; no shelf title needed.\n"
                 + "How to choose:\n"
                 + "- A person's films ('Kitano filmleri'): intent shelf, person = exact full name, role as asked.\n"
-                + "- Moods, vibes, themes, 'like X but darker', 'daha eskisi': intent shelf, titles = up to 20 well-known films that truly match, interpreted against the current shelf and the conversation.\n"                + "- query is ONLY for intent play. 'X filmleri' where X is a theme, a character type or a situation ('Emekli Ajan filmleri' = "
+                + "- Moods, vibes, themes, 'like X but darker', 'daha eskisi': intent shelf, titles = up to 20 well-known films that truly match, interpreted against the current shelf and the conversation.\n"                + "- Length: 'bir saatten kısa' = runtime_max 60, '90 dakikanın altında' = runtime_max 89, '3 saatten uzun' = runtime_min 180. Minutes, always set when the viewer mentions length.\n"
+                + "- language = the original language as ISO 639-1 ('Türk filmleri' = tr, 'Japon' = ja); country = production country (ISO 3166). "
+                + "Where a film is SET is a theme, not a country: 'Almanya'da geçen Türk filmleri' = language tr AND the story takes place in Germany "
+                + "(Duvara Karşı / Gegen die Wand, Almanya'ya Hoş Geldiniz, Yaban / Kurz und schmerzlos...): list only films where both hold.\n"
+                + "- Awards and festivals ('Altın Palmiye kazananlar', '1994 Cannes'ta yarışan', 'en iyi film Oscar'ına aday olmuş', 'Altın Portakal'): "
+                + "list the real winners/nominees of exactly that award, category and year from your knowledge, with their years; a film you are not sure "
+                + "was in that edition is left out. If a year is given, every title must be from that edition. Shelf title names the award and year.\n"
+                + "- query is ONLY for intent play. 'X filmleri' where X is a theme, a character type or a situation ('Emekli Ajan filmleri' = "
                 + "films about retired agents/assassins pulled back in: John Wick, Taken, Nobody, Red, The Equalizer...) is a theme shelf: list "
                 + "films in titles, never a title search for X.\n"
                 + "- A subject ('vampirli filmler', 'içinde satranç geçen filmler'): up to 20 titles; films built around it first, then well-known "
@@ -279,6 +312,13 @@ public final class MovieAssistant {
         final List<String> keywords = strings(plan.optJSONArray("keywords"));
         final List<String> genres = strings(plan.optJSONArray("genres"));
         final String country = plan.optString("country", "");
+        final int rtMin = Math.max(0, plan.optInt("runtime_min")), rtMax = Math.max(0, plan.optInt("runtime_max"));
+        final String origLang = plan.optString("language", "").trim();
+        // A measurable rule (length, language) also asks TMDB directly, so the shelf is never short of films that hold.
+        if (person.isEmpty() && (rtMin > 0 || rtMax > 0 || origLang.length() == 2)) {
+            final int from0 = plan.optInt("from"), to0 = plan.optInt("to");
+            jobs.add(pool.submit(() -> MovieCatalog.discover(ctx, keywords, genres, type, country, from0, to0, max, rtMin, rtMax, origLang)));
+        }
         // The AI's own picks are the answer; keyword discovery only tops up a short list.
         int picked = titles == null ? 0 : titles.length();
         if (person.isEmpty() && picked < 6 && (!keywords.isEmpty() || !genres.isEmpty() || country.length() == 2)) {
@@ -286,6 +326,22 @@ public final class MovieAssistant {
             jobs.add(pool.submit(() -> MovieCatalog.discover(ctx, keywords, genres, type, country, from, to, max)));
         }
         out.movies = collect(jobs, max);
+        // Length is a rule, checked against each film's real runtime (fetched in parallel when not known yet).
+        if (rtMin > 0 || rtMax > 0) {
+            List<Future<Integer>> rts = new ArrayList<>();
+            for (final Movie m : out.movies) rts.add(pool.submit(() -> MovieCatalog.runtimeOf(ctx, m)));
+            List<Movie> kept = new ArrayList<>();
+            for (int i = 0; i < out.movies.size(); i++) {
+                int rt;
+                try {
+                    rt = rts.get(i).get(6, java.util.concurrent.TimeUnit.SECONDS);
+                } catch (Throwable t) {
+                    rt = 0;
+                }
+                if (rt > 0 && (rtMin <= 0 || rt >= rtMin) && (rtMax <= 0 || rt <= rtMax)) kept.add(out.movies.get(i));
+            }
+            out.movies = kept;
+        }
         // A decade or "after 2010" the viewer asked for is a rule, not a hint: enforce it here.
         final int yFrom = plan.optInt("from"), yTo = plan.optInt("to");
         if (yFrom > 1900 || yTo > 1900) {

@@ -72,10 +72,12 @@ Ekran boştayken salonunuz yaşayan bir sergiye dönüşür: **35 mm film şerid
 
 Kumandanın mikrofon tuşuna basın ve konuşun: *“90'larda yağmurlu gecelerde geçen melankolik dedektif filmleri”*, *“Tom Hanks'in adada mahsur kaldığı film”*, *“kızımla izleyeceğim 8 yaş için uzay macerası”*, *“2010 sonrası Kore yapımı intikam gerilimleri”*.
 
-- **Sohbeti hatırlar.** *“Daha eskisi?”*, *“onu aç”* demeniz yeter. Emin olamadığında tek bir soru sorar ve mikrofon kendiliğinden yeniden açılır.
-- **Evinizi tanır.** Kiminle izlediğinizi, sevdiğiniz ve sevmediğiniz filmleri yalnızca bu TV'de saklar; çocuklar varken şiddet yok, sevgiliyle kimya, yalnızken her şey serbest.
+- **Sohbeti hatırlar.** Son konuşmayı, vitrindeki filmleri ve odaktaki kutuyu bilir: *“Daha eskisi?”*, *“buna benzer”*, *“onu aç”* demeniz yeter. Emin olamadığında tek bir soru sorar ve mikrofon kendiliğinden yeniden açılır (art arda en fazla üç kez).
+- **Evinizi tanır.** Adınızı, kiminle izlediğinizi, sevdiğiniz ve sevmediğiniz filmleri bu TV'de saklar (başka bir sunucuda değil; yalnızca istek sırasında yapay zekâ sağlayıcınıza gönderilir). Sevgiliyle kimya, arkadaşlarla tempo, yalnızken her şey serbest.
+- **Çocuklar varken kural koddadır.** İstekte çocuk, aile ya da yaş geçtiğinde yetişkin içerik ile korku, gerilim, suç ve savaş türleri listeden kodla çıkarılır; yalnızca yapay zekâya bırakılmaz.
 - **Kurallara uyar.** Verdiğiniz yaş, dönem, ülke ve tema listedeki her filmde geçerlidir; yıl aralığı kodla da denetlenir.
-- **Hemen cevap verir.** Gemini 3.8 Flash ile, cümle cümle konuşan doğal Türkçe sesle (`canberkkkkkk/ema-lightning`); düşünürken bile susmaz.
+- **Sahneyi sorabilirsiniz.** Film oynarken mikrofona *“bu sahnede ne var?”*, *“bu yemek ne?”*, *“bu şarkı ne?”* deyin: Gamze filme döner, CineSUB kareye bakar ve en ilginç bulguyu sesli söyler.
+- **Hemen cevap verir.** Hızlı model (Gemini Flash-Lite) ve cümle cümle konuşan doğal Türkçe ses (`canberkkkkkk/ema-lightning`); İngilizce adları İngilizce okunuşuyla söyler. Yapay zekâ anahtarının günlük kotası dolduğunda beklemeden yapay zekâsız aramaya geçer.
 
 <br>
 

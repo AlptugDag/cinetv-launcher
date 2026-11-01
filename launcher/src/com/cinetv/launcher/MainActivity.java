@@ -634,7 +634,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         else if ("settings".equals(action)) handler.postDelayed(this::onSettings, 300);
         else if ("similar".equals(action)) handler.postDelayed(this::openSimilarForFocused, 300);
         else if ("changelog".equals(action)) handler.postDelayed(() -> Panels.changelog(this, home.modal), 300);
-        else if ("voice".equals(action)) {
+        else if ("voice".equals(action) || android.content.Intent.ACTION_ASSIST.equals(action)
+                || android.content.Intent.ACTION_VOICE_COMMAND.equals(action) || android.content.Intent.ACTION_SEARCH_LONG_PRESS.equals(action)
+                || "android.intent.action.VOICE_ASSIST".equals(action)) {
+            // The system's own assistant and search entry points come to Gamze too (when CineTV is chosen for them).
+            voiceFrom = intent.getStringExtra("from");
             wasLaunchedForVoice = true;
             handler.postDelayed(this::onVoice, 250);
         }
@@ -936,8 +940,23 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         search(query, false);
     }
 
+    /** The app the viewer was in when the mic was pressed (a film playing, for "bu sahnede ne var?"). */
+    private String voiceFrom;
+
+    private static final java.util.regex.Pattern SCENE_QUESTION = java.util.regex.Pattern.compile(
+            "(?iu)sahnede|ekranda|karede|bu ne\\b|bu kim\\b|bu yemek|bu tablo|bu bina|bu şarkı|bu müzik|cinesub|ne çalıyor|neresi burası");
+
     private void search(final String query, final boolean fromVoice) {
         if (query == null || query.trim().isEmpty()) return;
+        // "Bu sahnede ne var?", "bu yemek ne?" over a film: back to the film and CineSUB looks at it.
+        if (fromVoice && voiceFrom != null && !getPackageName().equals(voiceFrom) && SCENE_QUESTION.matcher(query).find()) {
+            final Context app = getApplicationContext();
+            voiceFrom = null;
+            home.voice.dismiss();
+            moveTaskToBack(true);
+            handler.postDelayed(() -> com.cinetv.launcher.ui.CineSubOverlay.trigger(app), 1400);
+            return;
+        }
         lastSearchFromVoice = fromVoice;
         if (!fromVoice) conversationTurns = 0;
         com.cinetv.launcher.ai.EmaLightningTts.stop();
@@ -960,6 +979,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         final Context app = getApplicationContext();
         final List<MovieCatalog.Movie> currentShelf = home.shelf.movies();
+        MovieAssistant.focused = home.shelf.focusedMovie();
         background(() -> {
             MovieAssistant.Reply r = MovieAssistant.ask(app, query, currentShelf, PerformanceProfile.shelfSize(app));
             ui(() -> {

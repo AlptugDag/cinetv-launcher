@@ -901,7 +901,12 @@ public final class TvWebRemoteServer {
                 return ok;
             }
             case "/api/party/quiz/settings": {
-                party.quizSettings(q.get("id"), (int) parseLong(q.get("minutes")), (int) parseLong(q.get("seconds")));
+                party.quizSettings(q.get("id"), q.get("minutes") == null ? -1 : (int) parseLong(q.get("minutes")),
+                        (int) parseLong(q.get("seconds")), q.get("difficulty") == null ? -1 : (int) parseLong(q.get("difficulty")));
+                return ok;
+            }
+            case "/api/party/quiz/end": {
+                party.quizEnd(q.get("id"));
                 return ok;
             }
             case "/api/party/quiz/start": {

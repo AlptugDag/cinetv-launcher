@@ -82,6 +82,16 @@ final class QuizDeck {
         this.ctx = ctx.getApplicationContext();
     }
 
+    /** 0 kolay, 1 orta, 2 zor, 3 sinefil: which films come up, how close the wrong answers are, what Gamze asks. */
+    private int difficulty = 1;
+
+    void setDifficulty(int d) {
+        d = Math.max(0, Math.min(3, d));
+        if (d == difficulty) return;
+        difficulty = d;
+        pool.clear(); // the next questions come from the new level's films
+    }
+
     /** Blocking: up to {@code n} ready questions (pictures cached). */
     List<Question> next(int n) {
         List<Question> out = new ArrayList<>();
@@ -106,6 +116,10 @@ final class QuizDeck {
         return out;
     }
 
+    private String pickOf(String... codes) {
+        return codes[rnd.nextInt(codes.length)];
+    }
+
     private String nextKind() {
         String[] kinds = MovieCatalog.hasTmdb(ctx)
                 ? new String[]{"scene", "actor", "cast", "director", "scene", "year", "ai"}
@@ -120,10 +134,27 @@ final class QuizDeck {
     private void fillPool() throws Exception {
         if (MovieCatalog.hasTmdb(ctx)) {
             String lang = MovieCatalog.language();
-            addTmdb("discover/movie?sort_by=vote_count.desc&vote_count.gte=9000&page=" + (1 + rnd.nextInt(8)) + "&language=" + lang);
-            addTmdb("discover/movie?sort_by=popularity.desc&vote_count.gte=4000&page=" + (1 + rnd.nextInt(3)) + "&language=" + lang);
-            // Only Turkish films most of the room has seen.
-            if (tr) addTmdb("discover/movie?with_original_language=tr&sort_by=vote_count.desc&vote_count.gte=500&page=1&language=" + lang);
+            switch (difficulty) {
+                case 0: // blockbusters everybody has seen
+                    addTmdb("discover/movie?sort_by=vote_count.desc&vote_count.gte=9000&page=" + (1 + rnd.nextInt(8)) + "&language=" + lang);
+                    addTmdb("discover/movie?sort_by=popularity.desc&vote_count.gte=4000&page=" + (1 + rnd.nextInt(3)) + "&language=" + lang);
+                    break;
+                case 2: // well-known but not the obvious ones, and world cinema
+                    addTmdb("discover/movie?sort_by=vote_average.desc&vote_count.gte=1500&page=" + (1 + rnd.nextInt(15)) + "&language=" + lang);
+                    addTmdb("discover/movie?with_original_language=" + pickOf("fr", "ja", "ko", "it", "es", "de") + "&sort_by=vote_count.desc&vote_count.gte=600&page=" + (1 + rnd.nextInt(4)) + "&language=" + lang);
+                    break;
+                case 3: // the cinephile's shelf: classics, auteurs, other languages
+                    addTmdb("discover/movie?sort_by=vote_average.desc&vote_count.gte=400&primary_release_date.lte=1985-12-31&page=" + (1 + rnd.nextInt(15)) + "&language=" + lang);
+                    addTmdb("discover/movie?with_original_language=" + pickOf("fr", "ja", "ko", "it", "es", "de", "sv", "ru", "fa", "zh") + "&sort_by=vote_average.desc&vote_count.gte=250&page=" + (1 + rnd.nextInt(6)) + "&language=" + lang);
+                    break;
+                default: // orta
+                    addTmdb("discover/movie?sort_by=vote_count.desc&vote_count.gte=3000&page=" + (1 + rnd.nextInt(14)) + "&language=" + lang);
+                    addTmdb("discover/movie?sort_by=vote_average.desc&vote_count.gte=2500&page=" + (1 + rnd.nextInt(6)) + "&language=" + lang);
+                    break;
+            }
+            // Turkish films, as deep as the level goes.
+            if (tr) addTmdb("discover/movie?with_original_language=tr&sort_by=vote_count.desc&vote_count.gte=" + (difficulty >= 2 ? 120 : 500)
+                    + "&page=" + (1 + rnd.nextInt(difficulty >= 2 ? 3 : 1)) + "&language=" + lang);
         } else {
             JSONArray metas = Http.getJson("https://cinemeta-catalogs.strem.io/top/catalog/movie/top.json", null, TIMEOUT).optJSONArray("metas");
             for (int i = 0; metas != null && i < metas.length(); i++) {
@@ -380,7 +411,9 @@ final class QuizDeck {
         years.add(f.year);
         int now = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR);
         while (years.size() < 4) {
-            int d = (2 + rnd.nextInt(8)) * (rnd.nextBoolean() ? 1 : -1);
+            // wrong years crowd the right one as the level rises: kolay ±2..9, orta ±1..5, zor ±1..3, sinefil ±1..2
+            int spread = difficulty == 0 ? 8 : difficulty == 1 ? 5 : difficulty == 2 ? 3 : 2;
+            int d = ((difficulty == 0 ? 2 : 1) + rnd.nextInt(spread)) * (rnd.nextBoolean() ? 1 : -1);
             int y = f.year + d;
             if (y <= now && y > 1910) years.add(y);
         }
@@ -405,6 +438,10 @@ final class QuizDeck {
         String about = f.title + (f.year > 0 ? " (" + f.year + ")" : "") + ". " + f.overview;
         String sys = "You write one multiple-choice film trivia question for a living-room party game. "
                 + "Ask only about facts that are widely documented (plot, characters, setting, famous lines, awards, the director's other famous work). "
+                + new String[]{"Make it easy: something anyone who saw the film remembers. ",
+                        "Medium difficulty: a detail a fan would know. ",
+                        "Hard: a specific detail (a character's name, a line, a place, a year of an award), with plausible wrong options. ",
+                        "Expert cinephile level: production history, cinematography, the source novel, festival awards or the director's craft; all four options must be plausible to an expert. "}[difficulty]
                 + "Never ask about the film's title, which is shown. Language: " + (tr ? "Turkish" : "English") + ". "
                 + "Reply as minified JSON: {\"q\":\"question under 90 characters\",\"o\":[\"four short options\"],\"c\":index of the correct option,\"f\":\"one short surprising fact about the film, under 140 characters\"}";
         LlmClient.Result r = LlmClient.generate(ctx, sys, about, 700, true);

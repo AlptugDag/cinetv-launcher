@@ -88,6 +88,11 @@ public final class CineSubOverlay {
                     o.stage.setScene(scene);
                     SystemAudio.play(app, scene.pois.isEmpty() ? SystemAudio.Sfx.ERROR : SystemAudio.Sfx.CHIME);
                     o.keepFor(scene.pois.isEmpty() ? (scene.error.isEmpty() ? 7000 : 14000) : 45000);
+                    // Gamze says the best find out loud, quietly over the film (her voice setting decides).
+                    if (!scene.pois.isEmpty() && com.cinetv.launcher.service.Prefs.get(app).getBoolean("cinesub_voice", true)) {
+                        SceneInspector.Poi top = scene.pois.get(0);
+                        com.cinetv.launcher.ai.EmaLightningTts.speak(app, top.title + ". " + top.fact);
+                    }
                 });
             }, "cinesub-inspect").start();
         });

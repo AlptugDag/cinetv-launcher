@@ -1829,22 +1829,26 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   // ---- CineQuiz ----
   function ptQuiz(st) {
     const q = st.quiz || {};
-    $("ptPhase").textContent = st.phase === "question" || st.phase === "reveal" ? `Soru ${q.no} · ${ptClock(ptLeft(q.timeLeft, st._at))}` : st.phase === "finished" ? "Bitti" : "Hazırlık";
+    $("ptPhase").textContent = st.phase === "question" || st.phase === "reveal" ? `Soru ${q.no} · ${q.endless ? "∞" : ptClock(ptLeft(q.timeLeft, st._at))}` : st.phase === "finished" ? "Bitti" : "Hazırlık";
+    const qLevels = ["Kolay", "Orta", "Zor", "Sinefil"];
     if (st.phase === "setup") {
       const host = ptHost(st);
-      ptScreen("q-setup-" + host + q.minutes + q.seconds + st.status, `<div class="pt-card glass">
-        <div class="pt-h">Süreyi seçin</div>
-        <p class="pt-sub" style="margin:0">Süre bitene kadar en çok doğru bilen kazanır ve bu gecenin filmini seçer. Her doğru cevap 10 puan.</p>
+      ptScreen("q-setup-" + host + q.minutes + q.seconds + q.difficulty + st.status, `<div class="pt-card glass">
+        <div class="pt-h">Oyunu ayarlayın</div>
+        <p class="pt-sub" style="margin:0">En çok puanı toplayan kazanır ve bu gecenin filmini seçer. Doğru cevap ${q.points || 10} puan; üst üste üçüncü doğrudan itibaren seri bonusu.</p>
+        <div class="pt-lbl">Zorluk</div>
+        <div class="pt-seg" id="qLvl">${qLevels.map((n, i) => `<button data-v="${i}" class="${i === q.difficulty ? "on" : ""}" ${host ? "" : "disabled"}>${n}</button>`).join("")}</div>
         <div class="pt-lbl">Oyun süresi</div>
-        <div class="pt-seg" id="qMin">${[3, 5, 10, 15].map(m => `<button data-v="${m}" class="${m === q.minutes ? "on" : ""}" ${host ? "" : "disabled"}>${m} dk</button>`).join("")}</div>
+        <div class="pt-seg" id="qMin">${[3, 5, 10, 15, 0].map(m => `<button data-v="${m}" class="${m === q.minutes ? "on" : ""}" ${host ? "" : "disabled"}>${m ? m + " dk" : "∞ Sonsuz"}</button>`).join("")}</div>
         <div class="pt-lbl">Soru başına</div>
         <div class="pt-seg" id="qSec">${[15, 20, 30].map(s => `<button data-v="${s}" class="${s === q.seconds ? "on" : ""}" ${host ? "" : "disabled"}>${s} sn</button>`).join("")}</div>
         ${st.status ? `<div class="pt-note" style="color:#ff9f0a">${esc(st.status)}</div>` : ""}
         ${host ? `<button class="pt-btn wide" id="qStart">Başlat</button>` : `<div class="pt-note">Ev sahibi başlatacak.</div>`}
       </div>`, () => {
         if (!host) return;
-        $("qMin").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: b.dataset.v, seconds: q.seconds}));
-        $("qSec").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: q.minutes, seconds: b.dataset.v}));
+        $("qLvl").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: q.minutes, seconds: q.seconds, difficulty: b.dataset.v}));
+        $("qMin").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: b.dataset.v, seconds: q.seconds, difficulty: q.difficulty}));
+        $("qSec").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: q.minutes, seconds: b.dataset.v, difficulty: q.difficulty}));
         $("qStart").onclick = () => ptAct("party/quiz/start");
       });
       return;
@@ -1857,6 +1861,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         ${q.image ? `<img class="pt-pic ${q.shape === "tall" ? "tall" : ""}" src="${esc(q.image)}" alt="">` : ""}
         ${q.caption ? `<div class="pt-cap">${esc(q.caption)}</div>` : ""}
         <div class="pt-q">${esc(q.prompt)}</div>
+        ${q.streak >= 2 ? `<div class="pt-note" style="color:#ff9f0a">🔥 ${q.streak} doğru üst üste</div>` : ""}
         ${q.mine ? `<div class="pt-res glass"><div class="pt-note">Cevabın kilitlendi</div><div class="pt-big" style="font-size:22px">${esc(q.mine)}</div><div class="pt-note">Herkes cevaplayınca TV'de açılır.</div></div>`
           : opts.length ? `<div class="pt-opts">${opts.map((o, i) => `<button class="pt-opt" data-i="${i}"><i>${"ABCD"[i]}</i>${esc(o)}</button>`).join("")}</div>`
           : `<div class="pt-row"><input id="qAns" autocomplete="off" enterkeyhint="send" placeholder="Film adı"><button class="pt-btn" id="qSend">Gönder</button></div>`}
@@ -1877,9 +1882,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       const me = ptPlayer(ptId) || {};
       const ok = !!me.correct;
       if (ptScreen("q-r-" + q.no, `<div class="pt-res glass ${ok ? "ok" : "no"}">
-          <div class="pt-big">${ok ? "Doğru! +10" : me.answer ? "Olmadı" : "Süre doldu"}</div>
+          <div class="pt-big">${ok ? "Doğru! +" + (q.points || 10) : me.answer ? "Olmadı" : "Süre doldu"}</div>
           <div class="pt-note">Doğru cevap</div><div style="font-weight:700;font-size:17px">${esc(q.answer)}</div>
-        </div>${q.fact ? `<div class="pt-fact">${esc(q.fact)}</div>` : ""}`)) ptBuzz(ok ? [20, 40, 20] : 40);
+        </div>${q.fact ? `<div class="pt-fact">${esc(q.fact)}</div>` : ""}
+        ${q.endless && ptHost(st) ? `<button class="pt-btn wide ghost" id="qEnd">Oyunu bitir</button>` : ""}`, () => {
+          if ($("qEnd")) $("qEnd").onclick = () => ptAct("party/quiz/end");
+        })) ptBuzz(ok ? [20, 40, 20] : 40);
       return;
     }
     if (st.phase === "finished") {

@@ -314,8 +314,10 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
         if (!status.isEmpty()) return status;
         JSONObject q = st.optJSONObject("quiz");
         if ("quiz".equals(mode) && q != null && ("question".equals(phase) || "reveal".equals(phase))) {
+            String lvl = (tr ? new String[]{"Kolay", "Orta", "Zor", "Sinefil"} : new String[]{"Easy", "Medium", "Hard", "Cinephile"})[Math.max(0, Math.min(3, q.optInt("difficulty", 1)))];
+            if (q.optBoolean("endless")) return (tr ? "Soru " : "Question ") + q.optInt("no") + "  ·  " + lvl + "  ·  ∞";
             long left = Math.max(0, q.optLong("timeLeft") - (SystemClock.elapsedRealtime() - stateAt));
-            return (tr ? "Soru " : "Question ") + q.optInt("no") + "  ·  " + clock(left) + (tr ? " kaldı" : " left");
+            return (tr ? "Soru " : "Question ") + q.optInt("no") + "  ·  " + lvl + "  ·  " + clock(left) + (tr ? " kaldı" : " left");
         }
         JSONObject z = st.optJSONObject("sessiz");
         if ("sessiz".equals(mode) && z != null && z.optInt("no") > 0) return (tr ? "Kart " : "Card ") + z.optInt("no");
@@ -386,8 +388,9 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
         if (q == null) return false;
         switch (phase) {
             case "setup":
-                setupCard(c, tr ? "Süre: " + q.optInt("minutes") + " dakika  ·  Soru başına " + q.optInt("seconds") + " sn"
-                                : q.optInt("minutes") + " minutes  ·  " + q.optInt("seconds") + " s per question",
+                setupCard(c, (tr ? new String[]{"Kolay", "Orta", "Zor", "Sinefil"} : new String[]{"Easy", "Medium", "Hard", "Cinephile"})[Math.max(0, Math.min(3, q.optInt("difficulty", 1)))]
+                                + "  ·  " + (q.optInt("minutes") == 0 ? (tr ? "Süresiz" : "Endless") : q.optInt("minutes") + (tr ? " dakika" : " minutes"))
+                                + "  ·  " + q.optInt("seconds") + (tr ? " sn soru başına" : " s per question"),
                         tr ? "Süre bitene kadar en çok doğru bilen kazanır ve bu gecenin filmini seçer."
                                 : "Most right answers before time runs out wins, and picks tonight's film.");
                 return false;

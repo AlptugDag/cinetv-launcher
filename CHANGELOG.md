@@ -1,5 +1,14 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.20f · Beta 6
+
+- DVD kutusunun içi her temada belirgin biçimde değişiyor: gövde, tepsi ve kâğıt (ceviz kraft, kadife sinema, kırmızı halı, mavi cam, alüminyum, neon).
+- Gamze odaktaki kutuyu biliyor ("onu aç", "buna benzer"); kota dolunca beklemeden yapay zekâsız aramaya geçiyor; istekte çocuk/aile/yaş geçince yetişkin, korku, gerilim, suç ve savaş türleri kodla çıkarılıyor.
+- Film oynarken mikrofona "bu sahnede ne var?", "bu yemek ne?", "bu şarkı ne?" deyince Gamze filme dönüyor, CineSUB kareye bakıyor; CineSUB en iyi bulguyu Gamze'nin sesiyle söylüyor.
+- Sistemin asistan, sesli komut ve uzun basılı arama girişleri Gamze'yi açıyor (CineTV seçildiğinde).
+- Gamze zor sorgularda: "bir saatten kısa filmler" süreyi her filmin gerçek süresinden kodla denetliyor; "Almanya'da geçen Türk filmleri" dili ve mekânı ayrı ayrı arıyor; ödül ve festival sorgularında (kazanan, aday, yıl, kategori) yalnızca o yılın gerçek listesi.
+- CineQuiz: Kolay / Orta / Zor / Sinefil zorlukları (film havuzu, şıkların yakınlığı ve Gamze'nin soruları seviyeye göre; doğru cevap 10/15/20/30 puan), süresiz sonsuz oyun (ev sahibi "Oyunu bitir" ile bitirir), üst üste doğrularda seri bonusu.
+
 ## 1.0.0.20e · Beta 5
 
 - Oynat (DVD kutusu, telefon, oyunlar) yeniden doğrudan filmin Nuvio'daki kaynak sekmesini açıyor. TV'de denendi: Nuvio yalnızca nuvio://detail/... bağlantısını, o da yalnızca temiz açılışta tanıyor; CineTV filmin sayfasını açıp "Oynat" düğmesine kendisi basıyor (adıyla bulup; körlemesine OK değil).

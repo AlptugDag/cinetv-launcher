@@ -51,7 +51,7 @@ public final class CinePartyManager {
         final String id;
         String name;
         final int color;
-        int score, correct;
+        int score, correct, streak;
         long lastSeen = SystemClock.elapsedRealtime();
         long answerMs;
         String answer;
@@ -105,6 +105,9 @@ public final class CinePartyManager {
     private final Deque<QuizDeck.Question> quizQueue = new ArrayDeque<>();
     private QuizDeck.Question question;
     private int quizMinutes = 5, quizSeconds = 20, questionNo;
+    /** 0 kolay, 1 orta, 2 zor, 3 sinefil. quizMinutes 0 is the endless game, ended by the host. */
+    private int quizDifficulty = 1;
+    private static final int[] QUIZ_POINTS = {10, 15, 20, 30};
     private long quizEndsAt, questionEndsAt, questionStartedAt;
     private boolean fetchingQuiz;
     private String championId = "", pickedFilm = "";
@@ -232,12 +235,20 @@ public final class CinePartyManager {
 
     // ---- CineQuiz -------------------------------------------------------------------------------
 
-    public synchronized void quizSettings(String id, int minutes, int seconds) {
+    public synchronized void quizSettings(String id, int minutes, int seconds, int difficulty) {
         touch(id);
         if (mode != Mode.QUIZ || !"setup".equals(phase)) return;
-        if (minutes >= 2 && minutes <= 30) quizMinutes = minutes;
+        if (difficulty >= 0 && difficulty <= 3) quizDifficulty = difficulty;
+        if (minutes == 0 || (minutes >= 2 && minutes <= 30)) quizMinutes = minutes;
         if (seconds >= 10 && seconds <= 60) quizSeconds = seconds;
         bump();
+    }
+
+    /** The host ends the game (the endless one has no clock); the scores so far decide. */
+    public synchronized void quizEnd(String id) {
+        touch(id);
+        if (mode != Mode.QUIZ || id == null || !id.equals(hostId)) return;
+        if ("question".equals(phase) || "reveal".equals(phase) || "loading".equals(phase)) finishQuiz();
     }
 
     public synchronized void quizStart(String id) {
@@ -255,14 +266,20 @@ public final class CinePartyManager {
         pickedFilm = "";
         quizQueue.clear();
         if (quizDeck == null) quizDeck = new QuizDeck(ctx);
+        quizDeck.setDifficulty(quizDifficulty);
+        for (Player p : players.values()) p.streak = 0;
         phase = "loading";
         status = tr ? "Gamze soruları hazırlıyor…" : "Gamze is writing the questions…";
         introDone = false;
         sfx(Sfx.RISER);
         bump();
         fetchQuiz(gen);
-        sayThen(tr ? "CineQuiz başlıyor. " + quizMinutes + " dakikanız var. Telefonlar hazır mı?"
-                : "CineQuiz is starting. You have " + quizMinutes + " minutes. Phones ready?", 600, () -> {
+        String level = (tr ? new String[]{"kolay", "orta", "zor", "sinefil"} : new String[]{"easy", "medium", "hard", "cinephile"})[quizDifficulty];
+        sayThen(quizMinutes == 0
+                ? (tr ? "CineQuiz başlıyor, " + level + " seviye. Süre yok; yeter dediğinizde ev sahibi bitirir. Telefonlar hazır mı?"
+                      : "CineQuiz is starting, " + level + " level. No time limit; the host ends it. Phones ready?")
+                : (tr ? "CineQuiz başlıyor, " + level + " seviye. " + quizMinutes + " dakikanız var. Telefonlar hazır mı?"
+                      : "CineQuiz is starting, " + level + " level. You have " + quizMinutes + " minutes. Phones ready?"), 600, () -> {
             introDone = true;
             if ("loading".equals(phase) && !quizQueue.isEmpty()) startFirstQuestion();
         });
@@ -296,7 +313,7 @@ public final class CinePartyManager {
     private boolean introDone;
 
     private void startFirstQuestion() {
-        quizEndsAt = SystemClock.elapsedRealtime() + quizMinutes * 60_000L;
+        quizEndsAt = quizMinutes == 0 ? Long.MAX_VALUE : SystemClock.elapsedRealtime() + quizMinutes * 60_000L;
         nextQuestion();
     }
 
@@ -370,9 +387,13 @@ public final class CinePartyManager {
         List<String> right = new ArrayList<>();
         for (Player p : players.values()) {
             if (p.answer != null && question.isCorrect(p.answer)) {
-                p.score += 10;
+                // points by level, plus a streak bonus from the third right answer in a row
+                p.streak++;
+                p.score += QUIZ_POINTS[quizDifficulty] + (p.streak >= 3 ? 5 * (p.streak - 2) : 0);
                 p.correct++;
                 right.add(p.name);
+            } else {
+                p.streak = 0;
             }
         }
         sfx(right.isEmpty() ? Sfx.WRONG : Sfx.CORRECT);
@@ -1018,7 +1039,9 @@ public final class CinePartyManager {
 
             if (mode == Mode.QUIZ) {
                 JSONObject q = new JSONObject().put("minutes", quizMinutes).put("seconds", quizSeconds).put("no", questionNo)
-                        .put("timeLeft", quizEndsAt > 0 ? Math.max(0, quizEndsAt - now) : quizMinutes * 60_000L);
+                        .put("difficulty", quizDifficulty).put("points", QUIZ_POINTS[quizDifficulty]).put("endless", quizMinutes == 0)
+                        .put("timeLeft", quizMinutes == 0 ? -1 : quizEndsAt > 0 ? Math.max(0, quizEndsAt - now) : quizMinutes * 60_000L);
+                if (me != null) q.put("streak", me.streak);
                 if (question != null && ("question".equals(phase) || "reveal".equals(phase))) {
                     q.put("kind", question.kind).put("prompt", question.prompt).put("image", question.image)
                             .put("shape", question.shape).put("caption", question.caption)

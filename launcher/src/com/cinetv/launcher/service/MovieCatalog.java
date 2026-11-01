@@ -54,6 +54,9 @@ public final class MovieCatalog {
         public transient boolean imdbLookupTried;
         /** The case is open: its synopsis may be rewritten by the AI (once per film, cached). */
         public transient boolean hookWanted;
+        /** TMDB genre ids and the adult flag, when the film came from a TMDB list (for the family filter). */
+        public int[] genreIds = new int[0];
+        public boolean adult;
         public String type = "movie";
         public String posterUrl = "";
         public String backdropUrl = "";
@@ -349,6 +352,12 @@ public final class MovieCatalog {
     /** TMDB discovery by theme keywords and genres, films and/or series, the most-watched first. */
     public static List<Movie> discover(Context ctx, List<String> keywords, List<String> genres, String type,
                                        String country, int from, int to, int max) {
+        return discover(ctx, keywords, genres, type, country, from, to, max, 0, 0, "");
+    }
+
+    /** Also by length in minutes (0 = no limit) and original language ("tr", "de"...). */
+    public static List<Movie> discover(Context ctx, List<String> keywords, List<String> genres, String type,
+                                       String country, int from, int to, int max, int runtimeMin, int runtimeMax, String lang) {
         List<Movie> out = new ArrayList<>();
         if (!hasTmdb(ctx)) return out;
         try {
@@ -371,20 +380,40 @@ public final class MovieCatalog {
                         }
                     }
                 }
-                if (kw.length() == 0 && g.length() == 0 && (country == null || country.isEmpty())) continue;
+                boolean extra = runtimeMin > 0 || runtimeMax > 0 || (lang != null && lang.length() == 2);
+                if (kw.length() == 0 && g.length() == 0 && (country == null || country.isEmpty()) && !extra) continue;
                 String date = "tv".equals(kind) ? "first_air_date" : "primary_release_date";
                 String path = "discover/" + kind + "?include_adult=false&sort_by=vote_count.desc&vote_count.gte=40&language=" + language()
                         + (kw.length() > 0 ? "&with_keywords=" + enc(kw.toString()) : "")
                         + (g.length() > 0 ? "&with_genres=" + enc(g.toString()) : "")
                         + (country != null && country.length() == 2 ? "&with_origin_country=" + country.toUpperCase(Locale.ROOT) : "")
                         + (from > 1900 ? "&" + date + ".gte=" + from + "-01-01" : "")
-                        + (to > 1900 ? "&" + date + ".lte=" + to + "-12-31" : "");
+                        + (to > 1900 ? "&" + date + ".lte=" + to + "-12-31" : "")
+                        + (runtimeMin > 0 ? "&with_runtime.gte=" + runtimeMin : "")
+                        + (runtimeMax > 0 ? "&with_runtime.lte=" + runtimeMax : "")
+                        + (lang != null && lang.length() == 2 ? "&with_original_language=" + lang.toLowerCase(Locale.ROOT) : "");
                 out.addAll(parseTmdbResults(tmdb(ctx, path), "tv".equals(kind) ? "series" : "movie", max - out.size()));
             }
         } catch (Throwable t) {
             Log.w(TAG, "Discover failed: " + t.getMessage());
         }
         return out;
+    }
+
+    /** The film's length in minutes from TMDB (0 when unknown); kept on the movie. Blocking, one small call. */
+    public static int runtimeOf(Context ctx, Movie m) {
+        if (m.runtimeMinutes > 0 || m.tmdbId <= 0 || !hasTmdb(ctx)) return m.runtimeMinutes;
+        try {
+            JSONObject d = tmdb(ctx, ("series".equals(m.type) ? "tv/" : "movie/") + m.tmdbId + "?");
+            int rt = d.optInt("runtime", 0);
+            if (rt <= 0) {
+                JSONArray er = d.optJSONArray("episode_run_time");
+                if (er != null && er.length() > 0) rt = er.optInt(0);
+            }
+            m.runtimeMinutes = rt;
+        } catch (Throwable ignored) {
+        }
+        return m.runtimeMinutes;
     }
 
     /** A title the AI named, as a film or series; the IMDb id is looked up only when it is opened. */
@@ -1249,6 +1278,12 @@ public final class MovieCatalog {
             m.title = readable(r.optString("movie".equals(media) ? "title" : "name", r.optString("title", r.optString("name"))), media, m.tmdbId);
             String date = r.optString("movie".equals(media) ? "release_date" : "first_air_date", "");
             m.year = date.length() >= 4 ? parseInt(date.substring(0, 4)) : 0;
+            m.adult = r.optBoolean("adult");
+            JSONArray gids = r.optJSONArray("genre_ids");
+            if (gids != null) {
+                m.genreIds = new int[gids.length()];
+                for (int g = 0; g < gids.length(); g++) m.genreIds[g] = gids.optInt(g);
+            }
             m.posterUrl = TMDB_IMG + "w500" + poster;
             String backdrop = r.optString("backdrop_path", "");
             if (!backdrop.isEmpty() && !"null".equals(backdrop)) m.backdropUrl = TMDB_IMG + "w1280" + backdrop;
