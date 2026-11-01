@@ -1202,7 +1202,9 @@ header.hud {
 // CineTV Windows Application Core Controller
 // ==========================================
 
-const TMDB_KEY = "94f0e53a3e6f9a0c7ce2bc9e2363f533"; // TMDB API v3 key
+// No key ships with the page: a TMDB key the user saved on this computer, else the built-in list
+let TMDB_KEY = "";
+try { TMDB_KEY = localStorage.getItem("cinetv.tmdb") || ""; } catch (e) {}
 let currentIndex = 0;
 let movies = [];
 let currentTheme = 'closet';
@@ -1390,6 +1392,7 @@ function openNuvioDirect() {
 
 // TMDB Dynamic Fetching
 async function fetchTrendingMovies() {
+  if (!TMDB_KEY) return;
   try {
     const res = await fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=${TMDB_KEY}&language=tr-TR`);
     const data = await res.json();
@@ -1448,6 +1451,7 @@ function handleSearch(e) {
 }
 
 async function handleSearchQuery(q) {
+  if (!TMDB_KEY) return;
   try {
     const res = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_KEY}&language=tr-TR&query=${encodeURIComponent(q)}`);
     const data = await res.json();

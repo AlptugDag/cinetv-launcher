@@ -48,7 +48,7 @@ jobs:
           if git ls-files | grep -E '\.(jks|keystore)$|keystore\.properties|signature_logo\.png|\.env' | grep -v '^launcher/debug.keystore$'; then
             echo "::error::Private files are tracked"; exit 1
           fi
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: cinetv-debug
           path: launcher/build/outputs/apk/debug/*.apk
