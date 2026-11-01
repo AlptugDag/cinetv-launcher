@@ -53,6 +53,27 @@ public final class Brand {
     public static final int CINESESSIZ_GOLD = Color.parseColor("#F59E0B");
     public static final String AUTHOR = "Alptuğ Dağ";
 
+    /**
+     * The author's mark for game screens: the signature and "by Alptuğ Dağ" under it, right-aligned at
+     * ({@code right}, {@code bottom}), {@code height} tall in all, at {@code alpha}.
+     */
+    public static void drawSignature(android.graphics.Canvas c, Context ctx, float right, float bottom, float height, int alpha) {
+        Bitmap m = mark(ctx);
+        float textSize = height * 0.26f;
+        float markH = height - textSize * 1.3f;
+        float markW = m.getWidth() * (markH / Math.max(1, m.getHeight()));
+        android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.FILTER_BITMAP_FLAG);
+        p.setAlpha(alpha);
+        c.drawBitmap(m, null, new android.graphics.RectF(right - markW, bottom - height, right, bottom - height + markH), p);
+        p.setColor(Color.WHITE);
+        p.setAlpha(alpha);
+        p.setTextSize(textSize);
+        p.setTextAlign(android.graphics.Paint.Align.RIGHT);
+        p.setLetterSpacing(0.08f);
+        p.setShadowLayer(textSize * 0.4f, 0, 0, Color.argb(alpha, 0, 0, 0));
+        c.drawText("by " + AUTHOR, right, bottom - textSize * 0.15f, p);
+    }
+
     /** "CineTV" with a red "TV". */
     public static CharSequence wordmark() {
         android.text.SpannableString s = new android.text.SpannableString("CineTV");

@@ -28,6 +28,12 @@ import java.util.Locale;
 public final class SpatialAudioOverlay {
 
     private static WindowManager wm;
+    private static View firstChip, selectedChip;
+
+    private static boolean isDescendant(View v) {
+        for (android.view.ViewParent p = v.getParent(); p != null; p = p.getParent()) if (p == hostView) return true;
+        return false;
+    }
     private static FrameLayout hostView;
     private static LinearLayout panel;
 
@@ -44,6 +50,7 @@ public final class SpatialAudioOverlay {
 
     public static void show(final Context ctx) {
         if (hostView != null) return;
+        firstChip = selectedChip = null;
         final Context app = ctx.getApplicationContext();
         UiKit.init(app);
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
@@ -54,19 +61,29 @@ public final class SpatialAudioOverlay {
         hostView = new FrameLayout(app) {
             @Override
             public boolean dispatchKeyEvent(KeyEvent event) {
-                if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                    int code = event.getKeyCode();
-                    if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE
-                            || code == KeyEvent.KEYCODE_DPAD_LEFT) {
-                        dismiss();
-                        return true;
-                    }
+                int code = event.getKeyCode();
+                if (event.getAction() == KeyEvent.ACTION_DOWN && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
+                    dismiss();
+                    return true;
                 }
-                return super.dispatchKeyEvent(event);
+                if (super.dispatchKeyEvent(event)) return true;
+                // the arrows move between the panel's buttons; left past the first button closes the panel
+                if (event.getAction() == KeyEvent.ACTION_DOWN && code == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    View f = findFocus();
+                    View next = f == null ? null : f.focusSearch(View.FOCUS_LEFT);
+                    if (next != null && next != f && isDescendant(next)) next.requestFocus();
+                    else dismiss();
+                    return true;
+                }
+                if (event.getAction() == KeyEvent.ACTION_DOWN && findFocus() == null && firstChip != null) {
+                    firstChip.requestFocus();
+                    return true;
+                }
+                return false;
             }
         };
-        hostView.setFocusable(true);
-        hostView.setFocusableInTouchMode(true);
+        hostView.setFocusable(false);
+        hostView.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
         hostView.setClipChildren(false);
 
         // Outside touch dismiss area
@@ -156,7 +173,12 @@ public final class SpatialAudioOverlay {
             wm.addView(hostView, lp);
             panel.setTranslationX(panelW);
             panel.animate().translationX(0f).setDuration(280).setInterpolator(new android.view.animation.DecelerateInterpolator(1.8f)).start();
-            hostView.requestFocus();
+            // the remote lands on the selected spatial mode, ready to change it
+            final FrameLayout hv = hostView;
+            hv.post(() -> {
+                View target = selectedChip != null ? selectedChip : firstChip;
+                if (target != null) target.requestFocusFromTouch();
+            });
         } catch (Throwable t) {
             hostView = null;
             wm = null;
@@ -202,6 +224,8 @@ public final class SpatialAudioOverlay {
 
             chip.setTag(active);
             chips[i] = chip;
+            if (firstChip == null) firstChip = chip;
+            if (active && selectedChip == null) selectedChip = chip;
 
             chip.setOnClickListener(v -> {
                 for (int j = 0; j < chips.length; j++) {

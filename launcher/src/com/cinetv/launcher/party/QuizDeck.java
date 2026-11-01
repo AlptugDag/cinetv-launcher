@@ -61,8 +61,9 @@ final class QuizDeck {
 
     private static final class Film {
         int id;
-        String title = "", original = "", imdb = "", poster = "", backdrop = "", director = "", overview = "";
-        int year;
+        String title = "", original = "", imdb = "", poster = "", backdrop = "", director = "", overview = "", tagline = "";
+        int year, runtime;
+        long budget, revenue;
         final List<String> cast = new ArrayList<>();
         final List<int[]> castIds = new ArrayList<>();
         final List<String> castPhotos = new ArrayList<>();
@@ -84,6 +85,27 @@ final class QuizDeck {
 
     /** 0 kolay, 1 orta, 2 zor, 3 sinefil: which films come up, how close the wrong answers are, what Gamze asks. */
     private int difficulty = 1;
+
+    /** 0 hepsi, 1 Türk filmleri, 2 klasikler (1990 öncesi), 3 yeni filmler (2010 sonrası), 4 animasyon. */
+    private int category = 0;
+
+    void setCategory(int c) {
+        c = Math.max(0, Math.min(4, c));
+        if (c == category) return;
+        category = c;
+        pool.clear();
+    }
+
+    /** The extra discover filters of the category. */
+    private String categoryFilter() {
+        switch (category) {
+            case 1: return "&with_original_language=tr";
+            case 2: return "&primary_release_date.lte=1989-12-31";
+            case 3: return "&primary_release_date.gte=2010-01-01";
+            case 4: return "&with_genres=16";
+            default: return "";
+        }
+    }
 
     void setDifficulty(int d) {
         d = Math.max(0, Math.min(3, d));
@@ -112,8 +134,30 @@ final class QuizDeck {
             if (!q.image.isEmpty() && PosterCache.load(ctx, q.image, 960, 960) == null) continue;
             out.add(q);
         }
-        if (LlmClient.isConfigured(ctx)) addFacts(out);
+        if (LlmClient.isConfigured(ctx) && !LlmClient.quotaOut()) addFacts(out);
+        // Gamze always has something to tell: without the AI (or when its daily quota is spent) the film's own data speaks
+        for (Question q : out) if (q.fact.isEmpty()) q.fact = localFact(q.tmdbId);
         return out;
+    }
+
+    /** A true line about the film from its TMDB record: its tagline, its makers, its money, its length. */
+    private String localFact(int id) {
+        Film f = null;
+        for (Film p : pool) if (p.id == id) f = p;
+        if (f == null) return "";
+        List<String> facts = new ArrayList<>();
+        if (!f.tagline.isEmpty()) facts.add(tr ? "Filmin afiş sloganı: “" + f.tagline + "”" : "Its tagline: “" + f.tagline + "”");
+        if (!f.director.isEmpty() && f.cast.size() >= 2)
+            facts.add(tr ? f.director + " yönetti; başrollerde " + f.cast.get(0) + " ve " + f.cast.get(1) + " var."
+                    : f.director + " directed it, with " + f.cast.get(0) + " and " + f.cast.get(1) + " in the leads.");
+        if (f.budget >= 1_000_000 && f.revenue >= 1_000_000) {
+            long b = f.budget / 1_000_000, r = f.revenue / 1_000_000;
+            facts.add(tr ? b + " milyon dolarlık bütçeyle çekildi, gişede " + r + " milyon dolar topladı."
+                    : "Made for $" + b + " million, it took $" + r + " million at the box office.");
+        }
+        if (f.runtime >= 150) facts.add(tr ? f.runtime + " dakikalık süresiyle uzun soluklu bir film." : "It runs a long " + f.runtime + " minutes.");
+        if (facts.isEmpty()) return "";
+        return facts.get(rnd.nextInt(facts.size()));
     }
 
     private String pickOf(String... codes) {
@@ -132,7 +176,14 @@ final class QuizDeck {
     // ---- Pool -----------------------------------------------------------------------------------
 
     private void fillPool() throws Exception {
-        if (MovieCatalog.hasTmdb(ctx)) {
+        if (MovieCatalog.hasTmdb(ctx) && category != 0) {
+            // a category game: the level decides how famous the films are, within the category only
+            String lang = MovieCatalog.language();
+            String cat = categoryFilter();
+            int votes = category == 1 ? new int[]{800, 250, 100, 40}[difficulty] : new int[]{6000, 2000, 800, 250}[difficulty];
+            addTmdb("discover/movie?sort_by=vote_count.desc&vote_count.gte=" + votes + cat + "&page=" + (1 + rnd.nextInt(difficulty + 2)) + "&language=" + lang);
+            addTmdb("discover/movie?sort_by=vote_average.desc&vote_count.gte=" + votes + cat + "&page=" + (1 + rnd.nextInt(difficulty + 2)) + "&language=" + lang);
+        } else if (MovieCatalog.hasTmdb(ctx)) {
             String lang = MovieCatalog.language();
             switch (difficulty) {
                 case 0: // blockbusters everybody has seen
@@ -147,9 +198,9 @@ final class QuizDeck {
                     addTmdb("discover/movie?sort_by=vote_average.desc&vote_count.gte=400&primary_release_date.lte=1985-12-31&page=" + (1 + rnd.nextInt(15)) + "&language=" + lang);
                     addTmdb("discover/movie?with_original_language=" + pickOf("fr", "ja", "ko", "it", "es", "de", "sv", "ru", "fa", "zh") + "&sort_by=vote_average.desc&vote_count.gte=250&page=" + (1 + rnd.nextInt(6)) + "&language=" + lang);
                     break;
-                default: // orta
-                    addTmdb("discover/movie?sort_by=vote_count.desc&vote_count.gte=3000&page=" + (1 + rnd.nextInt(14)) + "&language=" + lang);
-                    addTmdb("discover/movie?sort_by=vote_average.desc&vote_count.gte=2500&page=" + (1 + rnd.nextInt(6)) + "&language=" + lang);
+                default: // orta: films a regular viewer has heard of, not only the biggest hits
+                    addTmdb("discover/movie?sort_by=vote_count.desc&vote_count.gte=2500&page=" + (3 + rnd.nextInt(16)) + "&language=" + lang);
+                    addTmdb("discover/movie?sort_by=vote_average.desc&vote_count.gte=2000&page=" + (1 + rnd.nextInt(8)) + "&language=" + lang);
                     break;
             }
             // Turkish films, as deep as the level goes.
@@ -200,6 +251,10 @@ final class QuizDeck {
         if (!f.cast.isEmpty()) return f;
         if (MovieCatalog.hasTmdb(ctx)) {
             JSONObject d = MovieCatalog.tmdbJson(ctx, "movie/" + f.id + "?append_to_response=credits,images&include_image_language=null&language=" + MovieCatalog.language());
+            f.tagline = d.optString("tagline", "");
+            f.runtime = d.optInt("runtime", 0);
+            f.budget = d.optLong("budget", 0);
+            f.revenue = d.optLong("revenue", 0);
             JSONObject credits = d.optJSONObject("credits");
             JSONArray cast = credits != null ? credits.optJSONArray("cast") : null;
             for (int i = 0; cast != null && i < cast.length() && f.cast.size() < 12; i++) {
@@ -246,25 +301,31 @@ final class QuizDeck {
         return null;
     }
 
+    /**
+     * Wrong answers that could be right: from kolay up, films that share the genre and, more and more
+     * strictly, the era of the right one, so the choice can't be made by "that one is a cartoon / from the 70s".
+     */
     private List<Film> others(Film f, int n, boolean sameGenre) {
-        List<Film> out = new ArrayList<>();
-        List<Film> shuffled = new ArrayList<>(pool);
-        Collections.shuffle(shuffled, rnd);
-        if (sameGenre) {
-            for (Film o : shuffled) {
-                if (out.size() >= n) break;
-                if (o.id == f.id || o.title.equalsIgnoreCase(f.title)) continue;
-                for (Integer g : o.genres) if (f.genres.contains(g)) {
-                    out.add(o);
-                    break;
-                }
-            }
+        List<Film> cands = new ArrayList<>();
+        for (Film o : pool) if (o.id != f.id && !o.title.equalsIgnoreCase(f.title)) cands.add(o);
+        Collections.shuffle(cands, rnd);
+        if (!sameGenre || difficulty == 0) return new ArrayList<>(cands.subList(0, Math.min(n, cands.size())));
+        final int eraWeight = new int[]{0, 1, 2, 3}[difficulty];
+        java.util.Map<Film, Integer> score = new java.util.HashMap<>();
+        for (Film o : cands) {
+            int shared = 0;
+            for (Integer g : o.genres) if (f.genres.contains(g)) shared++;
+            int gap = f.year > 0 && o.year > 0 ? Math.abs(f.year - o.year) : 15;
+            score.put(o, shared * 12 - gap * eraWeight + rnd.nextInt(6));
         }
-        for (Film o : shuffled) {
-            if (out.size() >= n) break;
-            if (o.id != f.id && !out.contains(o) && !o.title.equalsIgnoreCase(f.title)) out.add(o);
-        }
-        return out;
+        cands.sort((a, b) -> Integer.compare(score.get(b), score.get(a)));
+        return new ArrayList<>(cands.subList(0, Math.min(n, cands.size())));
+    }
+
+    /** A picture with no writing on it (a still), so the picture never spells the answer. */
+    private static String textless(Film f) {
+        if (!f.stills.isEmpty()) return f.stills.get(f.stills.size() > 1 ? 1 : 0);
+        return "";
     }
 
     // ---- Questions -----------------------------------------------------------------------------
@@ -283,8 +344,8 @@ final class QuizDeck {
             case "actor": return actor(q, detailed(f));
             case "cast": return cast(q, detailed(f));
             case "director": return director(q, detailed(f));
-            case "year": return year(q, f);
-            case "ai": return ai(q, f);
+            case "year": return year(q, detailed(f));
+            case "ai": return ai(q, detailed(f));
             default: return scene(q, detailed(f));
         }
     }
@@ -293,7 +354,8 @@ final class QuizDeck {
         List<Film> decoys = others(f, 3, true);
         if (decoys.size() < 3) return null;
         q.prompt = tr ? "Bu sahne hangi filme ait?" : "Which film is this scene from?";
-        q.image = f.stills.size() > 1 ? f.stills.get(1 + rnd.nextInt(f.stills.size() - 1)) : f.backdrop;
+        if (f.stills.isEmpty()) return null; // the plain backdrop can carry the title
+        q.image = f.stills.size() > 1 ? f.stills.get(1 + rnd.nextInt(f.stills.size() - 1)) : f.stills.get(0);
         q.shape = "wide";
         List<String> opts = new ArrayList<>();
         opts.add(f.title);
@@ -342,10 +404,10 @@ final class QuizDeck {
     }
 
     private Question cast(Question q, Film f) {
-        if (f.cast.size() < 3) return null;
+        if (f.cast.size() < 3 || f.stills.isEmpty()) return null;
         Set<String> inFilm = new HashSet<>(f.cast);
         String decoy = null;
-        for (Film o : others(f, 12, false)) {
+        for (Film o : others(f, 12, true)) {
             Film d = o;
             if (d.cast.isEmpty()) continue;
             for (String c : d.cast.subList(0, Math.min(4, d.cast.size()))) {
@@ -357,7 +419,7 @@ final class QuizDeck {
             if (decoy != null) break;
         }
         if (decoy == null) {
-            for (Film o : others(f, 3, false)) {
+            for (Film o : others(f, 3, true)) {
                 try {
                     detailed(o);
                 } catch (Throwable ignored) {
@@ -371,9 +433,10 @@ final class QuizDeck {
         }
         if (decoy == null) return null;
         q.prompt = tr ? "Bu filmde hangi oyuncu YOK?" : "Who is NOT in this film?";
-        q.image = f.poster;
-        q.shape = "tall";
-        q.caption = f.title + (f.year > 0 ? " (" + f.year + ")" : "");
+        // not the poster: posters print the cast's names
+        q.image = textless(f);
+        q.shape = "wide";
+        q.caption = f.title;
         List<String> opts = new ArrayList<>(f.cast.subList(0, 3));
         opts.add(decoy);
         shuffleInto(q, opts, decoy);
@@ -383,10 +446,10 @@ final class QuizDeck {
     }
 
     private Question director(Question q, Film f) {
-        if (f.director.isEmpty()) return scene(q, f);
+        if (f.director.isEmpty() || f.stills.isEmpty()) return scene(q, f);
         List<String> opts = new ArrayList<>();
         opts.add(f.director);
-        for (Film o : others(f, 14, false)) {
+        for (Film o : others(f, 14, true)) {
             if (opts.size() >= 4) break;
             try {
                 detailed(o);
@@ -396,9 +459,10 @@ final class QuizDeck {
         }
         if (opts.size() < 4) return null;
         q.prompt = tr ? "Bu filmi kim yönetti?" : "Who directed this film?";
-        q.image = f.poster;
-        q.shape = "tall";
-        q.caption = f.title + (f.year > 0 ? " (" + f.year + ")" : "");
+        // not the poster: posters print "a film by ..."
+        q.image = textless(f);
+        q.shape = "wide";
+        q.caption = f.title;
         shuffleInto(q, opts, f.director);
         q.accepted.add(f.director);
         q.answer = f.director;
@@ -420,7 +484,7 @@ final class QuizDeck {
         List<Integer> sorted = new ArrayList<>(years);
         Collections.sort(sorted);
         q.prompt = tr ? "Bu film hangi yıl vizyona girdi?" : "What year was this film released?";
-        q.image = f.backdrop;
+        q.image = f.stills.isEmpty() ? f.backdrop : textless(f);
         q.shape = "wide";
         q.caption = f.title;
         q.options = new String[4];
@@ -439,9 +503,10 @@ final class QuizDeck {
         String sys = "You write one multiple-choice film trivia question for a living-room party game. "
                 + "Ask only about facts that are widely documented (plot, characters, setting, famous lines, awards, the director's other famous work). "
                 + new String[]{"Make it easy: something anyone who saw the film remembers. ",
-                        "Medium difficulty: a detail a fan would know. ",
+                        "Medium difficulty: a specific detail someone who watched it attentively would know, not the premise. ",
                         "Hard: a specific detail (a character's name, a line, a place, a year of an award), with plausible wrong options. ",
                         "Expert cinephile level: production history, cinematography, the source novel, festival awards or the director's craft; all four options must be plausible to an expert. "}[difficulty]
+                + "The three wrong options must be the same kind of thing as the right one and genuinely tempting (names from the same film or era, nearby years, similar places); never an obviously silly option. "
                 + "Never ask about the film's title, which is shown. Language: " + (tr ? "Turkish" : "English") + ". "
                 + "Reply as minified JSON: {\"q\":\"question under 90 characters\",\"o\":[\"four short options\"],\"c\":index of the correct option,\"f\":\"one short surprising fact about the film, under 140 characters\"}";
         LlmClient.Result r = LlmClient.generate(ctx, sys, about, 700, true);
@@ -452,9 +517,9 @@ final class QuizDeck {
         if (o == null || o.length() != 4 || c < 0 || c > 3 || j.optString("q").isEmpty()) return scene(q, detailed(f));
         q.kind = "ai";
         q.prompt = j.optString("q");
-        q.image = f.backdrop;
+        q.image = f.stills.isEmpty() ? f.backdrop : textless(f);
         q.shape = "wide";
-        q.caption = f.title + (f.year > 0 ? " (" + f.year + ")" : "");
+        q.caption = f.title;
         q.options = new String[4];
         for (int i = 0; i < 4; i++) q.options[i] = o.optString(i);
         q.correct = c;

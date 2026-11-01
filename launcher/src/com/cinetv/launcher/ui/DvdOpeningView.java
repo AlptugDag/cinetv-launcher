@@ -50,6 +50,11 @@ public class DvdOpeningView extends View {
     public interface Callback {
         void onLaunch();
         void onCancelled();
+
+        /** Left or right on an open case: the next film's case opens instead. False when there is no neighbour. */
+        default boolean onNeighbor(int delta) {
+            return false;
+        }
     }
 
     /** Where the trailer plays: told the tray's screen once the case is open, and when to stop. */
@@ -326,6 +331,9 @@ public class DvdOpeningView extends View {
     }
 
     private boolean closing;
+    private final android.graphics.Path trayClip = new android.graphics.Path();
+    private final RectF trayDst = new RectF();
+    private final Paint stillPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
 
     /** Back: the opening played backwards (same path, same timing and easing), then the case is on the shelf again. */
     private void close() {
@@ -380,6 +388,13 @@ public class DvdOpeningView extends View {
         if (closing) return true;
         if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
             if (event.getRepeatCount() == 0) close();
+            return true;
+        }
+        if ((keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)
+                && event.getRepeatCount() == 0 && play < 0 && !launched && callback != null) {
+            Callback cb = callback;
+            dismiss();
+            if (!cb.onNeighbor(keyCode == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1)) cb.onCancelled();
             return true;
         }
         if ((keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
@@ -528,6 +543,21 @@ public class DvdOpeningView extends View {
             RectF sc = trayScreen(l, t, w, h);
             fill.setColor(Color.parseColor("#050507"));
             c.drawRoundRect(sc, w * 0.012f, w * 0.012f, fill);
+            // the film's still fills the screen before the trailer starts and after it stops: never a black window
+            Bitmap shot = movie == null ? null : movie.backdropUrl != null && !movie.backdropUrl.isEmpty()
+                    ? PosterCache.getFast(movie.backdropUrl) : null;
+            if (shot == null && dvd != null) shot = dvd.cover;
+            if (shot != null) {
+                int keep = c.save();
+                trayClip.reset();
+                trayClip.addRoundRect(sc, w * 0.012f, w * 0.012f, android.graphics.Path.Direction.CW);
+                c.clipPath(trayClip);
+                float sk = Math.max(sc.width() / shot.getWidth(), sc.height() / shot.getHeight());
+                float dw = shot.getWidth() * sk, dh = shot.getHeight() * sk;
+                trayDst.set(sc.centerX() - dw / 2f, sc.centerY() - dh / 2f, sc.centerX() + dw / 2f, sc.centerY() + dh / 2f);
+                c.drawBitmap(shot, null, trayDst, stillPaint);
+                c.restoreToCount(keep);
+            }
             fill.setStyle(Paint.Style.STROKE);
             fill.setStrokeWidth(Math.max(1f, w * 0.003f));
             fill.setColor(Color.argb(70, 255, 255, 255));

@@ -113,7 +113,12 @@ public class CinePlayerActivity extends Activity {
         Map<String, String> headers = new HashMap<>();
         String[] h = in.getStringArrayExtra("headers");
         for (int i = 0; h != null && i + 1 < h.length; i += 2) headers.put(h[i], h[i + 1]);
-        http = new OkHttpDataSource.Factory(new okhttp3.OkHttpClient());
+        http = new OkHttpDataSource.Factory(new okhttp3.OkHttpClient.Builder()
+                // local torrent servers take a while to hand over the first bytes
+                .connectTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                .followSslRedirects(true).build());
+        if (!headers.containsKey("User-Agent")) http.setUserAgent("Mozilla/5.0 (Linux; Android TV) AlptugPlayer");
         if (headers.containsKey("User-Agent")) http.setUserAgent(headers.get("User-Agent"));
         http.setDefaultRequestProperties(headers);
 

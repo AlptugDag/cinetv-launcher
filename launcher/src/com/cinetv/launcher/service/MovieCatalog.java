@@ -197,6 +197,32 @@ public final class MovieCatalog {
         return out;
     }
 
+    /**
+     * The phone's Discover page: films or series ({@code kind} "movie" / "series"), page by page. {@code fresh}
+     * draws a different well-liked set each time (the refresh button) instead of this week's trending.
+     */
+    public static List<Movie> trending(Context ctx, String kind, int page, boolean fresh, int max) {
+        boolean series = "series".equals(kind);
+        if (hasTmdb(ctx)) {
+            try {
+                String path;
+                if (fresh) {
+                    int p = 1 + new java.util.Random().nextInt(12) + (Math.max(1, page) - 1);
+                    path = "discover/" + (series ? "tv" : "movie") + "?sort_by=popularity.desc&vote_count.gte=400&vote_average.gte=6.5"
+                            + "&include_adult=false&language=" + language() + "&page=" + p;
+                } else {
+                    path = "trending/" + (series ? "tv" : "movie") + "/week?language=" + language() + "&page=" + Math.max(1, page);
+                }
+                return parseTmdbResults(tmdb(ctx, path), series ? "series" : "movie", max);
+            } catch (Throwable t) {
+                Log.w(TAG, "TMDB discover failed: " + t.getMessage());
+            }
+        }
+        if (page > 1) return new ArrayList<>();
+        return series ? cinemetaList("https://cinemeta-catalogs.strem.io/top/catalog/series/top.json", "series", max)
+                : cinemetaList(CINEMETA_TOP + ".json", "movie", max);
+    }
+
     private static final Pattern SEARCH_STOPWORDS = Pattern.compile("(?i)\\b(filmleri|filmler|filmi|dizileri|dizisi|dizi|movies|movie|films|film|sineması|tavsiyesi|önerisi|seçkisi)\\b");
 
     public static String cleanSearchQuery(String query) {
@@ -351,6 +377,22 @@ public final class MovieCatalog {
             {"mystery", "9648", "9648"}, {"romance", "10749", "10749"}, {"science fiction", "878", "10765"},
             {"thriller", "53", "80"}, {"war", "10752", "10768"}, {"western", "37", "37"}};
 
+    /** The keyword whose name is closest to what was asked (an exact name first, else the shortest containing it). */
+    private static int bestKeyword(JSONArray r, String asked) throws org.json.JSONException {
+        String a = asked.toLowerCase(Locale.ROOT).trim();
+        int best = r.getJSONObject(0).optInt("id");
+        int bestLen = Integer.MAX_VALUE;
+        for (int i = 0; i < r.length(); i++) {
+            String n = r.getJSONObject(i).optString("name").toLowerCase(Locale.ROOT);
+            if (n.equals(a)) return r.getJSONObject(i).optInt("id");
+            if (n.contains(a) && n.length() < bestLen) {
+                bestLen = n.length();
+                best = r.getJSONObject(i).optInt("id");
+            }
+        }
+        return best;
+    }
+
     /** TMDB discovery by theme keywords and genres, films and/or series, the most-watched first. */
     public static List<Movie> discover(Context ctx, List<String> keywords, List<String> genres, String type,
                                        String country, int from, int to, int max) {
@@ -363,14 +405,22 @@ public final class MovieCatalog {
         List<Movie> out = new ArrayList<>();
         if (!hasTmdb(ctx)) return out;
         try {
-            StringBuilder kw = new StringBuilder();
+            // Each concept of the request ("revenge", "father daughter relationship") must hold together: the best
+            // keyword of every concept is required (AND). Only if that finds too little do near matches count (OR).
+            StringBuilder kw = new StringBuilder(), any = new StringBuilder();
+            int concepts = 0;
             for (String k : keywords) {
                 JSONArray r = tmdb(ctx, "search/keyword?query=" + enc(k)).optJSONArray("results");
-                for (int i = 0; r != null && i < Math.min(2, r.length()); i++) {
-                    if (kw.length() > 0) kw.append('|');
-                    kw.append(r.getJSONObject(i).optInt("id"));
+                if (r == null || r.length() == 0) continue;
+                concepts++;
+                if (kw.length() > 0) kw.append(',');
+                kw.append(bestKeyword(r, k));
+                for (int i = 0; i < Math.min(2, r.length()); i++) {
+                    if (any.length() > 0) any.append('|');
+                    any.append(r.getJSONObject(i).optInt("id"));
                 }
             }
+            if (concepts <= 1) kw = any;
             String[] kinds = "tv".equals(type) ? new String[]{"tv"} : "movie".equals(type) ? new String[]{"movie"} : new String[]{"movie", "tv"};
             for (String kind : kinds) {
                 StringBuilder g = new StringBuilder();
@@ -394,7 +444,11 @@ public final class MovieCatalog {
                         + (runtimeMin > 0 ? "&with_runtime.gte=" + runtimeMin : "")
                         + (runtimeMax > 0 ? "&with_runtime.lte=" + runtimeMax : "")
                         + (lang != null && lang.length() == 2 ? "&with_original_language=" + lang.toLowerCase(Locale.ROOT) : "");
-                out.addAll(parseTmdbResults(tmdb(ctx, path), "tv".equals(kind) ? "series" : "movie", max - out.size()));
+                List<Movie> found = parseTmdbResults(tmdb(ctx, path), "tv".equals(kind) ? "series" : "movie", max - out.size());
+                // every concept together found nothing within the genres: the concepts matter more than the genres
+                if (found.isEmpty() && concepts > 1 && g.length() > 0)
+                    found = parseTmdbResults(tmdb(ctx, path.replace("&with_genres=" + enc(g.toString()), "")), "tv".equals(kind) ? "series" : "movie", max - out.size());
+                out.addAll(found);
             }
         } catch (Throwable t) {
             Log.w(TAG, "Discover failed: " + t.getMessage());

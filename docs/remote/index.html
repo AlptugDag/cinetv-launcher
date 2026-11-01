@@ -60,6 +60,15 @@ header{position:sticky;top:0;z-index:5;padding:calc(env(safe-area-inset-top,0px)
 .moods::-webkit-scrollbar{display:none}
 .mtag{flex-shrink:0;border:1px solid var(--edge);background:rgba(255,255,255,.06);color:var(--ink);border-radius:999px;padding:7px 13px;font-size:12.5px;font-weight:600;white-space:nowrap;transition:transform .18s,background .2s,border-color .2s}
 .mtag:active{transform:scale(.95)}
+.mtag.on{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.5)}
+.kindbar{display:flex;gap:10px;align-items:center;margin:4px 0 8px}
+.seg{display:flex;flex:1;border-radius:999px;padding:4px;gap:4px}
+.seg button{flex:1;border:0;background:none;color:var(--dim);font-weight:700;font-size:14px;padding:8px 0;border-radius:999px;transition:background .2s,color .2s}
+.seg button.on{background:rgba(255,255,255,.16);color:var(--ink)}
+.refresh{width:42px;height:42px;border-radius:50%;border:0;color:var(--ink);font-size:20px;flex-shrink:0;transition:transform .5s}
+.refresh.spin{transform:rotate(360deg)}
+.vibe-chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.vibe-chips::-webkit-scrollbar{display:none}
 .mtag.creator{background:linear-gradient(135deg,rgba(229,9,20,.22),rgba(139,92,246,.22));border-color:rgba(229,9,20,.42);color:#fff}
 .voice-edge{position:fixed;inset:0;pointer-events:none;z-index:55;opacity:0;transition:opacity .28s ease;
   box-shadow:inset 0 0 28px 6px rgba(139,92,246,.75),inset 0 0 65px 14px rgba(56,189,248,.45),inset 0 0 110px 20px rgba(229,9,20,.35);
@@ -243,7 +252,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .pt-h{margin:4px 0 2px;font-size:24px;font-weight:800;letter-spacing:-.02em}
 .pt-sub{margin:0 0 14px;color:var(--dim);font-size:13.5px;line-height:1.5}
 .pt-join{padding:22px}
-.pt-row{display:flex;gap:8px}
+.pt-row{display:flex;gap:8px;flex-wrap:wrap;min-width:0}
+.pt-row input{flex:1 1 150px}
+.pt-row .pt-btn{flex:0 1 auto;padding:0 14px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .pt-row input{flex:1;min-width:0;height:50px;padding:0 16px;border-radius:16px;border:1px solid var(--edge);background:rgba(0,0,0,.32);color:var(--ink);font-size:16px;outline:0;transition:border-color .2s,box-shadow .2s}
 .pt-row input:focus{border-color:rgba(255,255,255,.4);box-shadow:0 0 0 3px rgba(255,255,255,.08)}
 .pt-btn{height:50px;padding:0 20px;border:0;border-radius:16px;font-weight:700;font-size:15px;color:#fff;background:var(--pt,#8b5cf6);box-shadow:0 8px 22px -8px var(--pt,#8b5cf6);transition:transform .15s,opacity .2s;white-space:nowrap}
@@ -264,7 +275,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .pt-top{display:flex;align-items:center;gap:10px;padding:0 2px}
 .pt-word{font-size:24px;font-weight:800;letter-spacing:.01em}
 .pt-chip{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--edge);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
-.pt-card{padding:18px;display:grid;gap:12px}
+.pt-card{padding:16px;display:grid;gap:12px;min-width:0;max-width:100%;overflow:hidden;box-sizing:border-box}
+.pt-card>*{min-width:0}
 .pt-pic{width:100%;border-radius:18px;object-fit:cover;background:#111;box-shadow:0 18px 40px -16px rgba(0,0,0,.8);aspect-ratio:16/9}
 .pt-pic.tall{aspect-ratio:2/3;max-width:62%;justify-self:center}
 .pt-q{font-size:19px;font-weight:700;line-height:1.3;letter-spacing:-.01em}
@@ -287,6 +299,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .pt-fact{font-size:13.5px;color:var(--ink);opacity:.85;line-height:1.5;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.06)}
 .pt-seg{display:flex;gap:6px;padding:4px;border-radius:16px;background:rgba(0,0,0,.28);border:1px solid var(--edge)}
 .pt-seg button{flex:1;height:40px;border:0;border-radius:12px;background:none;color:var(--dim);font-weight:700;font-size:14px;transition:background .2s,color .2s}
+#qCat button{flex:1 1 30%;font-size:13px}
 .pt-seg button.on{background:rgba(255,255,255,.14);color:#fff}
 .pt-lbl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:-4px}
 .pt-board{padding:12px 16px;display:grid;gap:2px}
@@ -294,7 +307,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .pt-board div:last-child{border:0}
 .pt-board b{margin-left:auto;font-variant-numeric:tabular-nums}
 .pt-board .away{opacity:.4}
-.pt-chambers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pt-chambers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-width:0}
 .pt-ch{position:relative;aspect-ratio:2/3;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.06);border:1px dashed rgba(255,255,255,.18);display:grid;place-items:center;color:var(--faint);font-size:26px}
 .pt-ch img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .pt-ch.top{outline:2px solid var(--pt);outline-offset:2px}
@@ -312,7 +325,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .pt-feed{display:grid;gap:6px}
 .pt-feed div{font-size:13.5px;padding:8px 12px;border-radius:14px;background:rgba(255,255,255,.05)}
 .pt-feed div.ok{background:rgba(48,209,88,.18);color:#a7f3d0}
-.pt-results{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pt-results{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-width:0}
 .pt-results button{border:0;padding:0;background:none;color:var(--ink);text-align:left;font-size:11.5px;font-weight:600}
 .pt-results img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:12px;display:block;margin-bottom:4px;background:#111}
 .pt-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:300px;margin:0 auto}
@@ -344,13 +357,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <main>
   <section id="tab-search" class="on">
     <div class="wait glass" id="waitBox" hidden><i></i><span id="waitText"></span></div>
-    <div class="vibe-chips" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
-      <button type="button" class="glass chip" data-vibe="Gamze ailece izleyeceğimiz sürükleyici bir film bul" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Ailece</button>
-      <button type="button" class="glass chip" data-vibe="Arkadaş ortamı için eğlenceli ve gerilimli bir şey aç" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Arkadaşlar</button>
-      <button type="button" class="glass chip" data-vibe="Sevgilimle baş başa izleyeceğimiz büyüleyici bir film" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Sevgiliyle</button>
-      <button type="button" class="glass chip" data-vibe="Bana Interstellar'daki o derin uzay yalnızlığını hissettiren filmleri getir" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Uzay Yalnızlığı</button>
-      <button type="button" class="glass chip" data-vibe="Blade Runner'daki gibi yağmurlu neon hüznü filmleri" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:var(--ink);border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06)">Neon Hüznü</button>
-      <button type="button" class="glass chip" id="watchlistChip" style="white-space:nowrap;padding:6px 12px;border-radius:999px;font-size:12px;color:#f59e0b;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.15)">Ortak Liste</button>
+    <div class="kindbar">
+      <div class="seg glass" id="kindSeg"><button type="button" data-kind="movie" class="on">Filmler</button><button type="button" data-kind="series">Diziler</button></div>
+      <button type="button" class="glass refresh" id="refreshBtn" aria-label="Yenile">↻</button>
+    </div>
+    <div class="vibe-chips" id="vibeChips">
+      <button type="button" class="mtag" data-vibe="ailece izlenecek sürükleyici ve temiz">Ailece</button>
+      <button type="button" class="mtag" data-vibe="arkadaşlarla izlenecek eğlenceli ve gerilimli">Arkadaşlar</button>
+      <button type="button" class="mtag" data-vibe="sevgiliyle baş başa izlenecek romantik ve büyüleyici">Sevgiliyle</button>
+      <button type="button" class="mtag" data-vibe="Interstellar gibi derin uzay yalnızlığı anlatan">Uzay Yalnızlığı</button>
+      <button type="button" class="mtag" data-vibe="Blade Runner gibi yağmurlu, neon ışıklı, hüzünlü">Neon Hüznü</button>
+      <button type="button" class="mtag" id="watchlistChip" style="color:#f59e0b;border-color:rgba(245,158,11,.4)">Ortak Liste</button>
     </div>
     <h2 id="listTitle" data-i="trending"></h2>
     <div class="grid" id="results"></div>
@@ -366,11 +383,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       <div class="page"><div class="touch glass" id="touch">
         <button class="mchip glass" id="remoteCineSubBtn" style="right:auto;left:12px;color:#f59e0b;font-weight:700;display:flex;align-items:center;gap:4px;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.14)">Cine<span style="color:#f59e0b">SUB</span></button>
         <button class="mchip glass" id="mouseBtn" data-i="airMouse"></button>
-        <button class="mchip glass" id="gyroBtn" style="right:auto;left:12px;display:none">3D Gyro</button>
-        <button class="mchip glass" id="calBtn" style="right:auto;left:108px;display:none">Sıfırla</button>
         <div class="arrow" id="arrow"></div>
         <div class="tip" id="padTip" data-i="touchTip"></div>
-        <button type="button" id="gyroTrigger" style="display:none;position:absolute;bottom:14px;left:18px;right:18px;height:54px;border-radius:18px;border:0;background:linear-gradient(135deg,#34c759,#28a745);color:#fff;font-size:16px;font-weight:700;letter-spacing:0.04em;box-shadow:0 8px 24px rgba(52,199,89,.45);z-index:10">TETİK / TIKLA</button>
       </div></div>
       <div class="page"><div class="more">
         <button class="glass" data-key="178" data-i="input"></button><button class="glass" data-key="172" data-i="guide"></button>
@@ -420,7 +434,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
           <button class="pt-game" data-game="quiz"><b>Cine<span style="color:#8b5cf6">Quiz</span></b><small>Süreli bilmece · kazanan filmi seçer</small></button>
           <button class="pt-game" data-game="roulette"><b>Cine<span style="color:#38bdf8">Roulette</span></b><small>Altı film, tek kurşun</small></button>
           <button class="pt-game" data-game="sessiz"><b>Cine<span style="color:#f59e0b">Sessiz</span></b><small>Sen seç, onlar bilsin</small></button>
-          <button class="pt-game" data-game="duel"><b>Cine<span style="color:#ef4444">Duel</span></b><small>Telefon nişangâh olur</small></button>
           <button class="pt-game" data-game="snake"><b>Snake<span style="color:#10b981">Phile</span></b><small>TV'de sinefil yılan</small></button>
         </div>
       </div>
@@ -543,7 +556,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 <script>
 (() => {
   const T = {
-    en: {filmFound:"Film found: tap the video, or the button below",playOnTv:"Play on TV",open:"Open",browseHint:"Type or paste the film page’s address above and press Open. The page appears here; tap it as on a phone.",browseTip:"Skip the site’s ads, then press the film’s play button: the film starts on the TV.",airMouse:"Air mouse",mouseTip:"Move the phone or a finger · Tap = click · Two fingers = scroll",swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ (b. 2000, Ankara) is an independent film director, creative technologist, editor and voice artist known for his short film Sessiz (2023). He designed and built CineTV from scratch as a free gift to cinema lovers. Follow @alptugdag on Instagram for new film projects, directing/editing collaborations, or just to say hello.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgReset:"Restore Theme Background",bgResetDone:"Theme background restored",bgSent:"Now on your TV",bgFail:"Could not send the picture",
+    en: {filmFound:"Film found: tap the video, or the button below",playOnTv:"Play on TV",open:"Open",browseHint:"Type or paste the film page’s address above and press Open. The page appears here; tap it as on a phone.",browseTip:"Skip the site’s ads, then press the film’s play button: the film starts on the TV.",airMouse:"Air mouse",mouseTip:"Move a finger · Tap = click · Two fingers = scroll",swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ (b. 2000, Ankara) is an independent film director, creative technologist, editor and voice artist known for his short film Sessiz (2023). He designed and built CineTV from scratch as a free gift to cinema lovers. Follow @alptugdag on Instagram for new film projects, directing/editing collaborations, or just to say hello.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgReset:"Restore Theme Background",bgResetDone:"Theme background restored",bgSent:"Now on your TV",bgFail:"Could not send the picture",
       installAndroid:"Install CineTV on this phone for one-tap access.",installGo:"Install",installIos:"Tap Share, then “Add to Home Screen” to keep CineTV one tap away.",
       otherTvs:"CineTV TVs here",onTv:"On your TV now",waiting:"Allow this phone on your TV with the remote",denied:"Not allowed on the TV. Tap to ask again.",busy:"Another phone is asking. Retrying…",
       tabCast:"Cast",tabAbout:"Creator",castTitle:"Play a video on the TV",castPh:"Film page address",paste:"Paste",castPlay:"Play on TV",
@@ -560,7 +573,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       p_natural:"Natural",p_cinema:"Cinema",p_night:"Dark room",p_vivid:"Vivid",
       t_off:"Off",t_gray:"Gray ramp",t_bars:"Colour bars",t_black:"Black level",t_white:"White level",t_skin:"Skin tones",
       backlight:"Backlight",brightness:"Brightness",contrast:"Contrast",saturation:"Colour",hue:"Tint",sharpness:"Sharpness",red:"Red gain",green:"Green gain",blue:"Blue gain",done:"Saved"},
-    tr: {filmFound:"Film bulundu: videoya ya da aşağıdaki tuşa dokunun",playOnTv:"TV’de oynat",open:"Aç",browseHint:"Filmin sayfasının adresini yukarı yazın ya da yapıştırın, Aç’a basın. Sayfa burada açılır; telefondaki gibi dokunun.",browseTip:"Sitenin reklamlarını geçin, sonra filmin oynat tuşuna basın: film televizyonda başlar.",airMouse:"Hava faresi",mouseTip:"Telefonu ya da parmağını oynat · Dokun = tıkla · İki parmak = kaydır",swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ (d. 2000, Ankara); sinemayı, kurguyu ve yaratıcı yazılım mimarisini tek potada buluşturan bağımsız bir yönetmen, içerik üreticisi ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. Ev sinemasını reklamsız ve özgür kılmak için CineTV'yi sıfırdan tasarlayıp ücretsiz olarak armağan etti. Yeni film projeleri, reklam/kurgu yönetmenliği, yaratıcı iş birlikleri veya sadece bir teşekkür için Instagram'da @alptugdag hesabını takip edebilirsiniz.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgReset:"Temanın Kendi Arka Planına Dön",bgResetDone:"Temanın arka planına dönüldü",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
+    tr: {filmFound:"Film bulundu: videoya ya da aşağıdaki tuşa dokunun",playOnTv:"TV’de oynat",open:"Aç",browseHint:"Filmin sayfasının adresini yukarı yazın ya da yapıştırın, Aç’a basın. Sayfa burada açılır; telefondaki gibi dokunun.",browseTip:"Sitenin reklamlarını geçin, sonra filmin oynat tuşuna basın: film televizyonda başlar.",airMouse:"Hava faresi",mouseTip:"Parmağını kaydır · Dokun = tıkla · İki parmak = kaydır",swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ (d. 2000, Ankara); sinemayı, kurguyu ve yaratıcı yazılım mimarisini tek potada buluşturan bağımsız bir yönetmen, içerik üreticisi ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. Ev sinemasını reklamsız ve özgür kılmak için CineTV'yi sıfırdan tasarlayıp ücretsiz olarak armağan etti. Yeni film projeleri, reklam/kurgu yönetmenliği, yaratıcı iş birlikleri veya sadece bir teşekkür için Instagram'da @alptugdag hesabını takip edebilirsiniz.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgReset:"Temanın Kendi Arka Planına Dön",bgResetDone:"Temanın arka planına dönüldü",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
       installAndroid:"CineTV'yi bu telefona uygulama olarak ekleyin, tek dokunuşla açılsın.",installGo:"Ekle",installIos:"Paylaş'a, ardından “Ana Ekrana Ekle”ye dokunun; CineTV tek dokunuşla açılsın.",
       otherTvs:"Bu ağdaki CineTV televizyonları",onTv:"TV'de vitrine geldi",waiting:"Bu telefona TV'den kumandayla izin verin",denied:"TV'de izin verilmedi. Tekrar sormak için dokunun.",busy:"Başka bir telefon soruyor. Tekrar deneniyor…",
       tabCast:"Yayınla",tabAbout:"Yaratıcı",castTitle:"TV'de video oynat",castPh:"Filmin sayfasının adresi",paste:"Yapıştır",castPlay:"TV'de oynat",
@@ -782,30 +795,64 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   // discover & infinite scroll
   let currentList = [], currentPage = 1, currentQuery = "", isLoadingMore = false, hasMore = true;
+  let kind = "movie", freshMode = false;
+  const card = (m, i) => `<div class="card" data-i="${i}"><img loading="lazy" decoding="async" src="${esc(m.poster)}" alt="">
+      ${m.type === "series" ? `<span class="badge">${t("series")}</span>` : ""}<div class="t">${esc(m.title)}</div></div>`;
+  const ofKind = list => list.filter(m => !m.type || m.type === kind || (kind === "movie" && m.type !== "series"));
   const render = (list, title, append = false) => {
+    const box = $("results");
+    list = ofKind(list);
     if (!append) {
       if (title) $("listTitle").textContent = title;
       currentList = list.slice();
-      hasMore = list.length >= 12;
+      hasMore = list.length >= 8;
+      if (!currentList.length) { box.innerHTML = `<div class="empty" style="grid-column:1/-1">${t("noResults")}</div>`; return; }
+      box.innerHTML = currentList.map(card).join("");
     } else {
-      currentList = currentList.concat(list);
-      if (list.length < 6) hasMore = false;
+      // only the new cards are added: the posters already shown stay in place (no reload, no blank cards)
+      const seen = new Set(currentList.map(m => m.type + ":" + (m.tmdb || m.imdb || m.title)));
+      const fresh = list.filter(m => !seen.has(m.type + ":" + (m.tmdb || m.imdb || m.title)));
+      if (!fresh.length) { hasMore = false; return; }
+      const start = currentList.length;
+      currentList = currentList.concat(fresh);
+      box.insertAdjacentHTML("beforeend", fresh.map((m, j) => card(m, start + j)).join(""));
     }
-    const box = $("results");
-    if (!currentList.length) { box.innerHTML = `<div class="empty" style="grid-column:1/-1">${t("noResults")}</div>`; return; }
-    box.innerHTML = currentList.map((m, i) => `<div class="card" data-i="${i}"><img loading="lazy" src="${esc(m.poster)}" alt="">
-      ${m.type === "series" ? `<span class="badge">${t("series")}</span>` : ""}<div class="t">${esc(m.title)}</div></div>`).join("");
-    box.querySelectorAll(".card").forEach(c => c.onclick = () => openSheet(currentList[+c.dataset.i]));
+    box.querySelectorAll(".card:not([data-b])").forEach(c => { c.dataset.b = 1; c.onclick = () => openSheet(currentList[+c.dataset.i]); });
   };
   const skeleton = () => $("results").innerHTML = Array.from({length: 9}, () => '<div class="card skeleton"></div>').join("");
-  const trending = async () => {
+  const trending = async (fresh = false) => {
     if (!token) return;
     skeleton();
-    currentQuery = ""; currentPage = 1; hasMore = true;
+    currentQuery = ""; currentPage = 1; hasMore = true; freshMode = fresh;
+    const my = ++seq;
     try {
-      render((await api("catalog/trending")).results || [], t("trending"));
+      const r = await api("catalog/trending", {type: kind, page: 1, fresh: fresh ? 1 : 0});
+      if (my !== seq) return;
+      render(r.results || [], fresh ? (kind === "series" ? "Yeni dizi önerileri" : "Yeni film önerileri") : (kind === "series" ? "Popüler diziler" : t("trending")));
     } catch (e) {}
   };
+  document.querySelectorAll("#kindSeg button").forEach(b => b.onclick = () => {
+    if (b.dataset.kind === kind) return;
+    kind = b.dataset.kind;
+    document.querySelectorAll("#kindSeg button").forEach(x => x.classList.toggle("on", x === b));
+    navigator.vibrate && navigator.vibrate(8);
+    if (currentQuery) runSearch(currentQuery, true); else trending(freshMode);
+  });
+  $("refreshBtn").onclick = () => {
+    const b = $("refreshBtn"); b.classList.remove("spin"); void b.offsetWidth; b.classList.add("spin");
+    navigator.vibrate && navigator.vibrate(10);
+    $("q").value = "";
+    trending(true);
+  };
+  // Mood chips: the assistant curates (films or series, whichever is selected), never a title search for the words
+  let runSearch = () => {};
+  document.querySelectorAll("#vibeChips button[data-vibe]").forEach(btn => {
+    btn.onclick = () => {
+      navigator.vibrate && navigator.vibrate(8);
+      document.querySelectorAll("#vibeChips .mtag").forEach(x => x.classList.toggle("on", x === btn));
+      runSearch(btn.dataset.vibe + (kind === "series" ? " diziler" : " filmler"), true, btn.textContent);
+    };
+  });
   let searchTimer, seq = 0;
   let mirrorTimer;
 
@@ -819,7 +866,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         if (currentQuery) {
           r = await api("catalog/search", {q: currentQuery, page: currentPage});
         } else {
-          r = await api("catalog/trending", {page: currentPage});
+          r = await api("catalog/trending", {type: kind, page: currentPage, fresh: freshMode ? 1 : 0});
         }
         if (r && r.results && r.results.length) {
           render(r.results, "", true);
@@ -837,15 +884,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const cleanSearchQuery = text => (text || "").replace(/\b(filmleri|filmler|filmi|dizileri|dizisi|dizi|movies|movie|films|film|tavsiyesi|önerisi|seçkisi)\b/gi, "").replace(/\s+/g, " ").trim();
 
   // Typing shows in the TV's search bar; Enter (or the keyboard's Search) fills the TV's shelf.
-  document.querySelectorAll(".vibe-chips button[data-vibe]").forEach(btn => {
-    btn.onclick = () => {
-      const q = btn.dataset.vibe;
-      $("q").value = q;
-      $("q").dispatchEvent(new Event("input"));
-      api("tv/voice", {q}).catch(() => {});
-      toast("Gamze AI: " + q);
-    };
-  });
   if ($("watchlistChip")) {
     $("watchlistChip").onclick = async () => {
       skeleton();
@@ -866,25 +904,28 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     const q = e.target.value.trim();
     mirrorTimer = setTimeout(() => api("tv/typing", {q}).catch(() => {}), 450);
   });
+  runSearch = (query, ai, label) => {
+    currentQuery = query;
+    currentPage = 1;
+    hasMore = true;
+    const my = ++seq; skeleton();
+    api("catalog/search", {q: query, ai: ai ? 1 : 0, page: 1}).then(r => {
+      if (my !== seq) return;
+      render(r.results || [], label || r.title || t("results"));
+      if (ai) hasMore = false; // a curated list is complete; more pages would be a word-for-word title search
+      if (r.answer) {
+        if (!(r.results || []).length) $("results").innerHTML = "";
+        $("results").insertAdjacentHTML("afterbegin", `<div class="answer glass" style="grid-column:1/-1">${esc(r.answer)}</div>`);
+      }
+    }).catch(() => toast(t("offline")));
+  };
   const submitSearch = () => {
     clearTimeout(mirrorTimer);
     clearTimeout(searchTimer);
     const raw = $("q").value.trim(); if (!raw) return;
     $("q").blur();
     api("tv/search", {q: raw}).then(() => toast(t("onTv"))).catch(() => {});
-    const cleaned = cleanSearchQuery(raw);
-    currentQuery = cleaned || raw;
-    currentPage = 1;
-    hasMore = true;
-    const my = ++seq; skeleton();
-    api("catalog/search", {q: currentQuery, ai: 1, page: 1}).then(r => {
-      if (my !== seq) return;
-      render(r.results || [], r.title || t("results"));
-      if (r.answer) {
-        if (!(r.results || []).length) $("results").innerHTML = "";
-        $("results").insertAdjacentHTML("afterbegin", `<div class="answer glass" style="grid-column:1/-1">${esc(r.answer)}</div>`);
-      }
-    }).catch(() => {});
+    runSearch(raw, true);
   };
   $("searchBox").addEventListener("submit", e => {
     e.preventDefault();
@@ -1113,113 +1154,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
   const scheduleFlush = () => { if (!rafPending && mouse) { rafPending = true; requestAnimationFrame(flush); } };
   setInterval(flush, 32);
-  const onMotion = ev => {
-    if (!mouse || !ev.rotationRate) return;
-    const dt = (ev.interval || 16) / (ev.interval > 1 ? 1000 : 1); // seconds (iOS gives s, Android ms)
-    const k = 22; // TV pixels per degree turned
-    mx += -(ev.rotationRate.alpha || 0) * dt * k;
-    my += -(ev.rotationRate.beta || 0) * dt * k;
-    scheduleFlush();
-  };
   $("mouseBtn").addEventListener("pointerdown", e => e.stopPropagation());
-  let gyroMode = false;
-  let lastBeta = null, lastGamma = null;
-  let smoothDx = 0, smoothDy = 0;
-
-  const onOrientation = ev => {
-    if (!mouse || !gyroMode) return;
-    if (ev.beta === null || ev.gamma === null) return;
-    if (lastBeta === null || lastGamma === null) {
-      lastBeta = ev.beta; lastGamma = ev.gamma;
-      return;
-    }
-    const dG = (ev.gamma - lastGamma);
-    const dB = (ev.beta - lastBeta);
-    lastGamma = ev.gamma; lastBeta = ev.beta;
-    if (Math.abs(dG) < 0.04 && Math.abs(dB) < 0.04) return;
-    // Tilting up (beta increases towards TV) moves reticle UP (negative dy on screen)
-    const sens = 30.0;
-    const targetDx = dG * sens;
-    const targetDy = -dB * sens;
-    // Low-pass exponential smoothing for VR-grade fluid movement
-    smoothDx = smoothDx * 0.40 + targetDx * 0.60;
-    smoothDy = smoothDy * 0.40 + targetDy * 0.60;
-    mx += smoothDx;
-    my += smoothDy;
-    scheduleFlush();
-  };
-
-  const stopGyro = () => {
-    gyroMode = false;
-    window.removeEventListener("deviceorientation", onOrientation);
-    if (gyroBtn) {
-      gyroBtn.classList.remove("on");
-      gyroBtn.textContent = "3D Gyro";
-    }
-    if (calBtn) calBtn.style.display = "none";
-    if (gyroTrigger) gyroTrigger.style.display = "none";
-    smoothDx = 0; smoothDy = 0;
-    lastBeta = null; lastGamma = null;
-    mx = 0; my = 0;
-    api("mouse/off").catch(() => {});
-  };
-
-  const gyroBtn = $("gyroBtn"), calBtn = $("calBtn"), gyroTrigger = $("gyroTrigger");
-  if (gyroBtn) {
-    gyroBtn.onclick = async e => {
-      e.stopPropagation();
-      gyroMode = !gyroMode;
-      gyroBtn.classList.toggle("on", gyroMode);
-      gyroBtn.textContent = gyroMode ? "🎮 VR Aktif" : "3D Gyro";
-      calBtn.style.display = gyroMode ? "block" : "none";
-      gyroTrigger.style.display = gyroMode ? "block" : "none";
-      if (gyroMode) {
-        removeEventListener("devicemotion", onMotion);
-        lastBeta = null; lastGamma = null;
-        try { if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); } catch (err) {}
-        window.addEventListener("deviceorientation", onOrientation);
-        toast("VR Lazer Kumandası Açıldı. TV'ye doğrultup hareket ettirin.");
-      } else {
-        stopGyro();
-        if (mouse) addEventListener("devicemotion", onMotion);
-      }
-    };
-  }
-  if (calBtn) {
-    calBtn.onclick = e => {
-      e.stopPropagation();
-      lastBeta = null; lastGamma = null;
-      smoothDx = 0; smoothDy = 0;
-      toast("VR Lazer Merkezi Sıfırlandı");
-    };
-  }
-  if (gyroTrigger) {
-    gyroTrigger.onpointerdown = e => {
-      e.stopPropagation(); e.preventDefault();
-      flush();
-      api("mouse/click").catch(() => {});
-      navigator.vibrate && navigator.vibrate(20);
-      gyroTrigger.style.transform = "scale(0.95)";
-    };
-    gyroTrigger.onpointerup = e => {
-      e.stopPropagation();
-      gyroTrigger.style.transform = "none";
-    };
-  }
-
-  $("mouseBtn").onclick = async e => {
+  $("mouseBtn").onclick = e => {
     e.stopPropagation();
     mouse = !mouse;
     $("mouseBtn").classList.toggle("on", mouse); pad.classList.toggle("mouse", mouse);
-    if (gyroBtn) gyroBtn.style.display = mouse ? "block" : "none";
+    mx = my = sy = 0; mDown = 0; downAt = 0; moved = false; clearTimeout(holdT);
     if (!mouse) {
-      if (gyroMode) stopGyro();
-      removeEventListener("devicemotion", onMotion);
+      // back to D-pad: the TV leaves touch mode and the focus returns
       api("mouse/off").catch(() => {});
+      $("padTip").textContent = t("touchTip");
     } else {
       $("padTip").textContent = t("mouseTip");
-      try { if (window.DeviceMotionEvent && DeviceMotionEvent.requestPermission) await DeviceMotionEvent.requestPermission(); } catch (err) {}
-      if (!gyroMode) addEventListener("devicemotion", onMotion);
       api("mouse", {dx: 0, dy: 0}).catch(() => {});
     }
   };
@@ -1675,8 +1621,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   // ---- CineParty: the phone half. The TV draws the shared stage; each phone draws its own player's
   // screen from its own view of the room (a Sessiz card reaches only its teller), long-polling for changes.
-  const PT_COLORS = {quiz: "#8b5cf6", roulette: "#38bdf8", sessiz: "#f59e0b", duel: "#ef4444", snake: "#10b981"};
-  const PT_WORD = {quiz: "Quiz", roulette: "Roulette", sessiz: "Sessiz", duel: "Duel", snake: "Phile"};
+  const PT_COLORS = {quiz: "#8b5cf6", roulette: "#38bdf8", sessiz: "#f59e0b", snake: "#10b981"};
+  const PT_WORD = {quiz: "Quiz", roulette: "Roulette", sessiz: "Sessiz", snake: "Phile"};
   let ptId = null, ptName = "";
   try {
     ptId = localStorage.getItem("cinetv.party.id");
@@ -1739,10 +1685,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     const g = b.dataset.game;
     ptUnlock(); ptBuzz(10);
     try { await api("party/open", {game: g}); } catch (e) { toast(t("offline")); return; }
-    if (g === "duel" || g === "snake") ptOpenPad(g);
+    if (g === "snake") ptOpenPad(g);
   });
   $("ptLeave").onclick = () => api("party/close").catch(() => {});
-  $("ptPadBack").onclick = () => { ptPad = ""; ptStopAim(); press(4); ptRender(ptSt); };
+  $("ptPadBack").onclick = () => { ptPad = ""; press(4); ptRender(ptSt); };
 
   const ptLoop = async () => {
     while (ptOn) {
@@ -1844,22 +1790,29 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   // ---- CineQuiz ----
   function ptQuiz(st) {
     const q = st.quiz || {};
-    $("ptPhase").textContent = st.phase === "question" || st.phase === "reveal" ? `Soru ${q.no} · ${ptClock(ptLeft(q.timeLeft, st._at))}` : st.phase === "finished" ? "Bitti" : "Hazırlık";
+    $("ptPhase").textContent = st.phase === "question" || st.phase === "reveal" ? `Soru ${q.no} · ${q.endless ? "∞" : ptClock(ptLeft(q.timeLeft, st._at))}` : st.phase === "finished" ? "Bitti" : "Hazırlık";
+    const qLevels = ["Kolay", "Orta", "Zor", "Sinefil"];
     if (st.phase === "setup") {
       const host = ptHost(st);
-      ptScreen("q-setup-" + host + q.minutes + q.seconds + st.status, `<div class="pt-card glass">
-        <div class="pt-h">Süreyi seçin</div>
-        <p class="pt-sub" style="margin:0">Süre bitene kadar en çok doğru bilen kazanır ve bu gecenin filmini seçer. Her doğru cevap 10 puan.</p>
+      ptScreen("q-setup-" + host + q.minutes + q.seconds + q.difficulty + q.category + st.status, `<div class="pt-card glass">
+        <div class="pt-h">Oyunu ayarlayın</div>
+        <p class="pt-sub" style="margin:0">En çok puanı toplayan kazanır ve bu gecenin filmini seçer. Doğru cevap ${q.points || 10} puan; ilk doğru cevaplayan yarısı kadar fazlasını alır, üst üste üçüncü doğrudan itibaren seri bonusu.</p>
+        <div class="pt-lbl">Kategori</div>
+        <div class="pt-seg" id="qCat" style="flex-wrap:wrap">${["Hepsi", "Türk filmleri", "Klasikler", "Yeni filmler", "Animasyon"].map((n, i) => `<button data-v="${i}" class="${i === (q.category || 0) ? "on" : ""}" ${host ? "" : "disabled"}>${n}</button>`).join("")}</div>
+        <div class="pt-lbl">Zorluk</div>
+        <div class="pt-seg" id="qLvl">${qLevels.map((n, i) => `<button data-v="${i}" class="${i === q.difficulty ? "on" : ""}" ${host ? "" : "disabled"}>${n}</button>`).join("")}</div>
         <div class="pt-lbl">Oyun süresi</div>
-        <div class="pt-seg" id="qMin">${[3, 5, 10, 15].map(m => `<button data-v="${m}" class="${m === q.minutes ? "on" : ""}" ${host ? "" : "disabled"}>${m} dk</button>`).join("")}</div>
+        <div class="pt-seg" id="qMin">${[3, 5, 10, 15, 0].map(m => `<button data-v="${m}" class="${m === q.minutes ? "on" : ""}" ${host ? "" : "disabled"}>${m ? m + " dk" : "∞ Sonsuz"}</button>`).join("")}</div>
         <div class="pt-lbl">Soru başına</div>
         <div class="pt-seg" id="qSec">${[15, 20, 30].map(s => `<button data-v="${s}" class="${s === q.seconds ? "on" : ""}" ${host ? "" : "disabled"}>${s} sn</button>`).join("")}</div>
         ${st.status ? `<div class="pt-note" style="color:#ff9f0a">${esc(st.status)}</div>` : ""}
         ${host ? `<button class="pt-btn wide" id="qStart">Başlat</button>` : `<div class="pt-note">Ev sahibi başlatacak.</div>`}
       </div>`, () => {
         if (!host) return;
-        $("qMin").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: b.dataset.v, seconds: q.seconds}));
-        $("qSec").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: q.minutes, seconds: b.dataset.v}));
+        $("qCat").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: q.minutes, seconds: q.seconds, difficulty: q.difficulty, category: b.dataset.v}));
+        $("qLvl").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: q.minutes, seconds: q.seconds, difficulty: b.dataset.v}));
+        $("qMin").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: b.dataset.v, seconds: q.seconds, difficulty: q.difficulty}));
+        $("qSec").querySelectorAll("button").forEach(b => b.onclick = () => ptAct("party/quiz/settings", {minutes: q.minutes, seconds: b.dataset.v, difficulty: q.difficulty}));
         $("qStart").onclick = () => ptAct("party/quiz/start");
       });
       return;
@@ -1872,6 +1825,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         ${q.image ? `<img class="pt-pic ${q.shape === "tall" ? "tall" : ""}" src="${esc(q.image)}" alt="">` : ""}
         ${q.caption ? `<div class="pt-cap">${esc(q.caption)}</div>` : ""}
         <div class="pt-q">${esc(q.prompt)}</div>
+        ${q.streak >= 2 ? `<div class="pt-note" style="color:#ff9f0a">🔥 ${q.streak} doğru üst üste</div>` : ""}
         ${q.mine ? `<div class="pt-res glass"><div class="pt-note">Cevabın kilitlendi</div><div class="pt-big" style="font-size:22px">${esc(q.mine)}</div><div class="pt-note">Herkes cevaplayınca TV'de açılır.</div></div>`
           : opts.length ? `<div class="pt-opts">${opts.map((o, i) => `<button class="pt-opt" data-i="${i}"><i>${"ABCD"[i]}</i>${esc(o)}</button>`).join("")}</div>`
           : `<div class="pt-row"><input id="qAns" autocomplete="off" enterkeyhint="send" placeholder="Film adı"><button class="pt-btn" id="qSend">Gönder</button></div>`}
@@ -1892,9 +1846,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       const me = ptPlayer(ptId) || {};
       const ok = !!me.correct;
       if (ptScreen("q-r-" + q.no, `<div class="pt-res glass ${ok ? "ok" : "no"}">
-          <div class="pt-big">${ok ? "Doğru! +10" : me.answer ? "Olmadı" : "Süre doldu"}</div>
+          <div class="pt-big">${ok ? "Doğru! +" + (q.points || 10) : me.answer ? "Olmadı" : "Süre doldu"}</div>
           <div class="pt-note">Doğru cevap</div><div style="font-weight:700;font-size:17px">${esc(q.answer)}</div>
-        </div>${q.fact ? `<div class="pt-fact">${esc(q.fact)}</div>` : ""}`)) ptBuzz(ok ? [20, 40, 20] : 40);
+        </div>${q.fact ? `<div class="pt-fact">${esc(q.fact)}</div>` : ""}
+        ${q.endless && ptHost(st) ? `<button class="pt-btn wide ghost" id="qEnd">Oyunu bitir</button>` : ""}`, () => {
+          if ($("qEnd")) $("qEnd").onclick = () => ptAct("party/quiz/end");
+        })) ptBuzz(ok ? [20, 40, 20] : 40);
       return;
     }
     if (st.phase === "finished") {
@@ -1903,7 +1860,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         <div class="pt-card glass"><div class="pt-row"><input id="fQ" placeholder="Film ara" enterkeyhint="search" autocomplete="off"><button class="pt-btn" id="fGo">Ara</button></div><div class="pt-results" id="fRes"></div></div>`
         : `<div class="pt-res glass"><div class="pt-note">Bu gecenin şampiyonu</div><div class="pt-big">${esc(q.championName || "—")}</div><div class="pt-note">${q.picked ? "▶ " + esc(q.picked) + " açılıyor" : "Film seçiliyor…"}</div></div>
         ${ptHost(st) ? `<button class="pt-btn wide ghost" id="qAgain">Yeniden oyna</button>` : ""}`, () => {
-        if ($("qAgain")) $("qAgain").onclick = () => ptAct("party/open", {game: "quiz"});
+        if ($("qAgain")) $("qAgain").onclick = () => ptAct("party/open", {game: "quiz", again: 1});
         if ($("fGo")) ptFilmSearch($("fQ"), $("fGo"), $("fRes"), m => ptAct("party/pick", {title: m.title}, "win"));
       });
     }
@@ -1926,7 +1883,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         <div class="pt-results" id="rRes"></div>
         ${chambers()}
         ${st.status ? `<div class="pt-note" style="color:#ff9f0a">${esc(st.status)}</div>` : ""}
-        <div class="pt-row"><input id="rMood" placeholder="Gamze'ye bir ruh hali söyle (isteğe bağlı)"><button class="pt-btn ghost" id="rFill">Gamze doldursun</button></div>
+        <div class="pt-row"><input id="rMood" placeholder="Ruh hali (isteğe bağlı)"><button class="pt-btn ghost" id="rFill">Gamze doldursun</button></div>
         ${ptHost(st) ? `<button class="pt-btn wide" id="rStart">Tamburu kilitle ve başlat</button>` : `<div class="pt-note">Ev sahibi başlatacak.</div>`}
       </div>`, () => {
         ptFilmSearch($("rQ"), $("rGo"), $("rRes"), m => ptAct("party/roulette/load", {title: m.title, poster: m.poster || "", year: m.year || 0}, "hammer"));
@@ -1965,7 +1922,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         <div class="pt-note">${win.ownerName ? esc(win.ownerName) + " yükledi" : ""}</div>
       </div><button class="pt-btn wide" id="rPlay">TV'de izle</button>${ptHost(st) ? `<button class="pt-btn wide ghost" id="rAgain">Yeniden oyna</button>` : ""}`, () => {
         $("rPlay").onclick = () => ptAct("party/roulette/play", {}, "chime");
-        if ($("rAgain")) $("rAgain").onclick = () => ptAct("party/open", {game: "roulette"});
+        if ($("rAgain")) $("rAgain").onclick = () => ptAct("party/open", {game: "roulette", again: 1});
       });
     }
   }
@@ -2068,40 +2025,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   const ptClock = ms => { const s = Math.ceil(ms / 1000); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
 
-  // ---- CineDuel and SnakePhile: the phone becomes the controller ----
-  let ptAimOn = false, ptAimLast = 0, ptAimBase = null;
-  const ptOnAim = e => {
-    if (!ptAimOn || e.beta == null) return;
-    if (!ptAimBase) ptAimBase = {b: e.beta, g: e.gamma};
-    const now = Date.now();
-    if (now - ptAimLast < 33) return;
-    ptAimLast = now;
-    const x = Math.max(0, Math.min(1, .5 + (e.gamma - ptAimBase.g) / 50));
-    const y = Math.max(0, Math.min(1, .5 + (e.beta - ptAimBase.b) / 36));
-    api("game/duel/aim", {x: x.toFixed(3), y: y.toFixed(3)}).catch(() => {});
-  };
-  const ptStopAim = () => { ptAimOn = false; removeEventListener("deviceorientation", ptOnAim); };
+  // ---- SnakePhile: the phone becomes the controller ----
   function ptOpenPad(game) {
     ptPad = game;
     ptShow("ptPad");
     $("ptPad").style.setProperty("--pt", PT_COLORS[game]);
     $("ptPadWord").innerHTML = ptWordHtml(game);
-    if (game === "duel") {
-      $("ptPadBody").innerHTML = `<div class="pt-card glass" style="text-align:center">
-        <div class="pt-note">Telefonu TV'ye doğrult ve eğerek nişan al. Ortalamak için "Merkez".</div>
-        <button class="pt-trigger" id="dFire" style="background:radial-gradient(circle at 35% 30%,#fca5a5,#b91c1c 70%);box-shadow:0 0 0 10px rgba(239,68,68,.12),0 0 60px rgba(239,68,68,.45)">ATEŞ</button>
-        <button class="pt-btn ghost wide" id="dCenter">Merkez</button></div>`;
-      const startAim = async () => {
-        try { if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) await DeviceOrientationEvent.requestPermission(); } catch (e) {}
-        ptAimBase = null; ptAimOn = true; addEventListener("deviceorientation", ptOnAim);
-      };
-      $("dFire").onclick = () => { if (!ptAimOn) startAim(); ptBuzz(25); ptSfx("bang"); api("game/duel/shoot").catch(() => {}); };
-      $("dCenter").onclick = () => { ptAimBase = null; if (!ptAimOn) startAim(); };
-    } else {
-      $("ptPadBody").innerHTML = `<div class="pt-card glass"><div class="pt-note">Yılanı yönlendir. TV'de afişleri ye, kuyruğunu ısırma.</div>
-        <div class="pt-pad"><span></span><button data-k="19">▲</button><span></span><button data-k="21">◀</button><button data-k="23">●</button><button data-k="22">▶</button><span></span><button data-k="20">▼</button><span></span></div></div>`;
-      $("ptPadBody").querySelectorAll("[data-k]").forEach(b => b.onpointerdown = e => { e.preventDefault(); ptBuzz(8); press(b.dataset.k); });
-    }
+    $("ptPadBody").innerHTML = `<div class="pt-card glass"><div class="pt-note">Yılanı yönlendir. TV'de afişleri ye, kuyruğunu ısırma.</div>
+      <div class="pt-pad"><span></span><button data-k="19">▲</button><span></span><button data-k="21">◀</button><button data-k="23">●</button><button data-k="22">▶</button><span></span><button data-k="20">▼</button><span></span></div></div>`;
+    $("ptPadBody").querySelectorAll("[data-k]").forEach(b => b.onpointerdown = e => { e.preventDefault(); ptBuzz(8); press(b.dataset.k); });
   }
 
   const triggerCineSubHelper = async () => {

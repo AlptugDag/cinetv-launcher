@@ -119,7 +119,13 @@ public final class AirMouse {
     }
 
     public static void off(Context ctx) {
-        main.post(AirMouse::hideNow);
+        main.post(() -> {
+            hideNow();
+            // taps left the TV in touch mode, where nothing holds the focus and the arrows seem dead
+            com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+            if (ma != null && com.cinetv.launcher.MainActivity.isInFront()) ma.restoreKeyFocus();
+        });
+        new Thread(() -> KeyBridge.key(ctx, android.view.KeyEvent.KEYCODE_UNKNOWN, false), "cinetv-mouse-off").start();
     }
 
     private static void keepAlive() {

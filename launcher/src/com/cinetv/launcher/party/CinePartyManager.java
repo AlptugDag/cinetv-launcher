@@ -55,6 +55,8 @@ public final class CinePartyManager {
         long lastSeen = SystemClock.elapsedRealtime();
         long answerMs;
         String answer;
+        /** When the answer came in: the quickest right answers earn more. */
+        long answeredAt;
         int spins = 2;
 
         Player(String id, String name, int color) {
@@ -107,6 +109,8 @@ public final class CinePartyManager {
     private int quizMinutes = 5, quizSeconds = 20, questionNo;
     /** 0 kolay, 1 orta, 2 zor, 3 sinefil. quizMinutes 0 is the endless game, ended by the host. */
     private int quizDifficulty = 1;
+    /** 0 hepsi, 1 Türk filmleri, 2 klasikler, 3 yeni filmler, 4 animasyon. */
+    private int quizCategory = 0;
     private static final int[] QUIZ_POINTS = {10, 15, 20, 30};
     private long quizEndsAt, questionEndsAt, questionStartedAt;
     private boolean fetchingQuiz;
@@ -199,6 +203,8 @@ public final class CinePartyManager {
     /** Opens a game on the TV; the host's phone then picks the settings and starts it. */
     public synchronized void open(Mode m) {
         stopTimers();
+        // the shot and the empty click must be ready before the first trigger pull (a cold pool drops the sound)
+        SystemAudio.warmUp(ctx);
         gen++;
         mode = m;
         phase = "setup";
@@ -236,9 +242,14 @@ public final class CinePartyManager {
     // ---- CineQuiz -------------------------------------------------------------------------------
 
     public synchronized void quizSettings(String id, int minutes, int seconds, int difficulty) {
+        quizSettings(id, minutes, seconds, difficulty, -1);
+    }
+
+    public synchronized void quizSettings(String id, int minutes, int seconds, int difficulty, int category) {
         touch(id);
         if (mode != Mode.QUIZ || !"setup".equals(phase)) return;
         if (difficulty >= 0 && difficulty <= 3) quizDifficulty = difficulty;
+        if (category >= 0 && category <= 4) quizCategory = category;
         if (minutes == 0 || (minutes >= 2 && minutes <= 30)) quizMinutes = minutes;
         if (seconds >= 10 && seconds <= 60) quizSeconds = seconds;
         bump();
@@ -267,6 +278,7 @@ public final class CinePartyManager {
         quizQueue.clear();
         if (quizDeck == null) quizDeck = new QuizDeck(ctx);
         quizDeck.setDifficulty(quizDifficulty);
+        quizDeck.setCategory(quizCategory);
         for (Player p : players.values()) p.streak = 0;
         phase = "loading";
         status = tr ? "Gamze soruları hazırlıyor…" : "Gamze is writing the questions…";
@@ -372,6 +384,7 @@ public final class CinePartyManager {
         String a = answer == null ? "" : answer.trim();
         if (a.isEmpty() || a.length() > 80) return false;
         p.answer = a;
+        p.answeredAt = SystemClock.elapsedRealtime();
         p.answerMs = SystemClock.elapsedRealtime() - questionStartedAt;
         sfx(Sfx.POP);
         boolean all = true;
@@ -385,22 +398,28 @@ public final class CinePartyManager {
         main.removeCallbacks(quizTick);
         phase = "reveal";
         List<String> right = new ArrayList<>();
+        List<Player> correct = new ArrayList<>();
         for (Player p : players.values()) {
-            if (p.answer != null && question.isCorrect(p.answer)) {
-                // points by level, plus a streak bonus from the third right answer in a row
-                p.streak++;
-                p.score += QUIZ_POINTS[quizDifficulty] + (p.streak >= 3 ? 5 * (p.streak - 2) : 0);
-                p.correct++;
-                right.add(p.name);
-            } else {
-                p.streak = 0;
-            }
+            if (p.answer != null && question.isCorrect(p.answer)) correct.add(p);
+            else p.streak = 0;
+        }
+        // the first right answer earns the most: +50% of the level's points, the second +25%, the third +10%
+        correct.sort((a, b) -> Long.compare(a.answeredAt, b.answeredAt));
+        int base = QUIZ_POINTS[quizDifficulty];
+        for (int i = 0; i < correct.size(); i++) {
+            Player p = correct.get(i);
+            int speed = i == 0 && correct.size() > 1 ? base / 2 : i == 1 ? base / 4 : i == 2 ? base / 10 : 0;
+            // points by level, the speed bonus, and a streak bonus from the third right answer in a row
+            p.streak++;
+            p.score += base + speed + (p.streak >= 3 ? 5 * (p.streak - 2) : 0);
+            p.correct++;
+            right.add(p.name);
         }
         sfx(right.isEmpty() ? Sfx.WRONG : Sfx.CORRECT);
         StringBuilder line = new StringBuilder();
         if (right.isEmpty()) line.append(tr ? "Kimse bilemedi. Doğru cevap: " : "Nobody got it. The answer: ").append(question.answer).append(". ");
         else if (right.size() == 1) line.append(tr ? "Sadece " + right.get(0) + " bildi! " : "Only " + right.get(0) + " got it! ");
-        else line.append(tr ? right.size() + " kişi bildi. " : right.size() + " of you got it. ");
+        else line.append(tr ? right.size() + " kişi bildi, en hızlısı " + right.get(0) + ". " : right.size() + " of you got it, " + right.get(0) + " was quickest. ");
         if (!question.fact.isEmpty()) line.append(question.fact);
         bump();
         // Everyone sees the answers while Gamze comments; the next question waits for her.
@@ -674,8 +693,8 @@ public final class CinePartyManager {
                     Player owner = players.get(c.owner);
                     if (owner != null) owner.score += 30;
                     sfx(Sfx.BANG);
-                    say(tr ? "Gümm! Kurşun " + c.title + " filmindeydi. Bu gece onu izliyoruz."
-                            : "Bang! The bullet was in " + c.title + ". That's tonight's film.");
+                    say(tr ? "Kurşun " + c.title + " filmindeydi. Bu gece onu izliyoruz."
+                            : "The bullet was in " + c.title + ". That's tonight's film.");
                     bump();
                     for (Listener l : listeners) {
                         try {
@@ -692,7 +711,7 @@ public final class CinePartyManager {
                 event("out", c.title);
                 advanceAligned();
                 bump();
-                sayThen(tr ? (forced ? "Süre doldu! " : "Klik. ") + c.title + " elendi." : (forced ? "Time's up! " : "Click. ") + c.title + " is out.",
+                sayThen(tr ? (forced ? "Süre doldu! " : "") + c.title + " elendi." : (forced ? "Time's up! " : "") + c.title + " is out.",
                         700, () -> {
                             if ("pulling".equals(phase)) nextTurn();
                         });
@@ -1039,7 +1058,7 @@ public final class CinePartyManager {
 
             if (mode == Mode.QUIZ) {
                 JSONObject q = new JSONObject().put("minutes", quizMinutes).put("seconds", quizSeconds).put("no", questionNo)
-                        .put("difficulty", quizDifficulty).put("points", QUIZ_POINTS[quizDifficulty]).put("endless", quizMinutes == 0)
+                        .put("difficulty", quizDifficulty).put("category", quizCategory).put("points", QUIZ_POINTS[quizDifficulty]).put("endless", quizMinutes == 0)
                         .put("timeLeft", quizMinutes == 0 ? -1 : quizEndsAt > 0 ? Math.max(0, quizEndsAt - now) : quizMinutes * 60_000L);
                 if (me != null) q.put("streak", me.streak);
                 if (question != null && ("question".equals(phase) || "reveal".equals(phase))) {
@@ -1102,15 +1121,46 @@ public final class CinePartyManager {
         return a;
     }
 
+    /** Without the AI: one true line from the film's TMDB record (director and year, tagline, box office). */
+    private String filmFact(String title) {
+        try {
+            if (!com.cinetv.launcher.service.MovieCatalog.hasTmdb(ctx)) return null;
+            String lang = com.cinetv.launcher.service.MovieCatalog.language();
+            org.json.JSONArray res = com.cinetv.launcher.service.MovieCatalog.tmdbJson(ctx, "search/movie?query="
+                    + java.net.URLEncoder.encode(title, "UTF-8") + "&language=" + lang).optJSONArray("results");
+            if (res == null || res.length() == 0) return null;
+            JSONObject d = com.cinetv.launcher.service.MovieCatalog.tmdbJson(ctx, "movie/" + res.optJSONObject(0).optInt("id") + "?append_to_response=credits&language=" + lang);
+            String director = "";
+            org.json.JSONArray crew = d.optJSONObject("credits") == null ? null : d.optJSONObject("credits").optJSONArray("crew");
+            for (int i = 0; crew != null && i < crew.length(); i++) {
+                if ("Director".equals(crew.optJSONObject(i).optString("job"))) {
+                    director = crew.optJSONObject(i).optString("name");
+                    break;
+                }
+            }
+            String year = d.optString("release_date", "").length() >= 4 ? d.optString("release_date").substring(0, 4) : "";
+            List<String> facts = new ArrayList<>();
+            if (!d.optString("tagline").isEmpty()) facts.add(tr ? "Afiş sloganı: " + d.optString("tagline") : "Its tagline: " + d.optString("tagline"));
+            if (!director.isEmpty()) facts.add(tr ? title + ", " + (year.isEmpty() ? "" : year + " yılında ") + director + " tarafından yönetildi."
+                    : title + " was directed by " + director + (year.isEmpty() ? "." : " in " + year + "."));
+            long b = d.optLong("budget") / 1_000_000, r = d.optLong("revenue") / 1_000_000;
+            if (b > 0 && r > 0) facts.add(tr ? b + " milyon dolara çekildi, " + r + " milyon dolar hasılat yaptı." : "Made for $" + b + "M, it grossed $" + r + "M.");
+            return facts.isEmpty() ? null : facts.get(new java.util.Random().nextInt(facts.size()));
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     /** SnakePhile asks Gamze for one line about the film it just ate. */
     public void getGamzeMovieLore(final String movieTitle, final java.util.function.Consumer<String> callback) {
         work.execute(() -> {
             String lore = null;
-            if (LlmClient.isConfigured(ctx)) {
+            if (LlmClient.isConfigured(ctx) && !LlmClient.quotaOut()) {
                 LlmClient.Result r = LlmClient.generate(ctx, "One short, true, surprising fact about this film, under 120 characters, in "
                         + (tr ? "Turkish" : "English") + ". No quotes.", movieTitle, 160, true);
                 if (r.success) lore = r.text.trim();
             }
+            if (lore == null || lore.isEmpty()) lore = filmFact(movieTitle);
             final String out = lore;
             if (callback != null && out != null) main.post(() -> callback.accept(out));
         });

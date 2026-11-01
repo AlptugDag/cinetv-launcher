@@ -1,5 +1,23 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.22a · Beta 1
+
+- AlptugPlayer: "io unspecified" hatası giderildi. Android 9 ve sonrası şifresiz `http://` bağlantıyı engelliyordu; Nuvio'nun torrent ve yerel kaynakları bu yüzden açılmıyordu. Yerel sunucuların ilk baytı geç vermesi için bağlantı süreleri de uzatıldı.
+- Telefon kumandası: aynı yöne art arda basışlar artık kaybolmuyor (tuşlar zaman damgasız gidiyor ve çift basış filtresine takılıyordu). Hava faresinden D-pad'e dönünce TV dokunma modundan çıkıyor ve odak geri geliyor. Gyro ve VR kaldırıldı.
+- Ana sayfa: basılı tutunca raf filmler arasında akıcı ve eşit hızda kayıyor, kutu bilgileri bırakınca yükleniyor.
+- DVD kutusu: açıkken sağ/sol bir sonraki filmin kutusunu açıyor. Fragman yuvası açılış ve kapanışta siyah kalmıyor, filmin sahne fotoğrafı görünüyor.
+- Telefon Keşfet: Filmler/Diziler ayrımı, yeni öneriler için yenileme tuşu. Afişler kaydırınca kaybolmuyor (yalnızca yeni kartlar ekleniyor). Ailece, Arkadaşlar gibi çipler Gamze'nin adını aramaya katmadan yapay zekâ seçkisi getiriyor.
+- GitHub Pages'teki telefon sayfası 1.0.0.20'den beri güncellenmemişti; CineDuel oradan da kalktı, CineQuiz zorluk ve sonsuz modu görünüyor.
+- CineQuiz: kategori modu (Türk filmleri, Klasikler, Yeni filmler, Animasyon). İlk doğru cevaplayan %50, ikinci %25 fazla puan alıyor. Çeldiriciler aynı tür ve dönemden; orta zorluk daha az bilinen filmlerden. Afişler (oyuncu ve yönetmen adı yazdığı için) ve yazılı arka planlar yerine yazısız sahne kareleri; resim altında yıl yok.
+- Gamze oyunlarda trivia söylüyor: yapay zekâ kotası bitince de filmin TMDB kaydından (slogan, yönetmen, bütçe/gişe).
+- SnakePhile: kendi sinema salonu sahnesi (perdeler, film şeridi), piton desenli yılan, afişi ağzına alıp gövdesinden geçiren yutma animasyonu, yutulan filmlere dair notlar.
+- CineRoulette: telefona sığıyor, "Yeniden oyna" çalışıyor, Gamze "güm/klik" demiyor (silah sesi oyun açılırken hazırlanıyor).
+- Oyun ekranlarında imza ve "by Alptuğ Dağ".
+- Ayarlar: Letterboxd sorusu ve kaydı için aç/kapat.
+- AirPods paneli: D-pad ile tuşlar seçilebiliyor (sol tuş paneli kapatıyordu); odak seçili modda açılıyor.
+- Arama: isteğin her kavramı birlikte aranıyor ("intikam alan kız babası" = intikam VE baba-kız; "emekli ajan" = emeklilik VE ajan).
+- TV gerçekten kapanıyor: eski "hızlı açılış" ayarı TV'yi hazırda bekletmede tutuyordu. Artık yazılmıyor, daha önce yazılmışsa siliniyor; "CineTV'yi yok et" de siliyor.
+
 ## 1.0.0.21
 
 1.0.0.20'nin dokuz betasındaki her şey (aşağıda) ve şunlar:

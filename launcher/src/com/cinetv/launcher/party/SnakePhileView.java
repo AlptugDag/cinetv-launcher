@@ -75,6 +75,7 @@ public final class SnakePhileView extends View {
     private float targetAngle = 0f;
     private float speed = 5.2f;
     private long tick = 0;
+    private int eaten = 0;
     private boolean isManualControl = false;
     private boolean showHelpOverlay = false;
 
@@ -180,6 +181,8 @@ public final class SnakePhileView extends View {
         currentSegmentCount = 20;
         speed = 5.2f;
         tick = 0;
+        eaten = 0;
+        swallowAt = -1;
 
         int w = getWidth() > 0 ? getWidth() : 1920;
         int h = getHeight() > 0 ? getHeight() : 1080;
@@ -413,11 +416,23 @@ public final class SnakePhileView extends View {
             eatRippleY = foodY;
             eatRippleRadius = UiKit.pxf(16f);
             com.cinetv.launcher.device.SystemAudio.tick(getContext());
+            swallowBmp = currentFoodIndex < posterBitmaps.size() ? posterBitmaps.get(currentFoodIndex) : null;
+            swallowFromX = foodX;
+            swallowFromY = foodY;
+            swallowAt = tick;
+            eaten++;
             currentFoodIndex = (currentFoodIndex + 1) % POSTER_TITLES.length;
             String nextMovie = cleanMovieTitle(POSTER_TITLES[currentFoodIndex % POSTER_TITLES.length]);
             if (isManualControl) {
-                com.cinetv.launcher.ai.EmaLightningTts.speakGame(getContext(),
-                        eatenMovie + " yakalandı! Sıradaki hedef: " + nextMovie + ".");
+                // Gamze tells something about the film just swallowed (every other one, so she never talks over herself)
+                if (eaten % 2 == 1) {
+                    CinePartyManager.get(getContext()).getGamzeMovieLore(eatenMovie, lore -> {
+                        if (lore != null && !lore.isEmpty() && !isGameOver)
+                            com.cinetv.launcher.ai.EmaLightningTts.speakGame(getContext(), eatenMovie + " yutuldu. " + lore);
+                    });
+                } else {
+                    com.cinetv.launcher.ai.EmaLightningTts.speakGame(getContext(), "Sıradaki hedef: " + nextMovie + ".");
+                }
             }
             // Grow snake body!
             if (currentSegmentCount < MAX_SEGMENTS) {
@@ -437,25 +452,9 @@ public final class SnakePhileView extends View {
         int w = getWidth() > 0 ? getWidth() : 1920;
         int h = getHeight() > 0 ? getHeight() : 1080;
 
-        // 1. Cinematic Studio Background with Deep Obsidian Radial Vignette
-        floorPaint.setStyle(Paint.Style.FILL);
-        floorPaint.setShader(new RadialGradient(w * 0.5f, h * 0.45f, w * 0.75f,
-                new int[]{0xFF0E1A2E, 0xFF080D1A, 0xFF03070E},
-                new float[]{0f, 0.65f, 1f}, Shader.TileMode.CLAMP));
-        canvas.drawRect(0, 0, w, h, floorPaint);
-        floorPaint.setShader(null);
-
-        // Subtle 3D Studio Floor Grid
-        floorPaint.setStyle(Paint.Style.STROKE);
-        floorPaint.setStrokeWidth(UiKit.pxf(1));
-        floorPaint.setColor(0x0C38BDF8);
-        int gridSize = UiKit.px(80);
-        for (int x = 0; x < w; x += gridSize) {
-            canvas.drawLine(x, 0, x, h, floorPaint);
-        }
-        for (int y = 0; y < h; y += gridSize) {
-            canvas.drawLine(0, y, w, y, floorPaint);
-        }
+        // 1. Its own stage: a dark cinema hall (velvet curtains, a film strip at top and bottom), never the home screen
+        if (stage == null || stage.getWidth() != w || stage.getHeight() != h) stage = bakeStage(w, h);
+        canvas.drawBitmap(stage, 0, 0, null);
 
         // 2. Render Food Target: Plain Movie Poster (DVD-boxless, 2:3 ratio) matching CineTV Home
         drawMoviePosterTarget(canvas, foodX, foodY);
@@ -478,9 +477,11 @@ public final class SnakePhileView extends View {
 
         // 3. Render 3D Realistic Snake Body
         drawRealisticSnake(canvas);
+        drawSwallow(canvas);
 
         // 4. Liquid Glass HUD Overlay
         drawLiquidGlassHud(canvas, w, h);
+        com.cinetv.launcher.ui.Brand.drawSignature(canvas, getContext(), w - w * 0.075f - UiKit.pxf(12), h - UiKit.pxf(40), UiKit.pxf(70), 150);
 
         // 5. Game Over Liquid Glass Card & Movie Launch Modal
         if (isGameOver) {
@@ -493,6 +494,100 @@ public final class SnakePhileView extends View {
         if (!isGameOver) {
             postInvalidateOnAnimation();
         }
+    }
+
+    private Bitmap stage;
+
+    /** The hall, drawn once per screen size. */
+    private Bitmap bakeStage(int w, int h) {
+        Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
+        Canvas c = new Canvas(b);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        // the floor: deep wine-black with a warm spotlight in the middle
+        p.setShader(new RadialGradient(w * 0.5f, h * 0.48f, w * 0.7f,
+                new int[]{0xFF2A1416, 0xFF150A0C, 0xFF070405}, new float[]{0f, 0.6f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, h, p);
+        p.setShader(null);
+        // carpet pattern: faint diamonds
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(UiKit.pxf(1));
+        p.setColor(0x14E0B070);
+        float d = UiKit.pxf(70);
+        for (float y = -d; y < h + d; y += d) for (float x = -d; x < w + d; x += d) {
+            Path dm = new Path();
+            dm.moveTo(x, y - d / 2f); dm.lineTo(x + d / 2f, y); dm.lineTo(x, y + d / 2f); dm.lineTo(x - d / 2f, y); dm.close();
+            c.drawPath(dm, p);
+        }
+        p.setStyle(Paint.Style.FILL);
+        // velvet curtains on both sides, with folds
+        float cw = w * 0.07f;
+        for (int side = 0; side < 2; side++) {
+            float x0 = side == 0 ? 0 : w - cw;
+            for (int f = 0; f < 6; f++) {
+                float fx = x0 + f * cw / 6f;
+                p.setShader(new android.graphics.LinearGradient(fx, 0, fx + cw / 6f, 0,
+                        new int[]{0xFF3A0508, 0xFF8E1018, 0xFF3A0508}, null, Shader.TileMode.CLAMP));
+                c.drawRect(fx, 0, fx + cw / 6f + 1, h, p);
+            }
+            p.setShader(new android.graphics.LinearGradient(side == 0 ? cw : w - cw, 0, side == 0 ? cw + UiKit.pxf(40) : w - cw - UiKit.pxf(40), 0,
+                    0x99000000, 0x00000000, Shader.TileMode.CLAMP));
+            c.drawRect(side == 0 ? cw : w - cw - UiKit.pxf(40), 0, side == 0 ? cw + UiKit.pxf(40) : w - cw, h, p);
+        }
+        p.setShader(null);
+        // film strip along the top and bottom edges
+        float sh = UiKit.pxf(26), hole = UiKit.pxf(9), gap = UiKit.pxf(22);
+        for (int edge = 0; edge < 2; edge++) {
+            float y0 = edge == 0 ? h - sh : 0;
+            if (edge == 0) y0 = h - sh;
+            p.setColor(0xFF0A0A0A);
+            c.drawRect(cw, y0, w - cw, y0 + sh, p);
+            p.setColor(0x33FFFFFF);
+            for (float x = cw + gap / 2f; x < w - cw - hole; x += gap) {
+                c.drawRoundRect(x, y0 + (sh - hole) / 2f, x + hole, y0 + (sh + hole) / 2f, UiKit.pxf(2), UiKit.pxf(2), p);
+            }
+        }
+        // vignette
+        p.setShader(new RadialGradient(w * 0.5f, h * 0.5f, w * 0.75f, new int[]{0x00000000, 0x00000000, 0xAA000000},
+                new float[]{0f, 0.6f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, h, p);
+        return b;
+    }
+
+    // The poster being swallowed: it flies into the mouth, then travels down the body as a bulge.
+    private Bitmap swallowBmp;
+    private float swallowFromX, swallowFromY;
+    private long swallowAt = -1;
+    private static final int SWALLOW_MOUTH = 14, SWALLOW_BODY = 70;
+
+    private void drawSwallow(Canvas canvas) {
+        if (swallowAt < 0 || swallowBmp == null) return;
+        long t = tick - swallowAt;
+        if (t > SWALLOW_MOUTH) return;
+        float f = t / (float) SWALLOW_MOUTH;
+        float e = f * f;
+        float x = swallowFromX + (headX - swallowFromX) * e, y = swallowFromY + (headY - swallowFromY) * e;
+        float pw = UiKit.pxf(130) * (1f - 0.85f * e), ph = pw * 1.48f;
+        canvas.save();
+        canvas.translate(x, y);
+        canvas.rotate((float) Math.toDegrees(headAngle) * e + 90f * e);
+        Paint p = new Paint(Paint.FILTER_BITMAP_FLAG);
+        p.setAlpha((int) (255 * (1f - 0.4f * e)));
+        canvas.drawBitmap(swallowBmp, null, new RectF(-pw / 2f, -ph / 2f, pw / 2f, ph / 2f), p);
+        canvas.restore();
+    }
+
+    /** Extra girth at segment i while a swallowed poster passes through it. */
+    private float bulge(int i) {
+        if (swallowAt < 0) return 0f;
+        long t = tick - swallowAt - SWALLOW_MOUTH;
+        if (t < 0) return i < 3 ? UiKit.pxf(6) : 0f;
+        if (t > SWALLOW_BODY) {
+            swallowAt = -1;
+            return 0f;
+        }
+        float at = (t / (float) SWALLOW_BODY) * currentSegmentCount;
+        float dd = (i - at) / 3.2f;
+        return UiKit.pxf(11) * (float) Math.exp(-dd * dd) * (1f - 0.5f * t / SWALLOW_BODY);
     }
 
     private void drawMoviePosterTarget(Canvas canvas, float fx, float fy) {
@@ -571,9 +666,8 @@ public final class SnakePhileView extends View {
             canvas.drawCircle(segX[i] + UiKit.pxf(8), segY[i] + UiKit.pxf(10), r * 1.15f, shadowPaint);
         }
 
-        // 2. Draw 3D Cylindrical Segments from Tail to Neck
+        // 2. The body, tail to neck: olive scales with dark saddle blotches like a python, lit from the top left
         for (int i = currentSegmentCount - 1; i >= 1; i--) {
-            float frac = (float) i / currentSegmentCount;
             float r;
             if (i > currentSegmentCount * 0.75f) {
                 r = UiKit.pxf(9f + (1f - (i - currentSegmentCount * 0.75f) / (currentSegmentCount * 0.25f)) * 14f);
@@ -582,19 +676,23 @@ public final class SnakePhileView extends View {
             } else {
                 r = UiKit.pxf(25f);
             }
+            r += bulge(i);
 
             float cx = segX[i];
             float cy = segY[i];
+            boolean saddle = (i / 4) % 3 == 1;
+            int[] tone = saddle
+                    ? new int[]{0xFF8A7A4A, 0xFF4A3F22, 0xFF2A2312, 0xFF17130A, 0xFF0B0905}
+                    : new int[]{0xFFD8D29A, 0xFF9DA25A, 0xFF6B7536, 0xFF3E4520, 0xFF1C200E};
 
             snakeBodyPaint.setStyle(Paint.Style.FILL);
             snakeBodyPaint.setShader(new RadialGradient(
                     cx - r * 0.35f, cy - r * 0.35f, r * 1.35f,
-                    new int[]{0xFF6EE7B7, 0xFF10B981, 0xFF047857, 0xFF064E3B, 0xFF022C22},
-                    new float[]{0f, 0.28f, 0.65f, 0.88f, 1f}, Shader.TileMode.CLAMP));
+                    tone, new float[]{0f, 0.25f, 0.6f, 0.86f, 1f}, Shader.TileMode.CLAMP));
             canvas.drawCircle(cx, cy, r, snakeBodyPaint);
             snakeBodyPaint.setShader(null);
 
-            // Diamond scale texture across segment
+            // scale texture across the segment
             canvas.drawCircle(cx, cy, r * 0.75f, scalePaint);
         }
 
@@ -636,7 +734,7 @@ public final class SnakePhileView extends View {
         // 3D Skull Shading
         snakeBodyPaint.setStyle(Paint.Style.FILL);
         snakeBodyPaint.setShader(new RadialGradient(0, -hh * 0.2f, hw * 0.9f,
-                new int[]{0xFFA7F3D0, 0xFF10B981, 0xFF059669, 0xFF064E3B},
+                new int[]{0xFFE2DCA6, 0xFFA3A65E, 0xFF6B7536, 0xFF2E3417},
                 new float[]{0f, 0.35f, 0.72f, 1f}, Shader.TileMode.CLAMP));
         canvas.drawPath(headPath, snakeBodyPaint);
         snakeBodyPaint.setShader(null);
@@ -652,7 +750,7 @@ public final class SnakePhileView extends View {
         drawReptilianEye(canvas, eyeOffsetX, eyeOffsetY);
 
         // Nostril pits
-        eyePaint.setColor(0x99064E3B);
+        eyePaint.setColor(0x99202410);
         canvas.drawCircle(hw * 0.38f, -hh * 0.14f, UiKit.pxf(1.8f), eyePaint);
         canvas.drawCircle(hw * 0.38f, hh * 0.14f, UiKit.pxf(1.8f), eyePaint);
 

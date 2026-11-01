@@ -230,6 +230,9 @@ public final class MovieAssistant {
                 + "'adamın karısının kafasının kutuda çıktığı film', 'sonunda trenin kara düştüğü', 'kırmızı balonlu palyaço'): work out the exact film(s), "
                 + "put the best match first in titles with its year, then close matches; never answer with a generic list.\n"
                 + "- Complex searches ('Hollywood'un en iyi intikam filmleri'): keywords, genres and country, plus your own titles.\n"
+                + "- keywords: one short English TMDB keyword per concept of the request ('intikam alan kız babası' = [\"revenge\",\"father daughter relationship\"], "
+                + "'emekli ajan' = [\"retirement\",\"spy\"]); every keyword is REQUIRED of every film, so never add a loose or optional one. "
+                + "Your titles must match every concept too: a revenge film without a father avenging his daughter does not belong.\n"
                 + "- Family with children: nothing violent, sexual or traumatic, suited to their age. Couples: chemistry and tension. Friends: pace and laughs. Alone: anything goes.\n"
                 + "- Questions about films or people: intent answer, answer = 1-3 accurate sentences; voice = the gist. If unsure of a fact, say so briefly instead of inventing. "
                 + "When the answer is or names films (\"the film where...\", \"which film...\"), also list them in titles.\n"
@@ -393,8 +396,28 @@ public final class MovieAssistant {
             List<String> genres = new ArrayList<>();
             List<String> keywords = new ArrayList<>();
             String country = "";
-            if (q.contains("intikam")) { genres.add("thriller"); genres.add("action"); keywords.add("revenge"); }
-            if (q.contains("ajan") || q.contains("casus")) { genres.add("action"); genres.add("thriller"); keywords.add("spy"); }
+            // every concept named in the request becomes a keyword that each film must carry
+            if (q.contains("intikam")) { genres.add("thriller"); keywords.add("revenge"); }
+            if (q.contains("ajan") || q.contains("casus")) { keywords.add("spy"); }
+            if (q.contains("kız babası") || q.contains("kızını") || q.contains("kızı için") || q.contains("baba kız")) keywords.add("father daughter relationship");
+            else if (q.contains("baba oğul") || q.contains("oğlunu")) keywords.add("father son relationship");
+            if (q.contains("emekli")) keywords.add("retirement");
+            if (q.contains("kaçır")) keywords.add("kidnapping");
+            if (q.contains("seri katil")) keywords.add("serial killer");
+            if (q.contains("kiralık katil") || q.contains("tetikçi")) keywords.add("hitman");
+            if (q.contains("zaman yolculu")) keywords.add("time travel");
+            if (q.contains("hapishane") || q.contains("cezaevi")) keywords.add("prison");
+            if (q.contains("soygun")) keywords.add("heist");
+            if (q.contains("yapay zek")) keywords.add("artificial intelligence");
+            if (q.contains("zombi")) keywords.add("zombie");
+            if (q.contains("uzaylı")) keywords.add("alien");
+            if (q.contains("kıyamet")) keywords.add("post-apocalyptic future");
+            if (q.contains("dedektif")) keywords.add("detective");
+            if (q.contains("vampir")) keywords.add("vampire");
+            if (q.contains("mafya")) keywords.add("mafia");
+            if (q.contains("gerçek hikaye") || q.contains("gerçek olay")) keywords.add("based on true story");
+            if (q.contains("boks")) keywords.add("boxing");
+            if (q.contains("köpek")) keywords.add("dog");
             if (q.contains("kasvet") || q.contains("karanlık") || q.contains("noir")) { genres.add("crime"); genres.add("thriller"); keywords.add("dark"); }
             if (q.contains("korku") || q.contains("gerilim")) { genres.add("horror"); genres.add("thriller"); }
             if (q.contains("komedi") || q.contains("eğlence")) { genres.add("comedy"); }

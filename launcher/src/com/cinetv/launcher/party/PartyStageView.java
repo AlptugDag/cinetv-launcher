@@ -241,6 +241,8 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
             case "sessiz": motion = drawSessiz(c, now); break;
             default: drawLobby(c); motion = false; break;
         }
+        // the author's mark, bottom right, quiet
+        com.cinetv.launcher.ui.Brand.drawSignature(c, getContext(), W - 40, H - 22, 62, 120);
         c.restore();
         if (smooth) postInvalidateOnAnimation();
         else if (motion || ticking) postInvalidateDelayed(lite ? 250 : 90);
@@ -390,9 +392,11 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
             case "setup":
                 setupCard(c, (tr ? new String[]{"Kolay", "Orta", "Zor", "Sinefil"} : new String[]{"Easy", "Medium", "Hard", "Cinephile"})[Math.max(0, Math.min(3, q.optInt("difficulty", 1)))]
                                 + "  ·  " + (q.optInt("minutes") == 0 ? (tr ? "Süresiz" : "Endless") : q.optInt("minutes") + (tr ? " dakika" : " minutes"))
-                                + "  ·  " + q.optInt("seconds") + (tr ? " sn soru başına" : " s per question"),
-                        tr ? "Süre bitene kadar en çok doğru bilen kazanır ve bu gecenin filmini seçer."
-                                : "Most right answers before time runs out wins, and picks tonight's film.");
+                                + "  ·  " + q.optInt("seconds") + (tr ? " sn soru başına" : " s per question")
+                                + (q.optInt("category") > 0 ? "  ·  " + (tr ? new String[]{"", "Türk filmleri", "Klasikler", "Yeni filmler", "Animasyon"}
+                                : new String[]{"", "Turkish films", "Classics", "New films", "Animation"})[Math.min(4, q.optInt("category"))] : ""),
+                        tr ? "En çok puanı toplayan kazanır ve bu gecenin filmini seçer. İlk doğru cevaplayan daha çok puan alır."
+                                : "Most points wins and picks tonight's film. The first right answer earns more.");
                 return false;
             case "loading":
                 return spinner(c, now, st.optString("status"));

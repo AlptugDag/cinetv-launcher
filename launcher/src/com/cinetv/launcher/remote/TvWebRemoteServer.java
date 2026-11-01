@@ -642,8 +642,11 @@ public final class TvWebRemoteServer {
                 });
                 return ok.put("tmdb", MovieCatalog.hasTmdb(app)).put("calibration", PictureCalibration.capabilities(app))
                         .put("inputFocused", TvKeyInterceptorService.isInputFocused() || com.cinetv.launcher.MainActivity.isTvInputActive());
-            case "/api/catalog/trending":
-                return ok.put("results", toJson(MovieCatalog.trending(app, 24)));
+            case "/api/catalog/trending": {
+                String kind = clip(q.get("type"), 16);
+                if (kind.isEmpty()) return ok.put("results", toJson(MovieCatalog.trending(app, 24)));
+                return ok.put("results", toJson(MovieCatalog.trending(app, kind, parseInt(q.get("page"), 1), "1".equals(q.get("fresh")), 24)));
+            }
             case "/api/catalog/search": {
                 // The same assistant as the TV: people, themes, plots, series, or an answer.
                 String text = clip(q.get("q"), 200);
@@ -879,13 +882,17 @@ public final class TvWebRemoteServer {
             }
             case "/api/party/open": {
                 final String game = q.get("game") == null ? "" : q.get("game");
+                final boolean again = "1".equals(q.get("again"));
                 post(() -> {
                     com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
                     if (ma == null) return;
                     if ("snake".equals(game)) ma.showLiveSnakePhileScene();
                     else {
                         try {
-                            ma.showParty(com.cinetv.launcher.party.CinePartyManager.Mode.valueOf(game.toUpperCase(Locale.ROOT)));
+                            com.cinetv.launcher.party.CinePartyManager.Mode m = com.cinetv.launcher.party.CinePartyManager.Mode.valueOf(game.toUpperCase(Locale.ROOT));
+                            // "Play again": the same game starts over (opening the game already on screen does nothing)
+                            if (again) party.open(m);
+                            ma.showParty(m);
                         } catch (IllegalArgumentException ignored) {
                         }
                     }
@@ -902,7 +909,8 @@ public final class TvWebRemoteServer {
             }
             case "/api/party/quiz/settings": {
                 party.quizSettings(q.get("id"), q.get("minutes") == null ? -1 : (int) parseLong(q.get("minutes")),
-                        (int) parseLong(q.get("seconds")), q.get("difficulty") == null ? -1 : (int) parseLong(q.get("difficulty")));
+                        (int) parseLong(q.get("seconds")), q.get("difficulty") == null ? -1 : (int) parseLong(q.get("difficulty")),
+                        q.get("category") == null ? -1 : (int) parseLong(q.get("category")));
                 return ok;
             }
             case "/api/party/quiz/end": {
@@ -1174,8 +1182,9 @@ public final class TvWebRemoteServer {
                         ma.dispatchKeyEvent(new android.view.KeyEvent(now, now + 600, android.view.KeyEvent.ACTION_DOWN, code, 1, 0, -1, 0, android.view.KeyEvent.FLAG_LONG_PRESS));
                         ma.dispatchKeyEvent(new android.view.KeyEvent(now, now + 650, android.view.KeyEvent.ACTION_UP, code, 0));
                     } else {
-                        ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code));
-                        ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code));
+                        long now = android.os.SystemClock.uptimeMillis();
+                        ma.dispatchKeyEvent(new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_DOWN, code, 0));
+                        ma.dispatchKeyEvent(new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_UP, code, 0));
                     }
                 } catch (Throwable ignored) {}
             });

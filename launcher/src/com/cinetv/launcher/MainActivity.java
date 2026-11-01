@@ -712,6 +712,18 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private int lastNavCode;
     private long lastNavAt;
 
+    /** The phone's air mouse let go: the D-pad needs a focused view again (taps put the window in touch mode). */
+    public void restoreKeyFocus() {
+        if (home == null) return;
+        View f = getCurrentFocus();
+        if (f != null && f.isShown()) {
+            f.requestFocusFromTouch();
+            return;
+        }
+        if (home.modal.isShowing()) return;
+        if (home.shelf != null && home.shelf.isShown()) home.shelf.requestFocusFromTouch();
+    }
+
     private static boolean isDpad(int code) {
         return code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN
                 || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT;
@@ -724,7 +736,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (down && isDpad(e.getKeyCode())) {
             // Some remotes deliver one press twice (IR + CEC, or a bouncing key): the focus jumped two items.
             // A second press of the same arrow within 90 ms is dropped, and a held arrow moves at most every 110 ms.
-            long t = e.getEventTime();
+            long t = e.getEventTime() > 0 ? e.getEventTime() : android.os.SystemClock.uptimeMillis();
             boolean same = e.getKeyCode() == lastNavCode;
             if (same && (e.getRepeatCount() == 0 ? t - lastNavAt < 90 : t - lastNavAt < 110)) return true;
             lastNavCode = e.getKeyCode();
@@ -1765,6 +1777,20 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             @Override
             public void onCancelled() {
                 home.shelf.requestFocus();
+            }
+
+            @Override
+            public boolean onNeighbor(int delta) {
+                if (from == null || home.shelf == null || home.shelf.focusedCase() != from) return false;
+                home.shelf.requestFocus();
+                home.shelf.step(delta);
+                // the shelf glides a moment, then the neighbour's case opens from where it now stands
+                handler.postDelayed(() -> {
+                    Movie next = home.shelf.focusedMovie();
+                    DvdCaseView v = home.shelf.focusedCase();
+                    if (next != null && v != null && !home.opening.isShown()) openTitle(next, v);
+                }, 320);
+                return true;
             }
         };
         if (from != null && from.dvdCase() != null) {

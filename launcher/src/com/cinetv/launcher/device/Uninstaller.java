@@ -36,8 +36,8 @@ public final class Uninstaller {
     public static String run(Context ctx) {
         com.cinetv.launcher.service.Prefs.get(ctx).edit().putBoolean(REMOVING, true).putLong(REMOVING_AT, System.currentTimeMillis()).commit();
         // The TV's own launcher may have been switched off by the clean-up: bring it back first, then check.
-        LocalAdb.shell(ctx,
-                "if [ -f /sdcard/cinetv-debloat.txt ]; then "
+        LocalAdb.shell(ctx, DeviceTweaks.undoPowerProps()
+                + "if [ -f /sdcard/cinetv-debloat.txt ]; then "
                         + "  while read -r action pkg; do "
                         + "    case \"$action\" in "
                         + "      disabled) pm enable \"$pkg\" 2>/dev/null ;; "

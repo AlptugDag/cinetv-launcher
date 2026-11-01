@@ -316,7 +316,10 @@ public class PosterShelf extends FrameLayout {
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_LEFT:
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                if (acceptStep(keyCode, event)) step(keyCode == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
+                if (acceptStep(keyCode, event)) {
+                    holding = event.getRepeatCount() > 0;
+                    step(keyCode == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
+                }
                 return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
@@ -337,6 +340,22 @@ public class PosterShelf extends FrameLayout {
 
     private int pressKey;
     private long pressAt;
+    /** A held arrow: the shelf glides through films at an even pace and the case details wait for the release. */
+    private boolean holding;
+    private final Runnable settleFocus = () -> {
+        holding = false;
+        DvdCaseView v = focusedCase();
+        if (v != null && v.dvdCase() != null && listener != null) listener.onFocusCase(v, v.dvdCase().accent);
+    };
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (holding && (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT)) {
+            removeCallbacks(settleFocus);
+            settleFocus.run();
+        }
+        return super.onKeyUp(keyCode, event);
+    }
 
     /**
      * One press is one step. TV remotes send auto-repeats 100-300 ms into an ordinary press (and some
@@ -352,7 +371,7 @@ public class PosterShelf extends FrameLayout {
             lastStepMs = now;
             return true;
         }
-        if (keyCode != pressKey || now - pressAt < 400L || now - lastStepMs < 170L) return false;
+        if (keyCode != pressKey || now - pressAt < 350L || now - lastStepMs < 120L) return false;
         lastStepMs = now;
         return true;
     }
@@ -371,8 +390,13 @@ public class PosterShelf extends FrameLayout {
         if (anim != null) anim.cancel();
         anim = ValueAnimator.ofFloat(focusPos, targetPos);
         // Natural, organic weighted glide: decelerates smoothly into the focal slot
-        anim.setDuration(PerformanceProfile.animationMs(getContext(), 560));
-        anim.setInterpolator(new android.view.animation.DecelerateInterpolator(1.85f));
+        if (holding) {
+            anim.setDuration(150);
+            anim.setInterpolator(new android.view.animation.LinearInterpolator());
+        } else {
+            anim.setDuration(PerformanceProfile.animationMs(getContext(), 560));
+            anim.setInterpolator(new android.view.animation.DecelerateInterpolator(1.85f));
+        }
         lastPos = focusPos;
         lastFrameNs = 0;
         anim.addUpdateListener(a -> {
@@ -394,8 +418,9 @@ public class PosterShelf extends FrameLayout {
         });
         anim.start();
         if (hasFocus()) postDelayed(startSway, SWAY_AFTER_MS);
-        DvdCaseView v = focusedCase();
-        if (v != null && v.dvdCase() != null && listener != null) listener.onFocusCase(v, v.dvdCase().accent);
+        removeCallbacks(settleFocus);
+        if (holding) postDelayed(settleFocus, 400);
+        else settleFocus.run();
     }
 
     /**

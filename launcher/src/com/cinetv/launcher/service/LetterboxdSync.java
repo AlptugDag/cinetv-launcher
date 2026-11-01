@@ -57,13 +57,25 @@ public final class LetterboxdSync {
     }
 
     public static boolean shouldPromptBeforeWatch(Context ctx) {
-        return isConfigured(ctx) && !isAutoRecord(ctx);
+        return isEnabled(ctx) && isConfigured(ctx) && !isAutoRecord(ctx);
+    }
+
+    private static final String PREF_LETTERBOXD_ENABLED = "letterboxd_enabled";
+
+    /** The diary's on/off switch in Settings: off, nothing is asked or logged (the username is kept). */
+    public static boolean isEnabled(Context ctx) {
+        return Prefs.get(ctx).getBoolean(PREF_LETTERBOXD_ENABLED, true);
+    }
+
+    public static void setEnabled(Context ctx, boolean on) {
+        Prefs.get(ctx).edit().putBoolean(PREF_LETTERBOXD_ENABLED, on).apply();
     }
 
     /**
      * Records a movie watch into the Letterboxd Diary journal.
      */
     public static void recordWatch(Context ctx, Movie m) {
+        if (!isEnabled(ctx)) return;
         if (m == null || m.title == null || m.title.trim().isEmpty()) return;
         new Thread(() -> {
             try {

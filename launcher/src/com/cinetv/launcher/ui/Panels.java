@@ -516,6 +516,15 @@ public final class Panels {
                         : (tr ? "İzlenenleri otomatik kaydet & CSV dışa aktar" : "Auto-log watches & export CSV"),
                 com.cinetv.launcher.service.LetterboxdSync.isConfigured(ctx),
                 v -> host.push(() -> buildLetterboxdModal(ctx, host))));
+        boolean lbOn = com.cinetv.launcher.service.LetterboxdSync.isEnabled(ctx);
+        LinearLayout lbTile = Controls.toggleTile(ctx, tr ? "Letterboxd Sorusu ve Kaydı" : "Letterboxd Prompt & Logging",
+                lbOn ? (tr ? "Açık · İzledikten sonra sorar" : "On · Asks after a film") : ctx.getString(R.string.state_off),
+                lbOn, (newActive, subLabel, sw) -> {
+                    com.cinetv.launcher.service.LetterboxdSync.setEnabled(ctx, newActive);
+                    subLabel.setText(newActive ? (tr ? "Açık · İzledikten sonra sorar" : "On · Asks after a film") : ctx.getString(R.string.state_off));
+                });
+        lbTile.setTag("opt_letterboxd");
+        cAi.addView(lbTile);
 
         // The TV's own settings, opened from CineTV: nothing is changed here, each tile only opens the system page.
         LinearLayout cSys = column(ctx, cols, tr ? "Sistem" : "System", colWidth);

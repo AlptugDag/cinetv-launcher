@@ -44,20 +44,26 @@ public final class DeviceTweaks {
         applyFastBootTweaks(ctx);
     }
 
-    /** Configures TV hardware and kernel for Fast Boot / Quick Standby and keeps CineTV unthrottled. */
+    /**
+     * Keeps CineTV unthrottled in the background. It no longer touches the TV's power behaviour: earlier
+     * versions set quick-boot / hibernate properties, which kept the TV in a warm standby instead of
+     * switching off. Any such value CineTV left behind is cleared here (only values CineTV itself wrote).
+     */
     public static void applyFastBootTweaks(Context ctx) {
         new Thread(() -> {
             String pkg = ctx.getPackageName();
-            String cmd = "setprop persist.sys.quickboot 1; "
-                    + "setprop persist.sys.shutdown.mode hibernate; "
-                    + "setprop ro.config.hw_quickpoweron true; "
-                    + "setprop persist.sys.power.quickboot 1; "
-                    + "settings put global stay_on_while_plugged_in 0 2>/dev/null; "
+            String cmd = undoPowerProps()
                     + "cmd deviceidle whitelist +" + pkg + " 2>/dev/null; "
-                    + "cmd appops set " + pkg + " RUN_IN_BACKGROUND allow 2>/dev/null; "
-                    + "dumpsys deviceidle whitelist +" + pkg + " 2>/dev/null; ";
+                    + "cmd appops set " + pkg + " RUN_IN_BACKGROUND allow 2>/dev/null; ";
             com.cinetv.launcher.remote.LocalAdb.shell(ctx, cmd, 2500);
         }, "cinetv-fastboot").start();
+    }
+
+    /** Shell lines that clear the power properties old CineTV versions set, when they still hold CineTV's values. */
+    public static String undoPowerProps() {
+        return "[ \"$(getprop persist.sys.shutdown.mode)\" = hibernate ] && setprop persist.sys.shutdown.mode '' 2>/dev/null; "
+                + "[ \"$(getprop persist.sys.quickboot)\" = 1 ] && setprop persist.sys.quickboot '' 2>/dev/null; "
+                + "[ \"$(getprop persist.sys.power.quickboot)\" = 1 ] && setprop persist.sys.power.quickboot '' 2>/dev/null; ";
     }
 
     // ---- the TV's own values, kept so "Remove CineTV" can put everything back -------------------------
