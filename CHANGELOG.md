@@ -1,5 +1,17 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.20g · Beta 7
+
+- CineTV Oynatıcı: CineTV'nin kendi film oynatıcısı (ExoPlayer). Nuvio'nun harici oynatıcı seçeneğinde "CineTV Oynatıcı" seçilince filmler onunla açılır; Nuvio'nun ayarlarına CineTV dokunmaz.
+  - HDR10, HDR10+, HLG ve Dolby Vision TV'nin kod çözücüsü destekliyorsa kendiliğinden; Dolby/DTS ses, HDMI destekliyorsa olduğu gibi aktarılır.
+  - Ekran yenileme hızı filmin kare hızına eşlenir (23.976/24/25/50/60 Hz), çözünürlük değişmez.
+  - HLS, DASH ve doğrudan dosyalar; Nuvio'nun gönderdiği altyazılar ve HTTP başlıkları; Türkçe ses ve altyazı öncelikli.
+  - Kaldığı yerden devam eder ve konumu Nuvio'ya geri bildirir; sağ/sol 10 sn sarar, OK duraklatır; sarı tuşla CineSUB filmin adını bilerek çalışır.
+- Arka planda gizlice üçüncü taraf oynatıcı (Nova) kurulmuyor; yerine CineTV Oynatıcı var.
+- Ayarlar'da "Sistem" sütunu: Wi-Fi, Bluetooth, görüntü, ses, uygulamalar, depolama, tarih, dil, erişilebilirlik ve tüm sistem ayarları CineTV'den açılıyor (hiçbir sistem ayarı değiştirilmez).
+- "CineTV'yi yok et": AirPods için değiştirilen surround ayarlarını da TV'nin ilk değerlerine döndürüyor; CineTV'nin varsayılan oynatıcı/asistan seçimleri kaldırılınca TV'ye geri dönüyor.
+- CineTV açılış animasyonu TV beklemeden her açıldığında yeniden oynuyor (eskiden yalnızca ilk açılışta).
+
 ## 1.0.0.20f · Beta 6
 
 - DVD kutusunun içi her temada belirgin biçimde değişiyor: gövde, tepsi ve kâğıt (ceviz kraft, kadife sinema, kırmızı halı, mavi cam, alüminyum, neon).

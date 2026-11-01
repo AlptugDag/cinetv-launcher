@@ -65,8 +65,8 @@ public final class NuvioSetup {
      * Off the main thread. A TV with no video player of its own gets Nova (casting from the phone plays
      * there); hidden from CineTV's apps, it only opens when a stream is sent. A TV that has one is left alone.
      */
+    /** No third-party player is installed behind the viewer's back any more: CineTV has its own (CinePlayerActivity). */
     public static void playerOnce(Context ctx) {
-        installPlayer(ctx, false);
     }
 
     /** Deploys Alptuğ'un Filmleri, Xperience and AIOMetadata configs to /sdcard/Download/ for instant Nuvio import. */

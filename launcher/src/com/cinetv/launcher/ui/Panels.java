@@ -517,6 +517,28 @@ public final class Panels {
                 com.cinetv.launcher.service.LetterboxdSync.isConfigured(ctx),
                 v -> host.push(() -> buildLetterboxdModal(ctx, host))));
 
+        // The TV's own settings, opened from CineTV: nothing is changed here, each tile only opens the system page.
+        LinearLayout cSys = column(ctx, cols, tr ? "Sistem" : "System", colWidth);
+        String[][] sys = {
+                {tr ? "Wi-Fi & Ağ" : "Wi-Fi & Network", android.provider.Settings.ACTION_WIFI_SETTINGS},
+                {"Bluetooth", android.provider.Settings.ACTION_BLUETOOTH_SETTINGS},
+                {tr ? "Görüntü" : "Display", android.provider.Settings.ACTION_DISPLAY_SETTINGS},
+                {tr ? "Ses" : "Sound", android.provider.Settings.ACTION_SOUND_SETTINGS},
+                {tr ? "Uygulamalar" : "Apps", android.provider.Settings.ACTION_APPLICATION_SETTINGS},
+                {tr ? "Depolama" : "Storage", android.provider.Settings.ACTION_INTERNAL_STORAGE_SETTINGS},
+                {tr ? "Tarih & Saat" : "Date & Time", android.provider.Settings.ACTION_DATE_SETTINGS},
+                {tr ? "Dil & Klavye" : "Language & Keyboard", android.provider.Settings.ACTION_LOCALE_SETTINGS},
+                {tr ? "Erişilebilirlik" : "Accessibility", android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS},
+                {tr ? "Tüm Sistem Ayarları" : "All System Settings", android.provider.Settings.ACTION_SETTINGS}};
+        for (final String[] row : sys) {
+            cSys.addView(Controls.tile(ctx, row[0], tr ? "Sistem sayfasını açar" : "Opens the system page", false, v -> {
+                host.close();
+                if (!com.cinetv.launcher.service.AppLauncher.start(ctx, new android.content.Intent(row[1]))) {
+                    com.cinetv.launcher.service.AppLauncher.start(ctx, new android.content.Intent(android.provider.Settings.ACTION_SETTINGS));
+                }
+            }));
+        }
+
         LinearLayout cNet = column(ctx, cols, tr ? "Ağ & Ortam" : "Network & Environment", colWidth);
         String city = Prefs.city(ctx);
         cNet.addView(Controls.tile(ctx, ctx.getString(R.string.weather_city), city != null ? city : ctx.getString(R.string.weather_auto), city != null,

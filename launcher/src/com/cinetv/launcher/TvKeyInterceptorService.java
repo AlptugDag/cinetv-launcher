@@ -597,6 +597,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
         // Intercept BOTH ACTION_DOWN and ACTION_UP BEFORE navigation check so Nuvio NEVER unwinds its internal history stack!
         boolean inNuvio = isNuvioApp(lastPackage) || launchedNuvioFromCineTv;
         boolean inYouTube = isYouTubeApp(lastPackage) || launchedYouTubeFromCineTv;
+        // CineTV's own player handles Back itself (it returns to Nuvio with the watch position).
+        if (CinePlayerActivity.active && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) return false;
         if ((inNuvio || inYouTube) && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
             // Browsing Nuvio (a catalog, a film's page, search): Back is Nuvio's own and closes that page.
             // Only from a playing film does Back go straight to CineTV's Home.

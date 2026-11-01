@@ -55,6 +55,10 @@ public final class Uninstaller {
         try { NetworkOptimizer.apply(ctx, NetworkOptimizer.DNS_OFF); } catch (Throwable ignored) { }
         try { PictureCalibration.reset(ctx); } catch (Throwable ignored) { }
         try { DeviceTweaks.restoreOriginals(ctx); } catch (Throwable ignored) { }
+        // AirPods surround keys and the output virtualizer, exactly as the TV had them.
+        try { AirPodsLink.restoreSurround(ctx); } catch (Throwable ignored) { }
+        // CineTV chosen as the default player, assistant or search: clearing its preferred activities (below)
+        // hands those back to the TV; Nuvio falls back to its own player once CineTV is gone.
         try { MemoryOptimizer.restoreTvOptimizations(ctx); } catch (Throwable ignored) { }
         // The files CineTV put in Downloads for Nuvio and for reports (the Letterboxd diary is the viewer's and stays).
         for (String f : new String[]{"alptugun-filmleri-template.json", "xperience-kategori-setup-profile.json", "aiometadata-config.json",

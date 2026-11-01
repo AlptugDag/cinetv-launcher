@@ -221,6 +221,7 @@ public final class AirPodsLink {
     public static void applyHeadphoneSpatialAudio(Context ctx, boolean enable) {
         try {
             android.content.ContentResolver cr = ctx.getContentResolver();
+            rememberSurroundOriginals(ctx);
             int val = enable ? 1 : 0;
             android.provider.Settings.Global.putInt(cr, "sound_advanced_surround_virtualizer", val);
             android.provider.Settings.Global.putInt(cr, "sound_surround_virtualizer", val);
@@ -262,5 +263,37 @@ public final class AirPodsLink {
         } catch (Throwable ignored) {
         }
         virtualizer = null;
+    }
+
+    static final String[] SURROUND_KEYS = {"sound_advanced_surround_virtualizer", "sound_surround_virtualizer", "virtual_surround", "sound_dts_virtual_x"};
+    private static final String SURROUND_ORIGINALS = "surround_originals_v1";
+
+    /** First write only: the TV's own surround values, so "Remove CineTV" can put them back exactly. */
+    private static void rememberSurroundOriginals(Context ctx) {
+        android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(ctx);
+        if (p.contains(SURROUND_ORIGINALS)) return;
+        try {
+            org.json.JSONObject o = new org.json.JSONObject();
+            for (String k : SURROUND_KEYS) {
+                String v = android.provider.Settings.Global.getString(ctx.getContentResolver(), k);
+                o.put(k, v == null ? org.json.JSONObject.NULL : v);
+            }
+            p.edit().putString(SURROUND_ORIGINALS, o.toString()).apply();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** Puts the TV's surround settings back as they were and stops the virtualizer. */
+    public static void restoreSurround(Context ctx) {
+        releaseVirtualizer();
+        try {
+            String saved = com.cinetv.launcher.service.Prefs.get(ctx).getString(SURROUND_ORIGINALS, null);
+            if (saved == null) return;
+            org.json.JSONObject o = new org.json.JSONObject(saved);
+            for (String k : SURROUND_KEYS) {
+                android.provider.Settings.Global.putString(ctx.getContentResolver(), k, o.isNull(k) ? null : o.optString(k));
+            }
+        } catch (Throwable ignored) {
+        }
     }
 }

@@ -174,6 +174,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             splashShown = true;
             home.showSplash();
         }
+        // Waking from standby does not start a new process (the key service keeps it), so the opening is played
+        // again whenever the screen comes on, not only at the very first start.
+        try {
+            registerReceiver(screenOn, new android.content.IntentFilter(Intent.ACTION_SCREEN_ON));
+        } catch (Throwable ignored) {
+        }
         applyTheme(ThemeManager.current(this).id, false);
         home.applySpatial(Prefs.spatial3d(this));
         home.modal.setOnClosed(() -> {
@@ -388,6 +394,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         checkNuvioUpdatePrompt();
         // Back on Home with the uninstall still pending means the viewer said no in Android's dialog.
         if (com.cinetv.launcher.device.Uninstaller.isRemoving(this)) com.cinetv.launcher.device.Uninstaller.cancelled(this);
+        if (splashOnResume && home != null) {
+            splashOnResume = false;
+            home.showSplash();
+        }
         if (pendingLetterboxd != null) {
             final Movie asked = pendingLetterboxd;
             pendingLetterboxd = null;
@@ -551,6 +561,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private static boolean inFront;
     /** The opening plays once per start of CineTV, not on every return to Home. */
     private static boolean splashShown;
+    private static volatile boolean splashOnResume;
+    private final android.content.BroadcastReceiver screenOn = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            splashOnResume = true;
+        }
+    };
 
     public static boolean isInFront() {
         return inFront;
@@ -583,6 +600,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     protected void onDestroy() {
         if (instance == this) instance = null;
+        try {
+            unregisterReceiver(screenOn);
+        } catch (Throwable ignored) {
+        }
         handler.removeCallbacksAndMessages(null);
         TvWebRemoteServer.setController(null);
         try {
