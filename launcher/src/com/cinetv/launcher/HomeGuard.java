@@ -70,7 +70,8 @@ public final class HomeGuard {
         } catch (Throwable ignored) {
         }
         try {
-            Intent defaultApps = new Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
+            Intent defaultApps = new Intent(android.os.Build.VERSION.SDK_INT >= 24
+                    ? android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS : android.provider.Settings.ACTION_HOME_SETTINGS);
             defaultApps.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             ctx.startActivity(defaultApps);
             return;

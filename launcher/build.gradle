@@ -41,7 +41,7 @@ android {
 
     defaultConfig {
         applicationId "com.cinetv.launcher"
-        minSdk 26
+        minSdk 23
         targetSdk 34
         // Release builds take the version from the git tag (CI passes -PcineTvVersion=1.0.0).
         def ver = (project.findProperty('cineTvVersion') ?: '1.0.0.20').toString().replaceFirst('^v', '')

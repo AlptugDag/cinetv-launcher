@@ -1,5 +1,18 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.24
+
+- **Android 6 ve üzeri:** CineTV artık Android 6.0'dan itibaren kuruluyor (önce 8.0'dı). Fire TV Stick'lerin çoğu (Fire OS 6) ve eski Android 6/7 TV kutuları da kapsanıyor. Android 7 ve sonrasına özgü her özellik sürüm kontrolüyle korunuyor; eski sürümde o özellik sessizce atlanıyor, uygulama çökmüyor.
+- **AirPods paneli:**
+  - TV kumandasıyla gezilip tıklanabiliyor; tuşlar artık doğrudan panele gidiyor.
+  - "Sanal Surround" ve "Geniş Sahne" gerçekten uygulanıyor. Efekt artık her oynatıcının kendi ses oturumuna bağlanıyor: AlptugPlayer'a doğrudan, Nuvio ve diğer oynatıcılara Android'in ses oturumu yayınıyla. Kulaklık bağlıyken AlptugPlayer efekt uygulanabilsin diye tünelsiz oynatıyor.
+- **Arama rafı:**
+  - Az sonuçla başlayan arama hemen doluyor.
+  - Yeni sonuçlar rafın sonuna 14 kutu kala ekleniyor, böylece ekrandaki kutular yer değiştirmiyor.
+- **Güvenlik:**
+  - Windows kurulum sayfasındaki TMDB anahtarı kaldırıldı.
+  - Sırlar artık her CI çalışmasında tüm geçmişte taranıyor.
+
 ## 1.0.0.23
 
 1.0.0.22'nin iki betasındaki her şey ve şunlar:

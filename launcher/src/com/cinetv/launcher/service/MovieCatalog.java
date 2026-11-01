@@ -1304,8 +1304,8 @@ public final class MovieCatalog {
             int cp = s.codePointAt(i);
             i += Character.charCount(cp);
             if (!Character.isLetter(cp)) continue;
-            Character.UnicodeScript sc = Character.UnicodeScript.of(cp);
-            if (sc != Character.UnicodeScript.LATIN && sc != Character.UnicodeScript.COMMON && sc != Character.UnicodeScript.INHERITED) return true;
+            // beyond Latin (Latin Extended and Latin Extended Additional count as Latin)
+            if (cp > 0x024F && !(cp >= 0x1E00 && cp <= 0x1EFF) && !(cp >= 0x0300 && cp <= 0x036F)) return true;
         }
         return false;
     }

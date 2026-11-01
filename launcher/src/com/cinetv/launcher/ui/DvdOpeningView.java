@@ -1264,7 +1264,7 @@ public class DvdOpeningView extends View {
         if (word.isEmpty()) return false;
         if (word.length() == 1 && Character.isLetterOrDigit(word.charAt(0))) return true; // "J." or "2."
         if (word.contains(".")) return true;                                            // "M.Ö."
-        if (word.chars().allMatch(Character::isDigit)) return true;                     // "19."
+        if (word.matches("\\d+")) return true;                     // "19."
         // The next word starting lowercase means the sentence goes on.
         int n = dot + 1;
         while (n < s.length() && Character.isWhitespace(s.charAt(n))) n++;

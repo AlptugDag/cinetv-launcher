@@ -36,6 +36,7 @@ public final class AirPodsLink {
     private static AirPodsLink instance;
 
     public static synchronized void ensureStarted(Context ctx) {
+        listenForSessions(ctx);
         if (instance == null) {
             instance = new AirPodsLink(ctx);
         }
@@ -247,17 +248,80 @@ public final class AirPodsLink {
         try {
             if (mode == 0) {
                 releaseVirtualizer();
+                for (android.media.audiofx.Virtualizer v : sessions.values()) {
+                    try { v.setEnabled(false); } catch (Throwable ignored) {}
+                }
                 return;
             }
             if (virtualizer == null) virtualizer = new android.media.audiofx.Virtualizer(0, 0);
             if (virtualizer.getStrengthSupported()) virtualizer.setStrength((short) (mode == 2 ? 1000 : 600));
             virtualizer.setEnabled(true);
+            for (Integer sid : new java.util.ArrayList<>(sessions.keySet())) attachSession(ctx, sid);
             Log.i(TAG, "virtualizer on, mode " + mode);
         } catch (Throwable t) {
             // some TVs do not allow effects on the output mix: the TV's own surround setting above still applies
             Log.w(TAG, "virtualizer unavailable: " + t);
             releaseVirtualizer();
         }
+    }
+
+    /** One virtualizer per player's audio session: the only kind Android 8+ really applies (the output mix is ignored). */
+    private static final java.util.Map<Integer, android.media.audiofx.Virtualizer> sessions = new java.util.HashMap<>();
+
+    public static synchronized void attachSession(Context ctx, int session) {
+        if (session <= 0) return;
+        int mode = Math.min(2, com.cinetv.launcher.service.Prefs.get(ctx).getInt(com.cinetv.launcher.service.Prefs.AIRPODS_SPATIAL_MODE, 1));
+        try {
+            android.media.audiofx.Virtualizer v = sessions.get(session);
+            if (mode == 0) {
+                if (v != null) v.setEnabled(false);
+                return;
+            }
+            if (v == null) {
+                v = new android.media.audiofx.Virtualizer(1000, session);
+                sessions.put(session, v);
+            }
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                try { v.forceVirtualizationMode(android.media.audiofx.Virtualizer.VIRTUALIZATION_MODE_BINAURAL); } catch (Throwable ignored) {}
+            }
+            if (v.getStrengthSupported()) v.setStrength((short) (mode == 2 ? 1000 : 650));
+            v.setEnabled(true);
+            Log.i(TAG, "virtualizer on session " + session + ", mode " + mode);
+        } catch (Throwable t) {
+            Log.w(TAG, "virtualizer on session " + session + " unavailable: " + t);
+        }
+    }
+
+    public static synchronized void detachSession(int session) {
+        android.media.audiofx.Virtualizer v = sessions.remove(session);
+        if (v == null) return;
+        try {
+            v.setEnabled(false);
+            v.release();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static boolean sessionReceiver;
+
+    /** Players announce their audio sessions (Nuvio's player, MX, VLC...): the spatial mode follows each one. */
+    public static synchronized void listenForSessions(Context ctx) {
+        if (sessionReceiver) return;
+        sessionReceiver = true;
+        final Context app = ctx.getApplicationContext();
+        android.content.IntentFilter f = new android.content.IntentFilter();
+        f.addAction(android.media.audiofx.AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION);
+        f.addAction(android.media.audiofx.AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION);
+        android.content.BroadcastReceiver r = new android.content.BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, android.content.Intent i) {
+                int session = i.getIntExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, 0);
+                if (android.media.audiofx.AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION.equals(i.getAction())) attachSession(app, session);
+                else detachSession(session);
+            }
+        };
+        if (android.os.Build.VERSION.SDK_INT >= 33) app.registerReceiver(r, f, Context.RECEIVER_EXPORTED);
+        else app.registerReceiver(r, f);
     }
 
     static synchronized void releaseVirtualizer() {

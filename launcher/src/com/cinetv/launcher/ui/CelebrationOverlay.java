@@ -262,7 +262,8 @@ public final class CelebrationOverlay {
                     ? WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
                     : (ctx instanceof android.app.Activity
                             ? WindowManager.LayoutParams.TYPE_APPLICATION_PANEL
-                            : WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY);
+                            : (android.os.Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                            : WindowManager.LayoutParams.TYPE_PHONE));
 
             WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
                     WindowManager.LayoutParams.MATCH_PARENT,

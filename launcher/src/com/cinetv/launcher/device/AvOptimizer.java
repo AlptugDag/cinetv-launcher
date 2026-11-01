@@ -116,8 +116,8 @@ public final class AvOptimizer {
                 r.maxRefresh = Math.max(r.maxRefresh, m.getRefreshRate());
             }
             r.refreshRates = rates.size();
-            Display.HdrCapabilities hdr = d.getHdrCapabilities();
-            if (hdr != null) {
+            Display.HdrCapabilities hdr = android.os.Build.VERSION.SDK_INT >= 24 ? d.getHdrCapabilities() : null;
+            if (android.os.Build.VERSION.SDK_INT >= 24 && hdr != null) {
                 for (int t : hdr.getSupportedHdrTypes()) {
                     if (t == Display.HdrCapabilities.HDR_TYPE_HDR10) r.hdr10 = true;
                     if (t == Display.HdrCapabilities.HDR_TYPE_HLG) r.hlg = true;

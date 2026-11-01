@@ -173,6 +173,7 @@ public class CinePlayerActivity extends Activity {
 
     /** Dolby Vision only when the screen can show it (else the HDR10/SDR track of the stream from the start). */
     private boolean displayHasDolbyVision() {
+        if (android.os.Build.VERSION.SDK_INT < 24) return false;
         try {
             android.view.Display.HdrCapabilities hdr = getWindowManager().getDefaultDisplay().getHdrCapabilities();
             if (hdr == null) return false;
@@ -234,8 +235,12 @@ public class CinePlayerActivity extends Activity {
         // CineSUB's ambient notes look at the picture every few minutes; tunnelled video never reaches a
         // screenshot, so with them on the film plays untunnelled from the start (no rebuild mid-scene).
         boolean ambient = Prefs.get(this).getBoolean("cinesub_ambient", false);
-        tunnel = !noTunnel && !ambient && profile <= 1 && tunnelSupported();
+        // headphones with the spatial mode on: the virtualizer needs the sound to pass through the app (no tunnelling)
+        boolean spatial = com.cinetv.launcher.device.AirPodsLink.isHeadphoneConnected(this)
+                && Prefs.get(this).getInt(Prefs.AIRPODS_SPATIAL_MODE, 1) > 0;
+        tunnel = !noTunnel && !ambient && !spatial && profile <= 1 && tunnelSupported();
         if (player != null) {
+            com.cinetv.launcher.device.AirPodsLink.detachSession(player.getAudioSessionId());
             player.release();
             player = null;
         }
@@ -374,6 +379,7 @@ public class CinePlayerActivity extends Activity {
             }
         });
         player.prepare();
+        com.cinetv.launcher.device.AirPodsLink.attachSession(this, player.getAudioSessionId());
         player.play();
         view.setPlayer(player);
     }
@@ -850,6 +856,7 @@ public class CinePlayerActivity extends Activity {
         active = false;
         ui.removeCallbacksAndMessages(null);
         if (player != null) {
+            com.cinetv.launcher.device.AirPodsLink.detachSession(player.getAudioSessionId());
             player.release();
             player = null;
         }

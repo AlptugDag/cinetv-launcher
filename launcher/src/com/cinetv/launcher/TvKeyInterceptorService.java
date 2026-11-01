@@ -662,6 +662,18 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return true;
         }
 
+        // The AirPods panel: an overlay the TV does not always give the remote to, so its keys go to it from here
+        if (com.cinetv.launcher.ui.SpatialAudioOverlay.isShowing()
+                && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE || code == KeyEvent.KEYCODE_DPAD_LEFT
+                || code == KeyEvent.KEYCODE_DPAD_RIGHT || code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN
+                || code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                final int k = code;
+                handler.post(() -> com.cinetv.launcher.ui.SpatialAudioOverlay.onKey(k));
+            }
+            return true;
+        }
+
         // CineSUB open over a film: Back closes it, the arrows and OK belong to it; the film keeps playing.
         if (com.cinetv.launcher.ui.CineSubOverlay.isShowing()) {
             if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE) {

@@ -279,7 +279,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }, 2500);
 
         // Every frame Home draws is timed; slow ones switch on the light shelf, fast ones switch it off.
-        getWindow().addOnFrameMetricsAvailableListener((window, metrics, dropped) -> {
+        // Android 7+: frame timing (older TVs keep the light shelf decided by the benchmark)
+        if (android.os.Build.VERSION.SDK_INT >= 24) getWindow().addOnFrameMetricsAvailableListener((window, metrics, dropped) -> {
             long total = metrics.getMetric(android.view.FrameMetrics.TOTAL_DURATION);
             if (PerformanceProfile.noteFrame(getApplicationContext(), total) && home != null) {
                 handler.post(() -> {
@@ -1049,6 +1050,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     setShelf(r.title.isEmpty() ? MovieAssistant.cleanShelfName(query) : r.title, r.movies, true);
                     searchShelfQuery = query;
                     home.shelf.requestFocus();
+                    // a short first answer (a few AI picks) is filled up at once, before the viewer moves
+                    if (r.movies.size() < PerformanceProfile.shelfSize(app)) loadMoreResults();
                 }
                 if (!r.answer.isEmpty()) {
                     // Stays long enough to read, then leaves by itself.

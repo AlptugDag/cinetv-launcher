@@ -384,7 +384,8 @@ public class PosterShelf extends FrameLayout {
         stopSway();
         targetPos += delta;
         index = Math.floorMod(targetPos, n);
-        if (listener != null && n - index <= 5) listener.onNearEnd();
+        // well before the end, so new cases join the ring off screen instead of replacing the ones in view
+        if (listener != null && n - index <= 14) listener.onNearEnd();
         main.removeCallbacks(prefetchRunnable);
         main.postDelayed(prefetchRunnable, 150);
         if (anim != null) anim.cancel();

@@ -39,6 +39,51 @@ public final class SpatialAudioOverlay {
 
     private SpatialAudioOverlay() {}
 
+    /**
+     * A remote key from the key service: the panel keeps its own focus (the selected button lights up),
+     * arrows move it, OK presses it, Back (or left past the first column) closes the panel.
+     */
+    public static void onKey(int code) {
+        if (hostView == null || panel == null) return;
+        java.util.ArrayList<View> items = new java.util.ArrayList<>();
+        panel.addFocusables(items, View.FOCUS_DOWN);
+        if (items.isEmpty()) return;
+        View cur = panel.findFocus();
+        int i = Math.max(0, items.indexOf(cur));
+        switch (code) {
+            case KeyEvent.KEYCODE_BACK:
+            case KeyEvent.KEYCODE_ESCAPE:
+                dismiss();
+                return;
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+                if (cur == null) cur = items.get(0);
+                cur.performClick();
+                return;
+            case KeyEvent.KEYCODE_DPAD_LEFT: {
+                View next = cur == null ? null : cur.focusSearch(View.FOCUS_LEFT);
+                if (cur == null || next == null || !items.contains(next)) {
+                    if (i > 0 && cur != null && items.get(i - 1).getParent() == cur.getParent()) items.get(i - 1).requestFocusFromTouch();
+                    else dismiss();
+                } else next.requestFocusFromTouch();
+                return;
+            }
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_DPAD_UP: {
+                int dir = code == KeyEvent.KEYCODE_DPAD_UP ? View.FOCUS_UP : code == KeyEvent.KEYCODE_DPAD_DOWN ? View.FOCUS_DOWN : View.FOCUS_RIGHT;
+                View next = cur == null ? null : cur.focusSearch(dir);
+                if (cur == null) items.get(0).requestFocusFromTouch();
+                else if (next != null && items.contains(next)) next.requestFocusFromTouch();
+                else if (code == KeyEvent.KEYCODE_DPAD_RIGHT && i + 1 < items.size()) items.get(i + 1).requestFocusFromTouch();
+                else if (code == KeyEvent.KEYCODE_DPAD_DOWN && i + 1 < items.size()) items.get(i + 1).requestFocusFromTouch();
+                else if (code == KeyEvent.KEYCODE_DPAD_UP && i > 0) items.get(i - 1).requestFocusFromTouch();
+                return;
+            }
+            default:
+        }
+    }
+
     public static boolean isShowing() {
         return hostView != null;
     }

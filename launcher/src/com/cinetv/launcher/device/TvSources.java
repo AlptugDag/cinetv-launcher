@@ -49,7 +49,7 @@ public final class TvSources {
             for (TvInputInfo port : ports) {
                 Source s = new Source();
                 s.inputId = port.getId();
-                final CharSequence label = port.loadLabel(ctx), custom = port.loadCustomLabel(ctx);
+                final CharSequence label = port.loadLabel(ctx), custom = (android.os.Build.VERSION.SDK_INT >= 24 ? port.loadCustomLabel(ctx) : null);
                 String device = null;
                 for (TvInputInfo child : all) {
                     if (port.getId().equals(child.getParentId())) {

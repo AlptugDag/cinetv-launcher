@@ -108,7 +108,7 @@ final class VideoLength {
                 } catch (NumberFormatException ignored) {
                 }
             }
-            if (size < 0) size = c.getContentLengthLong();
+            if (size < 0) size = android.os.Build.VERSION.SDK_INT >= 24 ? c.getContentLengthLong() : c.getContentLength();
             byte[] head = new byte[262144];
             int n = 0;
             try (InputStream in = c.getInputStream()) {

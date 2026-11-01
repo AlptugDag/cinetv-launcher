@@ -486,7 +486,7 @@ public final class EmaLightningTts {
                 MediaPlayer mp = new MediaPlayer();
                 // The assistant stream follows the TV's volume; navigation guidance is muted on many TVs.
                 mp.setAudioAttributes(new AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                        .setUsage((android.os.Build.VERSION.SDK_INT >= 26 ? AudioAttributes.USAGE_ASSISTANT : AudioAttributes.USAGE_MEDIA))
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build());
                 mp.setDataSource(wavFile.getAbsolutePath());
@@ -555,7 +555,7 @@ public final class EmaLightningTts {
                         fallbackTts.setPitch(1.0f);
                         fallbackTts.setSpeechRate(1.02f);
                         fallbackTts.setAudioAttributes(new AudioAttributes.Builder()
-                                .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                                .setUsage((android.os.Build.VERSION.SDK_INT >= 26 ? AudioAttributes.USAGE_ASSISTANT : AudioAttributes.USAGE_MEDIA))
                                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
                         fallbackReady = true;
                         if (ready != null) ready.run();
