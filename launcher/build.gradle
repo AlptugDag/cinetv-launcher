@@ -36,17 +36,17 @@ def releaseSigning = { ->
 }()
 
 android {
-    namespace 'com.cinetv.launcher'
-    compileSdk 34
+    namespace = 'com.cinetv.launcher'
+    compileSdk = 34
 
     defaultConfig {
-        applicationId "com.cinetv.launcher"
-        minSdk 23
-        targetSdk 34
+        applicationId = "com.cinetv.launcher"
+        minSdk = 23
+        targetSdk = 34
         // Release builds take the version from the git tag (CI passes -PcineTvVersion=1.0.0).
         def ver = (project.findProperty('cineTvVersion') ?: '1.0.0.20').toString().replaceFirst('^v', '')
         def parts = ver.tokenize('.').collect { it.replaceAll('[^0-9]', '') as int }
-        versionName ver
+        versionName = ver
         // Numbering restarted at 1.0.0 after 3.2.0: the 1000000 base keeps codes above every older build's, so
         // TVs that had them still take updates (Android refuses a lower code without wiping the app's data).
         // A fourth part counts small fixes: 1.0.0.1 = 1100001. Letter suffixes boost code so 1.0.0.9b > 1.0.0.9.
@@ -61,7 +61,7 @@ android {
         // 1100229, so 1.0.0.21 is 1100230, 1.0.0.22 is 1100240 and so on.
         def code = p3 >= 21 && parts.size() < 5 ? 1100230 + (p3 - 21) * 10 + suffixBoost
                 : Math.max(1100200 + p3 + suffixBoost, 1000000 + part(0) * 100000 + part(1) * 1000 + part(2) * 10 + p3 + suffixBoost + revBoost)
-        versionCode code
+        versionCode = code
     }
 
     sourceSets {
@@ -80,9 +80,9 @@ android {
     }
 
     compileOptions {
-        coreLibraryDesugaringEnabled true
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        coreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     packaging {
@@ -93,19 +93,19 @@ android {
 
     signingConfigs {
         debug {
-            storeFile file("debug.keystore")
-            storePassword "android"
-            keyAlias "androiddebugkey"
-            keyPassword "android"
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
         }
         if (releaseSigning != null) {
             release {
-                storeFile releaseSigning.storeFile
-                storePassword releaseSigning.storePassword
-                keyAlias releaseSigning.keyAlias
-                keyPassword releaseSigning.keyPassword
-                v1SigningEnabled = true
-                v2SigningEnabled = true
+                storeFile = releaseSigning.storeFile
+                storePassword = releaseSigning.storePassword
+                keyAlias = releaseSigning.keyAlias
+                keyPassword = releaseSigning.keyPassword
+                enableV1Signing = true
+                enableV2Signing = true
                 enableV3Signing = true
                 enableV4Signing = true
             }
@@ -114,17 +114,17 @@ android {
 
     buildTypes {
         debug {
-            signingConfig signingConfigs.debug
+            signingConfig = signingConfigs.debug
         }
         release {
             if (releaseSigning != null) {
-                signingConfig signingConfigs.release
+                signingConfig = signingConfigs.release
             }
             // Obfuscated and shrunk: the shipped app is hard to read back or alter (see Integrity.java).
-            minifyEnabled true
-            shrinkResources true
+            minifyEnabled = true
+            shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            debuggable false
+            debuggable = false
         }
     }
 
@@ -133,8 +133,8 @@ android {
     }
 
     lint {
-        abortOnError false
-        checkReleaseBuilds false
+        abortOnError = false
+        checkReleaseBuilds = false
     }
 }
 
