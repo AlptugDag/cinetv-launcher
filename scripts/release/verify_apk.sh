@@ -25,6 +25,7 @@ echo "$OUT" | grep -q "Verified using v3 scheme (APK Signature Scheme v3): true"
 
 # "Signer #1 certificate SHA-256 digest" (older apksigner) or "Signer (minSdkVersion=..) certificate SHA-256 digest"
 SHA="$(echo "$OUT" | awk -F': ' '/^Signer.*certificate SHA-256 digest/{print $2; exit}' | tr 'A-F' 'a-f')"
+[ -z "$SHA" ] && { echo "apksigner said:"; echo "$OUT" | grep -iE "digest|signer|apksigner|error|warn" | head -20; }
 if [ -f "$PIN_FILE" ]; then
     PIN="$(tr -d ' \n' < "$PIN_FILE" | tr 'A-F' 'a-f')"
     [ "$SHA" = "$PIN" ] && pass "certificate matches pinned fingerprint" || bad "certificate $SHA does not match pin $PIN"
