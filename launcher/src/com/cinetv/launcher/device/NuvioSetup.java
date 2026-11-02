@@ -196,6 +196,92 @@ public final class NuvioSetup {
         }
     }
 
+    /** Nuvio's own release key (NuvioMedia/NuvioTV on GitHub): with it, Nuvio's built-in updater can update it. */
+    static final String OFFICIAL_CERT = "1cba06fbdf978d0e3f9ad58de6ba3d69e24a948384adde3aed95451e830e5210";
+
+    /**
+     * A Nuvio signed with CineTV's own key (made by an early setup) can never take Nuvio's updates: Android refuses a
+     * different signature ("Uygulama yüklenmedi"). Such a copy is replaced once by the official build, then CineTV
+     * puts its addons and configs back. An official Nuvio, or anyone else's, is never touched; nothing happens while
+     * Nuvio is open, and if the download fails the old copy stays. Blocking (adb, download).
+     */
+    public static boolean ensureOfficialNuvio(Context ctx) {
+        final Context app = ctx.getApplicationContext();
+        String nuvio = certOf(app, AppLauncher.NUVIO), mine = certOf(app, app.getPackageName());
+        if (nuvio == null) return false;
+        if (OFFICIAL_CERT.equals(nuvio)) {
+            // already the official build (swapped here, by hand or by an earlier attempt): CineTV's addons go in once
+            if (!Prefs.get(app).getBoolean("nuvio_official_addons", false)) {
+                try {
+                    deployConfigs(app);
+                    for (String addon : CURATED_ADDONS) addAddon(app, addon);
+                    Prefs.get(app).edit().putBoolean("nuvio_official_addons", true).putBoolean(DONE, true).putBoolean(SYNC_KEY, true).apply();
+                } catch (Throwable ignored) {
+                }
+            }
+            return true;
+        }
+        if (!nuvio.equals(mine)) return false;
+        com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
+        if (svc != null && AppLauncher.NUVIO.equals(svc.getLastPackage())) return false; // in use: next time
+        try {
+            // the newest Nuvio, betas included (a viewer on the beta track must not drop back to the stable one)
+            String url = apkUrl("NuvioMedia/NuvioTV", "app-full-", "-release\\.apk", true);
+            if (url == null) return false;
+            File dir = app.getExternalFilesDir(null);
+            if (dir == null) return false;
+            File apk = new File(dir, "nuvio.apk");
+            if (!Http.download(url, apk, 180_000)) return false;
+            try { apk.setReadable(true, false); } catch (Throwable ignored) {}
+            // the official package must really be the official one before the old copy goes
+            android.content.pm.PackageInfo pi = app.getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(), 0);
+            if (pi == null || !AppLauncher.NUVIO.equals(pi.packageName)) {
+                apk.delete();
+                return false;
+            }
+            Log.i(TAG, "Replacing the CineTV-signed Nuvio with the official build (its updates will install)");
+            String path = apk.getAbsolutePath();
+            // Detached on the TV, like CineTV's own self-update: a 50-70 MB copy outlived one adb command's time, and
+            // the copy was cut in half. The old copy goes only after the new file is complete (same size).
+            String tmp = "/data/local/tmp/nuvio.apk";
+            String job = "cp '" + path + "' " + tmp + " && [ $(stat -c %s " + tmp + ") -eq " + apk.length() + " ] && pm uninstall "
+                    + AppLauncher.NUVIO + " && pm install -r " + tmp + "; rm -f " + tmp;
+            if (LocalAdb.exec(app, "nohup sh -c \"" + job + "\" >/dev/null 2>&1 &", 5000) == null) return false;
+            boolean ok = false;
+            for (int i = 0; i < 120 && !ok; i++) { // up to 10 minutes on a slow TV
+                Thread.sleep(5000);
+                ok = OFFICIAL_CERT.equals(certOf(app, AppLauncher.NUVIO));
+            }
+            Log.i(TAG, "Nuvio swap: official installed " + ok);
+            apk.delete();
+            if (!ok) return false;
+            Prefs.get(app).edit().remove(DONE).apply();
+            // CineTV's addons and configs back in the fresh Nuvio
+            deployConfigs(app);
+            for (String addon : CURATED_ADDONS) addAddon(app, addon);
+            Prefs.get(app).edit().putBoolean(DONE, true).putBoolean(SYNC_KEY, true).putBoolean("nuvio_official_addons", true).apply();
+            return true;
+        } catch (Throwable t) {
+            Log.w(TAG, "Official Nuvio swap failed: " + t);
+            return false;
+        }
+    }
+
+    /** SHA-256 of an installed package's signing certificate, or null. */
+    static String certOf(Context app, String pkg) {
+        try {
+            @SuppressWarnings("deprecation")
+            android.content.pm.Signature[] sig = app.getPackageManager().getPackageInfo(pkg, android.content.pm.PackageManager.GET_SIGNATURES).signatures;
+            if (sig == null || sig.length == 0) return null;
+            byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest(sig[0].toByteArray());
+            StringBuilder sb = new StringBuilder();
+            for (byte b : d) sb.append(String.format(java.util.Locale.ROOT, "%02x", b));
+            return sb.toString();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     public static boolean installNuvio(Context ctx, boolean force) {
         final Context app = ctx.getApplicationContext();
         if (!force && Prefs.get(app).getBoolean(DONE, false)) {
@@ -359,8 +445,20 @@ public final class NuvioSetup {
 
     /** The newest APK of a GitHub project for this processor (prefix + abi + suffix, else its universal build). */
     private static String apkUrl(String repo, String prefix, String suffix) {
+        return apkUrl(repo, prefix, suffix, false);
+    }
+
+    /** With {@code withBetas} the newest release of all, pre-releases included; otherwise the latest stable one. */
+    private static String apkUrl(String repo, String prefix, String suffix, boolean withBetas) {
         try {
-            JSONObject rel = Http.getJson("https://api.github.com/repos/" + repo + "/releases/latest", null, 15_000);
+            JSONObject rel;
+            if (withBetas) {
+                org.json.JSONArray all = Http.getJsonArray("https://api.github.com/repos/" + repo + "/releases?per_page=1", null, 15_000);
+                rel = all != null && all.length() > 0 ? all.getJSONObject(0) : null;
+                if (rel == null) return null;
+            } else {
+                rel = Http.getJson("https://api.github.com/repos/" + repo + "/releases/latest", null, 15_000);
+            }
             JSONArray assets = rel.optJSONArray("assets");
             if (assets == null) return null;
             String abi = Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "";

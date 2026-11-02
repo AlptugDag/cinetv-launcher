@@ -63,6 +63,10 @@ public final class Http {
         return new JSONObject(getText(url, headers, timeoutMs));
     }
 
+    public static org.json.JSONArray getJsonArray(String url, Map<String, String> headers, int timeoutMs) throws Exception {
+        return new org.json.JSONArray(getText(url, headers, timeoutMs));
+    }
+
     /** Downloads to a temp file and renames atomically, so a half-written poster is never decoded. */
     public static boolean download(String url, File target, int timeoutMs) {
         File tmp = new File(target.getPath() + ".part");

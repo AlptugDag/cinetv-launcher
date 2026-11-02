@@ -54,6 +54,11 @@ public final class HomeGuard {
             } catch (Throwable ignored) {
             }
             android.content.SharedPreferences p = Prefs.get(app);
+            // a Nuvio that can never take Nuvio's own updates is replaced by the official build (once it works)
+            if (!p.getBoolean("nuvio_official_done", false) && com.cinetv.launcher.device.NuvioSetup.ensureOfficialNuvio(app)
+                    && p.getBoolean("nuvio_official_addons", false)) {
+                p.edit().putBoolean("nuvio_official_done", true).apply();
+            }
             if (p.getInt("setup_done_version", 0) == version && isDefault(app)) return;
             ensureDefault(app);
             // installed from the APK alone: Nuvio and its addons come too, plus virtual RAM / zRAM optimization
