@@ -311,9 +311,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         });
 
         // "Kaldığın yerden": OK opens the film's case (Play continues where it stopped), hold OK forgets it
+        // straight back into the film: no case in between. Nuvio opens on it and CineTV presses its "Devam Et" / next-episode
+        // button (Nuvio resumes from its own saved minute); AlptugPlayer resumes from the minute CineTV saved.
         home.continueCard.setOnClickListener(v -> {
             com.cinetv.launcher.service.WatchHistory.Entry e = home.continueCard.entry();
-            if (e != null) openTitle(e.movie, null);
+            if (e != null) launchFilm(e.movie);
         });
         home.continueCard.setOnLongClickListener(v -> {
             com.cinetv.launcher.service.WatchHistory.Entry e = home.continueCard.entry();

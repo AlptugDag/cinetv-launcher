@@ -1,5 +1,11 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.35
+
+- **Kaldığın yerden doğrudan devam ediyor:** Karta basınca DVD kutusu açılmıyor, film doğrudan açılıyor. Nuvio'da CineTV "Devam Et" düğmesine (dizide sıradaki bölümün düğmesine) kendisi basıyor ve Nuvio kendi kaydettiği dakikadan devam ediyor; AlptugPlayer CineTV'nin kaydettiği dakikadan devam ediyor.
+- **Nuvio'nun kendi oynatıcısı da varsayılan olarak kaydediliyor:** İzleme konumunu okumak için gereken Bildirim Erişimi artık TV'nin adb'si ile CineTV tarafından veriliyor; Ayarlar'da aramak gerekmiyor. "CineTV'yi yok et" bu izni geri alıyor.
+- **Önce "Devam Et":** Kaydedilmiş dakikası olan bir filmde Nuvio "Oynat" ile birlikte "Devam Et" gösterdiğinde artık baştan başlatan "Oynat" değil, "Devam Et" seçiliyor.
+
 ## 1.0.0.34
 
 - **Root gerektirmeyen sıkıştırılmış bellek:**

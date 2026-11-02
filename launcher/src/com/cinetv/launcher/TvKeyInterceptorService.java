@@ -221,7 +221,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
             android.graphics.Rect screen = new android.graphics.Rect();
             root.getBoundsInScreen(screen);
             if (series) return seriesButton(root);
-            String[] labels = new String[]{"Oynat", "Devam Et", "İzlemeye Devam Et", "Play", "Resume"};
+            // resume first: a film with a saved minute shows "Devam Et" beside "Oynat" (which would start from the beginning)
+            String[] labels = new String[]{"İzlemeye Devam Et", "Devam Et", "Kaldığın Yerden Devam Et", "Resume", "Continue", "Oynat", "Play"};
             for (String label : labels) {
                 // Compose text is not always returned by findAccessibilityNodeInfosByText: walk the tree.
                 java.util.List<android.view.accessibility.AccessibilityNodeInfo> found = new java.util.ArrayList<>();

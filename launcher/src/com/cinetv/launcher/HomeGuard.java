@@ -56,6 +56,12 @@ public final class HomeGuard {
             android.content.SharedPreferences p = Prefs.get(app);
             // rootless zRAM help: Android's app compaction on, again after every start
             com.cinetv.launcher.device.MemoryOptimizer.applyCompaction(app);
+            // "Kaldığın yerden" for films played in Nuvio's own player: its playback is read through notification access,
+            // granted here through the TV's adb (no settings page to find); "CineTV'yi yok et" takes it back
+            if (!com.cinetv.launcher.service.NuvioPlaybackListenerService.hasNotificationAccess(app)) {
+                com.cinetv.launcher.remote.LocalAdb.shell(app, "cmd notification allow_listener " + app.getPackageName()
+                        + "/com.cinetv.launcher.service.NuvioPlaybackListenerService 0 2>/dev/null", 5000);
+            }
             // a Nuvio that can never take Nuvio's own updates is replaced by the official build (once it works)
             if (!p.getBoolean("nuvio_official_done", false) && com.cinetv.launcher.device.NuvioSetup.ensureOfficialNuvio(app)
                     && p.getBoolean("nuvio_official_addons", false)) {
