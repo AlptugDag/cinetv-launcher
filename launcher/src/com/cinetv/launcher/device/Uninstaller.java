@@ -69,7 +69,8 @@ public final class Uninstaller {
         try { HomeLaunchers.restoreOthers(ctx); } catch (Throwable ignored) { }
         // Google's assistant back as CineTV found it (only if CineTV switched it off), and the assistant role returned
         try {
-            com.cinetv.launcher.remote.LocalAdb.shell(ctx, "[ \"$(settings get global cinetv_katniss_off)\" = 1 ] && pm enable com.google.android.katniss >/dev/null 2>&1; "
+            com.cinetv.launcher.remote.LocalAdb.shell(ctx, com.cinetv.launcher.device.MemoryOptimizer.compactionRestoreCommand()
+                    + "[ \"$(settings get global cinetv_katniss_off)\" = 1 ] && pm enable com.google.android.katniss >/dev/null 2>&1; "
                     + "settings delete global cinetv_katniss_off 2>/dev/null; "
                     + "cmd role remove-role-holder --user 0 android.app.role.ASSISTANT " + ctx.getPackageName() + " 0 2>/dev/null; "
                     + "cmd role add-role-holder --user 0 android.app.role.ASSISTANT com.google.android.katniss 0 2>/dev/null", 6000);

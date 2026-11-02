@@ -2550,15 +2550,15 @@ public final class Panels {
                     v.postDelayed(() -> host.replace(() -> buildWizard(ctx, host)), 2000);
                 }));
 
-        // 5. Virtual RAM & TV Optimization
+        // 5. Background & TV optimization
         boolean optOk = MemoryOptimizer.isTvOptimized(ctx);
         list.addView(Controls.tile(ctx,
-                turkish ? "5. 2 GB Sanal RAM & Arka Plan Hızlandırma" : "5. 2 GB Virtual RAM & Optimization",
-                optOk ? (turkish ? "Sanal RAM devrede, arka plan ve TV Denetçisi optimize edildi" : "Virtual RAM active, system optimized")
-                      : (turkish ? "Sanal RAM oluşturup gereksiz servisleri kapatmak için dokunun" : "Tap to apply 2 GB virtual RAM & optimize"),
+                turkish ? "5. Sıkıştırılmış Bellek & Arka Plan" : "5. Compressed Memory & Background",
+                optOk ? (turkish ? "Uygulama sıkıştırma açık, arka plan ve TV Denetçisi optimize edildi" : "App compaction on, background and TV checks optimized")
+                      : (turkish ? "Arka plan uygulamalarını dondurup gereksiz servisleri kapatmak için dokunun" : "Tap to freeze background apps and stop needless services"),
                 optOk, v -> {
                     MemoryOptimizer.applyTvOptimizations(ctx);
-                    Toast.makeText(ctx, turkish ? "Sanal RAM ve optimizasyon uygulandı" : "Virtual RAM & optimizations applied", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ctx, turkish ? "Optimizasyon uygulandı" : "Optimization applied", Toast.LENGTH_SHORT).show();
                     v.postDelayed(() -> host.replace(() -> buildWizard(ctx, host)), 800);
                 }));
 
@@ -2728,7 +2728,7 @@ public final class Panels {
         memSb.append(tr ? "Toplam RAM: " : "Total RAM: ").append(totalMb).append(" MB");
         memSb.append(tr ? "\nKullanılabilir RAM: " : "\nAvailable RAM: ").append(availMb).append(" MB");
         memSb.append(tr ? "\nDüşük Bellek Cihazı: " : "\nLow RAM Device: ").append(am != null && am.isLowRamDevice() ? (tr ? "Evet" : "Yes") : (tr ? "Hayır" : "No"));
-        memSb.append(tr ? "\nZ-RAM Durumu: " : "\nZ-RAM Status: ").append(MemoryOptimizer.getZramInfo(ctx));
+        memSb.append(tr ? "\nSıkıştırılmış bellek (root gerektirmez): " : "\nCompressed memory (no root needed): ").append(MemoryOptimizer.getZramInfo(ctx));
         File dataDir = Environment.getDataDirectory();
         long freeGb = dataDir.getFreeSpace() / (1024 * 1024 * 1024);
         long totalGb = dataDir.getTotalSpace() / (1024 * 1024 * 1024);

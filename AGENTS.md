@@ -21,7 +21,7 @@ adb connect <IP>:5555
 This automatically installs and configures 100% of the entire ecosystem:
 - CineTV launcher & locks Home default
 - Companion apps: Nuvio, Nova Video Player, AirPlay receiver, Ad-free YouTube (TizenTube)
-- Rootless 2 GB Z-RAM (kernel swap LZ4) & memory tuning
+- Rootless compressed memory: Android app compaction on (background apps move into the TV's own zRAM), cached-app freezer, CineTV's images kept compressed in RAM (the zRAM size itself needs root)
 - System debloat (safely disabling manufacturer tracking & bloatware)
 - Deploys configuration profiles: Xperience (`xperience-kategori-setup-profile`), AIOMetadata (`aiometadata-config`) into `/sdcard/Download/`
 - Installs curated addons into Nuvio: TR Altyazı, Anthology (pre-installed, disabled by default), Netflix Catalog, Xperience

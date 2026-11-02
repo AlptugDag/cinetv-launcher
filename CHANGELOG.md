@@ -1,5 +1,15 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.34
+
+- **Root gerektirmeyen sıkıştırılmış bellek:**
+  - Android'in uygulama sıkıştırması açılıyor: arka planda bekleyen uygulamaların belleği TV'nin kendi sıkıştırılmış takas alanına (zRAM) taşınıyor, öndeki uygulamaya (ör. Nuvio) daha çok RAM kalıyor. Bazı TV'lerde kapalıydı (Arçelik'te kapalı, Grundig'de açıktı); CineTV her açılıştan sonra yeniden açıyor.
+  - CineTV kendi görsellerini bellekte sıkıştırılmış tutuyor: bellek darlaşınca çözülmüş resimler bırakılıyor, sıkıştırılmış kopyalar (onda bir boyutta) kalıyor; resim yavaş depolamadan değil bellekten yeniden çözülüyor.
+  - Bellek ekranı TV'nin takas alanını, kullanımını, uygulama sıkıştırmasının durumunu ve CineTV'nin sıkıştırılmış görsellerini gösteriyor.
+  - Önceki "2 GB sanal RAM / zRAM büyütme" komutları kaldırıldı: root gerektirdikleri için hiçbir TV'de etkili olmuyorlardı. Açıklamalar buna göre düzeltildi.
+  - "CineTV'yi yok et" uygulama sıkıştırmasını TV'nin eski hâline döndürüyor (yalnızca CineTV açtıysa).
+- **GitHub sürümleri artık kendi imzalanıyor:** İmza anahtarı depo gizlilerine eklendi; bir sürüm etiketi gönderildiğinde GitHub aynı anahtarla imzalayıp yayınlıyor.
+
 ## 1.0.0.33
 
 - **Tam kontrol yeniden varsayılan:** CineTV, TV'nin Ana Ekran rolünü alıyor ve diğer başlatıcıları bir kez kapatıyor; "Hangisini seçmek istersiniz?" sorusu kendiliğinden çıkmıyor (1.0.0.32'de bu yalnızca Ayarlar'dan seçilebiliyordu).

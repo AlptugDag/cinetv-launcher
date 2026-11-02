@@ -77,6 +77,7 @@ public class CineTvApp extends Application {
         // in turn, and Home came back by itself. CineTV gives up what it can rebuild: the phone link's browser engine
         // and the shelf's case images (both come back when Home is shown again).
         boolean pressed = level >= TRIM_MEMORY_BACKGROUND || level == TRIM_MEMORY_RUNNING_LOW || level == TRIM_MEMORY_RUNNING_CRITICAL;
+        if (level == TRIM_MEMORY_RUNNING_CRITICAL || level >= TRIM_MEMORY_COMPLETE) com.cinetv.launcher.service.PosterCache.trimPacked();
         if (pressed && !MainActivity.isInFront()) {
             com.cinetv.launcher.remote.RelayHost.stopForMemory();
             MainActivity a = MainActivity.instance;

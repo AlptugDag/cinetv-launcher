@@ -121,7 +121,8 @@ QR kodu okutun; uygulama indirmeden, hesap açmadan telefonunuz CineTV'nin parç
 
 - **Tek mod, canlı ölçüm.** Düşük/Orta/Yüksek seçimi yok: her TV her efektle çalışır. CineTV ana ekranın çizdiği her karenin süresini ölçer; kareler yavaşladığında logolar, kategori önyüklemesi ve fragman hazırlığı gibi arka plan işleri ekran sakinleşene kadar bekler. Hiçbir özellik kapanmaz. Boştayken hiçbir şey çizmez.
 - **TV Denetçisi.** Panelin gerçek çözünürlüğü, HDR biçimleri, ses çıkışı ve kodekler; görüntü, ses, ağ ve DNS ayarları bu rapora göre yapılır.
-- **Sanal bellek ve arındırma.** Root gerektirmeyen ek sanal bellek; üretici izleyicileri dondurulur ve **CineTV'yi Yok Et** ile her şey eski haline döner.
+- **Sıkıştırılmış bellek (root gerektirmez).** Android'in uygulama sıkıştırması açılır: arka planda bekleyen uygulamaların belleği TV'nin kendi sıkıştırılmış takas alanına (zRAM) taşınır, öndeki uygulamaya daha çok RAM kalır. CineTV kendi görsellerini de bellekte sıkıştırılmış tutar. zRAM'in boyutu üreticinindir; onu büyütmek root ister.
+- **Arındırma.** Arka plan uygulamaları dondurulur, üretici izleyicileri kapatılır ve **CineTV'yi Yok Et** ile her şey eski haline döner.
 - **Kendini günceller.** Yeni sürüm imzası doğrulanarak arka planda kurulur, bir sonraki açılışta haber verilir; TV asla gece uyandırılmaz.
 
 <p align="center"><img src="docs/media/v20-settings.jpg" alt="Ayarlar" width="88%"></p>

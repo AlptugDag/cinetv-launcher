@@ -21,7 +21,7 @@ CineTV'yi televizyonunuza kurmak için iki resmî ve garantili yol vardır:
 
 ## Adım 1: Televizyonda "Geliştirici seçenekleri"ni açın (her iki yol için de gerekli)
 
-CineTV, kumanda tuşlarını her uygulamada çalıştırmak, kendini varsayılan ana ekran yapmak, Google Asistan çakışmasını engellemek ve arka planda 2 GB sanal RAM oluşturup sistemi hızlandırmak için televizyonun standart "hata ayıklama" özelliğini kullanır. Bu işlem televizyonun garantisini bozmaz ve istediğiniz zaman Ayarlar'daki **"CineTV'yi yok et!"** tuşuyla tamamen geri alınabilir.
+CineTV, kumanda tuşlarını her uygulamada çalıştırmak, kendini varsayılan ana ekran yapmak, Google Asistan çakışmasını engellemek ve arka plan uygulamalarını dondurup sistemi hızlandırmak için televizyonun standart "hata ayıklama" özelliğini kullanır. Bu işlem televizyonun garantisini bozmaz ve istediğiniz zaman Ayarlar'daki **"CineTV'yi yok et!"** tuşuyla tamamen geri alınabilir.
 
 **1.1. Geliştirici olun.** Menü adları markaya göre biraz değişir; size uyan satırı izleyin:
 
@@ -53,7 +53,7 @@ Bilgisayarınızda dosya okuyup komut çalıştırabilen bir yapay zekâ ajanı 
 2. Yapay zekâya aynen şunu yazın:
    > https://github.com/AlptugDag/cinetv-launcher adresindeki AGENTS.md dosyasını oku ve CineTV'yi televizyonuma kur. Televizyonumun IP adresi: <TV_IP_ADRESİNİZ>.
 3. Yapay zekâ televizyonunuza bağlanır, onay isterse **Her zaman izin ver** › **Tamam**'a basın.
-4. Yapay zekâ; CineTV ana ekranını, Nuvio medya merkezini, Nova Player'ı, AirPlay'i, reklamsız YouTube'u (TizenTube), 2 GB sanal RAM (Z-RAM) artışını, debloat sadeleştirmesini, hazır profil dosyalarını (Xperience, AIOMetadata) ve tüm seçkin eklentileri (TR Altyazı, Anthology, Netflix, Xperience) **tek adımda, sıfır çaba ile %100 tam otomatik** kurar ve televizyonu sinema modunda açar.
+4. Yapay zekâ; CineTV ana ekranını, Nuvio medya merkezini, Nova Player'ı, AirPlay'i, reklamsız YouTube'u (TizenTube), debloat sadeleştirmesini, hazır profil dosyalarını (Xperience, AIOMetadata) ve tüm seçkin eklentileri (TR Altyazı, Anthology, Netflix, Xperience) **tek adımda, sıfır çaba ile %100 tam otomatik** kurar ve televizyonu sinema modunda açar.
 
 ---
 
@@ -106,7 +106,7 @@ Bilgisayar veya terminal kullanmadan doğrudan televizyonunuzla kurmak isterseni
   - *TMDB Sinema & Afiş Anahtarı (`themoviedb.org/settings/api`)*: 3B DVD kutularının yüksek çözünürlüklü afişlerini, açılan DVD kutusunun içindeki Türkçe film özetlerini, oyuncu/yönetmen kadrosunu, IMDb puanlarını ve fragman videolarını getirir.
   - *MDBList (`mdblist.com/preferences`)*: IMDb ve Rotten Tomatoes puanlarını zenginleştirir.
 - **Sıfır YouTube Arayüzlü DVD Fragmanları & Akıllı Dikey Disk Modu**: Açılan 3B DVD kutularının sağ tepsisinde fragmanlar oynarken hiçbir YouTube arayüzü (başlık, kanal ikonu, filigran veya bitiş ekranı) görünmez. Eğer bir filmin fragmanı YouTube'da mevcut değilse veya bulunduğunuz ülkede izlenme kısıtı varsa, o filmin DVD kutusu otomatik olarak **fragmansız ve dikey** açılır ve tepside dönen DVD diski gösterilir.
-- **Bütünleşik Görüntü, Ses, Ağ, DNS & Optimizasyon**: Ayarlar › **Görüntü, Ses, Ağ & Optimizasyon** kutucuğuna bastığınızda TV Denetçisi donanımınızı tarar; 4K/HDR kapasitesini, HDMI eARC/Atmos ses yolunu, şifreli DNS seçimini (Cloudflare, AdGuard, Quad9, Google), hız/gecikme testini, 2 GB sanal RAM'i, performans modunu ve Nuvio akış kalitesini tek adımda otomatik kalibre eder.
+- **Bütünleşik Görüntü, Ses, Ağ, DNS & Optimizasyon**: Ayarlar › **Görüntü, Ses, Ağ & Optimizasyon** kutucuğuna bastığınızda TV Denetçisi donanımınızı tarar; 4K/HDR kapasitesini, HDMI eARC/Atmos ses yolunu, şifreli DNS seçimini (Cloudflare, AdGuard, Quad9, Google), hız/gecikme testini, root gerektirmeyen sıkıştırılmış belleği (Android uygulama sıkıştırması), performans modunu ve Nuvio akış kalitesini tek adımda otomatik kalibre eder.
 - **Temalar**: Ayarlar › Tema üzerinden 7 farklı sinematik atmosfer arasında anında geçiş yapabilirsiniz: **Alptug Default**, **Sıvı Cam (Liquid Glass)**, **Metalik (Metallic)**, **Sinema Salonu (Cinema Hall)**, **Kırmızı Halı (Red Carpet)**, **Film Dolabı (Film Closet)** ve **Neon Gece (Neon Night)**.
 
 ---
@@ -138,7 +138,7 @@ CineTV televizyonunuzda hiçbir zaman kalıcı, geri alınamaz bir hasar veya ki
 
 1. **Orijinal Başlatıcıya Dönüş**: Varsayılan başlatıcı kilidi kaldırılır; televizyonunuz kendi orijinal fabrika ana ekranına (Google TV / Android TV Home) anında geri döner.
 2. **Google Asistan ve Ses Servisleri**: Sessize alınmış veya devre dışı bırakılmış tüm Google Asistan bileşenleri (`com.google.android.apps.googleassistant`, `KatnissAssistantService`, `VoiceActivity`) eksiksiz olarak yeniden açılır.
-3. **Bellek & Kernel Standartları**: 2 GB sanal RAM genişletmesi, kernel takas alanı (`swappiness=60`) ve sistem animasyon ölçekleri orijinal fabrika değerlerine (1.0x) döndürülür.
+3. **Bellek & Kernel Standartları**: Sistem animasyon ölçekleri orijinal fabrika değerlerine (1.0x) döndürülür.
 4. **Görüntü, Ses ve DNS**: Orijinal görüntü kalibrasyonu, ses modları ve şifreli DNS ayarları sıfırlanıp fabrika varsayılanına döner.
 5. **Erişilebilirlik & Ekran Koruyucu**: Kumanda tuş yakalama servisi ve saat ekran koruyucusu sistem servislerinden güvenle temizlenir.
 6. **Temiz Kaldırma**: CineTV paketi sistemden tamamen silinir; televizyon adeta hiçbir şey yaşanmamış gibi eski haline tamamen geri döner.

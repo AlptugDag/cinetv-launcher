@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # CineTV — Smart RAM & Storage-to-RAM Optimizer
-# Optimizes zRAM, Low Memory Killer (LMK), and cache thresholds for smooth 4K TV operation.
+# Tunes the Low Memory Killer (LMK) and cache thresholds that adb may change (zRAM itself needs root).
 set -e
 
 echo "==> [Smart RAM Optimizer] Detecting connected Android TV via ADB..."
@@ -17,24 +17,8 @@ echo "==> Connected to: $DEVICE"
 echo "==> Setting purgeable memory assets..."
 adb shell "setprop persist.sys.purgeable_assets 1"
 
-# 2. Expand virtual RAM / zRAM swap space
-echo "==> Configuring zRAM swap compression (lz4)..."
-adb shell "echo 1 > /sys/block/zram0/reset 2>/dev/null || true"
-adb shell "echo lz4 > /sys/block/zram0/comp_algorithm 2>/dev/null || true"
-# 1024MB zRAM swap disk size
-adb shell "echo 1073741824 > /sys/block/zram0/disksize 2>/dev/null || true"
-adb shell "mkswap /dev/block/zram0 2>/dev/null || true"
-adb shell "swapon /dev/block/zram0 2>/dev/null || true"
-
-# 3. Optimize Swappiness (aggressive memory swapping to keep UI responsive)
-echo "==> Tuning swappiness to 80..."
-adb shell "sysctl -w vm.swappiness=80 2>/dev/null || true"
-adb shell "sysctl -w vm.vfs_cache_pressure=100 2>/dev/null || true"
-
-# 4. Storage-to-RAM expansion hint on supported Android 11+ vendors
-echo "==> Enabling RAM expansion features..."
-adb shell "settings put global ram_expand_size_list 2048 2>/dev/null || true"
-adb shell "setprop persist.sys.ram_expand.size 2048 2>/dev/null || true"
+# (zRAM size, swap, swappiness and RAM-expansion properties need root: adb is refused on retail TVs, so they are
+# not touched. A TV's compressed swap is its maker's own.)
 
 # 5. Low Memory Killer (LMK) / Extra Free Kbytes Tuning
 echo "==> Optimizing Low Memory Killer thresholds..."

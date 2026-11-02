@@ -192,7 +192,7 @@ public final class MemoryOptimizer {
     }
 
     /**
-     * Checks if TV optimizations (virtual RAM, background trimming, assistant tweaks) have been applied.
+     * Checks if TV optimizations (background trimming, assistant tweaks) have been applied.
      */
     public static boolean isTvOptimized(Context ctx) {
         return Prefs.get(ctx).getBoolean("tv_opt_applied", false);
@@ -200,7 +200,7 @@ public final class MemoryOptimizer {
 
     /**
      * Disables Google Assistant on the TV while keeping Google Speech Recognition (Katniss / RecognitionService)
-     * active, and applies rootless virtual RAM / zRAM expansion and kernel memory tuning.
+     * active, and sets Android's own adjustable memory settings (cached-app freezer).
      */
     public static void applyTvOptimizations(Context ctx) {
         final Context app = ctx.getApplicationContext();
@@ -222,25 +222,13 @@ public final class MemoryOptimizer {
                         "pm disable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.VoiceActivity 2>/dev/null; " +
                         "pm disable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.AssistantActivity 2>/dev/null", 3000);
 
-                // Rootless virtual RAM / dynamic zRAM expansion, lz4 swap, and kernel memory tuning
+                // Android's own memory settings that adb may change: freeze cached apps, default cached-process limits.
+                // (zRAM size, swap and kernel values need root: they were silently refused on every TV tested, so they
+                // are no longer sent. The swap a TV has is its maker's own.)
                 LocalAdb.shell(app,
                         "device_config delete activity_manager max_cached_processes 2>/dev/null; " +
                         "device_config delete activity_manager max_empty_time_millis 2>/dev/null; " +
-                        "settings put global ram_expand_size_list 2048 2>/dev/null; " +
-                        "setprop persist.sys.ram_expand.size 2048 2>/dev/null; " +
-                        "setprop persist.sys.purgeable_assets 1 2>/dev/null; " +
-                        "settings put global cached_apps_freezer enabled 2>/dev/null; " +
-                        "settings put global zram_enabled 1 2>/dev/null; " +
-                        "echo 1 > /sys/block/zram0/reset 2>/dev/null; " +
-                        "echo lz4 > /sys/block/zram0/comp_algorithm 2>/dev/null; " +
-                        "echo 1073741824 > /sys/block/zram0/disksize 2>/dev/null; " +
-                        "mkswap /dev/block/zram0 2>/dev/null; " +
-                        "swapon /dev/block/zram0 2>/dev/null; " +
-                        "sysctl -w vm.swappiness=80 2>/dev/null; " +
-                        "sysctl -w vm.vfs_cache_pressure=100 2>/dev/null; " +
-                        "setprop sys.sysctl.extra_free_kbytes 24300 2>/dev/null; " +
-                        "setprop persist.sys.fw.trim_empty_apps true 2>/dev/null; " +
-                        "setprop persist.sys.fw.empty_app_percent 50 2>/dev/null", 4000);
+                        "settings put global cached_apps_freezer enabled 2>/dev/null", 4000);
                 // (no "pm trim-caches" / "drop_caches" any more: they wiped every app's cache, CineTV's posters included,
                 // and the system's file cache, so after each start everything loaded again from slow flash)
             } catch (Throwable ignored) {
@@ -248,16 +236,40 @@ public final class MemoryOptimizer {
         }, "cinetv-tv-opt").start();
     }
 
-    /** Synchronizes virtual RAM / swap and drops cached pages without affecting active foreground playback. */
+    /** Asks CineTV to give memory back (no kernel or swap changes: those need root). */
     public static void applyVirtualRamProperties(Context ctx) {
         final Context app = ctx.getApplicationContext();
         try {
-            LocalAdb.shell(app, "sysctl -w vm.swappiness=80 2>/dev/null; am trim-memory com.cinetv.launcher RUNNING_MODERATE 2>/dev/null", 2000);
+            LocalAdb.shell(app, "am trim-memory com.cinetv.launcher RUNNING_MODERATE 2>/dev/null", 2000);
         } catch (Throwable ignored) {
         }
     }
 
-    /** Returns a human-readable summary of active Z-RAM / kernel swap status. */
+    /** The swap the TV's maker set up (read only: its size cannot be changed without root). */
+    private static volatile boolean compactionOn;
+
+    /**
+     * Rootless zRAM help (Android 11+): Android's own app compaction moves the memory of apps waiting in the background
+     * into the TV's compressed swap (its zRAM), so the app in front has more RAM. Off on some TVs (the Arçelik had it
+     * off), so CineTV switches it on, with the cached-app freezer, and again after every start (a reboot or a settings
+     * sync may reset it). The zRAM size itself is the maker's: changing it needs root. Blocking (adb).
+     */
+    public static void applyCompaction(Context ctx) {
+        if (android.os.Build.VERSION.SDK_INT < 30) return;
+        Context app = ctx.getApplicationContext();
+        boolean ok = LocalAdb.shell(app,
+                "[ \"$(device_config get activity_manager use_compaction)\" = true ] || "
+                        + "{ device_config put activity_manager use_compaction true && settings put global cinetv_compaction 1; }; "
+                        + "settings put global cached_apps_freezer enabled 2>/dev/null", 6000);
+        compactionOn = ok;
+    }
+
+    /** "CineTV'yi yok et": app compaction back as the TV had it (only if CineTV switched it on). */
+    public static String compactionRestoreCommand() {
+        return "[ \"$(settings get global cinetv_compaction)\" = 1 ] && device_config delete activity_manager use_compaction 2>/dev/null; "
+                + "settings delete global cinetv_compaction 2>/dev/null; ";
+    }
+
     public static String getZramInfo(Context ctx) {
         try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader("/proc/meminfo"))) {
             String line;
@@ -269,14 +281,19 @@ public final class MemoryOptimizer {
                     swapFree = parseMeminfoKb(line);
                 }
             }
+            boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+            String own = (tr ? " · CineTV sıkıştırılmış görseller " : " · CineTV compressed pictures ")
+                    + (com.cinetv.launcher.service.PosterCache.packedKb() / 1024) + " MB";
             if (swapTotal > 0) {
                 long usedMb = (swapTotal - swapFree) / 1024;
                 long totalMb = swapTotal / 1024;
-                return totalMb + " MB (" + usedMb + " MB aktif kullanımda)";
+                return totalMb + " MB, " + usedMb + (tr ? " MB kullanımda" : " MB in use")
+                        + (compactionOn ? (tr ? " · uygulama sıkıştırma açık" : " · app compaction on") : "") + own;
             }
+            return (tr ? "TV'de takas alanı yok" : "No swap on this TV") + own;
         } catch (Throwable ignored) {
         }
-        return "1024 MB LZ4 Yapılandırıldı";
+        return "-";
     }
 
     private static long parseMeminfoKb(String line) {
@@ -374,9 +391,6 @@ public final class MemoryOptimizer {
                     "pm enable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.VoiceActivity 2>/dev/null; " +
                     "pm enable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.AssistantActivity 2>/dev/null; " +
                     "pm enable com.google.android.katniss 2>/dev/null; " +
-                    "setprop persist.sys.ram_expand.enable 0 2>/dev/null; " +
-                    "sysctl -w vm.swappiness=60 2>/dev/null; " +
-                    "sysctl -w vm.vfs_cache_pressure=100 2>/dev/null; " +
                     "setprop persist.sys.fw.bservice_enable false 2>/dev/null", 3000);
         } catch (Throwable ignored) {
         }

@@ -102,7 +102,65 @@ public final class PosterCache {
         }
     }
 
+    // ---- CineTV's own compressed memory (rootless, zRAM-like) ---------------------------------------------
+    // Decoded pictures are big (a poster is ~300 KB as pixels); the same picture compressed is ~30-60 KB. The decoded
+    // layer above stays small and is cleared under memory pressure; this layer keeps the compressed originals in RAM,
+    // so a dropped picture is decoded again from memory, not read back from slow flash storage.
+    private static LruCache<String, byte[]> packed;
+
+    private static synchronized LruCache<String, byte[]> packed() {
+        if (packed == null) {
+            packed = new LruCache<String, byte[]>(lowMemory ? 6 * 1024 : 12 * 1024) {
+                @Override
+                protected int sizeOf(String key, byte[] value) {
+                    return Math.max(1, value.length / 1024);
+                }
+            };
+        }
+        return packed;
+    }
+
+    /** The compressed bytes of a cached file: from the compressed layer, else read once from disk and kept there. */
+    private static byte[] packedBytes(File f) {
+        String key = f.getAbsolutePath();
+        byte[] b = packed().get(key);
+        if (b != null) return b;
+        try (java.io.FileInputStream in = new java.io.FileInputStream(f)) {
+            b = Http.readAll(in);
+        } catch (Throwable t) {
+            return null;
+        }
+        if (b != null && b.length > 0 && b.length < 1024 * 1024) packed().put(key, b);
+        return b;
+    }
+
+    /** Compressed layer in use (KB), for the memory screen. */
+    public static int packedKb() {
+        return packed == null ? 0 : packed.size();
+    }
+
+    /** Pictures as pixels in use (KB). */
+    public static int decodedKb() {
+        return memory == null ? 0 : memory.size();
+    }
+
     public static Bitmap decodeFile(File f, int reqW, int reqH) {
+        byte[] bytes = packedBytes(f);
+        if (bytes != null) {
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            if (sixteenBit && !f.getName().endsWith(".png") && reqW < 1200) o.inPreferredConfig = Bitmap.Config.RGB_565;
+            o.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.length, o);
+            if (o.outWidth > 0) {
+                o.inSampleSize = sampleSize(o.outWidth, o.outHeight, reqW, reqH);
+                o.inJustDecodeBounds = false;
+                try {
+                    return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, o);
+                } catch (OutOfMemoryError oom) {
+                    trimMemory();
+                }
+            }
+        }
         BitmapFactory.Options o = new BitmapFactory.Options();
         // Photos have no alpha: 16-bit halves their memory for small posters. Full wallpapers (>=1200) keep 32-bit ARGB_8888.
         if (sixteenBit && !f.getName().endsWith(".png") && reqW < 1200) o.inPreferredConfig = Bitmap.Config.RGB_565;
@@ -132,9 +190,16 @@ public final class PosterCache {
     }
 
     public static void trimMemory() {
+        // like zRAM: the pixels go, the compressed copies stay (they are a tenth of the size)
         memory().evictAll();
         com.cinetv.launcher.ui.AppArtwork.clearCache();
         com.cinetv.launcher.ui.Glow.clear();
+    }
+
+    /** Memory critically short: the compressed layer gives back half too. */
+    public static void trimPacked() {
+        LruCache<String, byte[]> p = packed;
+        if (p != null) p.trimToSize(p.maxSize() / 2);
     }
 
     /** Keeps the disk cache bounded; oldest-used files go first. Run off the main thread. */

@@ -54,6 +54,8 @@ public final class HomeGuard {
             } catch (Throwable ignored) {
             }
             android.content.SharedPreferences p = Prefs.get(app);
+            // rootless zRAM help: Android's app compaction on, again after every start
+            com.cinetv.launcher.device.MemoryOptimizer.applyCompaction(app);
             // a Nuvio that can never take Nuvio's own updates is replaced by the official build (once it works)
             if (!p.getBoolean("nuvio_official_done", false) && com.cinetv.launcher.device.NuvioSetup.ensureOfficialNuvio(app)
                     && p.getBoolean("nuvio_official_addons", false)) {
@@ -61,7 +63,7 @@ public final class HomeGuard {
             }
             if (p.getInt("setup_done_version", 0) == version && isDefault(app)) return;
             ensureDefault(app);
-            // installed from the APK alone: Nuvio and its addons come too, plus virtual RAM / zRAM optimization
+            // installed from the APK alone: Nuvio and its addons come too, plus background-app optimization
             if (com.cinetv.launcher.service.Prefs.get(app).getBoolean("nuvio_install_allowed", true)) {
                 com.cinetv.launcher.device.NuvioSetup.runOnce(app);
                 com.cinetv.launcher.device.NuvioSetup.playerOnce(app);
