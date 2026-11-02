@@ -23,8 +23,8 @@ OUT="$("$BT/apksigner" verify --verbose --print-certs "$APK" 2>&1)" || { echo "$
 echo "$OUT" | grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" && pass "APK Signature Scheme v2" || bad "v2 signature missing"
 echo "$OUT" | grep -q "Verified using v3 scheme (APK Signature Scheme v3): true" && pass "APK Signature Scheme v3" || bad "v3 signature missing"
 
-# "Signer #1 certificate SHA-256 digest" (older apksigner) or "Signer (minSdkVersion=..) certificate SHA-256 digest"
-SHA="$(echo "$OUT" | awk -F': ' '/^Signer.*certificate SHA-256 digest/{print $2; exit}' | tr 'A-F' 'a-f')"
+# "Signer #1 certificate SHA-256 digest: .." (older apksigner) or "V3.0 Signer: certificate SHA-256 digest: .." (newer)
+SHA="$(echo "$OUT" | awk '/[Ss]igner.*certificate SHA-256 digest/{print $NF; exit}' | tr 'A-F' 'a-f')"
 [ -z "$SHA" ] && { echo "apksigner said:"; echo "$OUT" | grep -iE "digest|signer|apksigner|error|warn" | head -20; }
 if [ -f "$PIN_FILE" ]; then
     PIN="$(tr -d ' \n' < "$PIN_FILE" | tr 'A-F' 'a-f')"
