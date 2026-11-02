@@ -74,20 +74,30 @@ jobs:
 
       - name: Verify APK (signature, pinned certificate, not debuggable, no secrets)
         run: |
+          VER="${TAG#v}"
           mkdir -p dist
-          cp launcher/build/outputs/apk/release/launcher-release.apk "dist/cinetv-$TAG.apk"
-          bash scripts/release/verify_apk.sh "dist/cinetv-$TAG.apk"
-          (cd dist && sha256sum "cinetv-$TAG.apk" > SHA256SUMS.txt)
+          cp launcher/build/outputs/apk/release/launcher-release.apk dist/CineTV.apk
+          bash scripts/release/verify_apk.sh dist/CineTV.apk
+          cp dist/CineTV.apk "dist/CineTV-$VER.apk"
+          cp scripts/windows/CineTV-Kur.bat dist/CineTV-Kur.bat
+          (cd dist && sha256sum CineTV.apk "CineTV-$VER.apk" CineTV-Kur.bat > SHA256SUMS.txt)
+          # the release notes are this version's own section of CHANGELOG.md
+          awk -v v="## $VER" '$0==v{f=1;next} /^## /{if(f)exit} f' CHANGELOG.md > dist/notes.md
+          [ -s dist/notes.md ] || echo "CineTV $TAG" > dist/notes.md
 
+      # Same file names as every earlier release (the Windows installer and the guides fetch CineTV.apk from "latest").
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ env.TAG }}
-          name: CineTV ${{ env.TAG }}
-          generate_release_notes: true
-          files: |
-            dist/cinetv-${{ env.TAG }}.apk
-            dist/SHA256SUMS.txt
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER="${TAG#v}"
+          FILES="dist/CineTV.apk dist/CineTV-$VER.apk dist/CineTV-Kur.bat dist/SHA256SUMS.txt"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" $FILES --clobber
+            gh release edit "$TAG" --title "CineTV $TAG" --notes-file dist/notes.md --latest
+          else
+            gh release create "$TAG" $FILES --title "CineTV $TAG" --notes-file dist/notes.md --latest
+          fi
 
       - name: Remove keystore
         if: always()
