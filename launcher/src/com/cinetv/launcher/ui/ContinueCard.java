@@ -22,7 +22,7 @@ import com.cinetv.launcher.service.WatchHistory;
 import java.util.Locale;
 
 /**
- * "Kaldığın yerden": the film left half-watched in AlptugPlayer, in the free space right of the focused
+ * "Kaldığın yerden": the film left half-watched in Nuvio or CineTV's player, beside the focused
  * case. Its scene, its name, how far in and how long is left. Up from the shelf reaches it; OK continues.
  */
 public final class ContinueCard extends FrameLayout {

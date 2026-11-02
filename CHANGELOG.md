@@ -1,5 +1,14 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.32
+
+- **Gamze isim uydurmuyor:** AI ve sesli yanıtlar artık herkese "Deniz" diye hitap etmiyor. İsterseniz Gamze ayarlarından bir hitap adı seçin; boş bırakırsanız isim kullanmaz.
+- **Vitrin arama rafı sabit:** Yeni sonuçlar yüklenirken hazır DVD kutuları yerinde kalıyor; sonraki sayfalar rafın sonuna ekleniyor.
+- **Güncelleme kontrolü ve bildirimi:** Otomatik kontrol, arka plan denemeleri ve kaçırılmış güncelleme bildirimi daha güvenilir.
+- **TV ayarlarına tek tuş:** Ayarlar içindeki ayrı TV menüleri kaldırıldı; tek "TV Ayarları" tuşu televizyonun kendi ayarlarını açıyor.
+- **Ayar penceresi kenarları:** Odak ve tıklama animasyonundaki öğeler artık pencere sınırında kırpılmıyor.
+- **Nuvio'da Kaldığın yerden:** Özellik varsayılan olarak açık. Nuvio'nun kendi oynatıcısındaki yeni izlemeleri yerelde kaydetmek için Ayarlar'dan Bildirim Erişimi'ni ayrıca vermeniz gerekir; geçmiş izlemeler içe aktarılmaz ve bildirim içeriği okunup saklanmaz. Kart Nuvio'da başlığı açar; devam konumunu Nuvio kendi geçmişinden kullanır.
+
 ## 1.0.0.31
 
 - **Bir basış, bir adım (Arçelik, Beko, Grundig):** MStar kızılötesi alıcısı kumandanın tekrar sinyalini (~108 ms sonra) yeni bir basış olarak bildiriyordu; kısa bir basış odağı vitrin, simgeler ve ayar panelleri dahil her yerde iki kez ilerletiyordu. Aynı ok tuşu 170 ms içinde gelirse aynı basışın yankısı sayılıyor. Hızlı art arda basmak ve basılı tutmak çalışmaya devam ediyor.

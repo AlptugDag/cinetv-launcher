@@ -378,7 +378,7 @@ public final class Panels {
         trailersTile.setTag("opt_trailers");
         cVisual.addView(trailersTile);
 
-        boolean stageOn = Prefs.get(ctx).getBoolean(Prefs.CINEMATIC_STAGE, true);
+        boolean stageOn = Prefs.cinematicStage(ctx);
         final String stageSub = tr ? "Açık · Kaldığın yerden kartı" : "On · Continue watching card";
         LinearLayout stageTile = Controls.toggleTile(ctx, tr ? "Sinematik Sahne" : "Cinematic Stage",
                 stageOn ? stageSub : ctx.getString(R.string.state_off), stageOn, (newActive, subLabel, sw) -> {
@@ -544,6 +544,15 @@ public final class Panels {
                 v -> host.push(() -> buildHomeLaunchers(ctx, host)));
         homeTile.setTag("opt_home_launchers");
         cSys.addView(homeTile);
+        boolean notificationAccess = com.cinetv.launcher.service.NuvioPlaybackListenerService.hasNotificationAccess(ctx);
+        cSys.addView(Controls.tile(ctx, ctx.getString(R.string.nuvio_progress_title),
+                notificationAccess ? ctx.getString(R.string.nuvio_progress_enabled) : ctx.getString(R.string.nuvio_progress_hint),
+                notificationAccess, v -> {
+                    if (!AppLauncher.openNotificationAccessSettings(ctx)) {
+                        android.widget.Toast.makeText(ctx, R.string.nuvio_progress_settings_unavailable,
+                                android.widget.Toast.LENGTH_LONG).show();
+                    }
+                }));
 
         LinearLayout cNet = column(ctx, cols, tr ? "Ağ & Ortam" : "Network & Environment", colWidth);
         String city = Prefs.city(ctx);

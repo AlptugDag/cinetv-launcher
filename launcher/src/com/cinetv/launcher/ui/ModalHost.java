@@ -170,11 +170,9 @@ public class ModalHost extends FrameLayout {
             clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
         card.addView(content, clp);
-        card.setClipChildren(true);
-        card.setClipToPadding(true);
-        if (android.os.Build.VERSION.SDK_INT >= 21) {
-            card.setClipToOutline(true);
-        }
+        // Focused edge tiles lift slightly outside the card; clipping here cuts their click/focus animation.
+        card.setClipChildren(false);
+        card.setClipToPadding(false);
         LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                 near != null ? Gravity.TOP | Gravity.START : Gravity.CENTER);
         addView(card, lp);

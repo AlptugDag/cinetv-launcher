@@ -368,6 +368,19 @@ public final class AppLauncher {
         openSystemPage(ctx, Settings.ACTION_SETTINGS, ".MainSettings");
     }
 
+    public static boolean openNotificationAccessSettings(Context ctx) {
+        com.cinetv.launcher.device.DeviceTweaks.markUserOpenedTv();
+        Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            ctx.startActivity(intent);
+            return true;
+        } catch (android.content.ActivityNotFoundException | SecurityException e) {
+            Log.w("AppLauncher", "Notification access settings are unavailable", e);
+            return false;
+        }
+    }
+
     public static void openTvInputs(Context ctx) {
         com.cinetv.launcher.device.DeviceTweaks.markUserOpenedTv();
         String[][] targets = {

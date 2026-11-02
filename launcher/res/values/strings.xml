@@ -57,6 +57,12 @@
     <string name="quiet_on_short">quiet hours</string>
     <string name="tv_settings">TV settings</string>
     <string name="tv_settings_hint">The TV\'s own settings (or hold the gear button)</string>
+    <string name="nuvio_progress_title">Nuvio watch progress</string>
+    <string name="nuvio_progress_enabled">On · Nuvio playback can appear in Continue watching</string>
+    <string name="nuvio_progress_hint">Allow Notification Access to save local progress from Nuvio</string>
+    <string name="nuvio_progress_listener">CineTV Nuvio playback</string>
+    <string name="nuvio_progress_access_description">Reads playback metadata from Nuvio only to show local Continue watching progress. No notifications are stored or sent.</string>
+    <string name="nuvio_progress_settings_unavailable">Notification Access settings are unavailable on this TV.</string>
     <string name="destroy">Remove CineTV!</string>
     <string name="destroy_title">Remove CineTV from this TV?</string>
     <string name="destroy_body">Picture and sound, DNS, colour warmth, screen and screensaver timing and the remote-button service go back to how the TV had them, then Android removes CineTV. The TV\'s own home screen comes back.</string>

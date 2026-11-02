@@ -181,6 +181,17 @@
                 android:resource="@xml/key_service_config" />
         </service>
 
+        <service
+            android:name=".service.NuvioPlaybackListenerService"
+            android:exported="true"
+            android:label="@string/nuvio_progress_listener"
+            android:description="@string/nuvio_progress_access_description"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <!-- The downloaded update, lent read-only to the system installer by a one-time grant. -->
         <provider
             android:name=".service.UpdateApkProvider"

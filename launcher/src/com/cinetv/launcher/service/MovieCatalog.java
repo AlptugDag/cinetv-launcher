@@ -396,7 +396,7 @@ public final class MovieCatalog {
     public static List<Movie> titled(Context ctx, String query, String type, int max) {
         List<Movie> out = new ArrayList<>();
         if (!hasTmdb(ctx)) return search(ctx, query, max);
-        String kind = "tv".equals(type) ? "tv" : "movie".equals(type) ? "movie" : "multi";
+        String kind = ("tv".equals(type) || "series".equals(type)) ? "tv" : "movie".equals(type) ? "movie" : "multi";
         for (int page = 1; page <= 2 && out.size() < max; page++) {
             try {
                 JSONObject root = tmdb(ctx, "search/" + kind + "?include_adult=false&page=" + page + "&language=" + language() + "&query=" + enc(query));
@@ -601,7 +601,28 @@ public final class MovieCatalog {
 
     /** Best match for a title (and optional year), with its IMDb id. */
     public static Movie resolve(Context ctx, String title, int year) {
+        return resolve(ctx, title, year, "movie");
+    }
+
+    /** Best match for a title, year and media type, with its IMDb id. */
+    public static Movie resolve(Context ctx, String title, int year, String type) {
         if (title == null || title.trim().isEmpty()) return null;
+        if ("series".equals(type) || "tv".equals(type)) {
+            List<Movie> matches = titled(ctx, title, type, 8);
+            for (Movie match : matches) {
+                if ("series".equals(match.type) && match.title.equalsIgnoreCase(title.trim())) {
+                    ensureImdb(ctx, match);
+                    return match;
+                }
+            }
+            for (Movie match : matches) {
+                if ("series".equals(match.type)) {
+                    ensureImdb(ctx, match);
+                    return match;
+                }
+            }
+            return null;
+        }
         if (hasTmdb(ctx)) {
             try {
                 String path = "search/movie?language=" + language() + "&query=" + enc(title.trim()) + (year > 1900 ? "&year=" + year : "");

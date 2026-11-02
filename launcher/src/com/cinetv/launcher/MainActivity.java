@@ -446,7 +446,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.opening.dismiss();
         home.environment.resume();
         // the cinematic stage: on unless switched off in Settings; the half-watched film comes back here
-        home.setCinematic(Prefs.get(this).getBoolean(Prefs.CINEMATIC_STAGE, true));
+        home.setCinematic(Prefs.cinematicStage(this));
         refreshContinueCard();
         // and once more a moment later: the player may still be saving where it stopped
         handler.postDelayed(this::refreshContinueCard, 900);
@@ -1985,7 +1985,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             background(() -> {
                 MovieCatalog.ensureImdb(appCtx, m);
                 if (m.imdbId.isEmpty() && m.title != null && !m.title.isEmpty()) {
-                    Movie resolved = MovieCatalog.resolve(appCtx, m.title, m.year);
+                    Movie resolved = MovieCatalog.resolve(appCtx, m.title, m.year, m.type);
                     if (resolved != null && !resolved.imdbId.isEmpty()) m.imdbId = resolved.imdbId;
                 }
                 ui(() -> launchFilm(m));
@@ -2738,17 +2738,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         return a.home.isSearchOrInputFocused();
     }
 
-    /** "Kaldığın yerden": the latest unfinished film, on Home's card (hidden when the stage is off or nothing is left). */
+    /** "Kaldığın yerden": the latest unfinished title, on Home's card (hidden when the stage is off or nothing is left). */
     public void refreshContinueCard() {
         if (home == null) return;
-        home.setCinematic(Prefs.get(this).getBoolean(Prefs.CINEMATIC_STAGE, true));
+        home.setCinematic(Prefs.cinematicStage(this));
         home.continueCard.bind(home.isCinematic() ? com.cinetv.launcher.service.WatchHistory.latest(this) : null);
     }
 
     /** Settings switched the cinematic stage: Home follows at once. */
     public void applyCinematic() {
         if (home == null) return;
-        home.setCinematic(Prefs.get(this).getBoolean(Prefs.CINEMATIC_STAGE, true));
+        home.setCinematic(Prefs.cinematicStage(this));
         home.continueCard.bind(home.isCinematic() ? com.cinetv.launcher.service.WatchHistory.latest(this) : null);
     }
 

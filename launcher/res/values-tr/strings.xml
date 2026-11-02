@@ -55,6 +55,12 @@
     <string name="quiet_on_short">sessiz saatler</string>
     <string name="tv_settings">TV ayarları</string>
     <string name="tv_settings_hint">Televizyonun kendi ayarları (ya da dişli tuşuna basılı tut)</string>
+    <string name="nuvio_progress_title">Nuvio izleme ilerlemesi</string>
+    <string name="nuvio_progress_enabled">Açık · Nuvio izleme bilgisi Kaldığın yerden kartında görünür</string>
+    <string name="nuvio_progress_hint">Nuvio ilerlemesini yerel olarak kaydetmek için Bildirim Erişimi ver</string>
+    <string name="nuvio_progress_listener">CineTV Nuvio oynatımı</string>
+    <string name="nuvio_progress_access_description">Yalnızca Kaldığın yerden kartı için Nuvio oynatma bilgisini okur. Bildirimler kaydedilmez veya gönderilmez.</string>
+    <string name="nuvio_progress_settings_unavailable">Bu televizyonda Bildirim Erişimi ayarları açılamıyor.</string>
     <string name="destroy">CineTV\'yi yok et!</string>
     <string name="destroy_title">CineTV bu televizyondan kaldırılsın mı?</string>
     <string name="destroy_body">Görüntü ve ses, DNS, renk sıcaklığı, ekran ve ekran koruyucu süreleri ile kumanda tuşu hizmeti televizyonun kendi ayarlarına döner, ardından Android CineTV\'yi kaldırır. Televizyonun kendi ana ekranı geri gelir.</string>

@@ -10,9 +10,8 @@ import org.json.JSONObject;
 import java.util.Locale;
 
 /**
- * What was left half-watched in AlptugPlayer, for Home's "Kaldığın yerden" card. CineTV notes which film it
- * opened (its poster, scene and ids); the player reports where it stopped under the stream's title, and the
- * two are joined here. Kept on the TV only, at most eight films, finished ones dropped.
+ * What was left half-watched in Nuvio or CineTV's external player, for Home's "Kaldığın yerden" card.
+ * Kept on the TV only, at most eight films, finished ones dropped.
  */
 public final class WatchHistory {
     private static final String PENDING = "watch_pending";
@@ -20,10 +19,11 @@ public final class WatchHistory {
     private static final long PENDING_FOR = 6 * 3600_000L;
     private static final long KEEP_FOR = 30L * 24 * 3600_000L;
 
-    /** One unfinished film. */
+    /** One unfinished title. */
     public static final class Entry {
         public Movie movie;
         public long positionMs, durationMs, at;
+        public String source;
 
         public int percent() {
             return durationMs <= 0 ? 0 : (int) Math.min(100, positionMs * 100 / durationMs);
@@ -48,28 +48,50 @@ public final class WatchHistory {
         }
     }
 
-    /** AlptugPlayer stopped at {@code positionMs} of {@code durationMs} while playing {@code title}. */
+    /** CineTV's external player stopped at {@code positionMs} of {@code durationMs} while playing {@code title}. */
     public static synchronized void notePlayback(Context ctx, String title, long positionMs, long durationMs) {
         if (durationMs <= 0) return; // a live stream, or the length is not known yet
         try {
             JSONObject pending = new JSONObject(Prefs.get(ctx).getString(PENDING, "{}"));
             if (pending.optString("title").isEmpty() || System.currentTimeMillis() - pending.optLong("at") > PENDING_FOR) return;
-            String key = key(pending);
-            JSONArray old = new JSONArray(Prefs.get(ctx).getString(LIST, "[]"));
-            JSONArray out = new JSONArray();
-            boolean finished = durationMs > 0 && (positionMs > durationMs * 0.92 || durationMs - positionMs < 5 * 60_000L);
-            if (positionMs >= 60_000L && !finished) {
-                pending.put("pos", positionMs).put("dur", durationMs).put("at", System.currentTimeMillis())
-                        .put("stream", title == null ? "" : title);
-                out.put(pending);
-            }
-            for (int i = 0; i < old.length() && out.length() < 8; i++) {
-                JSONObject o = old.optJSONObject(i);
-                if (o != null && !key(o).equals(key)) out.put(o);
-            }
-            Prefs.get(ctx).edit().putString(LIST, out.toString()).apply();
-        } catch (Throwable ignored) {
+            storeProgress(ctx, pending, title, positionMs, durationMs, "cineplayer");
+        } catch (Throwable t) {
+            android.util.Log.w("WatchHistory", "Could not save player progress", t);
         }
+        notifyHome();
+    }
+
+    /** Saves progress reported by Nuvio's active Android MediaSession. */
+    public static synchronized void noteNuvioPlayback(Context ctx, Movie movie, String title, long positionMs, long durationMs) {
+        if (movie == null || movie.title == null || movie.title.trim().isEmpty() || durationMs <= 0) return;
+        try {
+            JSONObject item = movie.toJson();
+            item.put("logo", movie.logoUrl == null ? "" : movie.logoUrl);
+            storeProgress(ctx, item, title, positionMs, durationMs, "nuvio");
+        } catch (Throwable t) {
+            android.util.Log.w("WatchHistory", "Could not save Nuvio playback progress", t);
+        }
+    }
+
+    private static void storeProgress(Context ctx, JSONObject item, String title, long positionMs, long durationMs, String source)
+            throws org.json.JSONException {
+        String itemKey = key(item);
+        JSONArray old = new JSONArray(Prefs.get(ctx).getString(LIST, "[]"));
+        JSONArray out = new JSONArray();
+        boolean finished = positionMs > durationMs * 0.92 || durationMs - positionMs < 5 * 60_000L;
+        if (positionMs >= 60_000L && !finished) {
+            item.put("pos", positionMs).put("dur", durationMs).put("at", System.currentTimeMillis())
+                    .put("stream", title == null ? "" : title).put("source", source);
+            out.put(item);
+        }
+        for (int i = 0; i < old.length() && out.length() < 8; i++) {
+            JSONObject o = old.optJSONObject(i);
+            if (o != null && !key(o).equals(itemKey)) out.put(o);
+        }
+        Prefs.get(ctx).edit().putString(LIST, out.toString()).apply();
+    }
+
+    private static void notifyHome() {
         // Home shows it at once, whatever order Android resumes and stops the two screens in
         new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
             com.cinetv.launcher.MainActivity a = com.cinetv.launcher.MainActivity.instance;
@@ -77,7 +99,7 @@ public final class WatchHistory {
         });
     }
 
-    /** The film left most recently, or null. */
+    /** The title left most recently, or null. */
     public static Entry latest(Context ctx) {
         try {
             JSONArray arr = new JSONArray(Prefs.get(ctx).getString(LIST, "[]"));
@@ -154,6 +176,7 @@ public final class WatchHistory {
         e.positionMs = o.optLong("pos");
         e.durationMs = o.optLong("dur");
         e.at = o.optLong("at");
+        e.source = o.optString("source", "cineplayer");
         return e;
     }
 }

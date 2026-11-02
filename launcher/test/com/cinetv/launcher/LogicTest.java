@@ -14,6 +14,7 @@ import com.cinetv.launcher.device.NetworkProbe;
 import com.cinetv.launcher.device.PerformanceProfile;
 import com.cinetv.launcher.service.StreamProfile;
 import com.cinetv.launcher.service.ThemeManager;
+import com.cinetv.launcher.service.WatchHistory;
 
 import org.junit.Test;
 
@@ -87,6 +88,18 @@ public class LogicTest {
         assertEquals(ThemeManager.MODE_AUTO, ThemeManager.nextAppearance(ThemeManager.MODE_DARK));
         assertNull("the signature theme is procedural", ThemeManager.wallpaperNow(ThemeManager.byId("cinetv")));
         assertEquals("themes/cinema.webp", ThemeManager.wallpaperNow(ThemeManager.byId("cinema")));
+    }
+
+    @Test
+    public void continueWatchingIsEnabledByDefaultAndReportsPlaybackProgress() {
+        assertTrue(com.cinetv.launcher.service.Prefs.CINEMATIC_STAGE_DEFAULT);
+
+        WatchHistory.Entry entry = new WatchHistory.Entry();
+        entry.positionMs = 30 * 60_000L;
+        entry.durationMs = 90 * 60_000L;
+
+        assertEquals(33, entry.percent());
+        assertEquals(60, entry.minutesLeft());
     }
 
     @Test

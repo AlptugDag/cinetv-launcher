@@ -27,6 +27,7 @@ public final class Prefs {
     public static final String DVD_ANIMATION = "pref_dvd_animation";
     /** Home's cinematic stage (film card, continue card, the film's scene as the room's light). Default on. */
     public static final String CINEMATIC_STAGE = "pref_cinematic_stage";
+    public static final boolean CINEMATIC_STAGE_DEFAULT = true;
     public static final String HIGH_CONTRAST = "pref_a11y_contrast";
     public static final String REDUCE_MOTION = "pref_a11y_reduce_motion";
 
@@ -36,6 +37,10 @@ public final class Prefs {
 
     public static boolean reduceMotion(Context ctx) {
         return get(ctx).getBoolean(REDUCE_MOTION, false);
+    }
+
+    public static boolean cinematicStage(Context ctx) {
+        return get(ctx).getBoolean(CINEMATIC_STAGE, CINEMATIC_STAGE_DEFAULT);
     }
     public static final String DVD_CASES = "pref_dvd_cases";
     public static final String GLASS_BEVEL = "pref_chroma_aberration";
