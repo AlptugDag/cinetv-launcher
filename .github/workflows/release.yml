@@ -1,9 +1,13 @@
 name: Release
 
 # Push a tag like v2.0.0 to build, sign, verify and publish a release.
+# A push to main that changes the version in launcher/build.gradle publishes that
+# version too, so a release is never forgotten when no tag was pushed.
 on:
   push:
     tags: ['v*']
+    branches: [main]
+    paths: ['launcher/build.gradle', 'CHANGELOG.md']
   workflow_dispatch:
     inputs:
       tag:
@@ -21,7 +25,24 @@ jobs:
     environment: release
     outputs:
       ready: ${{ steps.secrets.outputs.ready }}
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
+      - uses: actions/checkout@v5
+      - name: Resolve the release tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then TAG="$INPUT_TAG"
+          elif [ "$GITHUB_REF_TYPE" = tag ]; then TAG="$GITHUB_REF_NAME"
+          else
+            # main: the default version in launcher/build.gradle, published only if not released yet
+            TAG="v$(sed -n "s/.*findProperty('cineTvVersion') ?: '\([0-9.]*\)'.*/\1/p" launcher/build.gradle | head -1)"
+            if [ "$TAG" = v ] || gh release view "$TAG" >/dev/null 2>&1; then TAG=""; fi
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Release tag: ${TAG:-none (already released)}"
       - name: Check signing secrets
         id: secrets
         env:
@@ -30,7 +51,7 @@ jobs:
           AL: ${{ secrets.CINETV_RELEASE_KEY_ALIAS }}
         run: |
           if [ -n "$KS" ] && [ -n "$PW" ] && [ -n "$AL" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
+            [ -n "${{ steps.tag.outputs.tag }}" ] && echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "No release signing secrets; skipping. Sign locally with scripts/release/ and upload the APK by hand."
@@ -42,11 +63,12 @@ jobs:
     runs-on: ubuntu-24.04
     environment: release
     env:
-      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      TAG: ${{ needs.check.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ env.TAG }}
+          # a main push builds the commit itself; the tag is created on it when the release is published
+          ref: ${{ github.ref_type == 'branch' && github.sha || env.TAG }}
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -62,7 +84,7 @@ jobs:
           echo "CINETV_RELEASE_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
       - name: Unit tests
-        run: ./gradlew :launcher:testDebugUnitTest --console=plain
+        run: chmod +x gradlew && ./gradlew :launcher:testDebugUnitTest --console=plain
 
       - name: Build signed release
         env:
@@ -96,7 +118,7 @@ jobs:
             gh release upload "$TAG" $FILES --clobber
             gh release edit "$TAG" --title "CineTV $TAG" --notes-file dist/notes.md --latest
           else
-            gh release create "$TAG" $FILES --title "CineTV $TAG" --notes-file dist/notes.md --latest
+            gh release create "$TAG" $FILES --target "$(git rev-parse HEAD)" --title "CineTV $TAG" --notes-file dist/notes.md --latest
           fi
 
       - name: Remove keystore
