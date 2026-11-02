@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The window Android shows while CineTV starts (or comes back after the TV closed it): the opening's own logo on
-     black (no card around it), so it runs straight on into the animated opening. -->
+<!-- The window Android shows while CineTV starts: exactly the opening's first frame (black, the red glow at the
+     heartbeat's rest size and strength, the logo), so the animated opening runs on from it without a jump. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@android:color/black" />
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="44%p"
+                android:centerX="0.5"
+                android:centerY="0.5"
+                android:startColor="#52EB1223"
+                android:centerColor="#1EB40019"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
     <item>
         <bitmap android:src="@drawable/window_logo" android:gravity="center" android:filter="true" />
     </item>

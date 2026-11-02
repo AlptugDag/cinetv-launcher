@@ -313,6 +313,14 @@ public final class PerformanceProfile {
         return now - lastSlowFrameAt > 1_200 || now - lastFrameAt > 600;
     }
 
+    /**
+     * A low-profile TV (about 2 GB of RAM or less, or Android's low-RAM flag): start-up is paced for it (a calmer
+     * cascade, fewer covers baked at once). Nothing it shows is different.
+     */
+    public static boolean lowProfile(Context ctx) {
+        return lowMemory(ctx) || totalRamMb(ctx) <= 2100;
+    }
+
     /** Blocking, off the main thread: waits (at most maxMs) until the screen is calm. */
     public static void awaitCalm(long maxMs) {
         long end = android.os.SystemClock.uptimeMillis() + maxMs;

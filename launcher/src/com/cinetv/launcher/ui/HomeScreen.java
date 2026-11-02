@@ -1200,6 +1200,11 @@ public class HomeScreen {
         return splashHeld;
     }
 
+    /** The opening is on screen (held or playing). */
+    public boolean splashShowing() {
+        return splashHeld || (splash.getVisibility() == View.VISIBLE && splash.getAlpha() > 0.05f);
+    }
+
     /** While held, the light runs across the logo again every couple of seconds. */
     private final Runnable splashSheenAgain = new Runnable() {
         @Override

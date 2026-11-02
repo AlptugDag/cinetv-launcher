@@ -71,7 +71,31 @@ public class DvdCaseView extends View {
     public int viewHeight() { return caseH + glowPad * 2; }
 
     public void setCase(DvdCase dvd) {
+        setCase(dvd, -1);
+    }
+
+    /**
+     * A case arriving in an empty slot is placed on the shelf: a short fade and settle (after {@code appearDelayMs}),
+     * so a row filling in reads as an arrangement, not as loading. Replacing one case with another is instant.
+     */
+    public void setCase(DvdCase dvd, long appearDelayMs) {
+        boolean arriving = this.dvd == null && dvd != null && appearDelayMs >= 0;
         this.dvd = dvd;
+        animate().cancel();
+        if (dvd == null) {
+            setAlpha(0f);
+        } else if (arriving) {
+            setAlpha(0f);
+            setScaleX(0.94f);
+            setScaleY(0.94f);
+            animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(appearDelayMs)
+                    .setDuration(com.cinetv.launcher.device.PerformanceProfile.animationMs(getContext(), 380))
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
+        } else {
+            setAlpha(1f);
+            setScaleX(1f);
+            setScaleY(1f);
+        }
         invalidate();
     }
 

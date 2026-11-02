@@ -145,7 +145,10 @@ public class CinemaScreensaverView extends View {
                 List<CinemaMoments.Moment> list = CinemaMoments.load(ctx);
                 if (!list.isEmpty()) {
                     Random r = new Random();
-                    warm = build(ctx, list.get(r.nextInt(list.size())), r);
+                    Frame f = build(ctx, list.get(r.nextInt(list.size())), r);
+                    // right after power-on the network may not be up yet: a frame without its picture is not kept,
+                    // so the next warm-up tries again (the first screensaver used to open on an empty frame)
+                    warm = f.still != null ? f : null;
                 }
             } catch (Throwable ignored) {
             } finally {
@@ -215,7 +218,24 @@ public class CinemaScreensaverView extends View {
             incoming = w;
         } else {
             warm = null;
-            prepare(nextMoment());
+            if (moments.isEmpty()) {
+                // the film list was empty when this view was made (start-up): load it again, then prepare
+                final Context app = getContext().getApplicationContext();
+                new Thread(() -> {
+                    List<CinemaMoments.Moment> list = CinemaMoments.load(app);
+                    post(() -> {
+                        for (CinemaMoments.Moment m : list) {
+                            if (!moments.contains(m)) {
+                                moments.add(m);
+                                unplayedQueue.add(m);
+                            }
+                        }
+                        prepare(nextMoment());
+                    });
+                }, "cinetv-saver-list").start();
+            } else {
+                prepare(nextMoment());
+            }
         }
         CinemaMoments.fetchDynamicMoments(getContext(), dyn -> {
             if (dyn != null && !dyn.isEmpty()) {
@@ -255,8 +275,13 @@ public class CinemaScreensaverView extends View {
                 f.still = PosterCache.load(ctx, MovieCatalog.backdropFor(ctx, m.imdbId, tmdb, random.nextInt(5)), 1280, 720);
             } catch (Throwable ignored) {
             }
-            incoming = f;
             loading = false;
+            if (f.still == null) {
+                // no picture (the network not up yet after power-on): another film shortly, never an empty frame
+                if (running) postDelayed(() -> prepare(nextMoment()), 5_000);
+                return;
+            }
+            incoming = f;
             postInvalidate();
         }, "cinetv-saver").start();
     }

@@ -49,7 +49,7 @@ public class PosterShelf extends FrameLayout {
     public void setMotionListener(MotionListener l) { this.motionListener = l; }
 
     // below the render thread: covers fill in between frames instead of competing with them
-    private static final ExecutorService baker = Executors.newFixedThreadPool(Math.max(3, Runtime.getRuntime().availableProcessors()), r -> new Thread(() -> {
+    private static final ExecutorService baker = Executors.newFixedThreadPool(Math.max(2, Math.min(4, Runtime.getRuntime().availableProcessors() - 1)), r -> new Thread(() -> {
         android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND + android.os.Process.THREAD_PRIORITY_MORE_FAVORABLE);
         r.run();
     }, "cinetv-case-bake"));
@@ -111,10 +111,7 @@ public class PosterShelf extends FrameLayout {
         glowPad = UiKit.px(70);
         spatial = Prefs.spatial3d(ctx);
         asCases = Prefs.dvdCases(ctx);
-        if (asCases) {
-            final int bw = caseW, bh = Math.round(caseW / DvdCase.ASPECT);
-            baker.execute(() -> DvdCase.blank(ctx, bw, bh));
-        }
+
         setFocusable(true);
         setClipChildren(false);
         setClipToPadding(false);
@@ -324,8 +321,8 @@ public class PosterShelf extends FrameLayout {
         {
             final Movie m = movies.get(slot);
             final DvdCaseView v = cases.get(slot);
-            // every slot stands at once as the shared empty case; only the cover arrives per film
-            v.setCase(asCases ? DvdCase.blank(getContext(), caseW, Math.round(caseW / DvdCase.ASPECT)) : null);
+            // the slot stays empty until its own case is ready, then the case is placed on the shelf (no blank shells)
+            v.setCase(null);
             final java.util.concurrent.Future<?> fetch = posterJobs.get(slot);
             baker.execute(() -> {
                 if (fetch != null) {
@@ -343,7 +340,12 @@ public class PosterShelf extends FrameLayout {
                 final DvdCase dvd = DvdCase.bake(getContext(), poster, m.coverTitle(), m.year, accent, caseW, Math.round(caseW / DvdCase.ASPECT), glowPad, asCases);
                 main.post(() -> {
                     if (gen != generation) return;
-                    v.setCase(dvd);
+                    // nearest the focus first, the rest in a short cascade outwards
+                    int nn = movies.size(), dd = Math.abs(slot - index);
+                    dd = Math.min(dd, Math.max(0, nn - dd));
+                    // a low-profile TV places them in a calmer cascade, a strong one quickly
+                    long stepMs = PerformanceProfile.lowProfile(getContext()) ? 60L : 30L;
+                    v.setCase(dvd, Math.min(stepMs * 10, dd * stepMs));
                     if (slot == index && hasFocus() && listener != null) listener.onFocusCase(v, dvd.accent);
                 });
                 // Then, without holding the shelf up: the film's own title logo on the spine.
@@ -441,16 +443,19 @@ public class PosterShelf extends FrameLayout {
      * held like a deliberate hold (400 ms), and then at most one step every 170 ms.
      */
     private boolean acceptStep(int keyCode, KeyEvent e) {
-        long now = android.os.SystemClock.uptimeMillis();
+        // The remote's own clock (when the key went down, when this event was made), never the time it is handled:
+        // while the TV is busy (start-up, a shelf loading) events are handled late and in a burst, and a short press's
+        // repeats then looked like a deliberate hold, moving the focus several films at once.
+        long t = e.getEventTime();
         if (e.getRepeatCount() == 0) {
-            if (keyCode == pressKey && now - pressAt < 90L) return false;
+            if (keyCode == pressKey && t - pressAt < 90L) return false;
             pressKey = keyCode;
-            pressAt = now;
-            lastStepMs = now;
+            pressAt = t;
+            lastStepMs = t;
             return true;
         }
-        if (keyCode != pressKey || now - pressAt < 350L || now - lastStepMs < 120L) return false;
-        lastStepMs = now;
+        if (keyCode != pressKey || t - e.getDownTime() < 400L || t - lastStepMs < 120L) return false;
+        lastStepMs = t;
         return true;
     }
 
@@ -635,7 +640,6 @@ public class PosterShelf extends FrameLayout {
                 continue;
             }
             v.setVisibility(VISIBLE);
-            v.setAlpha(1f);
             v.setTranslationX(x - v.getWidth() / 2f);
             // Grounded shelf baseline: subtle bow and anchor contact keep all cases firmly planted on shelf plane:
             v.setTranslationY((h - v.getHeight()) / 2f + (UiKit.pxf(5f) - bow) + UiKit.pxf(2f) * lift);

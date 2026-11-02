@@ -188,6 +188,23 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         // Waking from standby does not start a new process (the key service keeps it), so the opening is played
         // again whenever the screen comes on, not only at the very first start.
+        if (android.os.Build.VERSION.SDK_INT >= 24) {
+            try {
+                android.net.ConnectivityManager cm = getSystemService(android.net.ConnectivityManager.class);
+                if (cm != null) cm.registerDefaultNetworkCallback(new android.net.ConnectivityManager.NetworkCallback() {
+                    @Override
+                    public void onAvailable(android.net.Network n) {
+                        handler.post(() -> {
+                            if (instance == MainActivity.this && home != null && (needFresh || shelfIsStale()) && !isCurating) {
+                                handler.removeCallbacks(staleRetry);
+                                staleRetry.run();
+                            }
+                        });
+                    }
+                });
+            } catch (Throwable ignored) {
+            }
+        }
         try {
             registerReceiver(screenOn, new android.content.IntentFilter(Intent.ACTION_SCREEN_ON));
         } catch (Throwable ignored) {
@@ -519,6 +536,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         @Override
         public void run() {
             if (isFinishing() || !inFront) return;
+            // never over the opening: Gamze greets once Home itself is on screen
+            if (home != null && home.splashShowing()) {
+                handler.postDelayed(this, 600L);
+                return;
+            }
             greetingAttempts++;
             if (!isNetworkAvailable() && greetingAttempts < 2) {
                 handler.postDelayed(this, 1500L);
@@ -830,6 +852,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             // arrive at once: the focus ran several items for one press. A repeat that is already stale is dropped;
             // a real new press always counts.
             if (e.getRepeatCount() > 0 && android.os.SystemClock.uptimeMillis() - t > 150) return true;
+            // a repeat within the first 400 ms of a press is the remote's, not the viewer's: one press, one step (icons too)
+            if (e.getRepeatCount() > 0 && e.getDownTime() > 0 && t - e.getDownTime() < 400) return true;
             boolean same = e.getKeyCode() == lastNavCode;
             if (same && (e.getRepeatCount() == 0 ? t - lastNavAt < 90 : t - lastNavAt < 110)) return true;
             lastNavCode = e.getKeyCode();
@@ -1172,6 +1196,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     /** Set when the screen comes on while Home is not in front: the next return makes a fresh shelf. */
     private boolean freshOnResume;
+    /** A power-on or wake asked for a new shelf and none has landed yet (retried until one does). */
+    private boolean needFresh;
     /** A fresh shelf is being made behind the held opening. */
     private boolean freshPending;
     /** When the fresh start gave up waiting for the AI (uptime ms): a later AI answer is dropped, nothing swaps. */
@@ -1187,10 +1213,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (home == null) return;
         if (showOpening || !home.splashHeld()) home.showSplashHeld();
         freshPending = true;
+        needFresh = true;
         handler.removeCallbacks(freshDeadline);
         handler.removeCallbacks(freshHardLimit);
-        handler.postDelayed(freshDeadline, 6_000);
-        handler.postDelayed(freshHardLimit, 14_000);
+        handler.postDelayed(freshDeadline, 4_000);
+        handler.postDelayed(freshHardLimit, 8_000);
         isCurating = false;
         refreshShelf();
     }
@@ -1205,8 +1232,25 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private final Runnable freshHardLimit = () -> {
         if (home == null || !home.splashHeld()) return;
         freshPending = false;
-        if (home.shelf.movies().isEmpty()) showCachedShelf();
+        // never last session's shelf: an empty stage that says the new one is coming; its cases cascade in when ready
+        if (home.shelf.movies().isEmpty()) {
+            home.shelfLabel.setText(("tr".equals(Locale.getDefault().getLanguage()) ? "Yeni vitrin hazırlanıyor…" : "Your new shelf is coming…")
+                    .toUpperCase(Locale.getDefault()));
+        }
         home.releaseSplash();
+        // no new shelf yet (no network at power-on): keep trying until one lands
+        handler.removeCallbacks(MainActivity.this.staleRetry);
+        handler.postDelayed(MainActivity.this.staleRetry, 15_000);
+    };
+
+    /** While the shelf on screen is still the previous session's, a new one is tried every 15 s (and when the network comes up). */
+    private final Runnable staleRetry = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing() || home == null || !(needFresh || shelfIsStale())) return;
+            if (!isCurating) refreshShelf();
+            handler.postDelayed(this, 15_000);
+        }
     };
 
     /** The viewer's last key press (uptime ms): background work waits for a quiet moment. */
@@ -1533,6 +1577,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             MovieCatalog.prefetchTrailer(app, movies.get(i));
         }
         if (!remember) return;
+        Prefs.get(this).edit().putLong("shelf_built_at", System.currentTimeMillis())
+                .putLong("shelf_boot_min", (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()) / 60_000L).apply();
+        handler.removeCallbacks(staleRetry);
+        needFresh = false;
         JSONArray arr = new JSONArray();
         for (Movie m : movies) arr.put(m.toJson());
         Prefs.get(this).edit().putString(SHELF_CACHE, arr.toString()).putString(SHELF_TITLE, title).apply();
@@ -1558,8 +1606,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     private void refreshShelf() {
-        Prefs.get(this).edit().putLong("shelf_built_at", System.currentTimeMillis())
-                .putLong("shelf_boot_min", (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()) / 60_000L).apply();
+        // ("built" is recorded only when a new shelf really lands, in setShelf: right after a power-on the network is
+        // often not up yet, and a failed attempt used to count as done, leaving last night's shelf for hours)
         if (isCurating) return;
         lastShelfAt = android.os.SystemClock.elapsedRealtime();
         // With the AI key's daily quota spent, the category shelf comes at once instead of after four refusals.

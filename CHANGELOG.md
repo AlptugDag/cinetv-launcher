@@ -2,6 +2,14 @@
 
 ## 1.0.0.29
 
+- **Açılış (ek düzeltmeler):**
+  - TV açıldığında ağ henüz hazır değilse vitrin yenileme "yapıldı" sayılıp önceki gecenin rafı saatlerce kalıyordu. Artık yalnızca yeni bir raf gerçekten geldiğinde sayılıyor; gelene kadar 15 saniyede bir ve ağ bağlanır bağlanmaz yeniden deneniyor.
+  - Önceki rafa hiç dönülmüyor: zamanında gelmezse ekranda "Yeni vitrin hazırlanıyor…" yazıyor.
+  - Boş kutu kabukları kaldırıldı. Kapak hazır oldukça her kutu, odaktan dışarı doğru kısa bir yerleşme animasyonuyla rafa konuyor; zayıf TV'lerde daha sakin, güçlülerde daha hızlı.
+  - Açılış penceresi animasyonun ilk karesiyle aynı (kırmızı ışık dahil); animasyon kesintisiz devralıyor. Açılış daha kısa: yapay zekâ için 4 saniye, en fazla 8 saniye.
+  - Gamze'nin karşılaması artık açılış animasyonu bitip Ana Sayfa göründükten sonra geliyor.
+- **Tek basış, tek adım:** TV meşgulken kısa bir basışın tekrarları basılı tutma sanılıyor, odak birden çok kutu ilerliyordu. Artık kumandanın kendi zaman bilgisi kullanılıyor; ilk 400 ms içindeki tekrarlar her yerde (raf, simgeler, uygulamalar) yok sayılıyor.
+- **Ekran koruyucu:** Açılıştan sonraki ilk ekran koruyucuda film görüntüsü yoktu. Görüntüsü gelmeyen kare artık gösterilmiyor, birkaç saniye sonra başka bir film deneniyor.
 - **Açılışta eski vitrin artık yok:**
   - TV açıldığında, bekleme modundan çıktığında ve Ana Sayfa'ya bir saatten uzun aradan sonra dönüldüğünde önceki vitrin hiç gösterilmiyor.
   - Açılış animasyonu yeni vitrin hazır olana kadar ekranda kalıyor.
