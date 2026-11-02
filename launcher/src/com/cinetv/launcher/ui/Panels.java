@@ -152,81 +152,6 @@ public final class Panels {
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.addView(cols, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // Quick Category Jump Bar: instantly smooth-scrolls to each major section
-        final LinearLayout jumpBar = new LinearLayout(ctx);
-        jumpBar.setOrientation(LinearLayout.HORIZONTAL);
-        jumpBar.setGravity(Gravity.CENTER_VERTICAL);
-        jumpBar.setPadding(UiKit.px(44), 0, UiKit.px(44), UiKit.px(10));
-        jumpBar.setClipChildren(false);
-
-        final String[][] categories = {
-                {tr ? "Temalar" : "Themes", "sec_themes"},
-                {tr ? "Atmosfer" : "Atmosphere", "sec_atmosphere"},
-                {tr ? "Görünüm & 3D" : "Visual & 3D", "sec_visual"},
-                {tr ? "Yapay Zekâ" : "AI & Voice", "sec_ai"},
-                {tr ? "Sistem" : "System", "sec_system"}
-        };
-        final View[] jumpPills = new View[categories.length];
-        for (int i = 0; i < categories.length; i++) {
-            final int pillIdx = i;
-            final String secTag = categories[i][1];
-            final TextView pill = UiKit.bold(ctx, 14, UiKit.INK);
-            pill.setText(categories[i][0]);
-            pill.setGravity(Gravity.CENTER);
-            pill.setFocusable(true);
-            pill.setClickable(true);
-            pill.setPadding(UiKit.px(16), UiKit.px(7), UiKit.px(16), UiKit.px(7));
-            final Glass pg = new Glass(pill, UiKit.pxf(14), Glass.Style.CONTROL);
-            pill.setBackground(pg);
-
-            pill.setOnFocusChangeListener((v, has) -> {
-                if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
-                pg.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
-                pill.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
-                UiKit.lift(v, has, 1.05f, 120);
-            });
-
-            pill.setOnClickListener(v -> {
-                com.cinetv.launcher.device.SystemAudio.click(ctx);
-                View targetSec = cols.findViewWithTag(secTag);
-                if (targetSec != null) {
-                    scroll.smoothScrollTo(0, targetSec.getTop());
-                }
-            });
-
-            pill.setOnKeyListener((v, keyCode, event) -> {
-                if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                        View targetSec = cols.findViewWithTag(secTag);
-                        if (targetSec != null) {
-                            scroll.smoothScrollTo(0, targetSec.getTop());
-                            targetSec.post(() -> {
-                                View next = targetSec.findFocus();
-                                if (next == null) next = targetSec.focusSearch(View.FOCUS_DOWN);
-                                if (next != null) next.requestFocus();
-                            });
-                            return true;
-                        }
-                    }
-                    if (pillIdx == 0 && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                        jumpPills[jumpPills.length - 1].requestFocus();
-                        return true;
-                    }
-                    if (pillIdx == categories.length - 1 && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                        jumpPills[0].requestFocus();
-                        return true;
-                    }
-                }
-                return false;
-            });
-
-            LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            if (i > 0) plp.leftMargin = UiKit.px(10);
-            jumpBar.addView(pill, plp);
-            jumpPills[i] = pill;
-        }
-        root.addView(jumpBar);
-
         final FrameLayout frame = new FrameLayout(ctx);
         frame.setClipChildren(false);
         frame.setClipToPadding(false);
@@ -243,7 +168,6 @@ public final class Panels {
         // 1. SECTION: TEMALAR & ATMOSFER (THEMES & ATMOSPHERE)
         // =========================================================================
         LinearLayout c1 = column(ctx, cols, R.string.col_themes, colWidth);
-        c1.setTag("sec_themes");
         ThemeManager.Theme current = ThemeManager.current(ctx);
         for (int k = 0; k < ThemeManager.THEMES.length; k++) {
             final ThemeManager.Theme t = ThemeManager.THEMES[k];
@@ -268,7 +192,6 @@ public final class Panels {
         }
 
         LinearLayout c2 = column(ctx, cols, tr ? "Gece İzleme & Atmosfer" : "Night Viewing & Atmosphere", colWidth);
-        c2.setTag("sec_atmosphere");
         boolean nightViewActive = com.cinetv.launcher.device.NightCare.isNightViewingModeActive(ctx);
         boolean visualPref = com.cinetv.launcher.device.NightCare.isVisualPrefEnabled(ctx);
         boolean audioPref = com.cinetv.launcher.device.NightCare.isAudioPrefEnabled(ctx);
@@ -321,7 +244,6 @@ public final class Panels {
         // 2. SECTION: SİNEMA DENEYİMİ & 3D (CINEMA & 3D EXPERIENCE)
         // =========================================================================
         LinearLayout cVisual = column(ctx, cols, R.string.col_visual, colWidth);
-        cVisual.setTag("sec_visual");
         boolean spatial = Prefs.spatial3d(ctx);
         LinearLayout spatialTile = Controls.toggleTile(ctx, ctx.getString(R.string.spatial_hud),
                 spatial ? (tr ? "Açık · 3D Derinlik, Vizör Kırılması & Akustik" : "On · 3D Depth, Visor Refraction & Acoustics") : ctx.getString(R.string.state_off),
@@ -495,7 +417,6 @@ public final class Panels {
         // 3. SECTION: YAPAY ZEKA & AĞ (AI & NETWORK)
         // =========================================================================
         LinearLayout cAi = column(ctx, cols, R.string.col_ai, colWidth);
-        cAi.setTag("sec_ai");
         String provider = LlmClient.providerName(ctx);
         cAi.addView(Controls.tile(ctx, ctx.getString(R.string.ai_key), provider != null ? provider : ctx.getString(R.string.not_set),
                 provider != null, v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.AI_KEY, R.string.ai_key, R.string.ai_key_hint))));
@@ -566,7 +487,6 @@ public final class Panels {
         // 4. SECTION: SİSTEM & TV DONANIMI (SYSTEM & TV HARDWARE)
         // =========================================================================
         LinearLayout cTv = column(ctx, cols, R.string.col_tv, colWidth);
-        cTv.setTag("sec_system");
         com.cinetv.launcher.device.AcousticsCalibrator.AudioOutputInfo outInfo = com.cinetv.launcher.device.AcousticsCalibrator.detectAudioOutput(ctx);
         boolean isCalibrated = com.cinetv.launcher.device.AcousticsCalibrator.isCalibrated(ctx);
         cTv.addView(Controls.tile(ctx,
