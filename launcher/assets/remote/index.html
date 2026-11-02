@@ -175,6 +175,11 @@ body.remote main{padding-bottom:0}
 .rgrid svg{width:26px;height:26px}
 .rgrid .on{background:var(--accent);border-color:transparent}
 [data-key]:active,.rgrid button:active,.ic:active{transform:scale(.93)}
+.shotview{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px}
+.shotview[hidden]{display:none}
+.shotview img{max-width:100%;max-height:78vh;border-radius:12px}
+.shotbar{display:flex;gap:10px}
+.shotbar a,.shotbar button{border:0;border-radius:14px;padding:12px 18px;color:#fff;font-weight:600;text-decoration:none;font-size:15px}
 .kbd{position:fixed;left:12px;right:12px;bottom:calc(12px + var(--safe-b));z-index:30;display:flex;gap:8px;padding:6px 6px 6px 14px;align-items:center}
 .kbd input{flex:1;background:none;border:0;outline:0;color:var(--ink);font-size:16px}
 .kbd button{border:0;border-radius:14px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:600}
@@ -550,6 +555,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 </div>
 
 <div class="sheet glass" id="sheet"></div>
+<div class="shotview" id="shotView" hidden>
+  <img id="shotImg" alt="">
+  <div class="shotbar"><a class="glass" id="shotSave" download="CineTV.jpg" data-i="shotSave">Kaydet</a><button class="glass" id="shotShare" type="button" data-i="shotShare">Paylaş</button><button class="glass" id="shotClose" type="button" aria-label="Close">✕</button></div>
+</div>
 <div class="toast glass" id="toast"></div>
 
 <script>
@@ -558,7 +567,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     en: {filmFound:"Film found: tap the video, or the button below",playOnTv:"Play on TV",open:"Open",browseHint:"Type or paste the film page’s address above and press Open. The page appears here; tap it as on a phone.",browseTip:"Skip the site’s ads, then press the film’s play button: the film starts on the TV.",airMouse:"Air mouse",mouseTip:"Move a finger · Tap = click · Two fingers = scroll",swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ (b. 2000, Ankara) is an independent film director, creative technologist, editor and voice artist known for his short film Sessiz (2023). He designed and built CineTV from scratch as a free gift to cinema lovers. Follow @alptugdag on Instagram for new film projects, directing/editing collaborations, or just to say hello.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgReset:"Restore Theme Background",bgResetDone:"Theme background restored",bgSent:"Now on your TV",bgFail:"Could not send the picture",
       installAndroid:"Install CineTV on this phone for one-tap access.",installGo:"Install",installIos:"Tap Share, then “Add to Home Screen” to keep CineTV one tap away.",
       otherTvs:"CineTV TVs here",onTv:"On your TV now",waiting:"Allow this phone on your TV with the remote",denied:"Not allowed on the TV. Tap to ask again.",busy:"Another phone is asking. Retrying…",
-      tabCast:"Cast",tabAbout:"Creator",castTitle:"Play a video on the TV",castPh:"Film page address",paste:"Paste",castPlay:"Play on TV",
+      tabCast:"Cast",tabAbout:"Creator",castTitle:"Play a video on the TV",castPh:"Film page address",paste:"Paste",shotSave:"Save",shotShare:"Share",castPlay:"Play on TV",
       castNote:"Works with direct links (mp4, m3u8…) and film pages: the TV opens the page, presses play itself and skips the ads.",castFinding:"Looking for the film… ads are skipped (up to 45 s)",castNone:"No film found on that page (videos under 3 minutes are skipped as ads).",castPlaying:"Playing on your TV",
       aboutRole:"Director · Creative Technologist & Editor · Voice Artist",followIg:"📸 Follow on Instagram · @alptugdag",watchSessiz:"▶ Short Film: Sessiz (2023)",watchSessizTr:"🎞️ Official Trailer: Sessiz",playSessizTv:"Play 'Sessiz' on TV",followLi:"💼 LinkedIn · Collaborations & Career",followYt:"Subscribe on YouTube · @AlptugDag",hisFilms:"Show His Films on TV",
       mCreator:"Alptuğ Dağ Picks",mNoir:"Midnight Neo-Noir",mRain:"Rainy Night",mFest:"Festival Gems",mMind:"Mind-Benders",mTr:"Turkish Cinema",
@@ -575,7 +584,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     tr: {filmFound:"Film bulundu: videoya ya da aşağıdaki tuşa dokunun",playOnTv:"TV’de oynat",open:"Aç",browseHint:"Filmin sayfasının adresini yukarı yazın ya da yapıştırın, Aç’a basın. Sayfa burada açılır; telefondaki gibi dokunun.",browseTip:"Sitenin reklamlarını geçin, sonra filmin oynat tuşuna basın: film televizyonda başlar.",airMouse:"Hava faresi",mouseTip:"Parmağını kaydır · Dokun = tıkla · İki parmak = kaydır",swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ (d. 2000, Ankara); sinemayı, kurguyu ve yaratıcı yazılım mimarisini tek potada buluşturan bağımsız bir yönetmen, içerik üreticisi ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. Ev sinemasını reklamsız ve özgür kılmak için CineTV'yi sıfırdan tasarlayıp ücretsiz olarak armağan etti. Yeni film projeleri, reklam/kurgu yönetmenliği, yaratıcı iş birlikleri veya sadece bir teşekkür için Instagram'da @alptugdag hesabını takip edebilirsiniz.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgReset:"Temanın Kendi Arka Planına Dön",bgResetDone:"Temanın arka planına dönüldü",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
       installAndroid:"CineTV'yi bu telefona uygulama olarak ekleyin, tek dokunuşla açılsın.",installGo:"Ekle",installIos:"Paylaş'a, ardından “Ana Ekrana Ekle”ye dokunun; CineTV tek dokunuşla açılsın.",
       otherTvs:"Bu ağdaki CineTV televizyonları",onTv:"TV'de vitrine geldi",waiting:"Bu telefona TV'den kumandayla izin verin",denied:"TV'de izin verilmedi. Tekrar sormak için dokunun.",busy:"Başka bir telefon soruyor. Tekrar deneniyor…",
-      tabCast:"Yayınla",tabAbout:"Yaratıcı",castTitle:"TV'de video oynat",castPh:"Filmin sayfasının adresi",paste:"Yapıştır",castPlay:"TV'de oynat",
+      tabCast:"Yayınla",tabAbout:"Yaratıcı",castTitle:"TV'de video oynat",castPh:"Filmin sayfasının adresi",paste:"Yapıştır",shotSave:"Kaydet",shotShare:"Paylaş",castPlay:"TV'de oynat",
       castNote:"Doğrudan bağlantılarla (mp4, m3u8…) ve film sayfalarıyla çalışır: TV sayfayı açar, oynat tuşuna kendisi basar, reklamları atlar.",castFinding:"Film aranıyor… reklam varsa geçiliyor (en fazla 45 sn)",castNone:"Bu sayfada film bulunamadı (3 dakikadan kısa videolar reklam sayılıp atlanır).",castPlaying:"TV'de oynatılıyor",
       aboutRole:"Yönetmen · Kurgu & Yaratıcı Teknoloji · Seslendirme",followIg:"📸 Instagram'da Takip Et · @alptugdag",watchSessiz:"▶ Kısa Film: Sessiz (2023)",watchSessizTr:"🎞️ Resmi Fragman: Sessiz",playSessizTv:"'Sessiz'i TV'de Oynat",followLi:"💼 LinkedIn · İş Birliği & Kariyer",followYt:"YouTube'da Abone Ol · @AlptugDag",hisFilms:"🎬 Filmlerini TV'de Vitrine Getir",
       mCreator:"Alptuğ Dağ Seçkisi",mNoir:"Gece Yarısı Neo-Noir",mRain:"Yağmurlu Gece",mFest:"Festival Seçkisi",mMind:"Psikolojik Gizem",mTr:"Türk Sineması",
@@ -1131,12 +1140,38 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   typer.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== typer) kbd.hidden = true; }, 350));
   $("saver").onclick = () => api("screensaver");
 
+  // A screenshot taken with the TV remote (yellow key held) opens here, ready to save or share
+  let seenShot = -1, shotBlob = null;
+  const showShot = async () => {
+    try {
+      const r = await api("shot");
+      if (!r || !r.jpg) return;
+      const bin = atob(r.jpg), bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      shotBlob = new Blob([bytes], {type: "image/jpeg"});
+      const url = URL.createObjectURL(shotBlob);
+      const name = "CineTV-" + new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-") + ".jpg";
+      $("shotImg").src = url;
+      $("shotSave").href = url;
+      $("shotSave").download = name;
+      $("shotShare").hidden = !(navigator.canShare && navigator.canShare({files: [new File([shotBlob], name, {type: "image/jpeg"})]}));
+      $("shotShare").onclick = () => navigator.share({files: [new File([shotBlob], name, {type: "image/jpeg"})]}).catch(() => {});
+      $("shotView").hidden = false;
+      if (navigator.vibrate) navigator.vibrate(30);
+    } catch (e) {}
+  };
+  $("shotClose").onclick = () => { $("shotView").hidden = true; };
+
   // Auto-open keyboard when TV reports an active input field focused
   let lastFocusState = false;
   setInterval(async () => {
     if (!token) return;
     try {
       const s = await api("status");
+      if (s && typeof s.shot === "number") {
+        if (seenShot >= 0 && s.shot > seenShot) showShot();
+        seenShot = s.shot;
+      }
       if (s && s.inputFocused && !lastFocusState && kbd.hidden) {
         openKbd("");
       }

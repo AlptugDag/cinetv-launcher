@@ -755,6 +755,36 @@ public class TvKeyInterceptorService extends AccessibilityService {
     }
 
     private volatile long lastNavKeyAt = 0L;
+    private boolean blueHeld;
+    /** Re-sent short blue presses come back through here: let those through untouched. */
+    private long blueReplayAt;
+
+    /** The blue key held: a screenshot of whatever is on screen, which the phone remote then shows. */
+    private final Runnable blueScreenshot = new Runnable() {
+        @Override
+        public void run() {
+            blueHeld = true;
+            final boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+            com.cinetv.launcher.remote.ScreenShot.takeAsync(TvKeyInterceptorService.this, ok -> handler.post(() ->
+                    android.widget.Toast.makeText(TvKeyInterceptorService.this, ok
+                            ? (tr ? "Ekran görüntüsü telefona gönderildi" : "Screenshot sent to your phone")
+                            : (tr ? "Ekran görüntüsü alınamadı" : "Couldn't take a screenshot"), android.widget.Toast.LENGTH_SHORT).show()));
+        }
+    };
+    private boolean yellowHeld;
+
+    /** The yellow key held: a screenshot of whatever is on screen, which the phone remote then shows. */
+    private final Runnable yellowScreenshot = new Runnable() {
+        @Override
+        public void run() {
+            yellowHeld = true;
+            final boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+            com.cinetv.launcher.remote.ScreenShot.takeAsync(TvKeyInterceptorService.this, ok -> handler.post(() ->
+                    android.widget.Toast.makeText(TvKeyInterceptorService.this, ok
+                            ? (tr ? "Ekran görüntüsü telefona gönderildi" : "Screenshot sent to your phone")
+                            : (tr ? "Ekran görüntüsü alınamadı" : "Couldn't take a screenshot"), android.widget.Toast.LENGTH_SHORT).show()));
+        }
+    };
 
     /** CineSUB's unprompted notes: checked every 15 seconds while a player shows something. */
     private final Runnable cinesubAmbient = new Runnable() {
@@ -933,6 +963,34 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 startActivity(new Intent(this, MainActivity.class)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION)
                         .putExtra("action", "voice").putExtra("from", lastPackage));
+            }
+            return true;
+        }
+        // The blue key held for a second: a screenshot for the phone remote, on any screen. A short press keeps its
+        // own job (the key's shortcut, or CineTV's own handling), now sent on release.
+        if (code == KeyEvent.KEYCODE_PROG_BLUE
+                && android.os.SystemClock.elapsedRealtime() - blueReplayAt > 1500) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (event.getRepeatCount() == 0) {
+                    blueHeld = false;
+                    handler.removeCallbacks(blueScreenshot);
+                    handler.postDelayed(blueScreenshot, 900);
+                }
+                return true;
+            }
+            handler.removeCallbacks(blueScreenshot);
+            if (blueHeld) return true;
+            if (getPackageName().equals(lastPackage) || MainActivity.foreground) {
+                // CineTV's own window: hand it the short press it would have had
+                blueReplayAt = android.os.SystemClock.elapsedRealtime();
+                final android.content.Context app = getApplicationContext();
+                new Thread(() -> com.cinetv.launcher.remote.KeyBridge.key(app, KeyEvent.KEYCODE_PROG_BLUE, false), "cinetv-blue").start();
+                return true;
+            }
+            String blue = HardwareKeys.actionFor(this, code, event.getScanCode());
+            if (blue != null && !HardwareKeys.perform(this, blue)) {
+                startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .putExtra("action", "show_all_apps"));
             }
             return true;
         }

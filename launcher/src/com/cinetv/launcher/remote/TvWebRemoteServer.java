@@ -644,13 +644,23 @@ public final class TvWebRemoteServer {
         final com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(app);
         switch (path) {
             case "/api/status":
-                return ok.put("inputFocused", TvKeyInterceptorService.isInputFocused() || com.cinetv.launcher.MainActivity.isTvInputActive());
+                return ok.put("inputFocused", TvKeyInterceptorService.isInputFocused() || com.cinetv.launcher.MainActivity.isTvInputActive())
+                        .put("shot", ScreenShot.id());
+            case "/api/shot": {
+                // the latest screenshot, inline so it also reaches a phone on the relay
+                byte[] jpg = ScreenShot.latest();
+                if (jpg == null) return new JSONObject().put("ok", false);
+                return ok.put("id", ScreenShot.id()).put("jpg", android.util.Base64.encodeToString(jpg, android.util.Base64.NO_WRAP));
+            }
+            case "/api/shot/take":
+                ScreenShot.takeAsync(app, null);
+                return ok;
             case "/api/hello":
                 post(() -> {
                     Controller c = controller;
                     if (c != null) c.onPhoneConnected();
                 });
-                return ok.put("tmdb", MovieCatalog.hasTmdb(app)).put("calibration", PictureCalibration.capabilities(app))
+                return ok.put("shot", ScreenShot.id()).put("tmdb", MovieCatalog.hasTmdb(app)).put("calibration", PictureCalibration.capabilities(app))
                         .put("inputFocused", TvKeyInterceptorService.isInputFocused() || com.cinetv.launcher.MainActivity.isTvInputActive());
             case "/api/catalog/trending": {
                 String kind = clip(q.get("type"), 16);

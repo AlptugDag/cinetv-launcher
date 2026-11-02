@@ -1,5 +1,9 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.40
+
+- **Kumandadan ekran görüntüsü:** Mavi tuşu bir saniye basılı tutunca TV'nin o anki ekranı alınır ve mobil arayüzü açık olan telefonda hemen belirir; oradan kaydedilebilir ya da paylaşılabilir. Görüntü sadece TV'nin belleğinde durur, diske yazılmaz. Mavi tuşa kısa basış eskisi gibi çalışır, sarı tuş CineSUB olarak kalır.
+
 ## 1.0.0.39
 
 - **CineSUB yeniden çalışıyor:** Sarı tuşla açınca "Yapay zekâ servisi HTTP 400 döndürdü" yazıyordu. 1.0.0.35'te çalışan model adları geri geldi. Bir model ayarı reddederse (HTTP 400) CineSUB artık durmuyor; aynı isteği sade haliyle tekrar deniyor, olmazsa sıradaki modele geçiyor. 2.5 Flash-Lite'a reddettiği düşünme bütçesi artık gönderilmiyor.
