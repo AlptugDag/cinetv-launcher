@@ -512,6 +512,35 @@ public class HomeScreen {
             public void hide() {
                 trailer.stop();
             }
+
+            @Override
+            public void fillScreen(Runnable grown, Runnable done) {
+                final View v = trailer;
+                if (v.getWidth() <= 0 || v.getHeight() <= 0 || root.getWidth() <= 0) {
+                    done.run();
+                    return;
+                }
+                // the frame grows from where it sits in the tray until it covers the screen, then fades to black
+                v.setPivotX(0f);
+                v.setPivotY(0f);
+                v.animate().scaleX(root.getWidth() / (float) v.getWidth()).scaleY(root.getHeight() / (float) v.getHeight())
+                        .translationX(-v.getLeft()).translationY(-v.getTop())
+                        .setDuration(com.cinetv.launcher.device.PerformanceProfile.animationMs(v.getContext(), 560))
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
+                        .withEndAction(() -> {
+                            grown.run();
+                            v.animate().alpha(0f).setDuration(com.cinetv.launcher.device.PerformanceProfile.animationMs(v.getContext(), 420))
+                                    .withEndAction(() -> {
+                                        trailer.stop();
+                                        v.setScaleX(1f);
+                                        v.setScaleY(1f);
+                                        v.setTranslationX(0f);
+                                        v.setTranslationY(0f);
+                                        v.setAlpha(1f);
+                                        done.run();
+                                    }).start();
+                        }).start();
+            }
         });
         pattern = new CalibrationPatternView(ctx);
         root.addView(pattern, match());
@@ -1149,6 +1178,67 @@ public class HomeScreen {
         if (!on) trailer.stop();
     }
 
+    /** While true the opening stays up (a fresh shelf is being made); {@link #releaseSplash} lets it go. */
+    private boolean splashHeld;
+
+    /** The opening, held until {@link #releaseSplash}: nothing of the previous session shows before the new shelf. */
+    public void showSplashHeld() {
+        splashHeld = true;
+        showSplash();
+    }
+
+    public void releaseSplash() {
+        if (!splashHeld) return;
+        splashHeld = false;
+        splash.removeCallbacks(splashSheenAgain);
+        if (splash.getVisibility() != View.VISIBLE) return;
+        splash.animate().cancel();
+        splash.animate().alpha(0f).setStartDelay(0).setDuration(300).withEndAction(() -> splash.setVisibility(View.GONE)).start();
+    }
+
+    public boolean splashHeld() {
+        return splashHeld;
+    }
+
+    /** While held, the light runs across the logo again every couple of seconds. */
+    private final Runnable splashSheenAgain = new Runnable() {
+        @Override
+        public void run() {
+            if (!splashHeld || splash.getVisibility() != View.VISIBLE) return;
+            final SplashLogoLayout col = (SplashLogoLayout) splash.getChildAt(1);
+            heartbeat(splash.getChildAt(0)).start();
+            android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(-0.25f, 1.25f);
+            a.setDuration(900);
+            a.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+            a.addUpdateListener(an -> col.setSheenProgress((float) an.getAnimatedValue()));
+            a.start();
+            splash.postDelayed(this, 2200);
+        }
+    };
+
+    /** Lub-dub: two beats of the red aura (scale and light), then rest. One second. */
+    private static android.animation.ObjectAnimator heartbeat(View aura) {
+        android.animation.Keyframe k0 = android.animation.Keyframe.ofFloat(0f, 0.85f);
+        android.animation.Keyframe k1 = android.animation.Keyframe.ofFloat(0.14f, 1.15f); // lub crest
+        android.animation.Keyframe k2 = android.animation.Keyframe.ofFloat(0.24f, 1.02f); // lub trough
+        android.animation.Keyframe k3 = android.animation.Keyframe.ofFloat(0.38f, 1.26f); // dub crest (strongest)
+        android.animation.Keyframe k4 = android.animation.Keyframe.ofFloat(0.65f, 0.95f); // settling
+        android.animation.Keyframe k5 = android.animation.Keyframe.ofFloat(1.0f, 0.85f);  // rest
+        android.animation.Keyframe a0 = android.animation.Keyframe.ofFloat(0f, 0.50f);
+        android.animation.Keyframe a1 = android.animation.Keyframe.ofFloat(0.14f, 0.90f);
+        android.animation.Keyframe a2 = android.animation.Keyframe.ofFloat(0.24f, 0.72f);
+        android.animation.Keyframe a3 = android.animation.Keyframe.ofFloat(0.38f, 1.0f);
+        android.animation.Keyframe a4 = android.animation.Keyframe.ofFloat(0.65f, 0.65f);
+        android.animation.Keyframe a5 = android.animation.Keyframe.ofFloat(1.0f, 0.50f);
+        android.animation.ObjectAnimator beat = android.animation.ObjectAnimator.ofPropertyValuesHolder(aura,
+                android.animation.PropertyValuesHolder.ofKeyframe(View.SCALE_X, k0, k1, k2, k3, k4, k5),
+                android.animation.PropertyValuesHolder.ofKeyframe(View.SCALE_Y, k0, k1, k2, k3, k4, k5),
+                android.animation.PropertyValuesHolder.ofKeyframe(View.ALPHA, a0, a1, a2, a3, a4, a5));
+        beat.setDuration(1000);
+        beat.setInterpolator(new android.view.animation.LinearInterpolator());
+        return beat;
+    }
+
     public void showSplash() {
         splash.setVisibility(View.VISIBLE);
         splash.setAlpha(1f);
@@ -1163,13 +1253,8 @@ public class HomeScreen {
         aura.setScaleX(0.85f);
         aura.setScaleY(0.85f);
 
-        // A calm glow, no pulsing: the opening should feel like a light coming up, not an alarm.
-        android.animation.ObjectAnimator heartbeat = android.animation.ObjectAnimator.ofPropertyValuesHolder(aura,
-                android.animation.PropertyValuesHolder.ofFloat(View.ALPHA, 0f, 0.45f),
-                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 0.9f, 1f),
-                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.9f, 1f));
-        heartbeat.setDuration(500);
-        heartbeat.setInterpolator(new android.view.animation.DecelerateInterpolator());
+        // The red glow behind the logo beats like a heart (lub-dub), as in the original opening.
+        final android.animation.ObjectAnimator heartbeat = heartbeat(aura);
         heartbeat.start();
 
         mark.setAlpha(0f);
@@ -1212,7 +1297,12 @@ public class HomeScreen {
         by.animate().alpha(1f).translationY(0f).setStartDelay(300).setDuration(300)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
 
-        splash.animate().alpha(0f).setStartDelay(800).setDuration(300)
+        if (splashHeld) {
+            splash.removeCallbacks(splashSheenAgain);
+            splash.postDelayed(splashSheenAgain, 1600);
+            return;
+        }
+        splash.animate().alpha(0f).setStartDelay(650).setDuration(250)
                 .withEndAction(() -> {
                     heartbeat.cancel();
                     sheenAnim.cancel();

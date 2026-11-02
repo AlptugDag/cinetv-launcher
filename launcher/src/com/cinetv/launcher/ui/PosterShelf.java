@@ -55,7 +55,7 @@ public class PosterShelf extends FrameLayout {
     }, "cinetv-case-bake"));
     private static final int VISIBLE_RANGE = 14;
     /** Spine logos come after the shelf, one at a time, at low priority. */
-    private static final java.util.concurrent.ExecutorService logos = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+    private static final java.util.concurrent.ExecutorService logos = java.util.concurrent.Executors.newFixedThreadPool(2, r -> {
         Thread t = new Thread(r, "cinetv-spine-logos");
         t.setPriority(Thread.MIN_PRIORITY);
         return t;
@@ -223,6 +223,18 @@ public class PosterShelf extends FrameLayout {
         focusPos = index;
         // nearest the focus first (the middle case, then outward on both sides of the ring): the cases in
         // view are ready long before the ones off screen
+        posterJobs.clear();
+        final Context app = getContext().getApplicationContext();
+        final int ph = Math.round(caseW / DvdCase.ASPECT);
+        for (int d = 0; max > 0 && d <= max / 2; d++) {
+            int right = Math.floorMod(index + d, max), left = Math.floorMod(index - d, max);
+            for (int slot : left != right ? new int[]{right, left} : new int[]{right}) {
+                final String url = movies.get(slot).posterUrl;
+                if (url != null && !url.isEmpty() && !url.startsWith("asset:")) {
+                    posterJobs.put(slot, warmers.submit(() -> PosterCache.load(app, url, caseW, ph)));
+                }
+            }
+        }
         for (int d = 0; max > 0 && d <= max / 2; d++) {
             int right = Math.floorMod(index + d, max), left = Math.floorMod(index - d, max);
             bake(right, gen);
@@ -233,6 +245,9 @@ public class PosterShelf extends FrameLayout {
             MovieCatalog.prefetchTrailer(getContext(), movies.get(index));
         }
     }
+
+    /** This row's posters, all downloading at once (slot -> job). */
+    private final java.util.Map<Integer, java.util.concurrent.Future<?>> posterJobs = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static final ExecutorService warmers = Executors.newFixedThreadPool(6, r -> {
         Thread t = new Thread(r, "cinetv-poster-warm");
@@ -311,7 +326,15 @@ public class PosterShelf extends FrameLayout {
             final DvdCaseView v = cases.get(slot);
             // every slot stands at once as the shared empty case; only the cover arrives per film
             v.setCase(asCases ? DvdCase.blank(getContext(), caseW, Math.round(caseW / DvdCase.ASPECT)) : null);
+            final java.util.concurrent.Future<?> fetch = posterJobs.get(slot);
             baker.execute(() -> {
+                if (fetch != null) {
+                    try {
+                        fetch.get(12, java.util.concurrent.TimeUnit.SECONDS); // downloaded in parallel, decoded in the cache
+                    } catch (Throwable ignored) {
+                    }
+                }
+                if (gen != generation) return;
                 Bitmap poster = m.posterUrl.startsWith("asset:")
                         ? PosterCache.decodeAsset(getContext(), m.posterUrl.substring(6), caseW, Math.round(caseW / DvdCase.ASPECT))
                         : PosterCache.load(getContext(), m.posterUrl, caseW, Math.round(caseW / DvdCase.ASPECT));
@@ -327,7 +350,7 @@ public class PosterShelf extends FrameLayout {
                 if (asCases && m.tmdbId > 0) {
                     logos.execute(() -> {
                         if (gen != generation) return;
-                        PerformanceProfile.awaitCalm(8_000);
+                        PerformanceProfile.awaitCalm(1_500); // a short wait at most: the title logo should not lag the cover
                         if (m.logoUrl == null || m.logoUrl.isEmpty()) {
                             String url = MovieCatalog.logoFor(getContext(), m.tmdbId, m.type);
                             m.logoUrl = url == null ? "-" : url;

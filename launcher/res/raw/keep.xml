@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Looked up by name at run time (Panels.themeName): the resource shrinker cannot see that, so it is told. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@string/theme_*" />

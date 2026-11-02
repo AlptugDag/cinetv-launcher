@@ -43,8 +43,8 @@ import java.util.Locale;
  *
  * With trailer moments on (Settings), the case turns sideways as it leaves the shelf and opens wide: the
  * story is written across the inside of the cover and the film's trailer plays in the tray, where the
- * disc would rest (a TrailerSlot lays the player over it). OK then takes the disc out as before: the trailer
- * gives way and the disc spins up and comes forward.
+ * disc would rest (a TrailerSlot lays the player over it). OK then lets the trailer grow over the whole screen and
+ * dissolve, and the film opens.
  */
 public class DvdOpeningView extends View {
 
@@ -65,7 +65,15 @@ public class DvdOpeningView extends View {
 
         void show(Movie movie, RectF screen, float corner);
         void hide();
+
+        /** OK with the trailer playing: its frame grows over the whole screen ({@code grown}), then dissolves ({@code done}). */
+        default void fillScreen(Runnable grown, Runnable done) {
+            done.run();
+        }
     }
+
+    /** The trailer has filled the screen: from here on the view is black until the film is in front. */
+    private boolean blackout;
 
     private static final long FLY_END = 380, OPEN_END = 1150;
     private static final long PLAY_TOTAL = 1350, PLAY_LAUNCH = 1180;
@@ -225,6 +233,7 @@ public class DvdOpeningView extends View {
                         0.50f, 0.55f, 0.60f, 0.66f, 0.72f, 0.78f, 0.85f, 0.92f
                 });
         trayShade = trayShade();
+        trayArt = bakeTray(caseW, caseH);
         launched = false;
         t = 0;
         play = -1;
@@ -285,6 +294,7 @@ public class DvdOpeningView extends View {
         caseH = Math.max(2, Math.round(targetH));
         caseW = Math.max(2, Math.round(targetW));
         trayShade = trayShade();
+        trayArt = bakeTray(caseW, caseH);
         int discSize = Math.round(Math.min(caseW, caseH) * 0.88f);
         disc = bakeDisc(getContext(), dvd.cover, movie != null ? movie.coverTitle() : "", discSize);
         discGlowR = discSize * 1.06f * 0.62f;
@@ -297,15 +307,23 @@ public class DvdOpeningView extends View {
     private void startPlay() {
         if (play >= 0 || dvd == null) return;
         removeCallbacks(autoPlay);
-        if (slot != null) slot.hide();
-        if (landscape && disc == null) {
-            // Trailer mode too: the trailer gives way and the film's disc lifts, spins up and comes forward,
-            // exactly as in a case without a trailer.
-            int discSize = Math.round(Math.min(caseW, caseH) * 0.88f);
-            disc = bakeDisc(getContext(), dvd.cover, movie != null ? movie.coverTitle() : "", discSize);
-            discGlowR = discSize * 1.06f * 0.62f;
-            discGlow = new RadialGradient(0, 0, discGlowR, new int[]{UiKit.withAlpha(accent, 120), Color.TRANSPARENT}, null, Shader.TileMode.CLAMP);
+        if (landscape) {
+            // Trailer mode: no disc. The playing trailer grows over the whole screen and dissolves, then the film opens.
+            removeCallbacks(autoPlay);
+            if (slot != null && trailerShown) {
+                play = 0;
+                slot.fillScreen(() -> {
+                    blackout = true;
+                    invalidate();
+                }, () -> {
+                    if (!launched) launch();
+                });
+            } else if (!launched) {
+                launch();
+            }
+            return;
         }
+        if (slot != null) slot.hide();
         if (anim != null) anim.cancel();
         t = OPEN_END;
         play = 0;
@@ -332,6 +350,8 @@ public class DvdOpeningView extends View {
         setVisibility(INVISIBLE);
         inner = null;
         disc = null;
+        trayArt = null;
+        blackout = false;
     }
 
     private boolean closing;
@@ -421,6 +441,10 @@ public class DvdOpeningView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        if (blackout) {
+            canvas.drawColor(Color.BLACK);
+            return;
+        }
         if (dvd == null) return;
         int w = getWidth(), h = getHeight();
         float fly = ease(clamp(t / (float) FLY_END));
@@ -533,14 +557,41 @@ public class DvdOpeningView extends View {
         return new LinearGradient(0, 0, caseW, caseH, stock.trayTop, stock.trayBottom, Shader.TileMode.CLAMP);
     }
 
+    /** The tray of this room, baked once per opening: its lining (felt, velvet, wood, brushed metal, frosted acrylic, neon). */
+    private Bitmap trayArt;
+
+    private Bitmap bakeTray(int w, int h) {
+        if (w <= 2 || h <= 2) return null;
+        Insert stock = Insert.of(com.cinetv.launcher.service.ThemeManager.current(getContext()).id);
+        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(out);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        RectF all = new RectF(0, 0, w, h);
+        float rad = w * 0.03f;
+        p.setShader(new LinearGradient(0, 0, w, h, stock.trayTop, stock.trayBottom, Shader.TileMode.CLAMP));
+        c.drawRoundRect(all, rad, rad, p);
+        p.setShader(null);
+        int keep = c.save();
+        android.graphics.Path clip = new android.graphics.Path();
+        clip.addRoundRect(all, rad, rad, android.graphics.Path.Direction.CW);
+        c.clipPath(clip);
+        stock.lining(c, w, h);
+        c.restoreToCount(keep);
+        return out;
+    }
+
     private void drawTray(Canvas c, float l, float t, float w, float h) {
         c.save();
         c.translate(l, t);
         c.scale(w / Math.max(1f, caseW), h / Math.max(1f, caseH));
         r.set(0, 0, caseW, caseH);
-        fill.setShader(trayShade);
-        c.drawRoundRect(r, caseW * 0.03f, caseW * 0.03f, fill);
-        fill.setShader(null);
+        if (trayArt != null && !trayArt.isRecycled()) {
+            c.drawBitmap(trayArt, null, r, stillPaint);
+        } else {
+            fill.setShader(trayShade);
+            c.drawRoundRect(r, caseW * 0.03f, caseW * 0.03f, fill);
+            fill.setShader(null);
+        }
         c.restore();
         if (landscape) {
             // the tray's screen, where the trailer plays: a dark recess with a lit rim
@@ -599,10 +650,11 @@ public class DvdOpeningView extends View {
         float cx = l + w / 2f, cy = t + h / 2f, rr = w * 0.45f;
         fill.setColor(Color.argb(140, 0, 0, 0));
         c.drawCircle(cx, cy, rr, fill);
-        // Hub rosette: the ring of teeth that holds the disc.
-        fill.setColor(Color.parseColor("#2A2A31"));
+        // Hub rosette: the ring of teeth that holds the disc, in the room's own material.
+        Insert hub = Insert.of(com.cinetv.launcher.service.ThemeManager.current(getContext()).id);
+        fill.setColor(hub.hubBase);
         c.drawCircle(cx, cy, w * 0.09f, fill);
-        fill.setColor(Color.parseColor("#3A3A43"));
+        fill.setColor(hub.hubTeeth);
         for (int i = 0; i < 12; i++) {
             double a = Math.PI * 2 * i / 12;
             c.drawCircle(cx + (float) Math.cos(a) * w * 0.065f, cy + (float) Math.sin(a) * w * 0.065f, w * 0.012f, fill);
@@ -776,7 +828,8 @@ public class DvdOpeningView extends View {
             float pad = u * 0.058f;
             float textW = paper.width() - pad * 2;
             TextPaint ink = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-            ink.setTypeface(FontManager.getMarker(ctx));
+            ink.setTypeface(FontManager.getMarker(ctx)); // the same hand on every theme: sizes and layout stay as designed
+            if (stock.dark) ink.setShadowLayer(w * 0.012f, 0, 0, Color.argb(160, 191, 90, 242)); // neon: the letters glow
             ink.setColor(stock.ink);
             c.save();
             // nothing written ever leaves the paper, whatever the title, the names or the cover's shape
@@ -1001,10 +1054,9 @@ public class DvdOpeningView extends View {
         p.setShader(new LinearGradient(0, 0, w, h, Color.argb(34, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
         c.drawRect(0, 0, w, h, p);
         p.setShader(null);
-        p.setColor(Color.parseColor("#26262D"));
         float clipW = w * 0.07f, clipH = h * 0.05f;
-        c.drawRoundRect(new RectF(w - clipW - lip * 0.4f, h * 0.10f, w - lip * 0.4f, h * 0.10f + clipH), clipW * 0.3f, clipW * 0.3f, p);
-        c.drawRoundRect(new RectF(w - clipW - lip * 0.4f, h * 0.85f, w - lip * 0.4f, h * 0.85f + clipH), clipW * 0.3f, clipW * 0.3f, p);
+        stock.holder(c, new RectF(w - clipW - lip * 0.4f, h * 0.10f, w - lip * 0.4f, h * 0.10f + clipH), w);
+        stock.holder(c, new RectF(w - clipW - lip * 0.4f, h * 0.85f, w - lip * 0.4f, h * 0.85f + clipH), w);
         return out;
     }
 
@@ -1048,6 +1100,15 @@ public class DvdOpeningView extends View {
             this.ink = ink;
             this.grain = grain;
             this.dark = dark;
+            switch (kind) {
+                case "kraft": hubBase = 0xFF6B4A1E; hubTeeth = 0xFFB08A45; break;
+                case "programme":
+                case "gilded": hubBase = 0xFF8A6420; hubTeeth = 0xFFE9C46A; break;
+                case "aluminium": hubBase = 0xFF6B737D; hubTeeth = 0xFFC7CDD5; break;
+                case "acrylic": hubBase = 0xFF2D4D70; hubTeeth = 0xFF7DD3FC; break;
+                case "neon": hubBase = 0xFF2A0F45; hubTeeth = 0xFFF472B6; break;
+                default: hubBase = 0xFF2A2A31; hubTeeth = 0xFF3A3A43; break;
+            }
         }
 
         static Insert of(String theme) {
@@ -1061,6 +1122,136 @@ public class DvdOpeningView extends View {
                 case "metal": return new Insert("aluminium", 0xFFC7CDD5, Color.argb(240, 20, 24, 30), Color.argb(16, 255, 255, 255), false, 0xFF3C424A, 0xFF5A626C, 0xFF262A30);
                 case "neon": return new Insert("neon", 0xFF15101F, Color.argb(240, 240, 234, 255), Color.argb(10, 191, 90, 242), true, 0xFF0B0614, 0xFF2A0F45, 0xFF07030D);
                 default: return new Insert("parchment", 0xFFEEE8DC, Color.argb(240, 18, 18, 22), Color.argb(7, 45, 35, 25), false, 0xFF15151A, 0xFF1B1B21, 0xFF0A0A0D);
+            }
+        }
+
+        /** The disc hub's plastic or metal for this room. */
+        int hubBase, hubTeeth;
+
+        /** The tray's lining under the disc or the trailer, in the case's own coordinates. */
+        void lining(Canvas c, int w, int h) {
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            java.util.Random rnd = new java.util.Random(kind.hashCode());
+            switch (kind) {
+                case "programme":
+                case "gilded": {
+                    // red velvet: a soft nap of fine fibres and a sheen that runs diagonally across it
+                    for (int i = 0; i < w * h / 60; i++) {
+                        float x = rnd.nextFloat() * w, y = rnd.nextFloat() * h;
+                        p.setColor(rnd.nextBoolean() ? Color.argb(22, 255, 90, 100) : Color.argb(26, 0, 0, 0));
+                        c.drawPoint(x, y, p);
+                    }
+                    p.setShader(new LinearGradient(0, 0, w, h, new int[]{Color.TRANSPARENT, Color.argb(40, 255, 120, 130), Color.TRANSPARENT},
+                            new float[]{0.2f, 0.45f, 0.7f}, Shader.TileMode.CLAMP));
+                    c.drawRect(0, 0, w, h, p);
+                    break;
+                }
+                case "kraft": {
+                    // walnut: long wavy grain lines along the case
+                    p.setStyle(Paint.Style.STROKE);
+                    for (int i = 0; i < 46; i++) {
+                        float x = rnd.nextFloat() * w, amp = w * (0.004f + rnd.nextFloat() * 0.01f);
+                        p.setStrokeWidth(Math.max(1f, w * (0.0015f + rnd.nextFloat() * 0.003f)));
+                        p.setColor(Color.argb(30 + rnd.nextInt(40), 20, 10, 4));
+                        android.graphics.Path g = new android.graphics.Path();
+                        g.moveTo(x, 0);
+                        for (float y = 0; y <= h; y += h / 12f) g.lineTo(x + (float) Math.sin(y / h * 9 + i) * amp, y);
+                        c.drawPath(g, p);
+                    }
+                    break;
+                }
+                case "aluminium": {
+                    // brushed metal: fine horizontal strokes and a cold highlight band
+                    for (int y = 0; y < h; y += 2) {
+                        p.setColor(Color.argb(10 + rnd.nextInt(18), rnd.nextBoolean() ? 255 : 0, rnd.nextBoolean() ? 255 : 0, 255));
+                        c.drawLine(0, y, w, y, p);
+                    }
+                    p.setShader(new LinearGradient(0, 0, 0, h, new int[]{Color.TRANSPARENT, Color.argb(46, 255, 255, 255), Color.TRANSPARENT},
+                            new float[]{0.25f, 0.4f, 0.55f}, Shader.TileMode.CLAMP));
+                    c.drawRect(0, 0, w, h, p);
+                    break;
+                }
+                case "acrylic": {
+                    // frosted acrylic: a cool sheen and the light caught in the moulded edge
+                    p.setShader(new android.graphics.RadialGradient(w * 0.3f, h * 0.25f, Math.max(w, h) * 0.8f,
+                            Color.argb(60, 190, 230, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+                    c.drawRect(0, 0, w, h, p);
+                    p.setShader(null);
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(Math.max(2f, w * 0.006f));
+                    p.setColor(Color.argb(110, 125, 211, 252));
+                    float in = w * 0.02f;
+                    c.drawRoundRect(new RectF(in, in, w - in, h - in), w * 0.025f, w * 0.025f, p);
+                    break;
+                }
+                case "neon": {
+                    // a dark grid lit from inside: magenta and cyan tubes along the rim
+                    p.setStrokeWidth(Math.max(1f, w * 0.0015f));
+                    p.setColor(Color.argb(34, 191, 90, 242));
+                    float step = w / 14f;
+                    for (float x = step; x < w; x += step) c.drawLine(x, 0, x, h, p);
+                    for (float y = step; y < h; y += step) c.drawLine(0, y, w, y, p);
+                    p.setStyle(Paint.Style.STROKE);
+                    float in = w * 0.025f;
+                    p.setStrokeWidth(Math.max(3f, w * 0.008f));
+                    p.setColor(Color.argb(200, 244, 114, 182));
+                    p.setShadowLayer(w * 0.03f, 0, 0, Color.argb(220, 244, 114, 182));
+                    c.drawRoundRect(new RectF(in, in, w - in, h - in), w * 0.03f, w * 0.03f, p);
+                    break;
+                }
+                default: {
+                    // black flocked felt: a fine nap that swallows the light
+                    for (int i = 0; i < w * h / 80; i++) {
+                        p.setColor(Color.argb(14 + rnd.nextInt(14), 255, 255, 255));
+                        c.drawPoint(rnd.nextFloat() * w, rnd.nextFloat() * h, p);
+                    }
+                    break;
+                }
+            }
+        }
+
+        /** One of the two holders that keep the insert in place: tabs, brass clips, gold, chrome clamps, acrylic, neon. */
+        void holder(Canvas c, RectF r, int w) {
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            float rad = r.width() * 0.3f;
+            switch (kind) {
+                case "kraft": // brass clip with a screw
+                    p.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom, 0xFFE0B860, 0xFF8A6420, Shader.TileMode.CLAMP));
+                    c.drawRoundRect(r, rad * 0.4f, rad * 0.4f, p);
+                    p.setShader(null);
+                    p.setColor(0xFF5A3E12);
+                    c.drawCircle(r.centerX(), r.centerY(), r.height() * 0.2f, p);
+                    break;
+                case "programme":
+                case "gilded": // gold-foil tabs
+                    p.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom, new int[]{0xFFB8862E, 0xFFF3D27A, 0xFFA87422}, null, Shader.TileMode.CLAMP));
+                    c.drawRoundRect(r, rad, rad, p);
+                    break;
+                case "aluminium": // chrome clamp with two rivets
+                    p.setShader(new LinearGradient(r.left, r.top, r.left, r.bottom, new int[]{0xFFF1F5F9, 0xFF8A939E, 0xFFD5DBE2}, null, Shader.TileMode.CLAMP));
+                    c.drawRoundRect(r, rad * 0.25f, rad * 0.25f, p);
+                    p.setShader(null);
+                    p.setColor(0xFF4B525C);
+                    c.drawCircle(r.left + r.width() * 0.3f, r.centerY(), r.height() * 0.13f, p);
+                    c.drawCircle(r.right - r.width() * 0.3f, r.centerY(), r.height() * 0.13f, p);
+                    break;
+                case "acrylic": // clear tab with a polished blue edge
+                    p.setColor(Color.argb(80, 220, 240, 255));
+                    c.drawRoundRect(r, rad, rad, p);
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(Math.max(1.5f, w * 0.003f));
+                    p.setColor(Color.argb(200, 125, 211, 252));
+                    c.drawRoundRect(r, rad, rad, p);
+                    break;
+                case "neon": // a short glowing tube
+                    p.setColor(0xFFF472B6);
+                    p.setShadowLayer(r.height() * 0.8f, 0, 0, Color.argb(230, 244, 114, 182));
+                    c.drawRoundRect(r, rad * 1.6f, rad * 1.6f, p);
+                    break;
+                default: // the moulded black plastic tabs
+                    p.setColor(Color.parseColor("#26262D"));
+                    c.drawRoundRect(r, rad, rad, p);
+                    break;
             }
         }
 

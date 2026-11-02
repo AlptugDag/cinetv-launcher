@@ -150,7 +150,7 @@ public final class SpatialAudioOverlay {
 
         // Header
         TextView title = UiKit.bold(app, 22, UiKit.INK);
-        title.setText(tr ? "AirPods & Uzamsal Ses" : "AirPods & Spatial Audio");
+        title.setText(tr ? "Kulaklık & Uzamsal Ses" : "Headphones & Spatial Audio");
         panel.addView(title);
 
         TextView sub = UiKit.label(app, 14, Color.parseColor("#34D399"));
@@ -197,7 +197,7 @@ public final class SpatialAudioOverlay {
         TextView actionBtn = Controls.button(app, tr ? "Telefon / Mac İçin Ayır" : "Release for Phone / Mac", v -> {
             AirPodsLink.markDisconnected();
             dismiss();
-            Toast.makeText(app, tr ? "AirPods ayrıldı. Telefonunuzdan bağlayabilirsiniz." : "AirPods released for phone/Mac.", Toast.LENGTH_LONG).show();
+            Toast.makeText(app, tr ? "Kulaklık ayrıldı. Telefonunuzdan bağlayabilirsiniz." : "Headphones released for your phone.", Toast.LENGTH_LONG).show();
         });
         panel.addView(actionBtn);
 

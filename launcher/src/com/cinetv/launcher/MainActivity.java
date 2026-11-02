@@ -150,6 +150,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Only one Home: the TV's Home key and CineTV's own launches can land in two different tasks, and each copy
+        // kept a whole shelf of images (13 were found alive on a 1.3 GB TV). The older one closes.
+        MainActivity older = instance;
+        if (older != null && older != this && !older.isFinishing()) older.finish();
         instance = this;
         super.onCreate(savedInstanceState);
         // Suppress OEM MediaTek/Arçelik TV tuner window immediately on boot before its window can display
@@ -174,9 +178,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         home = new HomeScreen(this, this, this);
         setContentView(home.root);
+        // A power-on (or the first start of the day) never shows the previous session's shelf: the opening stays up
+        // while the new one is made. Otherwise the opening plays once and the last shelf is shown.
+        final boolean freshStart = shelfIsStale();
         if (!splashShown) {
             splashShown = true;
-            home.showSplash();
+            if (freshStart) home.showSplashHeld();
+            else home.showSplash();
         }
         // Waking from standby does not start a new process (the key service keeps it), so the opening is played
         // again whenever the screen comes on, not only at the very first start.
@@ -310,7 +318,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         com.cinetv.launcher.device.MainThreadSampler.maybeStart("start", 40_000);
         loadApps(true);
-        showCachedShelf();
+        if (freshStart) startFreshShelf(false);
+        else showCachedShelf();
         Calendar cal = Calendar.getInstance();
         lastShelfHour = cal.get(Calendar.HOUR_OF_DAY);
         lastShelfDay = cal.get(Calendar.DAY_OF_YEAR);
@@ -319,7 +328,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // Low-memory TVs rebuild this screen on the way back from Nuvio: that is not a reason to change the shelf.
         // Not at once: start-up already showed the last shelf, and rebuilding it a second later, while the TV is
         // still starting, made the first minute stutter. The new one comes at the first quiet moment.
-        if (shelfIsStale()) handler.postDelayed(quietShelfRefresh, 4_000);
+
 
         // Live frame timing: background work yields to drawing while frames run slow (nothing is switched off).
         if (android.os.Build.VERSION.SDK_INT >= 24) getWindow().addOnFrameMetricsAvailableListener((window, metrics, dropped) ->
@@ -441,7 +450,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // Back on Home after an hour or more away (a film, an app, the TV on standby): a brand-new shelf.
         long away = homeLeftAt > 0 ? android.os.SystemClock.elapsedRealtime() - homeLeftAt : 0;
         homeLeftAt = 0;
-        if (away >= AWAY_FOR_NEW_SHELF_MS || (android.os.SystemClock.elapsedRealtime() - lastShelfAt > AI_SHELF_EVERY_MS && shelfIsStale())) refreshShelf();
+        if (!freshPending && away >= AWAY_FOR_NEW_SHELF_MS) startFreshShelf(true);
+        else if (!freshPending && android.os.SystemClock.elapsedRealtime() - lastShelfAt > AI_SHELF_EVERY_MS && shelfIsStale()) refreshShelf();
         // Suppress unwanted OEM TV tuner attempting to steal focus
         background(() -> {
             if (DeviceTweaks.isUnwantedTuner()) {
@@ -464,7 +474,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         checkNuvioUpdatePrompt();
         // Back on Home with the uninstall still pending means the viewer said no in Android's dialog.
         if (com.cinetv.launcher.device.Uninstaller.isRemoving(this)) com.cinetv.launcher.device.Uninstaller.cancelled(this);
-        if (splashOnResume && home != null) {
+        if (freshOnResume && home != null) {
+            freshOnResume = false;
+            splashOnResume = false;
+            startFreshShelf(true);
+        } else if (splashOnResume && home != null) {
             splashOnResume = false;
             home.showSplash();
         }
@@ -630,7 +644,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private final android.content.BroadcastReceiver screenOn = new android.content.BroadcastReceiver() {
         @Override
         public void onReceive(Context c, Intent i) {
-            splashOnResume = true;
+            // The TV came out of standby: the same process, so this is its "power-on". A fresh shelf behind the opening.
+            if (instance != MainActivity.this) return; // an older copy on its way out
+            android.util.Log.i("CineTvHome", "screen on: fresh shelf (in front " + inFront + ")");
+            freshOnResume = true;
+            if (inFront && home != null) {
+                freshOnResume = false;
+                startFreshShelf(true);
+            } else {
+                splashOnResume = true;
+            }
         }
     };
 
@@ -1147,21 +1170,48 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 } : null);
     }
 
+    /** Set when the screen comes on while Home is not in front: the next return makes a fresh shelf. */
+    private boolean freshOnResume;
+    /** A fresh shelf is being made behind the held opening. */
+    private boolean freshPending;
+    /** When the fresh start gave up waiting for the AI (uptime ms): a later AI answer is dropped, nothing swaps. */
+    private long freshTimedOutAt;
+    private long curateStartedAt;
+
+    /**
+     * Power-on / wake: the opening is held and a brand-new shelf is made behind it (the AI's pick for this moment, or a
+     * fresh category). The previous session's shelf never shows. After 12 s without the AI's answer a fresh category
+     * shelf comes instead; 20 s is the hard limit for the opening whatever happens.
+     */
+    private void startFreshShelf(boolean showOpening) {
+        if (home == null) return;
+        if (showOpening || !home.splashHeld()) home.showSplashHeld();
+        freshPending = true;
+        handler.removeCallbacks(freshDeadline);
+        handler.removeCallbacks(freshHardLimit);
+        handler.postDelayed(freshDeadline, 6_000);
+        handler.postDelayed(freshHardLimit, 14_000);
+        isCurating = false;
+        refreshShelf();
+    }
+
+    private final Runnable freshDeadline = () -> {
+        if (!freshPending) return;
+        freshTimedOutAt = android.os.SystemClock.uptimeMillis();
+        isCurating = false;
+        categoryShelf();
+    };
+
+    private final Runnable freshHardLimit = () -> {
+        if (home == null || !home.splashHeld()) return;
+        freshPending = false;
+        if (home.shelf.movies().isEmpty()) showCachedShelf();
+        home.releaseSplash();
+    };
+
     /** The viewer's last key press (uptime ms): background work waits for a quiet moment. */
     private long lastKeyAt;
 
-    /** A stale shelf after power-on is replaced once the viewer has left the remote alone for a few seconds. */
-    private final Runnable quietShelfRefresh = new Runnable() {
-        @Override
-        public void run() {
-            if (isFinishing() || home == null || !shelfIsStale()) return;
-            // the viewer has not touched the remote yet, or has left it alone for a few seconds
-            boolean quiet = lastKeyAt == 0 || android.os.SystemClock.uptimeMillis() - lastKeyAt > 6_000;
-            boolean free = inFront && !isCurating && !home.modal.isShowing() && home.opening.getVisibility() != View.VISIBLE;
-            if (quiet && free) refreshShelf();
-            else handler.postDelayed(this, 3_000);
-        }
-    };
 
     /** When CineTV itself last opened Google's own voice window (the key service leaves that one open). */
     public static volatile long ourVoiceAt;
@@ -1334,6 +1384,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private void curate(final String mood, final boolean refresh) {
         if (isCurating) return;
         isCurating = true;
+        curateStartedAt = android.os.SystemClock.uptimeMillis();
+        final long startedAt = curateStartedAt;
         String provider = LlmClient.providerName(this);
         // the current shelf and its title stay until the new one is ready (no "hazırlanıyor" over it)
         if (mood != null) home.shelfLabel.setText(getString(R.string.shelf_curating, "Gamze").toUpperCase(Locale.getDefault()));
@@ -1346,6 +1398,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 final List<Movie> films = s == null ? null : fillShelf(getApplicationContext(), s.movies, PerformanceProfile.shelfSize(this));
                 ui(() -> {
                     try {
+                        // the fresh start already fell back to a category shelf while this was thinking: no swap
+                        if (freshTimedOutAt > startedAt) return;
                         if (films != null && !films.isEmpty()) setShelf(s.title.isEmpty() ? momentTitle("GAMZE'NİN SEÇKİSİ") : s.title, films, true);
                         else if (mood == null || refresh) categoryShelf();
                         else restoreShelfLabel();
@@ -1467,6 +1521,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.shelfLabel.setText(cleanTitle.toUpperCase(Locale.getDefault()));
         home.rail.setActive(cleanTitle);
         home.shelf.setMovies(movies);
+        if (freshPending || home.splashHeld()) {
+            freshPending = false;
+            handler.removeCallbacks(freshDeadline);
+            handler.removeCallbacks(freshHardLimit);
+            // a moment for the first covers to be baked behind the opening
+            handler.postDelayed(() -> home.releaseSplash(), 300);
+        }
         final Context app = getApplicationContext();
         for (int i = 0; i < Math.min(4, movies.size()); i++) {
             MovieCatalog.prefetchTrailer(app, movies.get(i));

@@ -42,6 +42,10 @@ import java.util.Locale;
  * green privacy dot never sticks on screen.
  */
 public class VoiceOverlay extends FrameLayout {
+    /** What the recognizer heard last, and the other ways it could have heard it (for the assistant). */
+    public static volatile String lastHeard;
+    public static volatile java.util.List<String> lastAlternatives = java.util.Collections.emptyList();
+
 
     public interface Listener {
         void onResult(String text);
@@ -242,7 +246,15 @@ public class VoiceOverlay extends FrameLayout {
                     if (!active) return;
                     ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                     if (matches != null && !matches.isEmpty()) {
-                        final String said = matches.get(0);
+                        // the most confident hearing, not blindly the first; the others go to Gamze as alternatives
+                        float[] conf = results.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES);
+                        int best = 0;
+                        for (int i = 1; conf != null && i < conf.length && i < matches.size(); i++) if (conf[i] > conf[best]) best = i;
+                        final String said = matches.get(best);
+                        java.util.List<String> alt = new java.util.ArrayList<>();
+                        for (int i = 0; i < matches.size(); i++) if (i != best && !matches.get(i).equalsIgnoreCase(said)) alt.add(matches.get(i));
+                        lastHeard = said;
+                        lastAlternatives = alt;
                         statusTitle.setText("tr".equals(Locale.getDefault().getLanguage()) ? "Anlaşıldı" : "Heard");
                         statusTitle.setTextColor(Color.parseColor("#34D399"));
                         resultText.setText("“" + said + "”");
@@ -279,7 +291,8 @@ public class VoiceOverlay extends FrameLayout {
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag());
             intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
-            intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
+            intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, Locale.getDefault().toLanguageTag());
             listenIntent = intent;
             startBluetoothScoIfConnected();
             recognizer.startListening(intent);

@@ -210,7 +210,11 @@ public final class AirPodsLink {
                     if (t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
                         t == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
                         t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET ||
-                        t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES) {
+                        t == android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                        (android.os.Build.VERSION.SDK_INT >= 26 && t == android.media.AudioDeviceInfo.TYPE_USB_HEADSET) ||
+                        (android.os.Build.VERSION.SDK_INT >= 28 && t == android.media.AudioDeviceInfo.TYPE_HEARING_AID) ||
+                        (android.os.Build.VERSION.SDK_INT >= 31 && (t == android.media.AudioDeviceInfo.TYPE_BLE_HEADSET
+                                || t == android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER))) {
                         return true;
                     }
                 }

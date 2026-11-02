@@ -88,16 +88,49 @@ public final class HomeGuard {
         }
     }
 
-    /** Directly sets CineTV as the default Home launcher, falling back to the system chooser. */
+    private static volatile boolean takingOver;
+
+    /**
+     * Makes CineTV the TV's Home without asking anything: through the TV's own adb it takes the Home role and,
+     * once, switches the other launchers off (journaled; Settings and "CineTV'yi yok et" bring them back). No
+     * chooser or settings page ever opens by itself: only the viewer's own tap in Settings does that. Off the main
+     * thread (adb can take a moment).
+     */
     public static void ensureDefaultHome(Context ctx) {
-        if (isDefault(ctx)) return;
-        String pkg = ctx.getPackageName();
-        com.cinetv.launcher.remote.LocalAdb.shell(ctx,
-                "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity 2>/dev/null; "
+        final Context app = ctx.getApplicationContext();
+        if (takingOver) return;
+        takingOver = true;
+        new Thread(() -> {
+            try {
+                if (!isDefault(app)) {
+                    String pkg = app.getPackageName();
+                    com.cinetv.launcher.remote.LocalAdb.shell(app, homeCommands(pkg), 4000);
+                }
+                takeOverOnce(app);
+            } finally {
+                takingOver = false;
+            }
+        }, "cinetv-home-takeover").start();
+    }
+
+    /** The other launchers off, once, when CineTV is Home (never again after the viewer brought them back). */
+    private static void takeOverOnce(Context app) {
+        android.content.SharedPreferences p = Prefs.get(app);
+        if (p.getBoolean(TAKEOVER_DONE, false) || !isDefault(app)) return;
+        if (com.cinetv.launcher.device.HomeLaunchers.others(app).isEmpty()
+                || com.cinetv.launcher.device.HomeLaunchers.disableOthers(app) >= 0) {
+            p.edit().putBoolean(TAKEOVER_DONE, true).apply();
+        }
+    }
+
+    /** Set when the takeover has run; cleared never (restoring the launchers is the viewer's choice). */
+    public static final String TAKEOVER_DONE = "home_takeover_done";
+
+    private static String homeCommands(String pkg) {
+        return "cmd role add-role-holder --user 0 android.app.role.HOME " + pkg + " 2>/dev/null; "
+                + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity 2>/dev/null; "
                 + "cmd package set-home-activity --user current " + pkg + "/.MainActivity 2>/dev/null; "
-                + "cmd package set-home-activity " + pkg + "/.MainActivity 2>/dev/null", 2000);
-        if (isDefault(ctx)) return;
-        promptHomeChooser(ctx);
+                + "cmd package set-home-activity " + pkg + "/.MainActivity 2>/dev/null; ";
     }
 
     /** Directly opens system accessibility settings, bypassing custom OEM TV settings menus. */
@@ -121,9 +154,7 @@ public final class HomeGuard {
                 + "appops set " + pkg + " SYSTEM_ALERT_WINDOW allow 2>/dev/null; "
                 + "pm grant " + pkg + " android.permission.BLUETOOTH_CONNECT 2>/dev/null; "
                 + "pm grant " + pkg + " android.permission.BLUETOOTH_SCAN 2>/dev/null; "
-                + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity 2>/dev/null; "
-                + "cmd package set-home-activity --user current " + pkg + "/.MainActivity 2>/dev/null; "
-                + "cmd package set-home-activity " + pkg + "/.MainActivity 2>/dev/null; "
+                + homeCommands(pkg)
                 + "s=$(settings get secure enabled_accessibility_services 2>/dev/null); case \"$s\" in *" + service + "*) ;; "
                 + "null|'') settings put secure enabled_accessibility_services " + service + " 2>/dev/null ;; "
                 + "*) settings put secure enabled_accessibility_services \"$s:" + service + "\" 2>/dev/null ;; esac; "
@@ -132,5 +163,6 @@ public final class HomeGuard {
                 + "settings put secure screensaver_activate_on_sleep 1 2>/dev/null; "
                 + "settings put secure screensaver_components " + pkg + "/" + pkg + ".ClockDream 2>/dev/null; ";
         com.cinetv.launcher.remote.LocalAdb.shell(app, cmd, 30_000);
+        takeOverOnce(app);
     }
 }

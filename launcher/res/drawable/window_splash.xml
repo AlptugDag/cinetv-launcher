@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The window Android shows while CineTV starts (or comes back after the TV closed it): the logo on black,
-     never a blank screen. The banner itself, at a fixed size (no second copy in the APK). -->
+<!-- The window Android shows while CineTV starts (or comes back after the TV closed it): the opening's own logo on
+     black (no card around it), so it runs straight on into the animated opening. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@android:color/black" />
-    <item android:drawable="@drawable/ic_banner" android:width="320dp" android:height="180dp" android:gravity="center" />
+    <item>
+        <bitmap android:src="@drawable/window_logo" android:gravity="center" android:filter="true" />
+    </item>
 </layer-list>

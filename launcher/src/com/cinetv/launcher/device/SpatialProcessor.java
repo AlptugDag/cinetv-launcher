@@ -4,6 +4,8 @@ import androidx.media3.common.C;
 import androidx.media3.common.audio.AudioProcessor;
 import androidx.media3.common.audio.BaseAudioProcessor;
 
+import android.util.Log;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -28,13 +30,23 @@ public final class SpatialProcessor extends BaseAudioProcessor {
     private int delay;
     private float[] histL = new float[64], histR = new float[64];
     private int pos;
+    private static final int ROOM = 1024;
+    private float[] roomL = new float[ROOM], roomR = new float[ROOM];
+    private int rpos, refl1 = 300, refl2 = 560;
     private float lpL, lpR;
 
     @Override
     protected AudioFormat onConfigure(AudioFormat in) throws UnhandledAudioFormatException {
-        if (in.encoding != C.ENCODING_PCM_16BIT || (in.channelCount != 2 && in.channelCount != 6)) return AudioFormat.NOT_SET;
+        // mono, stereo, 5.1 and 7.1 (7.1 used to pass by untouched: no effect at all on those films)
+        if (in.encoding != C.ENCODING_PCM_16BIT || (in.channelCount != 1 && in.channelCount != 2 && in.channelCount != 6 && in.channelCount != 8)) {
+            return AudioFormat.NOT_SET;
+        }
         inChannels = in.channelCount;
         delay = Math.max(1, Math.min(60, Math.round(in.sampleRate * 0.00028f))); // about 0.28 ms between the ears
+        // two early reflections of a living room (7 and 13 ms): what makes the surround audibly a room
+        refl1 = Math.max(1, Math.min(ROOM - 1, Math.round(in.sampleRate * 0.007f)));
+        refl2 = Math.max(1, Math.min(ROOM - 1, Math.round(in.sampleRate * 0.013f)));
+        Log.i("CineTvSpatial", "mode " + mode + " headphones " + headphones + " " + in.channelCount + "ch " + in.sampleRate + " Hz");
         return new AudioFormat(in.sampleRate, 2, C.ENCODING_PCM_16BIT);
     }
 
@@ -46,13 +58,20 @@ public final class SpatialProcessor extends BaseAudioProcessor {
         int m = headphones ? mode : 0;
         for (int f = 0; f < frames; f++) {
             float l, r, sl = 0, sr = 0;
-            if (inChannels == 6) {
+            if (inChannels >= 6) {
                 float fl = input.getShort() / 32768f, fr = input.getShort() / 32768f, c = input.getShort() / 32768f;
                 float lfe = input.getShort() / 32768f;
                 sl = input.getShort() / 32768f;
                 sr = input.getShort() / 32768f;
+                if (inChannels == 8) {
+                    // 7.1: the side pair joins the surrounds
+                    sl = 0.75f * sl + 0.75f * (input.getShort() / 32768f);
+                    sr = 0.75f * sr + 0.75f * (input.getShort() / 32768f);
+                }
                 l = fl + 0.707f * c + 0.4f * lfe;
                 r = fr + 0.707f * c + 0.4f * lfe;
+            } else if (inChannels == 1) {
+                l = r = input.getShort() / 32768f;
             } else {
                 l = input.getShort() / 32768f;
                 r = input.getShort() / 32768f;
@@ -68,6 +87,14 @@ public final class SpatialProcessor extends BaseAudioProcessor {
                 histL[pos] = l + sl;
                 histR[pos] = r + sr;
                 pos = (pos + 1) & 63;
+                // early reflections, crossed (the left wall's echo reaches the right ear too)
+                float e1l = roomL[(rpos - refl1 + ROOM) % ROOM], e1r = roomR[(rpos - refl1 + ROOM) % ROOM];
+                float e2l = roomL[(rpos - refl2 + ROOM) % ROOM], e2r = roomR[(rpos - refl2 + ROOM) % ROOM];
+                roomL[rpos] = l + sl;
+                roomR[rpos] = r + sr;
+                rpos = (rpos + 1) % ROOM;
+                ol += 0.22f * e1l + 0.16f * e2r;
+                or += 0.22f * e1r + 0.16f * e2l;
                 ol *= 0.72f;
                 or *= 0.72f;
             } else if (m == 2) {
@@ -99,6 +126,9 @@ public final class SpatialProcessor extends BaseAudioProcessor {
         histR = new float[64];
         pos = 0;
         lpL = lpR = 0;
+        roomL = new float[ROOM];
+        roomR = new float[ROOM];
+        rpos = 0;
     }
 
     /** For DefaultAudioSink's processor list. */

@@ -195,6 +195,14 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     /** Clicks the play button on Nuvio's title page; false while the page (or the button) is not there yet. */
     public boolean clickNuvioPlay() {
+        return clickNuvioPlay(false);
+    }
+
+    /**
+     * Series: an episode the viewer started is resumed ("Devam Et"); a series never watched opens its episode list
+     * instead of starting S1E1 ("Oynat" is never pressed for a series). True once done.
+     */
+    public boolean clickNuvioPlay(boolean series) {
         try {
             // The active window can be CineTV's own signature overlay drawn over Nuvio: look through every window.
             android.view.accessibility.AccessibilityNodeInfo root = null;
@@ -206,10 +214,15 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 }
             }
             if (root == null) root = getRootInActiveWindow();
-            if (root == null || root.getPackageName() == null || !isNuvioApp(root.getPackageName().toString())) return false;
+            if (root == null || root.getPackageName() == null || !isNuvioApp(root.getPackageName().toString())) {
+                android.util.Log.d("CineTvPlay", "no Nuvio window yet (" + (root == null ? "none" : root.getPackageName()) + ")");
+                return false;
+            }
             android.graphics.Rect screen = new android.graphics.Rect();
             root.getBoundsInScreen(screen);
-            for (String label : new String[]{"Oynat", "Devam Et", "İzlemeye Devam Et", "Play", "Resume"}) {
+            if (series) return seriesButton(root);
+            String[] labels = new String[]{"Oynat", "Devam Et", "İzlemeye Devam Et", "Play", "Resume"};
+            for (String label : labels) {
                 // Compose text is not always returned by findAccessibilityNodeInfosByText: walk the tree.
                 java.util.List<android.view.accessibility.AccessibilityNodeInfo> found = new java.util.ArrayList<>();
                 findText(root, label, found, 0);
@@ -219,20 +232,77 @@ public class TvKeyInterceptorService extends AccessibilityService {
                     if (t == null || !t.toString().trim().equalsIgnoreCase(label)) continue;
                     if (insideTrailer(n)) continue;
                     // the label is often a child of the button: climb to the clickable one, a button-sized one
+                    // (Nuvio 1.1's Compose tree puts the button up to 6-7 levels above its text)
                     android.view.accessibility.AccessibilityNodeInfo c = n;
-                    for (int i = 0; c != null && !c.isClickable() && i < 3; i++) c = c.getParent();
-                    if (c == null || !c.isClickable()) continue;
+                    for (int i = 0; c != null && !c.isClickable() && !c.isFocusable() && i < 8; i++) c = c.getParent();
+                    if (c == null || !(c.isClickable() || c.isFocusable())) {
+                        // the button Nuvio has already focused, if the label lies inside it
+                        android.view.accessibility.AccessibilityNodeInfo f2 = root.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT);
+                        android.graphics.Rect lb = new android.graphics.Rect(), fb = new android.graphics.Rect();
+                        n.getBoundsInScreen(lb);
+                        if (f2 != null) f2.getBoundsInScreen(fb);
+                        if (f2 != null && fb.contains(lb)) {
+                            c = f2;
+                        } else {
+                            android.util.Log.d("CineTvPlay", "'" + label + "' found, no clickable parent");
+                            continue;
+                        }
+                    }
                     android.graphics.Rect b = new android.graphics.Rect();
                     c.getBoundsInScreen(b);
                     if (screen.height() > 0 && (b.height() > screen.height() / 4 || b.width() > screen.width() / 2)) continue;
                     c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS);
-                    return c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);
+                    boolean ok = c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);
+                    if (!ok && c.isFocused()) {
+                        // a Compose button that ignores the accessibility click: the remote's OK on it, through the TV's adb
+                        ok = com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent 23", 1500);
+                    }
+                    android.util.Log.d("CineTvPlay", "'" + label + "' click " + ok);
+                    return ok;
                 }
             }
         } catch (Throwable t) {
             android.util.Log.w("CineTvPlay", "clickNuvioPlay: " + t);
         }
         return false;
+    }
+
+    /** The first text node starting with one of the prefixes (case-insensitive). */
+    private static android.view.accessibility.AccessibilityNodeInfo findPrefix(android.view.accessibility.AccessibilityNodeInfo n, String[] prefixes, int depth) {
+        if (n == null || depth > 40) return null;
+        CharSequence t = n.getText();
+        if (t != null) {
+            String s = t.toString().trim().toLowerCase(new java.util.Locale("tr"));
+            for (String p : prefixes) if (s.startsWith(p)) return n;
+        }
+        for (int i = 0; i < n.getChildCount(); i++) {
+            android.view.accessibility.AccessibilityNodeInfo r = findPrefix(n.getChild(i), prefixes, depth + 1);
+            if (r != null) return r;
+        }
+        return null;
+    }
+
+    /**
+     * Nuvio's series page names the next episode on its button ("Oynat S1 B1", "Oynat S2 B4", "Devam Et ..."). The first
+     * episode means never watched: the focus goes down to the episode list instead. Any later one is where the viewer
+     * stopped: it is pressed and Nuvio resumes there.
+     */
+    private boolean seriesButton(android.view.accessibility.AccessibilityNodeInfo root) {
+        android.view.accessibility.AccessibilityNodeInfo n = findPrefix(root, new String[]{"oynat", "devam", "izlemeye devam", "play", "resume", "continue"}, 0);
+        if (n == null) return false; // the page is not there yet
+        String t = n.getText().toString().replaceAll("\\s+", " ").trim().toLowerCase(new java.util.Locale("tr"));
+        boolean first = t.matches(".*\\b(s1 ?b1|s1 ?e1|s01 ?e01|1\\. sezon 1\\. bölüm)\\b.*") && !t.startsWith("devam") && !t.contains("resume") && !t.contains("continue");
+        if (first) {
+            boolean ok = com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent 20", 1500);
+            android.util.Log.d("CineTvPlay", "series never watched: episode list " + ok);
+            return true;
+        }
+        android.view.accessibility.AccessibilityNodeInfo c = n;
+        for (int i = 0; c != null && !c.isClickable() && !c.isFocusable() && i < 8; i++) c = c.getParent();
+        boolean ok = c != null && c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);
+        if (!ok) ok = com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent 23", 1500);
+        android.util.Log.d("CineTvPlay", "series resumed (" + t + ") " + ok);
+        return true;
     }
 
     /** A node in Nuvio's trailer area ("Fragman", "Trailer" in it or its ancestors' text). */

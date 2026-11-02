@@ -240,7 +240,7 @@ public final class MovieAssistant {
                 + "- Constraints are strict: an age, a decade, a country, a language or a theme the viewer gives must hold for EVERY title you list; put a year range in from/to.\n"
                 + "- 'aç/oynat/izle X': intent play, query = X, voice = a short go-ahead.\n"
                 + "- learned: only what the viewer actually said in THIS message (their name, who they watch with, kids, a film they loved or hated); leave the rest empty.";
-        LlmClient.Result r = LlmClient.generate(ctx, system, query, 2000, true);
+        LlmClient.Result r = LlmClient.generate(ctx, system, withHearings(query), 2000, true);
         if (!r.success) return null;
         JSONObject plan;
         try {
@@ -810,6 +810,19 @@ public final class MovieAssistant {
 
     public static String momentContext(String cityAndWeather) {
         return momentContext(null, cityAndWeather);
+    }
+
+    /**
+     * A spoken request comes with the recognizer's other hearings, so a misheard name ("kita no filmleri") is read as
+     * the film or person that fits ("Kitano"). Typed requests are passed as they are.
+     */
+    static String withHearings(String query) {
+        String heard = com.cinetv.launcher.ui.VoiceOverlay.lastHeard;
+        List<String> alt = com.cinetv.launcher.ui.VoiceOverlay.lastAlternatives;
+        if (heard == null || alt == null || alt.isEmpty() || !heard.equals(query)) return query;
+        StringBuilder sb = new StringBuilder(query).append("\n(Spoken; speech recognition may have misheard. Other hearings: ");
+        for (int i = 0; i < alt.size() && i < 4; i++) sb.append(i > 0 ? " | " : "").append(alt.get(i));
+        return sb.append(". Use whichever reading names a real film, series or person; never mention this note.)").toString();
     }
 
     private static List<Movie> collect(List<Future<List<Movie>>> jobs, int max) {

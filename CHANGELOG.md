@@ -1,5 +1,31 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.29
+
+- **Açılışta eski vitrin artık yok:**
+  - TV açıldığında, bekleme modundan çıktığında ve Ana Sayfa'ya bir saatten uzun aradan sonra dönüldüğünde önceki vitrin hiç gösterilmiyor.
+  - Açılış animasyonu yeni vitrin hazır olana kadar ekranda kalıyor.
+  - Yapay zekâ 6 saniyede yanıt vermezse yine yepyeni bir kategori vitrini geliyor; geç gelen yanıt sonradan vitrini değiştirmiyor.
+- **Açılış ekranı:**
+  - Logo artık kesik bir kart içinde değil, siyah üzerinde.
+  - Eski sürümlerdeki kırmızı, kalp atışı gibi atan ışık geri geldi.
+  - Normal açılış daha kısa sürüyor.
+- **Ana ekranı tamamen devralma:** CineTV, TV'nin kendi adb'si ile Ana Ekran rolünü sessizce alıyor ve diğer başlatıcıları bir kez kapatıyor. "Hangisini seçmek istersiniz?" penceresi artık kendiliğinden hiç açılmıyor. Ayarlar'dan ve "CineTV'yi yok et" ile her şey eski haline dönüyor.
+- **Tek Ana Ekran:** Home tuşu ile CineTV'nin kendi açılışları farklı görevlere düşüp ana ekranın birden fazla kopyasını açabiliyordu; her kopya bütün raf görsellerini bellekte tutuyordu (1,3 GB'lık bir TV'de 13 kopya bulundu). Artık her zaman tek kopya var.
+- **İçerik açarken:**
+  - Nuvio'nun "Oynat" düğmesi yine kendiliğinden basılıyor, doğrudan kaynak seçimine ya da oynatmaya geçiliyor. Nuvio 1.1'de düğme yazının birkaç kat yukarısında olduğu için bulunamıyordu.
+  - Dizilerde hiç izlenmediyse bölüm listesine geçiliyor; izlendiyse kaldığınız bölümden devam ediliyor.
+- **Fragmanlı kutularda OK:** Disk animasyonu yok; fragman çerçevesi büyüyüp bütün ekranı kaplıyor, kararıyor ve film açılıyor.
+- **Temaya özel kutu içi:** Kâğıt tutucular (pirinç klips, altın varak, krom kelepçe, şeffaf akrilik, neon tüp), kutunun iç kaplaması (keçe, kadife, ceviz, fırçalanmış metal, buzlu akrilik, neon ızgara) ve disk göbeği her temada farklı. Yazılar her temada aynı el yazısıyla, eski boyut ve yerleşimiyle.
+- **Kutular daha hızlı doluyor:** Bir raftaki bütün afişler aynı anda paralel indiriliyor; her kapak yalnızca kendi afişini bekliyor. Sırttaki film logoları daha kısa bekliyor.
+- **Uzamsal ses (her kulaklık):**
+  - Panel artık "Kulaklık & Uzamsal Ses"; Bluetooth, kablolu, USB ve BLE kulaklıklar ile işitme cihazları tanınıyor.
+  - 7.1 ve mono filmler de işleniyor (önceden hiç etkilenmiyordu).
+  - "Sanal Surround" artık oda yansımalarıyla belirgin bir oda hissi veriyor.
+  - Not: Bu işlem AlptugPlayer'da çalışıyor. Nuvio'da etkili olması için Nuvio'nun dış oynatıcısı olarak "CineTV Oynatıcı" seçilmeli; Android başka bir uygulamanın sesini işlemeye izin vermiyor.
+- **Ses tanıma:** En güvenilir duyulan cümle seçiliyor, diğer olası duyuşlar da Gamze'ye veriliyor; yanlış duyulan film ya da kişi adı bağlamdan düzeltiliyor.
+- **Tema adları** yeniden Türkçe (1.0.0.28'deki derleme araçları güncellemesi bu metinleri pakete almıyordu).
+
 ## 1.0.0.28
 
 - **Vitrin başlıkları:**

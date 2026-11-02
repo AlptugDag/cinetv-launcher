@@ -272,12 +272,12 @@ public final class AppLauncher {
      * could land on "watched" or "+"), which opens the film's sources or plays it, per the viewer's Nuvio settings.
      * Tries for up to 15 seconds, then leaves the page as it is.
      */
-    private static void pressPlayWhenReady(final Context app, final long startedAt) {
+    private static void pressPlayWhenReady(final Context app, final long startedAt, final boolean series) {
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
             com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
-            boolean clicked = !com.cinetv.launcher.MainActivity.foreground && svc != null && svc.clickNuvioPlay();
-            if (clicked) android.util.Log.i("CineTvPlay", "Oynat clicked on Nuvio's title page");
-            if (!clicked && System.currentTimeMillis() - startedAt < 15_000) pressPlayWhenReady(app, startedAt);
+            boolean clicked = !com.cinetv.launcher.MainActivity.foreground && svc != null && svc.clickNuvioPlay(series);
+            if (clicked) android.util.Log.i("CineTvPlay", (series ? "Series: resumed or episode list" : "Oynat") + " on Nuvio's title page");
+            if (!clicked && System.currentTimeMillis() - startedAt < 15_000) pressPlayWhenReady(app, startedAt, series);
         }, 800);
     }
 
@@ -316,7 +316,7 @@ public final class AppLauncher {
             if (targetPkg != null) open.setPackage(targetPkg);
             open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             if (start(ctx, open)) {
-                pressPlayWhenReady(ctx.getApplicationContext(), System.currentTimeMillis());
+                pressPlayWhenReady(ctx.getApplicationContext(), System.currentTimeMillis(), "series".equals(kind));
                 return true;
             }
             Intent detail = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/" + kind + "/" + imdbId));
