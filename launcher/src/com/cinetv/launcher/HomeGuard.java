@@ -113,10 +113,8 @@ public final class HomeGuard {
     private static volatile boolean takingOver;
 
     /**
-     * Makes CineTV the TV's Home without asking anything: through the TV's own adb it takes the Home role and,
-     * once, switches the other launchers off (journaled; Settings and "CineTV'yi yok et" bring them back). No
-     * chooser or settings page ever opens by itself: only the viewer's own tap in Settings does that. Off the main
-     * thread (adb can take a moment).
+     * Makes CineTV the TV's Home through the TV's own adb. Other launchers are left installed and enabled;
+     * switching them off is an explicit, reversible action in Settings. Off the main thread.
      */
     public static void ensureDefaultHome(Context ctx) {
         final Context app = ctx.getApplicationContext();
@@ -128,25 +126,11 @@ public final class HomeGuard {
                     String pkg = app.getPackageName();
                     com.cinetv.launcher.remote.LocalAdb.shell(app, homeCommands(pkg), 4000);
                 }
-                takeOverOnce(app);
             } finally {
                 takingOver = false;
             }
         }, "cinetv-home-takeover").start();
     }
-
-    /** The other launchers off, once, when CineTV is Home (never again after the viewer brought them back). */
-    private static void takeOverOnce(Context app) {
-        android.content.SharedPreferences p = Prefs.get(app);
-        if (p.getBoolean(TAKEOVER_DONE, false) || !isDefault(app)) return;
-        if (com.cinetv.launcher.device.HomeLaunchers.others(app).isEmpty()
-                || com.cinetv.launcher.device.HomeLaunchers.disableOthers(app) >= 0) {
-            p.edit().putBoolean(TAKEOVER_DONE, true).apply();
-        }
-    }
-
-    /** Set when the takeover has run; cleared never (restoring the launchers is the viewer's choice). */
-    public static final String TAKEOVER_DONE = "home_takeover_done";
 
     /**
      * The remote's microphone comes to Gamze, never to Google's assistant: CineTV takes the assistant role, and Google
@@ -198,6 +182,5 @@ public final class HomeGuard {
                 + "settings put secure screensaver_activate_on_sleep 1 2>/dev/null; "
                 + "settings put secure screensaver_components " + pkg + "/" + pkg + ".ClockDream 2>/dev/null; ";
         com.cinetv.launcher.remote.LocalAdb.shell(app, cmd, 30_000);
-        takeOverOnce(app);
     }
 }

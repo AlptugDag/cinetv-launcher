@@ -61,7 +61,8 @@ public final class HomeLaunchers {
         for (ResolveInfo ri : ctx.getPackageManager().queryIntentActivities(home, 0)) {
             if (ri.activityInfo == null) continue;
             String p = ri.activityInfo.packageName;
-            if (p.equals(ctx.getPackageName()) || isNever(p)) continue;
+            if (p.equals(ctx.getPackageName()) || isNever(p) || ri.activityInfo.name.endsWith("FallbackHome")) continue;
+            if (!ri.activityInfo.enabled || !isPackageEnabled(ctx, p)) continue;
             out.add(p);
         }
         return new ArrayList<>(out);
@@ -106,8 +107,20 @@ public final class HomeLaunchers {
         cmd.append("for l in com.google.android.tvlauncher com.google.android.apps.tv.launcherx com.google.android.leanbacklauncher; do pm enable $l 2>/dev/null; done; ");
         cmd.append("pm clear-package-preferred-activities ").append(ctx.getPackageName()).append(" 2>/dev/null");
         boolean ok = LocalAdb.shell(ctx, cmd.toString(), 8000);
-        if (ok) Prefs.get(ctx).edit().remove(JOURNAL).commit();
-        return ok;
+        if (!ok) return false;
+        for (String p : list) if (!isPackageEnabled(ctx, p)) return false;
+        Prefs.get(ctx).edit().remove(JOURNAL).commit();
+        return true;
+    }
+
+    private static boolean isPackageEnabled(Context ctx, String pkg) {
+        try {
+            int state = ctx.getPackageManager().getApplicationEnabledSetting(pkg);
+            return state == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+                    || state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private static List<String> journal(Context ctx) {

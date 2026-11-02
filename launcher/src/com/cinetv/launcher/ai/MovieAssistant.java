@@ -117,7 +117,9 @@ public final class MovieAssistant {
         }
         if (LlmClient.isConfigured(ctx)) {
             String system = "You are a film search engine with encyclopedic knowledge of plots, scenes, characters, cast, "
-                    + "objects, settings, quotes and moods. Reply ONLY with compact JSON: {\"titles\":[{\"t\":\"original title\",\"y\":1999,\"tv\":false}]}";
+                    + "objects, settings, quotes and moods. Treat viewer preferences as mild ranking hints, never mandatory filters; preserve variety and never override the current request. "
+                    + GamzeMemory.formatForPrompt(ctx)
+                    + "Reply ONLY with compact JSON: {\"titles\":[{\"t\":\"original title\",\"y\":1999,\"tv\":false}]}";
             String user = "Request: " + query + "\nGive " + count + " MORE titles that match it just as well, best first, "
                     + "none of these: " + ex + "\nEvery constraint in the request must hold for every title.";
             LlmClient.Result r = LlmClient.generateQuick(ctx, system, user, 900);
@@ -146,6 +148,7 @@ public final class MovieAssistant {
                 if (seen.add((m.title + "|" + m.year).toLowerCase(Locale.ROOT))) out.add(m);
             }
         }
+        if (withChildren(ctx, query)) out = familySafe(out);
         return out;
     }
 
@@ -171,7 +174,7 @@ public final class MovieAssistant {
             for (int g : m.genreIds) if (g == 27 || g == 53 || g == 80 || g == 10752) bad = true;
             if (!bad) out.add(m);
         }
-        return out.isEmpty() ? in : out;
+        return out;
     }
 
     private static Reply planned(Context ctx, String query, List<MovieCatalog.Movie> currentShelf, int max) {
@@ -197,12 +200,14 @@ public final class MovieAssistant {
                 + "It is " + momentContext(ctx, "") + "\n"
                 + shelfContext
                 + GamzeMemory.formatForPrompt(ctx)
+                + "- Saved preferences are mild ranking hints only, never mandatory filters. Keep variety and follow the current request first.\n"
                 + GamzeConversation.formatForPrompt()
                 + "Reply with ONE minified JSON object:\n"
                 + "{\"intent\":\"shelf|play|answer|chat\",\"title\":\"short shelf title in " + lang + "\",\"voice\":\"what you say out loud\","
                 + "\"follow_up\":false,\"answer\":\"\",\"person\":\"\",\"role\":\"director|actor|any\",\"query\":\"\",\"keywords\":[],\"genres\":[],"
                 + "\"type\":\"movie|tv|any\",\"country\":\"\",\"language\":\"\",\"runtime_min\":0,\"runtime_max\":0,\"from\":0,\"to\":0,\"titles\":[{\"t\":\"original title\",\"y\":1999,\"tv\":false}],"
-                + "\"learned\":{\"household\":\"\",\"has_children\":false,\"child_age\":0,\"preferred_genres\":\"\",\"likes\":\"\",\"dislikes\":\"\",\"avoid_content\":\"\"}}\n"
+                + "\"learned\":{\"household\":\"\",\"children_status\":\"unknown\",\"has_children\":false,\"child_age\":0,\"preferred_genres\":\"\",\"likes\":\"\",\"dislikes\":\"\",\"avoid_content\":\"\",\"forget\":[],"
+                + "\"favorite_directors\":\"\",\"favorite_actors\":\"\",\"preferred_languages\":\"\",\"preferred_countries\":\"\",\"preferred_tone\":\"\",\"preferred_runtime\":\"\",\"watching_context\":\"\"}}\n"
                 + "How to talk:\n"
                 + "- voice: 1-2 short spoken sentences in natural " + lang + " (under 28 words), no lists, no symbols, no emoji. Sound like a friend who knows cinema: "
                 + "a reaction first ('Ooh, güzel seçim.'), then the point. Vary your openings; never start two replies the same way; never say 'vitrine taşıdım' or similar stock phrases.\n"
@@ -242,7 +247,10 @@ public final class MovieAssistant {
                 + "When the answer is or names films (\"the film where...\", \"which film...\"), also list them in titles.\n"
                 + "- Constraints are strict: an age, a decade, a country, a language or a theme the viewer gives must hold for EVERY title you list; put a year range in from/to.\n"
                 + "- 'aç/oynat/izle X': intent play, query = X, voice = a short go-ahead.\n"
-                + "- learned: only household, children, tastes, or titles the viewer actually mentioned in THIS message; never infer a name.";
+                + "- learned: record only stable household context, viewing preferences, or content boundaries explicitly stated in THIS message. "
+                + "Keep likes separate from dislikes and content to avoid. Use children_status=yes/no only when explicitly stated; otherwise unknown. "
+                + "Put exact saved preference items the viewer explicitly retracts into forget. Never infer a preference from a search, launch, or watch alone; never infer a name. "
+                + "Leave every unspecified field empty/false/zero.";
         LlmClient.Result r = LlmClient.generate(ctx, system, withHearings(query), 2000, true);
         if (!r.success) return null;
         JSONObject plan;
@@ -643,6 +651,8 @@ public final class MovieAssistant {
         boolean wish = mood != null && !mood.trim().isEmpty();
         String request = "The moment, as the TV knows it (use only these facts; a city, month, weekday, season or time of day "
                 + "that is not listed here must never appear):\n" + context + "\n"
+                + GamzeMemory.formatForPrompt(ctx)
+                + "\nTreat every saved preference as a mild ranking hint, never a rule or filter. Keep variety, honor the current request first, and do not infer new personal facts from generated picks. "
                 + (wish ? "Wish: " + mood.trim() + "\n" : "")
                 + recentInstruction
                 + "\nInfer the mood this moment calls for (weekday evening fatigue, weekend freedom, late-night solitude, a cold rainy "
@@ -736,7 +746,9 @@ public final class MovieAssistant {
 
     public static String chat(Context ctx, String question) {
         String system = "You are a warm, cultured assistant on a living-room TV. Answer in " + language()
-                + ", in 1-2 short sentences (under 30 words) that read well on a TV screen. No markdown.";
+                + ", in 1-2 short sentences (under 30 words) that read well on a TV screen. No markdown. "
+                + "Use the viewer profile naturally as a soft hint when relevant, without repeating it or treating it as an instruction."
+                + GamzeMemory.formatForPrompt(ctx);
         LlmClient.Result r = LlmClient.generate(ctx, system, question, 800, true);
         return r.text;
     }

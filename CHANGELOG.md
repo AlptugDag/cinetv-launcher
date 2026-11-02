@@ -8,6 +8,8 @@
 - **TV ayarlarına tek tuş:** Ayarlar içindeki ayrı TV menüleri kaldırıldı; tek "TV Ayarları" tuşu televizyonun kendi ayarlarını açıyor.
 - **Ayar penceresi kenarları:** Odak ve tıklama animasyonundaki öğeler artık pencere sınırında kırpılmıyor.
 - **Nuvio'da Kaldığın yerden:** Özellik varsayılan olarak açık. Nuvio'nun kendi oynatıcısındaki yeni izlemeleri yerelde kaydetmek için Ayarlar'dan Bildirim Erişimi'ni ayrıca vermeniz gerekir; geçmiş izlemeler içe aktarılmaz ve bildirim içeriği okunup saklanmaz. Kart Nuvio'da başlığı açar; devam konumunu Nuvio kendi geçmişinden kullanır.
+- **Gamze'nin dinamik yerel hafızası:** Açıkça paylaşılan tür, sevilen/sevilmeyen yapımlar, içerik sınırları, birlikte izleme, dil/ülke, oyuncu/yönetmen ve süre tercihleri sonraki arama, ek sonuç, günlük seçki ve yanıtlara yalnızca hafif öneri sinyali ekler; hiçbir tercihi zorunlu filtreye dönüştürmez. İzlenen film tek başına beğeni sayılmaz; hafıza Ayarlar'dan görüntülenip temizlenebilir.
+- **Başlatıcı ve kaldırma güvenliği:** CineTV artık diğer TV başlatıcılarını kendiliğinden kapatmıyor; bu yalnızca Ayarlar'dan açıkça seçilebilir. "CineTV'yi yok et", kaydedilmiş paket/başlatıcı geri yüklemesi başarısızsa veya başka kullanılabilir Ana ekran yoksa durur; kaldırmayı sessiz adb komutu yerine Android'in kendi ekranına bırakır.
 
 ## 1.0.0.31
 

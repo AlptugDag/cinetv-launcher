@@ -54,7 +54,20 @@ public final class WatchHistory {
         try {
             JSONObject pending = new JSONObject(Prefs.get(ctx).getString(PENDING, "{}"));
             if (pending.optString("title").isEmpty() || System.currentTimeMillis() - pending.optLong("at") > PENDING_FOR) return;
-            storeProgress(ctx, pending, title, positionMs, durationMs, "cineplayer");
+            String itemKey = key(pending);
+            JSONArray old = new JSONArray(Prefs.get(ctx).getString(LIST, "[]"));
+            JSONArray out = new JSONArray();
+            boolean finished = positionMs > durationMs * 0.92 || durationMs - positionMs < 5 * 60_000L;
+            if (positionMs >= 60_000L && !finished) {
+                pending.put("pos", positionMs).put("dur", durationMs).put("at", System.currentTimeMillis())
+                        .put("stream", title == null ? "" : title);
+                out.put(pending);
+            }
+            for (int i = 0; i < old.length() && out.length() < 8; i++) {
+                JSONObject entry = old.optJSONObject(i);
+                if (entry != null && !key(entry).equals(itemKey)) out.put(entry);
+            }
+            Prefs.get(ctx).edit().putString(LIST, out.toString()).apply();
         } catch (Throwable t) {
             android.util.Log.w("WatchHistory", "Could not save player progress", t);
         }
@@ -71,6 +84,7 @@ public final class WatchHistory {
         } catch (Throwable t) {
             android.util.Log.w("WatchHistory", "Could not save Nuvio playback progress", t);
         }
+        notifyHome();
     }
 
     private static void storeProgress(Context ctx, JSONObject item, String title, long positionMs, long durationMs, String source)

@@ -1555,6 +1555,11 @@ public final class Panels {
                         : viewerName,
                 !viewerName.isEmpty(),
                 v -> host.push(() -> buildViewerNameInput(ctx, host, a))));
+        root.addView(Controls.tile(ctx,
+                tr ? "Gamze'nin Hafızası" : "Gamze's Memory",
+                tr ? "Aramalarda, seçkilerde ve yanıtlarda kullanılan bu TV'ye özel notları gör veya temizle"
+                        : "View or clear this TV-only profile used for searches, picks and answers",
+                false, v -> host.push(() -> buildGamzeMemory(ctx, host, a))));
 
         boolean enabled = Prefs.emaTts(ctx);
         int currentLevel = Prefs.ttsLevel(ctx);
@@ -1638,6 +1643,41 @@ public final class Panels {
                     : "Hello, I am Gamze. Your CineTV cinema assistant is at your service.");
         }));
 
+        return root;
+    }
+
+    private static View buildGamzeMemory(final Context ctx, final ModalHost host, final Actions a) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(28), UiKit.px(36), UiKit.px(28));
+
+        TextView title = UiKit.bold(ctx, 30, UiKit.INK);
+        title.setText(tr ? "Gamze'nin Hafızası" : "Gamze's Memory");
+        root.addView(title);
+
+        TextView description = UiKit.label(ctx, 17, UiKit.INK_DIM);
+        description.setText(tr
+                ? "Yalnızca bu televizyonda saklanır. Gamze, açıkça paylaştığınız izleme tercihlerini sonraki arama, seçki ve yanıtlarında kullanır; oynattığınız filmleri beğeni saymaz."
+                : "Stored only on this TV. Gamze uses viewing preferences you explicitly share in later searches, picks and answers; playing a title alone is not treated as a like.");
+        description.setPadding(0, UiKit.px(12), 0, UiKit.px(18));
+        description.setMaxWidth(UiKit.px(800));
+        root.addView(description);
+
+        TextView summary = UiKit.label(ctx, 18, UiKit.INK);
+        summary.setText(com.cinetv.launcher.ai.GamzeMemory.settingsSummary(ctx, tr));
+        summary.setMaxWidth(UiKit.px(800));
+        root.addView(summary);
+
+        LinearLayout buttons = new LinearLayout(ctx);
+        buttons.setPadding(0, UiKit.px(24), 0, 0);
+        buttons.addView(Controls.button(ctx, tr ? "Hafızayı ve hitap adını temizle" : "Clear memory and preferred name", v -> {
+            com.cinetv.launcher.ai.GamzeMemory.clear(ctx);
+            host.back();
+            host.replace(() -> buildTtsSettings(ctx, host, a));
+        }));
+        buttons.addView(Controls.button(ctx, tr ? "Geri" : "Back", v -> host.back()));
+        root.addView(buttons);
         return root;
     }
 
