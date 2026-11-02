@@ -881,6 +881,45 @@ public final class TvWebRemoteServer {
                 });
                 return ok;
             }
+            case "/api/keys":
+            case "/api/setup": {
+                final String tmdb = clip(q.get("tmdb"), 512);
+                final String ai = clip(q.get("ai"), 512);
+                final String mdblist = clip(q.get("mdblist"), 256);
+                final String name = clip(q.get("name"), 60);
+                boolean changed = false;
+                if (!tmdb.isEmpty()) {
+                    if (tmdb.length() > 60 || tmdb.startsWith("eyJ")) {
+                        com.cinetv.launcher.service.SecretStore.put(app, com.cinetv.launcher.service.SecretStore.TMDB_READ_TOKEN, tmdb);
+                    } else {
+                        com.cinetv.launcher.service.SecretStore.put(app, com.cinetv.launcher.service.SecretStore.TMDB_KEY, tmdb);
+                    }
+                    changed = true;
+                }
+                if (!ai.isEmpty()) {
+                    com.cinetv.launcher.service.SecretStore.put(app, com.cinetv.launcher.service.SecretStore.AI_KEY, ai);
+                    changed = true;
+                }
+                if (!mdblist.isEmpty()) {
+                    com.cinetv.launcher.service.SecretStore.put(app, com.cinetv.launcher.service.SecretStore.MDBLIST_KEY, mdblist);
+                    changed = true;
+                }
+                if (!name.isEmpty()) {
+                    com.cinetv.launcher.ai.GamzeMemory.setName(app, name);
+                    changed = true;
+                }
+                if (changed) {
+                    post(() -> {
+                        com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                        if (ma != null) {
+                            ma.onCredentialsUpdated();
+                        }
+                    });
+                }
+                return ok.put("hasTmdb", MovieCatalog.hasTmdb(app))
+                        .put("hasAi", com.cinetv.launcher.service.SecretStore.has(app, com.cinetv.launcher.service.SecretStore.AI_KEY))
+                        .put("name", com.cinetv.launcher.ai.GamzeMemory.name(app));
+            }
             case "/api/cinesub": {
                 final String csTitle = q.get("title");
                 final String csInsight = q.get("insight");

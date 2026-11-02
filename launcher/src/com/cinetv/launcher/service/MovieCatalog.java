@@ -108,8 +108,8 @@ public final class MovieCatalog {
 
     public static final class Category {
         public final int nameRes;
-        final String tmdbPath;
-        final String cinemetaUrl;
+        public final String tmdbPath;
+        public final String cinemetaUrl;
 
         Category(int nameRes, String tmdbPath, String cinemetaUrl) {
             this.nameRes = nameRes;
@@ -131,15 +131,15 @@ public final class MovieCatalog {
             new Category(R.string.cat_scifi, "discover/movie?with_genres=878&sort_by=vote_count.desc&vote_average.gte=7.4&", CINEMETA_TOP + "/genre=Sci-Fi.json"),
             new Category(R.string.cat_thriller, "discover/movie?with_genres=53,18&sort_by=vote_count.desc&vote_average.gte=7.4&", CINEMETA_TOP + "/genre=Thriller.json"),
             new Category(R.string.cat_noir, "discover/movie?with_genres=80,18&sort_by=vote_count.desc&vote_average.gte=7.5&", CINEMETA_TOP + "/genre=Crime.json"),
-            new Category(R.string.cat_korea, "discover/movie?with_origin_country=KR&sort_by=vote_count.desc&vote_average.gte=7.5&", CINEMETA_TOP + "/genre=Drama.json"),
-            new Category(R.string.cat_france, "discover/movie?with_origin_country=FR&sort_by=vote_count.desc&vote_average.gte=7.2&", CINEMETA_TOP + "/genre=Drama.json"),
-            new Category(R.string.cat_japan, "discover/movie?with_origin_country=JP&with_genres=16,18&sort_by=vote_count.desc&vote_average.gte=7.6&", CINEMETA_TOP + "/genre=Animation.json"),
-            new Category(R.string.cat_turkey, "discover/movie?with_origin_country=TR&sort_by=vote_count.desc&vote_average.gte=6.8&", CINEMETA_TOP + "/genre=Drama.json"),
-            new Category(R.string.cat_nineties, "discover/movie?primary_release_date.gte=1990-01-01&primary_release_date.lte=1999-12-31&with_genres=18,80&sort_by=vote_count.desc&vote_average.gte=7.6&", CINEMETA_TOP + "/genre=Mystery.json"),
-            new Category(R.string.cat_documentary, "discover/movie?with_genres=99&sort_by=vote_count.desc&vote_average.gte=7.5&", CINEMETA_TOP + "/genre=Documentary.json"),
-            new Category(R.string.cat_history, "discover/movie?with_genres=36,18&sort_by=vote_count.desc&vote_average.gte=7.5&", CINEMETA_TOP + "/genre=History.json"),
-            new Category(R.string.cat_ghibli, "discover/movie?with_companies=10342&sort_by=vote_count.desc&", CINEMETA_TOP + "/genre=Animation.json"),
-            new Category(R.string.cat_classics, "discover/movie?primary_release_date.lte=1979-12-31&sort_by=vote_count.desc&vote_average.gte=7.8&", CINEMETA_TOP + ".json"),
+            new Category(R.string.cat_korea, "discover/movie?with_origin_country=KR&with_original_language=ko&sort_by=vote_count.desc&vote_count.gte=80&vote_average.gte=7.0&", "curated:korea"),
+            new Category(R.string.cat_france, "discover/movie?with_origin_country=FR&with_original_language=fr&sort_by=vote_count.desc&vote_count.gte=120&vote_average.gte=7.0&", "curated:france"),
+            new Category(R.string.cat_japan, "discover/movie?with_origin_country=JP&with_original_language=ja&sort_by=vote_count.desc&vote_count.gte=80&vote_average.gte=7.1&", "curated:japan"),
+            new Category(R.string.cat_turkey, "discover/movie?with_origin_country=TR&with_original_language=tr&sort_by=vote_count.desc&vote_count.gte=25&vote_average.gte=6.5&", "curated:turkey"),
+            new Category(R.string.cat_nineties, "discover/movie?primary_release_date.gte=1990-01-01&primary_release_date.lte=1999-12-31&with_genres=18,80&sort_by=vote_count.desc&vote_average.gte=7.5&", CINEMETA_TOP + "/genre=Mystery.json"),
+            new Category(R.string.cat_documentary, "discover/movie?with_genres=99&sort_by=vote_count.desc&vote_average.gte=7.4&", CINEMETA_TOP + "/genre=Documentary.json"),
+            new Category(R.string.cat_history, "discover/movie?with_genres=36,18&sort_by=vote_count.desc&vote_average.gte=7.4&", CINEMETA_TOP + "/genre=History.json"),
+            new Category(R.string.cat_ghibli, "discover/movie?with_companies=10342&sort_by=vote_count.desc&", "curated:ghibli"),
+            new Category(R.string.cat_classics, "discover/movie?primary_release_date.lte=1979-12-31&sort_by=vote_count.desc&vote_average.gte=7.7&", CINEMETA_TOP + "/genre=Adventure.json"),
     };
 
     private static final ExecutorService resolver = Executors.newFixedThreadPool(6);
@@ -164,23 +164,173 @@ public final class MovieCatalog {
 
     /** {@code spin} moves on to another page of the category, so a refresh brings other films. */
     public static List<Movie> category(Context ctx, Category category, int max, int spin) {
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        int slot = (cal.get(java.util.Calendar.DAY_OF_YEAR) * 24 + cal.get(java.util.Calendar.HOUR_OF_DAY));
         if (hasTmdb(ctx)) {
             try {
-                java.util.Calendar cal = java.util.Calendar.getInstance();
-                int slot = (cal.get(java.util.Calendar.DAY_OF_YEAR) * 24 + cal.get(java.util.Calendar.HOUR_OF_DAY));
-                int page = ((slot + spin * 3) % 8) + 1; // pages 1-8, another every hour and at every refresh
-                String path = category.tmdbPath;
-                if (!path.contains("page=")) {
-                    path = path + (path.endsWith("&") || path.endsWith("?") ? "" : "&") + "page=" + page + "&";
+                int page = ((slot + spin * 2) % 5) + 1;
+                String base = category.tmdbPath;
+                if (!base.endsWith("&") && !base.endsWith("?")) base += "&";
+                JSONObject res = tmdb(ctx, base + "page=" + page + "&language=" + language());
+                int totalPages = Math.max(1, res.optInt("total_pages", 1));
+                if (page > totalPages) {
+                    page = ((slot + spin) % totalPages) + 1;
+                    res = tmdb(ctx, base + "page=" + page + "&language=" + language());
                 }
-                List<Movie> list = parseTmdbResults(tmdb(ctx, path + "language=" + language()), "movie", max);
-                fillImdbIds(ctx, list);
-                if (!list.isEmpty()) return list;
+                List<Movie> list = parseTmdbResults(res, "movie", Math.max(max, 20));
+                if (list.size() < Math.min(6, max) && page > 1) {
+                    List<Movie> p1 = parseTmdbResults(tmdb(ctx, base + "page=1&language=" + language()), "movie", 20);
+                    for (Movie m : p1) {
+                        boolean exists = false;
+                        for (Movie ex : list) {
+                            if (ex.tmdbId == m.tmdbId && ex.tmdbId > 0) { exists = true; break; }
+                        }
+                        if (!exists) list.add(m);
+                    }
+                }
+                if (!list.isEmpty()) {
+                    if (spin > 0 && list.size() > 4) {
+                        Collections.rotate(list, -((spin * 4) % list.size()));
+                    }
+                    if (list.size() > max) list = new ArrayList<>(list.subList(0, max));
+                    fillImdbIds(ctx, list);
+                    return list;
+                }
             } catch (Throwable t) {
                 Log.w(TAG, "TMDB category failed: " + t.getMessage());
             }
         }
-        return cinemetaList(category.cinemetaUrl, "movie", max);
+        if (category.cinemetaUrl != null && category.cinemetaUrl.startsWith("curated:")) {
+            return curatedRegionalCategory(category.cinemetaUrl.substring("curated:".length()), max, slot + spin);
+        }
+        String url = category.cinemetaUrl;
+        int skip = ((slot + spin * 3) % 4) * 15;
+        if (skip > 0 && url != null && url.endsWith(".json")) {
+            url = url.substring(0, url.length() - 5) + "/skip=" + skip + ".json";
+        }
+        List<Movie> cm = cinemetaList(url, "movie", max);
+        if (cm.isEmpty() && skip > 0) {
+            cm = cinemetaList(category.cinemetaUrl, "movie", max);
+            if (cm.size() > 4 && spin > 0) Collections.rotate(cm, -((spin * 3) % cm.size()));
+        }
+        return cm;
+    }
+
+    private static List<Movie> curatedRegionalCategory(String key, int max, int rotationSeed) {
+        String[][] rows;
+        switch (key) {
+            case "turkey":
+                rows = new String[][]{
+                        {"tt2758880", "Kış Uykusu", "Winter Sleep", "2014", "8.0"},
+                        {"tt1827487", "Bir Zamanlar Anadolu'da", "Once Upon a Time in Anatolia", "2011", "7.8"},
+                        {"tt7282468", "Ahlat Ağacı", "The Wild Pear Tree", "2018", "8.0"},
+                        {"tt0116231", "Eşkıya", "The Bandit", "1996", "8.1"},
+                        {"tt0401383", "Babam ve Oğlum", "My Father and My Son", "2005", "8.2"},
+                        {"tt0325980", "Uzak", "Distant", "2002", "7.5"},
+                        {"tt0476735", "İklimler", "Climates", "2006", "7.1"},
+                        {"tt1171701", "Üç Maymun", "Three Monkeys", "2008", "7.3"},
+                        {"tt0424400", "G.O.R.A.", "G.O.R.A.", "2004", "8.0"},
+                        {"tt10199590", "Kuru Otlar Üstüne", "About Dry Grasses", "2023", "7.7"},
+                        {"tt10366206", "Kurak Günler", "Burning Days", "2022", "7.5"},
+                        {"tt4306392", "Kader", "Destiny", "2006", "7.8"},
+                        {"tt0211915", "Masumiyet", "Innocence", "1997", "8.1"},
+                        {"tt0105396", "Sevmek Zamanı", "Time to Love", "1965", "8.0"},
+                        {"tt0075143", "Hababam Sınıfı", "The Chaos Class", "1975", "9.2"},
+                        {"tt0084970", "Yol", "The Way", "1982", "8.0"}
+                };
+                break;
+            case "korea":
+                rows = new String[][]{
+                        {"tt6751668", "Parazit", "Parasite", "2019", "8.5"},
+                        {"tt0364569", "İhtiyar Delikanlı", "Oldboy", "2003", "8.3"},
+                        {"tt0353969", "Cinayet Günlüğü", "Memories of Murder", "2003", "8.1"},
+                        {"tt4016934", "Hizmetçi", "The Handmaiden", "2016", "8.1"},
+                        {"tt7286456", "Şüphe", "Burning", "2018", "7.5"},
+                        {"tt12477480", "Ayrılma Kararı", "Decision to Leave", "2022", "7.3"},
+                        {"tt5700672", "Zombi Ekspresi", "Train to Busan", "2016", "7.6"},
+                        {"tt1588170", "Şeytanı Gördüm", "I Saw the Devil", "2010", "7.8"},
+                        {"tt5215952", "Kara Büyü", "The Wailing", "2016", "7.4"},
+                        {"tt1190539", "Doğa Ana", "Mother", "2009", "7.7"},
+                        {"tt0451094", "İntikam Meleği", "Lady Vengeance", "2005", "7.5"},
+                        {"tt1527788", "Sarı Deniz", "The Yellow Sea", "2010", "7.3"},
+                        {"tt2625030", "Yeni Dünya", "New World", "2013", "7.5"},
+                        {"tt0374546", "İlkbahar, Yaz, Sonbahar, Kış... ve İlkbahar", "Spring, Summer, Fall, Winter... and Spring", "2003", "8.0"}
+                };
+                break;
+            case "japan":
+                rows = new String[][]{
+                        {"tt0047478", "Yedi Samuray", "Seven Samurai", "1954", "8.6"},
+                        {"tt0089881", "Ran", "Ran", "1985", "8.2"},
+                        {"tt8075192", "Arakçılar", "Shoplifters", "2018", "7.9"},
+                        {"tt14039582", "Drive My Car", "Drive My Car", "2021", "7.5"},
+                        {"tt27503384", "Mükemmel Günler", "Perfect Days", "2023", "7.9"},
+                        {"tt23736044", "Canavar", "Monster", "2023", "7.8"},
+                        {"tt0042876", "Raşomon", "Rashomon", "1950", "8.2"},
+                        {"tt0056058", "Harakiri", "Harakiri", "1962", "8.6"},
+                        {"tt0046438", "Tokyo Hikayesi", "Tokyo Story", "1953", "8.1"},
+                        {"tt5311514", "Senin Adın", "Your Name.", "2016", "8.4"},
+                        {"tt0094625", "Akira", "Akira", "1988", "8.0"},
+                        {"tt1069238", "Sonbahar Sonatı / Departures", "Departures", "2008", "8.0"},
+                        {"tt0119250", "Hana-Bi", "Fireworks", "1997", "7.7"},
+                        {"tt0386064", "Kimse Farketmiyor", "Nobody Knows", "2004", "8.0"}
+                };
+                break;
+            case "france":
+                rows = new String[][]{
+                        {"tt0211915", "Amélie", "Le Fabuleux Destin d'Amélie Poulain", "2001", "8.3"},
+                        {"tt1675434", "Can Dostum", "The Intouchables", "2011", "8.5"},
+                        {"tt0113247", "Protesto", "La Haine", "1995", "8.1"},
+                        {"tt8613070", "Alev Almış Bir Genç Kızın Portresi", "Portrait of a Lady on Fire", "2019", "8.1"},
+                        {"tt17009710", "Bir Düşüşün Anatomisi", "Anatomy of a Fall", "2023", "7.7"},
+                        {"tt0110413", "Sevginin Gücü", "Léon: The Professional", "1994", "8.5"},
+                        {"tt0053198", "400 Darbe", "The 400 Blows", "1959", "8.1"},
+                        {"tt1255953", "İçimdeki Yangın", "Incendies", "2010", "8.3"},
+                        {"tt0108394", "Üç Renk: Mavi", "Three Colors: Blue", "1993", "7.8"},
+                        {"tt0111495", "Üç Renk: Kırmızı", "Three Colors: Red", "1994", "8.1"},
+                        {"tt0387898", "Saklı", "Caché", "2005", "7.3"},
+                        {"tt0401382", "Kelebek ve Dalgıç", "The Diving Bell and the Butterfly", "2007", "8.0"},
+                        {"tt1602620", "Aşk", "Amour", "2012", "7.9"},
+                        {"tt0061512", "Samuray", "Le Samouraï", "1967", "8.0"}
+                };
+                break;
+            case "ghibli":
+            default:
+                rows = new String[][]{
+                        {"tt0245429", "Ruhların Kaçışı", "Spirited Away", "2001", "8.6"},
+                        {"tt0119698", "Prenses Mononoke", "Princess Mononoke", "1997", "8.3"},
+                        {"tt0096283", "Komşum Totoro", "My Neighbor Totoro", "1988", "8.1"},
+                        {"tt0347149", "Yürüyen Şato", "Howl's Moving Castle", "2004", "8.2"},
+                        {"tt0095327", "Ateşböceklerinin Mezarı", "Grave of the Fireflies", "1988", "8.5"},
+                        {"tt0097814", "Küçük Cadı Kiki", "Kiki's Delivery Service", "1989", "7.8"},
+                        {"tt0092067", "Gökteki Kale", "Castle in the Sky", "1986", "8.0"},
+                        {"tt0087544", "Rüzgarlı Vadi", "Nausicaä of the Valley of the Wind", "1984", "8.0"},
+                        {"tt2013293", "Rüzgar Yükseliyor", "The Wind Rises", "2013", "7.7"},
+                        {"tt0104652", "Kırmızı Kanatlar", "Porco Rosso", "1992", "7.7"},
+                        {"tt2576852", "Prenses Kaguya Masalı", "The Tale of The Princess Kaguya", "2013", "8.0"},
+                        {"tt6587046", "Çocuk ve Balıkçıl", "The Boy and the Heron", "2023", "7.5"}
+                };
+                break;
+        }
+        // Fix Amélie IMDb id if needed
+        if ("france".equals(key)) rows[0][0] = "tt0211915";
+        if ("turkey".equals(key)) rows[12][0] = "tt0128332"; // Masumiyet (1997)
+        List<Movie> out = new ArrayList<>();
+        for (String[] r : rows) {
+            Movie m = new Movie();
+            m.imdbId = r[0];
+            m.title = r[1];
+            m.originalTitle = r[2];
+            try { m.year = Integer.parseInt(r[3]); } catch (Throwable ignored) {}
+            try { m.rating = Double.parseDouble(r[4]); } catch (Throwable ignored) {}
+            m.type = "movie";
+            m.posterUrl = "https://images.metahub.space/poster/medium/" + r[0] + "/img";
+            m.backdropUrl = "https://images.metahub.space/background/medium/" + r[0] + "/img";
+            out.add(m);
+        }
+        if (rotationSeed > 0 && out.size() > 2) {
+            Collections.rotate(out, -((rotationSeed * 3) % out.size()));
+        }
+        return out.size() > max ? new ArrayList<>(out.subList(0, max)) : out;
     }
 
     public static List<Movie> trending(Context ctx, int max) {
@@ -594,9 +744,40 @@ public final class MovieCatalog {
         }
     }
 
-    /** Fills a missing IMDb id (needed to open the title in Nuvio). */
+    /** Fills a missing IMDb id (needed to open the title in Nuvio so stream addons never fail with "Oynatma Kullanılamıyor"). */
     public static void ensureImdb(Context ctx, Movie m) {
-        if (m != null && m.imdbId.isEmpty() && m.tmdbId > 0) m.imdbId = imdbFor(ctx, m.tmdbId, m.type);
+        if (m == null) return;
+        if (m.imdbId != null && m.imdbId.startsWith("tt")) return;
+        if (m.tmdbId > 0) {
+            String id = imdbFor(ctx, m.tmdbId, m.type);
+            if (id != null && id.startsWith("tt")) {
+                m.imdbId = id;
+                return;
+            }
+        }
+        // Fallback: search Cinemeta by originalTitle first (international/English title), then localized title
+        String kind = "series".equals(m.type) || "tv".equals(m.type) ? "series" : "movie";
+        String[] queries = {m.originalTitle, m.title};
+        for (String q : queries) {
+            if (q == null || q.trim().isEmpty()) continue;
+            try {
+                List<Movie> list = cinemetaList(CINEMETA + kind + "/top/search=" + enc(q.trim()) + ".json", kind, 6);
+                Movie best = null;
+                for (Movie cand : list) {
+                    if (cand == null || cand.imdbId == null || !cand.imdbId.startsWith("tt")) continue;
+                    if (m.year > 1900 && cand.year > 1900 && Math.abs(cand.year - m.year) <= 1) {
+                        best = cand;
+                        break;
+                    }
+                    if (best == null) best = cand;
+                }
+                if (best != null) {
+                    m.imdbId = best.imdbId;
+                    return;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     /** Best match for a title (and optional year), with its IMDb id. */
@@ -621,7 +802,13 @@ public final class MovieCatalog {
                     return match;
                 }
             }
-            return null;
+            List<Movie> cmSeries = cinemetaList(CINEMETA + "series/top/search=" + enc(title.trim()) + ".json", "series", 5);
+            for (Movie cand : cmSeries) {
+                if (cand != null && cand.imdbId != null && cand.imdbId.startsWith("tt")) {
+                    if (year <= 1900 || cand.year <= 1900 || Math.abs(cand.year - year) <= 1) return cand;
+                }
+            }
+            return cmSeries.isEmpty() ? null : cmSeries.get(0);
         }
         if (hasTmdb(ctx)) {
             try {
@@ -629,25 +816,36 @@ public final class MovieCatalog {
                 List<Movie> list = parseTmdbResults(tmdb(ctx, path), "movie", 1);
                 if (!list.isEmpty()) {
                     Movie m = list.get(0);
-                    m.imdbId = imdbFor(ctx, m.tmdbId, "movie");
+                    ensureImdb(ctx, m);
                     return m;
                 }
             } catch (Throwable t) {
                 Log.w(TAG, "TMDB resolve failed: " + t.getMessage());
             }
         }
-        List<Movie> list = cinemetaList(CINEMETA + "movie/top/search=" + enc(title.trim()) + ".json", "movie", 1);
+        List<Movie> list = cinemetaList(CINEMETA + "movie/top/search=" + enc(title.trim()) + ".json", "movie", 5);
+        for (Movie cand : list) {
+            if (cand != null && cand.imdbId != null && cand.imdbId.startsWith("tt")) {
+                if (year <= 1900 || cand.year <= 1900 || Math.abs(cand.year - year) <= 1) return cand;
+            }
+        }
         return list.isEmpty() ? null : list.get(0);
     }
 
     public static String imdbFor(Context ctx, int tmdbId, String type) {
         if (tmdbId <= 0 || !hasTmdb(ctx)) return "";
         try {
-            String kind = "series".equals(type) ? "tv" : "movie";
+            String kind = "series".equals(type) || "tv".equals(type) ? "tv" : "movie";
             String id = tmdb(ctx, kind + "/" + tmdbId + "/external_ids?").optString("imdb_id", "");
-            // TMDB ids are per kind: the same number under the other kind is a different title, so never ask it
-            // (that sent Nuvio an unrelated series' IMDb id as a "movie" and no add-on had streams for it)
             if (id.startsWith("tt")) return id;
+            JSONObject details = tmdb(ctx, kind + "/" + tmdbId + "?append_to_response=external_ids");
+            id = details.optString("imdb_id", "");
+            if (id.startsWith("tt")) return id;
+            JSONObject ext = details.optJSONObject("external_ids");
+            if (ext != null) {
+                id = ext.optString("imdb_id", "");
+                if (id.startsWith("tt")) return id;
+            }
         } catch (Throwable t) {
             return "";
         }

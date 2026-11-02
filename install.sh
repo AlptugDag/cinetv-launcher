@@ -195,10 +195,15 @@ if [ -z "$PROFILE" ]; then
     if [ "$NUVIO" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Set Nuvio up now (languages, quality, addons)? y/n" "y")" = "y" ]; then NUVIO=1; fi
 fi
 if [ "$DEBLOAT" = 0 ] && [ "$YES" = 0 ] && [ "$(ask "Disable bloatware (reversible)? y/n" "n")" = "y" ]; then DEBLOAT=1; fi
-AI_KEY="${CINETV_AI_KEY:-}"; TMDB_KEY="${CINETV_TMDB_KEY:-}"; TMDB_TOKEN="${CINETV_TMDB_TOKEN:-}"; MDBLIST_KEY="${CINETV_MDBLIST_KEY:-}"
+AI_KEY="${CINETV_AI_KEY:-}"; TMDB_KEY="${CINETV_TMDB_KEY:-}"; TMDB_TOKEN="${CINETV_TMDB_TOKEN:-}"; MDBLIST_KEY="${CINETV_MDBLIST_KEY:-}"; USER_NAME="${CINETV_USER_NAME:-}"
 if [ "$YES" = 0 ] && [ -t 0 ]; then
-    [ -n "$TMDB_KEY" ] || { read -r -s -p "  TMDB API key (optional, localized titles & posters; Enter to skip): " TMDB_KEY; echo; }
-    [ -n "$AI_KEY" ] || { read -r -s -p "  Gemini or Claude API key (optional, AI search & curation; Enter to skip): " AI_KEY; echo; }
+    bold "Zorunlu Kimlik ve API Anahtarları (Bunlar olmadan CineTV düzgün çalışmaz)"
+    [ -n "$USER_NAME" ] || { read -r -p "  1. Kullanıcı Adınız (Gamze sesli asistanın size hitap etmesi için zorunlu): " USER_NAME; }
+    [ -n "$TMDB_KEY" ] || { read -r -s -p "  2. TMDB API Anahtarı (themoviedb.org/settings/api - zorunlu): " TMDB_KEY; echo; }
+    [ -n "$AI_KEY" ] || { read -r -s -p "  3. Google Gemini API Anahtarı (aistudio.google.com/apikey - zorunlu): " AI_KEY; echo; }
+fi
+if [ -z "$USER_NAME" ] || { [ -z "$TMDB_KEY" ] && [ -z "$TMDB_TOKEN" ]; } || [ -z "$AI_KEY" ]; then
+    warn "UYARI: Kullanıcı adı, TMDB anahtarı ve Google Gemini API anahtarı olmadan sistem düzgün çalışmaz! Eksik bilgiler için TV ekranında QR kodlu zorunlu kurulum ekranı açılacaktır."
 fi
 
 # --- 5. install -------------------------------------------------------------------------------------
@@ -217,6 +222,7 @@ if ! adb install -r "$APK" >/dev/null 2>"$TMP/err"; then
         adb install "$APK" >/dev/null || die "Install failed: $(cat "$TMP/err")"
     else die "Install failed: $(cat "$TMP/err")"; fi
 fi
+tv cmd package compile -m speed "$PKG" >/dev/null 2>&1 || true
 ok "App installed"
 
 tv pm grant $PKG android.permission.WRITE_SECURE_SETTINGS && ok "Settings permission granted" || warn "Could not grant WRITE_SECURE_SETTINGS"
@@ -236,6 +242,7 @@ tv settings put secure screensaver_activate_on_sleep 1
 ok "Remote buttons and screensaver configured"
 
 [ -z "$CITY" ] || { tv settings put global cinetv_city "\"$CITY\""; ok "Weather city: $CITY"; }
+[ -z "$USER_NAME" ] || { tv settings put global cinetv_user_name "$USER_NAME"; ok "Viewer name for TTS: $USER_NAME"; }
 [ -z "$TMDB_KEY" ] || { tv settings put secure tv_tmdb_api_key "$TMDB_KEY"; ok "TMDB key handed over (moved into the encrypted store on first start)"; }
 [ -z "$TMDB_TOKEN" ] || { tv settings put secure tv_tmdb_read_token "$TMDB_TOKEN"; ok "TMDB read token handed over"; }
 [ -z "$MDBLIST_KEY" ] || { tv settings put secure tv_mdblist_api_key "$MDBLIST_KEY"; ok "MDBList key handed over"; }

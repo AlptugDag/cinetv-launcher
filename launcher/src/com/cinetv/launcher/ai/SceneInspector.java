@@ -41,14 +41,20 @@ public final class SceneInspector {
 
     private SceneInspector() {}
 
-    /** Blocking: the current frame as a small JPEG (about 960 px wide), or null when it can't be captured. */
+    /** Blocking: the current frame as a small JPEG (about 768 px wide), or null when it can't be captured. */
     public static byte[] captureJpeg(Context ctx) {
         try {
-            byte[] raw = com.cinetv.launcher.remote.LocalAdb.exec(ctx, "screencap -p", 8000);
+            // Fast path on Android 11+ (API 30+): AccessibilityService.takeScreenshot takes ~100ms vs 4-7s for adb screencap
+            Bitmap fastShot = serviceScreenshot();
+            if (fastShot != null) {
+                byte[] fastBytes = encodeFrame(fastShot);
+                if (fastBytes != null && fastBytes.length > 0) {
+                    return fastBytes;
+                }
+            }
+            byte[] raw = com.cinetv.launcher.remote.LocalAdb.exec(ctx, "screencap -p", 4500);
             if (raw == null || raw.length < 1000) {
-                // no adb on this TV: Android 11+ lets the key service take the screenshot itself
-                Bitmap shot = serviceScreenshot();
-                return shot == null ? null : encodeFrame(shot);
+                return fastShot != null ? new byte[0] : null;
             }
             // Some MediaTek firmwares print a line before the PNG: start at its signature.
             int start = 0;
@@ -61,7 +67,7 @@ public final class SceneInspector {
             BitmapFactory.Options o = new BitmapFactory.Options();
             o.inJustDecodeBounds = true;
             BitmapFactory.decodeByteArray(raw, start, raw.length - start, o);
-            o.inSampleSize = Math.max(1, o.outWidth / 960);
+            o.inSampleSize = Math.max(1, o.outWidth / 768);
             o.inJustDecodeBounds = false;
             o.inPreferredConfig = Bitmap.Config.RGB_565;
             Bitmap b = BitmapFactory.decodeByteArray(raw, start, raw.length - start, o);
@@ -82,7 +88,7 @@ public final class SceneInspector {
                 return new byte[0];
             }
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            b.compress(Bitmap.CompressFormat.JPEG, 74, out);
+            b.compress(Bitmap.CompressFormat.JPEG, 70, out);
             b.recycle();
             return out.toByteArray();
         } catch (Throwable t) {
@@ -91,7 +97,7 @@ public final class SceneInspector {
         }
     }
 
-    /** Android 11+: the accessibility service's own screenshot, scaled to about 960 px. Blocking, null when unavailable. */
+    /** Android 11+: the accessibility service's own screenshot, scaled to about 768 px. Blocking, null when unavailable. */
     @android.annotation.TargetApi(30)
     private static Bitmap serviceScreenshot() {
         if (android.os.Build.VERSION.SDK_INT < 30) return null;
@@ -107,7 +113,7 @@ public final class SceneInspector {
                             try (android.hardware.HardwareBuffer hb = r.getHardwareBuffer()) {
                                 Bitmap hw = Bitmap.wrapHardwareBuffer(hb, r.getColorSpace());
                                 if (hw != null) {
-                                    int w = Math.min(960, hw.getWidth());
+                                    int w = Math.min(768, hw.getWidth());
                                     int h = Math.round(hw.getHeight() * (w / (float) hw.getWidth()));
                                     Bitmap soft = hw.copy(Bitmap.Config.ARGB_8888, false);
                                     hw.recycle();
@@ -124,7 +130,7 @@ public final class SceneInspector {
                             done.countDown();
                         }
                     });
-            done.await(4, java.util.concurrent.TimeUnit.SECONDS);
+            done.await(1500, java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (Throwable t) {
             return null;
         }
@@ -140,9 +146,33 @@ public final class SceneInspector {
         return bright < 2;
     }
 
+    private static final java.util.LinkedList<String> RECENT_AMBIENT_TITLES = new java.util.LinkedList<>();
+
+    public static synchronized void recordAmbientTitle(String title) {
+        if (title == null) return;
+        String clean = title.trim();
+        if (clean.isEmpty()) return;
+        RECENT_AMBIENT_TITLES.remove(clean);
+        RECENT_AMBIENT_TITLES.addLast(clean);
+        while (RECENT_AMBIENT_TITLES.size() > 8) {
+            RECENT_AMBIENT_TITLES.removeFirst();
+        }
+    }
+
+    public static synchronized String recentAmbientSummary() {
+        if (RECENT_AMBIENT_TITLES.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String s : RECENT_AMBIENT_TITLES) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(s);
+        }
+        return sb.toString();
+    }
+
     /**
-     * Blocking. {@code ambient} asks only for the single best piece of trivia (or nothing), for the
-     * unprompted notes during playback; otherwise up to five things to point at.
+     * Blocking. {@code ambient} asks for the 1 or 2 most rewarding pieces of trivia across visual,
+     * cultural, prop, actor, location, music, and subtitle categories for unprompted notes during playback;
+     * otherwise up to five things to point at.
      */
     public static Scene inspect(Context ctx, boolean ambient) {
         Scene scene = new Scene();
@@ -169,20 +199,27 @@ public final class SceneInspector {
         String lang = tr ? "Turkish" : "English";
         String context = hint.isEmpty() ? "" : "The last film opened from the launcher was " + hint
                 + ", but the viewer may be watching something else: trust only what the frame shows. ";
+        String recent = ambient ? recentAmbientSummary() : "";
+        String avoidRecent = recent.isEmpty() ? "" : "Already shown recently (do NOT repeat these items; pick different details in the scene or subtitles): " + recent + ". ";
         String sys = "You are CineSUB, a cinephile's trivia companion that tells a film viewer what is worth knowing about what they see, "
-                + "without spoiling anything that has not happened yet. " + context
+                + "without spoiling anything that has not happened yet. " + context + avoidRecent
                 + "Only state facts you are confident about; if you can't identify something, describe what it is instead of naming it. "
-                + "Never identify a real person from their face alone: name actors only when the film is known or the name appears on screen, "
-                + "and then name the character and the actor. If the frame is clearly from a famous film or series, you may recognise the film itself "
-                + "and use that knowledge. Never return generic descriptions ('a man standing', 'a dark room'): every item must teach something "
-                + "specific and interesting. Fewer good items beat many weak ones; an empty list is fine. Write in " + lang + ".";
+                + "Never identify a real person from their face alone unless the film/series is recognisable or their name appears on screen; "
+                + "when the film or series is recognisable, name both the character and the actor and share an insightful production or career fact. "
+                + "Never return generic descriptions ('a man standing', 'a dark room'): every item must teach something "
+                + "specific and interesting. Write in " + lang + ".";
         String ask = ambient
-                ? "If, and only if, something in this frame or its subtitles deserves a short, surprising piece of trivia (a real place, a painting, "
-                + "a dish, a historical event, a person, a book or a song mentioned in the dialogue), return it; otherwise return an empty list. "
-                + "Artworks get title, artist and year; never point at an unnamed person. "
-                + "A concept, quote or allusion in the subtitles counts too: say what it means or what it refers to. "
-                + "JSON: {\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 words\",\"title\":\"name\",\"fact\":\"under 150 characters\","
-                + "\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":false}]} with box in 0-1000 screen coordinates (empty for subtitle mentions)."
+                ? "Actively scan this frame and its visible subtitles and return the 1 or 2 most fascinating details you can detect across ANY of these categories: "
+                + "(1) visible subtitles: idioms, slang, cultural/historical references, real events/people, or quotes/allusions to films, books, myths or songs (set subtitle:true, kind text or event); "
+                + "(2) recognisable characters & actors or cameos in a known film/series (kind person or cameo: character + actor name + behind-the-scenes or career fact); "
+                + "(3) filming locations, cities, architectural landmarks or set design details (kind place or landmark); "
+                + "(4) specific vehicles (exact car/motorcycle/aircraft model & era), watches, weapons, instruments, gadgets, books, records, iconic costumes or props (kind object); "
+                + "(5) paintings, sculptures, posters or visual artworks on screen (kind art: title, artist, year); "
+                + "(6) dishes, drinks or culinary details on screen (kind food); "
+                + "(7) scene soundtrack/score composer or song when the scene is recognisable, or cinematography/director's visual motif & easter egg (kind music or event). "
+                + "Aim to find at least 1 rewarding detail whenever the frame shows a real scene or dialogue; only return an empty list on blank/loading/logo screens. "
+                + "JSON: {\"film\":\"the film or series if you recognise it, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 words\",\"title\":\"name\",\"fact\":\"1-2 rich sentences under 180 characters\","
+                + "\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":false}]} with box in 0-1000 screen coordinates enclosing that specific item (leave box empty for subtitle/music/general scene notes)."
                 : "List the 1 to 4 most rewarding things in this frame (quality over quantity: a weak or obvious item is worse than none): "
                 + "cameos (a director, writer, musician or other real celebrity appearing briefly in a known film: kind cameo, say who and why it is there), "
                 + "historic buildings and landmarks (kind landmark: name, city, era, architect when known) and filming locations (kind place), "
@@ -202,7 +239,7 @@ public final class SceneInspector {
                 + "with box in 0-1000 screen coordinates. The box must enclose exactly that one thing and nothing else: the painting's frame, "
                 + "the plate, the building's facade, the car's body, the cameo's face and shoulders; never a whole region, never a box around "
                 + "several things. If you cannot place it precisely, leave box empty rather than guess.";
-        LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, ambient ? 400 : 1200);
+        LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, ambient ? 750 : 1200);
         if (!r.success) {
             scene.error = r.text;
             return scene;
@@ -227,6 +264,9 @@ public final class SceneInspector {
                     if (x1 - x0 > 0.01f && y1 - y0 > 0.01f) p.box.set(x0, y0, x1, y1);
                 }
                 scene.pois.add(p);
+                if (ambient) {
+                    recordAmbientTitle(p.title);
+                }
             }
         } catch (Throwable t) {
             Log.w(TAG, "Unreadable vision reply");

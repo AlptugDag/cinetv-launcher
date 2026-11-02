@@ -132,12 +132,12 @@
     <string name="trailer_moments_on">The opened DVD plays the trailer</string>
     <string name="trailer_hint">%1$d / %2$d  ·  ‹ › another film  ·  OK to watch</string>
     <string name="trailer_series">Series</string>
-    <string name="tour_title">Tour of CineTV</string>
-    <string name="tour_hint">What each part does, again</string>
-    <string name="tour_progress">TOUR · %1$d / %2$d</string>
-    <string name="tour_keys">OK next  ·  ← back  ·  Back to leave</string>
+    <string name="tour_title">Comprehensive CineTV Tour</string>
+    <string name="tour_hint">Vitrine, Gamze, Automatic CineSUB, QR Keys &amp; Remote Guide</string>
+    <string name="tour_progress">GUIDE · %1$d / %2$d</string>
+    <string name="tour_keys">OK / ▶ Next  ·  ◀ Back  ·  ▲/▼ Skip 3  ·  Yellow Key Voice Guide  ·  Back Exit</string>
     <string name="tour_welcome_t">Welcome to CineTV</string>
-    <string name="tour_welcome">A minute\'s tour of what this TV can do now. Press OK to go on.</string>
+    <string name="tour_welcome">Explore everything your TV can do as a private cinema: from the 3D DVD shelf and Gamze voice assistant to automatic untriggered CineSUB scene intelligence and your phone remote. Press OK to continue.</string>
     <string name="tour_shelf_t">A new shelf every time</string>
     <string name="tour_shelf">These films are picked for this moment: the hour, the day, your city and the weather. Move left and right; the room lights up in the film\'s colour.</string>
     <string name="tour_dvd_t">Open a DVD</string>
@@ -300,8 +300,8 @@
         <item>Nineties classics</item>
         <item>Feel-good crowd pleasers</item>
     </string-array>
-    <string name="tour_cinesub_ambient_t">CineSUB companion mode</string>
-    <string name="tour_cinesub_ambient">Switch it on in Settings and, every few minutes, CineSUB may float one short note in a quiet corner: a real place, a painting, a name or an event mentioned in the dialogue. It never covers subtitles and fades on its own.</string>
+    <string name="tour_cinesub_ambient_t">Automatic CineSUB Companion (Default On)</string>
+    <string name="tour_cinesub_ambient">Even without pressing a button, CineSUB frequently scans playing scenes and subtitles, automatically surfacing 1–2 rich notes on actors, filming locations, cars, watches, artworks, scene music, and dialogue references with subtle target rings.</string>
     <string name="tour_quiz_t">CineQuiz</string>
     <string name="tour_quiz">You set the clock. Real stills, portraits and casts from TMDB plus Gamze\'s own questions; everyone answers on their phone, answers open together on the TV, each right one is 10 points. The winner picks tonight\'s film.</string>
     <string name="tour_roulette_t">CineRoulette</string>

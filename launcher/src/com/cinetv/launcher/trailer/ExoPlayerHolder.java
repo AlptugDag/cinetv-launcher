@@ -26,20 +26,33 @@ public final class ExoPlayerHolder {
                     DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(app)
                             .setEnableDecoderFallback(true);
 
-                    // Low-latency, fast-start buffer control (start playing at 500ms buffer)
+                    boolean lowMem = com.cinetv.launcher.device.PerformanceProfile.lowMemory(app);
+                    com.cinetv.launcher.device.PerformanceProfile.Tier hwTier =
+                            com.cinetv.launcher.device.PerformanceProfile.detectedTier(app);
+
+                    // Hardware-adapted fast-start buffer control (5 MB on low-RAM TVs, 10 MB on mid/high)
                     DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
-                            .setBufferDurationsMs(2000, 10000, 500, 1000)
-                            .setTargetBufferBytes(8 * 1024 * 1024)
+                            .setBufferDurationsMs(2000, lowMem ? 7000 : 12000, 450, 900)
+                            .setTargetBufferBytes((lowMem ? 5 : 10) * 1024 * 1024)
                             .build();
 
-                    // Strict TV hardware resource caps: max 720p @ 30fps
+                    // Adapt trailer resolution & frame-rate cap to hardware tier
+                    int maxW = hwTier == com.cinetv.launcher.device.PerformanceProfile.Tier.HIGH ? 1920 : 1280;
+                    int maxH = hwTier == com.cinetv.launcher.device.PerformanceProfile.Tier.HIGH ? 1080 : 720;
+                    int maxFps = hwTier == com.cinetv.launcher.device.PerformanceProfile.Tier.LOW ? 30 : 60;
                     TrackSelectionParameters trackParams = new TrackSelectionParameters.Builder(app)
-                            .setMaxVideoSize(1280, 720)
-                            .setMaxVideoFrameRate(30)
+                            .setMaxVideoSize(maxW, maxH)
+                            .setMaxVideoFrameRate(maxFps)
+                            .build();
+
+                    androidx.media3.common.AudioAttributes audioAttrs = new androidx.media3.common.AudioAttributes.Builder()
+                            .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+                            .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE)
                             .build();
 
                     playerInstance = new ExoPlayer.Builder(app, renderersFactory)
                             .setLoadControl(loadControl)
+                            .setAudioAttributes(audioAttrs, false)
                             .build();
                     playerInstance.setTrackSelectionParameters(trackParams);
                 }

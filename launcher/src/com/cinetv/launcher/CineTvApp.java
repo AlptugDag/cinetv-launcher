@@ -34,7 +34,7 @@ public class CineTvApp extends Application {
             prefs.edit().remove("letterboxd_username").remove("letterboxd_enabled").remove("letterboxd_auto_record")
                     .remove("letterboxd_history_json").apply();
         }
-        com.cinetv.launcher.service.PosterCache.configure(com.cinetv.launcher.device.PerformanceProfile.lowMemory(this));
+        com.cinetv.launcher.service.PosterCache.configure(this);
         HomeGuard.install(this);
         // The phone remote works whatever is on screen: its server and key bridge live with the process
         // (kept alive by the remote-button service), not with the home screen.

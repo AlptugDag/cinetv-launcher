@@ -47,6 +47,7 @@ install_addon() { # install_addon NAME HOST/PATH/manifest.json
 }
 
 echo "Installing curated addons in Nuvio"
+install_addon "Cinemeta" "v3-cinemeta.strem.io/manifest.json"
 install_addon "TR Altyazı" "tr-altyazi.altyazi.workers.dev/manifest.json"
 install_addon "Anthology" "falsisdev.github.io/anthology/stremio/manifest.json"
 install_addon "Netflix Catalog" "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json"

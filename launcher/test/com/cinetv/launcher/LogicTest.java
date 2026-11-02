@@ -211,4 +211,88 @@ public class LogicTest {
         assertNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 4, 10, 10, 0));
         assertNull(com.cinetv.launcher.service.SpecialDay.forDate(2026, 11, 11, 10, 0));
     }
+
+    @Test
+    public void hardwareAndSocDetectionAreAccurate() {
+        assertEquals("mediatek", AvOptimizer.detectSocFamily("sinchon", "m7322", "mt5867", "MediaTek"));
+        assertEquals("amlogic", AvOptimizer.detectSocFamily("ohm", "amlogic", "s905x4", "Amlogic"));
+        assertEquals("realtek", AvOptimizer.detectSocFamily("rtk", "rtd2851a", "realtek", ""));
+        assertEquals("rockchip", AvOptimizer.detectSocFamily("rk3528", "rockchip", "", ""));
+
+        assertTrue(AvOptimizer.isHardwareCodecName("OMX.MTK.VIDEO.DECODER.HEVC"));
+        assertTrue(AvOptimizer.isHardwareCodecName("c2.amlogic.hevc.decoder"));
+        assertTrue(AvOptimizer.isHardwareCodecName("OMX.realtek.video.dec.av1"));
+        assertFalse(AvOptimizer.isHardwareCodecName("OMX.google.hevc.decoder"));
+        assertFalse(AvOptimizer.isHardwareCodecName("c2.android.av1.decoder"));
+        assertFalse(AvOptimizer.isHardwareCodecName("c2.android.vp9.decoder.sw"));
+
+        assertEquals("sinchon", PerformanceProfile.resolveBoardProfile("sinchon", "m7322", 1350));
+        assertEquals("akropoli", PerformanceProfile.resolveBoardProfile("akropoli", "mt5886", 1800));
+        assertEquals("amlogic_4k", PerformanceProfile.resolveBoardProfile("ohm", "amlogic", 2048));
+        assertEquals("realtek_4k", PerformanceProfile.resolveBoardProfile("rtd2851", "realtek", 2048));
+        assertEquals("high_performance_4k", PerformanceProfile.resolveBoardProfile("shield", "tegra", 4096));
+        assertEquals("generic_low_ram", PerformanceProfile.resolveBoardProfile("unknown", "unknown", 1024));
+    }
+
+    @Test
+    public void streamProfileHonorsLowRamAndHighJitter() {
+        AvOptimizer.Report lowRam4k = av("3840x2160", true, false);
+        lowRam4k.lowRam = true;
+        StreamProfile capped = StreamProfile.recommend(net(150), lowRam4k);
+        assertEquals(R.string.stream_remux, capped.labelRes);
+        assertTrue("Low-RAM 4K TVs cap remux size to 35GB to prevent OOM", capped.torrentioConfig.contains("sizefilter=35GB"));
+
+        NetworkProbe.Result jittery = net(90);
+        jittery.jitterMs = 120;
+        // 90 Mbps * 0.75 = 67.5 Mbps (< 80 Mbps threshold for remux) -> falls back to stream_4k (25GB cap)
+        StreamProfile safe4k = StreamProfile.recommend(jittery, av("3840x2160", true, true));
+        assertEquals(R.string.stream_4k, safe4k.labelRes);
+    }
+
+    @Test
+    public void regionalCategoriesHaveDistinctLanguageFilters() {
+        String trQuery = null, krQuery = null, jpQuery = null, frQuery = null;
+        String trFallback = null, krFallback = null, jpFallback = null, frFallback = null;
+        for (com.cinetv.launcher.service.MovieCatalog.Category c : com.cinetv.launcher.service.MovieCatalog.CATEGORIES) {
+            if (c.nameRes == R.string.cat_turkey) { trQuery = c.tmdbPath; trFallback = c.cinemetaUrl; }
+            if (c.nameRes == R.string.cat_korea) { krQuery = c.tmdbPath; krFallback = c.cinemetaUrl; }
+            if (c.nameRes == R.string.cat_japan) { jpQuery = c.tmdbPath; jpFallback = c.cinemetaUrl; }
+            if (c.nameRes == R.string.cat_france) { frQuery = c.tmdbPath; frFallback = c.cinemetaUrl; }
+        }
+        assertTrue(trQuery != null && trQuery.contains("with_original_language=tr"));
+        assertTrue(krQuery != null && krQuery.contains("with_original_language=ko"));
+        assertTrue(jpQuery != null && jpQuery.contains("with_original_language=ja"));
+        assertTrue(frQuery != null && frQuery.contains("with_original_language=fr"));
+        assertEquals("curated:turkey", trFallback);
+        assertEquals("curated:korea", krFallback);
+        assertEquals("curated:japan", jpFallback);
+        assertEquals("curated:france", frFallback);
+    }
+
+    @Test
+    public void mandatoryCredentialsAndAmbientCineSubLogicWork() {
+        assertEquals("Alptuğ", com.cinetv.launcher.ai.GamzeMemory.sanitizeViewerName("  \"Alptuğ\"  "));
+        assertTrue(com.cinetv.launcher.ai.GamzeMemory.isValidViewerName("Alptuğ"));
+        assertFalse(com.cinetv.launcher.ai.GamzeMemory.isValidViewerName(""));
+        assertFalse(com.cinetv.launcher.ai.GamzeMemory.isValidViewerName("   "));
+        assertFalse(com.cinetv.launcher.ai.GamzeMemory.isValidViewerName("A"));
+
+        assertTrue(com.cinetv.launcher.ai.GamzeMemory.hasRequiredCredentials(true, true, "Alptuğ"));
+        assertFalse(com.cinetv.launcher.ai.GamzeMemory.hasRequiredCredentials(false, true, "Alptuğ"));
+        assertFalse(com.cinetv.launcher.ai.GamzeMemory.hasRequiredCredentials(true, false, "Alptuğ"));
+        assertFalse(com.cinetv.launcher.ai.GamzeMemory.hasRequiredCredentials(true, true, ""));
+
+        // Adaptive ambient CineSUB intervals: 40s (65s low-RAM) after POIs, 20s (30s low-RAM) after empty frame
+        assertEquals(40_000L, com.cinetv.launcher.ui.CineSubOverlay.ambientIntervalMs(false, true));
+        assertEquals(20_000L, com.cinetv.launcher.ui.CineSubOverlay.ambientIntervalMs(false, false));
+        assertEquals(65_000L, com.cinetv.launcher.ui.CineSubOverlay.ambientIntervalMs(true, true));
+        assertEquals(30_000L, com.cinetv.launcher.ui.CineSubOverlay.ambientIntervalMs(true, false));
+
+        // Ambient title deduplication ring buffer
+        com.cinetv.launcher.ai.SceneInspector.recordAmbientTitle("Porsche 911 Carrera");
+        com.cinetv.launcher.ai.SceneInspector.recordAmbientTitle("Galata Kulesi");
+        String recent = com.cinetv.launcher.ai.SceneInspector.recentAmbientSummary();
+        assertTrue(recent.contains("Porsche 911 Carrera"));
+        assertTrue(recent.contains("Galata Kulesi"));
+    }
 }

@@ -62,6 +62,7 @@ public final class Uninstaller {
             return abort(ctx, R.string.destroy_no_home);
         }
         try { AvOptimizer.restore(ctx); } catch (Throwable ignored) { }
+        try { NetworkOptimizer.restore(ctx); } catch (Throwable ignored) { }
         try { NetworkOptimizer.apply(ctx, NetworkOptimizer.DNS_OFF); } catch (Throwable ignored) { }
         try { PictureCalibration.reset(ctx); } catch (Throwable ignored) { }
         try { DeviceTweaks.restoreOriginals(ctx); } catch (Throwable ignored) { }

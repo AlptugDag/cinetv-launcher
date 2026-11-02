@@ -1,32 +1,92 @@
 {
   "profiles": {
     "sinchon": {
+      "soc": "MediaTek MT7322 (MStar)",
       "target_tier": "LOW_RAM_OPTIMIZED",
-      "limit_poster_cache_mb": 48,
+      "limit_poster_cache_mb": 8,
+      "limit_packed_cache_mb": 6,
+      "player_buffer_cap_mb": 16,
+      "decode_threads": 2,
       "enable_composited_backdrop": true,
       "dynamic_framerate_lock": 60,
       "recommended_tweaks": [
         "Force 0° orientation lock",
-        "Enable aggressive memory reclaim on background transition"
+        "Enable zRAM app compaction & cached-app freezer",
+        "Disable MediaTek MJC motion interpolation & DNR",
+        "Enforce 16 MB ExoPlayer buffer ceiling for 4K HEVC stability"
       ]
     },
     "akropoli": {
+      "soc": "MediaTek Merak (Google TV 14)",
       "target_tier": "BALANCED",
-      "limit_poster_cache_mb": 96,
-      "enable_composited_backdrop": false,
-      "dynamic_framerate_lock": 60,
-      "recommended_tweaks": [
-        "Dolby Vision & HDR10+ automatic tone mapping enabled"
-      ]
-    },
-    "generic_low_ram": {
-      "target_tier": "LOW_RAM_OPTIMIZED",
-      "limit_poster_cache_mb": 32,
+      "limit_poster_cache_mb": 14,
+      "limit_packed_cache_mb": 10,
+      "player_buffer_cap_mb": 28,
+      "decode_threads": 4,
       "enable_composited_backdrop": true,
       "dynamic_framerate_lock": 60,
       "recommended_tweaks": [
-        "Disable heavy blur filters",
-        "Enforce strict 60 FPS profile"
+        "Dolby Vision & HDR10+ automatic tone mapping enabled",
+        "Grant Android 14 ACCESS_RESTRICTED_SETTINGS via LocalAdb",
+        "Enable eARC/ARC Dolby Atmos bitstream passthrough"
+      ]
+    },
+    "amlogic_4k": {
+      "soc": "Amlogic S905X2/X3/X4/Y4",
+      "target_tier": "BALANCED",
+      "limit_poster_cache_mb": 16,
+      "limit_packed_cache_mb": 12,
+      "player_buffer_cap_mb": 32,
+      "decode_threads": 4,
+      "enable_composited_backdrop": true,
+      "dynamic_framerate_lock": 60,
+      "recommended_tweaks": [
+        "Set hdr_policy=0 (match content dynamic range, disable forced SDR2HDR)",
+        "Disable Amlogic DNR noise reduction",
+        "Enable seamless refresh-rate switching"
+      ]
+    },
+    "realtek_4k": {
+      "soc": "Realtek RTD2851 / RTD2874",
+      "target_tier": "BALANCED",
+      "limit_poster_cache_mb": 14,
+      "limit_packed_cache_mb": 10,
+      "player_buffer_cap_mb": 28,
+      "decode_threads": 4,
+      "enable_composited_backdrop": true,
+      "dynamic_framerate_lock": 60,
+      "recommended_tweaks": [
+        "Disable motion judder reduction & dynamic contrast",
+        "Enable D65 warm color temperature & 24p film cadence"
+      ]
+    },
+    "generic_low_ram": {
+      "soc": "Generic Low-RAM Android TV (<2 GB)",
+      "target_tier": "LOW_RAM_OPTIMIZED",
+      "limit_poster_cache_mb": 8,
+      "limit_packed_cache_mb": 6,
+      "player_buffer_cap_mb": 16,
+      "decode_threads": 2,
+      "enable_composited_backdrop": true,
+      "dynamic_framerate_lock": 60,
+      "recommended_tweaks": [
+        "Use RGB_565 poster decoding & pooled decode buffers",
+        "Enable zRAM app compaction & cached-app freezer",
+        "Enforce strict 60 FPS composited backdrop"
+      ]
+    },
+    "high_performance_4k": {
+      "soc": "High-Performance 4K Android TV (>=3.5 GB RAM)",
+      "target_tier": "HIGH",
+      "limit_poster_cache_mb": 28,
+      "limit_packed_cache_mb": 18,
+      "player_buffer_cap_mb": 64,
+      "decode_threads": 6,
+      "enable_composited_backdrop": true,
+      "dynamic_framerate_lock": 60,
+      "recommended_tweaks": [
+        "Enable asynchronous MediaCodec queueing on Android 12+",
+        "Enable 1080p60 trailer preview & extended rewind buffer"
       ]
     }
   }

@@ -31,6 +31,9 @@ public class ModalHost extends FrameLayout {
     private Runnable onClosed;
     /** Set by a window while it is being built: a blinking red edge glow stays over it (e.g. Remove CineTV). */
     private boolean alarmOn;
+    /** Set by a mandatory window while it is being built: Back cannot dismiss the root modal until completed. */
+    private boolean cancelable = true;
+    private Runnable onBlockedDismiss;
     private boolean spatial;
     private View activeCard;
     private final int[] focusLoc = new int[2];
@@ -61,6 +64,19 @@ public class ModalHost extends FrameLayout {
         onClosed = r;
     }
 
+    public void setCancelable(boolean cancelable) {
+        this.cancelable = cancelable;
+    }
+
+    public void setCancelable(boolean cancelable, Runnable onBlockedDismiss) {
+        this.cancelable = cancelable;
+        this.onBlockedDismiss = onBlockedDismiss;
+    }
+
+    public boolean isCancelable() {
+        return cancelable;
+    }
+
     public boolean isShowing() {
         return getVisibility() == VISIBLE;
     }
@@ -88,6 +104,10 @@ public class ModalHost extends FrameLayout {
     }
 
     public void back() {
+        if (stack.size() <= 1 && !cancelable) {
+            if (onBlockedDismiss != null) onBlockedDismiss.run();
+            return;
+        }
         if (!stack.isEmpty()) stack.pop();
         if (stack.isEmpty()) close();
         else showTop();
@@ -115,8 +135,14 @@ public class ModalHost extends FrameLayout {
     }
 
     public void closeImmediate() {
+        if (!cancelable) {
+            if (onBlockedDismiss != null) onBlockedDismiss.run();
+            return;
+        }
         animate().cancel();
         alarmOn = false;
+        cancelable = true;
+        onBlockedDismiss = null;
         stack.clear();
         anchor = null;
         setVisibility(GONE);
@@ -125,9 +151,21 @@ public class ModalHost extends FrameLayout {
         restoreFocus();
     }
 
+    public void forceClose() {
+        cancelable = true;
+        onBlockedDismiss = null;
+        close();
+    }
+
     public void close() {
+        if (!cancelable) {
+            if (onBlockedDismiss != null) onBlockedDismiss.run();
+            return;
+        }
         animate().cancel();
         alarmOn = false;
+        cancelable = true;
+        onBlockedDismiss = null;
         stack.clear();
         anchor = null;
         animate().alpha(0f).setDuration(PerformanceProfile.animationMs(getContext(), 160)).withEndAction(() -> {
@@ -157,6 +195,8 @@ public class ModalHost extends FrameLayout {
         }
         removeAllViews();
         alarmOn = false;
+        cancelable = true;
+        onBlockedDismiss = null;
         View content = stack.peek().build();
         LinearLayout card = new LinearLayout(getContext());
         card.setOrientation(LinearLayout.VERTICAL);

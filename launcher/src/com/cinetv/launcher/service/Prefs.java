@@ -235,4 +235,24 @@ public final class Prefs {
     public static void setPreferredNuvioPackage(Context ctx, String pkg) {
         get(ctx).edit().putString(PREFERRED_NUVIO_PKG, pkg).apply();
     }
+
+    public static final String CINESUB_AMBIENT = "cinesub_ambient";
+    public static final String CINESUB_AMBIENT_MIGRATED = "cinesub_ambient_default_v2";
+
+    /**
+     * Untriggered / automatic CineSUB companion mode: enabled by default for all installs
+     * so rich scene and subtitle details surface automatically during playback.
+     */
+    public static boolean cinesubAmbient(Context ctx) {
+        SharedPreferences p = get(ctx);
+        if (!p.getBoolean(CINESUB_AMBIENT_MIGRATED, false)) {
+            p.edit().putBoolean(CINESUB_AMBIENT, true).putBoolean(CINESUB_AMBIENT_MIGRATED, true).apply();
+            return true;
+        }
+        return p.getBoolean(CINESUB_AMBIENT, true);
+    }
+
+    public static void setCinesubAmbient(Context ctx, boolean on) {
+        get(ctx).edit().putBoolean(CINESUB_AMBIENT, on).putBoolean(CINESUB_AMBIENT_MIGRATED, true).apply();
+    }
 }

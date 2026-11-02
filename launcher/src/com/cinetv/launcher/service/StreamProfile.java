@@ -9,9 +9,9 @@ import com.cinetv.launcher.device.AvOptimizer;
 import com.cinetv.launcher.device.NetworkProbe;
 
 /**
- * Turns the measured connection and the TV's capabilities into the stream quality Nuvio should
- * prefer, expressed as a Torrentio configuration (sort, quality filter, size cap). Nothing is
- * changed silently: Nuvio shows its own install/update screen for the addon.
+ * Turns the measured connection and the TV's hardware decoder/panel/RAM capabilities into the
+ * stream quality Nuvio should prefer, expressed as a Torrentio configuration (sort, quality filter,
+ * size cap). Nothing is changed silently: Nuvio shows its own install/update screen for the addon.
  */
 public final class StreamProfile {
 
@@ -25,10 +25,15 @@ public final class StreamProfile {
     }
 
     public static StreamProfile recommend(NetworkProbe.Result net, AvOptimizer.Report av) {
-        double mbps = net != null && net.ok ? net.downloadMbps : 25;
-        boolean uhd = av == null || (av.is4kPanel() && (av.hevc || av.av1 || av.vp9));
-        boolean hdr = av == null || av.hdr10 || av.hlg;
+        double rawMbps = net != null && net.ok ? net.downloadMbps : 25;
+        // High jitter (>80 ms) or high latency (>200 ms) on congested 2.4 GHz Wi-Fi reduces sustained throughput
+        boolean highJitter = net != null && (net.jitterMs > 80 || net.latencyMs > 200);
+        double mbps = highJitter ? rawMbps * 0.75 : rawMbps;
+
+        boolean uhd = av == null || (av.is4kPanel() && av.canDecode4k());
+        boolean hdr = av == null || av.hdr10 || av.hlg || av.hdr10Plus;
         boolean dv = av != null && av.dolbyVision;
+        boolean lowRam = av != null && av.lowRam;
 
         StringBuilder filter = new StringBuilder("scr,cam,unknown");
         if (!dv) filter.append(",dolbyvision");     // pure Dolby Vision would play with wrong colours
@@ -38,11 +43,12 @@ public final class StreamProfile {
         String size;
         if (uhd && mbps >= 80) {
             label = R.string.stream_remux;           // 4K remux needs 60-80 Mbps peaks
-            size = "80GB";
+            // On <2 GB RAM TVs, cap remux size to 35GB to prevent piece-buffer OOM while keeping high-bitrate 4K
+            size = lowRam ? "35GB" : "80GB";
         } else if (uhd && mbps >= 30) {
             label = R.string.stream_4k;              // 4K WEB-DL / HEVC encodes, ~15-25 Mbps
             filter.append(",brremux");
-            size = "30GB";
+            size = lowRam ? "20GB" : "30GB";
         } else if (mbps >= 12) {
             label = R.string.stream_1080;
             filter.append(",brremux,4k");

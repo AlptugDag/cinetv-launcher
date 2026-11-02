@@ -117,14 +117,14 @@ public final class StreamResolver {
 
                     // 1. Check LRU Cache
                     ResolvedStream cached = streamLru.get(candidateKey);
-                    if (cached != null && !cached.isStale()) {
+                    if (cached != null && !cached.isStale() && (!audioEnabled || cached.audioUrl != null || cached.audioItag == 0)) {
                         mainHandler.post(() -> callback.onResolved(cached));
                         return;
                     }
 
                     // 2. Check Disk Cache
                     try {
-                        android.content.SharedPreferences p = app.getSharedPreferences("cinetv_stream_cache", Context.MODE_PRIVATE);
+                        android.content.SharedPreferences p = app.getSharedPreferences("cinetv_stream_cache_v2", Context.MODE_PRIVATE);
                         String raw = p.getString(candidateKey, null);
                         if (raw != null) {
                             org.json.JSONObject o = new org.json.JSONObject(raw);
@@ -138,7 +138,7 @@ public final class StreamResolver {
                                     o.optInt("height", 720),
                                     o.getLong("expiresAtMillis")
                             );
-                            if (!disk.isStale()) {
+                            if (!disk.isStale() && (!audioEnabled || disk.audioUrl != null || disk.audioItag == 0)) {
                                 streamLru.put(candidateKey, disk);
                                 mainHandler.post(() -> callback.onResolved(disk));
                                 return;
@@ -151,7 +151,7 @@ public final class StreamResolver {
                         if (resolved != null) {
                             streamLru.put(candidateKey, resolved);
                             try {
-                                android.content.SharedPreferences p = app.getSharedPreferences("cinetv_stream_cache", Context.MODE_PRIVATE);
+                                android.content.SharedPreferences p = app.getSharedPreferences("cinetv_stream_cache_v2", Context.MODE_PRIVATE);
                                 org.json.JSONObject o = new org.json.JSONObject();
                                 o.put("videoId", resolved.videoId);
                                 o.put("videoUrl", resolved.videoUrl);
@@ -213,8 +213,14 @@ public final class StreamResolver {
             suitable.addAll(candidates);
         }
 
-        // Sort: H.264 first, then closest to maxH, then lowest bitrate
+        // Sort: when audio is enabled, prefer muxed streams (!isVideoOnly) with embedded AAC audio first so video+audio never desync or drop;
+        // then H.264, then closest to maxH, then lowest bitrate.
         Collections.sort(suitable, (a, b) -> {
+            if (audioEnabled) {
+                boolean aMuxed = !a.isVideoOnly();
+                boolean bMuxed = !b.isVideoOnly();
+                if (aMuxed != bMuxed) return aMuxed ? -1 : 1;
+            }
             boolean aH264 = isH264(a);
             boolean bH264 = isH264(b);
             if (aH264 != bH264) return aH264 ? -1 : 1;
@@ -226,9 +232,9 @@ public final class StreamResolver {
 
         VideoStream bestVideo = suitable.get(0);
 
-        // Audio Stream Selection (Lowest bitrate AAC / m4a)
+        // Audio Stream Selection: if bestVideo is muxed (!isVideoOnly), audioItag = 0 indicates built-in muxed audio.
         String audioUrl = null;
-        int audioItag = -1;
+        int audioItag = bestVideo.isVideoOnly() ? -1 : 0;
         if (audioEnabled && bestVideo.isVideoOnly()) {
             List<AudioStream> audioList = info.getAudioStreams();
             if (audioList != null && !audioList.isEmpty()) {

@@ -215,6 +215,15 @@ public final class AppLauncher {
 
     public static boolean launch(Context ctx, String pkg) {
         if (LIVE_TV.equals(pkg)) return openLiveTv(ctx);
+        // Launching an app normally from the dock or drawer is not a direct content launch: Back stays inside that app.
+        if (pkg != null) {
+            for (String np : NUVIO_PACKAGES) {
+                if (pkg.equals(np)) com.cinetv.launcher.TvKeyInterceptorService.launchedNuvioFromCineTv = false;
+            }
+            for (String yp : YOUTUBE_PACKAGES) {
+                if (pkg.equals(yp)) com.cinetv.launcher.TvKeyInterceptorService.launchedYouTubeFromCineTv = false;
+            }
+        }
         Intent intent = launchIntent(ctx.getPackageManager(), pkg);
         if (intent == null) return false;
         return start(ctx, intent);
@@ -230,8 +239,11 @@ public final class AppLauncher {
 
     /** Opens a YouTube video URL directly inside the installed ad-free YouTube app (TizenTube). */
     public static boolean openYouTubeVideo(Context ctx, String url) {
+        if (url == null || url.isEmpty()) {
+            com.cinetv.launcher.TvKeyInterceptorService.launchedYouTubeFromCineTv = false;
+            return launchFirst(ctx, YOUTUBE_PACKAGES);
+        }
         com.cinetv.launcher.TvKeyInterceptorService.launchedYouTubeFromCineTv = true;
-        if (url == null || url.isEmpty()) return launchFirst(ctx, YOUTUBE_PACKAGES);
 
         String vid = null;
         if (url.contains("youtu.be/")) {
@@ -297,11 +309,15 @@ public final class AppLauncher {
     /** Opens a title and selects Nuvio's resume action first only for CineTV's Continue Watching card. */
     public static boolean openInNuvio(Context ctx, String title, String imdbId, int tmdbId, String type,
                                       String posterUrl, boolean preferResume) {
-        if ((imdbId == null || !imdbId.startsWith("tt")) && tmdbId > 0 && !"tv".equals(type) && !"channel".equals(type)) imdbId = "tmdb:" + tmdbId;
         if ((title != null && "sessiz".equals(Creator.fold(title))) || "tt38983576".equals(imdbId)) {
             return openYouTubeVideo(ctx, Creator.SESSIZ_YOUTUBE_URL);
         }
+        // Only fall back to "tmdb:<id>" if no valid "tt..." IMDb ID is available; stream addons in Nuvio require "tt..." IDs.
+        if ((imdbId == null || !imdbId.startsWith("tt")) && tmdbId > 0 && !"tv".equals(type) && !"channel".equals(type)) {
+            imdbId = "tmdb:" + tmdbId;
+        }
         com.cinetv.launcher.TvKeyInterceptorService.launchedNuvioFromCineTv = true;
+        com.cinetv.launcher.TvKeyInterceptorService.lastNuvioLaunchPreferResume = preferResume;
         String targetPkg = resolveNuvioPackage(ctx);
 
         if (imdbId != null && (imdbId.startsWith("tv:") || "tv".equals(type) || "channel".equals(type))) {
@@ -416,19 +432,51 @@ public final class AppLauncher {
      * never changes a setting.
      */
     public static boolean openSystemPage(Context ctx, String action, String... tvSettingsActivities) {
+        com.cinetv.launcher.device.DeviceTweaks.markUserOpenedTv();
         android.content.pm.PackageManager pm = ctx.getPackageManager();
-        for (String cls : tvSettingsActivities) {
-            Intent i = new Intent().setClassName("com.android.tv.settings", "com.android.tv.settings" + cls);
-            if (i.resolveActivity(pm) != null && start(ctx, i)) return true;
+        String[] settingsPkgs = {"com.android.tv.settings", "com.google.android.tv.settings", "com.android.settings"};
+        for (String pkg : settingsPkgs) {
+            for (String cls : tvSettingsActivities) {
+                String fullCls = cls.startsWith(".") ? pkg + cls : cls;
+                Intent i = new Intent().setClassName(pkg, fullCls);
+                if (i.resolveActivity(pm) != null && start(ctx, i)) return true;
+            }
+        }
+        if (Settings.ACTION_ACCESSIBILITY_SETTINGS.equals(action)) {
+            String[][] a11yTargets = {
+                    {"com.android.tv.settings", "com.android.tv.settings.accessibility.AccessibilityActivity"},
+                    {"com.android.tv.settings", "com.android.tv.settings.oemlink.AccessibilitySettingsActivity"},
+                    {"com.google.android.tv.settings", "com.google.android.tv.settings.accessibility.AccessibilityActivity"},
+                    {"com.android.settings", "com.android.settings.Settings$AccessibilitySettingsActivity"},
+                    {"com.android.settings", "com.android.settings.AccessibilitySettings"}
+            };
+            for (String[] t : a11yTargets) {
+                Intent i = new Intent().setClassName(t[0], t[1]);
+                if (i.resolveActivity(pm) != null && start(ctx, i)) return true;
+            }
         }
         if (action != null) {
-            Intent i = new Intent(action);
-            android.content.ComponentName c = i.resolveActivity(pm);
-            // the framework's stub pages finish immediately: they are no page at all
-            if (c != null && !c.getPackageName().contains("frameworkpackagestubs") && start(ctx, i)) return true;
+            Intent query = new Intent(action);
+            try {
+                java.util.List<ResolveInfo> handlers = pm.queryIntentActivities(query, 0);
+                if (handlers != null) {
+                    for (ResolveInfo ri : handlers) {
+                        if (ri.activityInfo == null) continue;
+                        String p = ri.activityInfo.packageName;
+                        if (p.contains("frameworkpackagestubs")) continue;
+                        Intent explicit = new Intent(action).setClassName(p, ri.activityInfo.name);
+                        if (start(ctx, explicit)) return true;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+            android.content.ComponentName c = query.resolveActivity(pm);
+            if (c != null && !c.getPackageName().contains("frameworkpackagestubs") && start(ctx, query)) return true;
         }
-        Intent home = new Intent().setClassName("com.android.tv.settings", "com.android.tv.settings.MainSettings");
-        if (home.resolveActivity(pm) != null && start(ctx, home)) return true;
+        for (String pkg : settingsPkgs) {
+            Intent home = new Intent().setClassName(pkg, pkg + ".MainSettings");
+            if (home.resolveActivity(pm) != null && start(ctx, home)) return true;
+        }
         return start(ctx, new Intent(Settings.ACTION_SETTINGS));
     }
 

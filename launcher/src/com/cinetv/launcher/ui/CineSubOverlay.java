@@ -151,18 +151,30 @@ public final class CineSubOverlay {
     }
 
     /**
-     * Ambient mode, called by the key service every half minute while something plays: now and then,
-     * one short note in a quiet corner. Never while CineSUB is already showing.
+     * Adaptive interval for untriggered/automatic CineSUB companion mode:
+     * 40s (65s on low-RAM TVs) after showing scene notes, or 20s (30s on low-RAM TVs)
+     * when the previous frame had no POIs so the next scene is inspected promptly.
+     */
+    public static long ambientIntervalMs(boolean lowMemory, boolean hadPois) {
+        if (hadPois) {
+            return lowMemory ? 65_000L : 40_000L;
+        }
+        return lowMemory ? 30_000L : 20_000L;
+    }
+
+    /**
+     * Ambient mode, called by the key service every 15 seconds while something plays:
+     * surfaces 1 to 2 rich scene/subtitle notes automatically without pressing the Yellow key.
      */
     public static void ambientTick(final Context ctx) {
-        if (active != null || ambientBusy || !com.cinetv.launcher.service.Prefs.get(ctx).getBoolean("cinesub_ambient", false)) return;
+        if (active != null || ambientBusy || !com.cinetv.launcher.service.Prefs.cinesubAmbient(ctx)) return;
         if (!com.cinetv.launcher.ai.LlmClient.isConfigured(ctx) || com.cinetv.launcher.ai.LlmClient.quotaOut()) return;
         // not over the viewer's own CineSUB, Gamze talking, or a screen that is off
         if (com.cinetv.launcher.ai.EmaLightningTts.isSpeaking()) return;
         android.os.PowerManager pm = (android.os.PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
         if (pm != null && !pm.isInteractive()) return;
         long now = SystemClock.elapsedRealtime();
-        long gap = PerformanceProfile.lowMemory(ctx) ? 300_000L : 180_000L;
+        long gap = ambientIntervalMs(PerformanceProfile.lowMemory(ctx), lastAmbientHadPois);
         if (now - lastAmbientAt < gap || now < ambientRetryAt) return;
         ambientBusy = true;
         final Context app = ctx.getApplicationContext();
@@ -178,15 +190,18 @@ public final class CineSubOverlay {
             }
             long at = SystemClock.elapsedRealtime();
             if (scene.error.isEmpty()) {
-                // a look happened (with or without something worth saying): the next one after the full gap
                 lastAmbientAt = at;
+                lastAmbientHadPois = !scene.pois.isEmpty();
             } else {
-                // couldn't look (capture, protected picture, network, quota): try again in a minute, not in three
-                ambientRetryAt = at + 60_000L;
+                // couldn't look (capture, protected picture, network, quota): retry in 15s
+                ambientRetryAt = at + 15_000L;
                 Log.w("CineSub", "Ambient look failed: " + scene.error);
                 return;
             }
             if (scene.pois.isEmpty()) return;
+            while (scene.pois.size() > 2) {
+                scene.pois.remove(scene.pois.size() - 1);
+            }
             final SceneInspector.Scene found = scene;
             main.post(() -> {
                 if (active != null) return;
@@ -194,13 +209,18 @@ public final class CineSubOverlay {
                 if (!o.attach()) return;
                 active = o;
                 o.stage.setScene(found);
-                SceneInspector.Poi top = found.pois.get(0);
-                o.keepFor(Math.max(11000, 5000 + (top.title.length() + top.fact.length()) * 50L));
+                int totalChars = 0;
+                for (SceneInspector.Poi p : found.pois) {
+                    totalChars += (p.title != null ? p.title.length() : 0) + (p.fact != null ? p.fact.length() : 0);
+                }
+                long duration = Math.min(18_000L, Math.max(11_500L, 5_500L + totalChars * 45L));
+                o.keepFor(duration);
             });
         }, "cinesub-ambient").start();
     }
 
     private static volatile boolean ambientBusy;
+    private static volatile boolean lastAmbientHadPois = false;
     private static volatile long ambientRetryAt;
 
     public static void dismissActive() {
@@ -418,11 +438,12 @@ public final class CineSubOverlay {
             body.setTextSize(25 * u);
             small.setTextSize(17 * u);
             float safeL = W * 0.05f, safeT = H * 0.06f, safeR = W * 0.95f, subtitleTop = H * 0.80f;
-            int stackIdx = 0;
+            float nextAmbientTopL = safeT + 50 * u;
+            float nextAmbientTopR = safeT + 50 * u;
             for (int i = 0; i < scene.pois.size(); i++) {
                 Poi p = scene.pois.get(i);
                 boolean f = i == focus || ambient;
-                float cw = (ambient ? 520 : f ? 600 : 360) * u;
+                float cw = (ambient ? 540 : f ? 600 : 360) * u;
                 String text = f ? p.fact : p.title;
                 StaticLayout sl = new StaticLayout(text == null ? "" : text, f ? body : title, (int) (cw - 56 * u),
                         Layout.Alignment.ALIGN_NORMAL, 1.18f, 0, false);
@@ -433,13 +454,20 @@ public final class CineSubOverlay {
                 float ch = (f ? 112 : 64) * u + sl.getHeight() + (f && !ambient ? 50 * u : 0);
                 RectF card = new RectF();
                 if (p.box.isEmpty() || ambient) {
-                    // Notes without a place on screen stack in the top corner farthest from what's on screen.
+                    // Notes in ambient mode or without a box stack cleanly in the top corner farthest from the subject.
                     boolean left = !p.box.isEmpty() && p.box.centerX() > 0.5f;
                     float x = left ? safeL : safeR - cw;
-                    float y = safeT + 70 * u + stackIdx * (ch + 18 * u);
-                    if (!p.box.isEmpty() && ambient && p.box.centerY() < 0.45f) y = subtitleTop - ch - 20 * u;
+                    float y = left ? nextAmbientTopL : nextAmbientTopR;
+                    if (!p.box.isEmpty() && ambient && i == 0 && p.box.centerY() < 0.38f && scene.pois.size() == 1) {
+                        y = subtitleTop - ch - 20 * u;
+                    }
+                    y = Math.min(y, subtitleTop - ch - 12 * u);
                     card.set(x, y, x + cw, y + ch);
-                    stackIdx++;
+                    if (left) {
+                        nextAmbientTopL = card.bottom + 16 * u;
+                    } else {
+                        nextAmbientTopR = card.bottom + 16 * u;
+                    }
                 } else {
                     RectF b = new RectF(p.box.left * W, p.box.top * H, p.box.right * W, p.box.bottom * H);
                     float gap = 34 * u;
@@ -490,11 +518,15 @@ public final class CineSubOverlay {
                 boolean f = i == focus || ambient;
                 float enter = ease(Math.min(1f, (now - shownAt - i * 90) / 420f));
                 if (enter <= 0) continue;
-                if (!p.box.isEmpty() && !ambient) drawRing(c, p, f, u, W, H, t, enter);
+                if (!p.box.isEmpty()) {
+                    drawRing(c, p, !ambient && f, u, W, H, t, ambient ? enter * 0.75f : enter);
+                }
                 RectF card = new RectF(cards.get(i));
                 float drift = lite ? 0 : (float) Math.sin(t * 0.9 + i) * 3 * u;
                 card.offset(0, drift + (1 - enter) * 16 * u);
-                if (!p.box.isEmpty() && f && !ambient) drawConnector(c, p, card, u, W, H, enter);
+                if (!p.box.isEmpty() && f) {
+                    drawConnector(c, p, card, u, W, H, ambient ? enter * 0.65f : enter);
+                }
                 drawCard(c, p, card, texts.get(i), f, u, enter, now);
             }
             if (!ambient && scene.pois.size() > 1) drawDots(c, u, W, H);
@@ -558,7 +590,7 @@ public final class CineSubOverlay {
                     Color.argb((int) ((f ? 255 : 150) * enter), 255, 255, 255), Color.argb((int) ((f ? 230 : 110) * enter), 245, 158, 11), Shader.TileMode.CLAMP));
             c.drawRoundRect(r, rad, rad, stroke);
             stroke.setShader(null);
-            if (!f) {
+            if (!f && !ambient) {
                 // Unfocused: a small pill with its name at the ring's top edge.
                 small.setTextSize(17 * u);
                 String label = p.label.isEmpty() ? p.title : p.label;
@@ -600,7 +632,11 @@ public final class CineSubOverlay {
             small.setTextSize(16 * u);
             small.setColor(Color.argb(a, 245, 158, 11));
             String eyebrow = (p.fromSubtitle ? (tr ? "ALTYAZIDA GEÇTİ" : "IN THE DIALOGUE") : kindName(p.kind)).toUpperCase(new Locale("tr"));
-            if (ambient) eyebrow = "CINESUB  ·  " + eyebrow;
+            if (ambient) {
+                String filmPrefix = (scene != null && scene.film != null && !scene.film.isEmpty() && scene.film.length() <= 24)
+                        ? " · " + scene.film.toUpperCase(new Locale("tr")) : "";
+                eyebrow = "CINESUB" + filmPrefix + "  ·  " + eyebrow;
+            }
             c.drawText(eyebrow, x, y, small);
             if (f) {
                 title.setTextSize(31 * u);

@@ -35,12 +35,14 @@ public class TvKeyInterceptorService extends AccessibilityService {
     private static volatile TvKeyInterceptorService instance;
     public static volatile boolean launchedYouTubeFromCineTv;
     public static volatile boolean launchedNuvioFromCineTv;
+    public static volatile boolean lastNuvioLaunchPreferResume;
 
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String lastPackage;
-    /** The Back press now in progress belongs to Nuvio (decided on its DOWN, kept for its UP). */
+    /** The Back press now in progress belongs to Nuvio/YouTube (decided on its DOWN, kept for its UP). */
     private boolean backToNuvio;
+    private long lastMediaPlayingAt;
 
     public String getLastPackage() {
         return lastPackage;
@@ -226,6 +228,15 @@ public class TvKeyInterceptorService extends AccessibilityService {
             root.getBoundsInScreen(screen);
             if (series) return seriesButton(root);
             String[] labels = filmPlayLabels(preferResume);
+            boolean hasResume = false;
+            for (String rl : new String[]{"İzlemeye Devam Et", "Devam Et", "Kaldığın Yerden Devam Et", "Resume", "Continue"}) {
+                java.util.List<android.view.accessibility.AccessibilityNodeInfo> rf = new java.util.ArrayList<>();
+                findText(root, rl, rf, 0);
+                if (!rf.isEmpty()) {
+                    hasResume = true;
+                    break;
+                }
+            }
             for (String label : labels) {
                 // Compose text is not always returned by findAccessibilityNodeInfosByText: walk the tree.
                 java.util.List<android.view.accessibility.AccessibilityNodeInfo> found = new java.util.ArrayList<>();
@@ -255,6 +266,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
                     android.graphics.Rect b = new android.graphics.Rect();
                     c.getBoundsInScreen(b);
                     if (screen.height() > 0 && (b.height() > screen.height() / 4 || b.width() > screen.width() / 2)) continue;
+                    if (preferResume && !hasResume && ("Oynat".equalsIgnoreCase(label) || "Play".equalsIgnoreCase(label))) {
+                        // The viewer removed this film from Nuvio's Continue Watching list: sync CineTV's WatchHistory.
+                        com.cinetv.launcher.service.WatchHistory.onNuvioResumeMissing(this);
+                    }
                     c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS);
                     boolean ok = c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);
                     if (!ok && c.isFocused()) {
@@ -303,6 +318,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
         String t = n.getText().toString().replaceAll("\\s+", " ").trim().toLowerCase(new java.util.Locale("tr"));
         boolean first = t.matches(".*\\b(s1 ?b1|s1 ?e1|s01 ?e01|1\\. sezon 1\\. bölüm)\\b.*") && !t.startsWith("devam") && !t.contains("resume") && !t.contains("continue");
         if (first) {
+            if (lastNuvioLaunchPreferResume) {
+                com.cinetv.launcher.service.WatchHistory.onNuvioResumeMissing(this);
+            }
             boolean ok = com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent 20", 1500);
             android.util.Log.d("CineTvPlay", "series never watched: episode list " + ok);
             return true;
@@ -313,6 +331,45 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (!ok) ok = com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent 23", 1500);
         android.util.Log.d("CineTvPlay", "series resumed (" + t + ") " + ok);
         return true;
+    }
+
+    /** True only when Nuvio is showing a title's detail page (with its Play/Resume button), not an in-player menu or stream picker. */
+    private boolean isOnNuvioDetailPage() {
+        try {
+            android.view.accessibility.AccessibilityNodeInfo root = null;
+            for (android.view.accessibility.AccessibilityWindowInfo w : getWindows()) {
+                android.view.accessibility.AccessibilityNodeInfo r = w.getRoot();
+                if (r != null && r.getPackageName() != null && isNuvioApp(r.getPackageName().toString())) {
+                    root = r;
+                    break;
+                }
+            }
+            if (root == null) root = getRootInActiveWindow();
+            if (root == null || root.getPackageName() == null || !isNuvioApp(root.getPackageName().toString())) {
+                return false;
+            }
+            android.view.accessibility.AccessibilityNodeInfo n = findPrefix(root,
+                    new String[]{"oynat", "devam et", "izlemeye devam", "kaldığın yerden", "play", "resume", "continue", "oynatma kullanılamıyor", "playback unavailable"}, 0);
+            return n != null;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /** True when Nuvio is on its home/search/settings/addons browsing screens or a title detail page, rather than full-screen video playback. */
+    private boolean isOnNuvioBrowsingOrDetailPage() {
+        if (isOnNuvioDetailPage()) return true;
+        try {
+            android.view.accessibility.AccessibilityNodeInfo root = getRootInActiveWindow();
+            if (root == null || root.getPackageName() == null || !isNuvioApp(root.getPackageName().toString())) {
+                return false;
+            }
+            android.view.accessibility.AccessibilityNodeInfo nav = findPrefix(root,
+                    new String[]{"keşfet", "kütüphane", "eklentiler", "koleksiyonlar", "discover", "library", "addons", "collections", "board"}, 0);
+            return nav != null;
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     /** A node in Nuvio's trailer area ("Fragman", "Trailer" in it or its ancestors' text). */
@@ -407,7 +464,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
         super.onServiceConnected();
         instance = this;
         handler.removeCallbacks(cinesubAmbient);
-        handler.postDelayed(cinesubAmbient, 30_000);
+        handler.postDelayed(cinesubAmbient, 15_000);
         try {
             // The moment the screen comes on, before the TV's own tuner / last HDMI input gets its window up.
             IntentFilter on = new IntentFilter(Intent.ACTION_SCREEN_ON);
@@ -670,11 +727,13 @@ public class TvKeyInterceptorService extends AccessibilityService {
         handler.postDelayed(idleSaver, timeout);
     }
 
-    /** CineSUB's unprompted notes: checked every half minute, only while a player shows something. */
+    private volatile long lastNavKeyAt = 0L;
+
+    /** CineSUB's unprompted notes: checked every 15 seconds while a player shows something. */
     private final Runnable cinesubAmbient = new Runnable() {
         @Override
         public void run() {
-            handler.postDelayed(this, 30_000);
+            handler.postDelayed(this, 15_000);
             try {
                 // AlptugPlayer lives inside CineTV: it counts while a film plays in it (its own state, since
                 // tunnelled or passthrough sound does not show up as "music active")
@@ -684,12 +743,23 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 }
                 String pkg = lastPackage;
                 if (pkg == null || pkg.equals(getPackageName())) return;
-                boolean player = isNuvioApp(pkg) || isYouTubeApp(pkg) || pkg.contains("nova") || pkg.contains("vlc")
+                boolean nuvio = isNuvioApp(pkg);
+                boolean player = nuvio || isYouTubeApp(pkg) || pkg.contains("nova") || pkg.contains("vlc")
                         || pkg.contains("mxtech") || pkg.contains("kodi") || pkg.contains("player") || pkg.contains("video");
+                if (!player) return;
                 android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
-                if (player && am != null && am.isMusicActive()) com.cinetv.launcher.ui.CineSubOverlay.ambientTick(TvKeyInterceptorService.this);
+                boolean audioActive = am != null && am.isMusicActive();
+                long idleMs = android.os.SystemClock.elapsedRealtime() - lastNavKeyAt;
+                if (nuvio) {
+                    // In Nuvio: trigger whenever not on a browsing/detail screen (covers both PCM and Dolby/passthrough playback)
+                    if (!isOnNuvioBrowsingOrDetailPage() && (audioActive || idleMs > 8_000L)) {
+                        com.cinetv.launcher.ui.CineSubOverlay.ambientTick(TvKeyInterceptorService.this);
+                    }
+                } else if (audioActive || idleMs > 12_000L) {
+                    com.cinetv.launcher.ui.CineSubOverlay.ambientTick(TvKeyInterceptorService.this);
+                }
             } catch (Throwable ignored) {
-                // the half-minute check never dies on one bad tick
+                // the 15-second check never dies on one bad tick
             }
         }
     };
@@ -713,6 +783,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
         if (instance == null) return false;
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            lastNavKeyAt = android.os.SystemClock.elapsedRealtime();
+        }
         // Holiday celebration modal: any key closes the celebration overlay cleanly
         if (com.cinetv.launcher.ui.CelebrationOverlay.isShowing()) {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
@@ -769,17 +842,29 @@ public class TvKeyInterceptorService extends AccessibilityService {
             }
         }
 
-        // Direct return to CineTV: when exiting Nuvio or YouTube, Back returns straight to CineTV Launcher Home
-        // Intercept BOTH ACTION_DOWN and ACTION_UP BEFORE navigation check so Nuvio NEVER unwinds its internal history stack!
-        boolean inNuvio = isNuvioApp(lastPackage) || launchedNuvioFromCineTv;
-        boolean inYouTube = isYouTubeApp(lastPackage) || launchedYouTubeFromCineTv;
-        // CineTV's own player handles Back itself (it returns to Nuvio with the watch position).
+        // Direct return to CineTV ONLY when exiting content that was directly launched from CineTV Home.
+        // Never intercept Back during video playback, inside in-player settings menus, or when Nuvio/YouTube was opened as an app.
         if (CinePlayerActivity.active && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) return false;
-        if ((inNuvio || inYouTube) && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
-            // Browsing Nuvio (a catalog, a film's page, search): Back is Nuvio's own and closes that page.
-            // Only from a playing film does Back go straight to CineTV's Home.
+        boolean playingNow = DeviceTweaks.isMediaPlaying(this);
+        if (playingNow) {
+            lastMediaPlayingAt = android.os.SystemClock.elapsedRealtime();
+        }
+        boolean directNuvio = isNuvioApp(lastPackage) && launchedNuvioFromCineTv;
+        boolean directYouTube = isYouTubeApp(lastPackage) && launchedYouTubeFromCineTv;
+        if ((directNuvio || directYouTube) && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-                backToNuvio = inNuvio && !DeviceTweaks.isMediaPlaying(this);
+                boolean recentlyPlaying = playingNow || (android.os.SystemClock.elapsedRealtime() - lastMediaPlayingAt < 1800L);
+                if (recentlyPlaying) {
+                    // Inside the video player or closing an in-player settings/subtitle/quality menu: always let the app handle Back!
+                    backToNuvio = true;
+                } else if (directNuvio) {
+                    // In Nuvio: only return to CineTV Home when backing out from the title's detail page itself.
+                    // If the user is in a stream source picker, episode list, or dialog, let Nuvio handle Back.
+                    backToNuvio = !isOnNuvioDetailPage();
+                } else {
+                    // Direct YouTube video (e.g. Sessiz) after playback stopped: return to CineTV Home.
+                    backToNuvio = false;
+                }
             }
             if (backToNuvio) {
                 if (event.getAction() == KeyEvent.ACTION_UP) backToNuvio = false;

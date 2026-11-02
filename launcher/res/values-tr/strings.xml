@@ -128,12 +128,12 @@
     <string name="trailer_moments_on">Açılan DVD fragmanı oynatır</string>
     <string name="trailer_hint">%1$d / %2$d  ·  ‹ › başka film  ·  OK ile izle</string>
     <string name="trailer_series">Dizi</string>
-    <string name="tour_title">CineTV turu</string>
-    <string name="tour_hint">Neyin ne işe yaradığını yeniden göster</string>
-    <string name="tour_progress">TUR · %1$d / %2$d</string>
-    <string name="tour_keys">OK sonraki  ·  ← önceki  ·  Geri ile çık</string>
-    <string name="tour_welcome_t">CineTV\'ye hoş geldin</string>
-    <string name="tour_welcome">Bu televizyonun artık neler yapabildiğini bir dakikada gösterelim. Devam etmek için OK\'a bas.</string>
+    <string name="tour_title">Kapsamlı CineTV Turu</string>
+    <string name="tour_hint">Vitrin, Gamze, Otomatik CineSUB, QR Anahtarlar ve Kumanda Rehberi</string>
+    <string name="tour_progress">REHBER · %1$d / %2$d</string>
+    <string name="tour_keys">OK / ▶ İleri  ·  ◀ Geri  ·  ▲/▼ 3 Adım Atla  ·  Sarı Tuş Sesli Anlatım  ·  Geri Çık</string>
+    <string name="tour_welcome_t">CineTV\'ye Hoş Geldin</string>
+    <string name="tour_welcome">Televizyonunun artık gerçek bir sinema salonuna nasıl dönüştüğünü adım adım keşfedelim: 3D DVD vitrininden Gamze sesli asistana, tetiklenmeden çalışan otomatik CineSUB\'dan telefon kumandasına kadar her özellik burada. İlerlemek için OK\'a bas.</string>
     <string name="tour_shelf_t">Her açılışta yeni bir raf</string>
     <string name="tour_shelf">Bu filmler tam bu an için seçildi: saate, güne, şehrine ve havaya göre. Sağa sola git; oda filmin rengiyle aydınlanır.</string>
     <string name="tour_dvd_t">Bir DVD aç</string>
@@ -296,8 +296,8 @@
         <item>90\'ların klasikleri</item>
         <item>İçini ısıtan eğlenceli filmler</item>
     </string-array>
-    <string name="tour_cinesub_ambient_t">CineSUB eşlik modu</string>
-    <string name="tour_cinesub_ambient">Ayarlar\'dan açarsan CineSUB birkaç dakikada bir sessiz bir köşede kısa bir not gösterebilir: gerçek bir mekân, bir tablo, diyalogda geçen bir isim ya da olay. Altyazının üstüne çıkmaz, kendiliğinden kaybolur.</string>
+    <string name="tour_cinesub_ambient_t">Otomatik CineSUB Eşlik Modu (Varsayılan Açık)</string>
+    <string name="tour_cinesub_ambient">Hiçbir tuşa basmasan bile CineSUB film oynarken sahneleri ve altyazıları sık sık tarar; oyuncuları, çekim mekânlarını, araç ve saat modellerini, tabloları, sahne müziğini ve diyalogdaki deyim/göndermeleri zarif halkalar ve köşe kartlarıyla kendiliğinden gösterir.</string>
     <string name="tour_quiz_t">CineQuiz</string>
     <string name="tour_quiz">Süreyi siz seçin. TMDB\'den gerçek sahneler, portreler ve kadrolar, üstüne Gamze\'nin kendi soruları; herkes telefonundan cevaplar, cevaplar TV\'de birlikte açılır, her doğru 10 puan. Kazanan bu gecenin filmini seçer.</string>
     <string name="tour_roulette_t">CineRoulette</string>

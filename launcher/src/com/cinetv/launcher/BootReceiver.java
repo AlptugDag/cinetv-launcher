@@ -17,6 +17,11 @@ public class BootReceiver extends BroadcastReceiver {
         if (intent == null || com.cinetv.launcher.device.Uninstaller.isRemoving(context)) return;
         String action = intent.getAction();
         Log.i(TAG, "boot action received: " + action);
+        if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
+            com.cinetv.launcher.device.DeviceTweaks.ensureKeyService(context);
+            HomeGuard.runUpdateOptimizationsAsync(context);
+            return;
+        }
         if (Intent.ACTION_BOOT_COMPLETED.equals(action)
                 || Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
                 || "android.intent.action.QUICKBOOT_POWERON".equals(action)

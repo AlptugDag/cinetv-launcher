@@ -17,8 +17,68 @@ import com.cinetv.launcher.service.Prefs;
  */
 public final class HomeGuard {
     private static final String LAST_CRASH = "home_guard_last_crash";
+    private static final String KEY_AUTO_OPT_STAMP = "auto_opt_stamp_v2";
+    private static volatile boolean updateOptRunning;
 
     private HomeGuard() {}
+
+    /** Stamp combining CineTV versionCode and the TV's OS build fingerprint so both app and firmware updates re-trigger optimization. */
+    public static String currentOptimizationStamp(Context ctx) {
+        int version = 0;
+        try {
+            version = (int) ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0).versionCode;
+        } catch (Throwable ignored) {
+        }
+        return version + "|" + android.os.Build.FINGERPRINT + "|" + android.os.Build.VERSION.SDK_INT;
+    }
+
+    /**
+     * Runs hardware/software detection and applies picture, audio, network, performance, memory,
+     * Nuvio config, and ART AOT compilation in the background whenever the app or TV OS is updated.
+     */
+    public static void runUpdateOptimizationsAsync(final Context ctx) {
+        if (ctx == null || updateOptRunning || com.cinetv.launcher.device.Uninstaller.isRemoving(ctx)) return;
+        final Context app = ctx.getApplicationContext();
+        final android.content.SharedPreferences p = Prefs.get(app);
+        final String stamp = currentOptimizationStamp(app);
+        if (stamp.equals(p.getString(KEY_AUTO_OPT_STAMP, "")) && isDefault(app)) return;
+        updateOptRunning = true;
+        new Thread(() -> {
+            try {
+                com.cinetv.launcher.service.PosterCache.configure(app);
+                com.cinetv.launcher.device.PerformanceProfile.noteMemory(app);
+                com.cinetv.launcher.device.DeviceTweaks.applyLauncherDefaults(app);
+                com.cinetv.launcher.device.DeviceTweaks.ensureKeyService(app);
+                com.cinetv.launcher.device.AvOptimizer.Report av = com.cinetv.launcher.device.AvOptimizer.optimize(app);
+                com.cinetv.launcher.device.NetworkOptimizer.optimizeRadio(app);
+                String dns = com.cinetv.launcher.device.NetworkOptimizer.choice(app);
+                if (!com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(dns)) {
+                    com.cinetv.launcher.device.NetworkOptimizer.apply(app, dns);
+                }
+                com.cinetv.launcher.device.MemoryOptimizer.applyTvOptimizations(app);
+                com.cinetv.launcher.device.NuvioSetup.deployConfigs(app);
+                if (!com.cinetv.launcher.service.NuvioPlaybackListenerService.hasNotificationAccess(app)) {
+                    com.cinetv.launcher.remote.LocalAdb.shell(app, "cmd notification allow_listener " + app.getPackageName()
+                            + "/com.cinetv.launcher.service.NuvioPlaybackListenerService 0 2>/dev/null", 5000);
+                }
+                int version = 0;
+                try {
+                    version = (int) app.getPackageManager().getPackageInfo(app.getPackageName(), 0).versionCode;
+                } catch (Throwable ignored) {
+                }
+                p.edit()
+                        .putString("setup_report", av.toJson().toString())
+                        .putBoolean("tv_opt_auto_applied", true)
+                        .putBoolean(Prefs.FIRST_SETUP_DONE, true)
+                        .putString(KEY_AUTO_OPT_STAMP, stamp)
+                        .putInt("setup_done_version", version)
+                        .apply();
+            } catch (Throwable ignored) {
+            } finally {
+                updateOptRunning = false;
+            }
+        }, "cinetv-auto-update-opt").start();
+    }
 
     public static void install(final Context app) {
         final Thread.UncaughtExceptionHandler system = Thread.getDefaultUncaughtExceptionHandler();
@@ -67,7 +127,10 @@ public final class HomeGuard {
                     && p.getBoolean("nuvio_official_addons", false)) {
                 p.edit().putBoolean("nuvio_official_done", true).apply();
             }
-            if (p.getInt("setup_done_version", 0) == version && isDefault(app)) return;
+            String stamp = currentOptimizationStamp(app);
+            if (p.getInt("setup_done_version", 0) == version
+                    && stamp.equals(p.getString(KEY_AUTO_OPT_STAMP, ""))
+                    && isDefault(app)) return;
             ensureDefault(app);
             // installed from the APK alone: Nuvio and its addons come too, plus background-app optimization
             if (com.cinetv.launcher.service.Prefs.get(app).getBoolean("nuvio_install_allowed", true)) {
@@ -75,7 +138,7 @@ public final class HomeGuard {
                 com.cinetv.launcher.device.NuvioSetup.playerOnce(app);
                 com.cinetv.launcher.device.NuvioSetup.allowSelfUpdate(app);
             }
-            com.cinetv.launcher.device.MemoryOptimizer.applyTvOptimizations(app);
+            runUpdateOptimizationsAsync(app);
             p.edit().putInt("setup_done_version", version).apply();
         }, "cinetv-home").start();
     }
@@ -175,11 +238,30 @@ public final class HomeGuard {
                 + "cmd package set-home-activity " + pkg + "/.MainActivity 2>/dev/null; ";
     }
 
-    /** Directly opens system accessibility settings, bypassing custom OEM TV settings menus. */
+    /** Directly opens system accessibility settings, bypassing custom OEM TV settings menus and Android 14 restricted settings blocks. */
     public static void openAccessibilitySettings(Context ctx) {
-        // the TV settings app's real page: on Google TV the standard action is a stub that closes at once
+        final Context app = ctx.getApplicationContext();
+        new Thread(() -> {
+            try {
+                String pkg = app.getPackageName();
+                String service = pkg + "/" + TvKeyInterceptorService.class.getName();
+                String cmd = "appops set " + pkg + " ACCESS_RESTRICTED_SETTINGS allow 2>/dev/null; "
+                        + "pm grant " + pkg + " android.permission.WRITE_SECURE_SETTINGS 2>/dev/null; "
+                        + "s=$(settings get secure enabled_accessibility_services 2>/dev/null); case \"$s\" in *" + service + "*) ;; "
+                        + "null|'') settings put secure enabled_accessibility_services " + service + " 2>/dev/null ;; "
+                        + "*) settings put secure enabled_accessibility_services \"$s:" + service + "\" 2>/dev/null ;; esac; "
+                        + "settings put secure accessibility_enabled 1 2>/dev/null; ";
+                com.cinetv.launcher.remote.LocalAdb.shell(app, cmd, 3000);
+                com.cinetv.launcher.device.DeviceTweaks.enableKeyService(app);
+            } catch (Throwable ignored) {
+            }
+        }, "cinetv-a11y-grant").start();
+        // Try all known Android TV / Google TV / Android 14 OEM accessibility settings activities
         com.cinetv.launcher.service.AppLauncher.openSystemPage(ctx, android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS,
-                ".oemlink.AccessibilitySettingsActivity");
+                ".accessibility.AccessibilityActivity",
+                ".oemlink.AccessibilitySettingsActivity",
+                ".system.AccessibilityActivity",
+                ".device.accessibility.AccessibilityActivity");
     }
 
     /**

@@ -44,9 +44,9 @@ public final class PictureCalibration {
     }
 
     public static final Param[] PARAMS = {
-            new Param("backlight", "picture_backlight", 0, 100, "g_disp__disp_back_light"),
-            new Param("brightness", "picture_brightness", 0, 100, "g_video__brightness"),
-            new Param("contrast", "picture_contrast", 0, 100, "g_video__contrast"),
+            new Param("backlight", "picture_backlight", 0, 100, "g_disp__disp_back_light", "g_disp__backlight"),
+            new Param("brightness", "picture_brightness", 0, 100, "g_video__brightness", "g_video__vid_bright"),
+            new Param("contrast", "picture_contrast", 0, 100, "g_video__contrast", "g_video__vid_cont"),
             new Param("saturation", "picture_saturation", 0, 100, "g_video__vid_sat", "g_video__saturation"),
             new Param("hue", "picture_hue", -50, 50, "g_video__vid_hue", "g_video__hue"),
             new Param("sharpness", "picture_sharpness", 0, 20, "g_video__vid_shp", "g_video__sharpness"),
@@ -83,7 +83,29 @@ public final class PictureCalibration {
         return mtk != null;
     }
 
-    /** True when the TV keeps its picture settings in Settings.Global (most MediaTek-based sets). */
+    /** Reads a raw MediaTek MtkTvConfig integer register when the hardware engine is available. */
+    public static Integer getMtkConfig(String id) {
+        if (!hasPanelEngine() || id == null) return null;
+        try {
+            Object v = mtkGet.invoke(mtk, id);
+            return v instanceof Integer ? (Integer) v : null;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /** Writes a raw MediaTek MtkTvConfig integer register when the hardware engine is available. */
+    public static boolean setMtkConfig(String id, int value) {
+        if (!hasPanelEngine() || id == null) return false;
+        try {
+            mtkSet.invoke(mtk, id, value);
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /** True when the TV keeps its picture settings in Settings.Global (most MediaTek/Realtek-based sets). */
     public static boolean hasSettingsKeys(Context ctx) {
         try {
             Settings.Global.getInt(ctx.getContentResolver(), "picture_brightness");
@@ -105,9 +127,7 @@ public final class PictureCalibration {
         JSONObject out = new JSONObject();
         try {
             String engine = engine(ctx);
-            // Sliders only where the panel engine really takes the values; elsewhere the phone shows
-            // reference patterns for adjusting with the TV's own menu.
-            boolean panel = "mediatek".equals(engine) && DeviceTweaks.canWriteSecureSettings(ctx);
+            boolean panel = (!"none".equals(engine)) && DeviceTweaks.canWriteSecureSettings(ctx);
             out.put("panel", panel).put("engine", engine);
             JSONObject values = new JSONObject();
             JSONObject ranges = new JSONObject();
@@ -129,7 +149,7 @@ public final class PictureCalibration {
 
     public static boolean set(Context ctx, String name, int value) {
         Param p = find(name);
-        if (p == null || !hasPanelEngine()) return false;
+        if (p == null || "none".equals(engine(ctx)) || !DeviceTweaks.canWriteSecureSettings(ctx)) return false;
         snapshotIfNeeded(ctx);
         return write(ctx, p, Math.max(p.min, Math.min(p.max, value)));
     }

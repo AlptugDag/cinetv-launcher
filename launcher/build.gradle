@@ -44,7 +44,7 @@ android {
         minSdk = 23
         targetSdk = 34
         // Release builds take the version from the git tag (CI passes -PcineTvVersion=1.0.0).
-        def ver = (project.findProperty('cineTvVersion') ?: '1.0.0.20').toString().replaceFirst('^v', '')
+        def ver = (project.findProperty('cineTvVersion') ?: '1.0.0.38').toString().replaceFirst('^v', '')
         def parts = ver.tokenize('.').collect { it.replaceAll('[^0-9]', '') as int }
         versionName = ver
         // Numbering restarted at 1.0.0 after 3.2.0: the 1000000 base keeps codes above every older build's, so
@@ -91,9 +91,28 @@ android {
                           'pt', 'ru', 'th', 'uk', 'uz', 'vi', 'zh-rCN', 'zh-rTW']
     }
 
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
     packaging {
         resources {
-            excludes += 'META-INF/com/android/build/gradle/app-metadata.properties'
+            excludes += [
+                'META-INF/com/android/build/gradle/app-metadata.properties',
+                'META-INF/*.kotlin_module',
+                'META-INF/versions/**',
+                'META-INF/*.version',
+                'META-INF/LICENSE*',
+                'META-INF/NOTICE*',
+                'META-INF/DEPENDENCIES',
+                'META-INF/services/javax.script.ScriptEngineFactory',
+                '**/*.proto',
+                '**/*.kotlin_builtins',
+                '**/*.kotlin_metadata',
+                'DebugProbesKt.bin',
+                'org/mozilla/javascript/resources/**'
+            ]
         }
     }
 
@@ -129,6 +148,7 @@ android {
             // Obfuscated and shrunk: the shipped app is hard to read back or alter (see Integrity.java).
             minifyEnabled = true
             shrinkResources = true
+            crunchPngs = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             debuggable = false
         }

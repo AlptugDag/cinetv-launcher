@@ -226,12 +226,54 @@ public final class GamzeMemory {
 
     /** A name the viewer explicitly chose for Gamze to use; blank means do not address them by name. */
     public static String name(Context ctx) {
-        return Prefs.get(ctx).getString(PREF_VIEWER_NAME, "").trim();
+        if (ctx == null) return "";
+        String v = Prefs.get(ctx).getString(PREF_VIEWER_NAME, "");
+        if (v != null && !v.trim().isEmpty()) {
+            return v.trim();
+        }
+        try {
+            android.content.ContentResolver cr = ctx.getContentResolver();
+            String fromSys = android.provider.Settings.Global.getString(cr, "cinetv_user_name");
+            if (fromSys == null || fromSys.trim().isEmpty()) {
+                fromSys = android.provider.Settings.Secure.getString(cr, "cinetv_user_name");
+            }
+            if (fromSys != null && !fromSys.trim().isEmpty()) {
+                String clean = sanitizeViewerName(fromSys);
+                if (!clean.isEmpty()) {
+                    Prefs.get(ctx).edit().putString(PREF_VIEWER_NAME, clean).apply();
+                    try { android.provider.Settings.Global.putString(cr, "cinetv_user_name", null); } catch (Throwable ignored) {}
+                    try { android.provider.Settings.Secure.putString(cr, "cinetv_user_name", null); } catch (Throwable ignored) {}
+                    return clean;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return "";
+    }
+
+    public static String sanitizeViewerName(String name) {
+        if (name == null) return "";
+        String clean = name.replaceAll("[\\r\\n\\t\"'`]+", " ").trim().replaceAll("\\s+", " ");
+        if (clean.length() > 40) clean = clean.substring(0, 40).trim();
+        return clean;
+    }
+
+    public static boolean isValidViewerName(String name) {
+        String clean = sanitizeViewerName(name);
+        return clean.length() >= 2;
+    }
+
+    /**
+     * Pure validation helper: CineTV requires a TMDB API key/token, a Google (Gemini) AI API key,
+     * and a viewer name for TTS addressing before normal operation.
+     */
+    public static boolean hasRequiredCredentials(boolean hasTmdb, boolean hasAiKey, String viewerName) {
+        return hasTmdb && hasAiKey && isValidViewerName(viewerName);
     }
 
     public static void setName(Context ctx, String name) {
-        String clean = name == null ? "" : name.trim().replaceAll("\\s+", " ");
-        if (clean.length() > 40) clean = clean.substring(0, 40).trim();
+        if (ctx == null) return;
+        String clean = sanitizeViewerName(name);
         Prefs.get(ctx).edit().putString(PREF_VIEWER_NAME, clean).apply();
     }
 }

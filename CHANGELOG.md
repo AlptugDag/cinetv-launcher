@@ -1,5 +1,43 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.38
+
+- **Zorunlu Kimlik ve API Anahtarı Kurulumu (Kurulumda ve Güncelleme Sonrasında):**
+  - Kurulum esnasında ve her uygulama güncellemesi sonrasında cihazda **Kullanıcı Adı** (Gamze sesli asistanın TTS ile size hitap edebilmesi için), **TMDB API Anahtarı** (yerelleştirilmiş Türkçe film özetleri, posterler, oyuncu kadrosu ve fragmanlar için) ve **Google Gemini API Anahtarı** (Gamze yapay zekâ asistanı ve CineSUB sahne analizi için) kontrol edilir.
+  - Bu üç bilgiden herhangi biri eksikse, sistemin bunlar olmadan düzgün çalışmayacağını açıkça belirten ve tamamlanmadan kapanmayan zorunlu kurulum ekranı otomatik olarak açılır.
+  - Kullanıcıların anahtarları saniyeler içinde alabilmesi ve telefondan tek dokunuşla yapıştırabilmesi için ekrana **3 adet QR kod** (`themoviedb.org/settings/api`, `aistudio.google.com/apikey` ve Telefon Kumandası bağlantı QR kodu) eklendi; ayrıca telefon kumandasına `/api/keys` ve `/api/setup` uç noktaları ile hem TMDB v3 hem v4 (`eyJ...`) anahtarlarını otomatik algılama desteği getirildi.
+- **Kapsamlı ve Etkileşimli CineTV Turu:**
+  - Kurulumda ve Ayarlar'da yer alan CineTV Turu; 8 ana bölüm rozeti, segmentli görsel ilerleme çubuğu, her adıma özel kumanda kısayol/ipucu kutuları, ilgili adımlarda doğrudan taranabilir QR kodlar, `▲`/`▼` ile bölüm atlama ve Gamze'nin kullanıcıya adıyla hitap eden sesli rehber anlatımıyla (`Sarı Tuş` ile açılıp kapatılabilir) baştan sona yenilendi.
+- **Tetiklenmeden / Otomatik Çalışan CineSUB Eşlik Modu Güçlendirildi:**
+  - Otomatik CineSUB (`CineSUB Eşlik Modu`) tüm kurulumlarda ve güncellemelerde **varsayılan olarak açık** hâle getirildi.
+  - Hem standart ses hem de Dolby/DTS passthrough oynatmalarda medya oynatımı algılanarak kontrol sıklığı **15 saniyelik** döngülere, sahne tarama aralığı ise uyarlanabilir **20–40 saniyeye** indirildi.
+  - Otomatik analiz artık tek seferde **1 ila 2 zengin detayı** (tanınan filmlerde oyuncu/karakter ve kamera arkası bilgisi, çekim mekânları ve mimari yapılar, tam araba/saat/kostüm/obje modelleri, tablolar/sanat eserleri, sahne müziği/besteci, yönetmen motifleri ve altyazıda geçen deyim, argo, tarihsel olay veya film/edebiyat göndermeleri) aynı anda algılıyor; tekrarları önlemek için son gösterilen başlıkları hafızada tutuyor ve ekrandaki nesneleri zarif hedef halkalarıyla işaretliyor.
+
+## 1.0.0.37
+
+- **Nuvio'da "Oynatma Kullanılamıyor" ve eksik oyuncu fotoğrafları giderildi:**
+  - Nuvio'ya temel IMDb katalog/üstveri sağlayıcısı (**Cinemeta**) eklendi ve önbellekteki film kartlarının Nuvio'ya gönderilmeden önce `tt...` IMDb kimliklerinin tamamlanması sağlandı.
+  - Xperience ve AIOMetadata yapılandırmalarındaki oyuncu sınırı `cast_limit: 15` olarak açıldı; TV'deki mevcut TMDB ve MDBList anahtarları şablonlara otomatik işleniyor.
+  - TV'de önceden kurulu resmi Nuvio varsa eklenti ve hesap verileri artık sıfırlanmıyor; yalnızca eksik eklentiler tamamlanıyor.
+- **Kumanda Geri (Back) tuşu ve Ana Ekran davranışı düzeltildi:**
+  - Geri tuşu artık TizenTube (YouTube) veya Nuvio içindeki ayar/altyazı/kaynak menülerinden çıkarken sizi Ana Ekran'a atmıyor; yalnızca CineTV'den doğrudan açılmış bir film kartının en üst sayfasından çıkarken Ana Ekran'a döndürüyor.
+  - Ana Ekran'da Geri tuşuna basıldığında odağın üst satırlara (kategori/üst çubuk) sıçraması engellendi.
+- **"Kaldığın yerden" rafı Nuvio ile tam senkronize:**
+  - Nuvio'nun kendi izleme listesinden kaldırılan içerikler tespit edildiğinde veya kart üzerindeki Sil tuşuna basıldığında içerik CineTV'nin "Kaldığın yerden" rafından da anında kaldırılıyor.
+- **CineSUB (Sarı tuş) hızlandırıldı:**
+  - Yavaş `screencap` komutu yerine Android 11+ `AccessibilityService.takeScreenshot()` donanım arabelleği (~100 ms) ve `thinkingBudget: 0` yapılandırmalı `gemini-2.5-flash` / `gemini-2.5-flash-lite` kullanılıyor; sahne analizi tutarlılığı korunarak saniyeler içinde tamamlanıyor.
+- **DVD kutusu fragman sesi geri geldi:**
+  - DVD kutusu açıldığında sesli fragman akışı (muxed stream + yumuşak ses yükselişi) yeniden aktif.
+- **Android 14 erişilebilirlik ayarları:**
+  - Standart erişilebilirlik ekranını gizleyen Android 14 TV'ler için alternatif sistem bileşenleri ve `LocalAdb` üzerinden doğrudan servis etkinleştirme yedeği eklendi.
+- **Bölgesel film kategorileri ve vitrin tazeleme:**
+  - Türk, Kore, Japon, Hint ve Avrupa sineması kategorileri TMDB `with_original_language` filtresiyle ve çevrimdışı kürasyon yedekleriyle birbirinden tamamen ayrıldı; kategori seçiliyken "Vitrini Tazele" ilgili kategorinin sonraki sayfalarını getiriyor.
+- **Donanım ve yazılıma özgü otomatik görüntü, ses, ağ ve performans optimizasyonu (her güncellemede arka planda):**
+  - MediaTek (`MtkTvConfig`), Amlogic (`hdr_policy`), Realtek ve standart Android TV motorları tespit edilerek keskinlik, hareket yumuşatma (MEMC), gürültü azaltma ve renk sıcaklığı otomatik kalibre ediliyor; yalnız gerçek donanım çözücüler (`AvOptimizer.isHardwareDecoder`) 4K/HEVC/AV1/VP9 için doğrulanıyor.
+  - HDMI eARC/ARC, Optik, USB DAC ve Bluetooth LE Audio ses zinciri tespit edilerek bit-perfect passthrough / PCM ve örneklem hızına duyarlı (`sampleRate`) AirPods uzamsal ses filtresi uygulanıyor.
+  - Wi-Fi tarama daraltması, güç tasarrufu kaynaklı paket gecikmesi (jitter) önleme ve hızlı DoT (Cloudflare/AdGuard) doğrulaması eklendi; yayın profili yüksek jitter ve düşük RAM durumuna göre kendiliğinden ölçekleniyor.
+  - Her uygulama veya sistem güncellemesinde (`MY_PACKAGE_REPLACED` ve `BOOT_COMPLETED`) tüm donanım/yazılım optimizasyonları ve ART `speed-profile` derlemesi arka planda otomatik çalışıyor; R8 tam mod ve paketleme temizliğiyle APK boyutu ve çalışma hızı ileri seviyeye taşındı.
+
 ## 1.0.0.36
 
 - **DVD kutusundan Nuvio oynatma davranışı geri geldi:** OK, normal filmde önce Nuvio'nun "Oynat" düğmesine basar; oynatma mı kaynak seçimi mi olacağını Nuvio ayarı belirler. "Kaldığın yerden" kartı ise 1.0.0.35'teki gibi devam düğmesini önceliklendirir.

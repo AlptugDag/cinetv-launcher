@@ -1,0 +1,8 @@
+{
+  "name": "CineTV",
+  "description": "CineTV by Alptuğ Dağ — Atmospheric Cinema TV Launcher with 3D shelves, physical DVD case booklets, trailer playback, Gamze AI assistant, web remote, and personalized cinema curation.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

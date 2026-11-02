@@ -261,9 +261,9 @@ public class CinePlayerActivity extends Activity {
                 .setEnableDecoderFallback(true)
                 .setMediaCodecSelector(codecSelector())
                 .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON);
-        com.cinetv.launcher.device.PerformanceProfile.Tier tier = com.cinetv.launcher.device.PerformanceProfile.tier(this);
+        com.cinetv.launcher.device.PerformanceProfile.Tier hwTier = com.cinetv.launcher.device.PerformanceProfile.detectedTier(this);
         // Strong TVs on Android 12+ feed the decoder asynchronously (smoother 4K); others keep the classic path.
-        if (tier == com.cinetv.launcher.device.PerformanceProfile.Tier.HIGH && android.os.Build.VERSION.SDK_INT >= 31) {
+        if (hwTier == com.cinetv.launcher.device.PerformanceProfile.Tier.HIGH && android.os.Build.VERSION.SDK_INT >= 31) {
             renderers.forceEnableMediaCodecAsynchronousQueueing();
         }
         androidx.media3.exoplayer.trackselection.DefaultTrackSelector tracks = new androidx.media3.exoplayer.trackselection.DefaultTrackSelector(this);
@@ -283,17 +283,20 @@ public class CinePlayerActivity extends Activity {
                     .setMaxAudioChannelCount(2).setPreferredAudioMimeTypes(MimeTypes.AUDIO_AAC);
         }
         tracks.setParameters(pb);
-        // Buffer by what the TV can hold: small on weak boxes, long (with a back-buffer for instant rewinds) on strong ones.
+        // Buffer by what the TV's actual hardware RAM can hold: bounded byte ceiling on low-RAM boxes,
+        // longer duration (with a back-buffer for instant rewinds) on strong ones.
         int minMs, maxMs, backMs;
-        switch (tier) {
-            case LOW: minMs = 15_000; maxMs = 30_000; backMs = 0; break;
-            case MID: minMs = 25_000; maxMs = 60_000; backMs = 10_000; break;
-            default: minMs = 40_000; maxMs = 120_000; backMs = 30_000; break;
+        switch (hwTier) {
+            case LOW: minMs = 12_000; maxMs = 25_000; backMs = 0; break;
+            case MID: minMs = 20_000; maxMs = 50_000; backMs = 8_000; break;
+            default: minMs = 35_000; maxMs = 90_000; backMs = 25_000; break;
         }
+        int targetBytes = com.cinetv.launcher.device.PerformanceProfile.playerTargetBufferBytes(this);
         androidx.media3.exoplayer.DefaultLoadControl load = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
-                .setBufferDurationsMs(minMs, maxMs, 2_000, 4_000)
+                .setBufferDurationsMs(minMs, maxMs, 1_500, 3_500)
+                .setTargetBufferBytes(targetBytes)
                 .setBackBuffer(backMs, true)
-                .setPrioritizeTimeOverSizeThresholds(true)
+                .setPrioritizeTimeOverSizeThresholds(hwTier == com.cinetv.launcher.device.PerformanceProfile.Tier.HIGH)
                 .build();
         player = new ExoPlayer.Builder(this, renderers)
                 .setLoadControl(load)

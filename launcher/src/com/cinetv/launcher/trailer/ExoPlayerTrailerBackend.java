@@ -67,14 +67,24 @@ public final class ExoPlayerTrailerBackend implements TrailerBackend {
 
     private final Player.Listener playerListener = new Player.Listener() {
         @Override
+        public void onPlaybackStateChanged(int playbackState) {
+            if (playbackState == Player.STATE_READY && currentMovie != null) {
+                isPlaying = true;
+                if (Prefs.trailerAudio(context) && !audioFadeInProgress) {
+                    fadeInVolume();
+                }
+            }
+        }
+
+        @Override
         public void onRenderedFirstFrame() {
             // Most trailers open on black (a fade, a rating card): the still stays until the picture has light in it.
             final long since = System.currentTimeMillis();
             mainHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    if (!(currentMovie != null && posterView.getVisibility() == View.VISIBLE)) return;
-                    if (!hasLight() && System.currentTimeMillis() - since < 4000) {
+                    if (currentMovie == null) return;
+                    if (posterView.getVisibility() == View.VISIBLE && !hasLight() && System.currentTimeMillis() - since < 2500) {
                         mainHandler.postDelayed(this, 150);
                         return;
                     }
@@ -92,8 +102,12 @@ public final class ExoPlayerTrailerBackend implements TrailerBackend {
                         .withEndAction(() -> posterView.setVisibility(View.GONE))
                         .start();
 
-                if (Prefs.trailerAudio(context) && !audioFadeInProgress) {
-                    fadeInVolume();
+                if (Prefs.trailerAudio(context)) {
+                    if (!audioFadeInProgress) {
+                        fadeInVolume();
+                    } else if (player != null && player.getVolume() < 0.2f) {
+                        player.setVolume(0.85f);
+                    }
                 }
             });
         }
@@ -178,6 +192,9 @@ public final class ExoPlayerTrailerBackend implements TrailerBackend {
             public void onResolved(StreamResolver.ResolvedStream stream) {
                 // Prefetch initial 1.8 MB into disk cache
                 TrailerCache.prefetch(context, stream.videoId, stream.itag, Uri.parse(stream.videoUrl), 1800 * 1024L);
+                if (stream.audioUrl != null && stream.audioItag > 0) {
+                    TrailerCache.prefetch(context, "audio_" + stream.videoId, stream.audioItag, Uri.parse(stream.audioUrl), 512 * 1024L);
+                }
             }
 
             @Override
@@ -228,8 +245,9 @@ public final class ExoPlayerTrailerBackend implements TrailerBackend {
         }
 
         initPlayer();
+        audioFadeInProgress = false;
         player.setRepeatMode(Player.REPEAT_MODE_ONE);
-        player.setVolume(Prefs.trailerAudio(context) ? 0f : 0f); // start at 0, fade in on first frame
+        player.setVolume(Prefs.trailerAudio(context) ? 0.30f : 0f); // start audible when enabled, smooth fade to 0.90f
 
         final int targetH = Math.max(360, Math.round(screen.height()));
 
@@ -308,10 +326,10 @@ public final class ExoPlayerTrailerBackend implements TrailerBackend {
 
     private void fadeInVolume() {
         audioFadeInProgress = true;
-        ValueAnimator anim = ValueAnimator.ofFloat(0f, 0.85f);
-        anim.setDuration(1200);
+        ValueAnimator anim = ValueAnimator.ofFloat(0.30f, 0.90f);
+        anim.setDuration(900);
         anim.addUpdateListener(a -> {
-            if (player != null && isPlaying) {
+            if (player != null && currentMovie != null && Prefs.trailerAudio(context)) {
                 player.setVolume((Float) a.getAnimatedValue());
             }
         });

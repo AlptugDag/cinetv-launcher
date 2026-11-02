@@ -200,12 +200,15 @@ public final class MemoryOptimizer {
 
     /**
      * Disables Google Assistant on the TV while keeping Google Speech Recognition (Katniss / RecognitionService)
-     * active, and sets Android's own adjustable memory settings (cached-app freezer).
+     * active, sets Android's own adjustable memory settings (zRAM app compaction & cached-app freezer),
+     * and triggers AOT speed-profile compilation for CineTV.
      */
     public static void applyTvOptimizations(Context ctx) {
         final Context app = ctx.getApplicationContext();
         Prefs.get(app).edit().putBoolean("tv_opt_applied", true).apply();
         DeviceTweaks.applyFastBootTweaks(app);
+        tuneSystem(app);
+        NetworkOptimizer.optimizeRadio(app);
         try {
             android.content.ContentResolver cr = app.getContentResolver();
             Settings.Secure.putString(cr, "assistant", "");
@@ -222,15 +225,13 @@ public final class MemoryOptimizer {
                         "pm disable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.VoiceActivity 2>/dev/null; " +
                         "pm disable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.AssistantActivity 2>/dev/null", 3000);
 
-                // Android's own memory settings that adb may change: freeze cached apps, default cached-process limits.
-                // (zRAM size, swap and kernel values need root: they were silently refused on every TV tested, so they
-                // are no longer sent. The swap a TV has is its maker's own.)
+                // Rootless zRAM app compaction + cached-app freezer + AOT native code compilation for CineTV
+                applyCompaction(app);
                 LocalAdb.shell(app,
                         "device_config delete activity_manager max_cached_processes 2>/dev/null; " +
                         "device_config delete activity_manager max_empty_time_millis 2>/dev/null; " +
-                        "settings put global cached_apps_freezer enabled 2>/dev/null", 4000);
-                // (no "pm trim-caches" / "drop_caches" any more: they wiped every app's cache, CineTV's posters included,
-                // and the system's file cache, so after each start everything loaded again from slow flash)
+                        "settings put global cached_apps_freezer enabled 2>/dev/null; " +
+                        "cmd package compile -m speed-profile " + app.getPackageName() + " 2>/dev/null", 6000);
             } catch (Throwable ignored) {
             }
         }, "cinetv-tv-opt").start();
@@ -304,11 +305,10 @@ public final class MemoryOptimizer {
         return 0;
     }
 
-    /** Measures RAM, a CPU micro-benchmark and cache I/O, then frees memory. Blocking. */
     /**
      * System-level tuning a launcher may do without root: Android's cached-app freezer (background
-     * apps stop using the CPU; active after a restart) and shorter window/transition animations
-     * (apps' own animations are untouched). Returns how many settings changed.
+     * apps stop using the CPU; active after a restart) and shorter window/transition animations.
+     * Returns how many settings changed.
      */
     public static int tuneSystem(Context ctx) {
         int changed = 0;
@@ -318,7 +318,10 @@ public final class MemoryOptimizer {
                 android.provider.Settings.Global.putString(cr, "cached_apps_freezer", "enabled");
                 changed++;
             }
-            for (String key : new String[]{android.provider.Settings.Global.WINDOW_ANIMATION_SCALE, android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE}) {
+            for (String key : new String[]{
+                    android.provider.Settings.Global.WINDOW_ANIMATION_SCALE,
+                    android.provider.Settings.Global.TRANSITION_ANIMATION_SCALE,
+                    android.provider.Settings.Global.ANIMATOR_DURATION_SCALE}) {
                 if (android.provider.Settings.Global.getFloat(cr, key, 1f) > 0.5f) {
                     android.provider.Settings.Global.putFloat(cr, key, 0.5f);
                     changed++;

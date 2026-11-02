@@ -353,13 +353,13 @@ public final class Panels {
         gameVoiceTile.setTag("opt_game_voice");
         cVisual.addView(gameVoiceTile);
 
-        boolean ambient = Prefs.get(ctx).getBoolean("cinesub_ambient", false);
+        boolean ambient = Prefs.cinesubAmbient(ctx);
         LinearLayout ambientTile = Controls.toggleTile(ctx, tr ? "CineSUB Eşlik Modu" : "CineSUB Companion",
-                ambient ? (tr ? "Açık · İzlerken ara sıra kısa notlar" : "On · Short notes now and then while you watch")
+                ambient ? (tr ? "Açık · Sahneleri ve altyazıları sık sık tarar, zengin detayları kendiliğinden gösterir" : "On · Frequently scans scenes & subtitles, automatically surfacing rich details")
                         : (tr ? "Kapalı · Sarı tuşla istediğinde açılır" : "Off · Yellow key opens it when you ask"),
                 ambient, (newActive, subLabel, sw) -> {
-            Prefs.get(ctx).edit().putBoolean("cinesub_ambient", newActive).apply();
-            subLabel.setText(newActive ? (tr ? "Açık · İzlerken ara sıra kısa notlar" : "On · Short notes now and then while you watch")
+            Prefs.setCinesubAmbient(ctx, newActive);
+            subLabel.setText(newActive ? (tr ? "Açık · Sahneleri ve altyazıları sık sık tarar, zengin detayları kendiliğinden gösterir" : "On · Frequently scans scenes & subtitles, automatically surfacing rich details")
                     : (tr ? "Kapalı · Sarı tuşla istediğinde açılır" : "Off · Yellow key opens it when you ask"));
         });
         ambientTile.setTag("opt_cinesub_ambient");
@@ -1442,8 +1442,7 @@ public final class Panels {
         root.addView(Controls.tile(ctx, tr ? "TV'nin Erişilebilirlik Ayarları" : "TV Accessibility Settings",
                 tr ? "Ekran okuyucu, altyazı stili, renk düzeltme" : "Screen reader, caption style, colour correction", false, v -> {
                     host.close();
-                    AppLauncher.openSystemPage(ctx, android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS,
-                            ".oemlink.AccessibilitySettingsActivity", ".accessibility.AccessibilityActivity");
+                    com.cinetv.launcher.HomeGuard.openAccessibilitySettings(ctx);
                 }));
         return root;
     }
@@ -1711,7 +1710,15 @@ public final class Panels {
         final View.OnClickListener saveAction = v -> {
             String val = et.getText().toString().trim();
             if (!val.isEmpty()) {
-                boolean ok = SecretStore.put(ctx, name, val);
+                boolean ok;
+                if (SecretStore.TMDB_KEY.equals(name) && (val.length() > 60 || val.startsWith("eyJ"))) {
+                    ok = SecretStore.put(ctx, SecretStore.TMDB_READ_TOKEN, val);
+                } else {
+                    ok = SecretStore.put(ctx, name, val);
+                }
+                if (SecretStore.TMDB_KEY.equals(name) || SecretStore.TMDB_READ_TOKEN.equals(name)) {
+                    new Thread(() -> NuvioSetup.deployConfigs(ctx), "cinetv-tmdb-sync").start();
+                }
                 Toast.makeText(ctx, ok ? R.string.saved_securely : R.string.save_failed, Toast.LENGTH_SHORT).show();
             }
             host.back();
@@ -2304,6 +2311,335 @@ public final class Panels {
         return root;
     }
 
+    // ---- Mandatory Credentials & Post-Update Setup Screen ---------------------------------------------
+
+    /**
+     * Returns true only when all 3 mandatory credentials are configured on this TV:
+     * 1. TMDB API Key (or Read Token)
+     * 2. Google Gemini API Key (or AI key)
+     * 3. Viewer Name for Gamze TTS addressing
+     */
+    public static boolean hasRequiredSetup(Context ctx) {
+        if (ctx == null) return false;
+        boolean hasTmdb = MovieCatalog.hasTmdb(ctx);
+        boolean hasAi = SecretStore.has(ctx, SecretStore.AI_KEY);
+        String userName = com.cinetv.launcher.ai.GamzeMemory.name(ctx);
+        return com.cinetv.launcher.ai.GamzeMemory.hasRequiredCredentials(hasTmdb, hasAi, userName);
+    }
+
+    public static void requiredSetup(final Context ctx, final ModalHost host, final Runnable onComplete) {
+        host.push(() -> buildRequiredSetupModal(ctx, host, onComplete));
+    }
+
+    private static View buildRequiredNameInput(final Context ctx, final ModalHost host, final Runnable onSaved) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        LinearLayout outer = new LinearLayout(ctx);
+        outer.setOrientation(LinearLayout.HORIZONTAL);
+        outer.setGravity(Gravity.CENTER_VERTICAL);
+
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+
+        TextView title = UiKit.bold(ctx, 28, UiKit.INK);
+        title.setText(tr ? "1. Kullanıcı Adınız (Gamze TTS Hitap İsmi)" : "1. Your Name (For Gamze TTS Voice)");
+        root.addView(title);
+
+        TextView description = UiKit.label(ctx, 17, UiKit.INK_DIM);
+        description.setLineSpacing(UiKit.pxf(5), 1.12f);
+        description.setText(tr
+                ? "• Gamze sesli asistanın (EMA Lightning TTS) açılışta, film önerilerinde ve sesli yanıtlarda size isminizle hitap edebilmesi için adınızı girin.\n"
+                + "• Yalnızca bu televizyonda saklanır.\n"
+                + "• Kumandanızla yazabilir veya yandaki Telefon Kumandası QR kodunu okutup telefon klavyenizden anında gönderebilirsiniz."
+                : "• Enter your name so Gamze TTS can address you personally during greetings, film recommendations, and voice responses.\n"
+                + "• Stored strictly on this TV.\n"
+                + "• Type with your remote or scan the Phone Remote QR code to type from your phone.");
+        description.setPadding(0, UiKit.px(12), 0, UiKit.px(18));
+        description.setMaxWidth(UiKit.px(720));
+        root.addView(description);
+
+        final EditText input = field(ctx, com.cinetv.launcher.ai.GamzeMemory.name(ctx), R.string.viewer_name_hint, false);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(40)});
+        root.addView(input, new LinearLayout.LayoutParams(UiKit.px(720), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout buttons = new LinearLayout(ctx);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+        buttons.setPadding(0, UiKit.px(22), 0, 0);
+
+        final View.OnClickListener saveAction = v -> {
+            String val = input.getText().toString().trim();
+            if (!com.cinetv.launcher.ai.GamzeMemory.isValidViewerName(val)) {
+                Toast.makeText(ctx, tr ? "Lütfen en az 2 harfli bir kullanıcı adı girin." : "Please enter a name (at least 2 characters).", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            com.cinetv.launcher.ai.GamzeMemory.setName(ctx, val);
+            Toast.makeText(ctx, tr ? ("Hitap ismi kaydedildi: " + com.cinetv.launcher.ai.GamzeMemory.name(ctx)) : "Name saved", Toast.LENGTH_SHORT).show();
+            host.back();
+            if (onSaved != null) v.postDelayed(onSaved, 180);
+        };
+
+        buttons.addView(Controls.button(ctx, ctx.getString(R.string.save), saveAction));
+        View sp = new View(ctx);
+        buttons.addView(sp, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+        buttons.addView(Controls.button(ctx, tr ? "Geri Dön" : "Back", v -> host.back()));
+        root.addView(buttons);
+
+        input.setOnEditorActionListener((v, id, e) -> {
+            saveAction.onClick(v);
+            return true;
+        });
+
+        outer.addView(root, new LinearLayout.LayoutParams(UiKit.px(740), ViewGroup.LayoutParams.WRAP_CONTENT));
+        outer.addView(followCode(ctx, com.cinetv.launcher.remote.RelayHost.pairingUrl(ctx, "keys"),
+                tr ? "Telefondan Yaz" : "Type from Phone",
+                tr ? "Telefon Kumandası QR" : "Phone Remote QR"));
+        return outer;
+    }
+
+    public static View buildRequiredSetupModal(final Context ctx, final ModalHost host, final Runnable onComplete) {
+        final boolean turkish = "tr".equals(Locale.getDefault().getLanguage());
+        final String viewerName = com.cinetv.launcher.ai.GamzeMemory.name(ctx);
+        final boolean hasName = com.cinetv.launcher.ai.GamzeMemory.isValidViewerName(viewerName);
+        final boolean hasTmdb = MovieCatalog.hasTmdb(ctx);
+        final String provider = LlmClient.providerName(ctx);
+        final boolean hasAi = SecretStore.has(ctx, SecretStore.AI_KEY) || provider != null;
+        final boolean allReady = hasName && hasTmdb && hasAi;
+        final int readyCount = (hasName ? 1 : 0) + (hasTmdb ? 1 : 0) + (hasAi ? 1 : 0);
+
+        // Lock the modal until all 3 mandatory credentials are saved
+        host.setCancelable(allReady, () -> {
+            String msg = turkish
+                    ? "⚠️ TMDB Anahtarı, Google API Anahtarı ve Kullanıcı Adı girilmeden sistem düzgün çalışmaz! Lütfen eksik bilgileri tamamlayın."
+                    : "⚠️ CineTV cannot function properly without a TMDB Key, Google API Key, and Your Name! Please complete the missing items.";
+            Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show();
+            try {
+                com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, turkish
+                        ? "Sistemin düzgün çalışabilmesi için lütfen kullanıcı adınızı, TMDB anahtarınızı ve Google API anahtarınızı tamamlayın."
+                        : "Please enter your name, TMDB key, and Google API key so CineTV can function properly.");
+            } catch (Throwable ignored) {}
+        });
+
+        final ScrollView scroll = new ScrollView(ctx);
+        scroll.setVerticalScrollBarEnabled(false);
+        final LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setClipChildren(false);
+        root.setPadding(UiKit.px(14), UiKit.px(8), UiKit.px(14), UiKit.px(10));
+        scroll.addView(root);
+
+        // Header Row
+        LinearLayout head = new LinearLayout(ctx);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView logo = new ImageView(ctx);
+        logo.setImageBitmap(Brand.mark(ctx));
+        head.addView(logo, new LinearLayout.LayoutParams(UiKit.px(42), UiKit.px(42)));
+
+        LinearLayout titleCol = new LinearLayout(ctx);
+        titleCol.setOrientation(LinearLayout.VERTICAL);
+        titleCol.setPadding(UiKit.px(14), 0, 0, 0);
+
+        TextView badge = UiKit.bold(ctx, 12, allReady ? Color.parseColor("#34D399") : Color.parseColor("#F87171"));
+        badge.setText(allReady
+                ? (turkish ? "✓ ZORUNLU KURULUM TAMAMLANDI (3/3 HAZIR)" : "✓ MANDATORY SETUP COMPLETE (3/3 READY)")
+                : (turkish ? ("⚠️ ZORUNLU KURULUM VE ANAHTAR KONTROLÜ (" + readyCount + "/3 TAMAMLANDI)")
+                           : ("⚠️ MANDATORY SETUP & KEY CHECK (" + readyCount + "/3 COMPLETED)")));
+        titleCol.addView(badge);
+
+        TextView title = UiKit.bold(ctx, 25, UiKit.INK);
+        title.setText(turkish
+                ? "TMDB Anahtarı, Google API Key ve Hitap İsmi"
+                : "TMDB Key, Google API Key & Viewer Name");
+        titleCol.addView(title);
+        head.addView(titleCol);
+        root.addView(head);
+
+        // Mandatory System Warning Banner
+        FrameLayout warnCard = new FrameLayout(ctx);
+        android.graphics.drawable.GradientDrawable warnBg = new android.graphics.drawable.GradientDrawable();
+        warnBg.setCornerRadius(UiKit.pxf(16));
+        warnBg.setColor(allReady ? Color.argb(45, 16, 185, 129) : Color.argb(55, 239, 68, 68));
+        warnBg.setStroke(UiKit.px(2), allReady ? Color.parseColor("#34D399") : Color.parseColor("#F87171"));
+        warnCard.setBackground(warnBg);
+        warnCard.setPadding(UiKit.px(18), UiKit.px(10), UiKit.px(18), UiKit.px(10));
+
+        TextView warnTv = UiKit.label(ctx, 14.5f, UiKit.INK);
+        warnTv.setLineSpacing(UiKit.pxf(3.5f), 1.12f);
+        warnTv.setText(allReady
+                ? (turkish
+                    ? "✓ Harika! Kullanıcı adınız (" + viewerName + "), TMDB anahtarınız ve Google Gemini API anahtarınız eksiksiz tanımlandı. Aşağıdaki butonla CineTV'yi başlatabilirsiniz."
+                    : "✓ Great! Your name (" + viewerName + "), TMDB key, and Google Gemini API key are all set. Press the button below to launch CineTV.")
+                : (turkish
+                    ? "⚠️ ÖNEMLİ UYARI: TMDB Anahtarı, Google Gemini API Anahtarı ve Kullanıcı Adınız girilmeden CineTV DÜZGÜN ÇALIŞMAZ! Bu üç bilgi olmadan 3B DVD film afişleri, sesli fragmanlar, yapay zekâ vitrin küratörlüğü, CineSUB canlı sahne analizi ve Gamze sesli asistanın (TTS) size isminizle hitap etmesi devreye giremez. Sağdaki QR kodları telefonunuzla okutarak ücretsiz anahtarlarınızı hemen alabilirsiniz."
+                    : "⚠️ IMPORTANT: CineTV WILL NOT FUNCTION PROPERLY without a TMDB API Key, a Google Gemini API Key, and Your Name for TTS! Without these three items, 3D DVD posters, trailers, AI shelf curation, CineSUB, and Gamze TTS cannot operate. Scan the QR codes on the right to get your free keys in seconds."));
+        warnCard.addView(warnTv);
+        LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        wlp.topMargin = UiKit.px(8);
+        wlp.bottomMargin = UiKit.px(12);
+        root.addView(warnCard, wlp);
+
+        // Two-Column Body: Left = 3 Mandatory Inputs + Action Button, Right = 3 QR Code Cards
+        final LinearLayout twoCols = new LinearLayout(ctx);
+        twoCols.setOrientation(LinearLayout.HORIZONTAL);
+        twoCols.setClipChildren(false);
+        root.addView(twoCols);
+
+        final LinearLayout leftCol = new LinearLayout(ctx);
+        leftCol.setOrientation(LinearLayout.VERTICAL);
+        leftCol.setClipChildren(false);
+        leftCol.setClipToPadding(false);
+        LinearLayout.LayoutParams leftLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.05f);
+        twoCols.addView(leftCol, leftLp);
+
+        final LinearLayout rightCol = new LinearLayout(ctx);
+        rightCol.setOrientation(LinearLayout.VERTICAL);
+        rightCol.setClipChildren(false);
+        rightCol.setClipToPadding(false);
+        LinearLayout.LayoutParams rightLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.15f);
+        rightLp.leftMargin = UiKit.px(22);
+        twoCols.addView(rightCol, rightLp);
+
+        final Runnable refreshSelf = () -> host.replace(() -> buildRequiredSetupModal(ctx, host, onComplete));
+
+        // 1. User Name (TTS Addressing)
+        View nameTile = Controls.tile(ctx,
+                turkish ? "1. Kullanıcı Adınız (TTS Hitap İsmi — Zorunlu)" : "1. Your Name (TTS Addressing — Required)",
+                hasName ? (turkish ? ("✓ Hazır: \"" + viewerName + "\" · Gamze size bu isimle hitap edecek")
+                                   : ("✓ Ready: \"" + viewerName + "\" · Gamze will address you by this name"))
+                        : (turkish ? "✗ EKSİK — Gamze sesli asistanın size hitap edeceği ismi girmek için dokunun"
+                                   : "✗ MISSING — Tap to enter your name for Gamze TTS voice addressing"),
+                hasName,
+                v -> host.push(() -> buildRequiredNameInput(ctx, host, refreshSelf)));
+        leftCol.addView(nameTile);
+
+        // 2. TMDB Key
+        View tmdbTile = Controls.tile(ctx,
+                turkish ? "2. TMDB API Anahtarı (%100 Ücretsiz — Zorunlu)" : "2. TMDB API Key (100% Free — Required)",
+                hasTmdb ? (turkish ? "✓ Hazır ve Aktif · 3B DVD afişleri, özetler ve fragmanlar devrede"
+                                   : "✓ Ready & Active · 3D DVD posters, synopses & trailers enabled")
+                        : (turkish ? "✗ EKSİK — Sağdaki 1. QR kodu okutup ücretsiz TMDB anahtarınızı girin"
+                                   : "✗ MISSING — Scan QR #1 on the right and enter your free TMDB key"),
+                hasTmdb,
+                v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.TMDB_KEY, R.string.tmdb_key, R.string.tmdb_key_hint, refreshSelf)));
+        leftCol.addView(tmdbTile);
+
+        // 3. Google Gemini API Key
+        View aiTile = Controls.tile(ctx,
+                turkish ? "3. Google Gemini API Key (%100 Ücretsiz — Zorunlu)" : "3. Google Gemini API Key (100% Free — Required)",
+                hasAi ? (turkish ? ("✓ Hazır ve Aktif (" + (provider != null ? provider : "Gemini") + ") · Yapay zekâ ve CineSUB devrede")
+                                 : ("✓ Ready & Active (" + (provider != null ? provider : "Gemini") + ")"))
+                      : (turkish ? "✗ EKSİK — Sağdaki 2. QR kodu okutup ücretsiz Google API anahtarınızı girin"
+                                 : "✗ MISSING — Scan QR #2 on the right and enter your free Google API key"),
+                hasAi,
+                v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.AI_KEY, R.string.ai_key, R.string.ai_key_hint, refreshSelf)));
+        leftCol.addView(aiTile);
+
+        // Primary Action Button + Optional Full Wizard Button
+        LinearLayout actionRow = new LinearLayout(ctx);
+        actionRow.setOrientation(LinearLayout.HORIZONTAL);
+        actionRow.setPadding(0, UiKit.px(12), 0, 0);
+
+        final TextView primaryBtn = Controls.button(ctx,
+                allReady ? (turkish ? "✓ Kaydet ve CineTV'yi Başlat" : "✓ Save & Launch CineTV")
+                         : (turkish ? ("Eksik Bilgileri Girin (" + readyCount + "/3)") : ("Complete Missing Info (" + readyCount + "/3)")),
+                v -> {
+                    if (!hasName) {
+                        Toast.makeText(ctx, turkish ? "Önce 1. adımdan Kullanıcı Adınızı girin." : "Please enter your name first.", Toast.LENGTH_SHORT).show();
+                        host.push(() -> buildRequiredNameInput(ctx, host, refreshSelf));
+                        return;
+                    }
+                    if (!hasTmdb) {
+                        Toast.makeText(ctx, turkish ? "Lütfen 2. adımdan TMDB API Anahtarınızı girin." : "Please enter your TMDB API Key.", Toast.LENGTH_SHORT).show();
+                        host.push(() -> buildSecretInput(ctx, host, SecretStore.TMDB_KEY, R.string.tmdb_key, R.string.tmdb_key_hint, refreshSelf));
+                        return;
+                    }
+                    if (!hasAi) {
+                        Toast.makeText(ctx, turkish ? "Lütfen 3. adımdan Google Gemini API Anahtarınızı girin." : "Please enter your Google Gemini API Key.", Toast.LENGTH_SHORT).show();
+                        host.push(() -> buildSecretInput(ctx, host, SecretStore.AI_KEY, R.string.ai_key, R.string.ai_key_hint, refreshSelf));
+                        return;
+                    }
+                    Prefs.get(ctx).edit().putBoolean("wizard_done", true).putBoolean(Prefs.FIRST_SETUP_DONE, true).apply();
+                    new Thread(() -> {
+                        NuvioSetup.deployConfigs(ctx);
+                        MemoryOptimizer.applyTvOptimizations(ctx);
+                    }, "cinetv-req-complete").start();
+                    host.forceClose();
+                    try {
+                        com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, turkish
+                                ? ("Teşekkürler " + viewerName + ". Tüm anahtarların doğrulandı, CineTV'ye hoş geldin!")
+                                : ("Thank you " + viewerName + ". All keys are verified, welcome to CineTV!"));
+                    } catch (Throwable ignored) {}
+                    if (onComplete != null) onComplete.run();
+                });
+        actionRow.addView(primaryBtn);
+
+        View spBtn = new View(ctx);
+        actionRow.addView(spBtn, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+
+        TextView wizBtn = Controls.button(ctx,
+                turkish ? "Gelişmiş Kurulum Sihirbazı" : "Advanced Setup Wizard",
+                v -> host.push(() -> buildWizard(ctx, host)));
+        actionRow.addView(wizBtn);
+        leftCol.addView(actionRow);
+
+        // Right Column: 3 QR Codes Side-by-Side + Step-by-Step Guide
+        FrameLayout qrPanel = new FrameLayout(ctx);
+        qrPanel.setBackground(Glass.panel(qrPanel, 20));
+        qrPanel.setPadding(UiKit.px(16), UiKit.px(12), UiKit.px(16), UiKit.px(12));
+
+        LinearLayout qrCol = new LinearLayout(ctx);
+        qrCol.setOrientation(LinearLayout.VERTICAL);
+
+        TextView qrHead = UiKit.bold(ctx, 15, Color.parseColor("#38BDF8"));
+        qrHead.setText(turkish
+                ? "QR KODLAR İLE ÜCRETSİZ ANAHTAR ALIN & TELEFONDAN YAPIŞTIRIN"
+                : "GET FREE KEYS & PASTE VIA PHONE QR CODES");
+        qrCol.addView(qrHead);
+
+        TextView qrSub = UiKit.label(ctx, 13.5f, UiKit.INK_DIM);
+        qrSub.setLineSpacing(UiKit.pxf(3f), 1.12f);
+        qrSub.setPadding(0, UiKit.px(4), 0, UiKit.px(10));
+        qrSub.setText(turkish
+                ? "1. TMDB ve Google AI Studio QR kodlarını telefonunuzla okutup ücretsiz anahtarlarınızı kopyalayın.\n"
+                + "2. Sol listeden ilgili satıra tıklayıp 3. QR kod (Telefon Kumandası) ile telefonunuzdan TV'ye doğrudan yapıştırın."
+                : "1. Scan the TMDB and Google AI QR codes with your phone to copy your free keys.\n"
+                + "2. Click a row on the left and use QR #3 (Phone Remote) to paste directly from your phone into the TV.");
+        qrCol.addView(qrSub);
+
+        LinearLayout qrRow = new LinearLayout(ctx);
+        qrRow.setOrientation(LinearLayout.HORIZONTAL);
+        qrRow.setGravity(Gravity.CENTER_HORIZONTAL);
+
+        qrRow.addView(followCode(ctx,
+                "https://www.themoviedb.org/settings/api",
+                turkish ? "1. TMDB Anahtarı Al" : "1. Get TMDB Key",
+                "themoviedb.org/settings/api",
+                122, 0));
+
+        qrRow.addView(followCode(ctx,
+                "https://aistudio.google.com/apikey",
+                turkish ? "2. Google API Key Al" : "2. Get Google API Key",
+                "aistudio.google.com/apikey",
+                122, 12));
+
+        qrRow.addView(followCode(ctx,
+                com.cinetv.launcher.remote.RelayHost.pairingUrl(ctx, "keys"),
+                turkish ? "3. Telefondan Yapıştır" : "3. Paste from Phone",
+                turkish ? "Telefon Kumandası QR" : "Phone Remote QR",
+                122, 12));
+
+        qrCol.addView(qrRow);
+        qrPanel.addView(qrCol);
+        rightCol.addView(qrPanel);
+
+        root.post(() -> {
+            if (!hasName) nameTile.requestFocus();
+            else if (!hasTmdb) tmdbTile.requestFocus();
+            else if (!hasAi) aiTile.requestFocus();
+            else primaryBtn.requestFocus();
+        });
+        return scroll;
+    }
+
     // ---- In-App Setup Wizard: ensures standalone installs are 100% self-sufficient --------------------
 
     public static void wizard(final Context ctx, final ModalHost host) {
@@ -2366,7 +2702,7 @@ public final class Panels {
         return root;
     }
 
-    private static View buildWizard(final Context ctx, final ModalHost host) {
+    public static View buildWizard(final Context ctx, final ModalHost host) {
         final ScrollView scroll = new ScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
         final LinearLayout root = new LinearLayout(ctx);
@@ -2389,8 +2725,8 @@ public final class Panels {
 
         TextView subtitle = UiKit.label(ctx, 17, UiKit.INK_DIM);
         subtitle.setText(turkish
-                ? "Sol sütundan sistem/medya bileşenlerini, sağ sütundan ise %100 ücretsiz Gemini & TMDB sinema anahtarlarınızı kolayca yapılandırabilirsiniz:"
-                : "Configure system & media components on the left, and enter your 100% free Gemini & TMDB cinema keys on the right:");
+                ? "Sol sütundan sistem/medya bileşenlerini, sağ sütundan ise zorunlu Kullanıcı Adı (TTS), TMDB ve Google Gemini anahtarlarınızı QR kodlarla kolayca yapılandırabilirsiniz:"
+                : "Configure system & media components on the left, and set your required Name (TTS), TMDB & Google Gemini keys with QR codes on the right:");
         subtitle.setPadding(0, UiKit.px(8), 0, UiKit.px(14));
         root.addView(subtitle);
 
@@ -2460,7 +2796,7 @@ public final class Panels {
                     }
                 }));
 
-        // 4. Remote Keys & System Integration (Accessibility is strictly optional, native keys always work)
+        // 4. Remote Keys & System Integration
         list.addView(Controls.tile(ctx,
                 turkish ? "4. Kumanda Tuşları & Sistem Uyumu" : "4. Remote Keys & System Integration",
                 turkish ? "Doğrudan yerel kumanda kontrolü hazır (Erişilebilirlik zorunlu değil)" : "Native remote key navigation ready (Accessibility optional)",
@@ -2482,52 +2818,51 @@ public final class Panels {
                     v.postDelayed(() -> host.replace(() -> buildWizard(ctx, host)), 800);
                 }));
 
-        // Right Column: Free Gemini & TMDB API Key Guide & Entry
-        FrameLayout guideCard = new FrameLayout(ctx);
-        guideCard.setBackground(Glass.panel(guideCard, 18));
-        guideCard.setPadding(UiKit.px(18), UiKit.px(14), UiKit.px(18), UiKit.px(14));
-        TextView guideTv = UiKit.label(ctx, 15, UiKit.INK_DIM);
-        guideTv.setLineSpacing(UiKit.pxf(4), 1.12f);
-        guideTv.setText(turkish
-                ? "ÜCRETSİZ YAPAY ZEKA & SİNEMA ARŞİVİ ANAHTARLARI\n"
-                + "Bu iki kod tamamen ücretsizdir (kredi kartı gerekmez) ve CineTV'nin tüm akıllı sinema gücünü açar:\n\n"
-                + "• Gemini AI (aistudio.google.com/apikey): Sesli/yazılı doğal dilde film araması (\"Nolan'ın uzay filmini aç\"), saate ve hava durumuna göre akıllı DVD vitrin küratörlüğü ve Türkçe sinema asistanı sağlar.\n"
-                + "• TMDB (themoviedb.org/settings/api): 3B DVD kutularının yüksek çözünürlüklü afişlerini, açılan DVD'nin içindeki Türkçe film özetini, oyuncu kadrosunu ve fragman videolarını getirir."
-                : "100% FREE AI & CINEMA ARCHIVE KEYS\n"
-                + "Both keys are completely free (no credit card needed) and unlock CineTV's full intelligence:\n\n"
-                + "• Gemini AI (aistudio.google.com/apikey): Natural-language voice/text search, time & weather-aware smart DVD shelf curation, and your AI cinema assistant.\n"
-                + "• TMDB (themoviedb.org/settings/api): High-res 3D DVD cover art, inner booklet synopses, cast credits, and live trailers.");
-        guideCard.addView(guideTv);
-        LinearLayout.LayoutParams gclp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        gclp.bottomMargin = UiKit.px(10);
-        rightCol.addView(guideCard, gclp);
-
-        // 6. Gemini AI Key
-        String provider = LlmClient.providerName(ctx);
-        boolean hasAi = provider != null;
+        // Right Column: Mandatory Name, Gemini AI Key, TMDB Key & QR Codes
+        String viewerName = com.cinetv.launcher.ai.GamzeMemory.name(ctx);
+        boolean hasName = com.cinetv.launcher.ai.GamzeMemory.isValidViewerName(viewerName);
         rightCol.addView(Controls.tile(ctx,
-                turkish ? "6. Gemini Yapay Zeka Anahtarı (%100 Ücretsiz)" : "6. Gemini AI Key (100% Free)",
-                hasAi ? (turkish ? "Aktif (" + provider + ") · Değiştirmek için dokunun" : "Active (" + provider + ")")
+                turkish ? "6. Kullanıcı Adınız (Gamze TTS Hitap İsmi — Zorunlu)" : "6. Your Name (Gamze TTS — Required)",
+                hasName ? (turkish ? ("Aktif: \"" + viewerName + "\" · Değiştirmek için dokunun") : ("Active: \"" + viewerName + "\""))
+                        : (turkish ? "Zorunlu · Gamze'nin size hitap edeceği ismi girmek için dokunun" : "Required · Tap to enter your name for TTS"),
+                hasName, v -> host.push(() -> buildRequiredNameInput(ctx, host, () -> host.replace(() -> buildWizard(ctx, host))))));
+
+        // 7. Gemini AI Key
+        String provider = LlmClient.providerName(ctx);
+        boolean hasAi = SecretStore.has(ctx, SecretStore.AI_KEY) || provider != null;
+        rightCol.addView(Controls.tile(ctx,
+                turkish ? "7. Google Gemini API Anahtarı (%100 Ücretsiz — Zorunlu)" : "7. Google Gemini API Key (100% Free — Required)",
+                hasAi ? (turkish ? "Aktif (" + (provider != null ? provider : "Gemini") + ") · Değiştirmek için dokunun" : "Active (" + provider + ")")
                       : (turkish ? "aistudio.google.com/apikey · QR kodlu rehber ve anahtar girişi için dokunun" : "Tap for QR guide & key input (aistudio.google.com)"),
                 hasAi, v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.AI_KEY, R.string.ai_key, R.string.ai_key_hint,
                         () -> host.replace(() -> buildWizard(ctx, host))))));
 
-        // 7. TMDB Key
+        // 8. TMDB Key
         boolean hasTmdb = MovieCatalog.hasTmdb(ctx);
         rightCol.addView(Controls.tile(ctx,
-                turkish ? "7. TMDB Film, Afiş & Fragman Anahtarı (%100 Ücretsiz)" : "7. TMDB Poster & Trailer Key (100% Free)",
+                turkish ? "8. TMDB Film, Afiş & Fragman Anahtarı (%100 Ücretsiz — Zorunlu)" : "8. TMDB Poster & Trailer Key (100% Free — Required)",
                 hasTmdb ? (turkish ? "Aktif (Yüksek çözünürlüklü afiş, özet ve fragmanlar devrede)" : "Active (Posters, synopses & trailers enabled)")
                         : (turkish ? "themoviedb.org/settings/api · QR kodlu rehber ve anahtar girişi için dokunun" : "Tap for QR guide & key input (themoviedb.org)"),
                 hasTmdb, v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.TMDB_KEY, R.string.tmdb_key, R.string.tmdb_key_hint,
                         () -> host.replace(() -> buildWizard(ctx, host))))));
 
-        // 8. Unified Picture, Sound, DNS & Benchmark (TV Denetçisi)
+        // 9. Unified Picture, Sound, DNS & Benchmark (TV Denetçisi)
         boolean avDone = Prefs.get(ctx).getBoolean(Prefs.FIRST_SETUP_DONE, false);
         rightCol.addView(Controls.tile(ctx,
-                turkish ? "8. Görüntü, Ses, DNS & Ağ Optimizasyonu (TV Denetçisi)" : "8. Picture, Sound, DNS & Network Optimization",
+                turkish ? "9. Görüntü, Ses, DNS & Ağ Optimizasyonu (TV Denetçisi)" : "9. Picture, Sound, DNS & Network Optimization",
                 turkish ? "TV Denetçisi verileriyle panel, HDR, ses, DNS ve Nuvio akış kalitesini eşitle"
                         : "Sync panel, HDR, audio, DNS & Nuvio stream profile from TV Inspector",
                 avDone, v -> setup(ctx, host, true)));
+
+        // Compact QR row for instant key acquisition
+        LinearLayout qrRow = new LinearLayout(ctx);
+        qrRow.setOrientation(LinearLayout.HORIZONTAL);
+        qrRow.setPadding(0, UiKit.px(8), 0, 0);
+        qrRow.addView(followCode(ctx, "https://www.themoviedb.org/settings/api", "TMDB API QR", "themoviedb.org", 96, 0));
+        qrRow.addView(followCode(ctx, "https://aistudio.google.com/apikey", "Google AI QR", "aistudio.google.com", 96, 12));
+        qrRow.addView(followCode(ctx, com.cinetv.launcher.remote.RelayHost.pairingUrl(ctx, "keys"),
+                turkish ? "Telefondan Gir" : "Phone Input", "CineTV Remote", 96, 12));
+        rightCol.addView(qrRow);
 
         // Footer buttons: Otomatik Tamamla & Geri Dön
         LinearLayout buttons = new LinearLayout(ctx);
@@ -2559,6 +2894,17 @@ public final class Panels {
         buttons.addView(space, new LinearLayout.LayoutParams(UiKit.px(20), 1));
 
         buttons.addView(Controls.button(ctx, turkish ? "Geri Dön" : "Back", v -> {
+            if (!hasRequiredSetup(ctx)) {
+                Toast.makeText(ctx, turkish
+                        ? "⚠️ Devam etmeden önce Kullanıcı Adı, TMDB Anahtarı ve Google API Anahtarı girilmelidir!"
+                        : "⚠️ Please enter Your Name, TMDB Key, and Google API Key before continuing!", Toast.LENGTH_LONG).show();
+                host.replace(() -> buildRequiredSetupModal(ctx, host, () -> {
+                    if (ctx instanceof com.cinetv.launcher.MainActivity) {
+                        ((com.cinetv.launcher.MainActivity) ctx).onWizardFinished();
+                    }
+                }));
+                return;
+            }
             Prefs.get(ctx).edit().putBoolean("wizard_done", true).putBoolean(Prefs.FIRST_SETUP_DONE, true).apply();
             host.back();
             if (ctx instanceof com.cinetv.launcher.MainActivity) {
@@ -2660,11 +3006,15 @@ public final class Panels {
         StringBuilder sysSb = new StringBuilder();
         sysSb.append(tr ? "Cihaz: " : "Device: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL);
         sysSb.append(tr ? "\nAnakart: " : "\nBoard: ").append(Build.BOARD).append(" (").append(Build.HARDWARE).append(")");
+        sysSb.append(tr ? "\nYonga / Profil: " : "\nSoC / Profile: ").append(av.socFamily.toUpperCase(Locale.US))
+                .append(" · ").append(PerformanceProfile.boardProfile(ctx));
         sysSb.append(tr ? "\nAndroid TV: " : "\nAndroid TV: ").append("Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             sysSb.append(tr ? "\nGüvenlik Yaması: " : "\nSecurity Patch: ").append(Build.VERSION.SECURITY_PATCH);
         }
         sysSb.append(tr ? "\nİşlemci Mimarisi: " : "\nCPU ABI: ").append(Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "bilinmiyor");
+        sysSb.append(tr ? "\nAğ Bağlantısı: " : "\nNetwork Link: ")
+                .append(com.cinetv.launcher.device.NetworkOptimizer.inspect(ctx).summary(tr));
         col1.addView(inspectorCard(ctx, sysSb.toString()));
 
         // 4. Medya Çözücüler (Video & Audio Decoders)
@@ -2688,8 +3038,10 @@ public final class Panels {
             MediaCodecInfo[] infos = mcl.getCodecInfos();
             for (String[] pair : probeCodecs) {
                 boolean supported = false;
+                boolean isVideo = pair[0].startsWith("video/");
                 for (MediaCodecInfo info : infos) {
                     if (info.isEncoder()) continue;
+                    if (isVideo && !com.cinetv.launcher.device.AvOptimizer.isHardwareDecoder(info)) continue;
                     for (String type : info.getSupportedTypes()) {
                         if (type.equalsIgnoreCase(pair[0])) {
                             supported = true;
@@ -2996,28 +3348,74 @@ public final class Panels {
             ver = ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0).versionName;
         } catch (Throwable ignored) {
         }
-        title.setText((tr ? "Yenilikler · v" : "What's new · v") + ver);
+        title.setText((tr ? "CineTV Kapsamlı Rehber & Yenilikler · v" : "CineTV Comprehensive Guide & What's New · v") + ver);
         root.addView(title);
 
         TextView sub = UiKit.label(ctx, 16, UiKit.INK_DIM);
-        sub.setPadding(0, UiKit.px(8), 0, UiKit.px(20));
-        sub.setText(tr ? "Turu baştan almak için ayarlardaki CineTV Turu'nu açın." : "Take the tour again from CineTV Tour in Settings.");
+        sub.setPadding(0, UiKit.px(6), 0, UiKit.px(16));
+        sub.setText(tr
+                ? "Aşağıdaki butonla 16 adımlı, Gamze sesli anlatımlı ve canlı DVD kutusu gösterimli interaktif ekran turunu istediğiniz an başlatabilirsiniz."
+                : "Start the 16-step interactive spotlight tour with Gamze voice narration and live 3D DVD showcase anytime using the button below.");
         root.addView(sub);
 
+        LinearLayout topActions = new LinearLayout(ctx);
+        topActions.setOrientation(LinearLayout.HORIZONTAL);
+        topActions.setPadding(0, 0, 0, UiKit.px(18));
+
+        TextView startTourBtn = Controls.button(ctx,
+                tr ? "▶ İnteraktif Ekran Turunu Başlat (16 Adım · Sesli)" : "▶ Start Interactive Screen Tour (16 Steps · Voice)",
+                v -> {
+                    host.closeImmediate();
+                    com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                    if (ma != null) {
+                        v.postDelayed(ma::startTour, 180);
+                    }
+                });
+        topActions.addView(startTourBtn);
+
+        View spTop = new View(ctx);
+        topActions.addView(spTop, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+
+        TextView keysBtn = Controls.button(ctx,
+                tr ? "Anahtar & Hitap İsmi Kontrolü (QR)" : "Verify Keys & Name (QR)",
+                v -> host.push(() -> buildRequiredSetupModal(ctx, host, null)));
+        topActions.addView(keysBtn);
+        root.addView(topActions);
+
         final String[][] features = tr ? new String[][]{
-                {"CineParty baştan yazıldı", "CineQuiz (süreyi siz seçersiniz, TMDB görselleri, Gamze'nin soruları, kazanan filmi seçer), CineRoulette (altı film, tek kurşun) ve CineSessiz (anlatıcı seçer, salon bilir). TV sahne, her telefon oyuncunun kendi ekranı; sesler iki tarafta da."},
-                {"CineSUB her oynatıcının üstünde", "Sarı tuş: sahnedeki kişi, mekân, obje, yemek, tablo ve altyazıda geçen isimler halkalarla işaretlenir, notlar konunun yanında belirir. Eşlik modu izlerken ara sıra kısa notlar bırakır."},
-                {"Gamze sohbet ediyor", "Konuşmayı hatırlar, gerektiğinde geri soru sorar ve mikrofonu kendisi açar; cümle cümle konuştuğu için hemen cevap verir."},
-                {"Yeni ses tasarımı", "Cam ve ahşap dokunuşlar, kutu açılışında alçak bir yükseliş, film başlarken derin bir vuruş. Artık sistem sesi kapalı TV'lerde de duyulur; ayarlardan kapatılabilir."},
-                {"Fragmanlar", "Kadraja tam oturur (kırpma yok), siyah açılış yerine afişten doğrudan görüntüye geçer, odaklanınca önceden yüklenir."},
-                {"Geri bildirim", "TV Denetçisi'ndeki rapor QR'ı GitHub'da hazır bir kayıt açar; cihazınız uyumluluk listesine işlenir, sorunlar incelenir."}
+                {"BÖLÜM 1 · 3B DVD Vitrini, Kitapçık ve Sesli Fragman",
+                 "Ana ekrandaki her kutu gerçek bir koleksiyon DVD'sidir. OK ile açtığınızda solda yönetmen, oyuncu kadrosu, IMDb/Rotten Tomatoes puanları ve Türkçe özet kitapçığı; sağda ise dönen disk ve kırpılmadan tam oturan sesli fragman penceresi yer alır. Kutu açıkken tekrar OK tuşu filmi doğrudan Nuvio'da başlatır; Aşağı ok ses/hız/en-boy ayarlarını açar."},
+                {"BÖLÜM 2 · Kaldığın Yerden & Nuvio Tam Senkronu",
+                 "İzlediğiniz film ve diziler sol üstteki 'Kaldığın Yerden' kartında dakikası ve kalan süresiyle görünür. Karta bastığınızda DVD kutusu açılmaz; Nuvio doğrudan kaldığınız dakikadan veya dizinin sıradaki bölümünden devam eder. Nuvio listenizden sildiğiniz içerikler otomatik temizlenir veya kart üzerinde Sil tuşuyla kaldırılabilir."},
+                {"BÖLÜM 3 · Gamze Yapay Zekâ, EMA Lightning TTS ve Ev Hafızası",
+                 "Kumandanın mikrofon tuşu doğrudan Gamze'yi açar. '90'lardan yağmurlu gecede geçen polisiye', 'Nuri Bilge Ceylan filmleri', 'Sesi 15 yap', '30 dakika sonra kapan', 'Belleği temizle' gibi hem sohbet/keşif hem de TV kontrol komutlarını anlar. EMA Lightning TTS motoru kurulumda girdiğiniz kullanıcı adınızla size doğal Türkçe sesle hitap eder."},
+                {"BÖLÜM 4 · Kategoriler ve Ülke Sinemaları",
+                 "Vitrin her zaman saate, mevsime ve şehrinizin hava durumuna göre 'Gamze'nin Seçimi' ile açılır. Üstteki sekmelerden Türk, Kore, Japon, Hint ve Avrupa sineması dahil tüm kategorilere geçebilirsiniz; her ülke kategorisi kendi orijinal dil filtresiyle ayrılmıştır. 'Vitrini Tazele' seçili kategorinin yeni sayfalarını getirir."},
+                {"BÖLÜM 5 · CineSUB Canlı Sahne Analizi & Eşlik Modu (Sarı Tuş)",
+                 "Herhangi bir oynatıcıda veya HDMI girişinde film izlerken kumandadan Sarı tuşa basın: Android donanım arabelleğiyle (~100 ms) sahne yakalanır; spoiler vermeden sahnedeki oyuncular, çekim mekânı, çalan müzik, kültürel göndermeler ve yönetmen detayları ekranda belirir."},
+                {"BÖLÜM 6 · Telefon Kumandası, Klavye, AirMouse & Web Video Cast",
+                 "Üst çubuktaki Telefon simgesinden QR kodu okutun: uygulama kurmadan HTTPS üzerinden tam kumanda, telefon klavyesiyle TV'ye anında yazma, jiroskoplu AirMouse ve herhangi bir film/video sayfasındaki yayını reklamları atlayarak TV'ye gönderme (Cast) özelliklerini kullanın. YouTube uygulamasından 'TV'de İzle' ile TizenTube reklamsız açılır."},
+                {"BÖLÜM 7 · CineParty: Çok Oyunculu Sinema Oyunları Salonu",
+                 "Salondaki herkes telefonundan QR kodu okutarak katılır: CineQuiz (TMDB sahneleriyle süreli bilgi yarışması; şampiyon gecenin filmini seçer), CineRoulette (6 film, 1 kurşunla grup film seçici), CineSessiz (yasaklı kelimelerle sinema tabusu) ve SnakePhile (kumandayla oynanan 3B sinefil yılan)."},
+                {"BÖLÜM 8 · Donanım/Yazılım Otomatik Kalibrasyon ve zRAM Bellek",
+                 "MediaTek, Amlogic ve Realtek görüntü motorları tespit edilerek keskinlik, hareket yumuşatma (MEMC), HDR ve renk sıcaklığı otomatik ayarlanır. HDMI eARC/ARC bit-perfect ses, AirPods uzamsal ses filtresi, Wi-Fi jitter önleme, DoT DNS ve zRAM uygulama sıkıştırması her güncellemede arka planda otomatik uygulanır."}
         } : new String[][]{
-                {"CineParty rebuilt", "CineQuiz (you set the clock, TMDB stills, Gamze's questions, the winner picks the film), CineRoulette (six films, one bullet) and CineSessiz (the teller picks, the room guesses). The TV is the stage, each phone a player's own screen."},
-                {"CineSUB over any player", "Yellow key: people, places, objects, food, art and names from the subtitles get rings and notes beside them. Companion mode drops a short note now and then."},
-                {"Gamze talks back", "She remembers the conversation, asks one question back when it helps and reopens the microphone; she speaks sentence by sentence, so she answers at once."},
-                {"New sound design", "Glass and wood taps, a low swell when a case opens, a deep hit when a film starts. Now heard on TVs whose system sounds are muted; can be switched off."},
-                {"Trailers", "Fit the frame (no cropping), go from the still straight to the picture instead of black, preload on focus."},
-                {"Feedback", "The report QR in the TV Inspector opens a ready GitHub issue; your TV joins the compatibility list and problems get looked at."}
+                {"CHAPTER 1 · 3D DVD Showcase, Booklet & Audio Trailers",
+                 "Every item on the shelf is a 3D collector's DVD case. Press OK to open the left inner booklet (director, cast, IMDb/RT ratings, synopsis) and the right live trailer window with sound. Press OK again inside the case to launch the title in Nuvio; press Down for trailer audio/speed/aspect controls."},
+                {"CHAPTER 2 · Continue Watching & Nuvio Sync",
+                 "Your in-progress movies and series appear in the Continue Watching card with exact progress. Pressing OK skips the DVD case and resumes straight from your saved minute or next episode in Nuvio. Removing an item from Nuvio or pressing Delete removes it immediately."},
+                {"CHAPTER 3 · Gamze AI, EMA Lightning TTS & Household Memory",
+                 "The remote's microphone key opens Gamze directly. Ask for moods, plots, directors, or control the TV ('Set volume to 15', 'Sleep in 30 minutes', 'Clean RAM'). EMA Lightning TTS addresses you personally by the name you configured."},
+                {"CHAPTER 4 · Categories & World Cinema",
+                 "Home opens with Gamze's Pick tailored to the hour and weather. Switch tabs for Turkish, Korean, Japanese, Indian, and European cinema—each strictly filtered by original language. Refresh brings fresh pages for the active tab."},
+                {"CHAPTER 5 · CineSUB Live Scene Inspector & Companion Mode (Yellow Key)",
+                 "Press the Yellow button while watching any movie: captures the frame in ~100ms via hardware buffer and shows spoiler-free actor, location, music, and cultural trivia rings right over the video."},
+                {"CHAPTER 6 · Phone Remote, Keyboard, AirMouse & Web Video Cast",
+                 "Scan the Phone icon QR code on the top bar: zero-install HTTPS remote, instant phone keyboard typing, AirMouse, ad-skipping web video casting, and ad-free YouTube casting via TizenTube."},
+                {"CHAPTER 7 · CineParty: Living Room Cinema Games",
+                 "Everyone connects their phone via QR to play CineQuiz (timed trivia where the champion picks tonight's movie), CineRoulette (6 films, 1 bullet), CineSessiz (cinema taboo), and SnakePhile (3D poster snake)."},
+                {"CHAPTER 8 · Automatic Hardware/AV Calibration & zRAM Memory",
+                 "Automatically detects MediaTek/Amlogic/Realtek picture engines, HDMI eARC/ARC & AirPods spatial audio, Wi-Fi jitter throttling, DoT DNS, and rootless zRAM app compaction on every update."}
         };
 
         for (String[] f : features) {
@@ -3050,7 +3448,7 @@ public final class Panels {
         bRow.addView(ok);
         root.addView(bRow);
 
-        root.post(ok::requestFocus);
+        root.post(startTourBtn::requestFocus);
         return scroll;
     }
 

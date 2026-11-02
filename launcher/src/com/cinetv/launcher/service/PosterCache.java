@@ -19,19 +19,37 @@ public final class PosterCache {
     /** Set once by CineTvApp: tight TVs keep fewer, 16-bit pictures. */
     private static volatile boolean lowMemory;
     private static volatile boolean sixteenBit;
+    private static volatile int customDecodedMb = -1;
+    private static volatile int customPackedMb = -1;
+    private static final ThreadLocal<byte[]> DECODE_STORAGE = new ThreadLocal<byte[]>() {
+        @Override
+        protected byte[] initialValue() {
+            return new byte[16 * 1024];
+        }
+    };
 
     public static void configure(boolean low) {
         lowMemory = low;
         sixteenBit = low;
     }
 
+    public static synchronized void configure(Context ctx) {
+        boolean low = com.cinetv.launcher.device.PerformanceProfile.lowMemory(ctx);
+        lowMemory = low;
+        sixteenBit = low;
+        customDecodedMb = com.cinetv.launcher.device.PerformanceProfile.posterCacheMb(ctx);
+        customPackedMb = com.cinetv.launcher.device.PerformanceProfile.packedCacheMb(ctx);
+        memory = null;
+        packed = null;
+    }
+
     private PosterCache() {}
 
     private static synchronized LruCache<String, Bitmap> memory() {
         if (memory == null) {
-            // Small on purpose: decoded pictures are the biggest part of Home's memory, and the disk cache is cheap to re-read.
-            int maxKb = (int) Math.min(lowMemory ? 8 * 1024 : 20 * 1024, Runtime.getRuntime().maxMemory() / 1024 / 10);
-            memory = new LruCache<String, Bitmap>(maxKb) {
+            int targetKb = customDecodedMb > 0 ? customDecodedMb * 1024 : (lowMemory ? 8 * 1024 : 20 * 1024);
+            int maxKb = (int) Math.min(targetKb, Runtime.getRuntime().maxMemory() / 1024 / 8);
+            memory = new LruCache<String, Bitmap>(Math.max(4 * 1024, maxKb)) {
                 @Override
                 protected int sizeOf(String key, Bitmap value) {
                     return value.getByteCount() / 1024;
@@ -87,6 +105,7 @@ public final class PosterCache {
         if (hit != null && !hit.isRecycled()) return hit;
         try (InputStream probe = ctx.getAssets().open(path)) {
             BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inTempStorage = DECODE_STORAGE.get();
             o.inJustDecodeBounds = true;
             BitmapFactory.decodeStream(probe, null, o);
             o.inSampleSize = sampleSize(o.outWidth, o.outHeight, reqW, reqH);
@@ -110,7 +129,8 @@ public final class PosterCache {
 
     private static synchronized LruCache<String, byte[]> packed() {
         if (packed == null) {
-            packed = new LruCache<String, byte[]>(lowMemory ? 6 * 1024 : 12 * 1024) {
+            int targetKb = customPackedMb > 0 ? customPackedMb * 1024 : (lowMemory ? 6 * 1024 : 12 * 1024);
+            packed = new LruCache<String, byte[]>(Math.max(4 * 1024, targetKb)) {
                 @Override
                 protected int sizeOf(String key, byte[] value) {
                     return Math.max(1, value.length / 1024);
@@ -148,6 +168,7 @@ public final class PosterCache {
         byte[] bytes = packedBytes(f);
         if (bytes != null) {
             BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inTempStorage = DECODE_STORAGE.get();
             if (sixteenBit && !f.getName().endsWith(".png") && reqW < 1200) o.inPreferredConfig = Bitmap.Config.RGB_565;
             o.inJustDecodeBounds = true;
             BitmapFactory.decodeByteArray(bytes, 0, bytes.length, o);
@@ -162,6 +183,7 @@ public final class PosterCache {
             }
         }
         BitmapFactory.Options o = new BitmapFactory.Options();
+        o.inTempStorage = DECODE_STORAGE.get();
         // Photos have no alpha: 16-bit halves their memory for small posters. Full wallpapers (>=1200) keep 32-bit ARGB_8888.
         if (sixteenBit && !f.getName().endsWith(".png") && reqW < 1200) o.inPreferredConfig = Bitmap.Config.RGB_565;
         o.inJustDecodeBounds = true;

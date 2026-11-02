@@ -1132,38 +1132,158 @@ public class HomeScreen {
 
     public TourView.Step[] tourSteps() {
         View phone = headerButtons[1], gear = headerButtons[headerButtons.length - 1], inputs = headerButtons[3];
+        boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+        String remoteUrl = com.cinetv.launcher.remote.RelayHost.pairingUrl(ctx, "remote");
+        String partyUrl = com.cinetv.launcher.remote.RelayHost.pairingUrl(ctx, "party");
+        String tmdbQr = "https://www.themoviedb.org/settings/api";
+        String geminiQr = "https://aistudio.google.com/apikey";
+        String mdbQr = "https://mdblist.com/preferences/";
+
+        String ch1 = tr ? "BÖLÜM 1 · KARŞILAMA" : "CHAPTER 1 · WELCOME";
+        String ch2 = tr ? "BÖLÜM 2 · 3D DVD VİTRİNİ" : "CHAPTER 2 · 3D DVD VITRINE";
+        String ch3 = tr ? "BÖLÜM 3 · ARAMA & GAMZE ASİSTAN" : "CHAPTER 3 · SEARCH & GAMZE AI";
+        String ch4 = tr ? "BÖLÜM 4 · KİMLİK & API ANAHTARLARI" : "CHAPTER 4 · IDENTITY & API KEYS";
+        String ch5 = tr ? "BÖLÜM 5 · CINESUB SAHNE ZEKASI" : "CHAPTER 5 · CINESUB SCENE AI";
+        String ch6 = tr ? "BÖLÜM 6 · TELEFON & AKILLI EV" : "CHAPTER 6 · PHONE & SMART HOME";
+        String ch7 = tr ? "BÖLÜM 7 · UYGULAMALAR & CINEPARTY" : "CHAPTER 7 · APPS & CINEPARTY";
+        String ch8 = tr ? "BÖLÜM 8 · AYARLAR & PERFORMANS" : "CHAPTER 8 · SETTINGS & PERFORMANCE";
+
+        String viewerName = com.cinetv.launcher.ai.GamzeMemory.name(ctx);
+        CharSequence welcomeStatus = (viewerName != null && !viewerName.isEmpty())
+                ? nameStatus(tr ? ("Kayıtlı hitap adı: " + viewerName + " ✓") : ("Registered viewer name: " + viewerName + " ✓"), true)
+                : nameStatus(tr ? "Hitap adı: Ayarlar'dan eklenebilir" : "Viewer name: can be set in Settings", false);
+
         return new TourView.Step[]{
-                new TourView.Step(null, R.string.tour_welcome_t, R.string.tour_welcome),
-                new TourView.Step(shelf, R.string.tour_shelf_t, R.string.tour_shelf),
-                new TourView.Step(shelf, R.string.tour_dvd_t, R.string.tour_dvd),
-                new TourView.Step(gear, R.string.tour_trailers_t, R.string.tour_trailers),
-                new TourView.Step(search, R.string.tour_search_t, R.string.tour_search),
-                new TourView.Step(micButton, R.string.tour_voice_t, R.string.tour_voice),
-                new TourView.Step(micButton, R.string.tour_gamze_social_t, R.string.tour_gamze_social),
-                new TourView.Step(gear, R.string.tour_ai_t, R.string.tour_ai, keyStatus(com.cinetv.launcher.ai.LlmClient.isConfigured(ctx))),
-                new TourView.Step(gear, R.string.tour_cinesub_t, R.string.tour_cinesub),
-                new TourView.Step(gear, R.string.tour_cinesub_ambient_t, R.string.tour_cinesub_ambient),
-                new TourView.Step(gear, R.string.tour_spatial_t, R.string.tour_spatial),
-                new TourView.Step(gear, R.string.tour_acoustics_t, R.string.tour_acoustics),
-                new TourView.Step(gear, R.string.tour_night_t, R.string.tour_night),
-                new TourView.Step(gear, R.string.tour_tmdb_t, R.string.tour_tmdb, keyStatus(com.cinetv.launcher.service.MovieCatalog.hasTmdb(ctx))),
+                new TourView.Step(null, R.string.tour_welcome_t, R.string.tour_welcome, welcomeStatus, ch1,
+                        tr ? "Kumandada ▲/▼ tuşlarıyla 3 adım atlayabilir, Sarı Tuş ile Gamze'nin sesli anlatımını açıp kapatabilirsin."
+                           : "Use ▲/▼ to jump 3 steps, or press the Yellow Key to toggle Gamze's voice narration.",
+                        remoteUrl, tr ? "Telefon Kumandası QR" : "Phone Remote QR"),
+                new TourView.Step(shelf, R.string.tour_shelf_t, R.string.tour_shelf, null, ch2,
+                        tr ? "Üst bardaki Yenile simgesi veya Ayarlar › Vitrini Yenile ile 15 küratörlü kategori arasında gezebilirsin."
+                           : "Use the Refresh button in the top bar to cycle through 15 curated cinema categories.",
+                        null, null),
+                new TourView.Step(shelf, R.string.tour_dvd_t, R.string.tour_dvd, null, ch2,
+                        tr ? "Kutu açıkken ▲/▼ ile bilgi kitapçığını ve künye sayfalarını çevirebilir, ▶ ile tam ekran fragman açabilirsin."
+                           : "While a DVD is open, press ▲/▼ to flip through booklet pages or ▶ for the fullscreen trailer.",
+                        null, null),
+                new TourView.Step(gear, R.string.tour_trailers_t, R.string.tour_trailers, null, ch2,
+                        tr ? "DVD içindeki fragman sesi yumuşak geçişle (crossfade) duyulur; Ayarlar › Fragman Sesi ile sessize alınabilir."
+                           : "In-case trailer audio fades in smoothly and can be muted anytime in Settings › Trailer Audio.",
+                        null, null),
+                new TourView.Step(search, R.string.tour_search_t, R.string.tour_search, null, ch3,
+                        tr ? "Doğal dilde ruh hâli, konu, yönetmen veya dönem yaz: vitrin saniyeler içinde o seçkiyle dolar."
+                           : "Type any mood, plot description, director, or era: the shelf transforms into your custom selection.",
+                        null, null),
+                new TourView.Step(micButton, R.string.tour_voice_t, R.string.tour_voice, null, ch3,
+                        tr ? "Kumandanın Mikrofon tuşuna herhangi bir uygulamadayken bas: içerik duraklatılır ve Gamze seni dinler."
+                           : "Press the remote's Mic key from any app: playback pauses automatically while Gamze listens.",
+                        null, null),
+                new TourView.Step(micButton, R.string.tour_gamze_social_t, R.string.tour_gamze_social, null, ch3,
+                        tr ? "Gamze'ye 'Çocuklarla izliyoruz' veya 'Eşimle izleyeceğiz' demen yeterli; önerileri anında uyarlar."
+                           : "Tell Gamze who is watching with you and she adapts recommendations to the room.",
+                        null, null),
+                new TourView.Step(gear, R.string.tour_ai_t, R.string.tour_ai,
+                        keyStatus(com.cinetv.launcher.ai.LlmClient.isConfigured(ctx)), ch4,
+                        tr ? "Sağdaki QR kodu telefonunla okutarak ücretsiz Google Gemini API anahtarını saniyeler içinde alabilirsin."
+                           : "Scan the QR code on the right with your phone to get a free Google Gemini API key.",
+                        geminiQr, tr ? "Google Gemini API QR" : "Google Gemini API QR"),
+                new TourView.Step(gear, R.string.tour_tmdb_t, R.string.tour_tmdb,
+                        keyStatus(com.cinetv.launcher.service.MovieCatalog.hasTmdb(ctx)), ch4,
+                        tr ? "Hem TMDB v3 API Anahtarı (32 karakter) hem de v4 Okuma Jetonu (eyJ...) otomatik olarak tanınır."
+                           : "Both TMDB v3 API Keys and v4 Read Access Tokens (eyJ...) are automatically recognized.",
+                        tmdbQr, tr ? "TMDB Anahtarı QR" : "TMDB Key QR"),
                 new TourView.Step(gear, R.string.tour_mdb_t, R.string.tour_mdb,
-                        keyStatus(com.cinetv.launcher.service.SecretStore.has(ctx, com.cinetv.launcher.service.SecretStore.MDBLIST_KEY))),
-                new TourView.Step(null, R.string.tour_allow_t, R.string.tour_allow),
-                new TourView.Step(phone, R.string.tour_phone_t, R.string.tour_phone),
-                new TourView.Step(phone, R.string.tour_smarthome_t, R.string.tour_smarthome),
-                new TourView.Step(phone, R.string.tour_cast_t, R.string.tour_cast),
-                new TourView.Step(inputs, R.string.tour_inputs_t, R.string.tour_inputs),
-                new TourView.Step(apps.dockView(), R.string.tour_apps_t, R.string.tour_apps),
-                new TourView.Step(apps.dockView(), R.string.tour_party_games_t, R.string.tour_party_games),
-                new TourView.Step(apps.dockView(), R.string.tour_quiz_t, R.string.tour_quiz),
-                new TourView.Step(apps.dockView(), R.string.tour_roulette_t, R.string.tour_roulette),
-                new TourView.Step(apps.dockView(), R.string.tour_sessiz_t, R.string.tour_sessiz),
-                new TourView.Step(gear, R.string.tour_sounds_t, R.string.tour_sounds),
-                new TourView.Step(gear, R.string.tour_settings_t, R.string.tour_settings),
-                new TourView.Step(gear, R.string.tour_perf_t, R.string.tour_perf),
-                new TourView.Step(null, R.string.tour_saver_t, R.string.tour_saver),
-                new TourView.Step(logoButton, R.string.tour_done_t, R.string.tour_done)};
+                        keyStatus(com.cinetv.launcher.service.SecretStore.has(ctx, com.cinetv.launcher.service.SecretStore.MDBLIST_KEY)), ch4,
+                        tr ? "MDBList anahtarı DVD kapaklarının içine IMDb ve Rotten Tomatoes puanlarını ekler."
+                           : "An MDBList key adds IMDb and Rotten Tomatoes scores inside opened DVD cases.",
+                        mdbQr, tr ? "MDBList API QR" : "MDBList API QR"),
+                new TourView.Step(gear, R.string.tour_cinesub_t, R.string.tour_cinesub, null, ch5,
+                        tr ? "Kısayol: Film izlerken kumandada SARI TUŞ'a bas. ◀ ▶ ile detaylar arasında gez, OK ile derinleştir."
+                           : "Shortcut: Press the YELLOW KEY during playback. Use ◀ ▶ to switch items, OK for deep context.",
+                        null, null),
+                new TourView.Step(gear, R.string.tour_cinesub_ambient_t, R.string.tour_cinesub_ambient, null, ch5,
+                        tr ? "Tetiklenmeden otomatik çalışır! Oyuncu, çekim yeri, saat/araba modeli, tablo ve altyazı göndermelerini yakalar."
+                           : "Runs automatically by default! Detects actors, locations, cars/watches, paintings, and subtitle idioms.",
+                        null, null),
+                new TourView.Step(gear, R.string.tour_spatial_t, R.string.tour_spatial, null, ch5,
+                        tr ? "AirPods bağlandığında kafa takipli uzamsal ses ve gürültü kontrolü ekran üstü panelden yönetilir."
+                           : "When AirPods connect, spatial audio and noise control appear in an on-screen overlay.",
+                        null, null),
+                new TourView.Step(gear, R.string.tour_acoustics_t, R.string.tour_acoustics, null, ch5,
+                        tr ? "Ayarlar › Oda Akustiği ile oturduğun koltuktan telefon mikrofonuyla 10 bant EQ kalibrasyonu yapabilirsin."
+                           : "Calibrate the TV's 10-band EQ from your couch using your phone's microphone in Settings.",
+                        null, null),
+                new TourView.Step(gear, R.string.tour_night_t, R.string.tour_night, null, ch5,
+                        tr ? "23:00–05:00 arası göz yormayan kehribar ışık ve fısıltı ses dengelemesi devreye girer."
+                           : "Between 23:00 and 05:00, warm amber light and dynamic whisper audio leveling protect night viewing.",
+                        null, null),
+                new TourView.Step(null, R.string.tour_allow_t, R.string.tour_allow, null, ch6,
+                        tr ? "'Her zaman izin ver' kutusunu işaretlemek, telefon kumandasının ve CineSUB ekran yakalamanın kesintisiz çalışmasını sağlar."
+                           : "Ticking 'Always allow' keeps the phone remote and CineSUB screen capture working across every app.",
+                        null, null),
+                new TourView.Step(phone, R.string.tour_phone_t, R.string.tour_phone, null, ch6,
+                        tr ? "Sağdaki QR kodu telefon kameranla okut: klavyeyle API anahtarı yapıştırabilir, touchpad ve sesli arama kullanabilirsin."
+                           : "Scan the QR code to use your phone as a touchpad remote, keyboard for pasting API keys, and voice mic.",
+                        remoteUrl, tr ? "Telefon Kumandası QR" : "Phone Remote QR"),
+                new TourView.Step(phone, R.string.tour_smarthome_t, R.string.tour_smarthome, null, ch6,
+                        tr ? "Aynı Wi-Fi ağında Siri, Google Home veya Alexa ile CineTV sahnelerini sesle tetikleyebilirsin."
+                           : "Trigger CineTV scenes by voice over your home Wi-Fi using Siri Shortcuts, Google Home, or Alexa.",
+                        null, null),
+                new TourView.Step(phone, R.string.tour_cast_t, R.string.tour_cast, null, ch6,
+                        tr ? "Telefon kumandasındaki Yayınla sekmesine herhangi bir film/video sayfası linki yapıştır: reklamları atlayıp TV'de açar."
+                           : "Paste any video or film page link in the phone remote's Cast tab to play it directly on the TV.",
+                        null, null),
+                new TourView.Step(inputs, R.string.tour_inputs_t, R.string.tour_inputs, null, ch7,
+                        tr ? "HDMI cihazların (PS5, Apple TV, Uydu) kendi adlarıyla listelenir; Canlı TV kutucuğu doğrudan kanalları açar."
+                           : "HDMI devices appear by their real CEC names, and Live TV opens your tuner or set-top box directly.",
+                        null, null),
+                new TourView.Step(apps.dockView(), R.string.tour_apps_t, R.string.tour_apps, null, ch7,
+                        tr ? "Bir uygulamanın üzerinde OK'a basılı tutarak sırasını değiştirebilir, gizleyebilir veya kaldırabilirsin."
+                           : "Hold OK on any app tile to reorder, hide, or uninstall it.",
+                        null, null),
+                new TourView.Step(apps.dockView(), R.string.tour_party_games_t, R.string.tour_party_games, null, ch7,
+                        tr ? "Misafirlerin sağdaki QR kodu telefonlarıyla okutarak uygulama indirmeden anında oyuna katılabilir."
+                           : "Friends scan the QR code with their phones to join multiplayer living-room games with zero app install.",
+                        partyUrl, tr ? "CineParty Lobi QR" : "CineParty Lobby QR"),
+                new TourView.Step(apps.dockView(), R.string.tour_quiz_t, R.string.tour_quiz, null, ch7,
+                        tr ? "Gamze soruları sesli okur; herkes telefonundan yanıtlar, kazanan bu gecenin filmini seçer!"
+                           : "Gamze hosts and reads questions aloud while everyone answers from their phones.",
+                        null, null),
+                new TourView.Step(apps.dockView(), R.string.tour_roulette_t, R.string.tour_roulette, null, ch7,
+                        tr ? "Ne izleyeceğinize karar veremediğinizde 6 film arasından heyecanlı eleme yapar."
+                           : "Eliminates 5 out of 6 contender films round by round when the room can't decide what to watch.",
+                        null, null),
+                new TourView.Step(apps.dockView(), R.string.tour_sessiz_t, R.string.tour_sessiz, null, ch7,
+                        tr ? "Yasaklı 5 kelimeyi kullanmadan filmi anlat; salon telefonlarından tahmin etsin."
+                           : "Describe the film without saying Gamze's 5 forbidden words while the room guesses on their phones.",
+                        null, null),
+                new TourView.Step(gear, R.string.tour_sounds_t, R.string.tour_sounds, null, ch8,
+                        tr ? "Arayüz ve oyun seslerini Ayarlar › Sinema Deneyimi altından dilediğin zaman özelleştirebilirsin."
+                           : "Customize UI and game acoustic effects anytime under Settings › Cinema Experience.",
+                        null, null),
+                new TourView.Step(gear, R.string.tour_settings_t, R.string.tour_settings, null, ch8,
+                        tr ? "Dişli simgesine tek basış CineTV Ayarları'nı, basılı tutmak ise TV'nin kendi sistem ayarlarını açar."
+                           : "A single press on the gear opens CineTV Settings; holding it opens the TV's native Android settings.",
+                        null, null),
+                new TourView.Step(gear, R.string.tour_perf_t, R.string.tour_perf, null, ch8,
+                        tr ? "CineTV her güncellemede donanımını (SoC, RAM, kodek, ağ) arka planda tarayıp en ideal ayarları otomatik uygular."
+                           : "On every update, CineTV benchmarks your SoC, RAM, codecs, and network in the background to auto-tune.",
+                        null, null),
+                new TourView.Step(null, R.string.tour_saver_t, R.string.tour_saver, null, ch8,
+                        tr ? "OLED/LED panel koruma için 35mm sinema kareleri ve unutulmaz replikler 5 dakika boşta kalınca başlar."
+                           : "After 5 idle minutes, 35mm cinema stills and quotes protect your OLED/LED panel.",
+                        null, null),
+                new TourView.Step(logoButton, R.string.tour_done_t, R.string.tour_done, null, ch8,
+                        tr ? "Sol üstteki Alptuğ Dağ imzasına tıklayarak yaratıcı sayfasını ve 'Sessiz' kısa filmini açabilirsin. İyi seyirler!"
+                           : "Click the Alptuğ Dağ signature at the top-left anytime to watch the short film 'Sessiz'. Enjoy!",
+                        null, null)};
+    }
+
+    private CharSequence nameStatus(String text, boolean set) {
+        android.text.SpannableString s = new android.text.SpannableString(text);
+        s.setSpan(new android.text.style.ForegroundColorSpan(Color.parseColor(set ? "#4ADE80" : "#FBBF24")), 0, s.length(), 0);
+        s.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, s.length(), 0);
+        return s;
     }
 
     /** "On this TV: entered ✓" in green, or "not entered yet" in amber. */

@@ -34,18 +34,16 @@ public final class LlmClient {
     private static final String[][] COMPATIBLE = {
             {PROVIDER_OPENAI, "https://api.openai.com/v1/chat/completions", "gpt-5-mini", "gpt-5-nano", "gpt-4o-mini"},
             {PROVIDER_GROK, "https://api.x.ai/v1/chat/completions", "grok-4-fast", "grok-4-fast", "grok-3-mini"},
-            {PROVIDER_OPENROUTER, "https://openrouter.ai/api/v1/chat/completions", "google/gemini-3.8-flash", "google/gemini-3.5-flash-lite", "openai/gpt-5-mini"}};
+            {PROVIDER_OPENROUTER, "https://openrouter.ai/api/v1/chat/completions", "google/gemini-2.5-flash", "google/gemini-2.5-flash-lite", "openai/gpt-5-mini"}};
 
     static final String DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
     static final String FAST_CLAUDE_MODEL = "claude-haiku-5-5";
     static final String FALLBACK_CLAUDE_MODEL = "claude-haiku-5-5";
-    /** Gemini 3.8 Flash: the newest stable Flash (thinking kept low for a TV's patience). */
-    static final String DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
-    /** Search and spoken answers: about a second, which a remote in hand needs. */
-    // Flash's free tier allows only 20 requests a day: quick text jobs go to Flash-Lite (500 a day), so the
-    // vision model is left for CineSUB.
-    static final String FAST_GEMINI_MODEL = "gemini-3.5-flash-lite";
-    static final String FALLBACK_GEMINI_MODEL = "gemini-3.5-flash-lite";
+    /** Gemini 2.5 Flash: fast, accurate vision & text with thinkingBudget: 0 for instant TV response. */
+    static final String DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+    /** Search and spoken answers: sub-second response with Flash-Lite. */
+    static final String FAST_GEMINI_MODEL = "gemini-2.5-flash-lite";
+    static final String FALLBACK_GEMINI_MODEL = "gemini-flash-lite-latest";
 
     private static final String TAG = "CineTvLlm";
 
@@ -152,8 +150,8 @@ public final class LlmClient {
                 : Prefs.get(ctx).getString(claude ? "ai_claude_model" : "ai_gemini_model", claude ? DEFAULT_CLAUDE_MODEL : DEFAULT_GEMINI_MODEL);
         // Busy (429/5xx), missing for this key (404) or slow: walk down a short chain of models.
         String[] chain = claude ? new String[]{first, FALLBACK_CLAUDE_MODEL}
-                : fast ? new String[]{first, "gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"}
-                : new String[]{first, "gemini-flash-latest", "gemini-3.5-flash-lite", "gemini-flash-lite-latest"};
+                : fast ? new String[]{first, "gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash", "gemini-flash-latest"}
+                : new String[]{first, "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-flash-lite-latest"};
         Result r = null;
         java.util.Set<String> tried = new java.util.HashSet<>();
         for (String model : chain) {
@@ -192,9 +190,10 @@ public final class LlmClient {
                 body.put("contents", new JSONArray().put(new JSONObject().put("role", "user")
                         .put("parts", new JSONArray().put(new JSONObject().put("text", user)))));
                 JSONObject genCfg = new JSONObject().put("maxOutputTokens", maxTokens);
-                // Gemini 3 Flash thinks at "medium" by default: "low" answers a TV request about twice as fast.
                 if (model.startsWith("gemini-3") && model.contains("flash") && !model.contains("lite")) {
                     genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", MINIMAL_THINKING.get() ? "minimal" : "low"));
+                } else if (model.startsWith("gemini-2.5") || model.startsWith("gemini-flash")) {
+                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", MINIMAL_THINKING.get() ? 0 : 256));
                 }
                 if (MINIMAL_THINKING.get()) genCfg.put("responseMimeType", "application/json");
                 body.put("generationConfig", genCfg);
@@ -297,8 +296,7 @@ public final class LlmClient {
         String[] models;
         if (compat != null) models = new String[]{compat[2], compat[4]};
         else if (PROVIDER_CLAUDE.equals(provider)) models = new String[]{FAST_CLAUDE_MODEL, DEFAULT_CLAUDE_MODEL};
-        // Each model has its own per-minute quota: a busy one (429) hands over to the next instead of giving up.
-        else models = new String[]{"gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"};
+        else models = new String[]{"gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-flash-lite-latest"};
         Result r = null;
         for (String model : models) {
             r = visionCall(ctx, provider, compat, model, key, system, user, b64, maxTokens);
@@ -344,7 +342,15 @@ public final class LlmClient {
                         .put(new JSONObject().put("inline_data", new JSONObject().put("mime_type", "image/jpeg").put("data", b64)))
                         .put(new JSONObject().put("text", user));
                 body.put("contents", new JSONArray().put(new JSONObject().put("role", "user").put("parts", parts)));
-                body.put("generationConfig", new JSONObject().put("maxOutputTokens", maxTokens).put("responseMimeType", "application/json"));
+                JSONObject genCfg = new JSONObject()
+                        .put("maxOutputTokens", maxTokens)
+                        .put("responseMimeType", "application/json");
+                if (model.startsWith("gemini-3")) {
+                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", "minimal"));
+                } else if (model.startsWith("gemini-2.5") || model.startsWith("gemini-flash")) {
+                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", 0));
+                }
+                body.put("generationConfig", genCfg);
             }
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");

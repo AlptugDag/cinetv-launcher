@@ -86,8 +86,20 @@ public final class ContinueCard extends FrameLayout {
             bg.setStroke(Math.max(1, UiKit.px(has ? 3 : 1.5f)), has ? Color.WHITE : Color.argb(50, 255, 255, 255));
             bg.setColor(has ? Color.argb(200, 24, 24, 32) : Color.argb(150, 10, 10, 16));
             UiKit.lift(this, has, 1.05f, 180);
+            updateLeftText(has);
         });
         setVisibility(GONE);
+    }
+
+    private void updateLeftText(boolean focused) {
+        if (entry == null || entry.movie == null) return;
+        int mins = entry.minutesLeft();
+        String rest = mins >= 60 ? (mins / 60) + (tr ? " sa " : " h ") + (mins % 60) + (tr ? " dk" : " min") : mins + (tr ? " dk" : " min");
+        String base = "%" + entry.percent() + "  ·  " + rest + (tr ? " kaldı" : " left");
+        if (focused) {
+            base += tr ? "  ·  Kaldırmak için OK'a basılı tut" : "  ·  Hold OK to remove";
+        }
+        left.setText(base);
     }
 
     /** The latest unfinished film (null hides the card). */
@@ -100,9 +112,7 @@ public final class ContinueCard extends FrameLayout {
         title.setText(e.movie.title);
         bar.fraction = e.percent() / 100f;
         bar.invalidate();
-        int mins = e.minutesLeft();
-        String rest = mins >= 60 ? (mins / 60) + (tr ? " sa " : " h ") + (mins % 60) + (tr ? " dk" : " min") : mins + (tr ? " dk" : " min");
-        left.setText("%" + e.percent() + "  ·  " + rest + (tr ? " kaldı" : " left"));
+        updateLeftText(hasFocus());
         String url = e.movie.backdropUrl != null && !e.movie.backdropUrl.isEmpty() ? e.movie.backdropUrl : e.movie.posterUrl;
         Bitmap b = url == null || url.isEmpty() ? null : PosterCache.getFast(url);
         thumb.setImageBitmap(b);

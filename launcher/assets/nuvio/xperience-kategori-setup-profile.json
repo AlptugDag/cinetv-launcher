@@ -7,7 +7,7 @@
     "fallback_language": "tr",
     "timezone": "",
     "release_delay_hours": 0,
-    "cast_limit": 0,
+    "cast_limit": 15,
     "series_metadata_source": "tvdb",
     "anime_metadata_source": "kitsu",
     "anime_episode_numbering": "absolute",

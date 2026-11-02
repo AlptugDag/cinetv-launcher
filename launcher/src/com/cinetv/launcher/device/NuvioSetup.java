@@ -36,6 +36,7 @@ public final class NuvioSetup {
     private static final String SYNC_KEY = "nuvio_sync_v1_0_0_9b";
 
     public static final String[] CURATED_ADDONS = {
+            "v3-cinemeta.strem.io/manifest.json",
             "tr-altyazi.altyazi.workers.dev/manifest.json",
             "falsisdev.github.io/anthology/stremio/manifest.json",
             "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json",
@@ -78,6 +79,8 @@ public final class NuvioSetup {
             new File(dl, "aiostreams-config-2026-10-28.21-05-36.json").delete();
             new File(dl, "aiostreams-config.json").delete();
 
+            String tmdbKey = com.cinetv.launcher.service.SecretStore.get(app, com.cinetv.launcher.service.SecretStore.TMDB_KEY);
+            String mdbKey = com.cinetv.launcher.service.SecretStore.get(app, com.cinetv.launcher.service.SecretStore.MDBLIST_KEY);
             String[][] files = {
                     {"nuvio/alptugun-filmleri-template.json", "alptugun-filmleri-template.json"},
                     {"nuvio/xperience-kategori-setup-profile.json", "xperience-kategori-setup-profile.json"},
@@ -85,7 +88,7 @@ public final class NuvioSetup {
             };
             for (String[] pair : files) {
                 File target = new File(dl, pair[1]);
-                copyAsset(app, pair[0], target);
+                copyAndEnrichAsset(app, pair[0], target, tmdbKey, mdbKey);
                 try {
                     app.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(target)));
                 } catch (Throwable ignored) {
@@ -210,11 +213,9 @@ public final class NuvioSetup {
         String nuvio = certOf(app, AppLauncher.NUVIO), mine = certOf(app, app.getPackageName());
         if (nuvio == null) return false;
         if (OFFICIAL_CERT.equals(nuvio)) {
-            // already the official build (swapped here, by hand or by an earlier attempt): CineTV's addons go in once
             if (!Prefs.get(app).getBoolean("nuvio_official_addons", false)) {
                 try {
                     deployConfigs(app);
-                    for (String addon : CURATED_ADDONS) addAddon(app, addon);
                     Prefs.get(app).edit().putBoolean("nuvio_official_addons", true).putBoolean(DONE, true).putBoolean(SYNC_KEY, true).apply();
                 } catch (Throwable ignored) {
                 }
@@ -424,12 +425,36 @@ public final class NuvioSetup {
         return false;
     }
 
-    private static void copyAsset(Context ctx, String assetPath, File dest) {
-        try (java.io.InputStream in = ctx.getAssets().open(assetPath);
-             java.io.OutputStream out = new java.io.FileOutputStream(dest)) {
+    private static void copyAndEnrichAsset(Context ctx, String assetPath, File dest, String tmdbKey, String mdbKey) {
+        try (java.io.InputStream in = ctx.getAssets().open(assetPath)) {
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
             byte[] buf = new byte[8192];
             int r;
-            while ((r = in.read(buf)) != -1) out.write(buf, 0, r);
+            while ((r = in.read(buf)) != -1) baos.write(buf, 0, r);
+            String raw = new String(baos.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+            try {
+                JSONObject json = new JSONObject(raw);
+                JSONObject cfg = json.optJSONObject("config");
+                if (cfg != null) {
+                    if (cfg.optInt("cast_limit", -1) == 0) cfg.put("cast_limit", 15);
+                    if (cfg.has("castCount") && cfg.optInt("castCount", 0) < 10) cfg.put("castCount", 15);
+                    JSONObject keys = cfg.optJSONObject("api_keys");
+                    if (keys != null) {
+                        if (tmdbKey != null && !tmdbKey.isEmpty() && keys.optString("tmdb").isEmpty()) keys.put("tmdb", tmdbKey);
+                        if (mdbKey != null && !mdbKey.isEmpty() && keys.optString("mdblist").isEmpty()) keys.put("mdblist", mdbKey);
+                    }
+                    JSONObject apiKeys = cfg.optJSONObject("apiKeys");
+                    if (apiKeys != null) {
+                        if (tmdbKey != null && !tmdbKey.isEmpty() && apiKeys.optString("tmdb").isEmpty()) apiKeys.put("tmdb", tmdbKey);
+                        if (mdbKey != null && !mdbKey.isEmpty() && apiKeys.optString("mdblist").isEmpty()) apiKeys.put("mdblist", mdbKey);
+                    }
+                    raw = json.toString(2);
+                }
+            } catch (Throwable ignored) {
+            }
+            try (java.io.OutputStream out = new java.io.FileOutputStream(dest)) {
+                out.write(raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
         } catch (Throwable ignored) {
         }
     }

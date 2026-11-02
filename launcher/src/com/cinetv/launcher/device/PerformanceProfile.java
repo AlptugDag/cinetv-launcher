@@ -53,13 +53,17 @@ public final class PerformanceProfile {
     private PerformanceProfile() {}
 
     /**
-     * One mode for every TV: High, with every effect. (Low / Medium and the automatic step-downs are gone: the
-     * work that made weak TVs slow is now done once, off the drawing thread, or only when the viewer stops.)
+     * Returns the active visual tier. In MODE_AUTO, Home keeps its rich High look while memory/player
+     * caches adapt to {@link #detectedTier(Context)} and {@link #boardProfile(Context)} underneath.
+     * Explicit user choices (Low / Medium / High) in Settings are honoured directly.
      */
     public static synchronized Tier tier(Context ctx) {
         if (cached == null) {
-            cached = Tier.HIGH;
-            Log.i(TAG, "Performance HIGH (single mode)");
+            String m = ctx != null ? mode(ctx) : MODE_AUTO;
+            if (MODE_LOW.equals(m)) cached = Tier.LOW;
+            else if (MODE_MID.equals(m)) cached = Tier.MID;
+            else cached = Tier.HIGH;
+            Log.i(TAG, "Performance tier " + cached + " (mode=" + m + ")");
         }
         return cached;
     }
@@ -86,6 +90,57 @@ public final class PerformanceProfile {
         return detect(ctx);
     }
 
+    /** Pure function to match a device board/SoC and RAM to a known hardware tuning profile. */
+    public static String resolveBoardProfile(String board, String hardware, long ramMb) {
+        String b = ((board == null ? "" : board) + " " + (hardware == null ? "" : hardware)).toLowerCase(java.util.Locale.US);
+        if (b.contains("sinchon") || b.contains("mt7322") || b.contains("m7322")) return "sinchon";
+        if (b.contains("akropoli") || b.contains("merak")) return "akropoli";
+        if (b.contains("amlogic") || b.contains("meson") || b.contains("gxl") || b.contains("g12") || b.contains("sm1") || b.contains("sc2") || b.contains("s905")) {
+            return ramMb > 0 && ramMb < 1800 ? "generic_low_ram" : "amlogic_4k";
+        }
+        if (b.contains("realtek") || b.contains("rtd") || b.contains("rtk")) {
+            return ramMb > 0 && ramMb < 1800 ? "generic_low_ram" : "realtek_4k";
+        }
+        if (ramMb >= 3500) return "high_performance_4k";
+        if (ramMb > 0 && ramMb < 2000) return "generic_low_ram";
+        return "akropoli";
+    }
+
+    public static String boardProfile(Context ctx) {
+        long ram = ctx != null ? totalRamMb(ctx) : 0;
+        return resolveBoardProfile(android.os.Build.BOARD, android.os.Build.HARDWARE, ram);
+    }
+
+    /** Hardware-tuned decoded poster RAM cache ceiling in MB. */
+    public static int posterCacheMb(Context ctx) {
+        long ram = totalRamMb(ctx);
+        String prof = boardProfile(ctx);
+        if ("sinchon".equals(prof) || ram < 1600) return 8;
+        if ("akropoli".equals(prof) || ram < 2300) return 14;
+        if (ram >= 3500) return 28;
+        return 20;
+    }
+
+    /** Hardware-tuned compressed (zRAM-style) poster RAM cache ceiling in MB. */
+    public static int packedCacheMb(Context ctx) {
+        long ram = totalRamMb(ctx);
+        String prof = boardProfile(ctx);
+        if ("sinchon".equals(prof) || ram < 1600) return 6;
+        if ("akropoli".equals(prof) || ram < 2300) return 10;
+        if (ram >= 3500) return 18;
+        return 12;
+    }
+
+    /** Hardware-safe ExoPlayer buffer ceiling in bytes so 4K streams never OOM low-RAM TVs. */
+    public static int playerTargetBufferBytes(Context ctx) {
+        long ram = totalRamMb(ctx);
+        String prof = boardProfile(ctx);
+        if ("sinchon".equals(prof) || ram < 1800) return 16 * 1024 * 1024;
+        if ("akropoli".equals(prof) || ram < 2600) return 28 * 1024 * 1024;
+        if (ram >= 3500) return 64 * 1024 * 1024;
+        return 36 * 1024 * 1024;
+    }
+
     /** What currently holds this TV back (LIMIT_* bits), as measured while it runs. */
     public static int limits(Context ctx) {
         return Prefs.get(ctx).getInt(KEY_LIMITS, 0);
@@ -109,19 +164,20 @@ public final class PerformanceProfile {
 
     /** Total RAM in MB, read once. */
     public static synchronized long totalRamMb(Context ctx) {
-        if (totalRamMbCache < 0) {
+        if (totalRamMbCache < 0 && ctx != null) {
             ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
             ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
             if (am != null) am.getMemoryInfo(mi);
             totalRamMbCache = mi.totalMem / (1024 * 1024);
         }
-        return totalRamMbCache;
+        return Math.max(0, totalRamMbCache);
     }
 
     /** A TV that needs every megabyte: under 2 GB, flagged low-RAM, or the Low mode. Decides bitmap formats and cache sizes. */
     public static boolean lowMemory(Context ctx) {
+        if (ctx == null) return false;
         ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
-        return totalRamMb(ctx) < 2000 || (am != null && am.isLowRamDevice()) || tier(ctx) == Tier.LOW || limited(ctx, LIMIT_RAM);
+        return totalRamMb(ctx) < 2000 || (am != null && am.isLowRamDevice()) || detectedTier(ctx) == Tier.LOW || tier(ctx) == Tier.LOW || limited(ctx, LIMIT_RAM);
     }
 
     static synchronized Tier detect(Context ctx) {

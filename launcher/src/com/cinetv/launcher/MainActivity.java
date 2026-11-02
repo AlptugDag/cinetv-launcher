@@ -273,6 +273,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.rail.setListener(new com.cinetv.launcher.ui.ShelfRail.Listener() {
             @Override
             public void onShelf(String name, List<Movie> films, MovieCatalog.Category category) {
+                selectedCategory = category;
+                selectedCategoryName = name;
                 if (!films.isEmpty()) {
                     userChoseShelf = true;
                     setShelf(name, films, true);
@@ -282,7 +284,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 home.shelfLabel.setText(getString(R.string.shelf_building, name).toUpperCase(Locale.getDefault()));
                 final Context app = getApplicationContext();
                 background(() -> {
-                    List<Movie> got = MovieCatalog.category(app, category, PerformanceProfile.shelfSize(app));
+                    List<Movie> got = MovieCatalog.category(app, category, PerformanceProfile.shelfSize(app), shelfSpin);
                     ui(() -> {
                         if (got != null && !got.isEmpty()) {
                             userChoseShelf = true;
@@ -295,6 +297,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
             @Override
             public void onGamze() {
+                selectedCategory = null;
+                selectedCategoryName = null;
                 home.shelf.requestFocus();
                 refreshShelf();
             }
@@ -326,6 +330,14 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         });
         home.continueCard.setOnKeyListener((v, code, ev) -> {
             if (ev.getAction() != KeyEvent.ACTION_DOWN) return false;
+            if (code == KeyEvent.KEYCODE_DEL || code == KeyEvent.KEYCODE_FORWARD_DEL
+                    || code == KeyEvent.KEYCODE_CLEAR || code == KeyEvent.KEYCODE_MENU) {
+                com.cinetv.launcher.service.WatchHistory.Entry e = home.continueCard.entry();
+                if (e != null) com.cinetv.launcher.service.WatchHistory.forget(this, e.movie);
+                home.continueCard.bind(null);
+                home.shelf.requestFocus();
+                return true;
+            }
             if (code == KeyEvent.KEYCODE_DPAD_UP) {
                 home.focusHeader();
                 return true;
@@ -364,11 +376,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         com.cinetv.launcher.ai.EmaLightningTts.prewarmNativeFallback(this);
         handler.postDelayed(() -> com.cinetv.launcher.ai.EmaLightningTts.prewarmFillers(this), 25_000);
 
-        if (!Prefs.get(this).getBoolean("tv_opt_auto_applied", false)) {
-            Prefs.get(this).edit().putBoolean("tv_opt_auto_applied", true).apply();
-            MemoryOptimizer.applyTvOptimizations(this);
-            com.cinetv.launcher.device.AvOptimizer.optimize(this);
-        }
+        HomeGuard.runUpdateOptimizationsAsync(this);
 
         packageReceiver = new BroadcastReceiver() {
             @Override
@@ -450,8 +458,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // the cinematic stage: on unless switched off in Settings; the half-watched film comes back here
         home.setCinematic(Prefs.cinematicStage(this));
         refreshContinueCard();
+        com.cinetv.launcher.service.WatchHistory.syncWithNuvio(this);
         // and once more a moment later: the player may still be saving where it stopped
-        handler.postDelayed(this::refreshContinueCard, 900);
+        handler.postDelayed(() -> {
+            refreshContinueCard();
+            com.cinetv.launcher.service.WatchHistory.syncWithNuvio(this);
+        }, 900);
         DeviceTweaks.syncNightMode(this);
         handler.removeCallbacks(clockTick);
         handler.post(clockTick);
@@ -505,7 +517,71 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             presentUpdateBannerGuaranteed(b[0], b[1], !b[2].isEmpty());
         }
         checkNightViewingPrompt();
+        handler.postDelayed(this::ensureMandatorySetup, 1400);
         maybeSpeakStartupGreeting();
+    }
+
+    /**
+     * Ensures that TMDB API key, Google Gemini API key, and Viewer Name (for TTS addressing)
+     * are present on the device. If any is missing (on initial install or after an app update),
+     * displays the mandatory setup screen with QR codes and explains why they are required.
+     */
+    public void ensureMandatorySetup() {
+        if (isFinishing() || !inFront || home == null || home.modal == null) return;
+        if (home.tour != null && home.tour.isShowing()) return;
+        SecretStore.migrateLegacy(getApplicationContext());
+        if (Panels.hasRequiredSetup(this)) return;
+        if (home.modal.isShowing()) return;
+        if (!Prefs.get(this).getBoolean("wizard_done", false)) {
+            home.modal.setOnClosed(this::onWizardFinished);
+            Panels.wizard(this, home.modal);
+        } else {
+            Panels.requiredSetup(this, home.modal, () -> {
+                startFreshShelf(true);
+                if (!Prefs.get(this).getBoolean(Prefs.TOUR_DONE, false)) {
+                    handler.postDelayed(tourCheck, 1500);
+                }
+            });
+        }
+    }
+
+    /**
+     * Called when credentials (viewer name, TMDB key, or AI key) are updated via the phone remote.
+     */
+    public void onCredentialsUpdated() {
+        if (isFinishing() || home == null || home.modal == null) return;
+        boolean complete = Panels.hasRequiredSetup(this);
+        if (complete) {
+            home.modal.setCancelable(true, null);
+            boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+            Toast.makeText(this,
+                    tr ? "Tüm zorunlu kimlik ve API anahtarları kaydedildi ✓" : "All required identity & API keys saved ✓",
+                    Toast.LENGTH_SHORT).show();
+            if (home.modal.isShowing()) {
+                if (Prefs.get(this).getBoolean("wizard_done", false)) {
+                    home.modal.forceClose();
+                    startFreshShelf(true);
+                    if (!Prefs.get(this).getBoolean(Prefs.TOUR_DONE, false)) {
+                        handler.postDelayed(tourCheck, 1500);
+                    }
+                } else {
+                    home.modal.replace(() -> Panels.buildWizard(this, home.modal));
+                }
+            } else {
+                startFreshShelf(true);
+            }
+        } else if (home.modal.isShowing()) {
+            if (!Prefs.get(this).getBoolean("wizard_done", false)) {
+                home.modal.replace(() -> Panels.buildWizard(this, home.modal));
+            } else {
+                home.modal.replace(() -> Panels.buildRequiredSetupModal(this, home.modal, () -> {
+                    startFreshShelf(true);
+                    if (!Prefs.get(this).getBoolean(Prefs.TOUR_DONE, false)) {
+                        handler.postDelayed(tourCheck, 1500);
+                    }
+                }));
+            }
+        }
     }
 
     private static long lastGreetingMs = 0L;
@@ -979,9 +1055,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         if (home.isAiCardShowing()) {
             home.hideAiCard();
-        } else if (!home.shelf.hasFocus()) {
-            home.shelf.requestFocus();
-            home.scroll.glideHome();
         }
     }
 
@@ -1071,12 +1144,32 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         });
     }
 
+    private MovieCatalog.Category selectedCategory;
+    private String selectedCategoryName;
+
     @Override
     public void onRefreshShelf() {
         // The refresh key always brings a different shelf: a new theme, new films, never the same list again.
         shelfSpin++;
         if (isCurating) return;
         lastShelfAt = android.os.SystemClock.elapsedRealtime();
+        if (selectedCategory != null && selectedCategoryName != null) {
+            final MovieCatalog.Category cat = selectedCategory;
+            final String name = selectedCategoryName;
+            final Context app = getApplicationContext();
+            home.shelfLabel.setText(getString(R.string.shelf_building, name).toUpperCase(Locale.getDefault()));
+            background(() -> {
+                List<Movie> got = MovieCatalog.category(app, cat, PerformanceProfile.shelfSize(app), shelfSpin);
+                ui(() -> {
+                    if (got != null && !got.isEmpty()) {
+                        userChoseShelf = true;
+                        setShelf(name, got, true);
+                        home.shelf.requestFocus();
+                    }
+                });
+            });
+            return;
+        }
         if (LlmClient.isConfigured(this) && !LlmClient.quotaOut()) {
             String now = home.shelfLabel.getText().toString();
             curate("Şu anki raftan (\"" + now + "\") tamamen farklı bir tema seç ve bu raftaki filmlerin hiçbirini tekrar etme; "
@@ -1865,13 +1958,18 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     private void doLaunchFilm(final Movie m, final boolean preferResume) {
         if (m == null) return;
-        // Without its IMDb id Nuvio could only be opened on its home: look the id up first.
-        if ((m.imdbId == null || !m.imdbId.startsWith("tt")) && m.tmdbId > 0 && !m.imdbLookupTried) {
+        // Ensure a valid "tt..." IMDb id before opening Nuvio so stream addons never fail with "Oynatma Kullanılamıyor".
+        if ((m.imdbId == null || !m.imdbId.startsWith("tt")) && !m.imdbLookupTried) {
             m.imdbLookupTried = true;
             final Context app = getApplicationContext();
             background(() -> {
-                String id = MovieCatalog.imdbFor(app, m.tmdbId, m.type);
-                if (id != null && id.startsWith("tt")) m.imdbId = id;
+                MovieCatalog.ensureImdb(app, m);
+                if ((m.imdbId == null || !m.imdbId.startsWith("tt")) && m.title != null && !m.title.isEmpty()) {
+                    Movie resolved = MovieCatalog.resolve(app, m.title, m.year, m.type);
+                    if (resolved != null && resolved.imdbId != null && resolved.imdbId.startsWith("tt")) {
+                        m.imdbId = resolved.imdbId;
+                    }
+                }
                 ui(() -> doLaunchFilm(m, preferResume));
             });
             return;

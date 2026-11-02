@@ -162,6 +162,74 @@ public final class WatchHistory {
             Prefs.get(ctx).edit().putString(LIST, out.toString()).apply();
         } catch (Throwable ignored) {
         }
+        notifyHome();
+    }
+
+    /** Called when Nuvio's detail page for the Continue Watching title shows no resume button (removed in Nuvio). */
+    public static synchronized void onNuvioResumeMissing(Context ctx) {
+        Entry e = latest(ctx);
+        if (e != null && e.movie != null) {
+            forget(ctx, e.movie);
+        }
+    }
+
+    /**
+     * Synchronizes CineTV's "Kaldığın yerden" list with Nuvio's own Continue Watching data when returning to Home.
+     * If the viewer removed an item from Nuvio's Continue Watching list, it is removed from CineTV's card as well.
+     */
+    public static void syncWithNuvio(final Context ctx) {
+        final Context app = ctx.getApplicationContext();
+        Entry cur = latest(app);
+        if (cur == null || cur.movie == null || !"nuvio".equals(cur.source)) return;
+        new Thread(() -> {
+            try {
+                JSONArray arr;
+                synchronized (WatchHistory.class) {
+                    arr = new JSONArray(Prefs.get(app).getString(LIST, "[]"));
+                }
+                if (arr.length() == 0) return;
+                // Inspect Nuvio's watch progress storage (shared_prefs / files / databases) via LocalAdb if available
+                String cmd = "grep -rnI -E 'tt[0-9]{5,10}|watch_progress|continue_watching|watchProgress|history' "
+                        + "/data/data/com.nuvio.tv/shared_prefs /data/data/com.nuvio.tv/files /data/data/com.nuvio.tv/app_webview/Default/Local\\ Storage/leveldb 2>/dev/null | head -c 65536";
+                byte[] raw = com.cinetv.launcher.remote.LocalAdb.exec(app, cmd, 2500);
+                if (raw == null || raw.length == 0) return;
+                String dump = new String(raw, java.nio.charset.StandardCharsets.UTF_8);
+                // Only prune if Nuvio's storage actually contains watch/progress state and the item's IMDb ID or title is absent from it
+                boolean hasProgressStore = dump.contains("watch") || dump.contains("progress") || dump.contains("continue") || dump.contains("tt");
+                if (!hasProgressStore) return;
+                boolean changed = false;
+                JSONArray updated = new JSONArray();
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject o = arr.optJSONObject(i);
+                    if (o == null) continue;
+                    if (!"nuvio".equals(o.optString("source", "cineplayer"))) {
+                        updated.put(o);
+                        continue;
+                    }
+                    String imdb = o.optString("imdb", "");
+                    String title = o.optString("title", "");
+                    // Don't prune an item that was just updated in the last 45 seconds
+                    if (System.currentTimeMillis() - o.optLong("at") < 45_000L) {
+                        updated.put(o);
+                        continue;
+                    }
+                    boolean foundInNuvio = (!imdb.isEmpty() && dump.contains(imdb))
+                            || (!title.isEmpty() && dump.toLowerCase(Locale.ROOT).contains(title.toLowerCase(Locale.ROOT)));
+                    if (foundInNuvio) {
+                        updated.put(o);
+                    } else {
+                        changed = true;
+                    }
+                }
+                if (changed) {
+                    synchronized (WatchHistory.class) {
+                        Prefs.get(app).edit().putString(LIST, updated.toString()).apply();
+                    }
+                    notifyHome();
+                }
+            } catch (Throwable ignored) {
+            }
+        }, "cinetv-nuvio-history-sync").start();
     }
 
     private static String key(JSONObject o) {
