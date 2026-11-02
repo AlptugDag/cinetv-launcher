@@ -80,6 +80,7 @@ public class PosterShelf extends FrameLayout {
     private int generation;
     private boolean spatial;
     private boolean asCases;
+    private boolean circular = true;
     /** Lean of the whole row while moving (degrees), from the shelf's velocity: cases sway like real boxes. */
     private float lean;
     private float lastPos;
@@ -167,7 +168,7 @@ public class PosterShelf extends FrameLayout {
     /** Switches between DVD cases and plain posters; the shelf re-bakes its films. */
     public void setCaseMode(boolean cases) {
         asCases = cases;
-        setMovies(new ArrayList<>(movies));
+        setMovies(new ArrayList<>(movies), circular);
     }
 
     public void setSpatial(boolean on) {
@@ -204,6 +205,12 @@ public class PosterShelf extends FrameLayout {
 
     /** Replaces the films; posters load and bake in the background, cases fill in as they arrive. */
     public void setMovies(List<Movie> list) {
+        setMovies(list, true);
+    }
+
+    /** Search shelves are linear so appending a page never changes the neighbours at the row's wraparound. */
+    public void setMovies(List<Movie> list, boolean circular) {
+        this.circular = circular;
         final int gen = ++generation;
         int max = Math.min(list.size(), PerformanceProfile.shelfSize(getContext()));
         movies.clear();
@@ -289,7 +296,7 @@ public class PosterShelf extends FrameLayout {
     public void appendMovies(List<Movie> more) {
         if (more == null || more.isEmpty()) return;
         final int gen = generation;
-        // the ring grows: pin the position to the real index so the next step does not jump
+        // Keep the focus anchored while new search results are added.
         if (anim == null || !anim.isRunning()) {
             targetPos = index;
             focusPos = index;
@@ -459,14 +466,19 @@ public class PosterShelf extends FrameLayout {
         return true;
     }
 
-    /** Moves along the ring; the shelf has no ends, so the focus always sits in the middle with films on both sides. */
+    /** Moves along the row; category shelves wrap, while growing search results stop at their ends. */
     public void step(int delta) {
         int n = cases.size();
         if (n == 0) return;
         com.cinetv.launcher.device.SystemAudio.shelfTick(getContext());
         stopSway();
-        targetPos += delta;
-        index = Math.floorMod(targetPos, n);
+        int nextTarget = ShelfPosition.target(targetPos, delta, n, circular);
+        if (nextTarget == targetPos) {
+            if (listener != null && n - index <= 14) listener.onNearEnd();
+            return;
+        }
+        targetPos = nextTarget;
+        index = ShelfPosition.index(targetPos, n, circular);
         // well before the end, so new cases join the ring off screen instead of replacing the ones in view
         if (listener != null && n - index <= 14) listener.onNearEnd();
         main.removeCallbacks(prefetchRunnable);
@@ -570,14 +582,12 @@ public class PosterShelf extends FrameLayout {
         float range = Math.min(VISIBLE_RANGE, n / 2f);
         float step1 = caseW * (focused ? 1.14f : 0.98f);
         // Fewer films spread a little wider so both sides of the screen are always filled.
-        int perSide = Math.max(1, (n - 1) / 2);
+        int perSide = circular ? Math.max(1, (n - 1) / 2) : VISIBLE_RANGE;
         float stepN = Math.max(caseW * 0.30f, Math.min(caseW * 0.48f, (w * 0.47f - step1) / Math.max(1, perSide - 1)));
 
         for (int i = 0; i < n; i++) {
             DvdCaseView v = cases.get(i);
-            // Shortest way round the ring.
-            float d = i - focusPos;
-            d = d - n * (float) Math.floor((d + n / 2f) / n);
+            float d = ShelfPosition.distance(i, focusPos, n, circular);
             float ad = Math.abs(d);
             if (!asCases && ad > range + 0.8f) {
                 v.setVisibility(INVISIBLE);
@@ -719,7 +729,7 @@ public class PosterShelf extends FrameLayout {
         float anchor = w * 0.5f;
         boolean focused = hasFocus();
         float step1 = caseW * (focused ? 1.14f : 0.98f);
-        int perSide = Math.max(1, (n - 1) / 2);
+        int perSide = circular ? Math.max(1, (n - 1) / 2) : VISIBLE_RANGE;
         float stepN = Math.max(caseW * 0.30f, Math.min(caseW * 0.48f, (w * 0.47f - step1) / Math.max(1, perSide - 1)));
 
         int maxSlots = Math.min(7, perSide + 1);

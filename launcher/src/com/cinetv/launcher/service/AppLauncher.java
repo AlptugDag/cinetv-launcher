@@ -365,7 +365,7 @@ public final class AppLauncher {
     }
 
     public static void openSystemSettings(Context ctx) {
-        start(ctx, new Intent(Settings.ACTION_SETTINGS));
+        openSystemPage(ctx, Settings.ACTION_SETTINGS, ".MainSettings");
     }
 
     public static void openTvInputs(Context ctx) {

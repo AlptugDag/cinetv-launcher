@@ -635,6 +635,18 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                         "CineTV yeni sürüme güncellendi.");
             }
         }
+        String available = p.getString("auto_update_notice_version", null);
+        if (available != null) {
+            String now = AppUpdater.currentVersion(this);
+            if (AppUpdater.isNewer(available, now)) {
+                presentUpdateBannerGuaranteed("CineTV v" + available + " güncellemesi bulundu",
+                        "Yeni sürüm arka planda indiriliyor. Kurulum onayı gerekirse ekranda görünecek.", false);
+            }
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (!AppUpdater.isNewer(available, now) || (home != null && pm != null && pm.isInteractive())) {
+                p.edit().remove("auto_update_notice_version").apply();
+            }
+        }
         String updateErr = p.getString("update_error_message", null);
         if (updateErr != null) {
             String detail = p.getString("update_error_detail", "Lütfen Ayarlar › Sistem › Sürüm menüsünden manuel güncellemeyi deneyin.");
@@ -1144,7 +1156,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 }
                 if (!r.movies.isEmpty()) {
                     userChoseShelf = true;
-                    setShelf(r.title.isEmpty() ? MovieAssistant.cleanShelfName(query) : r.title, r.movies, true);
+                    setShelf(r.title.isEmpty() ? MovieAssistant.cleanShelfName(query) : r.title, r.movies, true, true);
                     searchShelfQuery = query;
                     home.shelf.requestFocus();
                     // a short first answer (a few AI picks) is filled up at once, before the viewer moves
@@ -1567,6 +1579,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     private void setShelf(String title, List<Movie> movies, boolean remember) {
+        setShelf(title, movies, remember, false);
+    }
+
+    private void setShelf(String title, List<Movie> movies, boolean remember, boolean searchResults) {
         searchShelfQuery = null;
         String cleanTitle = (title != null) ? title.replaceAll("\\b\\d{1,2}[:.]\\d{2}\\b\\s*", "").trim() : "";
         if (cleanTitle.isEmpty()) cleanTitle = getString(R.string.cat_trending);
@@ -1574,7 +1590,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // the tab marker: Gamze's card for her shelves (AI or automatic), the chosen tab otherwise
         home.rail.setActive(remember && !userChoseShelf ? gamzeName() : cleanTitle);
         userChoseShelf = false;
-        home.shelf.setMovies(movies);
+        home.shelf.setMovies(movies, !searchResults);
         if (freshPending || home.splashHeld()) {
             freshPending = false;
             handler.removeCallbacks(freshDeadline);

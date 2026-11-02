@@ -31,6 +31,7 @@ public final class AppUpdater {
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
     private static volatile boolean isChecking = false;
     private static volatile boolean isDownloading = false;
+    private static boolean autoCheckScheduled;
 
     public static class ReleaseInfo {
         public final String tagName;
@@ -101,8 +102,13 @@ public final class AppUpdater {
 
     /** Checks GitHub releases API on a background thread. */
     public static void checkForUpdates(final Context ctx, final UpdateCheckCallback callback) {
-        if (isChecking) return;
-        isChecking = true;
+        synchronized (AppUpdater.class) {
+            if (isChecking) {
+                postError(callback, "An update check is already in progress");
+                return;
+            }
+            isChecking = true;
+        }
 
         new Thread(() -> {
             try {
@@ -160,7 +166,7 @@ public final class AppUpdater {
                 long lastInstalledAssetSize = prefs.getLong("last_installed_asset_size", 0L);
 
                 boolean versionNewer = isNewer(cleanRemote, current);
-                boolean updateAvailable = versionNewer && downloadUrl != null;
+                boolean updateAvailable = versionNewer && downloadUrl != null && !downloadUrl.isEmpty();
 
                 isChecking = false;
                 if (updateAvailable) {
@@ -398,8 +404,8 @@ public final class AppUpdater {
         });
     }
 
-    private static volatile long lastAutoCheckMs = 0L;
     private static final long AUTO_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000L; // 4 hours
+    private static final long AUTO_CHECK_RETRY_MS = 15 * 60 * 1000L;
 
     /**
      * Automatic check on TV boot and periodic wakeups: if a newer GitHub version exists,
@@ -407,32 +413,56 @@ public final class AppUpdater {
      */
     public static void checkAndAutoUpdateOnBoot(final Context ctx) {
         if (ctx == null) return;
-        long now = System.currentTimeMillis();
-        if (now - lastAutoCheckMs < AUTO_CHECK_INTERVAL_MS) return;
-        lastAutoCheckMs = now;
+        final Context app = ctx.getApplicationContext();
+        android.content.SharedPreferences prefs = Prefs.get(app);
+        long lastSuccessfulCheck = prefs.getLong("auto_update_last_successful_check_at", 0L);
+        if (System.currentTimeMillis() - lastSuccessfulCheck < AUTO_CHECK_INTERVAL_MS) return;
+        synchronized (AppUpdater.class) {
+            if (autoCheckScheduled) return;
+            autoCheckScheduled = true;
+        }
         MAIN_HANDLER.postDelayed(() -> {
-            checkForUpdates(ctx, new UpdateCheckCallback() {
+            checkForUpdates(app, new UpdateCheckCallback() {
                 @Override
                 public void onUpdateAvailable(ReleaseInfo info) {
+                    Prefs.get(app).edit().putLong("auto_update_last_successful_check_at", System.currentTimeMillis())
+                            .putString("auto_update_notice_version", info.cleanVersion).apply();
+                    synchronized (AppUpdater.class) {
+                        autoCheckScheduled = false;
+                    }
                     Log.i(TAG, "Auto-update check: newer version found: " + info.tagName + ", downloading in background...");
                     com.cinetv.launcher.MainActivity m = com.cinetv.launcher.MainActivity.instance;
                     if (m != null && !m.isFinishing() && com.cinetv.launcher.MainActivity.foreground) {
                         m.showUpdateBanner("CineTV " + info.tagName + " geliyor", "Yeni sürüm arka planda indiriliyor; kurulum onayı birazdan çıkacak.", false);
+                        clearAutoUpdateNotice(app);
                     }
-                    downloadAndInstallBackground(ctx.getApplicationContext(), info, true);
+                    downloadAndInstallBackground(app, info, true);
                 }
 
                 @Override
                 public void onUpToDate(String currentVersion) {
+                    Prefs.get(app).edit().putLong("auto_update_last_successful_check_at", System.currentTimeMillis())
+                            .remove("auto_update_notice_version").apply();
+                    synchronized (AppUpdater.class) {
+                        autoCheckScheduled = false;
+                    }
                     Log.i(TAG, "Auto-update check: CineTV is up to date: v" + currentVersion);
                 }
 
                 @Override
                 public void onError(String message) {
                     Log.w(TAG, "Auto-update check error: " + message);
+                    synchronized (AppUpdater.class) {
+                        autoCheckScheduled = false;
+                    }
+                    MAIN_HANDLER.postDelayed(() -> checkAndAutoUpdateOnBoot(app), AUTO_CHECK_RETRY_MS);
                 }
             });
         }, 10000L); // Allow network to stabilize after boot/wake
+    }
+
+    private static void clearAutoUpdateNotice(Context ctx) {
+        Prefs.get(ctx).edit().remove("auto_update_notice_version").apply();
     }
 
     /** Shows leanback styled dialog offering update. */

@@ -21,13 +21,19 @@ public final class GamzeMemory {
 
     private static final String TAG = "GamzeMemory";
     private static final String PREF_GAMZE_MEMORY = "gamze_viewer_memory_json";
+    private static final String PREF_VIEWER_NAME = "gamze_viewer_preferred_name";
 
     private GamzeMemory() {}
 
     public static synchronized JSONObject getMemory(Context ctx) {
         String raw = Prefs.get(ctx).getString(PREF_GAMZE_MEMORY, "{}");
         try {
-            return new JSONObject(raw);
+            JSONObject memory = new JSONObject(raw);
+            if (memory.has("name")) {
+                memory.remove("name");
+                Prefs.get(ctx).edit().putString(PREF_GAMZE_MEMORY, memory.toString()).apply();
+            }
+            return memory;
         } catch (Throwable t) {
             return new JSONObject();
         }
@@ -45,6 +51,7 @@ public final class GamzeMemory {
             Iterator<String> keys = learned.keys();
             while (keys.hasNext()) {
                 String k = keys.next();
+                if ("name".equals(k)) continue;
                 Object v = learned.opt(k);
                 if (v == null || v == JSONObject.NULL) continue;
                 if (v instanceof String) {
@@ -90,7 +97,7 @@ public final class GamzeMemory {
     }
 
     public static synchronized void clear(Context ctx) {
-        Prefs.get(ctx).edit().remove(PREF_GAMZE_MEMORY).apply();
+        Prefs.get(ctx).edit().remove(PREF_GAMZE_MEMORY).remove(PREF_VIEWER_NAME).apply();
     }
 
     /**
@@ -98,9 +105,10 @@ public final class GamzeMemory {
      */
     public static synchronized String formatForPrompt(Context ctx) {
         JSONObject mem = getMemory(ctx);
-        if (mem.length() == 0) return "";
+        String viewerName = name(ctx);
+        if (mem.length() == 0 && viewerName.isEmpty()) return "";
         StringBuilder sb = new StringBuilder("\nWHAT YOU KNOW ABOUT THIS HOUSEHOLD (from earlier conversations; use it naturally, never recite it):\n");
-        if (mem.has("name")) sb.append("- The viewer's name: ").append(mem.optString("name")).append("\n");
+        if (!viewerName.isEmpty()) sb.append("- The viewer's preferred name (set by the viewer on this TV): ").append(viewerName).append("\n");
         if (mem.has("household")) sb.append("- Usually watches: ").append(mem.optString("household")).append("\n");
         if (mem.optBoolean("has_children")) {
             sb.append("- There are children at home");
@@ -115,8 +123,14 @@ public final class GamzeMemory {
         return sb.toString();
     }
 
-    /** The viewer's name, if they ever told Gamze; empty otherwise. */
+    /** A name the viewer explicitly chose for Gamze to use; blank means do not address them by name. */
     public static String name(Context ctx) {
-        return getMemory(ctx).optString("name", "");
+        return Prefs.get(ctx).getString(PREF_VIEWER_NAME, "").trim();
+    }
+
+    public static void setName(Context ctx, String name) {
+        String clean = name == null ? "" : name.trim().replaceAll("\\s+", " ");
+        if (clean.length() > 40) clean = clean.substring(0, 40).trim();
+        Prefs.get(ctx).edit().putString(PREF_VIEWER_NAME, clean).apply();
     }
 }

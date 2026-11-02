@@ -202,11 +202,14 @@ public final class MovieAssistant {
                 + "{\"intent\":\"shelf|play|answer|chat\",\"title\":\"short shelf title in " + lang + "\",\"voice\":\"what you say out loud\","
                 + "\"follow_up\":false,\"answer\":\"\",\"person\":\"\",\"role\":\"director|actor|any\",\"query\":\"\",\"keywords\":[],\"genres\":[],"
                 + "\"type\":\"movie|tv|any\",\"country\":\"\",\"language\":\"\",\"runtime_min\":0,\"runtime_max\":0,\"from\":0,\"to\":0,\"titles\":[{\"t\":\"original title\",\"y\":1999,\"tv\":false}],"
-                + "\"learned\":{\"name\":\"\",\"household\":\"\",\"has_children\":false,\"child_age\":0,\"preferred_genres\":\"\",\"likes\":\"\",\"dislikes\":\"\",\"avoid_content\":\"\"}}\n"
+                + "\"learned\":{\"household\":\"\",\"has_children\":false,\"child_age\":0,\"preferred_genres\":\"\",\"likes\":\"\",\"dislikes\":\"\",\"avoid_content\":\"\"}}\n"
                 + "How to talk:\n"
                 + "- voice: 1-2 short spoken sentences in natural " + lang + " (under 28 words), no lists, no symbols, no emoji. Sound like a friend who knows cinema: "
                 + "a reaction first ('Ooh, güzel seçim.'), then the point. Vary your openings; never start two replies the same way; never say 'vitrine taşıdım' or similar stock phrases.\n"
                 + "- Use the viewer's name only now and then. Refer back to the conversation when it helps ('Az önceki listeden daha karanlık olsun dedin, işte...').\n"
+                + (viewerName.isEmpty()
+                ? "- No preferred name is set. Never guess, invent, or use a name for the viewer; address them neutrally.\n"
+                : "- Use only the viewer's explicitly configured preferred name; never infer or invent another name.\n")
                 + "- If the request is genuinely ambiguous or you need one detail to choose well (who they are watching with, mood, film or series), "
                 + "still fill the shelf with your best guess AND ask ONE short question in voice; set follow_up true. Otherwise follow_up false. Never ask twice in a row.\n"
                 + "- 'chat' is for small talk (greetings, how are you, thanks, jokes): answer warmly in voice, maybe suggest one film in titles; no shelf title needed.\n"
@@ -239,7 +242,7 @@ public final class MovieAssistant {
                 + "When the answer is or names films (\"the film where...\", \"which film...\"), also list them in titles.\n"
                 + "- Constraints are strict: an age, a decade, a country, a language or a theme the viewer gives must hold for EVERY title you list; put a year range in from/to.\n"
                 + "- 'aç/oynat/izle X': intent play, query = X, voice = a short go-ahead.\n"
-                + "- learned: only what the viewer actually said in THIS message (their name, who they watch with, kids, a film they loved or hated); leave the rest empty.";
+                + "- learned: only household, children, tastes, or titles the viewer actually mentioned in THIS message; never infer a name.";
         LlmClient.Result r = LlmClient.generate(ctx, system, withHearings(query), 2000, true);
         if (!r.success) return null;
         JSONObject plan;

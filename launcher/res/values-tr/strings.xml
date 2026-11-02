@@ -228,6 +228,7 @@
     <string name="new_code">Yeni kod</string>
     <string name="done">Tamam</string>
     <string name="save">Kaydet</string>
+    <string name="viewer_name_hint">Adınız (isteğe bağlı)</string>
     <string name="remote_keys">Kumanda tuşları</string>
     <string name="remote_keys_hint">Herhangi bir tuşa yeni görev ver</string>
     <string name="remote_keys_press">Atamak istediğiniz kumanda tuşuna basın (Netflix, YouTube, renkli tuş…). Geri ile vazgeçin.</string>

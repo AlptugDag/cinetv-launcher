@@ -232,6 +232,7 @@
     <string name="new_code">New code</string>
     <string name="done">Done</string>
     <string name="save">Save</string>
+    <string name="viewer_name_hint">Your name (optional)</string>
     <string name="remote_keys">Remote buttons</string>
     <string name="remote_keys_hint">Give any button a new job</string>
     <string name="remote_keys_press">Press the button on your remote you want to assign (Netflix, YouTube, a colour key…). Back cancels.</string>

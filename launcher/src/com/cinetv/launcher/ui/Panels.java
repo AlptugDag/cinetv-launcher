@@ -531,20 +531,8 @@ public final class Panels {
         cAi.addView(emaTile);
 
 
-        // The TV's own settings, opened from CineTV: nothing is changed here, each tile only opens the system page.
+        // TV-owned pages are opened from the single TV Settings tile in the TV section below.
         LinearLayout cSys = column(ctx, cols, tr ? "Sistem" : "System", colWidth);
-        // {title, standard action, the TV settings app's own pages (tried first)}
-        String[][] sys = {
-                {tr ? "Wi-Fi & Ağ" : "Wi-Fi & Network", android.provider.Settings.ACTION_WIFI_SETTINGS, ".connectivity.NetworkActivity", ".oemlink.NetworkSettingsActivity"},
-                {tr ? "Bluetooth & Aksesuarlar" : "Bluetooth & Accessories", android.provider.Settings.ACTION_BLUETOOTH_SETTINGS, ".accessories.AddAccessoryActivity"},
-                {tr ? "Görüntü & Ses" : "Display & Sound", android.provider.Settings.ACTION_DISPLAY_SETTINGS, ".device.displaysound.DisplaySoundActivity"},
-                {tr ? "Uygulamalar" : "Apps", android.provider.Settings.ACTION_APPLICATION_SETTINGS, ".device.apps.AppsActivity"},
-                {tr ? "Depolama" : "Storage", android.provider.Settings.ACTION_INTERNAL_STORAGE_SETTINGS},
-                {tr ? "Tarih & Saat" : "Date & Time", android.provider.Settings.ACTION_DATE_SETTINGS, ".system.DateTimeActivity"},
-                {tr ? "Dil" : "Language", android.provider.Settings.ACTION_LOCALE_SETTINGS, ".system.LanguageActivity"},
-                {tr ? "Klavye" : "Keyboard", android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS, ".inputmethod.KeyboardActivity"},
-                {tr ? "Hakkında" : "About", android.provider.Settings.ACTION_DEVICE_INFO_SETTINGS, ".about.AboutActivity"},
-                {tr ? "Tüm Sistem Ayarları" : "All System Settings", android.provider.Settings.ACTION_SETTINGS, ".MainSettings"}};
         // CineTV's own accessibility page (the TV's page closes by itself on many models; it is the last tile there)
         LinearLayout a11yTile = Controls.tile(ctx, tr ? "Erişilebilirlik" : "Accessibility",
                 tr ? "Kontrast, hareket, arayüz ve yazı boyutu" : "Contrast, motion, interface and text size", false,
@@ -556,12 +544,6 @@ public final class Panels {
                 v -> host.push(() -> buildHomeLaunchers(ctx, host)));
         homeTile.setTag("opt_home_launchers");
         cSys.addView(homeTile);
-        for (final String[] row : sys) {
-            cSys.addView(Controls.tile(ctx, row[0], tr ? "Sistem sayfasını açar" : "Opens the system page", false, v -> {
-                host.close();
-                com.cinetv.launcher.service.AppLauncher.openSystemPage(ctx, row[1], java.util.Arrays.copyOfRange(row, 2, row.length));
-            }));
-        }
 
         LinearLayout cNet = column(ctx, cols, tr ? "Ağ & Ortam" : "Network & Environment", colWidth);
         String city = Prefs.city(ctx);
@@ -1556,6 +1538,15 @@ public final class Panels {
         subLp.bottomMargin = UiKit.px(16);
         root.addView(sub, subLp);
 
+        String viewerName = com.cinetv.launcher.ai.GamzeMemory.name(ctx);
+        root.addView(Controls.tile(ctx,
+                tr ? "Gamze'nin Size Hitap Edeceği İsim" : "Name Gamze Uses for You",
+                viewerName.isEmpty()
+                        ? (tr ? "Ayarlanmadı · Adınızı tahmin etmez" : "Not set · Gamze will not guess your name")
+                        : viewerName,
+                !viewerName.isEmpty(),
+                v -> host.push(() -> buildViewerNameInput(ctx, host, a))));
+
         boolean enabled = Prefs.emaTts(ctx);
         int currentLevel = Prefs.ttsLevel(ctx);
 
@@ -1638,6 +1629,45 @@ public final class Panels {
                     : "Hello, I am Gamze. Your CineTV cinema assistant is at your service.");
         }));
 
+        return root;
+    }
+
+    private static View buildViewerNameInput(final Context ctx, final ModalHost host, final Actions a) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(36), UiKit.px(28), UiKit.px(36), UiKit.px(28));
+
+        TextView title = UiKit.bold(ctx, 30, UiKit.INK);
+        title.setText(tr ? "Gamze Size Nasıl Hitap Etsin?" : "What Should Gamze Call You?");
+        root.addView(title);
+
+        TextView description = UiKit.label(ctx, 18, UiKit.INK_DIM);
+        description.setText(tr
+                ? "Adınızı yazın; yalnızca bu televizyonda saklanır. Boş bırakırsanız Gamze size isimle hitap etmez."
+                : "Enter a preferred name; it is stored only on this TV. Leave it blank and Gamze will not use a name.");
+        description.setPadding(0, UiKit.px(12), 0, UiKit.px(20));
+        description.setMaxWidth(UiKit.px(760));
+        root.addView(description);
+
+        EditText input = field(ctx, com.cinetv.launcher.ai.GamzeMemory.name(ctx), R.string.viewer_name_hint, false);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(40)});
+        root.addView(input, new LinearLayout.LayoutParams(UiKit.px(760), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout buttons = new LinearLayout(ctx);
+        buttons.setPadding(0, UiKit.px(24), 0, 0);
+        buttons.addView(Controls.button(ctx, ctx.getString(R.string.save), v -> {
+            com.cinetv.launcher.ai.GamzeMemory.setName(ctx, input.getText().toString());
+            host.back();
+            host.replace(() -> buildTtsSettings(ctx, host, a));
+        }));
+        buttons.addView(Controls.button(ctx, tr ? "İsmi Temizle" : "Clear Name", v -> {
+            com.cinetv.launcher.ai.GamzeMemory.setName(ctx, "");
+            host.back();
+            host.replace(() -> buildTtsSettings(ctx, host, a));
+        }));
+        root.addView(buttons);
         return root;
     }
 
@@ -3565,4 +3595,3 @@ public final class Panels {
     }
 
 }
-
