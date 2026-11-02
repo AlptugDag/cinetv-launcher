@@ -654,6 +654,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             presentUpdateBannerGuaranteed(updateErr, detail, true);
         }
         AppUpdater.onHomeResumed(this);
+        com.cinetv.launcher.remote.RelayHost.resumeIfStopped(this);
+        if (shelfReleased && home != null) {
+            shelfReleased = false;
+            home.shelf.setMovies(new ArrayList<>(home.shelf.movies())); // the cases come back in their cascade
+        }
     }
 
     public void showUpdateBanner(String title, String message, boolean isError) {
@@ -2739,6 +2744,15 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     /** "Kaldığın yerden": the latest unfinished title, on Home's card (hidden when the stage is off or nothing is left). */
+    private boolean shelfReleased;
+
+    /** Memory is short while another app is in front: the shelf's case images go (rebuilt on return). */
+    public void releaseShelfMemory() {
+        if (home == null || shelfReleased || inFront) return;
+        shelfReleased = true;
+        home.shelf.releaseImages();
+    }
+
     public void refreshContinueCard() {
         if (home == null) return;
         home.setCinematic(Prefs.cinematicStage(this));

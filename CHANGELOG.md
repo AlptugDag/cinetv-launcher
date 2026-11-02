@@ -2,6 +2,8 @@
 
 ## 1.0.0.32
 
+- **Nuvio'dayken CineTV kendini baştan başlatmıyor:** 1,3 GB'lık TV'de Nuvio izlerken bellek bitince Android sırayla Nuvio'yu ve CineTV'yi kapatıyordu, Ana Sayfa da kendiliğinden geri geliyordu. Bellek darlaştığında ve CineTV ekranda değilken telefon kumandasının tarayıcı motoru (~100 MB) ile raf görselleri bırakılıyor; Ana Sayfa'ya dönünce geri geliyor.
+- **Açılışta düz logo yok:** Açılış penceresindeki logo saydam arka planlı; kırmızı ışığın üstünde siyah bir kutu olarak görünmüyor.
 - **Gamze isim uydurmuyor:** AI ve sesli yanıtlar artık herkese "Deniz" diye hitap etmiyor. İsterseniz Gamze ayarlarından bir hitap adı seçin; boş bırakırsanız isim kullanmaz.
 - **Vitrin arama rafı sabit:** Yeni sonuçlar yüklenirken hazır DVD kutuları yerinde kalıyor; sonraki sayfalar rafın sonuna ekleniyor.
 - **Güncelleme kontrolü ve bildirimi:** Otomatik kontrol, arka plan denemeleri ve kaçırılmış güncelleme bildirimi daha güvenilir.

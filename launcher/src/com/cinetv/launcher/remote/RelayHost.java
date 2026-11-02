@@ -37,6 +37,30 @@ public final class RelayHost {
     private static final Handler main = new Handler(Looper.getMainLooper());
     private static final ExecutorService work = Executors.newFixedThreadPool(4);
     private static WebView web;
+    /** The engine was shut down to free memory while another app was in front; Home brings it back. */
+    private static volatile boolean stoppedForMemory;
+
+    /**
+     * Memory is short and CineTV is not on screen (a 1.3 GB TV running Nuvio): the browser engine (~100 MB) goes, so
+     * Android does not have to kill Nuvio and then CineTV. {@link #resumeIfStopped} starts it again on Home.
+     */
+    public static void stopForMemory() {
+        main.post(() -> {
+            if (web == null) return;
+            try {
+                web.destroy();
+            } catch (Throwable ignored) {
+            }
+            web = null;
+            stoppedForMemory = true;
+        });
+    }
+
+    public static void resumeIfStopped(Context ctx) {
+        if (!stoppedForMemory) return;
+        stoppedForMemory = false;
+        start(ctx);
+    }
     private static Context app;
 
     private RelayHost() {}

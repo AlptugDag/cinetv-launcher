@@ -73,5 +73,14 @@ public class CineTvApp extends Application {
             com.cinetv.launcher.service.PosterCache.trimMemory();
             com.cinetv.launcher.ui.Glow.clear();
         }
+        // Memory running out while another app (Nuvio) is in front: on a 1.3 GB TV Android then killed Nuvio and CineTV
+        // in turn, and Home came back by itself. CineTV gives up what it can rebuild: the phone link's browser engine
+        // and the shelf's case images (both come back when Home is shown again).
+        boolean pressed = level >= TRIM_MEMORY_BACKGROUND || level == TRIM_MEMORY_RUNNING_LOW || level == TRIM_MEMORY_RUNNING_CRITICAL;
+        if (pressed && !MainActivity.isInFront()) {
+            com.cinetv.launcher.remote.RelayHost.stopForMemory();
+            MainActivity a = MainActivity.instance;
+            if (a != null) a.releaseShelfMemory();
+        }
     }
 }

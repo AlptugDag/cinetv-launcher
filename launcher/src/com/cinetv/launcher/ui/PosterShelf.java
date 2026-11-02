@@ -292,6 +292,12 @@ public class PosterShelf extends FrameLayout {
         }
     }
 
+    /** Drops every case image (memory is short, Home hidden); setMovies with the same films brings them back. */
+    public void releaseImages() {
+        generation++; // bakes still running are discarded
+        for (DvdCaseView v : cases) v.setCase(null);
+    }
+
     /** More results at the end of the row (search keeps going as the viewer scrolls); the focus stays put. */
     public void appendMovies(List<Movie> more) {
         if (more == null || more.isEmpty()) return;
