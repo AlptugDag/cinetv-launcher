@@ -491,7 +491,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
         super.onServiceConnected();
         instance = this;
         handler.removeCallbacks(cinesubAmbient);
-        handler.postDelayed(cinesubAmbient, 30_000);
+        handler.postDelayed(cinesubAmbient, 15_000);
         try {
             // The moment the screen comes on, before the TV's own tuner / last HDMI input gets its window up.
             IntentFilter on = new IntentFilter(Intent.ACTION_SCREEN_ON);
@@ -790,7 +790,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
     private final Runnable cinesubAmbient = new Runnable() {
         @Override
         public void run() {
-            handler.postDelayed(this, 30_000);
+            handler.postDelayed(this, 15_000);
             try {
                 // off (the default): no tree walks or captures at all while a film plays
                 if (!com.cinetv.launcher.service.Prefs.cinesubAmbient(TvKeyInterceptorService.this)) return;

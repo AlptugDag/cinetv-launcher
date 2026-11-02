@@ -175,6 +175,11 @@ public final class SceneInspector {
      * otherwise up to five things to point at.
      */
     public static Scene inspect(Context ctx, boolean ambient) {
+        return inspect(ctx, ambient, null);
+    }
+
+    /** With {@code frame} already captured (the unprompted notes look first, then ask about that same frame). */
+    public static Scene inspect(Context ctx, boolean ambient, byte[] frame) {
         Scene scene = new Scene();
         boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         if (!LlmClient.isConfigured(ctx)) {
@@ -182,7 +187,7 @@ public final class SceneInspector {
                     : "Add an AI key in Settings to use CineSUB (Gemini is free).";
             return scene;
         }
-        byte[] jpeg = captureJpeg(ctx);
+        byte[] jpeg = frame != null ? frame : captureJpeg(ctx);
         if (jpeg == null) {
             scene.error = tr ? "Ekran yakalanamadı. Kurulumdaki 'Ağ hata ayıklaması' izni kapalı olabilir."
                     : "Couldn't capture the screen. Network debugging may be off.";

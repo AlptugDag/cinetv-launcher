@@ -151,14 +151,12 @@ public final class CineSubOverlay {
     }
 
     /**
-     * Adaptive interval for untriggered/automatic CineSUB companion mode:
-     * 40s (65s on low-RAM TVs) after showing scene notes, or 20s (30s on low-RAM TVs)
-     * when the previous frame had no POIs so the next scene is inspected promptly.
+     * How often the TV itself looks at the picture for the unprompted notes (no AI request: a tiny picture
+     * compared with the last one asked about). A look holds a screenshot briefly, so low-memory TVs look less often.
      */
     public static long ambientIntervalMs(boolean lowMemory, boolean hadPois) {
-        // a look holds a full-screen bitmap: low-memory TVs keep the old, sparse pace
-        if (lowMemory) return hadPois ? 300_000L : 180_000L;
-        return hadPois ? 90_000L : 45_000L;
+        if (lowMemory) return hadPois ? 45_000L : 30_000L;
+        return hadPois ? 25_000L : 15_000L;
     }
 
     /**
@@ -180,7 +178,27 @@ public final class CineSubOverlay {
         new Thread(() -> {
             SceneInspector.Scene scene;
             try {
-                scene = SceneInspector.inspect(app, true);
+                // 1. a look on the TV: the AI is asked only about a new scene or a new subtitle line
+                byte[] jpeg = SceneInspector.captureJpeg(app);
+                if (jpeg == null || jpeg.length == 0) {
+                    ambientRetryAt = SystemClock.elapsedRealtime() + 60_000L;
+                    return;
+                }
+                int[] sig = AmbientGate.signature(jpeg);
+                lastAmbientAt = SystemClock.elapsedRealtime();
+                if (!AmbientGate.changed(askedSig, sig)) return;
+                // 2. the budget: a short pause after each request (longer after empty ones) and a daily cap that
+                // leaves the yellow key its own requests on a free key
+                long nowMs = System.currentTimeMillis();
+                android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(app);
+                boolean freeGemini = com.cinetv.launcher.ai.LlmClient.PROVIDER_GEMINI.equals(com.cinetv.launcher.ai.LlmClient.providerFor(
+                        com.cinetv.launcher.service.SecretStore.get(app, com.cinetv.launcher.service.SecretStore.AI_KEY)));
+                if (lastAskedAt > 0 && SystemClock.elapsedRealtime() - lastAskedAt < AmbientGate.minGapMs(PerformanceProfile.lowMemory(app), emptyInARow)) return;
+                if (AmbientGate.usedToday(p, nowMs) >= AmbientGate.dailyCap(freeGemini)) return;
+                askedSig = sig;
+                lastAskedAt = SystemClock.elapsedRealtime();
+                AmbientGate.noteRequest(p, nowMs);
+                scene = SceneInspector.inspect(app, true, jpeg);
             } catch (Throwable t) {
                 scene = new SceneInspector.Scene();
                 scene.error = String.valueOf(t);
@@ -189,8 +207,8 @@ public final class CineSubOverlay {
             }
             long at = SystemClock.elapsedRealtime();
             if (scene.error.isEmpty()) {
-                lastAmbientAt = at;
                 lastAmbientHadPois = !scene.pois.isEmpty();
+                emptyInARow = scene.pois.isEmpty() ? emptyInARow + 1 : 0;
             } else {
                 // couldn't look (capture, protected picture, network, quota): retry in 15s
                 ambientRetryAt = at + 60_000L;
@@ -220,6 +238,9 @@ public final class CineSubOverlay {
 
     private static volatile boolean ambientBusy;
     private static volatile boolean lastAmbientHadPois = false;
+    private static volatile int[] askedSig;
+    private static volatile long lastAskedAt;
+    private static volatile int emptyInARow;
     private static volatile long ambientRetryAt;
 
     public static void dismissActive() {

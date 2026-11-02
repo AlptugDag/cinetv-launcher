@@ -240,22 +240,22 @@ public final class Prefs {
     public static final String CINESUB_AMBIENT_MIGRATED = "cinesub_ambient_default_v2";
 
     /**
-     * Untriggered CineSUB notes: off unless the viewer turns them on. Each look is a full-screen capture
-     * plus an upload; switched on for everyone, it ran out the memory of a 1.3 GB TV during Nuvio playback
-     * and the system restarted the launcher. The 1.0.0.38 default is undone once.
+     * Untriggered CineSUB notes: on by default. The AI is asked only when the scene or subtitle line changes,
+     * within a daily budget (AmbientGate), so they no longer use up the key's quota or the TV's memory.
+     * Turned on once for everyone, including TVs where 1.0.0.39 had switched them off.
      */
     public static boolean cinesubAmbient(Context ctx) {
         SharedPreferences p = get(ctx);
-        if (!p.getBoolean(CINESUB_AMBIENT_MIGRATED_V3, false)) {
-            p.edit().putBoolean(CINESUB_AMBIENT, false).putBoolean(CINESUB_AMBIENT_MIGRATED_V3, true).apply();
-            return false;
+        if (!p.getBoolean(CINESUB_AMBIENT_MIGRATED_V4, false)) {
+            p.edit().putBoolean(CINESUB_AMBIENT, true).putBoolean(CINESUB_AMBIENT_MIGRATED_V4, true).apply();
+            return true;
         }
-        return p.getBoolean(CINESUB_AMBIENT, false);
+        return p.getBoolean(CINESUB_AMBIENT, true);
     }
 
-    private static final String CINESUB_AMBIENT_MIGRATED_V3 = "cinesub_ambient_default_v3";
+    private static final String CINESUB_AMBIENT_MIGRATED_V4 = "cinesub_ambient_default_v4";
 
     public static void setCinesubAmbient(Context ctx, boolean on) {
-        get(ctx).edit().putBoolean(CINESUB_AMBIENT, on).putBoolean(CINESUB_AMBIENT_MIGRATED, true).putBoolean(CINESUB_AMBIENT_MIGRATED_V3, true).apply();
+        get(ctx).edit().putBoolean(CINESUB_AMBIENT, on).putBoolean(CINESUB_AMBIENT_MIGRATED, true).putBoolean(CINESUB_AMBIENT_MIGRATED_V4, true).apply();
     }
 }

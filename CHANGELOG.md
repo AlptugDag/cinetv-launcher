@@ -1,5 +1,10 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.41
+
+- **CineSUB'nin kendiliğinden notları akıllı ve yeniden açık:** TV, ekrana 15 saniyede bir (düşük bellekli TV'de 30 saniyede bir) kendisi bakıyor; bu bakış yapay zekâya hiç sorgu göndermiyor. Yapay zekâya sadece sahne değiştiğinde ya da yeni bir altyazı satırı çıktığında soruluyor. Böylece önemli anlarda notlar daha sık geliyor, durgun anlarda hiç sorgu harcanmıyor.
+- **Kota korunuyor:** İki sorgu arasında en az 40 saniye (düşük bellekli TV'de 90 saniye) var; üst üste boş çıkan bakışlarda bu süre 6 dakikaya kadar uzuyor, ilginç bir şey bulununca kısalıyor. Ücretsiz Gemini anahtarında kendiliğinden notlar günde en fazla 12 sorgu kullanıyor, kalan hak sarı tuşa kalıyor.
+
 ## 1.0.0.40
 
 - **Kumandadan ekran görüntüsü:** Mavi tuşu bir saniye basılı tutunca TV'nin o anki ekranı alınır ve mobil arayüzü açık olan telefonda hemen belirir; oradan kaydedilebilir ya da paylaşılabilir. Görüntü sadece TV'nin belleğinde durur, diske yazılmaz. Mavi tuşa kısa basış eskisi gibi çalışır, sarı tuş CineSUB olarak kalır.
