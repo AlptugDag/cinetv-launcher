@@ -23,7 +23,8 @@ OUT="$("$BT/apksigner" verify --verbose --print-certs "$APK" 2>&1)" || { echo "$
 echo "$OUT" | grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" && pass "APK Signature Scheme v2" || bad "v2 signature missing"
 echo "$OUT" | grep -q "Verified using v3 scheme (APK Signature Scheme v3): true" && pass "APK Signature Scheme v3" || bad "v3 signature missing"
 
-SHA="$(echo "$OUT" | awk -F': ' '/Signer #1 certificate SHA-256 digest/{print $2}' | tr 'A-F' 'a-f')"
+# "Signer #1 certificate SHA-256 digest" (older apksigner) or "Signer (minSdkVersion=..) certificate SHA-256 digest"
+SHA="$(echo "$OUT" | awk -F': ' '/^Signer.*certificate SHA-256 digest/{print $2; exit}' | tr 'A-F' 'a-f')"
 if [ -f "$PIN_FILE" ]; then
     PIN="$(tr -d ' \n' < "$PIN_FILE" | tr 'A-F' 'a-f')"
     [ "$SHA" = "$PIN" ] && pass "certificate matches pinned fingerprint" || bad "certificate $SHA does not match pin $PIN"
