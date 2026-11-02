@@ -1093,19 +1093,21 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     if (!kbd.hidden) { closeKbd(); return; }
     openKbd("");
   };
+  // The change is measured against what the TV last got, when it is sent: quick edits (or a paste right after
+  // typing) that fall inside one 40 ms window are no longer lost.
   typer.addEventListener("input", () => {
     clearTimeout(typeTimer);
-    const cur = typer.value;
-    const old = lastTypedVal;
-    lastTypedVal = cur;
-    let common = 0;
-    while (common < old.length && common < cur.length && old[common] === cur[common]) common++;
-    const del = old.length - common;
-    const add = cur.slice(common);
     typeTimer = setTimeout(() => {
-      api("type", {q: cur, del, add}).catch(() => {});
+      const cur = typer.value;
+      const old = lastTypedVal;
+      if (cur === old) return;
+      lastTypedVal = cur;
+      let common = 0;
+      while (common < old.length && common < cur.length && old[common] === cur[common]) common++;
+      api("type", {q: cur, del: old.length - common, add: cur.slice(common)}).catch(() => {});
     }, 40);
   });
+  typer.addEventListener("paste", () => setTimeout(() => typer.dispatchEvent(new Event("input")), 0));
   const typeEnter = () => {
     clearTimeout(typeTimer);
     const cur = typer.value.trim();

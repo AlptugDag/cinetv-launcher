@@ -51,8 +51,10 @@ public final class HomeGuard {
                 com.cinetv.launcher.device.DeviceTweaks.ensureKeyService(app);
                 com.cinetv.launcher.device.AvOptimizer.Report av = com.cinetv.launcher.device.AvOptimizer.optimize(app);
                 com.cinetv.launcher.device.NetworkOptimizer.optimizeRadio(app);
+                // Private DNS only when the viewer picked one: switched on by every update, its DNS-over-TLS lookups
+                // made each of Nuvio's addon repositories slow to answer
                 String dns = com.cinetv.launcher.device.NetworkOptimizer.choice(app);
-                if (!com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(dns)) {
+                if (p.contains("dns_choice") && !com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(dns)) {
                     com.cinetv.launcher.device.NetworkOptimizer.apply(app, dns);
                 }
                 com.cinetv.launcher.device.MemoryOptimizer.applyTvOptimizations(app);

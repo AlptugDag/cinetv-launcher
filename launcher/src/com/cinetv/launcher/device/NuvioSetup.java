@@ -36,7 +36,6 @@ public final class NuvioSetup {
     private static final String SYNC_KEY = "nuvio_sync_v1_0_0_9b";
 
     public static final String[] CURATED_ADDONS = {
-            "v3-cinemeta.strem.io/manifest.json",
             "tr-altyazi.altyazi.workers.dev/manifest.json",
             "falsisdev.github.io/anthology/stremio/manifest.json",
             "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json",

@@ -34,16 +34,16 @@ public final class LlmClient {
     private static final String[][] COMPATIBLE = {
             {PROVIDER_OPENAI, "https://api.openai.com/v1/chat/completions", "gpt-5-mini", "gpt-5-nano", "gpt-4o-mini"},
             {PROVIDER_GROK, "https://api.x.ai/v1/chat/completions", "grok-4-fast", "grok-4-fast", "grok-3-mini"},
-            {PROVIDER_OPENROUTER, "https://openrouter.ai/api/v1/chat/completions", "google/gemini-2.5-flash", "google/gemini-2.5-flash-lite", "openai/gpt-5-mini"}};
+            {PROVIDER_OPENROUTER, "https://openrouter.ai/api/v1/chat/completions", "google/gemini-3.8-flash", "google/gemini-3.5-flash-lite", "openai/gpt-5-mini"}};
 
     static final String DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
     static final String FAST_CLAUDE_MODEL = "claude-haiku-5-5";
     static final String FALLBACK_CLAUDE_MODEL = "claude-haiku-5-5";
-    /** Gemini 2.5 Flash: fast, accurate vision & text with thinkingBudget: 0 for instant TV response. */
-    static final String DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
-    /** Search and spoken answers: sub-second response with Flash-Lite. */
-    static final String FAST_GEMINI_MODEL = "gemini-2.5-flash-lite";
-    static final String FALLBACK_GEMINI_MODEL = "gemini-flash-lite-latest";
+    /** Gemini 3.8 Flash: the newest stable Flash (thinking kept low for a TV's patience). */
+    static final String DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+    // Flash's free tier allows only 20 requests a day: quick text jobs go to Flash-Lite, so the vision model is left for CineSUB.
+    static final String FAST_GEMINI_MODEL = "gemini-3.5-flash-lite";
+    static final String FALLBACK_GEMINI_MODEL = "gemini-3.5-flash-lite";
 
     private static final String TAG = "CineTvLlm";
 
@@ -150,8 +150,8 @@ public final class LlmClient {
                 : Prefs.get(ctx).getString(claude ? "ai_claude_model" : "ai_gemini_model", claude ? DEFAULT_CLAUDE_MODEL : DEFAULT_GEMINI_MODEL);
         // Busy (429/5xx), missing for this key (404) or slow: walk down a short chain of models.
         String[] chain = claude ? new String[]{first, FALLBACK_CLAUDE_MODEL}
-                : fast ? new String[]{first, "gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash", "gemini-flash-latest"}
-                : new String[]{first, "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-flash-lite-latest"};
+                : fast ? new String[]{first, "gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-flash-latest", "gemini-2.5-flash-lite"}
+                : new String[]{first, "gemini-flash-latest", "gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash"};
         Result r = null;
         java.util.Set<String> tried = new java.util.HashSet<>();
         for (String model : chain) {
@@ -192,7 +192,8 @@ public final class LlmClient {
                 JSONObject genCfg = new JSONObject().put("maxOutputTokens", maxTokens);
                 if (model.startsWith("gemini-3") && model.contains("flash") && !model.contains("lite")) {
                     genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", MINIMAL_THINKING.get() ? "minimal" : "low"));
-                } else if (model.startsWith("gemini-2.5") || model.startsWith("gemini-flash")) {
+                } else if (model.startsWith("gemini-2.5-flash") && !model.contains("lite")) {
+                    // 2.5 Flash-Lite rejects a budget under 512 (HTTP 400), so only 2.5 Flash gets one
                     genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", MINIMAL_THINKING.get() ? 0 : 256));
                 }
                 if (MINIMAL_THINKING.get()) genCfg.put("responseMimeType", "application/json");
@@ -296,20 +297,25 @@ public final class LlmClient {
         String[] models;
         if (compat != null) models = new String[]{compat[2], compat[4]};
         else if (PROVIDER_CLAUDE.equals(provider)) models = new String[]{FAST_CLAUDE_MODEL, DEFAULT_CLAUDE_MODEL};
-        else models = new String[]{"gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-flash-lite-latest"};
+        // Each model has its own per-minute quota: a busy one (429) hands over to the next instead of giving up.
+        else models = new String[]{"gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"};
         Result r = null;
         for (String model : models) {
-            r = visionCall(ctx, provider, compat, model, key, system, user, b64, maxTokens);
+            r = visionCall(ctx, provider, compat, model, key, system, user, b64, maxTokens, true);
+            // a 400 is usually a setting this model doesn't take: once more with the plain request
+            if (r.status == 400 && compat == null && !PROVIDER_CLAUDE.equals(provider)) {
+                r = visionCall(ctx, provider, compat, model, key, system, user, b64, maxTokens, false);
+            }
             if (r.status == 429 || r.status == 503) {
                 try { Thread.sleep(500); } catch (Throwable ignored) {}
             }
-            if (r.success || !(r.status == 404 || r.status == 429 || r.status >= 500 || r.status == -1 || r.status == 408)) return r;
+            if (r.success || !(r.status == 400 || r.status == 404 || r.status == 429 || r.status >= 500 || r.status == -1 || r.status == 408)) return r;
         }
         return r;
     }
 
     private static Result visionCall(Context ctx, String provider, String[] compat, String model, String key, String system,
-                                     String user, String b64, int maxTokens) {
+                                     String user, String b64, int maxTokens, boolean thinking) {
         HttpURLConnection conn = null;
         try {
             JSONObject body = new JSONObject();
@@ -345,9 +351,11 @@ public final class LlmClient {
                 JSONObject genCfg = new JSONObject()
                         .put("maxOutputTokens", maxTokens)
                         .put("responseMimeType", "application/json");
-                if (model.startsWith("gemini-3")) {
-                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", "minimal"));
-                } else if (model.startsWith("gemini-2.5") || model.startsWith("gemini-flash")) {
+                if (!thinking) {
+                    // plain request: the model's own thinking defaults
+                } else if (model.startsWith("gemini-3") && !model.contains("lite")) {
+                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", "low"));
+                } else if (model.startsWith("gemini-2.5")) {
                     genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", 0));
                 }
                 body.put("generationConfig", genCfg);

@@ -156,10 +156,9 @@ public final class CineSubOverlay {
      * when the previous frame had no POIs so the next scene is inspected promptly.
      */
     public static long ambientIntervalMs(boolean lowMemory, boolean hadPois) {
-        if (hadPois) {
-            return lowMemory ? 65_000L : 40_000L;
-        }
-        return lowMemory ? 30_000L : 20_000L;
+        // a look holds a full-screen bitmap: low-memory TVs keep the old, sparse pace
+        if (lowMemory) return hadPois ? 300_000L : 180_000L;
+        return hadPois ? 90_000L : 45_000L;
     }
 
     /**
@@ -194,7 +193,7 @@ public final class CineSubOverlay {
                 lastAmbientHadPois = !scene.pois.isEmpty();
             } else {
                 // couldn't look (capture, protected picture, network, quota): retry in 15s
-                ambientRetryAt = at + 15_000L;
+                ambientRetryAt = at + 60_000L;
                 Log.w("CineSub", "Ambient look failed: " + scene.error);
                 return;
             }

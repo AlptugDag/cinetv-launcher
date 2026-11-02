@@ -240,19 +240,22 @@ public final class Prefs {
     public static final String CINESUB_AMBIENT_MIGRATED = "cinesub_ambient_default_v2";
 
     /**
-     * Untriggered / automatic CineSUB companion mode: enabled by default for all installs
-     * so rich scene and subtitle details surface automatically during playback.
+     * Untriggered CineSUB notes: off unless the viewer turns them on. Each look is a full-screen capture
+     * plus an upload; switched on for everyone, it ran out the memory of a 1.3 GB TV during Nuvio playback
+     * and the system restarted the launcher. The 1.0.0.38 default is undone once.
      */
     public static boolean cinesubAmbient(Context ctx) {
         SharedPreferences p = get(ctx);
-        if (!p.getBoolean(CINESUB_AMBIENT_MIGRATED, false)) {
-            p.edit().putBoolean(CINESUB_AMBIENT, true).putBoolean(CINESUB_AMBIENT_MIGRATED, true).apply();
-            return true;
+        if (!p.getBoolean(CINESUB_AMBIENT_MIGRATED_V3, false)) {
+            p.edit().putBoolean(CINESUB_AMBIENT, false).putBoolean(CINESUB_AMBIENT_MIGRATED_V3, true).apply();
+            return false;
         }
-        return p.getBoolean(CINESUB_AMBIENT, true);
+        return p.getBoolean(CINESUB_AMBIENT, false);
     }
 
+    private static final String CINESUB_AMBIENT_MIGRATED_V3 = "cinesub_ambient_default_v3";
+
     public static void setCinesubAmbient(Context ctx, boolean on) {
-        get(ctx).edit().putBoolean(CINESUB_AMBIENT, on).putBoolean(CINESUB_AMBIENT_MIGRATED, true).apply();
+        get(ctx).edit().putBoolean(CINESUB_AMBIENT, on).putBoolean(CINESUB_AMBIENT_MIGRATED, true).putBoolean(CINESUB_AMBIENT_MIGRATED_V3, true).apply();
     }
 }

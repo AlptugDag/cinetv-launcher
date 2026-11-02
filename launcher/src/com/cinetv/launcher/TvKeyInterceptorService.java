@@ -164,6 +164,33 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
     }
 
+    /**
+     * Adds text at the end of the focused input field in one step (a paste from the phone): typed key by key it
+     * outran the key bridge's timeout and characters the TV keyboard can't spell were dropped. False when there is none.
+     */
+    public static boolean appendToFocused(String add) {
+        TvKeyInterceptorService s = instance;
+        if (s == null || add == null || add.isEmpty()) return false;
+        try {
+            android.view.accessibility.AccessibilityNodeInfo node = s.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT);
+            if (node == null || !node.isEditable()) return false;
+            CharSequence cur = node.getText();
+            // a hint shows as the text of an empty field
+            String base = cur == null || (android.os.Build.VERSION.SDK_INT >= 26 && node.isShowingHintText()) ? "" : cur.toString();
+            String text = base + add;
+            android.os.Bundle args = new android.os.Bundle();
+            args.putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
+            if (!node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, args)) return false;
+            android.os.Bundle sel = new android.os.Bundle();
+            sel.putInt(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, text.length());
+            sel.putInt(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, text.length());
+            node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_SELECTION, sel);
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     /** Returns true if there is an editable input field currently focused on screen. */
     public static boolean isInputFocused() {
         TvKeyInterceptorService s = instance;
@@ -464,7 +491,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
         super.onServiceConnected();
         instance = this;
         handler.removeCallbacks(cinesubAmbient);
-        handler.postDelayed(cinesubAmbient, 15_000);
+        handler.postDelayed(cinesubAmbient, 30_000);
         try {
             // The moment the screen comes on, before the TV's own tuner / last HDMI input gets its window up.
             IntentFilter on = new IntentFilter(Intent.ACTION_SCREEN_ON);
@@ -733,8 +760,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
     private final Runnable cinesubAmbient = new Runnable() {
         @Override
         public void run() {
-            handler.postDelayed(this, 15_000);
+            handler.postDelayed(this, 30_000);
             try {
+                // off (the default): no tree walks or captures at all while a film plays
+                if (!com.cinetv.launcher.service.Prefs.cinesubAmbient(TvKeyInterceptorService.this)) return;
                 // AlptugPlayer lives inside CineTV: it counts while a film plays in it (its own state, since
                 // tunnelled or passthrough sound does not show up as "music active")
                 if (CinePlayerActivity.active) {

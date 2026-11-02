@@ -1,5 +1,12 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.39
+
+- **CineSUB yeniden çalışıyor:** Sarı tuşla açınca "Yapay zekâ servisi HTTP 400 döndürdü" yazıyordu. 1.0.0.35'te çalışan model adları geri geldi. Bir model ayarı reddederse (HTTP 400) CineSUB artık durmuyor; aynı isteği sade haliyle tekrar deniyor, olmazsa sıradaki modele geçiyor. 2.5 Flash-Lite'a reddettiği düşünme bütçesi artık gönderilmiyor.
+- **Arçelik'te Nuvio içinde launcher'ın yeniden başlaması:** 1.0.0.38 kendiliğinden gelen CineSUB notlarını herkese varsayılan olarak açmış ve her 15 saniyede bir ekran görüntüsü alıyordu. Bu 1,3 GB'lık TV'nin belleğini dolduruyordu. Bu notlar artık yine isteğe bağlı (CineSUB ayarlarından açılır), kapalıyken film oynarken hiçbir şey yapılmıyor; açıkken de daha seyrek bakılıyor.
+- **Telefondan yapıştırma TV'ye gidiyor:** Mobil arayüzün klavye alanına yapıştırılan metin TV'deki seçili alana tek seferde yazılıyor. Daha önce harf harf gönderiliyor, zaman aşımına düşüyor ve TV klavyesinin yazamadığı karakterler kayboluyordu. Hızlı yazılan harfler de artık kaybolmuyor.
+- **Nuvio depoları:** Nuvio'nun kendi içinde zaten bulunan Cinemeta, CineTV'nin kurduğu eklentilere ikinci kez eklenmiyor. Her güncellemede Şifreli DNS (DNS over TLS) kendiliğinden açılmıyor; sadece kullanıcı seçtiyse uygulanıyor.
+
 ## 1.0.0.38
 
 - **Zorunlu Kimlik ve API Anahtarı Kurulumu (Kurulumda ve Güncelleme Sonrasında):**

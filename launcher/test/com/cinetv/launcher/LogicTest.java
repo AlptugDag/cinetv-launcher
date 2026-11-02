@@ -283,10 +283,10 @@ public class LogicTest {
         assertFalse(com.cinetv.launcher.ai.GamzeMemory.hasRequiredCredentials(true, true, ""));
 
         // Adaptive ambient CineSUB intervals: 40s (65s low-RAM) after POIs, 20s (30s low-RAM) after empty frame
-        assertEquals(40_000L, com.cinetv.launcher.ui.CineSubOverlay.ambientIntervalMs(false, true));
-        assertEquals(20_000L, com.cinetv.launcher.ui.CineSubOverlay.ambientIntervalMs(false, false));
-        assertEquals(65_000L, com.cinetv.launcher.ui.CineSubOverlay.ambientIntervalMs(true, true));
-        assertEquals(30_000L, com.cinetv.launcher.ui.CineSubOverlay.ambientIntervalMs(true, false));
+        assertEquals(90_000L, com.cinetv.launcher.ui.CineSubOverlay.ambientIntervalMs(false, true));
+        assertEquals(45_000L, com.cinetv.launcher.ui.CineSubOverlay.ambientIntervalMs(false, false));
+        assertEquals(300_000L, com.cinetv.launcher.ui.CineSubOverlay.ambientIntervalMs(true, true));
+        assertEquals(180_000L, com.cinetv.launcher.ui.CineSubOverlay.ambientIntervalMs(true, false));
 
         // Ambient title deduplication ring buffer
         com.cinetv.launcher.ai.SceneInspector.recordAmbientTitle("Porsche 911 Carrera");

@@ -1112,7 +1112,11 @@ public final class TvWebRemoteServer {
                     final int del = delStr != null ? parseInt(delStr) : 0;
                     boolean bridged = false;
                     if (del > 0) bridged = KeyBridge.delete(app, del);
-                    if (add != null && !add.isEmpty()) bridged = KeyBridge.text(app, add) || bridged;
+                    if (add != null && !add.isEmpty()) {
+                        // a paste (or a keyboard suggestion) arrives as several characters: set in one step, keys only as a fallback
+                        boolean set = add.length() > 1 && TvKeyInterceptorService.appendToFocused(add);
+                        bridged = set || KeyBridge.text(app, add) || bridged;
+                    }
                     if (!bridged) {
                         post(() -> {
                             com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
