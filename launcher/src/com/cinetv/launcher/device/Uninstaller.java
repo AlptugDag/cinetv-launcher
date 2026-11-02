@@ -57,6 +57,13 @@ public final class Uninstaller {
         try { DeviceTweaks.restoreOriginals(ctx); } catch (Throwable ignored) { }
         // the launchers switched off from Settings › Varsayılan Başlatıcı come back
         try { HomeLaunchers.restoreOthers(ctx); } catch (Throwable ignored) { }
+        // Google's assistant back as CineTV found it (only if CineTV switched it off), and the assistant role returned
+        try {
+            com.cinetv.launcher.remote.LocalAdb.shell(ctx, "[ \"$(settings get global cinetv_katniss_off)\" = 1 ] && pm enable com.google.android.katniss >/dev/null 2>&1; "
+                    + "settings delete global cinetv_katniss_off 2>/dev/null; "
+                    + "cmd role remove-role-holder --user 0 android.app.role.ASSISTANT " + ctx.getPackageName() + " 0 2>/dev/null; "
+                    + "cmd role add-role-holder --user 0 android.app.role.ASSISTANT com.google.android.katniss 0 2>/dev/null", 6000);
+        } catch (Throwable ignored) { }
         // AirPods surround keys and the output virtualizer, exactly as the TV had them.
         try { AirPodsLink.restoreSurround(ctx); } catch (Throwable ignored) { }
         // CineTV chosen as the default player, assistant or search: clearing its preferred activities (below)

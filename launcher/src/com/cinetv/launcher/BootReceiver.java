@@ -21,8 +21,8 @@ public class BootReceiver extends BroadcastReceiver {
                 || Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
                 || "android.intent.action.QUICKBOOT_POWERON".equals(action)
                 || "com.htc.intent.action.QUICKBOOT_POWERON".equals(action)) {
-            // Suppress unwanted OEM tuner immediately before it can steal the screen
-            new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(context, "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.mediatek.tv.oneworld.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null; am force-stop com.arcelik.smartremoteservice 2>/dev/null", 600)).start();
+            // The TV's tuner app is left running: killing it at boot made the TV restart it (3 times, the heaviest
+            // start there is), which slowed the whole power-on. CineTV simply comes to the front.
             Intent launch = new Intent(context, MainActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
             try {
@@ -32,7 +32,7 @@ public class BootReceiver extends BroadcastReceiver {
             }
             // Aggressive follow-up reinforcements to suppress OEM launchers (Android 9, 11, 14 TV boxes)
             android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
-            long[] delays = {1000L, 2200L, 4500L};
+            long[] delays = {2500L}; // one follow-up is enough; four launches in 4.5 s weighed on the TV's own boot
             for (long delay : delays) {
                 h.postDelayed(() -> {
                     try {
@@ -43,7 +43,7 @@ public class BootReceiver extends BroadcastReceiver {
                     }
                 }, delay);
             }
-            new Thread(() -> HomeGuard.ensureDefault(context), "cinetv-boot-guard").start();
+            // the setup check (adb) waits until the TV has finished starting: HomeGuard.install runs it later, once
             com.cinetv.launcher.device.MemoryOptimizer.ensureAirPlayReceiver(context);
             com.cinetv.launcher.service.AppUpdater.checkAndAutoUpdateOnBoot(context);
         }

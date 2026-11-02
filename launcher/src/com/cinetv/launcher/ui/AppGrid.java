@@ -89,12 +89,36 @@ public class AppGrid {
         }
     }
 
+    private static final java.util.concurrent.ExecutorService artworker = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "cinetv-app-artwork");
+        t.setPriority(Thread.NORM_PRIORITY - 1);
+        return t;
+    });
+    private int appsGen;
+
     public void setApps(List<AppTileItem> dock, List<AppTileItem> grid) {
         this.dock = dock;
         this.grid = grid;
-        for (AppTileItem item : dock) ensureArtwork(item);
-        for (AppTileItem item : grid) ensureArtwork(item);
-        render();
+        boolean ready = true;
+        for (AppTileItem item : dock) if (item.bannerDrawable == null) ready = false;
+        for (AppTileItem item : grid) if (item.bannerDrawable == null) ready = false;
+        if (ready) {
+            render();
+            return;
+        }
+        // The tiles' artwork is drawn off the main thread (it held the first second of start-up); the row fades in.
+        final int g = ++appsGen;
+        final List<AppTileItem> d = dock, gr = grid;
+        artworker.execute(() -> {
+            for (AppTileItem item : d) ensureArtwork(item);
+            for (AppTileItem item : gr) ensureArtwork(item);
+            dockRow.post(() -> {
+                if (g != appsGen) return;
+                render();
+                dockRow.setAlpha(0f);
+                dockRow.animate().alpha(1f).setDuration(260).start();
+            });
+        });
     }
 
     private void ensureArtwork(AppTileItem item) {

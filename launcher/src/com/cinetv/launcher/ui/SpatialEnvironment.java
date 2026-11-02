@@ -138,26 +138,47 @@ public class SpatialEnvironment extends View {
         return Math.max(1080, getResources().getDisplayMetrics().heightPixels);
     }
 
-    private void rebuild(int w, int h) {
-        if (theme.signaturePattern && !theme.pureBlack && pattern == null) pattern = buildPattern(w, h);
-        int down = PerformanceProfile.blurDownscale(getContext());
-        Bitmap small = Bitmap.createBitmap(Math.max(8, w / down), Math.max(8, h / down), Bitmap.Config.ARGB_8888);
-        Canvas c = new Canvas(small);
-        c.scale(small.getWidth() / (float) w, small.getHeight() / (float) h);
-        drawBase(c, w, h, false);
-        blurred = Blur.stack(small, 6);
-        if (composited) {
-            // Full resolution: crystal-clear, uncompressed visual fidelity with zero shrink artifacts
-            int cw = Math.round(w * OVERSIZE), ch = Math.round(h * OVERSIZE);
-            Bitmap cache = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888);
-            Canvas cc = new Canvas(cache);
-            cc.scale(cw / (float) w, ch / (float) h);
-            drawBase(cc, w, h, false);
-            headerShade(cc, w, h);
-            baseCache = cache;
-        } else {
-            baseCache = null;
-        }
+    private int rebuildGen;
+    private volatile boolean rebuilding;
+    private static final java.util.concurrent.ExecutorService builder = java.util.concurrent.Executors.newSingleThreadExecutor(r -> new Thread(r, "cinetv-room"));
+
+    /**
+     * The room's cached backdrop and its blurred copy, built off the main thread (it held start-up for half a second);
+     * until they are ready the same room is drawn live, so nothing on screen changes when they arrive.
+     */
+    private void rebuild(final int w, final int h) {
+        final int g = ++rebuildGen;
+        rebuilding = true;
+        final boolean wantPattern = theme.signaturePattern && !theme.pureBlack && pattern == null;
+        final boolean comp = composited;
+        builder.execute(() -> {
+            Bitmap pat = wantPattern ? buildPattern(w, h) : null;
+            int down = PerformanceProfile.blurDownscale(getContext());
+            Bitmap small = Bitmap.createBitmap(Math.max(8, w / down), Math.max(8, h / down), Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(small);
+            c.scale(small.getWidth() / (float) w, small.getHeight() / (float) h);
+            drawBase(c, w, h, false);
+            final Bitmap blur = Blur.stack(small, 6);
+            Bitmap cache = null;
+            if (comp) {
+                // Full resolution: crystal-clear, uncompressed visual fidelity with zero shrink artifacts
+                int cw = Math.round(w * OVERSIZE), ch = Math.round(h * OVERSIZE);
+                cache = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888);
+                Canvas cc = new Canvas(cache);
+                cc.scale(cw / (float) w, ch / (float) h);
+                drawBase(cc, w, h, false);
+                headerShade(cc, w, h);
+            }
+            final Bitmap done = cache;
+            post(() -> {
+                if (g != rebuildGen) return;
+                rebuilding = false;
+                if (pat != null) pattern = pat;
+                blurred = blur;
+                baseCache = done;
+                invalidate();
+            });
+        });
     }
 
     // ---- focus light & parallax -----------------------------------------------------------------
@@ -226,6 +247,9 @@ public class SpatialEnvironment extends View {
                 patternPaint.setAlpha(light ? 18 : 28);
                 canvas.drawBitmap(pattern, px - pxPad(), py - pxPad(), patternPaint);
             }
+        } else if (rebuilding) {
+            // the backdrop is being built off the main thread (it shares these paints): black for that moment
+            canvas.drawColor(Color.BLACK);
         } else {
             drawBase(canvas, w, h, true);
             headerShade(canvas, w, h);

@@ -215,9 +215,9 @@ public final class MemoryOptimizer {
                         "sysctl -w vm.vfs_cache_pressure=100 2>/dev/null; " +
                         "setprop sys.sysctl.extra_free_kbytes 24300 2>/dev/null; " +
                         "setprop persist.sys.fw.trim_empty_apps true 2>/dev/null; " +
-                        "setprop persist.sys.fw.empty_app_percent 50 2>/dev/null; " +
-                        "pm trim-caches 200M 2>/dev/null; " +
-                        "sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null", 4000);
+                        "setprop persist.sys.fw.empty_app_percent 50 2>/dev/null", 4000);
+                // (no "pm trim-caches" / "drop_caches" any more: they wiped every app's cache, CineTV's posters included,
+                // and the system's file cache, so after each start everything loaded again from slow flash)
             } catch (Throwable ignored) {
             }
         }, "cinetv-tv-opt").start();
@@ -227,7 +227,7 @@ public final class MemoryOptimizer {
     public static void applyVirtualRamProperties(Context ctx) {
         final Context app = ctx.getApplicationContext();
         try {
-            LocalAdb.shell(app, "sync; echo 3 > /proc/sys/vm/drop_caches 2>/dev/null; sysctl -w vm.swappiness=80 2>/dev/null; am trim-memory com.cinetv.launcher RUNNING_MODERATE 2>/dev/null", 2000);
+            LocalAdb.shell(app, "sysctl -w vm.swappiness=80 2>/dev/null; am trim-memory com.cinetv.launcher RUNNING_MODERATE 2>/dev/null", 2000);
         } catch (Throwable ignored) {
         }
     }

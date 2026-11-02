@@ -71,7 +71,9 @@ public final class RelayHost {
         final Context a = ctx.getApplicationContext();
         long used = Prefs.get(a).getLong(USED_AT, 0);
         boolean recent = System.currentTimeMillis() - used < 14L * 24 * 3600_000L;
-        if (recent || !com.cinetv.launcher.device.PerformanceProfile.lowMemory(a)) main.postDelayed(() -> start(a), 40_000);
+        // well after the TV's own boot (a browser engine is the heaviest thing CineTV starts)
+        long wait = Math.max(40_000L, 180_000L - android.os.SystemClock.elapsedRealtime());
+        if (recent || !com.cinetv.launcher.device.PerformanceProfile.lowMemory(a)) main.postDelayed(() -> start(a), wait);
     }
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})

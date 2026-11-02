@@ -453,9 +453,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
         try {
             MemoryOptimizer.ensureAirPlayReceiver(this);
         } catch (Throwable ignored) {}
-        try {
-            MemoryOptimizer.applyTvOptimizations(this);
-        } catch (Throwable ignored) {}
+        // (the memory tuning is a setup step now: HomeGuard runs it once per version, after the TV has started)
         try {
             com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
         } catch (Throwable t) {
@@ -548,10 +546,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
                     // straight to it, so the key never reaches CineTV): close it at once and open Gamze instead.
                     performGlobalAction(GLOBAL_ACTION_BACK);
                     DeviceTweaks.pauseMedia(this);
-                    if ("com.google.android.katniss".equals(pkg)) {
-                        // the TV's voice service lets go of the microphone immediately when stopped (it restarts on its own)
-                        new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(this, "am force-stop com.google.android.katniss 2>/dev/null", 800)).start();
-                    }
+                    // (katniss is no longer force-stopped here: on Google TV the same app can serve speech recognition,
+                    // and stopping it left Gamze's microphone deaf. The assistant is taken over instead: HomeGuard.)
                     startActivity(new Intent(this, MainActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
                     handler.postDelayed(() -> startActivity(new Intent(this, MainActivity.class)

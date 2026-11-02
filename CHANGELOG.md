@@ -1,5 +1,21 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.30
+
+- **Google Asistan tamamen devre dışı, mikrofon Gamze'de:**
+  - CineTV, TV'nin asistan rolünü alıyor; Google TV'nin asistan uygulaması (katniss) yalnızca konuşma tanıma başka bir yerden (Google TTS) geliyorsa kapatılıyor.
+  - Kumandanın ses tuşu artık doğrudan Gamze'yi açıyor; Google'ın asistanı hiç devreye girmiyor.
+  - Konuşma anlaşılmıyordu: 1.0.0.27'deki "asistanı durdur" adımı, Google TV'de konuşma tanımayı da yürüten uygulamayı durdurup mikrofonu sağır bırakıyordu. Artık hiçbir şey durdurulmuyor; tanıma Türkçe çevrimiçi ve çevrimdışı motorla başlıyor.
+  - "CineTV'yi yok et" her şeyi eski haline getiriyor.
+- **Açılış hızı:**
+  - Her açılışta bütün uygulamaların önbelleği (CineTV'nin afişleri dahil) ve sistemin dosya önbelleği siliniyordu; açılıştan sonra her şey yavaş depolamadan yeniden yükleniyordu. Bu kaldırıldı.
+  - Kurulum adımları (adb izinleri, Nuvio kontrolü, bellek ayarı) artık her açılışta değil, sürüm başına bir kez ve TV açıldıktan 90 saniye sonra yapılıyor.
+  - TV'nin kendi tuner uygulaması açılışta ve her Ana Sayfa dönüşünde kapatılıyor, TV onu her seferinde baştan başlatıyordu. Artık yalnızca gerçekten ekranı aldığında kapatılıyor.
+  - Açılışta CineTV dört kez başlatılıyordu; artık bir kez ve bir yedek.
+  - Telefon kumandası sunucusu, tuş köprüsü ve sesler açılıştan sonraya, telefonun ağ dışı bağlantısı ise açılıştan en az 3 dakika sonraya bırakılıyor.
+  - Uygulama kutucuklarının görselleri ve odanın arka planı artık ana iş parçacığında değil, arka planda hazırlanıyor.
+  - Açılış animasyonu oynarken arkasındaki Ana Sayfa çizilmiyor; her açılış karesi artık yalnızca animasyonun kendisi.
+
 ## 1.0.0.29
 
 - **Açılış (ek düzeltmeler):**

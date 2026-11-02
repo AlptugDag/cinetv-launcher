@@ -39,6 +39,22 @@ public final class HomeGuard {
             if (system != null) system.uncaughtException(thread, error);
         });
         new Thread(() -> {
+            // Not while the TV itself is still starting (it competed with the TV's own boot), and once per version
+            // unless something is missing (CineTV not Home): these are setup steps, not start-up steps.
+            long sinceBoot = SystemClock.elapsedRealtime();
+            if (sinceBoot < 90_000L) {
+                try {
+                    Thread.sleep(90_000L - sinceBoot);
+                } catch (InterruptedException ignored) {
+                }
+            }
+            int version = 0;
+            try {
+                version = (int) app.getPackageManager().getPackageInfo(app.getPackageName(), 0).versionCode;
+            } catch (Throwable ignored) {
+            }
+            android.content.SharedPreferences p = Prefs.get(app);
+            if (p.getInt("setup_done_version", 0) == version && isDefault(app)) return;
             ensureDefault(app);
             // installed from the APK alone: Nuvio and its addons come too, plus virtual RAM / zRAM optimization
             if (com.cinetv.launcher.service.Prefs.get(app).getBoolean("nuvio_install_allowed", true)) {
@@ -47,6 +63,7 @@ public final class HomeGuard {
                 com.cinetv.launcher.device.NuvioSetup.allowSelfUpdate(app);
             }
             com.cinetv.launcher.device.MemoryOptimizer.applyTvOptimizations(app);
+            p.edit().putInt("setup_done_version", version).apply();
         }, "cinetv-home").start();
     }
 
@@ -126,8 +143,21 @@ public final class HomeGuard {
     /** Set when the takeover has run; cleared never (restoring the launchers is the viewer's choice). */
     public static final String TAKEOVER_DONE = "home_takeover_done";
 
+    /**
+     * The remote's microphone comes to Gamze, never to Google's assistant: CineTV takes the assistant role, and Google
+     * TV's assistant app (katniss) is switched off for the user, but only when the speech recognition Gamze listens with
+     * lives elsewhere (Google TTS), so the microphone keeps working. "CineTV'yi yok et" switches it back on.
+     */
+    static String assistantCommands(String pkg) {
+        return "cmd role add-role-holder --user 0 android.app.role.ASSISTANT " + pkg + " 0 2>/dev/null; "
+                + "settings put secure assistant '' 2>/dev/null; settings put secure voice_interaction_service '' 2>/dev/null; "
+                + "case \"$(settings get secure voice_recognition_service)\" in com.google.android.katniss*) ;; "
+                + "*) pm disable-user --user 0 com.google.android.katniss >/dev/null 2>&1 && settings put global cinetv_katniss_off 1 ;; esac; ";
+    }
+
     private static String homeCommands(String pkg) {
-        return "cmd role add-role-holder --user 0 android.app.role.HOME " + pkg + " 2>/dev/null; "
+        return assistantCommands(pkg)
+                + "cmd role add-role-holder --user 0 android.app.role.HOME " + pkg + " 2>/dev/null; "
                 + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity 2>/dev/null; "
                 + "cmd package set-home-activity --user current " + pkg + "/.MainActivity 2>/dev/null; "
                 + "cmd package set-home-activity " + pkg + "/.MainActivity 2>/dev/null; ";

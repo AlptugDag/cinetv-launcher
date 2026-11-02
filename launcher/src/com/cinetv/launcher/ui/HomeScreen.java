@@ -1125,6 +1125,7 @@ public class HomeScreen {
     public boolean skipSplash() {
         if (splash == null || splash.getVisibility() != View.VISIBLE || splash.getAlpha() < 0.05f) return false;
         splash.animate().cancel();
+        revealUnderSplash();
         splash.animate().alpha(0f).setStartDelay(0).setDuration(180).withEndAction(() -> splash.setVisibility(View.GONE)).start();
         return true;
     }
@@ -1193,6 +1194,7 @@ public class HomeScreen {
         splash.removeCallbacks(splashSheenAgain);
         if (splash.getVisibility() != View.VISIBLE) return;
         splash.animate().cancel();
+        revealUnderSplash();
         splash.animate().alpha(0f).setStartDelay(0).setDuration(300).withEndAction(() -> splash.setVisibility(View.GONE)).start();
     }
 
@@ -1244,9 +1246,31 @@ public class HomeScreen {
         return beat;
     }
 
+    /** Views of Home hidden while the opening covers them (Android draws covered views too: each opening frame was all of Home). */
+    private final java.util.List<View> underSplash = new java.util.ArrayList<>();
+
+    private void hideUnderSplash() {
+        if (!underSplash.isEmpty()) return;
+        for (int i = 0; i < root.getChildCount(); i++) {
+            View v = root.getChildAt(i);
+            if (v == splash || v.getVisibility() != View.VISIBLE) continue;
+            v.setVisibility(View.INVISIBLE); // still laid out (covers keep baking), just not drawn
+            underSplash.add(v);
+        }
+    }
+
+    private void revealUnderSplash() {
+        for (View v : underSplash) if (v.getVisibility() == View.INVISIBLE) v.setVisibility(View.VISIBLE);
+        underSplash.clear();
+        root.post(() -> {
+            if (root.findFocus() == null && shelf != null) shelf.requestFocus();
+        });
+    }
+
     public void showSplash() {
         splash.setVisibility(View.VISIBLE);
         splash.setAlpha(1f);
+        hideUnderSplash();
         final View aura = splash.getChildAt(0);
         final SplashLogoLayout col = (SplashLogoLayout) splash.getChildAt(1);
         final View mark = col.getChildAt(0);
@@ -1308,6 +1332,7 @@ public class HomeScreen {
             return;
         }
         splash.animate().alpha(0f).setStartDelay(650).setDuration(250)
+                .withStartAction(this::revealUnderSplash)
                 .withEndAction(() -> {
                     heartbeat.cancel();
                     sheenAnim.cancel();

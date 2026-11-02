@@ -41,17 +41,22 @@ public class CineTvApp extends Application {
         // An update that changes the remote-button service's capabilities makes Android switch it off:
         // switch it back on (CineTV holds WRITE_SECURE_SETTINGS).
         DeviceTweaks.ensureKeyService(this);
-        com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
-        com.cinetv.launcher.device.NightCare.start(this);
-        com.cinetv.launcher.device.SystemAudio.warmUp(this);
-        new Thread(() -> com.cinetv.launcher.remote.KeyBridge.warmUp(this), "cinetv-keys").start();
+        // The phone link, the key bridge and the sounds are not needed for the first picture: during the TV's own boot
+        // they wait 20 s (the home screen and the remote come first); otherwise they start at once.
+        final boolean booting = SystemClock.elapsedRealtime() < 120_000L;
+        Handler later = new Handler(Looper.getMainLooper());
+        later.postDelayed(() -> {
+            com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
+            com.cinetv.launcher.device.NightCare.start(this);
+            com.cinetv.launcher.device.SystemAudio.warmUp(this);
+            new Thread(() -> com.cinetv.launcher.remote.KeyBridge.warmUp(this), "cinetv-keys").start();
+        }, booting ? 20_000L : 0L);
         if (SystemClock.elapsedRealtime() > DeviceTweaks.BOOT_GUARD_MS || com.cinetv.launcher.device.Uninstaller.isRemoving(this)) return;
         Handler h = new Handler(Looper.getMainLooper());
         for (long delay : BOOT_RESCUES_MS) {
             h.postDelayed(() -> {
                 if (!DeviceTweaks.isUnwantedBootTuner() || MainActivity.isInFront()) return;
                 try {
-                    com.cinetv.launcher.remote.LocalAdb.shell(this, "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null; am force-stop com.arcelik.smartremoteservice 2>/dev/null", 300);
                     startActivity(new Intent(this, MainActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
                 } catch (Throwable ignored) {

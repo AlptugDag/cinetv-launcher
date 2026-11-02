@@ -156,8 +156,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (older != null && older != this && !older.isFinishing()) older.finish();
         instance = this;
         super.onCreate(savedInstanceState);
-        // Suppress OEM MediaTek/Arçelik TV tuner window immediately on boot before its window can display
-        background(() -> com.cinetv.launcher.remote.LocalAdb.shell(this, "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.mediatek.tv.oneworld.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null; am force-stop com.google.android.tv.dtvprovider 2>/dev/null", 500));
+        // (the TV's tuner apps are no longer force-stopped at every start: the TV restarts them at once, the heaviest
+        // start there is on a MediaTek TV; they are stopped only when one has actually taken the screen, below)
         getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.BLACK));
         overridePendingTransition(0, 0);
         UiKit.init(this);
@@ -351,7 +351,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (android.os.Build.VERSION.SDK_INT >= 24) getWindow().addOnFrameMetricsAvailableListener((window, metrics, dropped) ->
                 PerformanceProfile.noteLiveFrame(metrics.getMetric(android.view.FrameMetrics.TOTAL_DURATION)), frameMetricsHandler());
         TvWebRemoteServer.setController(this);
-        TvWebRemoteServer.start(this);
+        // during the TV's own boot the phone link waits (CineTvApp starts it 20 s later); otherwise at once
+        if (android.os.SystemClock.elapsedRealtime() > 120_000L) TvWebRemoteServer.start(this);
         com.cinetv.launcher.party.CinePartyManager.get(this).addListener(partyLauncher);
         AppUpdater.checkAndAutoUpdateOnBoot(this);
         MemoryOptimizer.ensureAirPlayReceiver(this);
@@ -469,12 +470,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         homeLeftAt = 0;
         if (!freshPending && away >= AWAY_FOR_NEW_SHELF_MS) startFreshShelf(true);
         else if (!freshPending && android.os.SystemClock.elapsedRealtime() - lastShelfAt > AI_SHELF_EVERY_MS && shelfIsStale()) refreshShelf();
-        // Suppress unwanted OEM TV tuner attempting to steal focus
-        background(() -> {
-            if (DeviceTweaks.isUnwantedTuner()) {
-                LocalAdb.shell(this, "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.mediatek.tv.oneworld.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null", 500);
-            }
-        });
         handler.postDelayed(() -> {
             TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
             String currentPkg = svc != null ? svc.getLastPackage() : null;
@@ -768,7 +763,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         else if ("changelog".equals(action)) handler.postDelayed(() -> Panels.changelog(this, home.modal), 300);
         else if ("voice".equals(action) || android.content.Intent.ACTION_ASSIST.equals(action)
                 || android.content.Intent.ACTION_VOICE_COMMAND.equals(action) || android.content.Intent.ACTION_SEARCH_LONG_PRESS.equals(action)
-                || "android.intent.action.VOICE_ASSIST".equals(action)) {
+                || "android.intent.action.VOICE_ASSIST".equals(action) || "android.speech.action.WEB_SEARCH".equals(action)
+                || "android.speech.action.VOICE_SEARCH_HANDS_FREE".equals(action)) {
             // The system's own assistant and search entry points come to Gamze too (when CineTV is chosen for them).
             voiceFrom = intent.getStringExtra("from");
             wasLaunchedForVoice = true;
