@@ -3,7 +3,7 @@
 ## 1.0.0.41
 
 - **CineSUB'nin kendiliğinden notları akıllı ve yeniden açık:** TV, ekrana 15 saniyede bir (düşük bellekli TV'de 30 saniyede bir) kendisi bakıyor; bu bakış yapay zekâya hiç sorgu göndermiyor. Yapay zekâya sadece sahne değiştiğinde ya da yeni bir altyazı satırı çıktığında soruluyor. Böylece önemli anlarda notlar daha sık geliyor, durgun anlarda hiç sorgu harcanmıyor.
-- **Kota korunuyor:** İki sorgu arasında en az 40 saniye (düşük bellekli TV'de 90 saniye) var; üst üste boş çıkan bakışlarda bu süre 6 dakikaya kadar uzuyor, ilginç bir şey bulununca kısalıyor. Ücretsiz Gemini anahtarında kendiliğinden notlar günde en fazla 12 sorgu kullanıyor, kalan hak sarı tuşa kalıyor.
+- **Kota korunuyor:** İki sorgu arasında en az 40 saniye (düşük bellekli TV'de 90 saniye) var; üst üste boş çıkan bakışlarda bu süre 6 dakikaya kadar uzuyor, ilginç bir şey bulununca kısalıyor. Kendiliğinden notlar sadece Flash-Lite'ı kullanıyor (günlük ücretsiz hakkı geniş) ve günde en fazla 300 sorgu yapıyor; Flash'ın küçük günlük hakkı tamamen sarı tuşa kalıyor. Anahtarın ücretli ya da ücretsiz olmasına bakılmıyor, herkes için aynı.
 
 ## 1.0.0.40
 

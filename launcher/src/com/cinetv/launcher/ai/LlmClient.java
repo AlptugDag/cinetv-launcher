@@ -289,6 +289,14 @@ public final class LlmClient {
      * Blocking; uses the fast model, falling back once like {@link #generate}.
      */
     public static Result vision(Context ctx, String system, String user, byte[] jpeg, int maxTokens) {
+        return vision(ctx, system, user, jpeg, maxTokens, false);
+    }
+
+    /**
+     * {@code liteOnly}: Gemini's Flash-Lite models only (CineSUB's unprompted notes), so they never spend the
+     * small daily Flash quota the yellow key relies on.
+     */
+    public static Result vision(Context ctx, String system, String user, byte[] jpeg, int maxTokens, boolean liteOnly) {
         String key = SecretStore.get(ctx, SecretStore.AI_KEY);
         if (key == null || key.isEmpty()) return new Result(false, ctx.getString(R.string.ai_err_no_key), 401);
         String provider = providerFor(key);
@@ -298,6 +306,7 @@ public final class LlmClient {
         if (compat != null) models = new String[]{compat[2], compat[4]};
         else if (PROVIDER_CLAUDE.equals(provider)) models = new String[]{FAST_CLAUDE_MODEL, DEFAULT_CLAUDE_MODEL};
         // Each model has its own per-minute quota: a busy one (429) hands over to the next instead of giving up.
+        else if (liteOnly) models = new String[]{"gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"};
         else models = new String[]{"gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"};
         Result r = null;
         for (String model : models) {

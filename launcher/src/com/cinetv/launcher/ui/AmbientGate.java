@@ -72,9 +72,13 @@ final class AmbientGate {
         return Math.min(360_000L, gap);
     }
 
-    /** Requests the unprompted notes may use today: a free Gemini key keeps most of its small daily quota for the yellow key. */
-    static int dailyCap(boolean freeGemini) {
-        return freeGemini ? 12 : 120;
+    /**
+     * Requests the unprompted notes may use today, for every key alike (whether a key is paid can't be seen). They ask
+     * Flash-Lite only, whose free daily quota is large, so Flash's small one stays for the yellow key; a spent quota
+     * stops them for the day anyway (LlmClient.quotaOut).
+     */
+    static int dailyCap() {
+        return 300;
     }
 
     static int usedToday(SharedPreferences p, long nowMs) {

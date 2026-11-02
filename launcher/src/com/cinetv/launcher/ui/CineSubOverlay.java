@@ -187,14 +187,11 @@ public final class CineSubOverlay {
                 int[] sig = AmbientGate.signature(jpeg);
                 lastAmbientAt = SystemClock.elapsedRealtime();
                 if (!AmbientGate.changed(askedSig, sig)) return;
-                // 2. the budget: a short pause after each request (longer after empty ones) and a daily cap that
-                // leaves the yellow key its own requests on a free key
+                // 2. the budget: a short pause after each request (longer after empty ones) and a daily cap
                 long nowMs = System.currentTimeMillis();
                 android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(app);
-                boolean freeGemini = com.cinetv.launcher.ai.LlmClient.PROVIDER_GEMINI.equals(com.cinetv.launcher.ai.LlmClient.providerFor(
-                        com.cinetv.launcher.service.SecretStore.get(app, com.cinetv.launcher.service.SecretStore.AI_KEY)));
                 if (lastAskedAt > 0 && SystemClock.elapsedRealtime() - lastAskedAt < AmbientGate.minGapMs(PerformanceProfile.lowMemory(app), emptyInARow)) return;
-                if (AmbientGate.usedToday(p, nowMs) >= AmbientGate.dailyCap(freeGemini)) return;
+                if (AmbientGate.usedToday(p, nowMs) >= AmbientGate.dailyCap()) return;
                 askedSig = sig;
                 lastAskedAt = SystemClock.elapsedRealtime();
                 AmbientGate.noteRequest(p, nowMs);

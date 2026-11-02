@@ -244,7 +244,7 @@ public final class SceneInspector {
                 + "with box in 0-1000 screen coordinates. The box must enclose exactly that one thing and nothing else: the painting's frame, "
                 + "the plate, the building's facade, the car's body, the cameo's face and shoulders; never a whole region, never a box around "
                 + "several things. If you cannot place it precisely, leave box empty rather than guess.";
-        LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, ambient ? 750 : 1200);
+        LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, ambient ? 750 : 1200, ambient);
         if (!r.success) {
             scene.error = r.text;
             return scene;
