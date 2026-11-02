@@ -106,7 +106,18 @@ public final class HomeLaunchers {
         StringBuilder cmd = new StringBuilder();
         for (String p : list) cmd.append("pm enable ").append(p).append(" 2>/dev/null; ");
         cmd.append("for l in com.google.android.tvlauncher com.google.android.apps.tv.launcherx com.google.android.leanbacklauncher; do pm enable $l 2>/dev/null; done; ");
-        cmd.append("pm clear-package-preferred-activities ").append(ctx.getPackageName()).append(" 2>/dev/null");
+        cmd.append("pm clear-package-preferred-activities ").append(ctx.getPackageName()).append(" 2>/dev/null; ");
+        // the TV's own launcher Home again: CineTV gives up the Home role, the first launcher it switched off takes it
+        cmd.append("cmd role remove-role-holder --user 0 android.app.role.HOME ").append(ctx.getPackageName()).append(" 2>/dev/null; ");
+        String stock = list.isEmpty() ? null : list.get(0);
+        for (String l : new String[]{"com.google.android.apps.tv.launcherx", "com.google.android.tvlauncher", "com.google.android.leanbacklauncher"}) {
+            if (stock == null) try { ctx.getPackageManager().getPackageInfo(l, 0); stock = l; } catch (Throwable ignored) {}
+        }
+        if (stock != null) {
+            cmd.append("cmd role add-role-holder --user 0 android.app.role.HOME ").append(stock).append(" 2>/dev/null; ");
+            cmd.append("h=$(cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME ")
+                    .append(stock).append(" 2>/dev/null | tail -1); [ -n \"$h\" ] && cmd package set-home-activity --user 0 \"$h\" 2>/dev/null");
+        }
         boolean ok = LocalAdb.shell(ctx, cmd.toString(), 8000);
         if (!ok) return false;
         for (String p : list) if (!isPackageEnabled(ctx, p)) return false;

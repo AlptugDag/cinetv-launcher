@@ -1,5 +1,10 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.33
+
+- **Tam kontrol yeniden varsayılan:** CineTV, TV'nin Ana Ekran rolünü alıyor ve diğer başlatıcıları bir kez kapatıyor; "Hangisini seçmek istersiniz?" sorusu kendiliğinden çıkmıyor (1.0.0.32'de bu yalnızca Ayarlar'dan seçilebiliyordu).
+- **"CineTV'yi yok et" her şeyi geri alıyor:** Kapatılan başlatıcılar geri açılıyor, CineTV Ana Ekran rolünü bırakıyor ve TV'nin kendi başlatıcısı yeniden varsayılan Ana Ekran oluyor. Google Asistan ve asistan rolü de CineTV'den önceki hâline dönüyor. Bunlar geri gelmezse kaldırma işlemi durup bildiriyor.
+
 ## 1.0.0.32
 
 - **Nuvio'dayken CineTV kendini baştan başlatmıyor:** 1,3 GB'lık TV'de Nuvio izlerken bellek bitince Android sırayla Nuvio'yu ve CineTV'yi kapatıyordu, Ana Sayfa da kendiliğinden geri geliyordu. Bellek darlaştığında ve CineTV ekranda değilken telefon kumandasının tarayıcı motoru (~100 MB) ile raf görselleri bırakılıyor; Ana Sayfa'ya dönünce geri geliyor.
