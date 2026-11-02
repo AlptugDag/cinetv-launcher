@@ -116,6 +116,21 @@ public final class MemoryOptimizer {
         }, "cinetv-sweep").start();
     }
 
+    private static volatile long lastAirPlaySetup;
+
+    /** The package has a live process (its receiver/service is up). */
+    private static boolean isRunning(Context app, String pkg) {
+        try {
+            android.app.ActivityManager am = (android.app.ActivityManager) app.getSystemService(Context.ACTIVITY_SERVICE);
+            if (am == null) return false;
+            for (android.app.ActivityManager.RunningServiceInfo s : am.getRunningServices(200)) {
+                if (s.service != null && pkg.equals(s.service.getPackageName())) return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
     public static void ensureAirPlayReceiver(Context ctx) {
         final Context app = ctx.getApplicationContext();
         try {
@@ -139,10 +154,20 @@ public final class MemoryOptimizer {
         } catch (Throwable ignored) {
         }
 
+        // The adb part starts some eight Android command processes: it ran from eight places (every Home return, the
+        // key service, a timer), about every 30 s all day, and during the TV's own boot. Now: not in the first two
+        // minutes after boot, at most once every 30 minutes, and never while the receiver is already running.
+        long up = android.os.SystemClock.elapsedRealtime();
+        if (up < 120_000L || (lastAirPlaySetup > 0 && up - lastAirPlaySetup < 30 * 60_000L)) return;
         PackageManager pm = app.getPackageManager();
         for (String pkg : AIRPLAY_RECEIVERS) {
             try {
                 pm.getPackageInfo(pkg, 0);
+                if (isRunning(app, pkg)) {
+                    lastAirPlaySetup = up;
+                    return;
+                }
+                lastAirPlaySetup = up;
                 // Keep AirPlay service permanently active via local ADB (bypasses non-exported service restriction)
                 new Thread(() -> {
                     String setupCmd = "cmd deviceidle whitelist +" + pkg + " 2>/dev/null; "

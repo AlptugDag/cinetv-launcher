@@ -15,6 +15,7 @@
   - Telefon kumandası sunucusu, tuş köprüsü ve sesler açılıştan sonraya, telefonun ağ dışı bağlantısı ise açılıştan en az 3 dakika sonraya bırakılıyor.
   - Uygulama kutucuklarının görselleri ve odanın arka planı artık ana iş parçacığında değil, arka planda hazırlanıyor.
   - Açılış animasyonu oynarken arkasındaki Ana Sayfa çizilmiyor; her açılış karesi artık yalnızca animasyonun kendisi.
+  - AirPlay alıcısını açık tutan adım her Ana Sayfa dönüşünde ve bir zamanlayıcıyla yaklaşık 30 saniyede bir, her seferinde sekiz kadar Android komut işlemi başlatıyordu (açılış sırasında da). Artık açılıştan iki dakika sonra, en fazla yarım saatte bir ve yalnızca alıcı çalışmıyorsa yapılıyor. Boşta TV'de artık hiç komut işlemi başlamıyor.
 
 ## 1.0.0.29
 
