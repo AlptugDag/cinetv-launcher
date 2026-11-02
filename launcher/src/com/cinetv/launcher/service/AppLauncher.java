@@ -272,17 +272,17 @@ public final class AppLauncher {
      * could land on "watched" or "+"), which opens the film's sources or plays it, per the viewer's Nuvio settings.
      * Tries for up to 15 seconds, then leaves the page as it is.
      */
-    private static void pressPlayWhenReady(final Context app, final long startedAt, final boolean series) {
+    private static void pressPlayWhenReady(final Context app, final long startedAt, final boolean series, final boolean preferResume) {
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
             com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
-            boolean clicked = !com.cinetv.launcher.MainActivity.foreground && svc != null && svc.clickNuvioPlay(series);
+            boolean clicked = !com.cinetv.launcher.MainActivity.foreground && svc != null && svc.clickNuvioPlay(series, preferResume);
             if (clicked) android.util.Log.i("CineTvPlay", (series ? "Series: resumed or episode list" : "Oynat") + " on Nuvio's title page");
-            if (!clicked && System.currentTimeMillis() - startedAt < 15_000) pressPlayWhenReady(app, startedAt, series);
+            if (!clicked && System.currentTimeMillis() - startedAt < 15_000) pressPlayWhenReady(app, startedAt, series, preferResume);
         }, 800);
     }
 
     public static boolean openInNuvio(Context ctx, String title, String imdbId, String type, String posterUrl) {
-        return openInNuvio(ctx, title, imdbId, 0, type, posterUrl);
+        return openInNuvio(ctx, title, imdbId, 0, type, posterUrl, false);
     }
 
     /**
@@ -291,6 +291,12 @@ public final class AppLauncher {
      * Nuvio's home screen.
      */
     public static boolean openInNuvio(Context ctx, String title, String imdbId, int tmdbId, String type, String posterUrl) {
+        return openInNuvio(ctx, title, imdbId, tmdbId, type, posterUrl, false);
+    }
+
+    /** Opens a title and selects Nuvio's resume action first only for CineTV's Continue Watching card. */
+    public static boolean openInNuvio(Context ctx, String title, String imdbId, int tmdbId, String type,
+                                      String posterUrl, boolean preferResume) {
         if ((imdbId == null || !imdbId.startsWith("tt")) && tmdbId > 0 && !"tv".equals(type) && !"channel".equals(type)) imdbId = "tmdb:" + tmdbId;
         if ((title != null && "sessiz".equals(Creator.fold(title))) || "tt38983576".equals(imdbId)) {
             return openYouTubeVideo(ctx, Creator.SESSIZ_YOUTUBE_URL);
@@ -316,7 +322,7 @@ public final class AppLauncher {
             if (targetPkg != null) open.setPackage(targetPkg);
             open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             if (start(ctx, open)) {
-                pressPlayWhenReady(ctx.getApplicationContext(), System.currentTimeMillis(), "series".equals(kind));
+                pressPlayWhenReady(ctx.getApplicationContext(), System.currentTimeMillis(), "series".equals(kind), preferResume);
                 return true;
             }
             Intent detail = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/" + kind + "/" + imdbId));

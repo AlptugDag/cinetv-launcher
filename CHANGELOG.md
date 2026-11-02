@@ -1,5 +1,10 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.36
+
+- **DVD kutusundan Nuvio oynatma davranışı geri geldi:** OK, normal filmde önce Nuvio'nun "Oynat" düğmesine basar; oynatma mı kaynak seçimi mi olacağını Nuvio ayarı belirler. "Kaldığın yerden" kartı ise 1.0.0.35'teki gibi devam düğmesini önceliklendirir.
+- **Ayarlar menüsü:** En üstteki tıklanabilir kategori kısayolları kaldırıldı.
+
 ## 1.0.0.35
 
 - **Kaldığın yerden doğrudan devam ediyor:** Karta basınca DVD kutusu açılmıyor, film doğrudan açılıyor. Nuvio'da CineTV "Devam Et" düğmesine (dizide sıradaki bölümün düğmesine) kendisi basıyor ve Nuvio kendi kaydettiği dakikadan devam ediyor; AlptugPlayer CineTV'nin kaydettiği dakikadan devam ediyor.

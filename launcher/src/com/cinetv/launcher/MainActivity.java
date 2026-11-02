@@ -315,7 +315,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // button (Nuvio resumes from its own saved minute); AlptugPlayer resumes from the minute CineTV saved.
         home.continueCard.setOnClickListener(v -> {
             com.cinetv.launcher.service.WatchHistory.Entry e = home.continueCard.entry();
-            if (e != null) launchFilm(e.movie);
+            if (e != null) launchFilm(e.movie, true);
         });
         home.continueCard.setOnLongClickListener(v -> {
             com.cinetv.launcher.service.WatchHistory.Entry e = home.continueCard.entry();
@@ -1836,8 +1836,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     public void launchFilm(final Movie m) {
+        launchFilm(m, false);
+    }
+
+    private void launchFilm(final Movie m, final boolean preferResume) {
         com.cinetv.launcher.service.WatchHistory.noteLaunch(this, m);
-        doLaunchFilm(m);
+        doLaunchFilm(m, preferResume);
     }
 
     private Movie preloadFor;
@@ -1856,6 +1860,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     };
 
     public void doLaunchFilm(final Movie m) {
+        doLaunchFilm(m, false);
+    }
+
+    private void doLaunchFilm(final Movie m, final boolean preferResume) {
         if (m == null) return;
         // Without its IMDb id Nuvio could only be opened on its home: look the id up first.
         if ((m.imdbId == null || !m.imdbId.startsWith("tt")) && m.tmdbId > 0 && !m.imdbLookupTried) {
@@ -1864,11 +1872,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             background(() -> {
                 String id = MovieCatalog.imdbFor(app, m.tmdbId, m.type);
                 if (id != null && id.startsWith("tt")) m.imdbId = id;
-                ui(() -> doLaunchFilm(m));
+                ui(() -> doLaunchFilm(m, preferResume));
             });
             return;
         }
-        boolean ok = AppLauncher.openInNuvio(this, m.title, m.imdbId, m.tmdbId, m.type, m.posterUrl);
+        boolean ok = AppLauncher.openInNuvio(this, m.title, m.imdbId, m.tmdbId, m.type, m.posterUrl, preferResume);
         if (!ok) {
             showNuvioNotFoundDialog(m);
         } else {

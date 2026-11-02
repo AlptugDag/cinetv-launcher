@@ -103,6 +103,14 @@ public class LogicTest {
     }
 
     @Test
+    public void dvdPlaybackUsesNuviosPlayActionWhileContinueCardPrefersResume() {
+        assertEquals("Oynat", TvKeyInterceptorService.filmPlayLabels(false)[0]);
+        assertEquals("Play", TvKeyInterceptorService.filmPlayLabels(false)[1]);
+        assertEquals("İzlemeye Devam Et", TvKeyInterceptorService.filmPlayLabels(true)[0]);
+        assertTrue(java.util.Arrays.asList(TvKeyInterceptorService.filmPlayLabels(true)).contains("Oynat"));
+    }
+
+    @Test
     public void searchWordsAreStrippedFromShelfNames() {
         assertEquals("Nuri Bilge Ceylan", MovieAssistant.cleanShelfName("Nuri Bilge Ceylan filmleri"));
         assertEquals("Denis Villeneuve", MovieAssistant.cleanShelfName("best of Denis Villeneuve movies"));

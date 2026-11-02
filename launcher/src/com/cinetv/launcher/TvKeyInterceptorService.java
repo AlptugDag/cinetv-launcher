@@ -203,6 +203,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
      * instead of starting S1E1 ("Oynat" is never pressed for a series). True once done.
      */
     public boolean clickNuvioPlay(boolean series) {
+        return clickNuvioPlay(series, false);
+    }
+
+    public boolean clickNuvioPlay(boolean series, boolean preferResume) {
         try {
             // The active window can be CineTV's own signature overlay drawn over Nuvio: look through every window.
             android.view.accessibility.AccessibilityNodeInfo root = null;
@@ -221,8 +225,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
             android.graphics.Rect screen = new android.graphics.Rect();
             root.getBoundsInScreen(screen);
             if (series) return seriesButton(root);
-            // resume first: a film with a saved minute shows "Devam Et" beside "Oynat" (which would start from the beginning)
-            String[] labels = new String[]{"İzlemeye Devam Et", "Devam Et", "Kaldığın Yerden Devam Et", "Resume", "Continue", "Oynat", "Play"};
+            String[] labels = filmPlayLabels(preferResume);
             for (String label : labels) {
                 // Compose text is not always returned by findAccessibilityNodeInfosByText: walk the tree.
                 java.util.List<android.view.accessibility.AccessibilityNodeInfo> found = new java.util.ArrayList<>();
@@ -266,6 +269,12 @@ public class TvKeyInterceptorService extends AccessibilityService {
             android.util.Log.w("CineTvPlay", "clickNuvioPlay: " + t);
         }
         return false;
+    }
+
+    static String[] filmPlayLabels(boolean preferResume) {
+        return preferResume
+                ? new String[]{"İzlemeye Devam Et", "Devam Et", "Kaldığın Yerden Devam Et", "Resume", "Continue", "Oynat", "Play"}
+                : new String[]{"Oynat", "Play", "İzlemeye Devam Et", "Devam Et", "Kaldığın Yerden Devam Et", "Resume", "Continue"};
     }
 
     /** The first text node starting with one of the prefixes (case-insensitive). */
