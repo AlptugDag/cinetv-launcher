@@ -44,7 +44,7 @@ google-services.json
 # Documentation media / screenshots
 docs/media/posters/
 *.png
-!launcher/src/main/res/**/*.png
+!launcher/res/**/*.png
 !launcher/assets/**/*.png
 
 # Local tooling
