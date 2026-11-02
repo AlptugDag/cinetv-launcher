@@ -448,7 +448,7 @@ public class PosterShelf extends FrameLayout {
         // repeats then looked like a deliberate hold, moving the focus several films at once.
         long t = e.getEventTime();
         if (e.getRepeatCount() == 0) {
-            if (keyCode == pressKey && t - pressAt < 90L) return false;
+            if (keyCode == pressKey && t - pressAt < 170L) return false; // the IR receiver's echo of one press
             pressKey = keyCode;
             pressAt = t;
             lastStepMs = t;

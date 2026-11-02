@@ -1,5 +1,12 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.31
+
+- **Bir basış, bir adım (Arçelik, Beko, Grundig):** MStar kızılötesi alıcısı kumandanın tekrar sinyalini (~108 ms sonra) yeni bir basış olarak bildiriyordu; kısa bir basış odağı vitrin, simgeler ve ayar panelleri dahil her yerde iki kez ilerletiyordu. Aynı ok tuşu 170 ms içinde gelirse aynı basışın yankısı sayılıyor. Hızlı art arda basmak ve basılı tutmak çalışmaya devam ediyor.
+- **Vitrin hep Gamze'nin Seçimi:** Açılışta, bir saatlik aradan sonra, tazelemede ve yapay zekâ yanıt vermediğinde vitrin artık başka bir kategoriye geçmiyor; hep Gamze'nin Seçimi olarak geliyor ve sekme işareti de Gamze'de kalıyor. Yapay zekâ yoksa kategoriyi Gamze seçiyor, başlık yine onun. Başka bir raf yalnızca siz bir sekme seçince ya da arama yapınca geliyor.
+- **Kategori sekmeleri seçilince yükleniyor:** Bütün kategorilerin arka planda önceden yüklenmesi kaldırıldı; bir sekmenin filmleri ona tıklayınca geliyor. Açılışla hiçbir şey yarışmıyor.
+- **Otomatik testler:** Vitrin başlığının gerçek anla uyumu (ay, şehir, günün saati), saat temizliği, sesli istekte alternatif duyuşlar ve güncelleme sürüm karşılaştırması için yeni testler eklendi; her GitHub gönderiminde çalışıyor (toplam 24 test).
+
 ## 1.0.0.30
 
 - **Google Asistan tamamen devre dışı, mikrofon Gamze'de:**

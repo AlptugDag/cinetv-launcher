@@ -274,6 +274,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             @Override
             public void onShelf(String name, List<Movie> films, MovieCatalog.Category category) {
                 if (!films.isEmpty()) {
+                    userChoseShelf = true;
                     setShelf(name, films, true);
                     home.shelf.requestFocus();
                     return;
@@ -284,6 +285,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     List<Movie> got = MovieCatalog.category(app, category, PerformanceProfile.shelfSize(app));
                     ui(() -> {
                         if (got != null && !got.isEmpty()) {
+                            userChoseShelf = true;
                             setShelf(name, got, true);
                             home.shelf.requestFocus();
                         }
@@ -851,7 +853,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             // a repeat within the first 400 ms of a press is the remote's, not the viewer's: one press, one step (icons too)
             if (e.getRepeatCount() > 0 && e.getDownTime() > 0 && t - e.getDownTime() < 400) return true;
             boolean same = e.getKeyCode() == lastNavCode;
-            if (same && (e.getRepeatCount() == 0 ? t - lastNavAt < 90 : t - lastNavAt < 110)) return true;
+            // MStar IR receivers (Arçelik, Beko, Grundig) report the remote's repeat frame, ~108 ms after the press, as a
+            // second new press: a short press moved the focus twice everywhere. The same arrow within 170 ms is that echo.
+            if (same && (e.getRepeatCount() == 0 ? t - lastNavAt < 170 : t - lastNavAt < 110)) return true;
             lastNavCode = e.getKeyCode();
             lastNavAt = t;
         }
@@ -1139,6 +1143,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     return;
                 }
                 if (!r.movies.isEmpty()) {
+                    userChoseShelf = true;
                     setShelf(r.title.isEmpty() ? MovieAssistant.cleanShelfName(query) : r.title, r.movies, true);
                     searchShelfQuery = query;
                     home.shelf.requestFocus();
@@ -1440,7 +1445,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     try {
                         // the fresh start already fell back to a category shelf while this was thinking: no swap
                         if (freshTimedOutAt > startedAt) return;
-                        if (films != null && !films.isEmpty()) setShelf(s.title.isEmpty() ? momentTitle("GAMZE'NİN SEÇKİSİ") : s.title, films, true);
+                        if (films != null && !films.isEmpty()) setShelf(s.title.isEmpty() ? momentTitle(gamzeName()) : s.title, films, true);
                         else if (mood == null || refresh) categoryShelf();
                         else restoreShelfLabel();
                     } finally {
@@ -1491,6 +1496,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (cached.size() < 6) {
             refreshShelf();
         }
+    }
+
+    /** Set just before a shelf the viewer chose (a tab, a search) is put up. */
+    private boolean userChoseShelf;
+
+    private String gamzeName() {
+        return "tr".equals(Locale.getDefault().getLanguage()) ? "GAMZE'NİN SEÇİMİ" : "GAMZE'S PICK";
     }
 
     /** "PAZAR GECESİ · <what>": from the TV's own clock, so it is always right. */
@@ -1559,7 +1571,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         String cleanTitle = (title != null) ? title.replaceAll("\\b\\d{1,2}[:.]\\d{2}\\b\\s*", "").trim() : "";
         if (cleanTitle.isEmpty()) cleanTitle = getString(R.string.cat_trending);
         home.shelfLabel.setText(cleanTitle.toUpperCase(Locale.getDefault()));
-        home.rail.setActive(cleanTitle);
+        // the tab marker: Gamze's card for her shelves (AI or automatic), the chosen tab otherwise
+        home.rail.setActive(remember && !userChoseShelf ? gamzeName() : cleanTitle);
+        userChoseShelf = false;
         home.shelf.setMovies(movies);
         if (freshPending || home.splashHeld()) {
             freshPending = false;
@@ -1641,8 +1655,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         else if (hour >= 17 && hour < 22) timeSegment = "Akşam";
         else timeSegment = "Gece";
         String weather = com.cinetv.launcher.service.WeatherService.getLastCondition();
-        final String richTitle = String.format(Locale.getDefault(), "%s %s · %s %s",
-                dayStr, timeSegment, (weather.isEmpty() ? monthStr : weather), getString(cat.nameRes)).toUpperCase(Locale.getDefault());
+        // An automatic shelf is always Gamze's pick (she chose this category for the moment); only the viewer's own
+        // choice in the tabs or a search shows another shelf's name.
+        final String richTitle = momentTitle(gamzeName());
 
         background(() -> {
             List<Movie> list = fillShelf(app, MovieCatalog.category(app, cat, PerformanceProfile.shelfSize(app), shelfSpin), PerformanceProfile.shelfSize(app));

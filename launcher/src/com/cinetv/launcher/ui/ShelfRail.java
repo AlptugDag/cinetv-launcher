@@ -29,8 +29,8 @@ import java.util.concurrent.Executors;
 
 /**
  * "Raflar": every shelf CineTV can show, as a row of small text tabs under the DVD shelf. Down from the shelf
- * reaches it; OK puts that shelf on the DVD row at once (its films were loaded in the background). Every
- * 50 minutes the tabs come in a new order and each brings different films.
+ * reaches it; OK loads that shelf's films then and puts them on the DVD row. Every 50 minutes the tabs come in a
+ * new order.
  */
 public final class ShelfRail extends HorizontalScrollView {
 
@@ -73,8 +73,6 @@ public final class ShelfRail extends HorizontalScrollView {
             }
             round++;
             rotate();
-            loadedAt = 0;
-            preload();
             main.postDelayed(this, REFRESH_MS);
         }
     };
@@ -165,8 +163,7 @@ public final class ShelfRail extends HorizontalScrollView {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        // well after start-up: the first shelf, its posters and the TV's own start come first
-        main.postDelayed(this::preload, 45_000);
+        // (no background preloading: a tab's films load when the viewer chooses it, so nothing competes with start-up)
         main.postDelayed(refresher, REFRESH_MS);
     }
 
