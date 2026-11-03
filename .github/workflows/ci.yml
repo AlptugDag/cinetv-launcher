@@ -39,6 +39,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Shell scripts parse
         run: for f in install.sh scripts/*.sh scripts/*/*.sh; do bash -n "$f"; done
+        - name: Make gradlew executable
+  run: chmod +x ./gradlew
       - name: Unit tests
         run: ./gradlew :launcher:testDebugUnitTest --console=plain
       - name: Debug APK
