@@ -1,5 +1,17 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.45
+
+- **Kumanda ses ve kanal tuşlarında sürekli değişim:** TV kumandasında ses artırma/azaltma ve kanal tuşlarına basılı tutulduğunda tek birim takılması giderildi; sürekli akıcı değişim (repeat rate) sağlandı.
+- **Otomatik CineSUB geliştirmeleri:** Ekrandaki içeriğin yanlış analiz edilmesi önlendi, dizi analizi (sezon/bölüm) ve YouTube/video etiketleri temizlenerek doğru içerik tespiti sağlandı; bilgi kartlarının üst üste binmesi önlendi.
+- **Nuvio açıkken mobil arayüz bağlantısı:** Nuvio oynatımı esnasında arka planda web remote ve key bridge bağlantısının kopması engellendi.
+- **Gelişmiş Türkçe TTS (EmaLightning):** Yabancı yönetmen, aktör ve film adları, DVD gibi kısaltmalar, kesme işaretli ekler ve parantez içi ifadeler için doğal ve akıcı Türkçe telaffuz kuralları getirildi.
+- **Erişilebilirlik ve ekran oranları:** Sistem erişilebilirlik ayarlarına doğrudan yönlendirme eklendi; ekran oranı ve yazı tipi için "çok küçük" ve "en küçük" seçenekleri eklendi.
+- **Arçelik TV bellek koruması:** Düşük bellekli Android TV'lerde Nuvio oynatımı esnasında arka plan yükü ve çökme/yeniden başlama engellendi.
+- **CineTV'yi Yok Et geliştirmesi:** CineTV kaldırılırken kurulum öncesi orijinal TV ayarlarına (varsayılan launcher, font ölçeği, animasyonlar) tam geri dönüş sağlandı.
+- **DVD kutusu sırt yazıları:** Sırt yazılarının geç yüklenmesini önlemek için anında oluşturulan tek tip net black font standardı uygulandı.
+- **Mobil dosya ve ekran görüntüsü yöneticisi:** Web remote üzerinden TV dosya sistemi (/sdcard) ve çekilen ekran görüntüleri doğrudan yönetilebilir hale getirildi; dikey mobil ekranlarda Cineparty genişlik uyumu sağlandı.
+
 ## 1.0.0.44
 
 - **"Oynatma Kullanılamıyor" düzeltmesi bu sürümde de var:** Nuvio'da yayın eklentisi yoksa CineTV onu bir kez kurmayı teklif ediyor (1.0.0.43'teki düzeltme).
