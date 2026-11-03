@@ -21,13 +21,6 @@
 
 </div>
 
-<br>
-
-> [!NOTE]
-> **v1.0.0.20 · Büyük Güncelleme.** CineParty baştan yazıldı (CineQuiz, CineRoulette, CineSessiz), CineSUB artık her oynatıcının üstünde, Gamze sizinle gerçekten sohbet ediyor, yeni ses tasarımı, YouTube arayüzü olmadan fragmanlar, temalara göre basılan DVD kitapçıkları, zayıf TV'lerde kendini ayarlayan akıcılık ve kendini gerçekten güncelleyen bir CineTV. Tüm liste: **[CHANGELOG](CHANGELOG.md)**.
-
-<br>
-
 <div align="center">
 
 ### $$\color{#E50914}\textbf{\textit{“Ve sizler, onca para verdiğiniz televizyonlarınızda kalite görmek için Netflix'in en üst planına}}$$
