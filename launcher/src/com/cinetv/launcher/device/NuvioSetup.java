@@ -87,7 +87,7 @@ public final class NuvioSetup {
             };
             for (String[] pair : files) {
                 File target = new File(dl, pair[1]);
-                if (target.exists()) continue; // Do not overwrite user's existing configs!
+                // an existing copy keeps everything the viewer set: only empty API keys are filled in (see below)
                 copyAndEnrichAsset(app, pair[0], target, tmdbKey, mdbKey);
                 try {
                     app.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(target)));
@@ -202,6 +202,32 @@ public final class NuvioSetup {
     }
 
     /** Nuvio's own release key (NuvioMedia/NuvioTV on GitHub): with it, Nuvio's built-in updater can update it. */
+    private static final String STREAM_KEY = "nuvio_stream_addon_v43";
+
+    /**
+     * Nuvio enables "Oynat" only when an installed addon can give streams for the title; catalog, metadata and subtitle
+     * addons can't, so without one every page says "Oynatma Kullanılamıyor". A TV that already had Nuvio, or whose
+     * Nuvio CineTV swapped for the official build, never got CineTV's stream addon: it is offered once now (Nuvio
+     * asks the viewer to confirm), then CineTV comes back to the front. Blocking; off the main thread.
+     */
+    public static void ensureStreamAddon(Context ctx) {
+        final Context app = ctx.getApplicationContext();
+        if (Prefs.get(app).getBoolean(STREAM_KEY, false) || Uninstaller.isRemoving(app)) return;
+        if (!AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) return;
+        com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
+        if (svc != null && AppLauncher.NUVIO.equals(svc.getLastPackage())) return; // in use: next start
+        try {
+            AvOptimizer.Report av = AvOptimizer.detect(app);
+            NetworkProbe.Result net = NetworkProbe.run();
+            addAddon(app, com.cinetv.launcher.service.StreamProfile.recommend(net, av).manifestPath());
+            Prefs.get(app).edit().putBoolean(STREAM_KEY, true).apply();
+            app.startActivity(new Intent(app, com.cinetv.launcher.MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        } catch (Throwable t) {
+            Log.w(TAG, "Stream addon not offered: " + t);
+        }
+    }
+
     static final String OFFICIAL_CERT = "1cba06fbdf978d0e3f9ad58de6ba3d69e24a948384adde3aed95451e830e5210";
 
     /**
@@ -428,12 +454,14 @@ public final class NuvioSetup {
     }
 
     private static void copyAndEnrichAsset(Context ctx, String assetPath, File dest, String tmdbKey, String mdbKey) {
-        try (java.io.InputStream in = ctx.getAssets().open(assetPath)) {
+        boolean existing = dest.exists();
+        try (java.io.InputStream in = existing ? new java.io.FileInputStream(dest) : ctx.getAssets().open(assetPath)) {
             java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
             byte[] buf = new byte[8192];
             int r;
             while ((r = in.read(buf)) != -1) baos.write(buf, 0, r);
             String raw = new String(baos.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+            String before = raw;
             try {
                 JSONObject json = new JSONObject(raw);
                 JSONObject cfg = json.optJSONObject("config");
@@ -450,10 +478,22 @@ public final class NuvioSetup {
                         if (tmdbKey != null && !tmdbKey.isEmpty() && apiKeys.optString("tmdb").isEmpty()) apiKeys.put("tmdb", tmdbKey);
                         if (mdbKey != null && !mdbKey.isEmpty() && apiKeys.optString("mdblist").isEmpty()) apiKeys.put("mdblist", mdbKey);
                     }
+                    // TVDB needs its own key: without one, series pages come back without cast, artwork or the IMDb id
+                    // the stream addons look titles up by. TMDB (with CineTV's key) answers series too.
+                    JSONObject providers = cfg.optJSONObject("providers");
+                    JSONObject anyKeys = apiKeys != null ? apiKeys : keys;
+                    boolean hasTvdb = anyKeys != null && !anyKeys.optString("tvdb").isEmpty();
+                    boolean hasTmdb = anyKeys != null && !anyKeys.optString("tmdb").isEmpty();
+                    if (providers != null && !hasTvdb && hasTmdb) {
+                        for (String k : new String[]{"series", "anime"}) {
+                            if ("tvdb".equals(providers.optString(k))) providers.put(k, "tmdb");
+                        }
+                    }
                     raw = json.toString(2);
                 }
             } catch (Throwable ignored) {
             }
+            if (existing && raw.equals(before)) return;
             try (java.io.OutputStream out = new java.io.FileOutputStream(dest)) {
                 out.write(raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             }

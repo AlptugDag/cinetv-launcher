@@ -21,9 +21,9 @@ import java.util.Set;
  * <ul>
  *   <li>{@link #requestDefault}: Android 10+ asks the viewer with the system's own "default home app"
  *       dialog (RoleManager ROLE_HOME); older TVs open the system's Home settings.</li>
- *   <li>{@link #disableOthers}: switches the other home apps off with {@code pm disable-user} through the
- *       TV's own adb (the one-time network-debugging step from setup). Every package is written to a
- *       journal first; nothing is uninstalled.</li>
+ *   <li>{@link #disableOthers}: makes CineTV the Home through the TV's own adb (Home role and home activity).
+ *       The other launchers are no longer switched off: when CineTV was removed from the TV's own Settings,
+ *       a launcher switched off stayed off and the TV fell to a pink screen with no Home at all.</li>
  *   <li>{@link #restoreOthers}: switches exactly those back on and clears CineTV as preferred, so the TV's
  *       launcher is Home again. "Remove CineTV" runs it too.</li>
  * </ul>
@@ -78,26 +78,31 @@ public final class HomeLaunchers {
         return !Prefs.get(ctx).getString(JOURNAL, "").isEmpty();
     }
 
-    /** Blocking (adb). Returns how many launchers were switched off; -1 when the TV's adb is not available. */
+    /**
+     * Blocking (adb). CineTV takes the Home role and the home activity; the other launchers stay installed and on,
+     * so the TV always has a Home to fall back to, even when CineTV is removed from its own Settings. Returns 0,
+     * or -1 when the TV's adb is not available.
+     */
     public static int disableOthers(Context ctx) {
-        List<String> list = others(ctx);
-        if (list.isEmpty()) return 0;
-        Set<String> journal = new LinkedHashSet<>(journal(ctx));
-        journal.addAll(list);
-        Prefs.get(ctx).edit().putString(JOURNAL, android.text.TextUtils.join(",", journal)).commit();
-        StringBuilder cmd = new StringBuilder();
-        for (String p : list) cmd.append("pm disable-user --user 0 ").append(p).append(" 2>/dev/null; ");
+        return LocalAdb.shell(ctx, homeCommand(ctx), 8000) ? 0 : -1;
+    }
+
+    private static String homeCommand(Context ctx) {
         String pkg = ctx.getPackageName();
-        cmd.append("cmd package set-home-activity --user 0 ").append(pkg).append("/.MainActivity 2>/dev/null");
-        if (!LocalAdb.shell(ctx, cmd.toString(), 8000)) return -1;
-        int off = 0;
-        for (String p : list) {
-            try {
-                if (!ctx.getPackageManager().getApplicationInfo(p, 0).enabled) off++;
-            } catch (Throwable ignored) {
-            }
-        }
-        return off;
+        return "cmd role add-role-holder --user 0 android.app.role.HOME " + pkg + " 2>/dev/null; "
+                + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity 2>/dev/null; ";
+    }
+
+    /** Blocking (adb): the launchers an earlier version switched off come back on, and CineTV stays the Home. */
+    public static boolean reenableKeepingHome(Context ctx) {
+        List<String> list = journal(ctx);
+        StringBuilder cmd = new StringBuilder();
+        for (String p : list) cmd.append("pm enable ").append(p).append(" 2>/dev/null; ");
+        cmd.append(homeCommand(ctx));
+        if (!LocalAdb.shell(ctx, cmd.toString(), 8000)) return false;
+        for (String p : list) if (!isPackageEnabled(ctx, p)) return false;
+        Prefs.get(ctx).edit().remove(JOURNAL).commit();
+        return true;
     }
 
     /** Blocking (adb): the launchers CineTV switched off come back, and the TV's own Home is chosen again. */

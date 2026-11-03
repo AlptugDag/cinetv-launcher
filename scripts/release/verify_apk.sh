@@ -32,7 +32,11 @@ if [ -f "$PIN_FILE" ]; then
 else
     bad "no pinned fingerprint at release-signing/cert-sha256.txt"
 fi
-DEBUG_SHA="$(keytool -list -v -keystore "$ROOT/launcher/debug.keystore" -storepass android -alias androiddebugkey 2>/dev/null | awk -F': ' '/SHA256:/{print $2}' | tr -d ':' | tr 'A-F' 'a-f')"
+# (the public debug keystore may be absent from a checkout: then there is nothing to compare with)
+DEBUG_SHA=""
+if [ -f "$ROOT/launcher/debug.keystore" ]; then
+  DEBUG_SHA="$(keytool -list -v -keystore "$ROOT/launcher/debug.keystore" -storepass android -alias androiddebugkey 2>/dev/null | awk -F': ' '/SHA256:/{print $2}' | tr -d ':' | tr 'A-F' 'a-f' || true)"
+fi
 [ -n "$DEBUG_SHA" ] && [ "$SHA" = "$DEBUG_SHA" ] && bad "signed with the public debug key"
 
 BADGING="$("$BT/aapt2" dump badging "$APK" 2>/dev/null)"

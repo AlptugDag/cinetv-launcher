@@ -1,5 +1,12 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.43
+
+- **CineTV kaldırılınca pembe ekran yok:** CineTV, ana ekran olmak için TV'nin kendi başlatıcısını kapatıyordu. CineTV TV'nin Ayarlar'ından kaldırılınca o başlatıcı kapalı kalıyor ve TV ana ekransız, pembe ekrana düşüyordu. Artık TV'nin başlatıcısı hiç kapatılmıyor; CineTV ana ekran tuşunu sistemin kendi "varsayılan ana ekran" rolüyle alıyor. Daha önceki sürümlerin kapattığı başlatıcılar bu güncellemeyle yeniden açılıyor, ana ekran yine CineTV kalıyor.
+- **Nuvio'da "Oynatma Kullanılamıyor":** Nuvio "Oynat" düğmesini ancak film bağlantısı (stream) veren bir eklenti kuruluysa açıyor; katalog, bilgi ve altyazı eklentileri bu işi yapmıyor. Nuvio'su önceden kurulu olan TV'lere ve CineTV'nin resmi Nuvio'ya geçirdiği TV'lere bu eklenti hiç kurulmuyordu. CineTV artık bunu bir kez Nuvio'ya ekliyor (Nuvio onay isteyebilir).
+- **Oyuncu resimleri:** AIOMetadata ayar dosyası daha önce indirildiyse artık sadece boş API anahtarları dolduruluyor, kullanıcının ayarları korunuyor. TVDB anahtarı yoksa diziler için TMDB kullanılıyor; anahtarsız TVDB dizi sayfalarını oyuncusuz ve IMDb numarasız bırakıyordu.
+- **Yayın:** GitHub'daki 1.0.0.42 derlemesi, silinen hata ayıklama anahtarı (debug.keystore) yüzünden APK kontrolünde duruyordu; kontrol artık o dosya olmadan da çalışıyor.
+
 ## 1.0.0.42
 
 - **Nuvio Kaynak Seçiminde Çökme & Yeniden Başlama Giderildi:** Nuvio akış ve kaynak ararken bellek kullanımının zirveye ulaştığı anlar tespit edildi; kaynak seçim pencerelerinde arka plan ekran yakalama ve CineSUB işlemleri tamamen durdurularak Low Memory Killer (OOM) kaynaklı launcher çökmeleri önlendi.

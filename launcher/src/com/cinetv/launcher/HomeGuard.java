@@ -129,6 +129,10 @@ public final class HomeGuard {
                     && p.getBoolean("nuvio_official_addons", false)) {
                 p.edit().putBoolean("nuvio_official_done", true).apply();
             }
+            // without a stream addon Nuvio shows "Oynatma Kullanılamıyor" on every title
+            if (p.getBoolean("nuvio_install_allowed", true)) com.cinetv.launcher.device.NuvioSetup.ensureStreamAddon(app);
+            // the TV's own launchers stay on (see HomeLaunchers): any an earlier version switched off come back
+            if (com.cinetv.launcher.device.HomeLaunchers.hasDisabled(app)) com.cinetv.launcher.device.HomeLaunchers.reenableKeepingHome(app);
             String stamp = currentOptimizationStamp(app);
             if (p.getInt("setup_done_version", 0) == version
                     && stamp.equals(p.getString(KEY_AUTO_OPT_STAMP, ""))

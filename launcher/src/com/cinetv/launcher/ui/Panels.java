@@ -1367,7 +1367,7 @@ public final class Panels {
                     if (ctx instanceof android.app.Activity) com.cinetv.launcher.device.HomeLaunchers.requestDefault((android.app.Activity) ctx);
                 }));
         final java.util.List<String> others = com.cinetv.launcher.device.HomeLaunchers.others(ctx);
-        root.addView(Controls.tile(ctx, tr ? "Diğer Başlatıcıları Kapat" : "Switch Other Launchers Off",
+        root.addView(Controls.tile(ctx, tr ? "Ana Ekranı CineTV'ye Kilitle" : "Lock Home to CineTV",
                 others.isEmpty() ? (tr ? "Başka başlatıcı yok" : "No other launcher")
                         : (tr ? others.size() + " başlatıcı: " : others.size() + " launcher(s): ") + android.text.TextUtils.join(", ", others),
                 false, v -> {
@@ -1376,7 +1376,7 @@ public final class Panels {
                         int n = com.cinetv.launcher.device.HomeLaunchers.disableOthers(ctx);
                         new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> Toast.makeText(ctx, n < 0
                                 ? (tr ? "TV'nin ağ hata ayıklaması kapalı: kurulumdaki adımı yapıp tekrar deneyin" : "Network debugging is off: do the setup step and try again")
-                                : (tr ? n + " başlatıcı kapatıldı. Geri getirmek için bu sayfayı kullanın." : n + " launcher(s) switched off. Use this page to bring them back."),
+                                : (tr ? "Ana ekran tuşu artık CineTV'yi açar. TV'nin kendi başlatıcısı açık kalır; CineTV kaldırılırsa TV ona döner." : "Home now opens CineTV. The TV's own launcher stays on, so the TV returns to it if CineTV is removed."),
                                 Toast.LENGTH_LONG).show());
                     }, "cinetv-home-off").start();
                 }));
