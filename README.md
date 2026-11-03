@@ -81,8 +81,8 @@ Kumandanın mikrofon tuşuna basın ve konuşun: *“90'larda yağmurlu gecelerd
 
 ## CineSUB: Ekranda Ne Var?
 
-<img src="docs/media/V20-cinesub-a.jpg" alt="CineSUB sahne üzerinde" width="100%">
-<img src="docs/media/V20-cinesub-b.jpg" alt="CineSUB sahne üzerinde" width="100%">
+<img src="docs/media/V20-cinesub-a.JPG" alt="CineSUB film sahnesi üzerinde" width="100%">
+<img src="docs/media/V20-cinesub-b.JPG" alt="CineSUB tv yayını üzerinde" width="100%">
 
 Nuvio'da, YouTube'da ya da harici oynatıcıda film dönerken **sarı tuşa** basın. CineSUB kareye bakar; bilinmeye değer **kişi, mekân, obje, yemek ve tabloların** etrafına halka çizer, notunu konunun yanına, altyazıya değmeden yerleştirir. Altyazıda geçen **isim, yer ve tarihi olayları** da yakalar. ◀ ▶ notlar arasında gezer, OK daha fazlasını anlatır; film hiç durmaz. **Eşlik modunda** izlerken ara sıra köşede kısa bir not belirir ve kendiliğinden kaybolur. Korumalı (DRM) içerikte görüntüyü göremediğini söyler, uydurmaz.
 
