@@ -1,5 +1,11 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.44
+
+- **"Oynatma Kullanılamıyor" düzeltmesi bu sürümde de var:** Nuvio'da yayın eklentisi yoksa CineTV onu bir kez kurmayı teklif ediyor (1.0.0.43'teki düzeltme).
+- **TV'nin kendi launcher'ı her açılışta denetleniyor:** Kapatılmışsa ya da silinmişse yeniden açılıyor, böylece CineTV kaldırıldığında TV pembe ekrana düşmüyor.
+- **GitHub yayını:** Yayınlanacak yeni sürüm olmadığında yayın adımı artık hata vermiyor, atlanıyor. Sürüm yine CineTV'nin her zamanki anahtarıyla imzalanıyor, bu yüzden kurulu CineTV'ler güncelleme alabiliyor.
+
 ## 1.0.0.43
 
 - **CineTV kaldırılınca pembe ekran yok:** CineTV, ana ekran olmak için TV'nin kendi başlatıcısını kapatıyordu. CineTV TV'nin Ayarlar'ından kaldırılınca o başlatıcı kapalı kalıyor ve TV ana ekransız, pembe ekrana düşüyordu. Artık TV'nin başlatıcısı hiç kapatılmıyor; CineTV ana ekran tuşunu sistemin kendi "varsayılan ana ekran" rolüyle alıyor. Daha önceki sürümlerin kapattığı başlatıcılar bu güncellemeyle yeniden açılıyor, ana ekran yine CineTV kalıyor.

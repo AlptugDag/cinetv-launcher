@@ -51,7 +51,8 @@ jobs:
           AL: ${{ secrets.CINETV_RELEASE_KEY_ALIAS }}
         run: |
           if [ -n "$KS" ] && [ -n "$PW" ] && [ -n "$AL" ]; then
-            [ -n "${{ steps.tag.outputs.tag }}" ] && echo "ready=true" >> "$GITHUB_OUTPUT"
+            # nothing new to publish (version already released) is a skip, not a failure
+            if [ -n "${{ steps.tag.outputs.tag }}" ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; else echo "ready=false" >> "$GITHUB_OUTPUT"; fi
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "No release signing secrets; skipping. Sign locally with scripts/release/ and upload the APK by hand."
