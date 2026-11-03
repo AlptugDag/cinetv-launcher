@@ -83,6 +83,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         TvWebRemoteServer.Controller {
 
     public static volatile MainActivity instance;
+    private boolean isInitialStartup = true;
+
+    public static MainActivity getInstance() {
+        return instance;
+    }
 
     private static final long SLEEP_AFTER_SAVER_MS = 5 * 60 * 1000L;
     private static final long AI_SHELF_EVERY_MS = 3 * 60 * 60 * 1000L;
@@ -118,6 +123,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private HomeScreen home;
+
+    public HomeScreen getHome() {
+        return home;
+    }
     private Set<String> knownPackages;
     private BroadcastReceiver packageReceiver;
     private DateFormat timeFmt;
@@ -350,18 +359,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         });
 
         com.cinetv.launcher.device.MainThreadSampler.maybeStart("start", 40_000);
-        loadApps(true);
         showCachedShelf();
-        if (freshStart) startFreshShelf(false);
         Calendar cal = Calendar.getInstance();
         lastShelfHour = cal.get(Calendar.HOUR_OF_DAY);
         lastShelfDay = cal.get(Calendar.DAY_OF_YEAR);
         lastShelfAt = android.os.SystemClock.elapsedRealtime();
-        // A new shelf on start only after a real power-on, three hours since the last one, or an empty shelf.
-        // Low-memory TVs rebuild this screen on the way back from Nuvio: that is not a reason to change the shelf.
-        // Not at once: start-up already showed the last shelf, and rebuilding it a second later, while the TV is
-        // still starting, made the first minute stutter. The new one comes at the first quiet moment.
-
 
         // Live frame timing: background work yields to drawing while frames run slow (nothing is switched off).
         if (android.os.Build.VERSION.SDK_INT >= 24) getWindow().addOnFrameMetricsAvailableListener((window, metrics, dropped) ->
@@ -370,13 +372,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // during the TV's own boot the phone link waits (CineTvApp starts it 20 s later); otherwise at once
         if (android.os.SystemClock.elapsedRealtime() > 120_000L) TvWebRemoteServer.start(this);
         com.cinetv.launcher.party.CinePartyManager.get(this).addListener(partyLauncher);
-        AppUpdater.checkAndAutoUpdateOnBoot(this);
-        MemoryOptimizer.ensureAirPlayReceiver(this);
-        com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
-        com.cinetv.launcher.ai.EmaLightningTts.prewarmNativeFallback(this);
         handler.postDelayed(() -> com.cinetv.launcher.ai.EmaLightningTts.prewarmFillers(this), 25_000);
 
-        HomeGuard.runUpdateOptimizationsAsync(this);
+        scheduleDynamicStartup(freshStart);
 
         packageReceiver = new BroadcastReceiver() {
             @Override
@@ -435,10 +433,80 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
     }
 
+    public void focusShelfCenter() {
+        if (home != null) {
+            home.focusShelfCenter();
+        }
+    }
+
+    private boolean isHomeIntent(Intent intent) {
+        if (intent == null) return true;
+        String action = intent.getAction();
+        if (action == null && intent.getExtras() == null) return true;
+        if (Intent.ACTION_MAIN.equals(action) && intent.hasCategory(Intent.CATEGORY_HOME)) return true;
+        return false;
+    }
+
+    private void scheduleDynamicStartup(boolean freshStart) {
+        final Context app = getApplicationContext();
+        boolean lowPower = PerformanceProfile.lowMemory(this) || PerformanceProfile.detectedTier(this) == PerformanceProfile.Tier.LOW;
+        long p1 = lowPower ? 700L : 180L;
+        long p2 = lowPower ? 2000L : 600L;
+        long p3 = lowPower ? 3800L : 1200L;
+        long p4 = lowPower ? 7500L : 2200L;
+        long p5 = lowPower ? 14000L : 4500L;
+
+        // Phase 1: Load Installed Apps catalog for the dock & revert any auto DNS interference
+        handler.postDelayed(() -> {
+            if (!isFinishing()) {
+                loadApps(true);
+                background(() -> com.cinetv.launcher.device.NetworkOptimizer.revertAutoInterferenceIfNeeded(app));
+            }
+        }, p1);
+
+        // Phase 2: Continue card & local watch history
+        handler.postDelayed(() -> {
+            if (!isFinishing() && home != null) {
+                refreshContinueCard();
+                com.cinetv.launcher.service.WatchHistory.syncWithNuvio(app);
+            }
+        }, p2);
+
+        // Phase 3: Weather & Night Care
+        handler.postDelayed(() -> {
+            if (!isFinishing() && home != null) {
+                refreshWeather();
+                DeviceTweaks.syncNightMode(this);
+            }
+        }, p3);
+
+        // Phase 4: Fresh shelf if requested, after UI navigation has settled
+        if (freshStart) {
+            handler.postDelayed(() -> {
+                if (!isFinishing() && home != null) startFreshShelf(false);
+            }, p4);
+        }
+
+        // Phase 5: Non-critical background daemons & warm-ups
+        handler.postDelayed(() -> {
+            if (isFinishing()) return;
+            AppUpdater.checkAndAutoUpdateOnBoot(app);
+            MemoryOptimizer.ensureAirPlayReceiver(app);
+            com.cinetv.launcher.device.AirPodsLink.ensureStarted(app);
+            com.cinetv.launcher.ai.EmaLightningTts.prewarmNativeFallback(app);
+            HomeGuard.runUpdateOptimizationsAsync(app);
+            MemoryOptimizer.sweepAsync(app);
+        }, p5);
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         if (home == null) return;
+        if (isHomeIntent(intent)) {
+            focusShelfCenter();
+            return;
+        }
         handleIntent(intent);
     }
 
@@ -457,26 +525,30 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         home.environment.resume();
         // the cinematic stage: on unless switched off in Settings; the half-watched film comes back here
         home.setCinematic(Prefs.cinematicStage(this));
-        refreshContinueCard();
-        com.cinetv.launcher.service.WatchHistory.syncWithNuvio(this);
-        // and once more a moment later: the player may still be saving where it stopped
-        handler.postDelayed(() -> {
+        if (isInitialStartup) {
+            isInitialStartup = false;
+        } else {
             refreshContinueCard();
             com.cinetv.launcher.service.WatchHistory.syncWithNuvio(this);
-        }, 900);
-        DeviceTweaks.syncNightMode(this);
+            // and once more a moment later: the player may still be saving where it stopped
+            handler.postDelayed(() -> {
+                refreshContinueCard();
+                com.cinetv.launcher.service.WatchHistory.syncWithNuvio(this);
+            }, 900);
+            DeviceTweaks.syncNightMode(this);
+            refreshWeather();
+            loadApps(false);
+            MemoryOptimizer.ensureAirPlayReceiver(this);
+            com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
+            MemoryOptimizer.sweepAsync(this);
+            AppUpdater.checkAndAutoUpdateOnBoot(this);
+        }
         handler.removeCallbacks(clockTick);
         handler.post(clockTick);
-        refreshWeather();
-        loadApps(false);
-        MemoryOptimizer.ensureAirPlayReceiver(this);
-        com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
-        MemoryOptimizer.sweepAsync(this);
         if (!HomeGuard.isDefault(this)) {
             new Thread(() -> HomeGuard.ensureDefault(this), "cinetv-resume-guard").start();
         }
         PerformanceProfile.noteMemory(this);
-        AppUpdater.checkAndAutoUpdateOnBoot(this);
         resetIdle();
         // A new shelf has exactly three triggers: the TV powering on (a new process), coming back to Home after
         // three hours or more away, and the refresh key. It used to rebuild at every hour change and every 45
@@ -556,9 +628,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (complete) {
             home.modal.setCancelable(true, null);
             boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-            Toast.makeText(this,
-                    tr ? "Tüm zorunlu kimlik ve API anahtarları kaydedildi ✓" : "All required identity & API keys saved ✓",
-                    Toast.LENGTH_SHORT).show();
+            UiKit.toast(this,
+                    tr ? "Tüm zorunlu kimlik ve API anahtarları kaydedildi ✓" : "All required identity & API keys saved ✓");
             if (home.modal.isShowing()) {
                 if (Prefs.get(this).getBoolean("wizard_done", false)) {
                     home.modal.forceClose();
@@ -735,10 +806,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         AppUpdater.onHomeResumed(this);
         com.cinetv.launcher.remote.RelayHost.resumeIfStopped(this);
-        if (shelfReleased && home != null) {
-            shelfReleased = false;
-            home.shelf.setMovies(new ArrayList<>(home.shelf.movies())); // the cases come back in their cascade
-        }
     }
 
     public void showUpdateBanner(String title, String message, boolean isError) {
@@ -794,8 +861,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         handler.removeCallbacks(idle);
         handler.removeCallbacks(sleepPanel);
         hideScreensaver();
-        // Free launcher bitmaps when leaving Home, without killing foreground media apps (Nuvio) or blocking UI thread
-        releaseShelfMemory();
+        // Free unused off-screen poster cache when leaving Home without destroying active shelf views
         PosterCache.trimMemory();
         Glow.clear();
         super.onPause();
@@ -832,7 +898,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (intent == null) return;
         String toastMsg = intent.getStringExtra("toast");
         if (toastMsg != null && !toastMsg.trim().isEmpty()) {
-            Toast.makeText(this, toastMsg, Toast.LENGTH_LONG).show();
+            UiKit.toast(this, toastMsg);
         }
         String bannerTitle = intent.getStringExtra("banner_title");
         if (bannerTitle == null && "com.cinetv.launcher.ACTION_UPDATE_BANNER".equals(intent.getAction())) {
@@ -940,14 +1006,26 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     public boolean dispatchKeyEvent(KeyEvent e) {
         if (home == null) return super.dispatchKeyEvent(e);
         int keyCode = e.getKeyCode();
+        if (keyCode == KeyEvent.KEYCODE_HOME) {
+            if (e.getAction() == KeyEvent.ACTION_DOWN) {
+                focusShelfCenter();
+            }
+            return true;
+        }
         if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_MUTE) {
-            if (TvKeyInterceptorService.getInstance() == null && e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() > 0
+            if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() > 0
                     && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
                 android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
                 if (am != null) {
-                    am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC,
-                            keyCode == KeyEvent.KEYCODE_VOLUME_UP ? android.media.AudioManager.ADJUST_RAISE : android.media.AudioManager.ADJUST_LOWER,
-                            android.media.AudioManager.FLAG_SHOW_UI);
+                    int dir = keyCode == KeyEvent.KEYCODE_VOLUME_UP ? android.media.AudioManager.ADJUST_RAISE : android.media.AudioManager.ADJUST_LOWER;
+                    try {
+                        am.adjustSuggestedStreamVolume(dir, android.media.AudioManager.USE_DEFAULT_STREAM_TYPE, android.media.AudioManager.FLAG_SHOW_UI);
+                        am.adjustVolume(dir, android.media.AudioManager.FLAG_SHOW_UI);
+                    } catch (Throwable t) {
+                        try {
+                            am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, dir, android.media.AudioManager.FLAG_SHOW_UI);
+                        } catch (Throwable ignored) {}
+                    }
                     return true;
                 }
             }
@@ -2363,7 +2441,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     home.modal.close();
                     AppCatalog.addToHome(this, item.packageName);
                     loadApps(true);
-                    Toast.makeText(MainActivity.this, tr ? "Ana ekrana eklendi" : "Added to home screen", Toast.LENGTH_SHORT).show();
+                    UiKit.toast(MainActivity.this, tr ? "Ana ekrana eklendi" : "Added to home screen");
                 })));
             }
             row.addView(spaced(Controls.button(this, getString(R.string.hide), v -> {
@@ -2750,7 +2828,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (home == null || home.shelf == null) return;
         final MovieCatalog.Movie m = home.shelf.focusedMovie();
         if (m == null) {
-            Toast.makeText(this, "Önce bir film seçin", Toast.LENGTH_SHORT).show();
+            UiKit.toast(this, "Önce bir film seçin");
             return;
         }
         home.showBubble(m.title + " benzeri filmler aranıyor...", false, 3000);
@@ -2890,14 +2968,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         return a.home.isSearchOrInputFocused();
     }
 
-    /** "Kaldığın yerden": the latest unfinished title, on Home's card (hidden when the stage is off or nothing is left). */
-    private boolean shelfReleased;
-
-    /** Memory is short while another app is in front: the shelf's case images go (rebuilt on return). */
+    /** Trims off-screen caches without destroying active shelf views so the main screen never blanks out. */
     public void releaseShelfMemory() {
-        if (home == null || shelfReleased || inFront) return;
-        shelfReleased = true;
-        home.shelf.releaseImages();
+        PosterCache.trimMemory();
+        Glow.clear();
     }
 
     public void refreshContinueCard() {
@@ -2971,7 +3045,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     // ---- helpers ----------------------------------------------------------------------------------
 
     private void toast(int res) {
-        Toast.makeText(this, res, Toast.LENGTH_SHORT).show();
+        UiKit.toast(this, res);
     }
 
     private void ui(Runnable r) {

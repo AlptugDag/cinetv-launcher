@@ -238,7 +238,6 @@ public final class Panels {
 
         c2.addView(Controls.tile(ctx, ctx.getString(R.string.night_title), nightState(ctx), com.cinetv.launcher.device.NightCare.sleepMinutesLeft(ctx) > 0,
                 v -> host.push(() -> buildNight(ctx, host, a))));
-        c2.addView(Controls.tile(ctx, ctx.getString(R.string.tour_title), ctx.getString(R.string.tour_hint), false, v -> a.startTour()));
 
         // =========================================================================
         // 2. SECTION: SİNEMA DENEYİMİ & 3D (CINEMA & 3D EXPERIENCE)
@@ -385,19 +384,11 @@ public final class Panels {
                    : (Prefs.uiScaleLabel(ctx) + " · " + Prefs.fontScaleLabel(ctx) + " (Live Preview)"),
                 false, v -> host.push(() -> buildScalePreviewModal(ctx, host, a))));
 
-        if (AppLauncher.isLaunchable(ctx.getPackageManager(), AppLauncher.NUVIO)) {
-            cAnim.addView(Controls.tile(ctx, tr ? "Nuvio'yu Güncelle" : "Update Nuvio",
-                    tr ? "En son sürüm indirilir ve üstüne kurulur; eklentiler ve ayarlar kalır" : "Downloads the latest release over the installed one; add-ons stay",
-                    false, v -> {
-                        Toast.makeText(ctx, tr ? "Nuvio indiriliyor…" : "Downloading Nuvio…", Toast.LENGTH_SHORT).show();
-                        new Thread(() -> {
-                            String err = com.cinetv.launcher.device.NuvioSetup.updateNuvio(ctx);
-                            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> Toast.makeText(ctx,
-                                    err == null ? (tr ? "Nuvio güncellendi" : "Nuvio updated") : (tr ? "Nuvio güncellenemedi: " : "Nuvio not updated: ") + err,
-                                    Toast.LENGTH_LONG).show());
-                        }, "cinetv-nuvio-update").start();
-                    }));
-        }
+        String perfMode = PerformanceProfile.mode(ctx);
+        String perfSub = ctx.getString(perfModeRes(perfMode)) + " · " + ctx.getString(tierRes(PerformanceProfile.tier(ctx)));
+        cAnim.addView(Controls.tile(ctx, ctx.getString(R.string.performance), perfSub,
+                !PerformanceProfile.MODE_AUTO.equals(perfMode),
+                v -> host.push(() -> buildPerformancePicker(ctx, host, a))));
 
         java.util.List<String> nuvioPkgs = AppLauncher.installedNuvioPackages(ctx);
         if (nuvioPkgs.size() > 1) {
@@ -414,7 +405,7 @@ public final class Panels {
         }
 
         // =========================================================================
-        // 3. SECTION: YAPAY ZEKA & AĞ (AI & NETWORK)
+        // 3. SECTION: YAPAY ZEKA & KİŞİSEL ASİSTAN (AI & PERSONAL ASSISTANT)
         // =========================================================================
         LinearLayout cAi = column(ctx, cols, R.string.col_ai, colWidth);
         String provider = LlmClient.providerName(ctx);
@@ -460,42 +451,42 @@ public final class Panels {
         gamzeChatTile.setTag("opt_gamze_chat");
         cAi.addView(gamzeChatTile);
 
-
-        // TV-owned pages are opened from the single TV Settings tile in the TV section below.
-        LinearLayout cSys = column(ctx, cols, tr ? "Sistem" : "System", colWidth);
-        // CineTV's own accessibility page (the TV's page closes by itself on many models; it is the last tile there)
-        LinearLayout a11yTile = Controls.tile(ctx, tr ? "Erişilebilirlik" : "Accessibility",
-                tr ? "Kontrast, hareket, arayüz ve yazı boyutu" : "Contrast, motion, interface and text size", false,
-                v -> host.push(() -> buildAccessibility(ctx, host, a)));
-        a11yTile.setTag("opt_accessibility");
-        cSys.addView(a11yTile);
-        LinearLayout homeTile = Controls.tile(ctx, tr ? "Varsayılan Başlatıcı" : "Default Launcher",
-                tr ? "CineTV'yi tek ana ekran yap ya da TV'ninkini geri getir" : "Make CineTV the only Home, or bring the TV's back", false,
-                v -> host.push(() -> buildHomeLaunchers(ctx, host)));
-        homeTile.setTag("opt_home_launchers");
-        cSys.addView(homeTile);
-        boolean notificationAccess = com.cinetv.launcher.service.NuvioPlaybackListenerService.hasNotificationAccess(ctx);
-        cSys.addView(Controls.tile(ctx, ctx.getString(R.string.nuvio_progress_title),
-                notificationAccess ? ctx.getString(R.string.nuvio_progress_enabled) : ctx.getString(R.string.nuvio_progress_hint),
-                notificationAccess, v -> {
-                    if (!AppLauncher.openNotificationAccessSettings(ctx)) {
-                        android.widget.Toast.makeText(ctx, R.string.nuvio_progress_settings_unavailable,
-                                android.widget.Toast.LENGTH_LONG).show();
-                    }
-                }));
-
-        LinearLayout cNet = column(ctx, cols, tr ? "Ağ & Ortam" : "Network & Environment", colWidth);
         String city = Prefs.city(ctx);
-        cNet.addView(Controls.tile(ctx, ctx.getString(R.string.weather_city), city != null ? city : ctx.getString(R.string.weather_auto), city != null,
+        cAi.addView(Controls.tile(ctx, ctx.getString(R.string.weather_city), city != null ? city : ctx.getString(R.string.weather_auto), city != null,
                 v -> host.push(() -> buildCityInput(ctx, host, a))));
-        cNet.addView(Controls.tile(ctx, tr ? "Görüntü, Ses, Ağ & Optimizasyon" : "Picture, Sound, Network & Optimization",
-                tr ? "TV Denetçisi verilerine göre optimize et, DNS seç ve test et" : "Optimize from TV Inspector data, pick DNS, test",
-                false, v -> setup(ctx, host, true)));
 
         // =========================================================================
         // 4. SECTION: SİSTEM & TV DONANIMI (SYSTEM & TV HARDWARE)
         // =========================================================================
         LinearLayout cTv = column(ctx, cols, R.string.col_tv, colWidth);
+        boolean isHome = com.cinetv.launcher.HomeGuard.isDefault(ctx);
+        LinearLayout homeTile = Controls.tile(ctx, tr ? "Varsayılan Başlatıcı & Ana Ekran" : "Default Home Launcher",
+                isHome ? (tr ? "CineTV varsayılan ana ekran · Yönetmek veya TV başlatıcısını geri getirmek için dokunun"
+                             : "CineTV is default home · Tap to manage or restore TV launcher")
+                       : (tr ? "CineTV'yi tek ana ekran yapmak için dokunun" : "Tap to make CineTV the default Home"),
+                isHome, v -> host.push(() -> buildHomeLaunchers(ctx, host)));
+        homeTile.setTag("opt_home_launchers");
+        cTv.addView(homeTile);
+
+        boolean a11y = com.cinetv.launcher.TvKeyInterceptorService.getInstance() != null;
+        cTv.addView(Controls.tile(ctx,
+                tr ? "Fiziksel Kumanda & Renkli Tuş Özelleştirme" : "Remote & Color Key Customization",
+                a11y ? (tr ? "Kırmızı, Yeşil, Sarı, Mavi ve özel tuşlara CineSub veya eylem ata (Global servis aktif)"
+                           : "Assign CineSub and actions to colored keys (Global service active)")
+                     : (tr ? "Kırmızı, Yeşil, Sarı, Mavi tuşlara CineSub ve eylem ata"
+                           : "Assign CineSub and actions to colored keys"),
+                true, v -> host.push(() -> buildKeyCapture(ctx, host, a))));
+
+        LinearLayout a11yTile = Controls.tile(ctx, tr ? "Erişilebilirlik" : "Accessibility",
+                tr ? "Kontrast, hareket azaltma, arayüz/yazı boyutu ve TV erişilebilirliği" : "Contrast, reduce motion, UI/text scale & TV accessibility", false,
+                v -> host.push(() -> buildAccessibility(ctx, host, a)));
+        a11yTile.setTag("opt_accessibility");
+        cTv.addView(a11yTile);
+
+        cTv.addView(Controls.tile(ctx, tr ? "Görüntü, Ses, Ağ & Optimizasyon" : "Picture, Sound, Network & Optimization",
+                tr ? "TV Denetçisi verilerine göre optimize et, DNS seç ve test et" : "Optimize from TV Inspector data, pick DNS, test",
+                false, v -> setup(ctx, host, true)));
+
         com.cinetv.launcher.device.AcousticsCalibrator.AudioOutputInfo outInfo = com.cinetv.launcher.device.AcousticsCalibrator.detectAudioOutput(ctx);
         boolean isCalibrated = com.cinetv.launcher.device.AcousticsCalibrator.isCalibrated(ctx);
         cTv.addView(Controls.tile(ctx,
@@ -505,20 +496,15 @@ public final class Panels {
                 isCalibrated || outInfo.isExternal,
                 v -> host.push(() -> buildAcousticsCalibrationModal(ctx, host))));
 
-        cTv.addView(Controls.tile(ctx, tr ? "Kurulum Sihirbazı & Bileşen Kontrolü" : "Setup Wizard & Component Health",
-                tr ? "Eksik bileşenleri kontrol et ve kur" : "Check and setup components", false,
-                v -> wizard(ctx, host)));
-        boolean isHome = com.cinetv.launcher.HomeGuard.isDefault(ctx);
-        cTv.addView(Controls.tile(ctx, tr ? "Ana Başlatıcı Yap" : "Set as Default Home",
-                isHome ? (tr ? "CineTV varsayılan ana ekran" : "CineTV is default home")
-                       : (tr ? "Kumanda ana tuşu için dokunun" : "Tap to set as default launcher"),
-                isHome, v -> com.cinetv.launcher.HomeGuard.promptHomeChooser(ctx)));
-        boolean a11y = com.cinetv.launcher.TvKeyInterceptorService.getInstance() != null;
-        cTv.addView(Controls.tile(ctx,
-                tr ? "Kumanda Tuş Entegrasyonu" : "Remote Key Integration",
-                a11y ? (tr ? "Yerel tuşlar & global servis devrede · Özelleştirmek için dokunun" : "Native keys & global service active · Tap to customize")
-                     : (tr ? "Yerel kumanda tuşları aktif · Tuşları özelleştirmek için dokunun" : "Native keys active · Tap to customize"),
-                true, v -> host.push(() -> buildKeyCapture(ctx, host, a))));
+        boolean notificationAccess = com.cinetv.launcher.service.NuvioPlaybackListenerService.hasNotificationAccess(ctx);
+        cTv.addView(Controls.tile(ctx, ctx.getString(R.string.nuvio_progress_title),
+                notificationAccess ? ctx.getString(R.string.nuvio_progress_enabled) : ctx.getString(R.string.nuvio_progress_hint),
+                notificationAccess, v -> {
+                    if (!AppLauncher.openNotificationAccessSettings(ctx)) {
+                        UiKit.toast(ctx, R.string.nuvio_progress_settings_unavailable);
+                    }
+                }));
+
         cTv.addView(Controls.tile(ctx, ctx.getString(R.string.tv_settings), ctx.getString(R.string.tv_settings_hint), false,
                 v -> AppLauncher.openSystemSettings(ctx)));
         if (AppLauncher.liveTvPackage(ctx.getPackageManager()) != null || AppLauncher.hasHdmiSource(ctx)) {
@@ -535,7 +521,10 @@ public final class Panels {
             cTv.addView(liveTvTile);
         }
 
-        LinearLayout cMaint = column(ctx, cols, tr ? "Bakım & Donanım" : "Maintenance & Hardware", colWidth);
+        // =========================================================================
+        // 5. SECTION: REHBER, BAKIM & GÜVENLİK (GUIDE, MAINTENANCE & SECURITY)
+        // =========================================================================
+        LinearLayout cMaint = column(ctx, cols, tr ? "Rehber, Bakım & Donanım" : "Guide, Maintenance & Hardware", colWidth);
         cMaint.addView(Controls.tile(ctx,
                 tr ? "CineTV Turu" : "CineTV Tour",
                 tr ? "Kumanda tuşları, vitrin ve tüm CineTV özelliklerini keşfet" : "Explore remote keys, shelves and all CineTV features", false,
@@ -543,17 +532,16 @@ public final class Panels {
                     host.closeImmediate();
                     if (a != null) a.startTour();
                 }));
+        cMaint.addView(Controls.tile(ctx, tr ? "Kurulum Sihirbazı & Bileşen Kontrolü" : "Setup Wizard & Component Health",
+                tr ? "Eksik bileşenleri, anahtarları ve profilleri kontrol et" : "Check and setup components, keys & profiles", false,
+                v -> wizard(ctx, host)));
         cMaint.addView(Controls.tile(ctx, tr ? "TV Denetçisi (Donanım, Panel & Telemetri)" : "TV Inspector (Hardware, Panel & Telemetry)",
                 tr ? "Ekran, HDR, ses çözücüleri, GitHub telemetrisi ve canlı tuşlar" : "Display, HDR, audio codecs, GitHub telemetry & live keys", false,
                 v -> host.push(() -> buildTvInspector(ctx, host))));
-        cMaint.addView(Controls.tile(ctx,
-                tr ? "Fiziksel Kumanda & Renkli Tuşlar" : "Remote & Color Keys",
-                tr ? "Kırmızı, Yeşil, Sarı, Mavi tuşlara CineSub ve eylem ata" : "Assign CineSub and actions to colored keys", false,
-                v -> host.push(() -> buildKeyCapture(ctx, host, a))));
         String curVer = AppUpdater.currentVersion(ctx);
         cMaint.addView(Controls.tile(ctx, tr ? "Sürüm & Güncelleme" : "Version & Updates",
                 "v" + curVer + (tr ? " · Güncellemeleri Denetle" : " · Check for Updates"), false, v -> {
-            Toast.makeText(ctx, tr ? "GitHub güncellemeleri denetleniyor..." : "Checking GitHub updates...", Toast.LENGTH_SHORT).show();
+            UiKit.toast(ctx, tr ? "GitHub güncellemeleri denetleniyor..." : "Checking GitHub updates...");
             AppUpdater.checkForUpdates(ctx, new AppUpdater.UpdateCheckCallback() {
                 @Override
                 public void onUpdateAvailable(AppUpdater.ReleaseInfo info) {
@@ -564,16 +552,16 @@ public final class Panels {
 
                 @Override
                 public void onUpToDate(String currentVersion) {
-                    Toast.makeText(ctx, tr
+                    UiKit.toast(ctx, tr
                             ? "CineTV en güncel sürümde (v" + currentVersion + ")"
-                            : "CineTV is up to date (v" + currentVersion + ")", Toast.LENGTH_SHORT).show();
+                            : "CineTV is up to date (v" + currentVersion + ")");
                 }
 
                 @Override
                 public void onError(String message) {
-                    Toast.makeText(ctx, tr
+                    UiKit.toast(ctx, tr
                             ? "Güncelleme denetimi başarısız: " + message
-                            : "Update check failed: " + message, Toast.LENGTH_SHORT).show();
+                            : "Update check failed: " + message);
                 }
             });
         }));
@@ -594,9 +582,9 @@ public final class Panels {
                     subLabel.setText(newActive
                             ? (tr ? "Açık (Ağda aktif) · Kapatıp TV'yi izole etmek için dokunun" : "Active (Enabled on network) · Tap to disable & isolate TV")
                             : (tr ? "Kapalı (Güvenli) · Mobil kumanda güvenle çalışır" : "Disabled (Secure) · Mobile remote works securely"));
-                    Toast.makeText(ctx, newActive
+                    UiKit.toast(ctx, newActive
                             ? (tr ? "Ağda hata ayıklama etkinleştirildi" : "Debugging enabled")
-                            : (tr ? "USB Hata ayıklama kapatıldı. TV'niz güvenli modda." : "USB debugging disabled. TV is secured."), Toast.LENGTH_SHORT).show();
+                            : (tr ? "USB Hata ayıklama kapatıldı. TV'niz güvenli modda." : "USB debugging disabled. TV is secured."));
                 });
         adbTile.setTag("opt_adb_sec");
         cMaint.addView(adbTile);
@@ -660,6 +648,8 @@ public final class Panels {
                 }
             }
         }
+
+        attachScrollArrows(ctx, frame, scroll, cols);
 
         if (focusTag != null) {
             root.post(() -> {
@@ -1078,7 +1068,7 @@ public final class Panels {
             new Thread(() -> {
                 String problem = com.cinetv.launcher.device.Uninstaller.run(app);
                 v.post(() -> {
-                    if (problem != null) Toast.makeText(ctx, problem, Toast.LENGTH_LONG).show();
+                    if (problem != null) UiKit.toast(ctx, problem);
                     else host.close();
                 });
             }, "cinetv-remove").start();
@@ -1316,17 +1306,43 @@ public final class Panels {
     // ---- Inputs -----------------------------------------------------------------------------------
 
     private static EditText field(Context ctx, String value, int hintRes, boolean secret) {
-        EditText et = new EditText(ctx);
+        final EditText et = new EditText(ctx);
         et.setTextColor(UiKit.INK);
         et.setHintTextColor(UiKit.INK_FAINT);
+        et.setTypeface(FontManager.getMedium(ctx));
         et.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiKit.pxf(24));
         et.setSingleLine(true);
         et.setHint(hintRes);
         if (value != null) et.setText(value);
         et.setPadding(UiKit.px(24), UiKit.px(18), UiKit.px(24), UiKit.px(18));
-        et.setBackground(new Glass(et, UiKit.pxf(22), Glass.Style.CONTROL));
+        final Glass g = new Glass(et, UiKit.pxf(22), Glass.Style.CONTROL);
+        et.setBackground(g);
         et.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        et.setShowSoftInputOnFocus(false);
         if (secret) et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+        et.setOnFocusChangeListener((v, has) -> {
+            g.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
+            et.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
+            UiKit.lift(v, has, 1.03f, 120);
+        });
+        final Runnable openGlassKb = () -> {
+            MainActivity ma = MainActivity.instance;
+            if (ma != null && ma.getHome() != null && ma.getHome().keyboard != null) {
+                ma.getHome().keyboard.showForField(et, () -> {
+                    et.onEditorAction(EditorInfo.IME_ACTION_DONE);
+                });
+            }
+        };
+        et.setOnClickListener(v -> openGlassKb.run());
+        et.setOnKeyListener((v, keyCode, event) -> {
+            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                if (event.getAction() == KeyEvent.ACTION_UP) {
+                    openGlassKb.run();
+                }
+                return true;
+            }
+            return false;
+        });
         return et;
     }
 
@@ -1384,10 +1400,9 @@ public final class Panels {
                     if (others.isEmpty()) return;
                     new Thread(() -> {
                         int n = com.cinetv.launcher.device.HomeLaunchers.disableOthers(ctx);
-                        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> Toast.makeText(ctx, n < 0
+                        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> UiKit.toast(ctx, n < 0
                                 ? (tr ? "TV'nin ağ hata ayıklaması kapalı: kurulumdaki adımı yapıp tekrar deneyin" : "Network debugging is off: do the setup step and try again")
-                                : (tr ? "Ana ekran tuşu artık CineTV'yi açar. TV'nin kendi başlatıcısı açık kalır; CineTV kaldırılırsa TV ona döner." : "Home now opens CineTV. The TV's own launcher stays on, so the TV returns to it if CineTV is removed."),
-                                Toast.LENGTH_LONG).show());
+                                : (tr ? "Ana ekran tuşu artık CineTV'yi açar. TV'nin kendi başlatıcısı açık kalır; CineTV kaldırılırsa TV ona döner." : "Home now opens CineTV. The TV's own launcher stays on, so the TV returns to it if CineTV is removed.")));
                     }, "cinetv-home-off").start();
                 }));
         root.addView(Controls.tile(ctx, tr ? "TV'nin Orijinal Başlatıcısını Kurtar ve Geri Getir" : "Recover & Bring Back the TV's Default Launcher",
@@ -1396,8 +1411,8 @@ public final class Panels {
                 false, v -> new Thread(() -> {
                     boolean ok = com.cinetv.launcher.device.HomeLaunchers.restoreOthers(ctx);
                     new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
-                        Toast.makeText(ctx, ok ? (tr ? "TV'nin orijinal başlatıcısı kurtarıldı ve etkinleştirildi." : "The TV's default launcher was recovered and enabled.")
-                                : (tr ? "TV'nin ağ hata ayıklaması kapalı; yine de sistem başlatıcı seçici açılıyor." : "Network debugging is off; opening system home settings."), Toast.LENGTH_LONG).show();
+                        UiKit.toast(ctx, ok ? (tr ? "TV'nin orijinal başlatıcısı kurtarıldı ve etkinleştirildi." : "The TV's default launcher was recovered and enabled.")
+                                : (tr ? "TV'nin ağ hata ayıklaması kapalı; yine de sistem başlatıcı seçici açılıyor." : "Network debugging is off; opening system home settings."));
                         try {
                             ctx.startActivity(new android.content.Intent(android.provider.Settings.ACTION_HOME_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
                         } catch (Throwable ignored) {
@@ -1726,7 +1741,7 @@ public final class Panels {
                 if (SecretStore.TMDB_KEY.equals(name) || SecretStore.TMDB_READ_TOKEN.equals(name)) {
                     new Thread(() -> NuvioSetup.deployConfigs(ctx), "cinetv-tmdb-sync").start();
                 }
-                Toast.makeText(ctx, ok ? R.string.saved_securely : R.string.save_failed, Toast.LENGTH_SHORT).show();
+                UiKit.toast(ctx, ok ? R.string.saved_securely : R.string.save_failed);
             }
             host.back();
             if (onSaved != null) v.postDelayed(onSaved, 200);
@@ -2003,7 +2018,7 @@ public final class Panels {
             Prefs.setFontScaleLevel(ctx, curFont[0]);
             UiKit.init(ctx);
             a.applyAppearance();
-            Toast.makeText(ctx, tr ? "Ekran oranı ve yazı boyutu başarıyla uygulandı" : "UI scale and font size applied", Toast.LENGTH_SHORT).show();
+            UiKit.toast(ctx, tr ? "Ekran oranı ve yazı boyutu başarıyla uygulandı" : "UI scale and font size applied");
             host.back();
         });
         LinearLayout.LayoutParams saveLp = new LinearLayout.LayoutParams(UiKit.px(210), UiKit.px(46));
@@ -2204,7 +2219,7 @@ public final class Panels {
             for (final String[] act : actions) {
                 choices.addView(Controls.tile(ctx, act[1], null, false, c -> {
                     HardwareKeys.bind(ctx, kc, sc, act[0]);
-                    Toast.makeText(ctx, tr ? (act[1] + " tuşa atandı!") : ("Assigned to " + act[1]), Toast.LENGTH_SHORT).show();
+                    UiKit.toast(ctx, tr ? (act[1] + " tuşa atandı!") : ("Assigned to " + act[1]));
                     a.onKeysChanged();
                     host.back();
                 }), new LinearLayout.LayoutParams(UiKit.px(580), ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -2379,7 +2394,7 @@ public final class Panels {
                 buttons.removeAllViews();
                 buttons.addView(Controls.button(ctx, ctx.getString(R.string.setup_apply_nuvio), v -> {
                     new Thread(() -> NuvioSetup.deployConfigs(ctx)).start();
-                    if (!profile.openInNuvio(ctx)) Toast.makeText(ctx, R.string.app_not_found, Toast.LENGTH_SHORT).show();
+                    if (!profile.openInNuvio(ctx)) UiKit.toast(ctx, R.string.app_not_found);
                 }));
                 View sp1 = new View(ctx);
                 buttons.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(16), 1));
@@ -2390,7 +2405,7 @@ public final class Panels {
                 }
                 buttons.addView(Controls.button(ctx, ctx.getString(R.string.setup_restore), v -> {
                     boolean done = com.cinetv.launcher.device.AvOptimizer.restore(ctx);
-                    Toast.makeText(ctx, done ? R.string.setup_restored : R.string.setup_nothing_to_restore, Toast.LENGTH_SHORT).show();
+                    UiKit.toast(ctx, done ? R.string.setup_restored : R.string.setup_nothing_to_restore);
                 }));
                 View sp3 = new View(ctx);
                 buttons.addView(sp3, new LinearLayout.LayoutParams(UiKit.px(16), 1));
@@ -2402,7 +2417,7 @@ public final class Panels {
                     new Thread(() -> {
                         boolean ok = com.cinetv.launcher.device.NetworkOptimizer.apply(ctx, next);
                         v.post(() -> {
-                            if (!ok && !com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(next)) Toast.makeText(ctx, R.string.dns_blocked, Toast.LENGTH_LONG).show();
+                            if (!ok && !com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(next)) UiKit.toast(ctx, R.string.dns_blocked);
                             dnsBtn.setText(ctx.getString(R.string.dns_title) + ": " + ctx.getString(dnsRes(com.cinetv.launcher.device.NetworkOptimizer.choice(ctx))));
                         });
                     }, "cinetv-dns").start();
@@ -2532,11 +2547,11 @@ public final class Panels {
         final View.OnClickListener saveAction = v -> {
             String val = input.getText().toString().trim();
             if (!com.cinetv.launcher.ai.GamzeMemory.isValidViewerName(val)) {
-                Toast.makeText(ctx, tr ? "Lütfen en az 2 harfli bir kullanıcı adı girin." : "Please enter a name (at least 2 characters).", Toast.LENGTH_SHORT).show();
+                UiKit.toast(ctx, tr ? "Lütfen en az 2 harfli bir kullanıcı adı girin." : "Please enter a name (at least 2 characters).");
                 return;
             }
             com.cinetv.launcher.ai.GamzeMemory.setName(ctx, val);
-            Toast.makeText(ctx, tr ? ("Hitap ismi kaydedildi: " + com.cinetv.launcher.ai.GamzeMemory.name(ctx)) : "Name saved", Toast.LENGTH_SHORT).show();
+            UiKit.toast(ctx, tr ? ("Hitap ismi kaydedildi: " + com.cinetv.launcher.ai.GamzeMemory.name(ctx)) : "Name saved");
             host.back();
             if (onSaved != null) v.postDelayed(onSaved, 180);
         };
@@ -2819,7 +2834,7 @@ public final class Panels {
 
         buttons.addView(Controls.button(ctx, turkish ? "Evet, Kurulsun (Önerilen)" : "Yes, Install (Recommended)", v -> {
             Prefs.get(ctx).edit().putBoolean("nuvio_choice_made", true).putBoolean("nuvio_install_allowed", true).apply();
-            Toast.makeText(ctx, turkish ? "Nuvio ve Türkçe eklentiler kuruluyor..." : "Installing Nuvio & addons...", Toast.LENGTH_SHORT).show();
+            UiKit.toast(ctx, turkish ? "Nuvio ve Türkçe eklentiler kuruluyor..." : "Installing Nuvio & addons...");
             new Thread(() -> {
                 NuvioSetup.installNuvio(ctx, true);
                 NuvioSetup.installPlayer(ctx, true);
@@ -2909,10 +2924,10 @@ public final class Panels {
                         : (turkish ? "Yüklü değil (dokunarak arka planda indirin ve kurun)" : "Not installed (tap to download & install)"),
                 nuvioOk, v -> {
                     if (nuvioOk) {
-                        Toast.makeText(ctx, turkish ? "Nuvio eklentileri ve profilleri eşitleniyor..." : "Syncing Nuvio addons & configs...", Toast.LENGTH_SHORT).show();
+                        UiKit.toast(ctx, turkish ? "Nuvio eklentileri ve profilleri eşitleniyor..." : "Syncing Nuvio addons & configs...");
                         NuvioSetup.syncAddonsAndConfigs(ctx, true);
                     } else {
-                        Toast.makeText(ctx, turkish ? "Nuvio ve eklentileri indiriliyor..." : "Installing Nuvio and addons...", Toast.LENGTH_SHORT).show();
+                        UiKit.toast(ctx, turkish ? "Nuvio ve eklentileri indiriliyor..." : "Installing Nuvio and addons...");
                         new Thread(() -> {
                             NuvioSetup.installNuvio(ctx, true);
                             v.post(() -> host.replace(() -> buildWizard(ctx, host)));
@@ -2928,7 +2943,7 @@ public final class Panels {
                          : (turkish ? "Nova Player yüklemek için dokunun (telefondan aktarım için)" : "Tap to install Nova Player"),
                 playerOk, v -> {
                     if (!playerOk) {
-                        Toast.makeText(ctx, turkish ? "Nova Player indiriliyor..." : "Downloading Nova Player...", Toast.LENGTH_SHORT).show();
+                        UiKit.toast(ctx, turkish ? "Nova Player indiriliyor..." : "Downloading Nova Player...");
                         new Thread(() -> {
                             NuvioSetup.installPlayer(ctx, true);
                             v.post(() -> host.replace(() -> buildWizard(ctx, host)));
@@ -2954,7 +2969,7 @@ public final class Panels {
                       : (turkish ? "Arka plan uygulamalarını dondurup gereksiz servisleri kapatmak için dokunun" : "Tap to freeze background apps and stop needless services"),
                 optOk, v -> {
                     MemoryOptimizer.applyTvOptimizations(ctx);
-                    Toast.makeText(ctx, turkish ? "Optimizasyon uygulandı" : "Optimization applied", Toast.LENGTH_SHORT).show();
+                    UiKit.toast(ctx, turkish ? "Optimizasyon uygulandı" : "Optimization applied");
                     v.postDelayed(() -> host.replace(() -> buildWizard(ctx, host)), 800);
                 }));
 
@@ -3010,7 +3025,7 @@ public final class Panels {
         buttons.setPadding(0, UiKit.px(14), 0, 0);
 
         buttons.addView(Controls.button(ctx, turkish ? "Otomatik Tamamla" : "Auto-Setup All", v -> {
-            Toast.makeText(ctx, turkish ? "Kurulum ve optimizasyonlar başlatılıyor..." : "Completing setup...", Toast.LENGTH_SHORT).show();
+            UiKit.toast(ctx, turkish ? "Kurulum ve optimizasyonlar başlatılıyor..." : "Completing setup...");
             new Thread(() -> {
                 if (!HomeGuard.isDefault(ctx)) {
                     v.post(() -> HomeGuard.promptHomeChooser(ctx));
@@ -3024,7 +3039,7 @@ public final class Panels {
                 NuvioSetup.deployConfigs(ctx);
                 Prefs.get(ctx).edit().putBoolean("wizard_done", true).putBoolean(Prefs.FIRST_SETUP_DONE, true).apply();
                 v.post(() -> {
-                    Toast.makeText(ctx, turkish ? "Tüm bileşenler ve TV Denetçisi optimizasyonları başarıyla uygulandı!" : "All components & optimizations successfully applied!", Toast.LENGTH_LONG).show();
+                    UiKit.toast(ctx, turkish ? "Tüm bileşenler ve TV Denetçisi optimizasyonları başarıyla uygulandı!" : "All components & optimizations successfully applied!");
                     host.replace(() -> buildWizard(ctx, host));
                 });
             }, "cinetv-wiz-auto").start();
@@ -3226,7 +3241,7 @@ public final class Panels {
             com.cinetv.launcher.device.DeviceVerifier.submitFeedback(ctx, "Verified & Running Smoothly", new com.cinetv.launcher.device.DeviceVerifier.Callback() {
                 @Override
                 public void onSuccess(String msg) {
-                    Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show();
+                    UiKit.toast(ctx, msg);
                     final String issueUrl = com.cinetv.launcher.device.DeviceVerifier.getVerificationIssueUrl(ctx, "Verified & Running Smoothly");
                     host.push(() -> {
                         LinearLayout box = new LinearLayout(ctx);
@@ -3265,7 +3280,7 @@ public final class Panels {
                 }
                 @Override
                 public void onError(String err) {
-                    Toast.makeText(ctx, "Hata: " + err, Toast.LENGTH_SHORT).show();
+                    UiKit.toast(ctx, "Hata: " + err);
                 }
             });
         });
@@ -3378,7 +3393,7 @@ public final class Panels {
                     .putBoolean("nuvio_update_prompt_v1_0_0_9b", true)
                     .apply();
             host.back();
-            Toast.makeText(ctx, "Seçilen eklentiler Nuvio'ya aktarılıyor...", Toast.LENGTH_SHORT).show();
+            UiKit.toast(ctx, "Seçilen eklentiler Nuvio'ya aktarılıyor...");
             new Thread(() -> {
                 try {
                     for (int i = 0; i < items.length; i++) {
@@ -3390,7 +3405,7 @@ public final class Panels {
                         }
                     }
                     new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
-                        Toast.makeText(ctx, "Nuvio eklenti kurulumu tamamlandı.", Toast.LENGTH_SHORT).show();
+                        UiKit.toast(ctx, "Nuvio eklenti kurulumu tamamlandı.");
                     });
                 } catch (Throwable t) {
                     android.util.Log.w("CineTvNuvio", "addon install error: " + t);
@@ -4062,9 +4077,9 @@ public final class Panels {
         btns.setOrientation(LinearLayout.HORIZONTAL);
 
         TextView sweepBtn = Controls.button(ctx, tr ? "▶ Akustik Sweep Testi Çal" : "▶ Play Test Sweep", v -> {
-            Toast.makeText(ctx, tr ? "Akustik test sinyali çalınıyor..." : "Playing acoustic sweep...", Toast.LENGTH_SHORT).show();
+            UiKit.toast(ctx, tr ? "Akustik test sinyali çalınıyor..." : "Playing acoustic sweep...");
             com.cinetv.launcher.device.AcousticsCalibrator.playSweep(ctx, () -> {
-                Toast.makeText(ctx, tr ? "Akustik test tamamlandı." : "Sweep finished.", Toast.LENGTH_SHORT).show();
+                UiKit.toast(ctx, tr ? "Akustik test tamamlandı." : "Sweep finished.");
             });
         });
         btns.addView(sweepBtn);
@@ -4074,7 +4089,7 @@ public final class Panels {
 
         TextView resetBtn = Controls.button(ctx, tr ? "Varsayılana Sıfırla" : "Reset to Default", v -> {
             com.cinetv.launcher.device.AcousticsCalibrator.resetCalibration(ctx);
-            Toast.makeText(ctx, tr ? "Akustik kalibrasyon sıfırlandı." : "Calibration reset to defaults.", Toast.LENGTH_SHORT).show();
+            UiKit.toast(ctx, tr ? "Akustik kalibrasyon sıfırlandı." : "Calibration reset to defaults.");
             host.back();
         });
         btns.addView(resetBtn);

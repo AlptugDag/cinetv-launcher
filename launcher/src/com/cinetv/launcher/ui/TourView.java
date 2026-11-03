@@ -277,7 +277,7 @@ public final class TourView extends FrameLayout {
         }
     }
 
-    private void finish() {
+    public void finish() {
         EmaLightningTts.stop();
         if (listener != null) listener.onStep(-1, null);
         animate().alpha(0f).setDuration(250).withEndAction(() -> setVisibility(GONE)).start();

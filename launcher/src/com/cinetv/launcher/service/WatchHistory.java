@@ -128,10 +128,11 @@ public final class WatchHistory {
     }
 
     private static void notifyHome() {
-        // Home shows it at once, whatever order Android resumes and stops the two screens in
         new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
             com.cinetv.launcher.MainActivity a = com.cinetv.launcher.MainActivity.instance;
-            if (a != null && !a.isFinishing()) a.refreshContinueCard();
+            if (a != null && !a.isFinishing() && com.cinetv.launcher.MainActivity.isInFront()) {
+                a.refreshContinueCard();
+            }
         });
     }
 
@@ -147,6 +148,21 @@ public final class WatchHistory {
         } catch (Throwable ignored) {
         }
         return null;
+    }
+
+    /** All active unfinished entries in WatchHistory. */
+    public static java.util.List<Entry> all(Context ctx) {
+        java.util.List<Entry> list = new java.util.ArrayList<>();
+        try {
+            JSONArray arr = new JSONArray(Prefs.get(ctx).getString(LIST, "[]"));
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.optJSONObject(i);
+                if (o == null || System.currentTimeMillis() - o.optLong("at") > KEEP_FOR) continue;
+                list.add(entry(o));
+            }
+        } catch (Throwable ignored) {
+        }
+        return list;
     }
 
     /** Where the viewer stopped this film, for a stream from another source (same title, about the same length); 0 if unknown. */
@@ -175,16 +191,66 @@ public final class WatchHistory {
         if (m == null) return;
         try {
             String key = key(m.toJson());
+            String t = m.title == null ? "" : m.title.trim().toLowerCase(Locale.ROOT);
+            String orig = m.originalTitle == null ? "" : m.originalTitle.trim().toLowerCase(Locale.ROOT);
             JSONArray old = new JSONArray(Prefs.get(ctx).getString(LIST, "[]"));
             JSONArray out = new JSONArray();
             for (int i = 0; i < old.length(); i++) {
                 JSONObject o = old.optJSONObject(i);
-                if (o != null && !key(o).equals(key)) out.put(o);
+                if (o == null) continue;
+                boolean sameKey = key(o).equals(key);
+                String ot = o.optString("title", "").trim().toLowerCase(Locale.ROOT);
+                String oo = o.optString("original", "").trim().toLowerCase(Locale.ROOT);
+                boolean sameTitle = (!t.isEmpty() && (t.equals(ot) || t.equals(oo)))
+                        || (!orig.isEmpty() && (orig.equals(ot) || orig.equals(oo)));
+                if (!sameKey && !sameTitle) out.put(o);
             }
-            Prefs.get(ctx).edit().putString(LIST, out.toString()).apply();
+            Prefs.get(ctx).edit().putString(LIST, out.toString()).remove(PENDING).apply();
         } catch (Throwable ignored) {
         }
         notifyHome();
+    }
+
+    /**
+     * Removes any WatchHistory entry whose title, originalTitle, or IMDb ID appears in {@code screenText},
+     * or removes the most recent entry if {@code fallbackLatest} is true.
+     */
+    public static synchronized void forgetMatchingFromNuvio(Context ctx, String screenText, boolean fallbackLatest) {
+        try {
+            String lower = screenText == null ? "" : screenText.toLowerCase(Locale.ROOT);
+            JSONArray old = new JSONArray(Prefs.get(ctx).getString(LIST, "[]"));
+            if (old.length() == 0) return;
+            JSONArray out = new JSONArray();
+            boolean removedAny = false;
+            for (int i = 0; i < old.length(); i++) {
+                JSONObject o = old.optJSONObject(i);
+                if (o == null) continue;
+                String t = o.optString("title", "").trim().toLowerCase(Locale.ROOT);
+                String orig = o.optString("original", "").trim().toLowerCase(Locale.ROOT);
+                String imdb = o.optString("imdb", "").trim().toLowerCase(Locale.ROOT);
+                boolean match = (!t.isEmpty() && lower.contains(t))
+                        || (!orig.isEmpty() && lower.contains(orig))
+                        || (!imdb.isEmpty() && lower.contains(imdb));
+                if (match) {
+                    removedAny = true;
+                } else {
+                    out.put(o);
+                }
+            }
+            if (!removedAny && fallbackLatest && old.length() > 0) {
+                out = new JSONArray();
+                for (int i = 1; i < old.length(); i++) {
+                    JSONObject o = old.optJSONObject(i);
+                    if (o != null) out.put(o);
+                }
+                removedAny = true;
+            }
+            if (removedAny) {
+                Prefs.get(ctx).edit().putString(LIST, out.toString()).remove(PENDING).apply();
+                notifyHome();
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     /** Called when Nuvio's detail page for the Continue Watching title shows no resume button (removed in Nuvio). */
@@ -195,14 +261,19 @@ public final class WatchHistory {
         }
     }
 
+    private static volatile long lastSyncAt;
+
     /**
-     * Synchronizes CineTV's "Kaldığın yerden" list with Nuvio's own Continue Watching data when returning to Home.
-     * If the viewer removed an item from Nuvio's Continue Watching list, it is removed from CineTV's card as well.
+     * Synchronizes CineTV's "Kaldığın yerden" list with Nuvio's own Continue Watching & Watchlist data when returning to Home.
+     * If the viewer removed an item from Nuvio's Continue Watching or Watchlist, it is removed from CineTV's card as well.
      */
     public static void syncWithNuvio(final Context ctx) {
         final Context app = ctx.getApplicationContext();
         Entry cur = latest(app);
-        if (cur == null || cur.movie == null || !"nuvio".equals(cur.source)) return;
+        if (cur == null || cur.movie == null) return;
+        long now = System.currentTimeMillis();
+        if (now - lastSyncAt < 3_000L) return;
+        lastSyncAt = now;
         new Thread(() -> {
             try {
                 JSONArray arr;
@@ -210,33 +281,33 @@ public final class WatchHistory {
                     arr = new JSONArray(Prefs.get(app).getString(LIST, "[]"));
                 }
                 if (arr.length() == 0) return;
-                // Inspect Nuvio's watch progress storage (shared_prefs / files / databases) via LocalAdb if available
-                String cmd = "grep -rnI -E 'tt[0-9]{5,10}|watch_progress|continue_watching|watchProgress|history' "
-                        + "/data/data/com.nuvio.tv/shared_prefs /data/data/com.nuvio.tv/files /data/data/com.nuvio.tv/app_webview/Default/Local\\ Storage/leveldb 2>/dev/null | head -c 65536";
+                // Inspect Nuvio's active shared_prefs and files (without -I so binary/MMKV/SQLite stores are also searched,
+                // excluding stale webview cache/log tombstones)
+                String cmd = "grep -rna -E 'tt[0-9]{5,10}|watch_progress|continue_watching|watchProgress|watchlist|library|history' "
+                        + "/data/data/com.nuvio.tv/shared_prefs /data/data/com.nuvio.tv/files /data/data/com.nuvio.tv/databases 2>/dev/null | head -c 98304";
                 byte[] raw = com.cinetv.launcher.remote.LocalAdb.exec(app, cmd, 2500);
                 if (raw == null || raw.length == 0) return;
                 String dump = new String(raw, java.nio.charset.StandardCharsets.UTF_8);
-                // Only prune if Nuvio's storage actually contains watch/progress state and the item's IMDb ID or title is absent from it
-                boolean hasProgressStore = dump.contains("watch") || dump.contains("progress") || dump.contains("continue") || dump.contains("tt");
+                boolean hasProgressStore = dump.contains("watch") || dump.contains("progress")
+                        || dump.contains("continue") || dump.contains("library") || dump.contains("tt");
                 if (!hasProgressStore) return;
+                String dumpLower = dump.toLowerCase(Locale.ROOT);
                 boolean changed = false;
                 JSONArray updated = new JSONArray();
                 for (int i = 0; i < arr.length(); i++) {
                     JSONObject o = arr.optJSONObject(i);
                     if (o == null) continue;
-                    if (!"nuvio".equals(o.optString("source", "cineplayer"))) {
-                        updated.put(o);
-                        continue;
-                    }
                     String imdb = o.optString("imdb", "");
                     String title = o.optString("title", "");
-                    // Don't prune an item that was just updated in the last 45 seconds
-                    if (System.currentTimeMillis() - o.optLong("at") < 45_000L) {
+                    String orig = o.optString("original", "");
+                    // Don't prune an item that was just started in the last 20 seconds
+                    if (System.currentTimeMillis() - o.optLong("at") < 20_000L) {
                         updated.put(o);
                         continue;
                     }
                     boolean foundInNuvio = (!imdb.isEmpty() && dump.contains(imdb))
-                            || (!title.isEmpty() && dump.toLowerCase(Locale.ROOT).contains(title.toLowerCase(Locale.ROOT)));
+                            || (!title.isEmpty() && dumpLower.contains(title.toLowerCase(Locale.ROOT)))
+                            || (!orig.isEmpty() && dumpLower.contains(orig.toLowerCase(Locale.ROOT)));
                     if (foundInNuvio) {
                         updated.put(o);
                     } else {
@@ -283,7 +354,7 @@ public final class WatchHistory {
         e.positionMs = o.optLong("pos");
         e.durationMs = o.optLong("dur");
         e.at = o.optLong("at");
-        e.source = o.optString("source", "cineplayer");
+        e.source = o.optString("source", "nuvio");
         return e;
     }
 }

@@ -241,11 +241,12 @@ public final class SceneInspector {
                 + "CRITICAL ACCURACY RULE: Never guess or hallucinate the title of a film or TV series! Only set the \"film\" field (which holds either the film title OR the TV series / dizi title) if you are 100% certain of the exact film or TV series from unmistakable characters/actors, subtitles, or verified visual evidence; if you are not 100% certain which film or TV series this is, leave \"film\":\"\" empty and focus on the verifiable objects, locations, history, or subtitle references in the frame. "
                 + "Never identify a real person from their face alone unless the film or TV series is unmistakably recognised or their name appears on screen; "
                 + "when the film or TV series is recognised, name both the character and the actor and share a sharp behind-the-scenes, directorial, showrunner, or career insight. "
-                + "Never return shallow descriptions ('a man standing', 'a dark room'): every item must make the viewer say 'I didn't know that!'. "
+                + "CRITICAL SUBTITLE RULE: In subtitles (subtitle:true), NEVER return, repeat, or quote the literal subtitle words in 'title' or 'fact' (e.g. NEVER quote what was spoken or say 'Karakter ... diyor')! ONLY create a subtitle item if there is an implicit cultural, historical, philosophical, mythological, or intertextual reference, subtext, or double meaning that is not obvious from the words alone. If dialogue is straightforward conversation without implicit context or references, DO NOT return any subtitle item! 'title' must be the named concept/reference itself (e.g. 'Troya Savaşı Göndermesi'), NEVER the subtitle phrase. "
+                + "Never return shallow descriptions ('a man standing', 'a dark room') or empty placeholders: every item must make the viewer say 'I didn't know that!'. "
                 + "Write in fluent, natural " + lang + ".";
         String ask = ambient
                 ? "Actively scan this frame and its visible subtitles (whether from a film or a TV series / dizi) and return the 1 or 2 most fascinating details you can detect across ANY of these categories: "
-                + "(1) visible subtitles: idioms, slang, cultural/historical references, real events/people, or quotes/allusions to films, series, books, myths or songs (set subtitle:true, kind text or event); "
+                + "(1) visible subtitles: ONLY if there is an implicit idiom, slang, cultural/historical/mythological reference, or literary allusion (set subtitle:true, kind text or event, NEVER quote or repeat the literal subtitle sentence, title must be the underlying concept); "
                 + "(2) recognisable characters & actors or cameos in a known film or TV series / dizi (kind person or cameo: character + actor name + behind-the-scenes or career fact); "
                 + "(3) filming locations, cities, architectural landmarks or set design details (kind place or landmark); "
                 + "(4) specific vehicles (exact car/motorcycle/aircraft model & era), watches, weapons, instruments, gadgets, books, records, iconic costumes or props (kind object); "
@@ -256,7 +257,7 @@ public final class SceneInspector {
                 + "JSON: {\"film\":\"exact film or TV series (dizi) title ONLY if 100% certain, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 words\",\"title\":\"name\",\"fact\":\"1-2 rich sentences under 180 characters\","
                 + "\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":false}]} with box in 0-1000 screen coordinates enclosing that specific item (leave box empty for subtitle/music/general scene notes)."
                 : "The viewer pressed the CineSUB button to inspect this exact moment in a film, TV series (dizi), or video. Deliver the 2 to 5 sharpest, smartest, most rewarding insights in this frame (high intellectual & cinephile value): "
-                + "(1) SUBTITLES & DIALOGUE SUBTEXT: Read visible subtitles closely—decode cultural idioms, historical events, philosophical/literary/religious allusions, double meanings, or intertextual film/series quotes (subtitle:true, kind text or event, explain the exact reference and why the character invokes it); "
+                + "(1) SUBTITLES & DIALOGUE SUBTEXT: Read visible subtitles closely—decode implicit cultural idioms, historical events, philosophical/literary/religious allusions, double meanings, or intertextual film/series quotes (subtitle:true, kind text or event, explain the exact reference and why the character invokes it; NEVER quote or repeat the literal subtitle line in title or fact, title must be the specific concept name); "
                 + "(2) ACTORS, CHARACTERS & CAMEOS: When the film or TV series (dizi) is unmistakably recognisable, identify key characters/actors or cameos (kind person or cameo) with a non-obvious production secret, episode/season trivia, improvisation, method-acting detail, or career connection; "
                 + "(3) DIRECTORIAL, SHOWRUNNER & CINEMATOGRAPHIC CRAFT: Notice visual symbolism, framing/blocking, lens choice, color palette motif, production design easter eggs, or homage to another filmmaker/series/painting (kind event or art); "
                 + "(4) EXACT OBJECTS, PROPS & HOROLOGY/AUTOMOTIVE: Identify exact models and eras of cars, motorcycles, watches, firearms, cameras, musical instruments, books, vinyl records, or bespoke costumes and their symbolic role in the scene (kind object); "
@@ -277,13 +278,36 @@ public final class SceneInspector {
             JSONArray items = root.optJSONArray("items");
             for (int i = 0; items != null && i < items.length() && scene.pois.size() < 5; i++) {
                 JSONObject o = items.optJSONObject(i);
-                if (o == null || o.optString("fact").trim().isEmpty()) continue;
+                if (o == null) continue;
+                String f = o.optString("fact").trim();
+                String t = o.optString("title", o.optString("label")).trim();
+                // Reject empty balloons or non-substantive entries
+                if (f.isEmpty() || t.isEmpty() || f.length() < 12) continue;
+                if (f.equalsIgnoreCase(t)) continue;
+                String lowerT = t.toLowerCase(Locale.ROOT);
+                if (lowerT.equals("yok") || lowerT.equals("none") || lowerT.equals("bilinmiyor")
+                        || lowerT.equals("tanımsız") || lowerT.equals("altyazı") || lowerT.equals("subtitle")) continue;
                 Poi p = new Poi();
                 p.kind = o.optString("kind", "object");
-                p.label = o.optString("label");
-                p.title = o.optString("title", p.label);
-                p.fact = o.optString("fact").trim();
+                p.label = o.optString("label", t).trim();
+                p.title = t;
+                p.fact = f;
                 p.fromSubtitle = o.optBoolean("subtitle");
+                if (p.fromSubtitle) {
+                    // Strip enclosing quotes from title if model wrapped them
+                    if (p.title.startsWith("\"") && p.title.endsWith("\"") && p.title.length() > 2) {
+                        p.title = p.title.substring(1, p.title.length() - 1).trim();
+                    }
+                    if (p.title.startsWith("“") && p.title.endsWith("”") && p.title.length() > 2) {
+                        p.title = p.title.substring(1, p.title.length() - 1).trim();
+                    }
+                    String lowerF = p.fact.toLowerCase(Locale.ROOT);
+                    // Discard if model merely regurgitated literal dialogue lines or lacked contextual depth
+                    if (lowerF.startsWith("diyalogda ") || lowerF.startsWith("karakter şöyle diyor")
+                            || lowerF.startsWith("altyazıda ") || p.fact.length() < 20) {
+                        continue;
+                    }
+                }
                 if (generic(p)) continue;
                 JSONArray b = o.optJSONArray("box");
                 if (b != null && b.length() == 4 && !p.fromSubtitle) {
@@ -324,15 +348,51 @@ public final class SceneInspector {
         return r.success ? r.text.trim() : r.text;
     }
 
+    /**
+     * Answers a viewer's spoken question about the frozen video frame in CineSUB voice mode.
+     * Returned text is spoken directly to the viewer via TTS.
+     */
+    public static String answerVisualQuestion(Context ctx, String userQuestion, byte[] frame) {
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        if (!LlmClient.isConfigured(ctx)) {
+            return tr ? "CineSUB sesli yanıt için Ayarlar'dan bir yapay zeka anahtarı ekleyin."
+                    : "Add an AI key in Settings to use CineSUB voice answers.";
+        }
+        byte[] jpeg = frame != null && frame.length > 0 ? frame : captureJpeg(ctx, true);
+        if (jpeg == null || jpeg.length == 0) {
+            return answer(ctx, userQuestion);
+        }
+        String hint = NowPlaying.describe(ctx);
+        String lang = tr ? "Turkish" : "English";
+        String sys = "You are CineSUB, an expert cinema companion and visual analyst sitting right next to the viewer in CineTV. "
+                + "The viewer paused a film or TV series and asked a spoken question looking directly at the current video frame on their TV. "
+                + "Answer their question directly, accurately, and naturally in 1 to 3 spoken sentences (under 280 characters). "
+                + "Do NOT use bullet points, markdown bolding, asterisks, emojis, quotes, or JSON—your response will be spoken aloud to the viewer via Text-to-Speech. "
+                + "Be confident, concise, and encyclopedic. Accurately identify the exact actor, character, object, vehicle model, landmark, art piece, or scene subtext they asked about. "
+                + (hint.isEmpty() ? "" : "Candidate title from launcher: " + hint + " (verify visually with the frame). ")
+                + "Always answer in natural spoken " + lang + ".";
+        String ask = "The viewer asks: \"" + userQuestion + "\". Look at this paused frame and provide a natural, concise spoken answer to their exact question.";
+        LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, 320, true);
+        if (r.success && r.text != null && !r.text.trim().isEmpty()) {
+            return r.text.trim();
+        }
+        return answer(ctx, userQuestion);
+    }
+
     private static float clamp(double v) {
         return (float) Math.max(0, Math.min(1, v / 1000.0));
     }
 
-    /** An anonymous person or a vague label teaches nothing ("Erkek Karakter", "A man standing"). */
-    static boolean generic(Poi p) {
+    /** An anonymous person, empty balloon, or a vague label teaches nothing. */
+    public static boolean generic(Poi p) {
         String t = (p.title == null ? "" : p.title).toLowerCase(Locale.ROOT).trim();
         if (t.isEmpty()) return true;
-        String[] vague = {"karakter", "character", "erkek", "kadın", "kadin", "adam", "kız", "çocuk", "man", "woman", "person", "kişi", "biri", "someone", "unknown", "bilinmeyen"};
+        String f = (p.fact == null ? "" : p.fact).trim();
+        if (f.isEmpty() || f.length() < 12 || f.equalsIgnoreCase(t)) return true;
+        String[] vague = {"karakter", "character", "erkek", "kadın", "kadin", "adam", "kız", "çocuk", "man", "woman", "person", "kişi", "biri", "someone", "unknown", "bilinmeyen", "yok", "none", "tanımsız", "altyazı", "subtitle"};
+        for (String v : vague) {
+            if (t.equals(v)) return true;
+        }
         if ("person".equals(p.kind) || t.split("\\s+").length <= 2) {
             for (String v : vague) {
                 if (t.equals(v) || t.startsWith(v + " ") || t.endsWith(" " + v)) return "person".equals(p.kind) || t.split("\\s+").length == 1;

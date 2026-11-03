@@ -380,4 +380,46 @@ public class LogicTest {
         assertFalse("First ambient frame with no previous reference must not trigger as changed",
                 com.cinetv.launcher.ui.AmbientGate.changed(null, sample));
     }
+
+    @Test
+    public void cinesubFiltersEmptyBalloonsAndGenericLabels() {
+        com.cinetv.launcher.ai.SceneInspector.Poi p = new com.cinetv.launcher.ai.SceneInspector.Poi();
+        p.title = "Erkek Karakter";
+        p.kind = "person";
+        p.fact = "Sahnede ayakta duran bir adam.";
+        assertTrue("Generic person without real character/actor name must be filtered",
+                com.cinetv.launcher.ai.SceneInspector.generic(p));
+
+        com.cinetv.launcher.ai.SceneInspector.Poi empty = new com.cinetv.launcher.ai.SceneInspector.Poi();
+        empty.title = "Yok";
+        empty.fact = "Yok";
+        assertTrue(com.cinetv.launcher.ai.SceneInspector.generic(empty));
+
+        com.cinetv.launcher.ai.SceneInspector.Poi valid = new com.cinetv.launcher.ai.SceneInspector.Poi();
+        valid.title = "Heuer Monaco 1133B";
+        valid.kind = "object";
+        valid.fact = "Steve McQueen'in 1971 yapımı Le Mans filminde taktığı kronograf saatin birebir kopyası.";
+        assertFalse(com.cinetv.launcher.ai.SceneInspector.generic(valid));
+    }
+
+    @Test
+    public void turkishKeyboardWordCorrectionsAndNuvioWatchlistSyncWork() {
+        java.util.List<String> trSuggestions = com.cinetv.launcher.ui.GlassKeyboard.suggestWords("turkce");
+        assertTrue("ASCII-folded Turkish word should suggest diacritic form", trSuggestions.contains("türkçe"));
+
+        java.util.List<String> funSuggestions = com.cinetv.launcher.ui.GlassKeyboard.suggestWords("eglenceli");
+        assertTrue("ASCII-folded word should suggest eğlenceli", funSuggestions.contains("eğlenceli"));
+
+        java.util.List<String> typoSuggestions = com.cinetv.launcher.ui.GlassKeyboard.suggestWords("aksyon");
+        assertTrue("Typo aksyon should suggest aksiyon", typoSuggestions.contains("aksiyon"));
+
+        String replaced = com.cinetv.launcher.ui.GlassKeyboard.applyWordCorrection("yüksek kalte", 12, "kalite");
+        assertEquals("Applying word correction should replace only the active word token", "yüksek kalite ", replaced);
+
+        assertTrue(com.cinetv.launcher.TvKeyInterceptorService.isNuvioRemoveLabel("İzlemeye Devam Et Listesinden Kaldır"));
+        assertTrue(com.cinetv.launcher.TvKeyInterceptorService.isNuvioRemoveLabel("Remove from Continue Watching"));
+        assertTrue(com.cinetv.launcher.TvKeyInterceptorService.isNuvioRemoveLabel("Listeden Çıkar"));
+        assertFalse(com.cinetv.launcher.TvKeyInterceptorService.isNuvioRemoveLabel("Oynat"));
+    }
 }
+

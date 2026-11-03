@@ -146,39 +146,85 @@ public class SpatialEnvironment extends View {
      * The room's cached backdrop and its blurred copy, built off the main thread (it held start-up for half a second);
      * until they are ready the same room is drawn live, so nothing on screen changes when they arrive.
      */
+    private boolean firstRevealDone = false;
+
     private void rebuild(final int w, final int h) {
         final int g = ++rebuildGen;
         rebuilding = true;
         final boolean wantPattern = theme.signaturePattern && !theme.pureBlack && pattern == null;
         final boolean comp = composited;
         builder.execute(() -> {
-            Bitmap pat = wantPattern ? buildPattern(w, h) : null;
-            int down = PerformanceProfile.blurDownscale(getContext());
-            Bitmap small = Bitmap.createBitmap(Math.max(8, w / down), Math.max(8, h / down), Bitmap.Config.ARGB_8888);
-            Canvas c = new Canvas(small);
-            c.scale(small.getWidth() / (float) w, small.getHeight() / (float) h);
-            drawBase(c, w, h, false);
-            final Bitmap blur = Blur.stack(small, 6);
-            Bitmap cache = null;
-            if (comp) {
-                // Full resolution: crystal-clear, uncompressed visual fidelity with zero shrink artifacts
-                int cw = Math.round(w * OVERSIZE), ch = Math.round(h * OVERSIZE);
-                cache = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888);
-                Canvas cc = new Canvas(cache);
-                cc.scale(cw / (float) w, ch / (float) h);
-                drawBase(cc, w, h, false);
-                headerShade(cc, w, h);
-            }
-            final Bitmap done = cache;
-            post(() -> {
-                if (g != rebuildGen) return;
+            try {
+                Bitmap pat = wantPattern ? buildPattern(w, h) : null;
+                int down = PerformanceProfile.blurDownscale(getContext());
+                Bitmap small = Bitmap.createBitmap(Math.max(8, w / down), Math.max(8, h / down), Bitmap.Config.ARGB_8888);
+                Canvas c = new Canvas(small);
+                c.scale(small.getWidth() / (float) w, small.getHeight() / (float) h);
+                drawBaseThreadSafe(c, w, h);
+                final Bitmap blur = Blur.stack(small, 6);
+                Bitmap cache = null;
+                if (comp) {
+                    int cw = Math.round(w * OVERSIZE), ch = Math.round(h * OVERSIZE);
+                    cache = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888);
+                    Canvas cc = new Canvas(cache);
+                    cc.scale(cw / (float) w, ch / (float) h);
+                    drawBaseThreadSafe(cc, w, h);
+                    headerShadeThreadSafe(cc, w, h);
+                }
+                final Bitmap done = cache;
+                post(() -> {
+                    if (g != rebuildGen) return;
+                    rebuilding = false;
+                    if (pat != null) pattern = pat;
+                    blurred = blur;
+                    baseCache = done;
+                    if (!firstRevealDone) {
+                        firstRevealDone = true;
+                        setAlpha(0f);
+                        animate().alpha(1f).setDuration(320)
+                                .setInterpolator(new DecelerateInterpolator(1.6f)).start();
+                    }
+                    invalidate();
+                });
+            } catch (OutOfMemoryError oom) {
+                PosterCache.trimMemory();
                 rebuilding = false;
-                if (pat != null) pattern = pat;
-                blurred = blur;
-                baseCache = done;
-                invalidate();
-            });
+            }
         });
+    }
+
+    private void drawBaseThreadSafe(Canvas canvas, int w, int h) {
+        Paint localPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG);
+        if (theme.pureBlack && !light) {
+            canvas.drawColor(Color.BLACK);
+            return;
+        } else if (light && wallpaper == null) {
+            canvas.drawColor(Color.parseColor("#E8ECF2"));
+        } else if (wallpaper != null && !wallpaper.isRecycled()) {
+            float s = Math.max(w / (float) wallpaper.getWidth(), h / (float) wallpaper.getHeight()) * 1.06f;
+            float dw = wallpaper.getWidth() * s, dh = wallpaper.getHeight() * s;
+            Rect lSrc = new Rect(0, 0, wallpaper.getWidth(), wallpaper.getHeight());
+            RectF lDst = new RectF((w - dw) / 2f, (h - dh) / 2f, (w + dw) / 2f, (h + dh) / 2f);
+            canvas.drawBitmap(wallpaper, lSrc, lDst, localPaint);
+            Paint veil = new Paint();
+            veil.setShader(light
+                    ? new LinearGradient(0, 0, 0, h, Color.argb(150, 240, 243, 248), Color.argb(190, 240, 243, 248), Shader.TileMode.CLAMP)
+                    : new LinearGradient(0, 0, 0, h, Color.argb(70, 0, 0, 0), Color.argb(150, 0, 0, 0), Shader.TileMode.CLAMP));
+            canvas.drawRect(0, 0, w, h, veil);
+        } else {
+            localPaint.setShader(new LinearGradient(0, 0, 0, h,
+                    new int[]{Color.parseColor("#0C0C10"), Color.parseColor("#07070A"), Color.parseColor("#030304")},
+                    new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+            canvas.drawRect(0, 0, w, h, localPaint);
+        }
+    }
+
+    private void headerShadeThreadSafe(Canvas c, int w, int h) {
+        float sh = h * 0.34f;
+        Paint sp = new Paint();
+        sp.setShader(new LinearGradient(0, 0, 0, sh, new int[]{Color.argb(150, 0, 0, 0), Color.argb(70, 0, 0, 0), Color.TRANSPARENT},
+                new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, sh, sp);
     }
 
     // ---- focus light & parallax -----------------------------------------------------------------
@@ -234,7 +280,7 @@ public class SpatialEnvironment extends View {
         if (theme == null) return;
         int w = getWidth(), h = getHeight();
         boolean customWp = ThemeManager.usesCustomWallpaper(getContext());
-        if (composited && baseCache != null && !customWp) {
+        if (composited && baseCache != null && !baseCache.isRecycled() && !customWp) {
             float px = (glowX - w / 2f) * -0.035f, py = (glowY - h / 2f) * -0.025f;
             float ow = w * OVERSIZE, oh = h * OVERSIZE;
             dst.set((w - ow) / 2f + px, (h - oh) / 2f + py, (w + ow) / 2f + px, (h + oh) / 2f + py);
@@ -243,13 +289,10 @@ public class SpatialEnvironment extends View {
             paint.setFilterBitmap(true);
             paint.setDither(true);
             canvas.drawBitmap(baseCache, null, dst, paint);
-            if (pattern != null) {
+            if (pattern != null && !pattern.isRecycled()) {
                 patternPaint.setAlpha(light ? 18 : 28);
                 canvas.drawBitmap(pattern, px - pxPad(), py - pxPad(), patternPaint);
             }
-        } else if (rebuilding) {
-            // the backdrop is being built off the main thread (it shares these paints): black for that moment
-            canvas.drawColor(Color.BLACK);
         } else {
             drawBase(canvas, w, h, true);
             headerShade(canvas, w, h);

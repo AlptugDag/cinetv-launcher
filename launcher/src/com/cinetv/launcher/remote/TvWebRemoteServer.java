@@ -754,30 +754,52 @@ public final class TvWebRemoteServer {
                 int page = parseInt(q.get("page"), 1);
                 if (text.isEmpty()) return ok.put("results", new JSONArray());
                 List<MovieCatalog.Movie> live = (page <= 1) ? com.cinetv.launcher.service.AnthologyLiveChannels.search(text, 6) : Collections.emptyList();
-                // While typing: a quick title search. On Enter (ai=1): the assistant, once.
-                if (!"1".equals(q.get("ai"))) {
-                    List<MovieCatalog.Movie> found = new ArrayList<>(live);
-                    found.addAll(MovieCatalog.search(app, text, page, 30));
-                    return ok.put("results", toJson(found));
-                }
                 String key = text.toLowerCase(java.util.Locale.ROOT);
                 if (page > 1) {
-                    // Scrolling a curated list ("Ailece", "Arkadaşlar"...): more films that fit just as well, none repeated.
                     List<MovieCatalog.Movie> shown;
                     synchronized (aiLists) {
                         shown = aiLists.get(key);
                     }
-                    if (shown == null || shown.isEmpty()) return ok.put("results", new JSONArray());
-                    List<MovieCatalog.Movie> more = com.cinetv.launcher.ai.MovieAssistant.more(app, text, shown, 14);
-                    more = freshOnly(more, shown);
-                    if (more.isEmpty()) more = freshOnly(similarTo(shown, page), shown);
-                    synchronized (aiLists) {
-                        shown.addAll(more);
+                    List<MovieCatalog.Movie> more = new ArrayList<>();
+                    if (shown != null && !shown.isEmpty()) {
+                        more = com.cinetv.launcher.ai.MovieAssistant.more(app, text, shown, 18);
+                        more = freshOnly(more, shown);
                     }
-                    return ok.put("results", toJson(more));
+                    if (more.isEmpty()) {
+                        int startP = Math.max(1, page);
+                        List<MovieCatalog.Movie> paged = MovieCatalog.searchRange(app, text, startP, 24);
+                        if (shown != null && !shown.isEmpty()) {
+                            more = freshOnly(paged, shown);
+                        } else {
+                            more = paged;
+                        }
+                    }
+                    if (more.isEmpty() && shown != null && !shown.isEmpty()) {
+                        more = freshOnly(similarTo(shown, page), shown);
+                    }
+                    synchronized (aiLists) {
+                        if (shown != null) {
+                            shown.addAll(more);
+                        } else {
+                            aiLists.put(key, new ArrayList<>(more));
+                        }
+                    }
+                    return ok.put("results", toJson(more)).put("page", page).put("more", !more.isEmpty());
+                }
+                // While typing or quick search:
+                if (!"1".equals(q.get("ai"))) {
+                    List<MovieCatalog.Movie> found = new ArrayList<>(live);
+                    List<MovieCatalog.Movie> s = MovieCatalog.searchRange(app, text, 1, 30);
+                    found.addAll(s);
+                    synchronized (aiLists) {
+                        aiLists.put(key, new ArrayList<>(s));
+                    }
+                    return ok.put("results", toJson(found)).put("more", true);
                 }
                 com.cinetv.launcher.ai.MovieAssistant.Reply r = com.cinetv.launcher.ai.MovieAssistant.ask(app, text, 30);
-                if (r.movies.isEmpty() && r.answer.isEmpty()) r.movies = MovieCatalog.search(app, text, page, 30);
+                if (r.movies.isEmpty() && r.answer.isEmpty()) {
+                    r.movies = MovieCatalog.searchRange(app, text, 1, 30);
+                }
                 synchronized (aiLists) {
                     aiLists.put(key, new ArrayList<>(r.movies));
                 }

@@ -122,6 +122,85 @@ public class PosterShelf extends FrameLayout {
     private View setBack, setFront;
     private String scene;
     private android.graphics.ColorFilter currentThemeFilter;
+    private boolean shelfEntrancePlayed = false;
+    private boolean waitingForReveal = false;
+    private long nextCaseRevealUptimeMs = 0L;
+    private final java.util.Map<Integer, DvdCase> pendingRevealCases = new java.util.LinkedHashMap<>();
+
+    /** Holds the shelf and case entrance animations while the startup splash screen covers Home. */
+    public void holdEntranceUntilReveal() {
+        waitingForReveal = true;
+        shelfEntrancePlayed = false;
+        if (setBack != null) setBack.setAlpha(0f);
+        if (setFront != null) setFront.setAlpha(0f);
+    }
+
+    /**
+     * Triggered once the background is on screen: first the shelf gracefully appears,
+     * then loaded DVD cases appear one by one onto the shelf.
+     */
+    public void playStagedEntrance() {
+        waitingForReveal = false;
+        shelfEntrancePlayed = true;
+        long now = android.os.SystemClock.uptimeMillis();
+        long shelfDelayMs = 200L;
+        long shelfDurMs = PerformanceProfile.animationMs(getContext(), 420);
+        if (setBack != null) {
+            setBack.animate().cancel();
+            setBack.setAlpha(0f);
+            setBack.setTranslationY(UiKit.pxf(20));
+            setBack.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setStartDelay(shelfDelayMs)
+                    .setDuration(shelfDurMs)
+                    .setInterpolator(new DecelerateInterpolator(1.7f))
+                    .start();
+        }
+        if (setFront != null) {
+            setFront.animate().cancel();
+            setFront.setAlpha(0f);
+            setFront.setTranslationY(UiKit.pxf(20));
+            setFront.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setStartDelay(shelfDelayMs + 40L)
+                    .setDuration(shelfDurMs)
+                    .setInterpolator(new DecelerateInterpolator(1.7f))
+                    .start();
+        }
+        nextCaseRevealUptimeMs = now + shelfDelayMs + Math.max(260L, shelfDurMs - 60L);
+        int max = movies.size();
+        if (max > 0 && !pendingRevealCases.isEmpty()) {
+            for (int d = 0; d <= max / 2; d++) {
+                int right = Math.floorMod(index + d, max), left = Math.floorMod(index - d, max);
+                DvdCase rCase = pendingRevealCases.remove(right);
+                if (rCase != null) scheduleCaseReveal(right, rCase);
+                if (left != right) {
+                    DvdCase lCase = pendingRevealCases.remove(left);
+                    if (lCase != null) scheduleCaseReveal(left, lCase);
+                }
+            }
+            for (java.util.Map.Entry<Integer, DvdCase> e : new ArrayList<>(pendingRevealCases.entrySet())) {
+                scheduleCaseReveal(e.getKey(), e.getValue());
+            }
+            pendingRevealCases.clear();
+        }
+    }
+
+    private void scheduleCaseReveal(int slot, DvdCase dvd) {
+        if (slot < 0 || slot >= cases.size() || dvd == null) return;
+        DvdCaseView v = cases.get(slot);
+        long now = android.os.SystemClock.uptimeMillis();
+        long startAt = Math.max(now, nextCaseRevealUptimeMs);
+        long delayMs = startAt - now;
+        long stepMs = PerformanceProfile.lowProfile(getContext()) ? 110L : 85L;
+        nextCaseRevealUptimeMs = startAt + stepMs;
+        v.setCase(dvd, delayMs);
+        if (slot == index && hasFocus() && listener != null) {
+            listener.onFocusCase(v, dvd.accent);
+        }
+    }
 
     /** The theme's furniture around the row (curtains, a wooden shelf) and tailored cinematic lighting grade. */
     public void setTheme(String themeId, String furniture) {
@@ -136,8 +215,14 @@ public class PosterShelf extends FrameLayout {
             if (setBack instanceof ShelfSet.Layer) {
                 ((ShelfSet.Layer) setBack).setSpatial(spatial);
             }
-            if (setBack != null) addView(setBack, 0, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-            if (setFront != null) addView(setFront, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+            if (setBack != null) {
+                if (waitingForReveal || !shelfEntrancePlayed) setBack.setAlpha(0f);
+                addView(setBack, 0, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+            }
+            if (setFront != null) {
+                if (waitingForReveal || !shelfEntrancePlayed) setFront.setAlpha(0f);
+                addView(setFront, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+            }
 
             // Theme lighting color grade: tint DVD cases to match each room's aesthetic
             android.graphics.ColorMatrix grade = ShelfSet.grade(targetScene);
@@ -203,6 +288,28 @@ public class PosterShelf extends FrameLayout {
         return index < cases.size() ? cases.get(index) : null;
     }
 
+    /**
+     * Brings focus smoothly back to the currently focused/center item on the shelf
+     * without reloading, re-baking, or recreating any DVD cases.
+     */
+    public void focusCenter() {
+        if (movies.isEmpty()) return;
+        if (anim != null && anim.isRunning()) {
+            anim.cancel();
+        }
+        targetPos = index;
+        focusPos = index;
+        if (!hasFocus()) {
+            requestFocus();
+        }
+        layoutCases();
+        invalidate();
+        DvdCaseView v = focusedCase();
+        if (v != null && listener != null && v.dvdCase() != null) {
+            listener.onFocusCase(v, v.dvdCase().accent);
+        }
+    }
+
     /** Replaces the films; posters load and bake in the background, cases fill in as they arrive. */
     public void setMovies(List<Movie> list) {
         setMovies(list, true);
@@ -212,6 +319,7 @@ public class PosterShelf extends FrameLayout {
     public void setMovies(List<Movie> list, boolean circular) {
         this.circular = circular;
         final int gen = ++generation;
+        pendingRevealCases.clear();
         int max = Math.min(list.size(), PerformanceProfile.shelfSize(getContext()));
         movies.clear();
         movies.addAll(list.subList(0, max));
@@ -225,6 +333,13 @@ public class PosterShelf extends FrameLayout {
         index = Math.min(index, Math.max(0, max - 1));
         targetPos = index;
         focusPos = index;
+        if (!waitingForReveal) {
+            if (!shelfEntrancePlayed) {
+                playStagedEntrance();
+            } else {
+                nextCaseRevealUptimeMs = android.os.SystemClock.uptimeMillis() + 140L;
+            }
+        }
         // nearest the focus first (the middle case, then outward on both sides of the ring): the cases in
         // view are ready long before the ones off screen
         posterJobs.clear();
@@ -324,10 +439,10 @@ public class PosterShelf extends FrameLayout {
     }
 
     /** A search row grows to at most this many cases (memory on a TV). */
-    private static final int MAX_APPENDED = 96;
+    private static final int MAX_APPENDED = 120;
 
     private static String key(Movie m) {
-        return m.imdbId != null && !m.imdbId.isEmpty() ? m.imdbId : (m.title + "|" + m.year).toLowerCase(java.util.Locale.ROOT);
+        return m.tmdbId > 0 ? "tmdb:" + m.tmdbId : (m.imdbId != null && !m.imdbId.isEmpty() ? m.imdbId : (m.title + "|" + m.year).toLowerCase(java.util.Locale.ROOT));
     }
 
     private void bake(final int slot, final int gen) {
@@ -353,13 +468,11 @@ public class PosterShelf extends FrameLayout {
                 final DvdCase dvd = DvdCase.bake(getContext(), poster, m.coverTitle(), m.year, accent, caseW, Math.round(caseW / DvdCase.ASPECT), glowPad, asCases);
                 main.post(() -> {
                     if (gen != generation) return;
-                    // nearest the focus first, the rest in a short cascade outwards
-                    int nn = movies.size(), dd = Math.abs(slot - index);
-                    dd = Math.min(dd, Math.max(0, nn - dd));
-                    // a low-profile TV places them in a calmer cascade, a strong one quickly
-                    long stepMs = PerformanceProfile.lowProfile(getContext()) ? 60L : 30L;
-                    v.setCase(dvd, Math.min(stepMs * 10, dd * stepMs));
-                    if (slot == index && hasFocus() && listener != null) listener.onFocusCase(v, dvd.accent);
+                    if (waitingForReveal) {
+                        pendingRevealCases.put(slot, dvd);
+                    } else {
+                        scheduleCaseReveal(slot, dvd);
+                    }
                 });
             });
         }

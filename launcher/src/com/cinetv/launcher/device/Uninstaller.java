@@ -31,45 +31,48 @@ public final class Uninstaller {
     /** Null when uninstalling started, otherwise the message to show. Blocks briefly; call off the main thread. */
     public static String run(Context ctx) {
         com.cinetv.launcher.service.Prefs.get(ctx).edit().putBoolean(REMOVING, true).putLong(REMOVING_AT, System.currentTimeMillis()).commit();
-        // Restore every journaled package AND any deleted/disabled stock launcher before checking for another usable Home activity.
-        String restoreCommand = DeviceTweaks.undoPowerProps()
-                + HomeLaunchers.stockRestoreCommands(ctx)
-                + "restore_failed=0; "
-                + "if [ -f /sdcard/cinetv-debloat.txt ]; then "
-                        + "  restore_failed=0; "
-                        + "  while read -r action pkg; do "
-                        + "    case \"$action\" in "
-                        + "      disabled) pm enable --user 0 \"$pkg\" >/dev/null 2>&1 || pm enable \"$pkg\" >/dev/null 2>&1 || restore_failed=1 ;; "
-                        + "      uninstalled) cmd package install-existing --user 0 \"$pkg\" >/dev/null 2>&1 || pm enable \"$pkg\" >/dev/null 2>&1 || restore_failed=1 ;; "
-                        + "    esac; "
-                        + "  done < /sdcard/cinetv-debloat.txt; "
-                        + "  [ \"$restore_failed\" -ne 0 ] || rm -f /sdcard/cinetv-debloat.txt; "
-                        + "fi; "
-                        + "if [ \"$restore_failed\" -eq 0 ] && [ ! -f /sdcard/cinetv-debloat.txt ]; then "
-                        + "echo __CINETV_RESTORE_OK__; else echo __CINETV_RESTORE_FAILED__; fi";
-        byte[] restoreOutput = LocalAdb.exec(ctx, restoreCommand, 15_000);
-        String restoreStatus = restoreOutput == null ? "" : new String(restoreOutput, java.nio.charset.StandardCharsets.UTF_8);
-        if (!restoreStatus.contains("__CINETV_RESTORE_OK__") || restoreStatus.contains("__CINETV_RESTORE_FAILED__")) {
-            android.util.Log.e("CineTvUninstaller", "Could not verify restoration of journaled TV apps");
-            return abort(ctx, R.string.destroy_restore_failed);
+        // 1. Comprehensive pre-install rollback: audio, video, picture, network/DNS, memory, zRAM, animations, screen scaling, font scale, Katniss/Assistant, and debloated apps
+        try {
+            DeviceTweaks.restoreAllToPreInstallState(ctx, true);
+        } catch (Throwable t) {
+            android.util.Log.w("CineTvUninstaller", "restoreAllToPreInstallState warning: " + t);
         }
-        boolean hadDisabledLaunchers = HomeLaunchers.hasDisabled(ctx);
-        boolean launchersRestored = HomeLaunchers.restoreOthers(ctx);
-        if (hadDisabledLaunchers && (!launchersRestored || HomeLaunchers.hasDisabled(ctx))) {
-            return abort(ctx, R.string.destroy_restore_failed);
-        }
+
+        // 2. Ensure stock launchers are restored and handed the Home role
+        HomeLaunchers.restoreOthers(ctx);
+
+        // 3. Ensure any debloated apps in journal are restored if file still exists
+        String restoreCommand = "if [ -f /sdcard/cinetv-debloat.txt ]; then "
+                + "  while read -r action pkg; do "
+                + "    case \"$action\" in "
+                + "      disabled) pm enable --user 0 \"$pkg\" >/dev/null 2>&1 || pm enable \"$pkg\" >/dev/null 2>&1 ;; "
+                + "      uninstalled) cmd package install-existing --user 0 \"$pkg\" >/dev/null 2>&1 || pm enable \"$pkg\" >/dev/null 2>&1 ;; "
+                + "    esac; "
+                + "  done < /sdcard/cinetv-debloat.txt; "
+                + "  rm -f /sdcard/cinetv-debloat.txt; "
+                + "fi; ";
+        LocalAdb.shell(ctx, restoreCommand, 8_000);
+
+        // 4. Verify that another Home launcher is available so the TV is never left without Home
         if (!otherHomeAvailable(ctx)) {
-            return abort(ctx, R.string.destroy_no_home);
+            HomeLaunchers.ensureStockLaunchersReady(ctx);
+            if (!otherHomeAvailable(ctx)) {
+                return abort(ctx, R.string.destroy_no_home);
+            }
         }
-        try { DeviceTweaks.restoreAllToPreInstallState(ctx, true); } catch (Throwable ignored) { }
-        // The files CineTV put in Downloads for Nuvio and for reports.
+
+        // 5. Clean up downloaded profile and config artifacts
         for (String f : new String[]{"alptugun-filmleri-template.json", "xperience-kategori-setup-profile.json", "aiometadata-config.json",
                 "cinetv_verified_device.json"}) {
             //noinspection ResultOfMethodCallIgnored
             new java.io.File("/sdcard/Download", f).delete();
         }
-        try { ctx.getPackageManager().clearPackagePreferredActivities(ctx.getPackageName()); } catch (Throwable ignored) { }
-        if (!otherHomeAvailable(ctx)) return abort(ctx, R.string.destroy_no_home);
+
+        // 6. Clear CineTV preferred Home activity in PackageManager
+        try {
+            ctx.getPackageManager().clearPackagePreferredActivities(ctx.getPackageName());
+        } catch (Throwable ignored) {
+        }
         // Let Android's package installer handle removal and HOME-role cleanup; never silently uninstall via adb.
         String pkg = ctx.getPackageName();
         try {

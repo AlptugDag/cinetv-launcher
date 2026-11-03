@@ -113,21 +113,42 @@ public final class MovieAssistant {
         StringBuilder ex = new StringBuilder();
         for (Movie m : shown) {
             seen.add((m.title + "|" + m.year).toLowerCase(Locale.ROOT));
+            if (m.tmdbId > 0) seen.add("id:" + m.tmdbId);
+            if (m.imdbId != null && !m.imdbId.isEmpty()) seen.add(m.imdbId);
             if (ex.length() < 2400) ex.append(m.title).append(m.year > 1900 ? " (" + m.year + ")" : "").append("; ");
         }
-        if (LlmClient.isConfigured(ctx)) {
+
+        // Direct TMDB paginated search is fast (sub-100ms) and provides continuous new results
+        int startPage = Math.max(1, (shown.size() / 18) + 1);
+        List<Movie> paged = MovieCatalog.searchRange(ctx, query, startPage, count);
+        for (Movie m : paged) {
+            String k = (m.title + "|" + m.year).toLowerCase(Locale.ROOT);
+            String kid = m.tmdbId > 0 ? "id:" + m.tmdbId : null;
+            if (seen.add(k) && (kid == null || seen.add(kid))) out.add(m);
+        }
+
+        if (out.size() < count) {
+            List<Movie> themed = heuristicPaged(ctx, query, startPage, count - out.size());
+            for (Movie m : themed) {
+                String k = (m.title + "|" + m.year).toLowerCase(Locale.ROOT);
+                String kid = m.tmdbId > 0 ? "id:" + m.tmdbId : null;
+                if (seen.add(k) && (kid == null || seen.add(kid))) out.add(m);
+            }
+        }
+
+        if (out.size() < count && LlmClient.isConfigured(ctx) && !LlmClient.quotaOut()) {
             String system = "You are a film search engine with encyclopedic knowledge of plots, scenes, characters, cast, "
                     + "objects, settings, quotes and moods. Treat viewer preferences as mild ranking hints, never mandatory filters; preserve variety and never override the current request. "
                     + GamzeMemory.formatForPrompt(ctx)
                     + "Reply ONLY with compact JSON: {\"titles\":[{\"t\":\"original title\",\"y\":1999,\"tv\":false}]}";
             String user = "Request: " + query + "\nGive " + count + " MORE titles that match it just as well, best first, "
                     + "none of these: " + ex + "\nEvery constraint in the request must hold for every title.";
-            LlmClient.Result r = LlmClient.generateQuick(ctx, system, user, 900);
+            LlmClient.Result r = LlmClient.generateQuick(ctx, system, user, 600);
             if (r.success) {
                 try {
                     JSONArray arr = LlmClient.extractJsonObject(r.text).optJSONArray("titles");
                     List<Future<List<Movie>>> jobs = new ArrayList<>();
-                    for (int i = 0; arr != null && i < arr.length() && i < count; i++) {
+                    for (int i = 0; arr != null && i < arr.length() && out.size() + jobs.size() < count; i++) {
                         final JSONObject t = arr.getJSONObject(i);
                         jobs.add(pool.submit(() -> {
                             List<Movie> one = new ArrayList<>();
@@ -136,16 +157,13 @@ public final class MovieAssistant {
                             return one;
                         }));
                     }
-                    for (Movie m : collect(jobs, count)) {
-                        if (seen.add((m.title + "|" + m.year).toLowerCase(Locale.ROOT))) out.add(m);
+                    for (Movie m : collect(jobs, count - out.size())) {
+                        String k = (m.title + "|" + m.year).toLowerCase(Locale.ROOT);
+                        String kid = m.tmdbId > 0 ? "id:" + m.tmdbId : null;
+                        if (seen.add(k) && (kid == null || seen.add(kid))) out.add(m);
                     }
                 } catch (Throwable ignored) {
                 }
-            }
-        }
-        if (out.isEmpty()) {
-            for (Movie m : MovieCatalog.search(ctx, query, shown.size() + count)) {
-                if (seen.add((m.title + "|" + m.year).toLowerCase(Locale.ROOT))) out.add(m);
             }
         }
         if (withChildren(ctx, query)) out = familySafe(out);
@@ -251,7 +269,7 @@ public final class MovieAssistant {
                 + "Keep likes separate from dislikes and content to avoid. Use children_status=yes/no only when explicitly stated; otherwise unknown. "
                 + "Put exact saved preference items the viewer explicitly retracts into forget. Never infer a preference from a search, launch, or watch alone; never infer a name. "
                 + "Leave every unspecified field empty/false/zero.";
-        LlmClient.Result r = LlmClient.generate(ctx, system, withHearings(query), 2000, true);
+        LlmClient.Result r = LlmClient.generate(ctx, system, withHearings(query), 900, true);
         if (!r.success) return null;
         JSONObject plan;
         try {
@@ -463,6 +481,65 @@ public final class MovieAssistant {
         }
         if (out.movies.isEmpty()) out.movies = MovieCatalog.titled(ctx, query.replaceAll(STRIP_PLAY, "").trim(), "any", max);
         return out;
+    }
+
+    private static List<Movie> heuristicPaged(Context ctx, String query, int startPage, int max) {
+        if (query == null || query.trim().isEmpty() || max <= 0) return Collections.emptyList();
+        String q = query.toLowerCase(Locale.getDefault());
+        String name = cleanShelfName(query);
+        if (!name.isEmpty()) {
+            List<Movie> personMovies = MovieCatalog.personWork(ctx, name, "any", max * startPage);
+            if (!personMovies.isEmpty()) return personMovies;
+        }
+        List<String> genres = new ArrayList<>();
+        List<String> keywords = new ArrayList<>();
+        String country = "";
+        if (q.contains("intikam")) { genres.add("thriller"); keywords.add("revenge"); }
+        if (q.contains("ajan") || q.contains("casus")) { keywords.add("spy"); }
+        if (q.contains("kız babası") || q.contains("kızını") || q.contains("kızı için") || q.contains("baba kız")) keywords.add("father daughter relationship");
+        else if (q.contains("baba oğul") || q.contains("oğlunu")) keywords.add("father son relationship");
+        if (q.contains("emekli")) keywords.add("retirement");
+        if (q.contains("kaçır")) keywords.add("kidnapping");
+        if (q.contains("seri katil")) keywords.add("serial killer");
+        if (q.contains("kiralık katil") || q.contains("tetikçi")) keywords.add("hitman");
+        if (q.contains("zaman yolculu")) keywords.add("time travel");
+        if (q.contains("hapishane") || q.contains("cezaevi")) keywords.add("prison");
+        if (q.contains("soygun")) keywords.add("heist");
+        if (q.contains("yapay zek")) keywords.add("artificial intelligence");
+        if (q.contains("zombi")) keywords.add("zombie");
+        if (q.contains("uzaylı")) keywords.add("alien");
+        if (q.contains("kıyamet")) keywords.add("post-apocalyptic future");
+        if (q.contains("dedektif")) keywords.add("detective");
+        if (q.contains("vampir")) keywords.add("vampire");
+        if (q.contains("mafya")) keywords.add("mafia");
+        if (q.contains("gerçek hikaye") || q.contains("gerçek olay")) keywords.add("based on true story");
+        if (q.contains("boks")) keywords.add("boxing");
+        if (q.contains("köpek")) keywords.add("dog");
+        if (q.contains("deniz") || q.contains("okyanus")) keywords.add("ocean");
+        if (q.contains("orman")) keywords.add("forest");
+        if (q.contains("çöl")) keywords.add("desert");
+        if (q.contains("dağ ") || q.contains("dağda") || q.contains("dağcı")) keywords.add("mountain");
+        if (q.contains("uzay")) keywords.add("space");
+        if (q.contains("kasvet") || q.contains("karanlık") || q.contains("noir")) { genres.add("crime"); genres.add("thriller"); keywords.add("dark"); }
+        if (q.contains("korku") || q.contains("gerilim")) { genres.add("horror"); genres.add("thriller"); }
+        if (q.contains("komedi") || q.contains("eğlence")) { genres.add("comedy"); }
+        if (q.contains("romantik") || q.contains("aşk")) { genres.add("romance"); }
+        if (q.contains("bilim kurgu")) { genres.add("science fiction"); }
+        if (q.contains("animasyon") || q.contains("anime")) { genres.add("animation"); }
+        if (q.contains("polisiye") || q.contains("suç")) { genres.add("crime"); }
+        if (q.contains("savaş")) { genres.add("war"); }
+        if (q.contains("western") || q.contains("kovboy")) { genres.add("western"); }
+        if (q.contains("hollywood") || q.contains("amerikan")) country = "US";
+        else if (q.contains("kore")) country = "KR";
+        else if (q.contains("japon")) country = "JP";
+        else if (q.contains("fransız")) country = "FR";
+        else if (q.contains("türk") || q.contains("türkiye") || q.contains("yeşilçam")) country = "TR";
+        else if (q.contains("ingiliz")) country = "GB";
+
+        if (!genres.isEmpty() || !keywords.isEmpty() || !country.isEmpty()) {
+            return MovieCatalog.discover(ctx, keywords, genres, "movie", country, 0, 0, max, 0, 0, "", startPage);
+        }
+        return Collections.emptyList();
     }
 
     // ---- the author -------------------------------------------------------------------------------

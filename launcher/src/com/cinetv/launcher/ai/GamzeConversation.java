@@ -69,6 +69,9 @@ public final class GamzeConversation {
                 JSONObject o = new JSONObject();
                 o.put("viewer", t.viewer);
                 o.put("gamze", t.gamze);
+                o.put("user", t.viewer);
+                o.put("reply", t.gamze);
+                o.put("text", t.gamze);
                 o.put("ts", t.timestampMs);
                 if (!t.shelfTitle.isEmpty()) o.put("shelfTitle", t.shelfTitle);
                 arr.put(o);

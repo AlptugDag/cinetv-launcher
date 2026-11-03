@@ -91,8 +91,9 @@ public final class HomeGuard {
                 long now = System.currentTimeMillis();
                 long last = Prefs.get(app).getLong(LAST_CRASH, 0);
                 Prefs.get(app).edit().putLong(LAST_CRASH, now).commit();
-                // once, not in a loop: a second error within a minute is left to the system
-                if (now - last > 60_000L && !com.cinetv.launcher.device.Uninstaller.isRemoving(app)) {
+                // Only relaunch MainActivity if the user was actually on the CineTV Home screen (MainActivity.isInFront()).
+                // Never pull the user out of Nuvio or another foreground app and restart the launcher over their video!
+                if (MainActivity.isInFront() && now - last > 60_000L && !com.cinetv.launcher.device.Uninstaller.isRemoving(app)) {
                     Intent i = new Intent(app, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     PendingIntent pi = PendingIntent.getActivity(app, 7, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_ONE_SHOT);
                     AlarmManager am = (AlarmManager) app.getSystemService(Context.ALARM_SERVICE);

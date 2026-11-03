@@ -32,6 +32,8 @@ public final class NetworkOptimizer {
     public static final String DNS_OFF = "off";
 
     private static final String KEY_DNS = "dns_choice";
+    private static final String KEY_DNS_EXPLICIT = "dns_user_explicit";
+    private static final String KEY_DNS_REVERTED = "dns_auto_reverted_v2";
     private static final String KEY_NET_SNAPSHOT = "net_original_v1";
     private static final String TAG = "CineTvNet";
 
@@ -65,19 +67,46 @@ public final class NetworkOptimizer {
     private NetworkOptimizer() {}
 
     public static String choice(Context ctx) {
-        return Prefs.get(ctx).getString(KEY_DNS, DNS_ADGUARD);
+        SharedPreferences p = Prefs.get(ctx);
+        if (!p.getBoolean(KEY_DNS_EXPLICIT, false)) {
+            return DNS_OFF;
+        }
+        return p.getString(KEY_DNS, DNS_OFF);
     }
 
     public static String next(String c) {
-        if (DNS_ADGUARD.equals(c)) return DNS_CLOUDFLARE;
-        if (DNS_CLOUDFLARE.equals(c)) return DNS_OFF;
-        return DNS_ADGUARD;
+        if (DNS_OFF.equals(c)) return DNS_CLOUDFLARE;
+        if (DNS_CLOUDFLARE.equals(c)) return DNS_ADGUARD;
+        return DNS_OFF;
     }
 
     public static String host(String c) {
         if (DNS_ADGUARD.equals(c)) return "dns.adguard-dns.com";
         if (DNS_CLOUDFLARE.equals(c)) return "one.one.one.one";
         return null;
+    }
+
+    /**
+     * Reverts any previously auto-applied Private DNS (AdGuard DoT) and custom TCP window settings
+     * that slowed down Nuvio's parallel source/addon scanning, unless the user explicitly chose a DNS.
+     */
+    public static void revertAutoInterferenceIfNeeded(Context ctx) {
+        if (ctx == null) return;
+        try {
+            SharedPreferences p = Prefs.get(ctx);
+            if (p.getBoolean(KEY_DNS_EXPLICIT, false)) return;
+            if (p.getBoolean(KEY_DNS_REVERTED, false)) return;
+            p.edit().putBoolean(KEY_DNS_REVERTED, true).putString(KEY_DNS, DNS_OFF).apply();
+            if (!DeviceTweaks.canWriteSecureSettings(ctx)) return;
+            ContentResolver cr = ctx.getContentResolver();
+            String curMode = Settings.Global.getString(cr, "private_dns_mode");
+            String curHost = Settings.Global.getString(cr, "private_dns_specifier");
+            if ("hostname".equals(curMode)
+                    && ("dns.adguard-dns.com".equalsIgnoreCase(curHost) || "one.one.one.one".equalsIgnoreCase(curHost))) {
+                Settings.Global.putString(cr, "private_dns_mode", "opportunistic");
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     /** Inspects the TV's physical network transport (Ethernet vs 5 GHz / 2.4 GHz Wi-Fi) and Private DNS status. */
@@ -118,23 +147,19 @@ public final class NetworkOptimizer {
     }
 
     /**
-     * Applies low-jitter radio and Wi-Fi power management settings without blocking on DNS validation.
-     * Safe to run automatically on startup.
+     * Applies low-jitter radio and Wi-Fi power management settings without blocking on DNS validation
+     * or altering TCP receive windows that could throttle Nuvio's multi-source scraping.
      */
     public static void optimizeRadio(Context ctx) {
-        if (ctx == null || !DeviceTweaks.canWriteSecureSettings(ctx)) return;
+        if (ctx == null) return;
+        revertAutoInterferenceIfNeeded(ctx);
+        if (!DeviceTweaks.canWriteSecureSettings(ctx)) return;
         snapshotIfNeeded(ctx);
         ContentResolver cr = ctx.getContentResolver();
         try {
             Settings.Global.putInt(cr, "wifi_scan_always_enabled", 0);
             Settings.Global.putInt(cr, "ble_scan_always_enabled", 0);
             Settings.Global.putInt(cr, "wifi_sleep_policy", 2); // never sleep
-            if (Settings.Global.getString(cr, "wifi_suspend_optimizations_enabled") != null) {
-                Settings.Global.putInt(cr, "wifi_suspend_optimizations_enabled", 0);
-            }
-            if (Settings.Global.getString(cr, "tcp_default_init_rwnd") != null) {
-                Settings.Global.putInt(cr, "tcp_default_init_rwnd", 60);
-            }
         } catch (Throwable ignored) {
         }
     }
@@ -157,7 +182,11 @@ public final class NetworkOptimizer {
         } catch (Throwable t) {
             return false;
         }
-        Prefs.get(ctx).edit().putString(KEY_DNS, choice).apply();
+        Prefs.get(ctx).edit()
+                .putString(KEY_DNS, choice)
+                .putBoolean(KEY_DNS_EXPLICIT, !DNS_OFF.equals(choice))
+                .putBoolean(KEY_DNS_REVERTED, true)
+                .apply();
         if (host == null) return true;
         for (int i = 0; i < 16; i++) {
             if (privateDnsActive(ctx, host)) {

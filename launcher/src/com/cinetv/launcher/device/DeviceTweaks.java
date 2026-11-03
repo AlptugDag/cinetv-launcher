@@ -465,6 +465,41 @@ public final class DeviceTweaks {
         }, "cinetv-media-pause").start();
     }
 
+    /** Resumes any paused media on the TV without leaving the current app or screen. */
+    public static void resumeMedia(Context ctx) {
+        try {
+            if (com.cinetv.launcher.CinePlayerActivity.active) {
+                com.cinetv.launcher.CinePlayerActivity.resumeAfterCineSub();
+                return;
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                long now = SystemClock.uptimeMillis();
+                am.dispatchMediaKeyEvent(new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_MEDIA_PLAY, 0));
+                am.dispatchMediaKeyEvent(new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_MEDIA_PLAY, 0));
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            Intent playIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+            long now = SystemClock.uptimeMillis();
+            playIntent.putExtra(Intent.EXTRA_KEY_EVENT, new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_MEDIA_PLAY, 0));
+            ctx.sendOrderedBroadcast(playIntent, null);
+            playIntent.putExtra(Intent.EXTRA_KEY_EVENT, new android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_MEDIA_PLAY, 0));
+            ctx.sendOrderedBroadcast(playIntent, null);
+        } catch (Throwable ignored) {
+        }
+        new Thread(() -> {
+            try {
+                com.cinetv.launcher.remote.KeyBridge.key(ctx, android.view.KeyEvent.KEYCODE_MEDIA_PLAY, false);
+            } catch (Throwable ignored) {
+            }
+        }, "cinetv-media-resume").start();
+    }
+
     /** Keeps the system night mode in step with the launcher's dark / light / auto appearance. */
     public static void syncNightMode(Context ctx) {
         try {

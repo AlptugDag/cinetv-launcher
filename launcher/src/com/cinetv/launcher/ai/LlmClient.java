@@ -49,20 +49,51 @@ public final class LlmClient {
     /** Set around a call that needs speed over deliberation (the shelf at power-on): Gemini thinks "minimal". */
     /** Until when (wall clock) the key's free daily quota is known to be spent: no point asking before then. */
     private static volatile long quotaOutUntil;
+    /** Per-model cooldown timestamps (wall clock ms) so free-tier 429/404 responses immediately fail over on subsequent calls. */
+    private static final java.util.Map<String, Long> modelCooldownUntil = new java.util.concurrent.ConcurrentHashMap<>();
 
     public static boolean quotaOut() {
         return System.currentTimeMillis() < quotaOutUntil;
     }
 
-    /** A daily-quota refusal on the roomiest model (Flash-Lite) means every model is out until the reset. */
-    private static void noteQuota(String model, int status, String body) {
-        if (status != 429 || body == null || !body.contains("per day") || !model.contains("lite")) return;
-        long wait = 60 * 60_000L;
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("retry in (?:(\\d+)h)?(?:(\\d+)m)?").matcher(body);
-        if (m.find() && (m.group(1) != null || m.group(2) != null)) {
-            wait = (m.group(1) != null ? Long.parseLong(m.group(1)) * 3_600_000L : 0) + (m.group(2) != null ? Long.parseLong(m.group(2)) * 60_000L : 0);
+    public static boolean isModelCoolingDown(String model) {
+        if (model == null) return false;
+        Long until = modelCooldownUntil.get(model);
+        return until != null && System.currentTimeMillis() < until;
+    }
+
+    public static void clearCooldownsForTest() {
+        quotaOutUntil = 0L;
+        modelCooldownUntil.clear();
+    }
+
+    /** Records per-model cooldowns on 429/404 so free-tier keys switch to an available model bucket with zero delay. */
+    static void noteQuota(String model, int status, String body) {
+        long now = System.currentTimeMillis();
+        if (status == 404 && model != null) {
+            modelCooldownUntil.put(model, now + 30 * 60_000L);
+            return;
         }
-        quotaOutUntil = System.currentTimeMillis() + Math.max(60_000L, wait);
+        if (status != 429) return;
+        String b = body == null ? "" : body;
+        boolean daily = b.contains("per day") || b.contains("PerDay") || b.contains("GenerateRequestsPerDay") || b.contains("daily");
+        long wait = daily ? 30 * 60_000L : 55_000L;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("retry in (?:(\\d+)h)?(?:(\\d+)m)?(?:(\\d+(?:\\.\\d+)?)s)?").matcher(b);
+        if (m.find() && (m.group(1) != null || m.group(2) != null || m.group(3) != null)) {
+            long parsed = (m.group(1) != null ? Long.parseLong(m.group(1)) * 3_600_000L : 0)
+                    + (m.group(2) != null ? Long.parseLong(m.group(2)) * 60_000L : 0)
+                    + (m.group(3) != null ? (long) (Double.parseDouble(m.group(3)) * 1000L) : 0);
+            if (parsed > 0) wait = Math.max(15_000L, parsed);
+        }
+        if (model != null) {
+            modelCooldownUntil.put(model, now + wait);
+        }
+        if (daily && model != null && (model.contains("lite") || model.contains("2.0-flash"))) {
+            // Check if all primary fast models are on cooldown
+            if (isModelCoolingDown("gemini-2.5-flash-lite") && isModelCoolingDown("gemini-2.0-flash")) {
+                quotaOutUntil = now + Math.max(60_000L, wait);
+            }
+        }
     }
 
     static final ThreadLocal<Boolean> MINIMAL_THINKING = ThreadLocal.withInitial(() -> false);
@@ -274,30 +305,37 @@ public final class LlmClient {
         boolean claude = PROVIDER_CLAUDE.equals(provider);
         String first = fast ? (claude ? FAST_CLAUDE_MODEL : FAST_GEMINI_MODEL)
                 : Prefs.get(ctx).getString(claude ? "ai_claude_model" : "ai_gemini_model", claude ? DEFAULT_CLAUDE_MODEL : DEFAULT_GEMINI_MODEL);
-        // Busy (429/5xx), missing for this key (404) or slow: walk down a short chain of models.
+        // Distinct free-tier quota buckets on Google AI Studio so a 429 on one model switches immediately to another bucket.
         String[] chain = claude ? new String[]{first, FALLBACK_CLAUDE_MODEL}
-                : fast ? new String[]{first, "gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-flash-latest"}
-                : new String[]{first, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"};
+                : fast ? new String[]{first, "gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash-lite", "gemini-2.5-flash"}
+                : new String[]{first, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash-lite"};
         Result r = null;
         java.util.Set<String> tried = new java.util.HashSet<>();
         for (String model : chain) {
             if (!tried.add(model)) continue;
-            r = call(ctx, claude, model, key, system, user, maxTokens);
-            if (r.status == 503 || r.status == 429) {
-                try { Thread.sleep(400); } catch (Throwable ignored) {}
-                r = call(ctx, claude, model, key, system, user, maxTokens);
+            if (!claude && isModelCoolingDown(model)) continue;
+            r = call(ctx, claude, model, key, system, user, maxTokens, fast);
+            if (r.status == 503) {
+                try { Thread.sleep(250); } catch (Throwable ignored) {}
+                r = call(ctx, claude, model, key, system, user, maxTokens, fast);
             }
             int st = r.status;
             if (r.success || !(st == 400 || st == 404 || st == 408 || st == 429 || st >= 500 || st == -1)) return r;
             Log.w(TAG, "Model " + model + " failed (" + st + "), trying the next one");
         }
+        // If all models were on cooldown and none was tried, try the primary fast model once
+        if (r == null) {
+            r = call(ctx, claude, first, key, system, user, maxTokens, fast);
+        }
         return r;
     }
 
-    private static Result call(Context ctx, boolean claude, String model, String key, String system, String user, int maxTokens) {
+    private static Result call(Context ctx, boolean claude, String model, String key, String system, String user, int maxTokens, boolean fast) {
         HttpURLConnection conn = null;
         try {
             JSONObject body = new JSONObject();
+            boolean quick = fast || Boolean.TRUE.equals(MINIMAL_THINKING.get());
+            boolean wantsJson = quick || (system != null && system.contains("JSON"));
             if (claude) {
                 conn = (HttpURLConnection) new URL("https://api.anthropic.com/v1/messages").openConnection();
                 conn.setRequestProperty("x-api-key", key);
@@ -317,18 +355,18 @@ public final class LlmClient {
                         .put("parts", new JSONArray().put(new JSONObject().put("text", user)))));
                 JSONObject genCfg = new JSONObject().put("maxOutputTokens", maxTokens);
                 if (model.startsWith("gemini-3") && model.contains("flash") && !model.contains("lite")) {
-                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", MINIMAL_THINKING.get() ? "minimal" : "low"));
+                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", quick ? "minimal" : "low"));
                 } else if (model.startsWith("gemini-2.5-flash") && !model.contains("lite")) {
                     // 2.5 Flash-Lite rejects a budget under 512 (HTTP 400), so only 2.5 Flash gets one
-                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", MINIMAL_THINKING.get() ? 0 : 256));
+                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", quick ? 0 : 256));
                 }
-                if (MINIMAL_THINKING.get()) genCfg.put("responseMimeType", "application/json");
+                if (wantsJson) genCfg.put("responseMimeType", "application/json");
                 body.put("generationConfig", genCfg);
             }
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(25000);
+            conn.setConnectTimeout(quick ? 4000 : 7500);
+            conn.setReadTimeout(quick ? 7500 : 18000);
             conn.setDoOutput(true);
             try (OutputStream os = conn.getOutputStream()) {
                 os.write(body.toString().getBytes(StandardCharsets.UTF_8));

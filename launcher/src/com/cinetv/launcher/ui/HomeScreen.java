@@ -479,9 +479,6 @@ public class HomeScreen {
         buttonHint.setVisibility(View.GONE);
         root.addView(buttonHint, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));
 
-        keyboard = new GlassKeyboard(ctx);
-        root.addView(keyboard, match());
-
         moveHint = UiKit.label(ctx, 20, UiKit.INK);
         moveHint.setText(R.string.move_hint);
         moveHint.setPadding(UiKit.px(32), UiKit.px(16), UiKit.px(32), UiKit.px(16));
@@ -493,6 +490,10 @@ public class HomeScreen {
 
         modal = new ModalHost(ctx);
         root.addView(modal, match());
+
+        keyboard = new GlassKeyboard(ctx);
+        keyboard.setTranslationZ(1200f);
+        root.addView(keyboard, match());
         opening = new DvdOpeningView(ctx);
         root.addView(opening, match());
         trailer = new TrailerPlayer(ctx);
@@ -1375,6 +1376,9 @@ public class HomeScreen {
 
     private void hideUnderSplash() {
         if (!underSplash.isEmpty()) return;
+        if (shelf != null) shelf.holdEntranceUntilReveal();
+        if (shelfLabel != null) shelfLabel.setAlpha(0f);
+        if (rail != null) rail.setAlpha(0f);
         for (int i = 0; i < root.getChildCount(); i++) {
             View v = root.getChildAt(i);
             if (v == splash || v.getVisibility() != View.VISIBLE) continue;
@@ -1386,6 +1390,32 @@ public class HomeScreen {
     private void revealUnderSplash() {
         for (View v : underSplash) if (v.getVisibility() == View.INVISIBLE) v.setVisibility(View.VISIBLE);
         underSplash.clear();
+        long shelfDurMs = PerformanceProfile.animationMs(ctx, 420);
+        if (shelfLabel != null) {
+            shelfLabel.setAlpha(0f);
+            shelfLabel.setTranslationY(UiKit.pxf(14));
+            shelfLabel.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setStartDelay(200L)
+                    .setDuration(shelfDurMs)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
+                    .start();
+        }
+        if (rail != null) {
+            rail.setAlpha(0f);
+            rail.setTranslationY(UiKit.pxf(16));
+            rail.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setStartDelay(260L)
+                    .setDuration(shelfDurMs)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
+                    .start();
+        }
+        if (shelf != null) {
+            shelf.playStagedEntrance();
+        }
         root.post(() -> {
             if (root.findFocus() == null && shelf != null) shelf.requestFocus();
         });
@@ -1818,5 +1848,31 @@ public class HomeScreen {
 
     public boolean isCinematic() {
         return cinematic;
+    }
+
+    /**
+     * Closes any open transient UI (modals, keyboard, screensaver, etc.) and
+     * smoothly returns focus back to the center item in the showcase (vitrin).
+     */
+    public void focusShelfCenter() {
+        if (modal != null && modal.isShowing()) {
+            modal.close();
+        }
+        if (keyboard != null && keyboard.isShowing()) {
+            keyboard.hide();
+        }
+        if (voice != null && voice.isShowing()) {
+            voice.dismiss();
+        }
+        if (tour != null && tour.isShowing()) {
+            tour.finish();
+        }
+        if (screensaver != null && screensaver.getVisibility() == View.VISIBLE) {
+            screensaver.setVisibility(View.GONE);
+        }
+        hideAiCard();
+        if (shelf != null) {
+            shelf.focusCenter();
+        }
     }
 }

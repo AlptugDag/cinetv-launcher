@@ -65,24 +65,21 @@ public class CineTvApp extends Application {
         }
     }
 
-    /** Home is behind another app, or memory is short: drop every decoded picture; they reload from disk when needed. */
+    /** Home is behind another app, or memory is short: drop unused decoded pictures from cache without blanking the active shelf. */
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
-        if (level >= TRIM_MEMORY_UI_HIDDEN) {
+        if (level >= TRIM_MEMORY_UI_HIDDEN || level >= TRIM_MEMORY_RUNNING_LOW) {
             com.cinetv.launcher.service.PosterCache.trimMemory();
             com.cinetv.launcher.ui.Glow.clear();
         }
-        // Memory running out while another app (Nuvio) is in front: on a 1.3 GB TV Android then killed Nuvio and CineTV
-        // in turn, and Home came back by itself. CineTV gives up what it can rebuild: the phone link's browser engine
-        // and the shelf's case images (both come back when Home is shown again).
         boolean pressed = level >= TRIM_MEMORY_BACKGROUND || level == TRIM_MEMORY_RUNNING_LOW || level == TRIM_MEMORY_RUNNING_CRITICAL;
-        if (level == TRIM_MEMORY_RUNNING_CRITICAL || level >= TRIM_MEMORY_COMPLETE) com.cinetv.launcher.service.PosterCache.trimPacked();
+        if (level == TRIM_MEMORY_RUNNING_CRITICAL || level >= TRIM_MEMORY_COMPLETE) {
+            com.cinetv.launcher.service.PosterCache.trimPacked();
+        }
         if (pressed && !MainActivity.isInFront()) {
             // Keep RelayHost and TvWebRemoteServer alive so the phone remote continues working inside Nuvio
             com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
-            MainActivity a = MainActivity.instance;
-            if (a != null) a.releaseShelfMemory();
         }
     }
 }

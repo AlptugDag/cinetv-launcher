@@ -77,6 +77,7 @@ public final class CineSubOverlay {
     public static void trigger(Context ctx) {
         main.post(() -> {
             dismissActive();
+            VoiceCineSubOverlay.dismissActive();
             final CineSubOverlay o = new CineSubOverlay(host(ctx), false);
             if (!o.attach()) return;
             active = o;
@@ -462,6 +463,13 @@ public final class CineSubOverlay {
             cards.clear();
             texts.clear();
             if (scene == null || getWidth() == 0) return;
+            // Prune empty or non-informative items to strictly avoid empty balloons
+            scene.pois.removeIf(p -> p == null
+                    || p.title == null || p.title.trim().isEmpty()
+                    || p.fact == null || p.fact.trim().isEmpty()
+                    || p.fact.trim().length() < 12
+                    || p.fact.trim().equalsIgnoreCase(p.title.trim()));
+            if (scene.pois.isEmpty()) return;
             float u = u(), W = getWidth(), H = getHeight();
             title.setTextSize(30 * u);
             body.setTextSize(25 * u);
@@ -533,6 +541,10 @@ public final class CineSubOverlay {
                         placeWithoutOverlap(card, cw, ch, safeL, safeR, minTop, maxTop, pad, badgeKeepOut);
                     }
                 }
+                if (cards.size() > 0 && overlapsExisting(card, pad * 0.2f, badgeKeepOut)) {
+                    // Strictly skip card if no valid non-overlapping position is possible
+                    continue;
+                }
                 cards.add(card);
                 texts.add(sl);
             }
@@ -571,10 +583,24 @@ public final class CineSubOverlay {
                     if (!overlapsExisting(card, pad, badgeKeepOut)) return;
                 }
             }
-            // Final fallback if screen is completely packed: stagger cleanly down from the least crowded column.
-            float fallbackX = (cards.size() % 2 == 0) ? safeR - cw : safeL;
-            float fallbackY = clampY(minTop + (cards.size() / 2) * (ch + pad), minTop, maxTop);
-            card.set(fallbackX, fallbackY, fallbackX + cw, fallbackY + ch);
+            // Strict non-overlapping placement: find lowest occupied card bottom per column
+            float lowestL = minTop, lowestR = minTop;
+            for (RectF other : cards) {
+                if (other.centerX() < (safeL + safeR) * 0.5f) {
+                    lowestL = Math.max(lowestL, other.bottom + pad);
+                } else {
+                    lowestR = Math.max(lowestR, other.bottom + pad);
+                }
+            }
+            if (lowestR + ch <= maxTop + pad) {
+                card.set(safeR - cw, lowestR, safeR, lowestR + ch);
+            } else if (lowestL + ch <= maxTop + pad) {
+                card.set(safeL, lowestL, safeL + cw, lowestL + ch);
+            } else {
+                float bestY = Math.min(lowestL, lowestR);
+                float targetX = (lowestL <= lowestR) ? safeL : safeR - cw;
+                card.set(targetX, bestY, targetX + cw, bestY + ch);
+            }
         }
 
         @Override

@@ -941,7 +941,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       // only the new cards are added: the posters already shown stay in place (no reload, no blank cards)
       const seen = new Set(currentList.map(m => m.type + ":" + (m.tmdb || m.imdb || m.title)));
       const fresh = list.filter(m => !seen.has(m.type + ":" + (m.tmdb || m.imdb || m.title)));
-      if (!fresh.length) { hasMore = false; return; }
+      if (!fresh.length) {
+        if (currentPage < 30) loadMore();
+        else hasMore = false;
+        return;
+      }
       const start = currentList.length;
       currentList = currentList.concat(fresh);
       box.insertAdjacentHTML("beforeend", fresh.map((m, j) => card(m, start + j)).join(""));
@@ -992,6 +996,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     if (hasMore && !isLoadingMore && currentList.length < 18 && document.documentElement.scrollHeight <= window.innerHeight + 360) loadMore();
   }, 60);
   const loadMore = async () => {
+      if (isLoadingMore || !hasMore) return;
       isLoadingMore = true;
       currentPage++;
       try {
@@ -1017,7 +1022,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   window.addEventListener("scroll", () => {
     if (isLoadingMore || !hasMore || location.hash === "#remote" || location.hash === "#cast") return;
     // body is height:100% here, so the page's real length is the document's scroll height
-    if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 360) loadMore();
+    if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 500) loadMore();
   });
 
   const cleanSearchQuery = text => (text || "").replace(/\b(filmleri|filmler|filmi|dizileri|dizisi|dizi|movies|movie|films|film|tavsiyesi|önerisi|seçkisi)\b/gi, "").replace(/\s+/g, " ").trim();
@@ -2232,7 +2237,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     if (!history || !history.length) {
       box.innerHTML = `<div class="gamze-msg assistant">Merhaba! Ben Gamze, CineTV sinema ve televizyon asistanın. Bugün hangi atmosferde bir film ya da dizi arıyorsun? Yönetmen sineması, gizli başyapıtlar veya sahne analizleri üzerine sohbet edebiliriz.</div>`;
     } else {
-      box.innerHTML = history.map(m => `<div class="gamze-msg ${m.role === "user" ? "user" : "assistant"}">${esc(m.text)}</div>`).join("");
+      let html = "";
+      for (const m of history) {
+        const userMsg = m.viewer || m.user || (m.role === "user" ? m.text : "");
+        const assistantMsg = m.gamze || m.reply || (m.role === "assistant" || m.role === "model" ? m.text : "");
+        if (userMsg) {
+          html += `<div class="gamze-msg user">${esc(userMsg)}</div>`;
+        }
+        if (assistantMsg) {
+          html += `<div class="gamze-msg assistant">${esc(assistantMsg)}</div>`;
+        }
+      }
+      box.innerHTML = html || `<div class="gamze-msg assistant">Merhaba! Ben Gamze, CineTV sinema ve televizyon asistanın. Bugün hangi atmosferde bir film ya da dizi arıyorsun?</div>`;
       box.scrollTop = box.scrollHeight;
     }
     const sugBox = $("gamzeSugRow");
@@ -2269,13 +2285,24 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     }
     try {
       const r = await api("gamze/chat", {q, mode: gamzeMode});
-      renderGamzeHistory(r.history || [], r.suggestions || []);
-      if (r.movies && r.movies.length) {
-        render(r.movies, r.shelfTitle || "Gamze Seçkisi");
+      if (r && r.ok) {
+        renderGamzeHistory(r.history || [], r.suggestions || []);
+        if (r.movies && r.movies.length) {
+          render(r.movies, r.shelfTitle || "Gamze Seçkisi");
+        }
+      } else {
+        const tp = $("gamzeTyping");
+        if (tp) {
+          tp.textContent = (r && r.reply) ? r.reply : "Yanıt alınamadı.";
+          tp.removeAttribute("id");
+        }
       }
     } catch (e) {
       const tp = $("gamzeTyping");
-      if (tp) tp.textContent = "TV'ye ulaşılamadı.";
+      if (tp) {
+        tp.textContent = "TV'ye ulaşılamadı.";
+        tp.removeAttribute("id");
+      }
     }
   };
   if ($("gamzeToggleBar")) {

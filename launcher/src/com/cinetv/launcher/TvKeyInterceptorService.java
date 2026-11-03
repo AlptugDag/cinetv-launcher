@@ -119,7 +119,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
             if (intent == null) return;
             String toast = intent.getStringExtra("toast");
             if (toast != null && !toast.trim().isEmpty()) {
-                android.widget.Toast.makeText(context, toast, android.widget.Toast.LENGTH_LONG).show();
+                com.cinetv.launcher.ui.UiKit.toast(TvKeyInterceptorService.this, toast);
             }
             if ("com.cinetv.launcher.ACTION_CELEBRATION".equals(intent.getAction())
                     || intent.getBooleanExtra("force_celebration", false)
@@ -833,6 +833,24 @@ public class TvKeyInterceptorService extends AccessibilityService {
     private int heldRepeatKeyCode = 0;
     private long heldRepeatStartedAt = 0L;
     private long syntheticChannelReplayAt = 0L;
+    private final Runnable pendingStopRepeat = this::stopHeldKeyRepeat;
+
+    private void adjustTvVolume(int dir) {
+        try {
+            android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                am.adjustSuggestedStreamVolume(dir, android.media.AudioManager.USE_DEFAULT_STREAM_TYPE, android.media.AudioManager.FLAG_SHOW_UI);
+                am.adjustVolume(dir, android.media.AudioManager.FLAG_SHOW_UI);
+            }
+        } catch (Throwable t) {
+            try {
+                android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                if (am != null) {
+                    am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, dir, android.media.AudioManager.FLAG_SHOW_UI);
+                }
+            } catch (Throwable ignored) {}
+        }
+    }
 
     private final Runnable holdRepeatTick = new Runnable() {
         @Override
@@ -845,16 +863,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 return;
             }
             if (k == KeyEvent.KEYCODE_VOLUME_UP || k == KeyEvent.KEYCODE_VOLUME_DOWN) {
-                try {
-                    android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
-                    if (am != null) {
-                        int dir = (k == KeyEvent.KEYCODE_VOLUME_UP)
-                                ? android.media.AudioManager.ADJUST_RAISE
-                                : android.media.AudioManager.ADJUST_LOWER;
-                        am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, dir, android.media.AudioManager.FLAG_SHOW_UI);
-                    }
-                } catch (Throwable ignored) {}
-                handler.postDelayed(this, 105L);
+                int dir = (k == KeyEvent.KEYCODE_VOLUME_UP)
+                        ? android.media.AudioManager.ADJUST_RAISE
+                        : android.media.AudioManager.ADJUST_LOWER;
+                adjustTvVolume(dir);
+                handler.postDelayed(this, 90L);
             } else if (k == KeyEvent.KEYCODE_CHANNEL_UP || k == KeyEvent.KEYCODE_CHANNEL_DOWN) {
                 stepChannelWhileHeld(k);
                 handler.postDelayed(this, 175L);
@@ -865,6 +878,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
     private void stopHeldKeyRepeat() {
         heldRepeatKeyCode = 0;
         handler.removeCallbacks(holdRepeatTick);
+        handler.removeCallbacks(pendingStopRepeat);
     }
 
     private void stepChannelWhileHeld(final int channelKeyCode) {
@@ -890,9 +904,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
             blueHeld = true;
             final boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
             com.cinetv.launcher.remote.ScreenShot.takeAsync(TvKeyInterceptorService.this, ok -> handler.post(() ->
-                    android.widget.Toast.makeText(TvKeyInterceptorService.this, ok
+                    com.cinetv.launcher.ui.UiKit.toast(TvKeyInterceptorService.this, ok
                             ? (tr ? "Ekran görüntüsü telefona gönderildi" : "Screenshot sent to your phone")
-                            : (tr ? "Ekran görüntüsü alınamadı" : "Couldn't take a screenshot"), android.widget.Toast.LENGTH_SHORT).show()));
+                            : (tr ? "Ekran görüntüsü alınamadı" : "Couldn't take a screenshot"))));
         }
     };
     private boolean yellowHeld;
@@ -904,9 +918,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
             yellowHeld = true;
             final boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
             com.cinetv.launcher.remote.ScreenShot.takeAsync(TvKeyInterceptorService.this, ok -> handler.post(() ->
-                    android.widget.Toast.makeText(TvKeyInterceptorService.this, ok
+                    com.cinetv.launcher.ui.UiKit.toast(TvKeyInterceptorService.this, ok
                             ? (tr ? "Ekran görüntüsü telefona gönderildi" : "Screenshot sent to your phone")
-                            : (tr ? "Ekran görüntüsü alınamadı" : "Couldn't take a screenshot"), android.widget.Toast.LENGTH_SHORT).show()));
+                            : (tr ? "Ekran görüntüsü alınamadı" : "Couldn't take a screenshot"))));
         }
     };
 
@@ -916,8 +930,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
         public void run() {
             handler.postDelayed(this, 18_000);
             try {
-                // off (the default): no tree walks or captures at all while a film plays
+                // off (the default) or low-memory TV: no background tree walks or captures while a film plays
                 if (!com.cinetv.launcher.service.Prefs.cinesubAmbient(TvKeyInterceptorService.this)) return;
+                if (com.cinetv.launcher.device.PerformanceProfile.lowMemory(TvKeyInterceptorService.this)) return;
                 // AlptugPlayer lives inside CineTV: it counts while a film plays in it (its own state, since
                 // tunnelled or passthrough sound does not show up as "music active")
                 if (CinePlayerActivity.active) {
@@ -945,6 +960,102 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
     };
 
+    /**
+     * Checks whether a button label in Nuvio removes an item from Continue Watching / Watchlist / Library.
+     */
+    public static boolean isNuvioRemoveLabel(String text) {
+        if (text == null) return false;
+        String s = text.trim().toLowerCase(new java.util.Locale("tr"));
+        if (s.isEmpty()) return false;
+        return s.equals("kaldır") || s.equals("sil") || s.equals("remove") || s.equals("delete")
+                || s.contains("listeden kaldır") || s.contains("listeden çıkar")
+                || s.contains("kütüphaneden kaldır") || s.contains("kütüphaneden çıkar")
+                || s.contains("izleme listesinden") || s.contains("devam et'ten kaldır")
+                || s.contains("devam etten kaldır") || s.contains("izlemeye devam") && s.contains("kaldır")
+                || s.contains("ilerlemeyi temizle") || s.contains("ilerlemeyi sıfırla")
+                || s.contains("geçmişten kaldır") || s.contains("geçmişi temizle")
+                || s.contains("remove from") || s.contains("clear progress")
+                || s.contains("delete from") || s.contains("remove from watchlist")
+                || s.contains("remove from library") || s.contains("remove from continue");
+    }
+
+    private static void collectWindowText(android.view.accessibility.AccessibilityNodeInfo n, StringBuilder sb, int depth) {
+        if (n == null || depth > 28 || sb.length() > 6000) return;
+        CharSequence t = n.getText();
+        if (t != null && t.length() > 0) sb.append(t).append(' ');
+        CharSequence cd = n.getContentDescription();
+        if (cd != null && cd.length() > 0) sb.append(cd).append(' ');
+        int count = n.getChildCount();
+        for (int i = 0; i < count; i++) {
+            collectWindowText(n.getChild(i), sb, depth + 1);
+        }
+    }
+
+    private String lastNuvioMatchedTitle;
+
+    /**
+     * Tracks which WatchHistory title is currently focused or open in Nuvio, and detects if its resume/watchlist
+     * state has been cleared on Nuvio's detail page.
+     */
+    private void inspectNuvioForWatchHistorySync() {
+        try {
+            if (!isNuvioApp(lastPackage) || DeviceTweaks.isMediaPlaying(this)) return;
+            java.util.List<com.cinetv.launcher.service.WatchHistory.Entry> entries = com.cinetv.launcher.service.WatchHistory.all(this);
+            if (entries.isEmpty()) return;
+            android.view.accessibility.AccessibilityNodeInfo root = getRootInActiveWindow();
+            if (root == null || root.getPackageName() == null || !isNuvioApp(root.getPackageName().toString())) return;
+            StringBuilder sb = new StringBuilder();
+            collectWindowText(root, sb, 0);
+            String screen = sb.toString();
+            String lower = screen.toLowerCase(new java.util.Locale("tr"));
+            for (com.cinetv.launcher.service.WatchHistory.Entry e : entries) {
+                if (e.movie == null) continue;
+                String t = e.movie.title == null ? "" : e.movie.title.trim().toLowerCase(new java.util.Locale("tr"));
+                String orig = e.movie.originalTitle == null ? "" : e.movie.originalTitle.trim().toLowerCase(new java.util.Locale("tr"));
+                if ((!t.isEmpty() && lower.contains(t)) || (!orig.isEmpty() && lower.contains(orig))) {
+                    lastNuvioMatchedTitle = e.movie.title != null && !e.movie.title.isEmpty() ? e.movie.title : e.movie.originalTitle;
+                    break;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void checkNuvioKeyForWatchlistRemoval(int code) {
+        try {
+            if (!isNuvioApp(lastPackage) || DeviceTweaks.isMediaPlaying(this)) return;
+            if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN
+                    || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                handler.postDelayed(this::inspectNuvioForWatchHistorySync, 180L);
+                return;
+            }
+            if (code != KeyEvent.KEYCODE_DPAD_CENTER && code != KeyEvent.KEYCODE_ENTER) return;
+            android.view.accessibility.AccessibilityNodeInfo root = getRootInActiveWindow();
+            if (root == null) return;
+            android.view.accessibility.AccessibilityNodeInfo focused = root.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT);
+            if (focused == null) focused = root.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
+            StringBuilder focusedText = new StringBuilder();
+            if (focused != null) {
+                collectWindowText(focused, focusedText, 0);
+                android.view.accessibility.AccessibilityNodeInfo p = focused.getParent();
+                if (p != null && focusedText.length() == 0) collectWindowText(p, focusedText, 0);
+            }
+            String ft = focusedText.toString().trim();
+            if (isNuvioRemoveLabel(ft)) {
+                StringBuilder allText = new StringBuilder();
+                collectWindowText(root, allText, 0);
+                if (lastNuvioMatchedTitle != null && !lastNuvioMatchedTitle.isEmpty()) {
+                    allText.append(' ').append(lastNuvioMatchedTitle);
+                }
+                com.cinetv.launcher.service.WatchHistory.forgetMatchingFromNuvio(this, allText.toString(), true);
+                handler.postDelayed(() -> com.cinetv.launcher.service.WatchHistory.syncWithNuvio(this), 900L);
+            } else {
+                handler.postDelayed(this::inspectNuvioForWatchHistorySync, 350L);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     private boolean isNuvioApp(String pkg) {
         if (pkg == null) return false;
         for (String p : AppLauncher.NUVIO_PACKAGES) {
@@ -968,6 +1079,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
         int action = event.getAction();
         if (action == KeyEvent.ACTION_DOWN) {
             lastNavKeyAt = android.os.SystemClock.elapsedRealtime();
+            if (event.getRepeatCount() == 0 && isNuvioApp(lastPackage)) {
+                checkNuvioKeyForWatchlistRemoval(code);
+            }
         }
         // Holiday celebration modal: any key closes the celebration overlay cleanly
         if (com.cinetv.launcher.ui.CelebrationOverlay.isShowing()) {
@@ -987,20 +1101,43 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 }
             }
             if (action == KeyEvent.ACTION_DOWN) {
+                handler.removeCallbacks(pendingStopRepeat);
+                if (code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                    int dir = (code == KeyEvent.KEYCODE_VOLUME_UP)
+                            ? android.media.AudioManager.ADJUST_RAISE
+                            : android.media.AudioManager.ADJUST_LOWER;
+                    if (event.getRepeatCount() > 0) {
+                        adjustTvVolume(dir);
+                        return true;
+                    }
+                    if (heldRepeatKeyCode != code) {
+                        stopHeldKeyRepeat();
+                        heldRepeatKeyCode = code;
+                        heldRepeatStartedAt = android.os.SystemClock.elapsedRealtime();
+                        handler.postDelayed(holdRepeatTick, 260L);
+                        return false;
+                    } else {
+                        adjustTvVolume(dir);
+                        return true;
+                    }
+                }
                 if (event.getRepeatCount() == 0 && heldRepeatKeyCode != code) {
                     stopHeldKeyRepeat();
                     heldRepeatKeyCode = code;
                     heldRepeatStartedAt = android.os.SystemClock.elapsedRealtime();
-                    long initialDelay = (code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN) ? 300L : 340L;
-                    handler.postDelayed(holdRepeatTick, initialDelay);
+                    handler.postDelayed(holdRepeatTick, 340L);
                     return false; // Let the initial 1-unit step go to the OS/app naturally
                 } else {
-                    // Consume hardware repeat events while our smooth holdRepeatTick drives continuous changes
                     return true;
                 }
             } else if (action == KeyEvent.ACTION_UP) {
                 if (heldRepeatKeyCode == code) {
-                    stopHeldKeyRepeat();
+                    if (code == KeyEvent.KEYCODE_VOLUME_UP || code == KeyEvent.KEYCODE_VOLUME_DOWN) {
+                        handler.removeCallbacks(pendingStopRepeat);
+                        handler.postDelayed(pendingStopRepeat, 160L);
+                    } else {
+                        stopHeldKeyRepeat();
+                    }
                 }
                 return false;
             }
@@ -1016,8 +1153,15 @@ public class TvKeyInterceptorService extends AccessibilityService {
         // Aggressive Home capture: Home button on any remote returns instantly to CineTV
         if (code == KeyEvent.KEYCODE_HOME) {
             if (event.getAction() == KeyEvent.ACTION_UP) {
+                if (MainActivity.foreground && MainActivity.instance != null) {
+                    handler.post(() -> {
+                        MainActivity act = MainActivity.instance;
+                        if (act != null) act.focusShelfCenter();
+                    });
+                    return true;
+                }
                 startActivity(new Intent(this, MainActivity.class)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
                 return true;
             }
             return true;
@@ -1113,10 +1257,13 @@ public class TvKeyInterceptorService extends AccessibilityService {
         int source = event.getSource();
         boolean gamepad = (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
                 || (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
-        if (gamepad || HardwareKeys.isNavigation(code)) return false;
-        // The remote's microphone: pause playing content and launch CineTV voice search overlay
+        // The remote's microphone: on TVs with a physical mic button, in Nuvio it opens voice CineSUB; otherwise launches CineTV voice search
         if (code == KeyEvent.KEYCODE_SEARCH || code == KeyEvent.KEYCODE_VOICE_ASSIST || code == KeyEvent.KEYCODE_ASSIST) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                if (isNuvioApp(lastPackage) && (HardwareKeys.hasRemoteWithMic(this) || isVoiceHardwareEvent(event))) {
+                    com.cinetv.launcher.ui.VoiceCineSubOverlay.trigger(this);
+                    return true;
+                }
                 DeviceTweaks.pauseMedia(this);
                 startActivity(new Intent(this, MainActivity.class)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION)
@@ -1158,6 +1305,12 @@ public class TvKeyInterceptorService extends AccessibilityService {
             }
         }
         return true;
+    }
+
+    private boolean isVoiceHardwareEvent(KeyEvent event) {
+        if (event == null) return false;
+        InputDevice dev = event.getDevice();
+        return dev != null && !dev.isVirtual();
     }
 
     @Override

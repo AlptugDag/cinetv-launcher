@@ -387,9 +387,34 @@ public final class MovieCatalog {
         return s.replaceAll("\\s+", " ");
     }
 
-    /** Movies and series for a free-text query (phone search). IMDb ids may be resolved lazily via {@link #imdbFor}. */
+    /** Movies and series for a free-text query. Fetches multiple pages when {@code max > 20}. */
     public static List<Movie> search(Context ctx, String query, int max) {
-        return search(ctx, query, 1, max);
+        return searchRange(ctx, query, 1, max);
+    }
+
+    /** Fetches search results starting from {@code startPage} across as many pages as needed to reach {@code max}. */
+    public static List<Movie> searchRange(Context ctx, String query, int startPage, int max) {
+        if (query == null || query.trim().isEmpty() || max <= 0) return Collections.emptyList();
+        List<Movie> out = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        int page = Math.max(1, startPage);
+        int maxPages = page + Math.max(1, (max + 14) / 15);
+        while (page <= maxPages && out.size() < max) {
+            List<Movie> batch = search(ctx, query, page, max - out.size());
+            if (batch.isEmpty()) break;
+            int added = 0;
+            for (Movie m : batch) {
+                String k = (m.type + ":" + (m.tmdbId > 0 ? m.tmdbId : (m.title + "|" + m.year))).toLowerCase(Locale.ROOT);
+                if (seen.add(k)) {
+                    out.add(m);
+                    added++;
+                    if (out.size() >= max) break;
+                }
+            }
+            if (added == 0 || !hasTmdb(ctx)) break;
+            page++;
+        }
+        return out;
     }
 
     public static List<Movie> search(Context ctx, String query, int page, int max) {
@@ -429,7 +454,7 @@ public final class MovieCatalog {
                 try {
                     JSONObject rec = tmdb(ctx, kind + "/" + id + "/recommendations?language=" + language());
                     out.addAll(parseTmdbResults(rec, kind, max));
-                    if (out.size() < 6) {
+                    if (out.size() < Math.min(max, 14)) {
                         JSONObject sim = tmdb(ctx, kind + "/" + id + "/similar?language=" + language());
                         List<Movie> more = parseTmdbResults(sim, kind, max - out.size());
                         for (Movie m : more) {
@@ -542,12 +567,13 @@ public final class MovieCatalog {
         return out;
     }
 
-    /** Every film or series with this title (two pages), the closest names first. */
+    /** Every film or series with this title across multiple pages, the closest names first. */
     public static List<Movie> titled(Context ctx, String query, String type, int max) {
         List<Movie> out = new ArrayList<>();
         if (!hasTmdb(ctx)) return search(ctx, query, max);
         String kind = ("tv".equals(type) || "series".equals(type)) ? "tv" : "movie".equals(type) ? "movie" : "multi";
-        for (int page = 1; page <= 2 && out.size() < max; page++) {
+        int maxPages = Math.max(2, Math.min(6, (max + 19) / 20 + 1));
+        for (int page = 1; page <= maxPages && out.size() < max; page++) {
             try {
                 JSONObject root = tmdb(ctx, "search/" + kind + "?include_adult=false&page=" + page + "&language=" + language() + "&query=" + enc(query));
                 out.addAll(parseTmdbResults(root, "multi".equals(kind) ? null : ("tv".equals(kind) ? "series" : "movie"), max - out.size()));
@@ -587,46 +613,61 @@ public final class MovieCatalog {
     /** TMDB discovery by theme keywords and genres, films and/or series, the most-watched first. */
     public static List<Movie> discover(Context ctx, List<String> keywords, List<String> genres, String type,
                                        String country, int from, int to, int max) {
-        return discover(ctx, keywords, genres, type, country, from, to, max, 0, 0, "");
+        return discover(ctx, keywords, genres, type, country, from, to, max, 0, 0, "", 1);
     }
 
     /** Also by length in minutes (0 = no limit) and original language ("tr", "de"...). */
     public static List<Movie> discover(Context ctx, List<String> keywords, List<String> genres, String type,
                                        String country, int from, int to, int max, int runtimeMin, int runtimeMax, String lang) {
+        return discover(ctx, keywords, genres, type, country, from, to, max, runtimeMin, runtimeMax, lang, 1);
+    }
+
+    /** Paginated TMDB discovery starting from {@code startPage}, fetching across pages until {@code max} is reached. */
+    public static List<Movie> discover(Context ctx, List<String> keywords, List<String> genres, String type,
+                                       String country, int from, int to, int max, int runtimeMin, int runtimeMax, String lang, int startPage) {
         List<Movie> out = new ArrayList<>();
-        if (!hasTmdb(ctx)) return out;
+        if (!hasTmdb(ctx) || max <= 0) return out;
         try {
             // Each concept of the request ("revenge", "father daughter relationship") must hold together: the best
             // keyword of every concept is required (AND). Only if that finds too little do near matches count (OR).
             StringBuilder kw = new StringBuilder(), any = new StringBuilder();
             int concepts = 0;
-            for (String k : keywords) {
-                JSONArray r = tmdb(ctx, "search/keyword?query=" + enc(k)).optJSONArray("results");
-                if (r == null || r.length() == 0) continue;
-                concepts++;
-                if (kw.length() > 0) kw.append(',');
-                kw.append(bestKeyword(r, k));
-                for (int i = 0; i < Math.min(2, r.length()); i++) {
-                    if (any.length() > 0) any.append('|');
-                    any.append(r.getJSONObject(i).optInt("id"));
+            if (keywords != null) {
+                for (String k : keywords) {
+                    if (k == null || k.trim().isEmpty()) continue;
+                    JSONArray r = tmdb(ctx, "search/keyword?query=" + enc(k)).optJSONArray("results");
+                    if (r == null || r.length() == 0) continue;
+                    concepts++;
+                    if (kw.length() > 0) kw.append(',');
+                    kw.append(bestKeyword(r, k));
+                    for (int i = 0; i < Math.min(2, r.length()); i++) {
+                        if (any.length() > 0) any.append('|');
+                        any.append(r.getJSONObject(i).optInt("id"));
+                    }
                 }
             }
             if (concepts <= 1) kw = any;
             String[] kinds = "tv".equals(type) ? new String[]{"tv"} : "movie".equals(type) ? new String[]{"movie"} : new String[]{"movie", "tv"};
+            int firstPage = Math.max(1, startPage);
+            int maxPages = firstPage + Math.max(1, (max + 15) / 16);
             for (String kind : kinds) {
+                if (out.size() >= max) break;
                 StringBuilder g = new StringBuilder();
-                for (String name : genres) {
-                    for (String[] row : GENRES) {
-                        if (row[0].equalsIgnoreCase(name.trim())) {
-                            if (g.length() > 0) g.append(',');
-                            g.append("tv".equals(kind) ? row[2] : row[1]);
+                if (genres != null) {
+                    for (String name : genres) {
+                        if (name == null) continue;
+                        for (String[] row : GENRES) {
+                            if (row[0].equalsIgnoreCase(name.trim())) {
+                                if (g.length() > 0) g.append(',');
+                                g.append("tv".equals(kind) ? row[2] : row[1]);
+                            }
                         }
                     }
                 }
                 boolean extra = runtimeMin > 0 || runtimeMax > 0 || (lang != null && lang.length() == 2);
                 if (kw.length() == 0 && g.length() == 0 && (country == null || country.isEmpty()) && !extra) continue;
                 String date = "tv".equals(kind) ? "first_air_date" : "primary_release_date";
-                String path = "discover/" + kind + "?include_adult=false&sort_by=vote_count.desc&vote_count.gte=40&language=" + language()
+                String basePath = "discover/" + kind + "?include_adult=false&sort_by=vote_count.desc&vote_count.gte=40&language=" + language()
                         + (kw.length() > 0 ? "&with_keywords=" + enc(kw.toString()) : "")
                         + (g.length() > 0 ? "&with_genres=" + enc(g.toString()) : "")
                         + (country != null && country.length() == 2 ? "&with_origin_country=" + country.toUpperCase(Locale.ROOT) : "")
@@ -635,11 +676,25 @@ public final class MovieCatalog {
                         + (runtimeMin > 0 ? "&with_runtime.gte=" + runtimeMin : "")
                         + (runtimeMax > 0 ? "&with_runtime.lte=" + runtimeMax : "")
                         + (lang != null && lang.length() == 2 ? "&with_original_language=" + lang.toLowerCase(Locale.ROOT) : "");
-                List<Movie> found = parseTmdbResults(tmdb(ctx, path), "tv".equals(kind) ? "series" : "movie", max - out.size());
-                // every concept together found nothing within the genres: the concepts matter more than the genres
-                if (found.isEmpty() && concepts > 1 && g.length() > 0)
-                    found = parseTmdbResults(tmdb(ctx, path.replace("&with_genres=" + enc(g.toString()), "")), "tv".equals(kind) ? "series" : "movie", max - out.size());
-                out.addAll(found);
+                for (int p = firstPage; p <= maxPages && out.size() < max; p++) {
+                    String path = basePath + "&page=" + p;
+                    JSONObject root = tmdb(ctx, path);
+                    List<Movie> found = parseTmdbResults(root, "tv".equals(kind) ? "series" : "movie", max - out.size());
+                    // every concept together found nothing within the genres: the concepts matter more than the genres
+                    if (found.isEmpty() && p == firstPage && concepts > 1 && g.length() > 0) {
+                        basePath = basePath.replace("&with_genres=" + enc(g.toString()), "");
+                        root = tmdb(ctx, basePath + "&page=" + p);
+                        found = parseTmdbResults(root, "tv".equals(kind) ? "series" : "movie", max - out.size());
+                    }
+                    if (found.isEmpty() && p == firstPage && concepts > 1 && any.length() > 0) {
+                        basePath = basePath.replace("&with_keywords=" + enc(kw.toString()), "&with_keywords=" + enc(any.toString()));
+                        root = tmdb(ctx, basePath + "&page=" + p);
+                        found = parseTmdbResults(root, "tv".equals(kind) ? "series" : "movie", max - out.size());
+                    }
+                    if (found.isEmpty()) break;
+                    out.addAll(found);
+                    if (root.optInt("total_pages", 1) <= p) break;
+                }
             }
         } catch (Throwable t) {
             Log.w(TAG, "Discover failed: " + t.getMessage());
@@ -663,25 +718,30 @@ public final class MovieCatalog {
         return m.runtimeMinutes;
     }
 
-    /** A title the AI named, as a film or series; the IMDb id is looked up only when it is opened. */
+    /** A title the AI named, as a film or series; resolved in a single TMDB query (year scored by pickBestResolved). */
     public static Movie resolveQuick(Context ctx, String title, int year, boolean tv) {
         if (title == null || title.trim().isEmpty()) return null;
         if (!hasTmdb(ctx)) return resolve(ctx, title, year);
         try {
             String kind = tv ? "tv" : "movie";
             String q = enc(title.trim());
+            // Single broad query first: pickBestResolved already awards +22 for exact year and +12 for ±1 year,
+            // avoiding a double HTTP round-trip for every AI title.
+            List<Movie> broad = parseTmdbResults(
+                    tmdb(ctx, "search/" + kind + "?include_adult=false&language=" + language() + "&query=" + q),
+                    tv ? "series" : "movie", 6);
+            Movie bestBroad = pickBestResolved(broad, title, year);
+            if (bestBroad != null && (year <= 1900 || Math.abs(bestBroad.year - year) <= 2)) {
+                return bestBroad;
+            }
             if (year > 1900) {
                 String yearParam = (tv ? "&first_air_date_year=" : "&year=") + year;
                 List<Movie> exact = parseTmdbResults(
                         tmdb(ctx, "search/" + kind + "?include_adult=false&language=" + language() + "&query=" + q + yearParam),
                         tv ? "series" : "movie", 4);
                 Movie bestExact = pickBestResolved(exact, title, year);
-                if (bestExact != null && bestExact.rating >= 5.0) return bestExact;
+                if (bestExact != null) return bestExact;
             }
-            List<Movie> broad = parseTmdbResults(
-                    tmdb(ctx, "search/" + kind + "?include_adult=false&language=" + language() + "&query=" + q),
-                    tv ? "series" : "movie", 6);
-            Movie bestBroad = pickBestResolved(broad, title, year);
             return bestBroad;
         } catch (Throwable t) {
             return null;

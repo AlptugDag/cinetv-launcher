@@ -84,17 +84,21 @@ public class DvdCaseView extends View {
         animate().cancel();
         if (dvd == null) {
             setAlpha(0f);
+            setTranslationY(0f);
         } else if (arriving) {
             setAlpha(0f);
-            setScaleX(0.94f);
-            setScaleY(0.94f);
-            animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(appearDelayMs)
+            setScaleX(0.92f);
+            setScaleY(0.92f);
+            setTranslationY(-UiKit.pxf(14));
+            animate().alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
+                    .setStartDelay(appearDelayMs)
                     .setDuration(com.cinetv.launcher.device.PerformanceProfile.animationMs(getContext(), 380))
-                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.8f)).start();
         } else {
             setAlpha(1f);
             setScaleX(1f);
             setScaleY(1f);
+            setTranslationY(0f);
         }
         invalidate();
     }

@@ -182,6 +182,15 @@ public final class EmaLightningTts {
         start(ctx.getApplicationContext(), rawText.toString(), onDone);
     }
 
+    /** Always speaks regardless of proactive settings (e.g. for user-initiated voice CineSUB queries). */
+    public static void speakAlways(final Context ctx, final CharSequence rawText, final Runnable onDone) {
+        if (ctx == null || rawText == null) {
+            if (onDone != null) MAIN.post(onDone);
+            return;
+        }
+        start(ctx.getApplicationContext(), rawText.toString(), onDone, 0);
+    }
+
     private static void start(final Context app, String raw, final Runnable onDone) {
         start(app, raw, onDone, 0);
     }

@@ -98,6 +98,33 @@ public final class HardwareKeys {
                 || keyCode == KeyEvent.KEYCODE_CHANNEL_DOWN;
     }
 
+    /** Returns true if any connected hardware remote/keyboard has a dedicated microphone/voice key. */
+    public static boolean hasRemoteWithMic(Context ctx) {
+        try {
+            int[] ids = android.view.InputDevice.getDeviceIds();
+            if (ids == null) return false;
+            for (int id : ids) {
+                android.view.InputDevice dev = android.view.InputDevice.getDevice(id);
+                if (dev == null || dev.isVirtual()) continue;
+                int src = dev.getSources();
+                if ((src & android.view.InputDevice.SOURCE_KEYBOARD) != 0 || (src & android.view.InputDevice.SOURCE_DPAD) != 0) {
+                    boolean[] hasKeys = dev.hasKeys(new int[]{
+                            KeyEvent.KEYCODE_VOICE_ASSIST,
+                            KeyEvent.KEYCODE_SEARCH,
+                            KeyEvent.KEYCODE_ASSIST
+                    });
+                    if (hasKeys != null) {
+                        for (boolean k : hasKeys) {
+                            if (k) return true;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
     /**
      * Runs an action that needs no home-screen UI. Returns false for {@link #ALL_APPS}, which the
      * caller handles by showing its library.

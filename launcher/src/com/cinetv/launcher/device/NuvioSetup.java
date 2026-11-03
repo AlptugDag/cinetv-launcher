@@ -127,7 +127,7 @@ public final class NuvioSetup {
         }
     }
 
-    /** Automatically syncs curated addons, hardware-matched stream profile, and configurations into Nuvio. */
+    /** Automatically syncs curated addons and configurations into Nuvio without overriding stream scraper limits. */
     public static void syncAddonsAndConfigs(Context ctx, boolean force) {
         final Context app = ctx.getApplicationContext();
         if (!force && Prefs.get(app).getBoolean(SYNC_KEY, false)) return;
@@ -136,22 +136,20 @@ public final class NuvioSetup {
         new Thread(() -> {
             try {
                 deployConfigs(app);
-                for (String addon : CURATED_ADDONS) {
-                    addAddon(app, addon);
+                if (force) {
+                    for (String addon : CURATED_ADDONS) {
+                        addAddon(app, addon);
+                    }
                 }
-                // Also configure hardware-and-bandwidth-matched stream addon from TV Denetçisi + NetworkProbe
-                AvOptimizer.Report av = AvOptimizer.detect(app);
-                NetworkProbe.Result net = NetworkProbe.run();
-                com.cinetv.launcher.service.StreamProfile sp = com.cinetv.launcher.service.StreamProfile.recommend(net, av);
-                addAddon(app, sp.manifestPath());
                 Prefs.get(app).edit().putBoolean(SYNC_KEY, true).apply();
-                Log.i(TAG, "Nuvio addons, stream profile and configs successfully synchronized");
-                // Restore CineTV Launcher to front so Nuvio is never left stranded in foreground
-                try {
-                    Intent home = new Intent(app, com.cinetv.launcher.MainActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION);
-                    app.startActivity(home);
-                } catch (Throwable ignored) {}
+                Log.i(TAG, "Nuvio configs synchronized without altering stream scraper speed");
+                if (force) {
+                    try {
+                        Intent home = new Intent(app, com.cinetv.launcher.MainActivity.class)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                        app.startActivity(home);
+                    } catch (Throwable ignored) {}
+                }
             } catch (Throwable t) {
                 Log.w(TAG, "Nuvio addon sync failed: " + t);
             }
@@ -205,27 +203,11 @@ public final class NuvioSetup {
     private static final String STREAM_KEY = "nuvio_stream_addon_v43";
 
     /**
-     * Nuvio enables "Oynat" only when an installed addon can give streams for the title; catalog, metadata and subtitle
-     * addons can't, so without one every page says "Oynatma Kullanılamıyor". A TV that already had Nuvio, or whose
-     * Nuvio CineTV swapped for the official build, never got CineTV's stream addon: it is offered once now (Nuvio
-     * asks the viewer to confirm), then CineTV comes back to the front. Blocking; off the main thread.
+     * Kept as a no-op so CineTV never injects filtered/limited Torrentio stream profiles
+     * or interrupts Nuvio's native source scanning speed.
      */
     public static void ensureStreamAddon(Context ctx) {
-        final Context app = ctx.getApplicationContext();
-        if (Prefs.get(app).getBoolean(STREAM_KEY, false) || Uninstaller.isRemoving(app)) return;
-        if (!AppLauncher.isLaunchable(app.getPackageManager(), AppLauncher.NUVIO)) return;
-        com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
-        if (svc != null && AppLauncher.NUVIO.equals(svc.getLastPackage())) return; // in use: next start
-        try {
-            AvOptimizer.Report av = AvOptimizer.detect(app);
-            NetworkProbe.Result net = NetworkProbe.run();
-            addAddon(app, com.cinetv.launcher.service.StreamProfile.recommend(net, av).manifestPath());
-            Prefs.get(app).edit().putBoolean(STREAM_KEY, true).apply();
-            app.startActivity(new Intent(app, com.cinetv.launcher.MainActivity.class)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
-        } catch (Throwable t) {
-            Log.w(TAG, "Stream addon not offered: " + t);
-        }
+        // Intentionally no-op: do not interfere with Nuvio's source scanning speed or addons.
     }
 
     static final String OFFICIAL_CERT = "1cba06fbdf978d0e3f9ad58de6ba3d69e24a948384adde3aed95451e830e5210";

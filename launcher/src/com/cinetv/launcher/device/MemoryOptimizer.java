@@ -227,50 +227,71 @@ public final class MemoryOptimizer {
                         "pm disable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.VoiceActivity 2>/dev/null; " +
                         "pm disable com.google.android.katniss/com.google.android.apps.search.assistant.surfaces.voice.ui.host.activity.AssistantActivity 2>/dev/null", 3000);
 
-                // Rootless zRAM app compaction + cached-app freezer + AOT native code compilation for CineTV
+                // Device-specific memory tuning + AOT native code compilation for CineTV
                 applyCompaction(app);
                 LocalAdb.shell(app,
                         "device_config delete activity_manager max_cached_processes 2>/dev/null; " +
                         "device_config delete activity_manager max_empty_time_millis 2>/dev/null; " +
-                        "settings put global cached_apps_freezer enabled 2>/dev/null; " +
+                        "cmd deviceidle whitelist +com.cinetv.launcher 2>/dev/null; " +
+                        "cmd deviceidle whitelist +com.nuvio.tv 2>/dev/null; " +
+                        "appops set com.nuvio.tv RUN_IN_BACKGROUND allow 2>/dev/null; " +
+                        "appops set com.nuvio.tv RUN_ANY_IN_BACKGROUND allow 2>/dev/null; " +
                         "cmd package compile -m speed-profile " + app.getPackageName() + " 2>/dev/null", 6000);
             } catch (Throwable ignored) {
             }
         }, "cinetv-tv-opt").start();
     }
 
-    /** Asks CineTV to give memory back (no kernel or swap changes: those need root). */
+    /** Asks CineTV to give memory back in-process without spawning ADB trim commands that can disrupt foreground playback. */
     public static void applyVirtualRamProperties(Context ctx) {
-        final Context app = ctx.getApplicationContext();
         try {
-            LocalAdb.shell(app, "am trim-memory com.cinetv.launcher RUNNING_MODERATE 2>/dev/null", 2000);
+            com.cinetv.launcher.service.PosterCache.trimMemory();
+            com.cinetv.launcher.ui.Glow.clear();
         } catch (Throwable ignored) {
         }
     }
 
     /** The swap the TV's maker set up (read only: its size cannot be changed without root). */
     private static volatile boolean compactionOn;
+    private static volatile boolean compactionChecked;
 
     /**
-     * Rootless zRAM help (Android 11+): Android's own app compaction moves the memory of apps waiting in the background
-     * into the TV's compressed swap (its zRAM), so the app in front has more RAM. Off on some TVs (the Arçelik had it
-     * off), so CineTV switches it on, with the cached-app freezer, and again after every start (a reboot or a settings
-     * sync may reset it). The zRAM size itself is the maker's: changing it needs root. Blocking (adb).
+     * Device-aware zRAM / freezer tuning:
+     * On MediaTek / Arçelik / Beko / Grundig TVs (and low-RAM boards), Android 11's cached_apps_freezer and
+     * aggressive use_compaction stall Binder IPC to TvKeyInterceptorService while Nuvio plays 4K streams,
+     * causing Nuvio/launcher crashes. On those boards we keep the manufacturer's native setting (freezer/compaction off)
+     * and protect Nuvio & CineTV in memory.
      */
     public static void applyCompaction(Context ctx) {
-        if (android.os.Build.VERSION.SDK_INT < 30) return;
+        if (android.os.Build.VERSION.SDK_INT < 30 || compactionChecked) return;
+        compactionChecked = true;
         Context app = ctx.getApplicationContext();
+        String soc = AvOptimizer.detectSocFamily(Build.BOARD, Build.HARDWARE, Build.DEVICE, Build.MANUFACTURER);
+        String brand = ((Build.MANUFACTURER == null ? "" : Build.MANUFACTURER) + " " + (Build.BRAND == null ? "" : Build.BRAND)
+                + " " + (Build.MODEL == null ? "" : Build.MODEL)).toLowerCase(Locale.ROOT);
+        boolean mediatekOrArcelik = "mediatek".equals(soc) || brand.contains("arcelik") || brand.contains("arçelik")
+                || brand.contains("beko") || brand.contains("grundig") || PerformanceProfile.lowMemory(app);
+        if (mediatekOrArcelik) {
+            LocalAdb.shell(app,
+                    "device_config delete activity_manager use_compaction 2>/dev/null; "
+                            + "settings delete global cinetv_compaction 2>/dev/null; "
+                            + "settings put global cached_apps_freezer disabled 2>/dev/null; "
+                            + "cmd deviceidle whitelist +com.cinetv.launcher 2>/dev/null; "
+                            + "cmd deviceidle whitelist +com.nuvio.tv 2>/dev/null", 5000);
+            compactionOn = false;
+            return;
+        }
         boolean ok = LocalAdb.shell(app,
                 "[ \"$(device_config get activity_manager use_compaction)\" = true ] || "
-                        + "{ device_config put activity_manager use_compaction true && settings put global cinetv_compaction 1; }; "
-                        + "settings put global cached_apps_freezer enabled 2>/dev/null", 6000);
+                        + "{ device_config put activity_manager use_compaction true && settings put global cinetv_compaction 1; }", 6000);
         compactionOn = ok;
     }
 
     /** "CineTV'yi yok et": app compaction back as the TV had it (only if CineTV switched it on). */
     public static String compactionRestoreCommand() {
         return "[ \"$(settings get global cinetv_compaction)\" = 1 ] && device_config delete activity_manager use_compaction 2>/dev/null; "
-                + "settings delete global cinetv_compaction 2>/dev/null; ";
+                + "settings delete global cinetv_compaction 2>/dev/null; "
+                + "settings delete global cached_apps_freezer 2>/dev/null; ";
     }
 
     public static String getZramInfo(Context ctx) {
