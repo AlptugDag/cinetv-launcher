@@ -45,21 +45,14 @@ public final class RelayHost {
      * Android does not have to kill Nuvio and then CineTV. {@link #resumeIfStopped} starts it again on Home.
      */
     public static void stopForMemory() {
-        main.post(() -> {
-            if (web == null) return;
-            try {
-                web.destroy();
-            } catch (Throwable ignored) {
-            }
-            web = null;
-            stoppedForMemory = true;
-        });
+        // Keep the WebRTC relay alive while in Nuvio or other apps so the phone remote never disconnects.
     }
 
     public static void resumeIfStopped(Context ctx) {
-        if (!stoppedForMemory) return;
         stoppedForMemory = false;
-        start(ctx);
+        if (web == null && ctx != null) {
+            start(ctx);
+        }
     }
     private static Context app;
 
@@ -110,7 +103,20 @@ public final class RelayHost {
                 WebSettings s = w.getSettings();
                 s.setJavaScriptEnabled(true);
                 s.setDomStorageEnabled(true);
-                w.setWebViewClient(new WebViewClient());
+                w.setWebViewClient(new WebViewClient() {
+                    @Override
+                    @android.annotation.TargetApi(26)
+                    public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                        try {
+                            view.destroy();
+                        } catch (Throwable ignored) {}
+                        if (web == view) web = null;
+                        if (app != null) {
+                            main.postDelayed(() -> start(app), 1500L);
+                        }
+                        return true;
+                    }
+                });
                 w.addJavascriptInterface(new Bridge(), "Cine");
                 String html;
                 try (InputStream in = app.getAssets().open("remote/relay.html")) {

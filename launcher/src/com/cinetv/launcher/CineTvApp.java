@@ -79,7 +79,8 @@ public class CineTvApp extends Application {
         boolean pressed = level >= TRIM_MEMORY_BACKGROUND || level == TRIM_MEMORY_RUNNING_LOW || level == TRIM_MEMORY_RUNNING_CRITICAL;
         if (level == TRIM_MEMORY_RUNNING_CRITICAL || level >= TRIM_MEMORY_COMPLETE) com.cinetv.launcher.service.PosterCache.trimPacked();
         if (pressed && !MainActivity.isInFront()) {
-            com.cinetv.launcher.remote.RelayHost.stopForMemory();
+            // Keep RelayHost and TvWebRemoteServer alive so the phone remote continues working inside Nuvio
+            com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
             MainActivity a = MainActivity.instance;
             if (a != null) a.releaseShelfMemory();
         }

@@ -794,24 +794,24 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         handler.removeCallbacks(idle);
         handler.removeCallbacks(sleepPanel);
         hideScreensaver();
-        // Deep background hibernation: immediately free memory for external media player & 4K video playback
+        // Free launcher bitmaps when leaving Home, without killing foreground media apps (Nuvio) or blocking UI thread
         releaseShelfMemory();
         PosterCache.trimMemory();
         Glow.clear();
-        MemoryOptimizer.cleanBackground(this, getPackageName());
-        System.gc();
         super.onPause();
     }
 
     @Override
     protected void onDestroy() {
-        if (instance == this) instance = null;
+        if (instance == this) {
+            instance = null;
+            TvWebRemoteServer.setController(null);
+        }
         try {
             unregisterReceiver(screenOn);
         } catch (Throwable ignored) {
         }
         handler.removeCallbacksAndMessages(null);
-        TvWebRemoteServer.setController(null);
         try {
             if (packageReceiver != null) unregisterReceiver(packageReceiver);
         } catch (Throwable ignored) {
@@ -941,7 +941,23 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (home == null) return super.dispatchKeyEvent(e);
         int keyCode = e.getKeyCode();
         if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_MUTE) {
+            if (TvKeyInterceptorService.getInstance() == null && e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() > 0
+                    && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+                android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                if (am != null) {
+                    am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC,
+                            keyCode == KeyEvent.KEYCODE_VOLUME_UP ? android.media.AudioManager.ADJUST_RAISE : android.media.AudioManager.ADJUST_LOWER,
+                            android.media.AudioManager.FLAG_SHOW_UI);
+                    return true;
+                }
+            }
             return super.dispatchKeyEvent(e);
+        }
+        if ((keyCode == KeyEvent.KEYCODE_CHANNEL_UP || keyCode == KeyEvent.KEYCODE_CHANNEL_DOWN) && e.getAction() == KeyEvent.ACTION_DOWN) {
+            if (home.shelf != null && !home.modal.isShowing() && !home.keyboard.isShowing()) {
+                home.shelf.step(keyCode == KeyEvent.KEYCODE_CHANNEL_UP ? 1 : -1);
+                return true;
+            }
         }
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         if (down && isDpad(e.getKeyCode())) {
@@ -2724,6 +2740,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void searchOnTv(String query) {
+        if (!inFront) {
+            AppLauncher.start(this, new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        }
         onSearch(query);
     }
 
@@ -2749,6 +2768,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void showSimilarOnTv(String title, List<MovieCatalog.Movie> movies) {
+        if (!inFront) {
+            AppLauncher.start(this, new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        }
         if (movies != null && !movies.isEmpty()) {
             setShelf(title == null || title.isEmpty() ? "BENZER FİLMLER" : title, movies, true);
             home.shelf.requestFocus();
@@ -2851,6 +2873,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void triggerVoiceOverlay() {
+        if (!inFront) {
+            AppLauncher.start(this, new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        }
         onVoice();
     }
 
@@ -2861,7 +2886,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     public static boolean isTvInputActive() {
         MainActivity a = instance;
-        if (a == null || a.home == null) return false;
+        if (a == null || !inFront || a.home == null) return false;
         return a.home.isSearchOrInputFocused();
     }
 
@@ -2934,6 +2959,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void openTitle(Movie movie) {
+        if (!inFront && movie != null) {
+            AppLauncher.openInNuvio(this, movie.title, movie.imdbId, movie.tmdbId, movie.type, movie.posterUrl);
+            return;
+        }
         hideScreensaver();
         if (home.modal.isShowing()) home.modal.close();
         openTitle(movie, null);

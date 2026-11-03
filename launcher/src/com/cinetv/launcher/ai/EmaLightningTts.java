@@ -279,27 +279,84 @@ public final class EmaLightningTts {
      * produces crisp, natural Turkish prosody. Also smooths common English cinema title phonetics
      * when read by Turkish TTS engines.
      */
-    static String normalizeForSpeech(String text) {
+    public static String normalizeForSpeech(String text) {
         if (text == null) return "";
         String s = text
                 .replace("“", "")
                 .replace("”", "")
                 .replace("\"", "")
+                .replace("’", "'")
+                .replace("ʼ", "'")
+                .replace("‘", "'")
+                .replace("`", "'")
                 .replace("·", ", ")
                 .replace("•", ", ")
                 .replace("★", " yıldız ")
                 .replace("✓", "")
                 .replace("%", "yüzde ")
                 .replaceAll("<[^>]+>", " ")
-                .replaceAll("(?i)\\bCineTV\\b", "Sine Tivi")
-                .replaceAll("(?i)\\bCine\\s*TV\\b", "Sine Tivi")
-                .replaceAll("(?i)\\bCinetv\\b", "Sine Tivi")
-                .replaceAll("(?i)\\bCineSub\\b", "Sine Sab")
-                .replaceAll("(?i)\\bCineQuiz\\b", "Sine Kviz")
-                .replaceAll("(?i)\\bCineRoulette\\b", "Sine Rulet")
-                .replaceAll("(?i)\\bCineSessiz\\b", "Sine Sessiz")
-                .replaceAll("(?i)\\bCine\\b", "Sine")
-                .replaceAll("(?i)\\bTV\\b", "Tivi")
+                // Turn parenthetical remarks into smooth comma pauses instead of raw brackets
+                .replaceAll("\\(\\s*([^()]+?)\\s*\\)", ", $1, ")
+                .replace("[", ", ")
+                .replace("]", ", ")
+                // Brand & feature names (match before apostrophe or word boundary)
+                .replaceAll("(?i)\\bCineTV(?='|\\b)", "Sine Tivi")
+                .replaceAll("(?i)\\bCine\\s*TV(?='|\\b)", "Sine Tivi")
+                .replaceAll("(?i)\\bCineSub(?='|\\b)", "Sine Sab")
+                .replaceAll("(?i)\\bCineQuiz(?='|\\b)", "Sine Kviz")
+                .replaceAll("(?i)\\bCineRoulette(?='|\\b)", "Sine Rulet")
+                .replaceAll("(?i)\\bCineSessiz(?='|\\b)", "Sine Sessiz")
+                .replaceAll("(?i)\\bCineParty(?='|\\b)", "Sine Parti")
+                .replaceAll("(?i)\\bCine(?='|\\b)", "Sine")
+                // Common abbreviations & technical acronyms (including when suffixed with an apostrophe, e.g. DVD'nin)
+                .replaceAll("(?i)\\bDVD(?='|\\b)", "Di Vi Di")
+                .replaceAll("(?i)\\bBlu-?ray(?='|\\b)", "Blu Rey")
+                .replaceAll("(?i)\\bVHS(?='|\\b)", "Vi Eyç Es")
+                .replaceAll("(?i)\\bTV(?='|\\b)", "Tivi")
+                .replaceAll("(?i)\\bIMDb(?='|\\b)", "Ay Em Di Bi")
+                .replaceAll("(?i)\\bTMDB(?='|\\b)", "Ti Em Di Bi")
+                .replaceAll("(?i)\\bHDR10\\+", "Eyç Di Ar On Plus")
+                .replaceAll("(?i)\\bHDR10(?='|\\b)", "Eyç Di Ar On")
+                .replaceAll("(?i)\\bHDR(?='|\\b)", "Eyç Di Ar")
+                .replaceAll("(?i)\\bSDR(?='|\\b)", "Es Di Ar")
+                .replaceAll("(?i)\\bUHD(?='|\\b)", "Yu Eyç Di")
+                .replaceAll("(?i)\\bFHD(?='|\\b)", "Ful Eyç Di")
+                .replaceAll("(?i)\\bHD(?='|\\b)", "Eyç Di")
+                .replaceAll("(?i)\\b4K(?='|\\b)", "Dört Ka")
+                .replaceAll("(?i)\\b8K(?='|\\b)", "Sekiz Ka")
+                .replaceAll("(?i)\\b1080p(?='|\\b)", "Bin Seksen Pi")
+                .replaceAll("(?i)\\b720p(?='|\\b)", "Yedi Yüz Yirmi Pi")
+                .replaceAll("(?i)\\bOLED(?='|\\b)", "Oled")
+                .replaceAll("(?i)\\bQLED(?='|\\b)", "Kyuled")
+                .replaceAll("(?i)\\bLED(?='|\\b)", "Led")
+                .replaceAll("(?i)\\bHDMI(?='|\\b)", "Eyç Di Em Ay")
+                .replaceAll("(?i)\\bUSB(?='|\\b)", "Yu Es Bi")
+                .replaceAll("(?i)\\bDNS(?='|\\b)", "Di En Es")
+                .replaceAll("(?i)\\bzRAM(?='|\\b)", "Zet Ram")
+                .replaceAll("(?i)\\bRAM(?='|\\b)", "Ram")
+                .replaceAll("(?i)\\bCPU(?='|\\b)", "Si Pi Yu")
+                .replaceAll("(?i)\\bGPU(?='|\\b)", "Ci Pi Yu")
+                .replaceAll("(?i)\\bFPS(?='|\\b)", "Ef Pi Es")
+                .replaceAll("(?i)\\bAPK(?='|\\b)", "A Pe Ka")
+                .replaceAll("(?i)\\bADB(?='|\\b)", "A De Be")
+                .replaceAll("(?i)\\bQR(?='|\\b)", "Kyu Ar")
+                .replaceAll("(?i)\\bAI(?='|\\b)", "Ey Ay")
+                .replaceAll("(?i)\\bTTS(?='|\\b)", "Ti Ti Es")
+                .replaceAll("(?i)\\bDRM(?='|\\b)", "Di Ar Em")
+                .replaceAll("(?i)\\bVIP(?='|\\b)", "Vi Ay Pi")
+                .replaceAll("(?i)\\bIMAX(?='|\\b)", "Aymeks")
+                .replaceAll("(?i)\\bCGI(?='|\\b)", "Si Ci Ay")
+                .replaceAll("(?i)\\bVFX(?='|\\b)", "Vi Ef Eks")
+                .replaceAll("(?i)\\bSFX(?='|\\b)", "Es Ef Eks")
+                .replaceAll("(?i)\\bOST(?='|\\b)", "O Es Ti")
+                .replaceAll("(?i)\\bWi-?Fi(?='|\\b)", "Vay Fay")
+                .replaceAll("(?i)\\bSci-?Fi(?='|\\b)", "Say Fay")
+                .replaceAll("(?i)\\bAirPlay(?='|\\b)", "Eır Pley")
+                .replaceAll("(?i)\\bTizenTube(?='|\\b)", "Tayzın Tub")
+                .replaceAll("(?i)\\bNuvio(?='|\\b)", "Nuvyo")
+                .replaceAll("(?i)\\bABD(?='|\\b)", "A Be De")
+                .replaceAll("(?i)\\bBBC(?='|\\b)", "Bi Bi Si")
+                .replaceAll("(?i)\\bHBO(?='|\\b)", "Eyç Bi O")
                 .replaceAll("(?i)\\bSearching for\\b", "")
                 .replaceAll("(?i)\\bThe Green Mile\\b", "Yeşil Yol")
                 .replaceAll("(?i)\\bThe Godfather\\b", "Baba")
@@ -315,10 +372,16 @@ public final class EmaLightningTts {
                 .replaceAll("(?i)\\bThe Matrix\\b", "Metriks")
                 .replaceAll("(?i)\\bMatrix\\b", "Metriks")
                 .replaceAll("(?i)\\bGame of Thrones\\b", "Taht Oyunları")
-                .replaceAll("(?i)\\b\\bthe\\b", "dı")
+                .replaceAll("(?i)\\bthe\\b", "dı");
+        s = turkishPhonetics(s);
+        // Join apostrophes inside words/numbers (e.g. "Nolın'ın" -> "Nolının", "Di Vi Di'nin" -> "Di Vi Dinin", "1995'te" -> "1995te")
+        // so Turkish neural TTS reads the suffix smoothly instead of pausing or spelling after the apostrophe.
+        s = s.replaceAll("([\\p{L}\\p{N}])'([\\p{L}\\p{N}])", "$1$2")
+                .replace("'", "")
+                .replaceAll("\\s*,\\s*,+", ", ")
+                .replaceAll("^\\s*,\\s*", "")
                 .replaceAll("\\s+", " ")
                 .trim();
-        s = turkishPhonetics(s);
         if (s.length() > 300) {
             int cut = s.lastIndexOf('.', 300);
             if (cut < 120) cut = s.lastIndexOf(' ', 300);
@@ -671,41 +734,70 @@ public final class EmaLightningTts {
         }
     }
 
-    /** English names and words she would otherwise read letter by letter the Turkish way. */
+    /** Foreign proper names and cinema terms she would otherwise read letter by letter the Turkish way. */
     private static final java.util.Map<String, String> SAYS = new java.util.HashMap<>();
     static {
         String[] pairs = {
-                "christopher", "kristofır", "nolan", "nolın", "steven", "stiivın", "spielberg", "spilbörg", "quentin", "kventin",
-                "tarantino", "tarantino", "martin", "martin", "scorsese", "skorsezi", "stanley", "stenli", "kubrick", "kubrik",
+                "christopher", "kristofır", "nolan", "nolın", "steven", "stiivın", "spielberg", "şpilbörg", "quentin", "kuentin",
+                "tarantino", "tarantino", "martin", "martin", "scorsese", "skorsizi", "stanley", "stenli", "kubrick", "kübrik",
                 "david", "deyvid", "fincher", "finçır", "denis", "denis", "villeneuve", "vilnöv", "ridley", "ridli", "scott", "skat",
                 "james", "ceyms", "cameron", "kemırın", "leonardo", "leonardo", "dicaprio", "dikaprio", "brad", "bred", "pitt", "pit",
-                "tom", "tam", "hanks", "henks", "cruise", "kruz", "keanu", "kiyanu", "reeves", "riivs", "morgan", "morgın",
-                "freeman", "friimın", "robert", "rabırt", "niro", "niro", "pacino", "paçino", "joaquin", "vakiin", "phoenix", "fiiniks",
-                "heath", "hiis", "ledger", "leccır", "matthew", "metyu", "mcconaughey", "mıkonahey", "hathaway", "hetıvey",
-                "scarlett", "skarlıt", "johansson", "cohansın", "natalie", "netıli", "portman", "portmın", "emma", "ema", "stone", "ston",
-                "ryan", "rayın", "gosling", "gazling", "margot", "margo", "robbie", "rabi", "cillian", "kilian", "murphy", "mörfi",
+                "tom", "tom", "hanks", "henks", "cruise", "kruz", "keanu", "kenyu", "reeves", "riivs", "morgan", "morgın",
+                "freeman", "friimın", "robert", "rabırt", "niro", "niro", "pacino", "paçino", "joaquin", "yokiin", "phoenix", "fiiniks",
+                "heath", "hiit", "ledger", "ledcır", "matthew", "metyu", "mcconaughey", "mekkonahey", "hathaway", "hetıvey",
+                "scarlett", "skarlıt", "johansson", "yohansın", "natalie", "natali", "portman", "portmın", "emma", "ema", "stone", "ston",
+                "ryan", "rayn", "gosling", "goslig", "margot", "margo", "robbie", "robi", "cillian", "klayn", "murphy", "mörfi",
                 "wes", "ves", "anderson", "endırsın", "greta", "greta", "gerwig", "görvig", "jordan", "cordın", "peele", "piil",
-                "night", "nayt", "knight", "nayt", "dark", "dark", "batman", "betmın", "joker", "cokır", "star", "star", "wars", "vors",
+                "alfred", "alfrıt", "hitchcock", "hiçkok", "akira", "akira", "kurosawa", "kurosava", "hayao", "hayao", "miyazaki", "miyazaki",
+                "pedro", "pedro", "almodovar", "almodovar", "almodóvar", "almodovar", "guillermo", "giyermo", "toro", "toro",
+                "alfonso", "alfonzo", "cuaron", "kuaron", "cuarón", "kuaron", "alejandro", "alehandro", "inarritu", "inyaritu", "iñárritu", "inyaritu",
+                "bong", "bong", "joon", "cun", "ho", "ho", "park", "park", "chan", "çan", "wook", "vuk", "wong", "vong", "kar", "kar", "wai", "vey",
+                "andrei", "andrey", "tarkovsky", "tarkovski", "ingmar", "ingmar", "bergman", "börgmın", "federico", "federiko", "fellini", "fellini",
+                "sergio", "sercio", "leone", "leone", "ennio", "enyo", "morricone", "morikone", "hans", "hans", "zimmer", "zimır",
+                "john", "con", "williams", "vilyıms", "howard", "havırd", "shore", "şor", "ludwig", "ludvig", "göransson", "görınsın",
+                "francis", "frensis", "ford", "ford", "coppola", "kopola", "sofia", "sofya", "coen", "koen", "ethan", "iitın", "joel", "coıl",
+                "paul", "pol", "thomas", "tomas", "michael", "maykıl", "mann", "men", "caan", "kan", "fassbinder", "fesbindır",
+                "christian", "krisçın", "bale", "beyl", "hugh", "hyu", "jackman", "cekmın", "jake", "ceyk", "gyllenhaal", "caylınhıl",
+                "willem", "vilım", "dafoe", "dafo", "ralph", "reyf", "fiennes", "fayns", "gary", "geri", "oldman", "oldmın",
+                "anthony", "entoni", "hopkins", "hopkins", "daniel", "denyıl", "day", "dey", "lewis", "luis", "craig", "kreyg",
+                "meryl", "merıl", "streep", "striip", "cate", "keyt", "blanchett", "blenşıt", "winslet", "vinslıt", "tilda", "tilda", "swinton", "svintın",
+                "timothee", "timoti", "timothée", "timoti", "chalamet", "şalame", "zendaya", "zendaya", "florence", "florıns", "pugh", "pyu",
+                "austin", "ostin", "butler", "batlır", "anya", "anya", "taylor", "teylır", "joy", "coy", "pedro", "pedro", "pascal", "paskal",
+                "oscar", "oskır", "isaac", "ayzek", "adam", "edım", "driver", "drayvır", "mads", "meds", "mikkelsen", "mikılsın",
+                "christoph", "kristof", "waltz", "vals", "javier", "haviyer", "bardem", "bardem", "penelope", "penelope", "cruz", "kruz",
+                "viggo", "vigo", "mortensen", "mortınsın", "ian", "Ayn", "mckellen", "mekkellın", "elijah", "eliya", "wood", "vud",
+                "sean", "şan", "connery", "kanıri", "bean", "biin", "penn", "pen", "liam", "laym", "neeson", "niisın",
+                "clint", "klint", "eastwood", "iistvud", "harrison", "herisın", "samuel", "semyuıl", "jackson", "ceksın",
+                "denzel", "denzıl", "washington", "vaşintın", "will", "vil", "smith", "smit", "edward", "edvırd", "norton", "nortın",
+                "jodie", "codi", "foster", "fastır", "sigourney", "sigorni", "weaver", "viivır", "uma", "uma", "thurman", "törmın",
+                "charlize", "şarliz", "theron", "terın", "nicole", "nikol", "kidman", "kidmın", "julianne", "culiyen", "moore", "mur",
+                "viola", "vayola", "davis", "deyvis", "frances", "frensis", "mcdormand", "mekdormınd", "olivia", "olivya", "colman", "kolmın",
+                "bryan", "brayn", "cranston", "krenstın", "aaron", "erın", "bob", "bob", "odenkirk", "odınkörk", "vince", "vins", "gilligan", "giligın",
+                "steve", "stiiv", "buscemi", "buşemi", "walt", "volt", "disney", "dizni", "pixar", "piksar", "marvel", "marvıl", "studio", "stüdyo", "ghibli", "gibli",
+                "night", "nayt", "knight", "nayt", "dark", "dark", "batman", "betmen", "joker", "joker", "star", "star", "wars", "vors",
                 "love", "lav", "story", "stori", "life", "layf", "world", "vörld", "new", "nyu", "york", "york", "city", "siti",
-                "woman", "vumın", "girl", "görl", "house", "haus", "home", "hom", "alone", "ılon",
+                "woman", "vumın", "girl", "görl", "house", "haus", "home", "hom", "alone", "elon",
                 "the", "dı", "of", "ov", "and", "end", "to", "tu", "with", "viz", "for", "for",
                 "you", "yu", "my", "may", "we", "vi", "they", "dey", "she", "şi",
                 "are", "ar", "was", "vaz", "last", "lest", "first", "först", "good", "gud", "bad", "bed", "big", "big",
-                "little", "lıtıl", "time", "taym", "day", "dey", "back", "bek", "future", "fyuçır", "space", "speys", "odyssey", "odısi",
-                "apocalypse", "ıpakılips", "now", "nav", "taxi", "teksi", "driver", "drayvır", "shining", "şayning", "psycho", "sayko",
-                "jaws", "cos", "alien", "eyliın", "titanic", "taytenik", "avatar", "evıtar", "gladiator", "gledieytır", "matrix", "metriks",
-                "oppenheimer", "opınhaymır", "barbie", "barbi", "dune", "dyun", "parasite", "perısayt", "whiplash", "viples",
-                "netflix", "netfliks", "youtube", "yutub", "google", "gugıl", "apple", "epıl", "airpods", "erpadz",
-                "trailer", "treylır", "netflix", "netfliks", "series", "siiriz", "season", "siizın", "episode", "epizod", "show", "şov"
+                "little", "litıl", "time", "taym", "day", "dey", "back", "bek", "future", "fyüçır", "space", "speys", "odyssey", "odısi",
+                "apocalypse", "apokılips", "now", "nav", "taxi", "taksi", "shining", "şayning", "psycho", "sayko",
+                "jaws", "cavs", "alien", "eyliyın", "titanic", "titanik", "avatar", "avatar", "gladiator", "gladyatör", "matrix", "metriks",
+                "oppenheimer", "opınhaymır", "barbie", "barbi", "dune", "dyun", "parasite", "parazit", "whiplash", "vipleş",
+                "netflix", "netfliks", "youtube", "yutub", "google", "gugıl", "apple", "epıl", "airpods", "eyirpods",
+                "trailer", "treylır", "series", "siiriz", "season", "siizın", "episode", "epizod", "show", "şov",
+                "dolby", "dolbi", "atmos", "atmos", "vision", "vijın", "prime", "praym", "max", "meks", "plus", "plas",
+                "shazam", "şazam", "gemini", "ceminay", "bluetooth", "bluutut", "android", "android"
         };
         for (int i = 0; i + 1 < pairs.length; i += 2) SAYS.put(pairs[i], pairs[i + 1]);
     }
 
-    private static final java.util.regex.Pattern WORD = java.util.regex.Pattern.compile("(?<![\\p{L}])[A-Za-z][A-Za-z']*(?![\\p{L}])");
+    /** Matches Latin words (or the stem before an apostrophe like "Nolan'ın" -> "Nolan"). */
+    private static final java.util.regex.Pattern WORD = java.util.regex.Pattern.compile("(?<![\\p{L}])[A-Za-zÀ-ÖØ-öø-ÿ]+(?='[\\p{L}]+|(?![\\p{L}]))");
     /** Letters and pairs Turkish never writes: a word with one of them is English (or another foreign tongue). */
-    private static final java.util.regex.Pattern FOREIGN = java.util.regex.Pattern.compile("(?i)[wxq]|th|sh|ch|ph|ck|ee|oo|ea|gh|ou");
+    private static final java.util.regex.Pattern FOREIGN = java.util.regex.Pattern.compile("(?i)[wxq]|th|sh|ch|ph|ck|ee|oo|ea|gh|ou|sch|tch|tion|sion");
 
-    /** Respells English words in Turkish letters so the Turkish voice says them the English way. */
+    /** Respells English/foreign words and stems in Turkish letters so the Turkish voice says them naturally. */
     static String turkishPhonetics(String text) {
         java.util.regex.Matcher m = WORD.matcher(text);
         StringBuffer out = new StringBuffer();
@@ -725,7 +817,7 @@ public final class EmaLightningTts {
     private static String respell(String w) {
         String s = w.replace("'", "");
         String[][] rules = {
-                {"tion", "şın"}, {"sion", "jın"}, {"ough", "of"}, {"augh", "of"}, {"igh", "ay"}, {"tch", "ç"}, {"sch", "sk"},
+                {"tion", "şın"}, {"sion", "jın"}, {"ough", "of"}, {"augh", "of"}, {"igh", "ay"}, {"tch", "ç"}, {"sch", "ş"},
                 {"sh", "ş"}, {"ch", "ç"}, {"th", "t"}, {"ph", "f"}, {"ck", "k"}, {"qu", "kv"}, {"wh", "v"}, {"gh", "g"},
                 {"ee", "i"}, {"ea", "i"}, {"oo", "u"}, {"ou", "au"}, {"ow", "ov"}, {"ai", "ey"}, {"ay", "ey"}, {"ey", "ey"},
                 {"oa", "o"}, {"ie", "i"}, {"x", "ks"}, {"q", "k"}, {"w", "v"}, {"j", "c"}
@@ -740,7 +832,6 @@ public final class EmaLightningTts {
             else b.append(c);
         }
         String r = b.toString();
-        // the silent final e: "made" -> "meyd" is beyond rules; at least it is not read aloud
         if (r.length() > 3 && r.endsWith("e") && "aeiouı".indexOf(r.charAt(r.length() - 2)) < 0) r = r.substring(0, r.length() - 1);
         return r;
     }

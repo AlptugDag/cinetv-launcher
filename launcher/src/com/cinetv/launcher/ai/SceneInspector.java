@@ -227,42 +227,43 @@ public final class SceneInspector {
                     : "This app protects its picture (DRM); CineSUB can't see this scene.";
             return scene;
         }
-        // The last film started from CineTV is only a hint: the viewer may be watching anything since.
+        // The work started or playing is only a soft candidate: verify visually before trusting it.
         String hint = NowPlaying.describe(ctx);
         String lang = tr ? "Turkish" : "English";
-        String context = hint.isEmpty() ? "" : "The last film opened from the launcher was " + hint
-                + ", but the viewer may be watching something else: trust only what the frame shows. ";
+        String context = hint.isEmpty() ? "" : "Unverified candidate hint from the player/launcher: " + hint
+                + ". ONLY use this hint if the faces, costumes, setting, or subtitles in the frame genuinely match this work; "
+                + "if the viewer switched to a different film, TV series (dizi), or video, IGNORE the hint completely and never force it onto the frame. ";
         String recent = ambient ? recentAmbientSummary() : recentManualSummary();
         String avoidRecent = recent.isEmpty() ? "" : "Already shown recently (prefer fresh, deeper details in this scene or subtitles rather than repeating these): " + recent + ". ";
-        String sys = "You are CineSUB, an encyclopedic film historian, cinematographer, art curator, and cultural critic sitting beside the viewer. "
+        String sys = "You are CineSUB, an encyclopedic cinema & television historian (covering both films and TV series / diziler equally), cinematographer, art curator, and cultural critic sitting beside the viewer. "
                 + "You reveal what is truly fascinating, hidden, or meaningful in the frame and subtitles without ever spoiling future plot points. "
                 + context + avoidRecent
-                + "Only state facts you are confident about; if you can't identify a specific name, explain the historical/cinematic/visual significance of what is shown. "
-                + "Never identify a real person from their face alone unless the film/series is recognisable or their name appears on screen; "
-                + "when the film or series is recognisable, name both the character and the actor and share a sharp behind-the-scenes, directorial, or career insight. "
+                + "CRITICAL ACCURACY RULE: Never guess or hallucinate the title of a film or TV series! Only set the \"film\" field (which holds either the film title OR the TV series / dizi title) if you are 100% certain of the exact film or TV series from unmistakable characters/actors, subtitles, or verified visual evidence; if you are not 100% certain which film or TV series this is, leave \"film\":\"\" empty and focus on the verifiable objects, locations, history, or subtitle references in the frame. "
+                + "Never identify a real person from their face alone unless the film or TV series is unmistakably recognised or their name appears on screen; "
+                + "when the film or TV series is recognised, name both the character and the actor and share a sharp behind-the-scenes, directorial, showrunner, or career insight. "
                 + "Never return shallow descriptions ('a man standing', 'a dark room'): every item must make the viewer say 'I didn't know that!'. "
                 + "Write in fluent, natural " + lang + ".";
         String ask = ambient
-                ? "Actively scan this frame and its visible subtitles and return the 1 or 2 most fascinating details you can detect across ANY of these categories: "
-                + "(1) visible subtitles: idioms, slang, cultural/historical references, real events/people, or quotes/allusions to films, books, myths or songs (set subtitle:true, kind text or event); "
-                + "(2) recognisable characters & actors or cameos in a known film/series (kind person or cameo: character + actor name + behind-the-scenes or career fact); "
+                ? "Actively scan this frame and its visible subtitles (whether from a film or a TV series / dizi) and return the 1 or 2 most fascinating details you can detect across ANY of these categories: "
+                + "(1) visible subtitles: idioms, slang, cultural/historical references, real events/people, or quotes/allusions to films, series, books, myths or songs (set subtitle:true, kind text or event); "
+                + "(2) recognisable characters & actors or cameos in a known film or TV series / dizi (kind person or cameo: character + actor name + behind-the-scenes or career fact); "
                 + "(3) filming locations, cities, architectural landmarks or set design details (kind place or landmark); "
                 + "(4) specific vehicles (exact car/motorcycle/aircraft model & era), watches, weapons, instruments, gadgets, books, records, iconic costumes or props (kind object); "
                 + "(5) paintings, sculptures, posters or visual artworks on screen (kind art: title, artist, year); "
                 + "(6) dishes, drinks or culinary details on screen (kind food); "
-                + "(7) scene soundtrack/score composer or song when the scene is recognisable, or cinematography/director's visual motif & easter egg (kind music or event). "
-                + "Aim to find at least 1 rewarding detail whenever the frame shows a real scene or dialogue; only return an empty list on blank/loading/logo screens. "
-                + "JSON: {\"film\":\"the film or series if you recognise it, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 words\",\"title\":\"name\",\"fact\":\"1-2 rich sentences under 180 characters\","
+                + "(7) scene soundtrack/score composer, theme music, or song when the scene is recognisable, or cinematography/director's/showrunner's visual motif & easter egg (kind music or event). "
+                + "CRITICAL: If the frame shows ANY app menu, catalog/poster grid, movie/series detail page, episode list, stream source picker, settings overlay, static wallpaper, or a PAUSED video player (visible pause icon, timeline/seekbar, or player controls overlay), you MUST return {\"film\":\"\",\"items\":[]} immediately! Only return items when the frame is an active, clean, unpaused film/series/video scene. "
+                + "JSON: {\"film\":\"exact film or TV series (dizi) title ONLY if 100% certain, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 words\",\"title\":\"name\",\"fact\":\"1-2 rich sentences under 180 characters\","
                 + "\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":false}]} with box in 0-1000 screen coordinates enclosing that specific item (leave box empty for subtitle/music/general scene notes)."
-                : "The viewer pressed the CineSUB button to inspect this exact moment. Deliver the 2 to 5 sharpest, smartest, most rewarding insights in this frame (high intellectual & cinephile value): "
-                + "(1) SUBTITLES & DIALOGUE SUBTEXT: Read visible subtitles closely—decode cultural idioms, historical events, philosophical/literary/religious allusions, double meanings, or intertextual film quotes (subtitle:true, kind text or event, explain the exact reference and why the character invokes it); "
-                + "(2) ACTORS, CHARACTERS & CAMEOS: When the work is recognisable, identify key characters/actors or cameos (kind person or cameo) with a non-obvious production secret, improvisation, method-acting detail, or career connection; "
-                + "(3) DIRECTORIAL & CINEMATOGRAPHIC CRAFT: Notice visual symbolism, framing/blocking, lens choice, color palette motif, production design easter eggs, or homage to another filmmaker/painting (kind event or art); "
+                : "The viewer pressed the CineSUB button to inspect this exact moment in a film, TV series (dizi), or video. Deliver the 2 to 5 sharpest, smartest, most rewarding insights in this frame (high intellectual & cinephile value): "
+                + "(1) SUBTITLES & DIALOGUE SUBTEXT: Read visible subtitles closely—decode cultural idioms, historical events, philosophical/literary/religious allusions, double meanings, or intertextual film/series quotes (subtitle:true, kind text or event, explain the exact reference and why the character invokes it); "
+                + "(2) ACTORS, CHARACTERS & CAMEOS: When the film or TV series (dizi) is unmistakably recognisable, identify key characters/actors or cameos (kind person or cameo) with a non-obvious production secret, episode/season trivia, improvisation, method-acting detail, or career connection; "
+                + "(3) DIRECTORIAL, SHOWRUNNER & CINEMATOGRAPHIC CRAFT: Notice visual symbolism, framing/blocking, lens choice, color palette motif, production design easter eggs, or homage to another filmmaker/series/painting (kind event or art); "
                 + "(4) EXACT OBJECTS, PROPS & HOROLOGY/AUTOMOTIVE: Identify exact models and eras of cars, motorcycles, watches, firearms, cameras, musical instruments, books, vinyl records, or bespoke costumes and their symbolic role in the scene (kind object); "
                 + "(5) ARCHITECTURE, FILMING LOCATIONS & ARTWORKS: Name real filming locations, historic buildings/architects (kind landmark or place), paintings/sculptures with artist & year (kind art), or regional dishes/drinks on screen (kind food); "
-                + "(6) SCORE & SOUNDTRACK: When the scene's music or leitmotif is known, name the piece/composer/artist and how it shapes the tension (kind music, no box). "
-                + "Never return an unnamed person ('Erkek karakter', 'A man'): every person must have a real character or actor name. "
-                + "JSON: {\"film\":\"the film, series, or video title if recognisable, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 punchy words\",\"title\":\"specific name or concept\","
+                + "(6) SCORE & SOUNDTRACK: When the scene's music, series theme, or leitmotif is known, name the piece/composer/artist and how it shapes the tension (kind music, no box). "
+                + "Never return an unnamed person ('Erkek karakter', 'A man'): every person must have a real character or actor name, and never guess a wrong film/series if uncertain. "
+                + "JSON: {\"film\":\"exact film or TV series (dizi) title ONLY if 100% certain, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 punchy words\",\"title\":\"specific name or concept\","
                 + "\"fact\":\"2-3 dense, insightful sentences (up to 250 characters) packed with concrete trivia, history, or cinematic subtext\",\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":true if from subtitles}]} "
                 + "with box in 0-1000 screen coordinates tightly enclosing that specific item (leave box empty for subtitle, music, or whole-frame cinematography notes).";
         LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, ambient ? 500 : 780, ambient);

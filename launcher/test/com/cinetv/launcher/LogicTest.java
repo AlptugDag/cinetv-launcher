@@ -348,4 +348,36 @@ public class LogicTest {
         assertTrue(java.util.Arrays.asList(com.cinetv.launcher.device.HomeLaunchers.STOCK_LAUNCHERS)
                 .contains("com.google.android.leanbacklauncher"));
     }
+
+    @Test
+    public void repeatableVolumeAndChannelHoldAndNuvioProtectionWork() {
+        assertTrue(HardwareKeys.isRepeatableHoldKey(KeyEvent.KEYCODE_VOLUME_UP));
+        assertTrue(HardwareKeys.isRepeatableHoldKey(KeyEvent.KEYCODE_VOLUME_DOWN));
+        assertTrue(HardwareKeys.isRepeatableHoldKey(KeyEvent.KEYCODE_CHANNEL_UP));
+        assertTrue(HardwareKeys.isRepeatableHoldKey(KeyEvent.KEYCODE_CHANNEL_DOWN));
+        assertFalse(HardwareKeys.isRepeatableHoldKey(KeyEvent.KEYCODE_DPAD_UP));
+
+        assertTrue(HardwareKeys.isNavigation(KeyEvent.KEYCODE_CHANNEL_UP));
+        assertTrue(HardwareKeys.isNavigation(KeyEvent.KEYCODE_CHANNEL_DOWN));
+
+        assertTrue(com.cinetv.launcher.device.MemoryOptimizer.isProtected("com.nuvio.tv"));
+        assertTrue(com.cinetv.launcher.device.MemoryOptimizer.isProtected("com.nuvio.app"));
+        assertTrue(com.cinetv.launcher.device.MemoryOptimizer.isProtected("org.courville.nova"));
+        assertTrue(com.cinetv.launcher.device.MemoryOptimizer.isProtected("com.arcelik.smartremoteservice"));
+    }
+
+    @Test
+    public void ttsPronunciationAndAmbientGateWork() {
+        String spoken = com.cinetv.launcher.ai.EmaLightningTts.normalizeForSpeech(
+                "Christopher Nolan'ın DVD'si (4K HDR sürümü) Denis Villeneuve'ün filmiyle yarışıyor.");
+        assertTrue("DVD should expand to Di Vi Di with joined suffix: " + spoken, spoken.contains("Di Vi Disi"));
+        assertTrue("Nolan'ın should be respelled and joined without apostrophe: " + spoken, spoken.contains("Nolının"));
+        assertTrue("Villeneuve'ün should be respelled and joined: " + spoken, spoken.contains("Vilnövün"));
+        assertTrue("4K HDR inside parentheses should be expanded without raw brackets: " + spoken,
+                spoken.contains("Dört Ka Eyç Di Ar sürümü") && !spoken.contains("(") && !spoken.contains(")"));
+
+        int[] sample = new int[64];
+        assertFalse("First ambient frame with no previous reference must not trigger as changed",
+                com.cinetv.launcher.ui.AmbientGate.changed(null, sample));
+    }
 }

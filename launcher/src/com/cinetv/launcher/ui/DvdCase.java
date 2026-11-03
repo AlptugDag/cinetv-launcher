@@ -16,6 +16,8 @@ import android.text.TextUtils;
 
 import com.cinetv.launcher.FontManager;
 
+import java.util.Locale;
+
 /**
  * Bakes the textures of a physical DVD keep case (Amaray, 135 x 190 x 14 mm) once per film, so that
  * drawing a case every frame is only a few bitmap draws under a perspective matrix.
@@ -274,32 +276,18 @@ public final class DvdCase {
         c.drawRect(0, h - lip, w, h, p);
 
         TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        tp.setTypeface(FontManager.getBold(ctx));
-        tp.setColor(Color.argb(235, 255, 255, 255));
+        tp.setTypeface(FontManager.getBlack(ctx));
+        tp.setColor(Color.argb(242, 255, 255, 255));
         tp.setTextSize(w * 0.46f);
-        tp.setLetterSpacing(0.06f);
+        tp.setLetterSpacing(0.05f);
         float available = h * 0.68f;
-        if (logo != null && logo.getWidth() > 0 && logo.getHeight() > 0) {
-            // The film's own title treatment, run down the spine in white foil (any colour reads on any spine).
-            float thick = w * 0.72f, len = available;
-            float sc = Math.min(len / logo.getWidth(), thick / logo.getHeight());
-            float lw = logo.getWidth() * sc, lh = logo.getHeight() * sc;
-            Paint lp = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-            lp.setColorFilter(new android.graphics.PorterDuffColorFilter(Color.argb(240, 255, 255, 255), android.graphics.PorterDuff.Mode.SRC_IN));
-            c.save();
-            c.translate(w / 2f, h * 0.06f);
-            c.rotate(90);
-            c.drawBitmap(logo, null, new RectF(0, -lh / 2f, lw, lh / 2f), lp);
-            c.restore();
-        } else {
-            String text = TextUtils.ellipsize(title == null ? "" : title.toUpperCase(), tp, available, TextUtils.TruncateAt.END).toString();
-            c.save();
-            c.translate(w / 2f, h * 0.06f);
-            c.rotate(90);
-            Paint.FontMetrics fm = tp.getFontMetrics();
-            c.drawText(text, 0, -(fm.ascent + fm.descent) / 2f, tp);
-            c.restore();
-        }
+        String text = TextUtils.ellipsize(title == null ? "" : title.toUpperCase(Locale.getDefault()), tp, available, TextUtils.TruncateAt.END).toString();
+        c.save();
+        c.translate(w / 2f, h * 0.06f);
+        c.rotate(90);
+        Paint.FontMetrics fm = tp.getFontMetrics();
+        c.drawText(text, 0, -(fm.ascent + fm.descent) / 2f, tp);
+        c.restore();
 
         // Bottom: a small studio-style badge.
         tp.setTextSize(w * 0.26f);

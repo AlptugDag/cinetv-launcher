@@ -63,7 +63,7 @@
     <string name="nuvio_progress_settings_unavailable">Bu televizyonda Bildirim Erişimi ayarları açılamıyor.</string>
     <string name="destroy">CineTV\'yi yok et!</string>
     <string name="destroy_title">CineTV bu televizyondan kaldırılsın mı?</string>
-    <string name="destroy_body">Görüntü ve ses, DNS, renk sıcaklığı, ekran ve ekran koruyucu süreleri ile kumanda tuşu hizmeti geri alınır. CineTV önce kaydedilmiş TV uygulamalarını ve başlatıcıları geri açar; başka bir Ana ekran yoksa kaldırma işlemini durdurur. Sonrasında Android, CineTV\'yi kaldırmak için onay ister.</string>
+    <string name="destroy_body">Kurulum öncesi orijinal TV ayarlarının tamamı (görüntü ve ses, DNS, renk sıcaklığı, ekran ve yazı tipi ölçeği, animasyonlar, zRAM, ekran/ekran koruyucu süreleri ve kumanda tuşu hizmeti) APK yüklenmeden önceki haline döndürülür. CineTV önce kaydedilmiş TV uygulamalarını ve orijinal fabrika başlatıcısını geri açar; başka bir Ana ekran yoksa kaldırma işlemini durdurur. Sonrasında Android, CineTV\'yi kaldırmak için onay ister.</string>
     <string name="destroy_cancel">Vazgeç</string>
     <string name="destroy_confirm">Evet, her şeyi kaldır</string>
     <string name="destroy_no_home">Televizyonun kendi ana ekranı kapalı; CineTV kaldırılırsa ana ekransız kalır. Önce bir bilgisayardan scripts/restore_tv_core.sh çalıştırın.</string>

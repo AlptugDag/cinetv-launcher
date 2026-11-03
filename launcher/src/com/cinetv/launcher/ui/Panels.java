@@ -603,20 +603,6 @@ public final class Panels {
         cMaint.addView(Controls.tile(ctx, tr ? "Nuvio Eklentilerini Yönet & Kur" : "Manage & Install Nuvio Addons",
                 tr ? "Eklenti ve profil seçim penceresini aç" : "Select and install curated addons", false,
                 v -> host.push(() -> buildNuvioUpdateAddons(ctx, host))));
-        cMaint.addView(Controls.tile(ctx,
-                tr ? "Kurulum Öncesi Orijinal TV Ayarlarına Döndür" : "Restore Pre-Install TV Baseline",
-                tr ? "Görüntü, ses, DNS, animasyon, zRAM ve varsayılan başlatıcıyı APK yüklenmeden önceki haline döndür"
-                   : "Restore picture, audio, DNS, animation, zRAM and stock launcher to pre-APK state",
-                false, v -> {
-                    Toast.makeText(ctx, tr ? "Kurulum öncesi orijinal TV yedeği geri yükleniyor..." : "Restoring pre-install TV baseline...", Toast.LENGTH_SHORT).show();
-                    new Thread(() -> {
-                        com.cinetv.launcher.device.DeviceTweaks.restoreAllToPreInstallState(ctx.getApplicationContext(), false);
-                        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> Toast.makeText(ctx,
-                                tr ? "Tüm sistem ayarları ve orijinal başlatıcı APK kurulumu öncesi haline döndürüldü."
-                                   : "All system settings and stock launcher restored to pre-install state.",
-                                Toast.LENGTH_LONG).show());
-                    }, "cinetv-baseline-restore").start();
-                }));
         cMaint.addView(Controls.tile(ctx, ctx.getString(R.string.reboot), null, false, v -> a.reboot()));
         cMaint.addView(Controls.alarm(ctx, ctx.getString(R.string.destroy), v -> host.push(() -> buildDestroy(ctx, host))));
 
@@ -1075,8 +1061,9 @@ public final class Panels {
         title.setGravity(Gravity.CENTER);
         root.addView(title);
         TextView body = UiKit.label(ctx, 22, UiKit.INK_DIM);
-        body.setText(tr ? "CineTV bu televizyondan kaldırılacak. Bu işlem geri alınamaz."
-                : "CineTV will be removed from this TV. This cannot be undone.");
+        body.setText(tr
+                ? "Tüm TV ayarları (görüntü, ses, DNS, animasyon, ekran/yazı ölçeği, zRAM) ve orijinal fabrika başlatıcısı APK kurulmadan önceki haline döndürülecek ve ardından CineTV kaldırılacak."
+                : "All TV settings (picture, audio, DNS, animations, display/font scale, zRAM) and the stock launcher will be restored to their pre-APK state before CineTV is removed.");
         body.setGravity(Gravity.CENTER);
         body.setPadding(0, UiKit.px(14), 0, UiKit.px(30));
         body.setMaxWidth(UiKit.px(680));
@@ -1417,16 +1404,6 @@ public final class Panels {
                         }
                     });
                 }, "cinetv-home-on").start()));
-        root.addView(Controls.tile(ctx, tr ? "APK Öncesi Orijinal Duruma Tam Dönüş (Ayarlar + Başlatıcı)" : "Full Rollback to Pre-APK State (Settings + Launcher)",
-                tr ? "Tüm sistem ayarlarını APK kurulmadan önceki yedeğe döndürür ve TV'nin orijinal başlatıcısına geçer"
-                   : "Restores all system settings to pre-APK baseline and hands Home back to the stock launcher",
-                false, v -> new Thread(() -> {
-                    com.cinetv.launcher.device.DeviceTweaks.restoreAllToPreInstallState(ctx.getApplicationContext(), true);
-                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> Toast.makeText(ctx,
-                            tr ? "Cihaz APK kurulumu öncesi orijinal durumuna ve varsayılan başlatıcısına döndürüldü."
-                               : "Device restored to pre-APK state and stock launcher.",
-                            Toast.LENGTH_LONG).show());
-                }, "cinetv-full-rollback").start()));
         return root;
     }
 

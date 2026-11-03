@@ -170,6 +170,9 @@ public final class NuvioPlaybackListenerService extends NotificationListenerServ
         long now = android.os.SystemClock.elapsedRealtime();
         boolean changedItem = !key.equals(lastSavedKey);
         boolean pausedTransition = playbackState != PlaybackState.STATE_PLAYING && playbackState != lastPlaybackState;
+        if (playbackState == PlaybackState.STATE_PLAYING) {
+            NowPlaying.setFromPlayback(this, movie, title, subtitle);
+        }
         if (position >= 60_000L && (changedItem || pausedTransition || now - lastSaveAt >= SAVE_MS)) {
             WatchHistory.noteNuvioPlayback(this, movie, title, position, duration);
             lastSavedKey = key;

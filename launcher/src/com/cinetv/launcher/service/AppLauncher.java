@@ -456,22 +456,26 @@ public final class AppLauncher {
         String[] settingsPkgs = {"com.android.tv.settings", "com.google.android.tv.settings", "com.android.settings"};
         for (String pkg : settingsPkgs) {
             for (String cls : tvSettingsActivities) {
+                if (cls == null || isStubComponent(pkg, cls)) continue;
                 String fullCls = cls.startsWith(".") ? pkg + cls : cls;
                 Intent i = new Intent().setClassName(pkg, fullCls);
-                if (i.resolveActivity(pm) != null && start(ctx, i)) return true;
+                android.content.pm.ActivityInfo ai = i.resolveActivityInfo(pm, 0);
+                if (ai != null && ai.exported && !isStubComponent(ai.packageName, ai.name) && start(ctx, i)) return true;
             }
         }
         if (Settings.ACTION_ACCESSIBILITY_SETTINGS.equals(action)) {
             String[][] a11yTargets = {
                     {"com.android.tv.settings", "com.android.tv.settings.accessibility.AccessibilityActivity"},
-                    {"com.android.tv.settings", "com.android.tv.settings.oemlink.AccessibilitySettingsActivity"},
                     {"com.google.android.tv.settings", "com.google.android.tv.settings.accessibility.AccessibilityActivity"},
+                    {"com.android.tv.settings", "com.android.tv.settings.system.AccessibilityActivity"},
+                    {"com.android.tv.settings", "com.android.tv.settings.device.accessibility.AccessibilityActivity"},
                     {"com.android.settings", "com.android.settings.Settings$AccessibilitySettingsActivity"},
                     {"com.android.settings", "com.android.settings.AccessibilitySettings"}
             };
             for (String[] t : a11yTargets) {
                 Intent i = new Intent().setClassName(t[0], t[1]);
-                if (i.resolveActivity(pm) != null && start(ctx, i)) return true;
+                android.content.pm.ActivityInfo ai = i.resolveActivityInfo(pm, 0);
+                if (ai != null && ai.exported && !isStubComponent(ai.packageName, ai.name) && start(ctx, i)) return true;
             }
         }
         if (action != null) {
@@ -482,21 +486,34 @@ public final class AppLauncher {
                     for (ResolveInfo ri : handlers) {
                         if (ri.activityInfo == null) continue;
                         String p = ri.activityInfo.packageName;
-                        if (p.contains("frameworkpackagestubs")) continue;
-                        Intent explicit = new Intent(action).setClassName(p, ri.activityInfo.name);
+                        String n = ri.activityInfo.name;
+                        if (isStubComponent(p, n)) continue;
+                        Intent explicit = new Intent(action).setClassName(p, n);
                         if (start(ctx, explicit)) return true;
                     }
                 }
             } catch (Throwable ignored) {
             }
             android.content.ComponentName c = query.resolveActivity(pm);
-            if (c != null && !c.getPackageName().contains("frameworkpackagestubs") && start(ctx, query)) return true;
+            if (c != null && !isStubComponent(c.getPackageName(), c.getClassName()) && start(ctx, query)) return true;
         }
         for (String pkg : settingsPkgs) {
             Intent home = new Intent().setClassName(pkg, pkg + ".MainSettings");
-            if (home.resolveActivity(pm) != null && start(ctx, home)) return true;
+            android.content.pm.ActivityInfo ai = home.resolveActivityInfo(pm, 0);
+            if (ai != null && ai.exported && !isStubComponent(ai.packageName, ai.name) && start(ctx, home)) return true;
+        }
+        for (String pkg : settingsPkgs) {
+            Intent launch = pm.getLaunchIntentForPackage(pkg);
+            if (launch != null && start(ctx, launch)) return true;
         }
         return start(ctx, new Intent(Settings.ACTION_SETTINGS));
+    }
+
+    private static boolean isStubComponent(String pkg, String cls) {
+        String p = pkg == null ? "" : pkg.toLowerCase(java.util.Locale.ROOT);
+        String c = cls == null ? "" : cls.toLowerCase(java.util.Locale.ROOT);
+        return p.contains("frameworkpackagestubs") || p.contains("cts.stub")
+                || c.contains("stub") || c.contains("oemlink") || c.contains("empty") || c.contains(" fallback");
     }
 
     public static boolean start(Context ctx, Intent intent) {

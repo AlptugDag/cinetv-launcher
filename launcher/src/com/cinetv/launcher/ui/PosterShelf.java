@@ -361,24 +361,6 @@ public class PosterShelf extends FrameLayout {
                     v.setCase(dvd, Math.min(stepMs * 10, dd * stepMs));
                     if (slot == index && hasFocus() && listener != null) listener.onFocusCase(v, dvd.accent);
                 });
-                // Then, without holding the shelf up: the film's own title logo on the spine.
-                if (asCases && m.tmdbId > 0) {
-                    logos.execute(() -> {
-                        if (gen != generation) return;
-                        PerformanceProfile.awaitCalm(1_500); // a short wait at most: the title logo should not lag the cover
-                        if (m.logoUrl == null || m.logoUrl.isEmpty()) {
-                            String url = MovieCatalog.logoFor(getContext(), m.tmdbId, m.type);
-                            m.logoUrl = url == null ? "-" : url;
-                        }
-                        if ("-".equals(m.logoUrl)) return;
-                        Bitmap logo = PosterCache.load(getContext(), m.logoUrl, 400, 160);
-                        if (logo == null || gen != generation) return;
-                        final DvdCase withLogo = DvdCase.bake(getContext(), poster, logo, m.coverTitle(), m.year, accent, caseW, Math.round(caseW / DvdCase.ASPECT), glowPad, true);
-                        main.post(() -> {
-                            if (gen == generation) v.setCase(withLogo);
-                        });
-                    });
-                }
             });
         }
     }

@@ -250,7 +250,13 @@ public final class HomeGuard {
 
     /** Directly opens system accessibility settings, bypassing custom OEM TV settings menus and Android 14 restricted settings blocks. */
     public static void openAccessibilitySettings(Context ctx) {
+        com.cinetv.launcher.device.DeviceTweaks.markUserOpenedTv();
         final Context app = ctx.getApplicationContext();
+        final boolean openedDirect = com.cinetv.launcher.service.AppLauncher.openSystemPage(ctx,
+                android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS,
+                ".accessibility.AccessibilityActivity",
+                ".system.AccessibilityActivity",
+                ".device.accessibility.AccessibilityActivity");
         new Thread(() -> {
             try {
                 String pkg = app.getPackageName();
@@ -261,17 +267,18 @@ public final class HomeGuard {
                         + "null|'') settings put secure enabled_accessibility_services " + service + " 2>/dev/null ;; "
                         + "*) settings put secure enabled_accessibility_services \"$s:" + service + "\" 2>/dev/null ;; esac; "
                         + "settings put secure accessibility_enabled 1 2>/dev/null; ";
+                if (!openedDirect) {
+                    cmd += "(am start -n com.android.tv.settings/.accessibility.AccessibilityActivity "
+                            + "|| am start -n com.google.android.tv.settings/.accessibility.AccessibilityActivity "
+                            + "|| am start -a android.settings.ACCESSIBILITY_SETTINGS "
+                            + "|| am start -n com.android.tv.settings/.MainSettings "
+                            + "|| am start -a android.settings.SETTINGS) >/dev/null 2>&1; ";
+                }
                 com.cinetv.launcher.remote.LocalAdb.shell(app, cmd, 3000);
                 com.cinetv.launcher.device.DeviceTweaks.enableKeyService(app);
             } catch (Throwable ignored) {
             }
         }, "cinetv-a11y-grant").start();
-        // Try all known Android TV / Google TV / Android 14 OEM accessibility settings activities
-        com.cinetv.launcher.service.AppLauncher.openSystemPage(ctx, android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS,
-                ".accessibility.AccessibilityActivity",
-                ".oemlink.AccessibilitySettingsActivity",
-                ".system.AccessibilityActivity",
-                ".device.accessibility.AccessibilityActivity");
     }
 
     /**

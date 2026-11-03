@@ -35,7 +35,8 @@ public final class MemoryOptimizer {
             "com.google.android.tts", "com.google.android.apps.mediashell", "com.google.android.tv.remote.service",
             "com.android.bluetooth", "com.waxrain.airplaydmr", "com.waxrain.airplaydmr2", "io.github.jqssun.airplay",
             "com.github.jqssun.airplay", "com.ionitech.airscreen", "com.apowersoft.mirror.tv",
-            "com.nuvio.tv", "com.android.providers.tv", "com.android.tv", "com.google.android.tvrecommendations",
+            "com.nuvio.tv", "com.nuvio.app", "org.courville.nova", "com.ycngmn.notubetv",
+            "com.android.providers.tv", "com.android.tv", "com.google.android.tvrecommendations",
             "com.google.android.leanbacklauncher", "com.google.android.inputmethod.latin", "com.android.inputmethod.latin"));
 
     private static final String[] AIRPLAY_RECEIVERS = {
@@ -50,11 +51,12 @@ public final class MemoryOptimizer {
     public static boolean isProtected(String pkg) {
         if (pkg == null || PROTECTED.contains(pkg)) return true;
         String l = pkg.toLowerCase(Locale.ROOT);
-        return l.contains("airplay") || l.contains("airscreen") || l.contains("airpin") || l.contains("mediashell")
+        return l.contains("nuvio") || l.contains("airplay") || l.contains("airscreen") || l.contains("airpin") || l.contains("mediashell")
                 || l.contains("chromecast") || l.contains("bluetooth") || l.contains("inputmethod")
                 || l.contains("katniss") || l.contains("tv.settings") || l.startsWith("com.mediatek.wwtv")
                 || l.startsWith("com.mediatek.tv.oneworld") || l.contains("tvinput") || l.contains("inputservice")
-                || l.contains("tvservice") || l.startsWith("com.android.providers.") || l.startsWith("com.mediatek.");
+                || l.contains("tvservice") || l.startsWith("com.android.providers.") || l.startsWith("com.mediatek.")
+                || l.startsWith("com.arcelik.");
     }
 
     public static void kill(Context ctx, String pkg) {

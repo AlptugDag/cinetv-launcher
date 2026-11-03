@@ -874,6 +874,9 @@ public final class TvWebRemoteServer {
                 post(() -> {
                     Controller c = controller;
                     if (c != null) c.triggerVoiceOverlay();
+                    else AppLauncher.start(app, new Intent(app, com.cinetv.launcher.MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                            .putExtra("action", "voice"));
                 });
                 return ok;
             }
@@ -893,6 +896,9 @@ public final class TvWebRemoteServer {
                 if (!text.isEmpty()) post(() -> {
                     Controller c = controller;
                     if (c != null) c.searchOnTv(text);
+                    else AppLauncher.start(app, new Intent(app, com.cinetv.launcher.MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                            .putExtra("action", "search").putExtra("query", text));
                 });
                 return ok;
             }
@@ -959,15 +965,19 @@ public final class TvWebRemoteServer {
                 final String text = clip(q.get("q"), 200);
                 post(() -> {
                     Controller c = controller;
-                    if (c != null) c.mirrorSearch(text);
+                    if (c != null && com.cinetv.launcher.MainActivity.isInFront()) c.mirrorSearch(text);
                 });
                 return ok;
             }
             case "/api/settings": {
                 post(() -> {
                     com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                    if (ma != null) {
+                    if (ma != null && com.cinetv.launcher.MainActivity.isInFront()) {
                         ma.runOnUiThread(ma::onSettings);
+                    } else {
+                        AppLauncher.start(app, new Intent(app, com.cinetv.launcher.MainActivity.class)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                                .putExtra("action", "settings"));
                     }
                 });
                 return ok;
@@ -1044,7 +1054,16 @@ public final class TvWebRemoteServer {
                 final boolean again = "1".equals(q.get("again"));
                 post(() -> {
                     com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                    if (ma == null) return;
+                    if (ma == null || !com.cinetv.launcher.MainActivity.isInFront()) {
+                        String act = "snake".equalsIgnoreCase(game) ? "show_snakephile_live"
+                                : "roulette".equalsIgnoreCase(game) ? "show_cineroulette_live"
+                                : "sessiz".equalsIgnoreCase(game) ? "show_cinesessiz_live"
+                                : "show_cinequiz_live";
+                        AppLauncher.start(app, new Intent(app, com.cinetv.launcher.MainActivity.class)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                                .putExtra("action", act));
+                        if (ma == null) return;
+                    }
                     if ("snake".equals(game)) ma.showLiveSnakePhileScene();
                     else {
                         try {
@@ -1202,16 +1221,26 @@ public final class TvWebRemoteServer {
                 if (delStr != null || add != null) {
                     final int del = delStr != null ? parseInt(delStr) : 0;
                     boolean bridged = false;
-                    if (del > 0) bridged = KeyBridge.delete(app, del);
+                    if (del > 0) {
+                        bridged = KeyBridge.delete(app, del);
+                        if (!bridged && !com.cinetv.launcher.MainActivity.isInFront()) {
+                            bridged = LocalAdb.shell(app, "input keyevent 67", 1500);
+                        }
+                    }
                     if (add != null && !add.isEmpty()) {
                         // a paste (or a keyboard suggestion) arrives as several characters: set in one step, keys only as a fallback
                         boolean set = add.length() > 1 && TvKeyInterceptorService.appendToFocused(add);
-                        bridged = set || KeyBridge.text(app, add) || bridged;
+                        boolean sent = set || KeyBridge.text(app, add);
+                        if (!sent && !com.cinetv.launcher.MainActivity.isInFront()) {
+                            String safe = add.replace("'", "'\\''").replace(" ", "%s");
+                            sent = LocalAdb.shell(app, "input text '" + safe + "'", 2000);
+                        }
+                        bridged = sent || bridged;
                     }
                     if (!bridged) {
                         post(() -> {
                             com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                            if (ma != null && ma.getCurrentFocus() instanceof android.widget.EditText) {
+                            if (ma != null && com.cinetv.launcher.MainActivity.isInFront() && ma.getCurrentFocus() instanceof android.widget.EditText) {
                                 android.widget.EditText et = (android.widget.EditText) ma.getCurrentFocus();
                                 android.text.Editable ed = et.getText();
                                 if (ed != null) {
@@ -1229,29 +1258,39 @@ public final class TvWebRemoteServer {
                 } else if (!text.isEmpty()) {
                     boolean replaced = TvKeyInterceptorService.typeIntoFocused(text);
                     if (!replaced) {
-                        post(() -> {
-                            com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                            if (ma != null && ma.getCurrentFocus() instanceof android.widget.EditText) {
-                                android.widget.EditText et = (android.widget.EditText) ma.getCurrentFocus();
-                                et.setText(text);
-                                et.setSelection(text.length());
-                            }
-                        });
+                        if (com.cinetv.launcher.MainActivity.isInFront()) {
+                            post(() -> {
+                                com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                                if (ma != null && ma.getCurrentFocus() instanceof android.widget.EditText) {
+                                    android.widget.EditText et = (android.widget.EditText) ma.getCurrentFocus();
+                                    et.setText(text);
+                                    et.setSelection(text.length());
+                                }
+                            });
+                        }
                         String prev = lastTyped;
                         if (prev == null) prev = "";
                         if (text.startsWith(prev)) {
                             String diff = text.substring(prev.length());
-                            if (!diff.isEmpty()) KeyBridge.text(app, diff);
+                            if (!diff.isEmpty() && !KeyBridge.text(app, diff) && !com.cinetv.launcher.MainActivity.isInFront()) {
+                                LocalAdb.shell(app, "input text '" + diff.replace("'", "'\\''").replace(" ", "%s") + "'", 2000);
+                            }
                         } else if (prev.startsWith(text)) {
                             int del = prev.length() - text.length();
-                            if (del > 0) KeyBridge.delete(app, del);
+                            if (del > 0 && !KeyBridge.delete(app, del) && !com.cinetv.launcher.MainActivity.isInFront()) {
+                                LocalAdb.shell(app, "input keyevent 67", 1500);
+                            }
                         } else {
                             int common = 0;
                             while (common < prev.length() && common < text.length() && prev.charAt(common) == text.charAt(common)) common++;
                             int del = prev.length() - common;
                             String diff = text.substring(common);
-                            if (del > 0) KeyBridge.delete(app, del);
-                            if (!diff.isEmpty()) KeyBridge.text(app, diff);
+                            if (del > 0 && !KeyBridge.delete(app, del) && !com.cinetv.launcher.MainActivity.isInFront()) {
+                                LocalAdb.shell(app, "input keyevent 67", 1500);
+                            }
+                            if (!diff.isEmpty() && !KeyBridge.text(app, diff) && !com.cinetv.launcher.MainActivity.isInFront()) {
+                                LocalAdb.shell(app, "input text '" + diff.replace("'", "'\\''").replace(" ", "%s") + "'", 2000);
+                            }
                         }
                     }
                     lastTyped = text;
@@ -1260,15 +1299,19 @@ public final class TvWebRemoteServer {
                 if (enter) {
                     lastTyped = "";
                     if (!KeyBridge.key(app, android.view.KeyEvent.KEYCODE_ENTER, false)) {
-                        post(() -> {
-                            com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                            if (ma != null && com.cinetv.launcher.MainActivity.isInFront()) {
-                                ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
-                                ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
-                            }
-                        });
+                        if (com.cinetv.launcher.MainActivity.isInFront()) {
+                            post(() -> {
+                                com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                                if (ma != null) {
+                                    ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
+                                    ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
+                                }
+                            });
+                        } else {
+                            LocalAdb.shell(app, "input keyevent 66", 1500);
+                        }
                     }
-                    if (!text.isEmpty()) {
+                    if (!text.isEmpty() && com.cinetv.launcher.MainActivity.isInFront() && !TvKeyInterceptorService.isInputFocused()) {
                         post(() -> {
                             Controller c = controller;
                             if (c != null) c.searchOnTv(text);
@@ -1369,6 +1412,15 @@ public final class TvWebRemoteServer {
             return;
         }
         TvKeyInterceptorService keys = TvKeyInterceptorService.getInstance();
+        if (keys != null && (code == android.view.KeyEvent.KEYCODE_BACK
+                || code == android.view.KeyEvent.KEYCODE_HOME
+                || code == android.view.KeyEvent.KEYCODE_APP_SWITCH)) {
+            if (keys.dispatchAccessibilityKey(code, longPress)) return;
+        }
+        // Fallback to LocalAdb keyevent injection when KeyBridge daemon is still warming up or was restarted
+        if (LocalAdb.shell(app, (longPress ? "input keyevent --longpress " : "input keyevent ") + code, 2000)) {
+            return;
+        }
         if (keys != null && keys.dispatchAccessibilityKey(code, longPress)) return;
         try {
             new Instrumentation().sendKeyDownUpSync(code);

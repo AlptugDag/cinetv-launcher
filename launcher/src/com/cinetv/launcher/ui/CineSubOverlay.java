@@ -166,8 +166,12 @@ public final class CineSubOverlay {
     public static void ambientTick(final Context ctx) {
         if (active != null || ambientBusy || !com.cinetv.launcher.service.Prefs.cinesubAmbient(ctx)) return;
         if (!com.cinetv.launcher.ai.LlmClient.isConfigured(ctx) || com.cinetv.launcher.ai.LlmClient.quotaOut()) return;
-        // not over the viewer's own CineSUB, Gamze talking, or a screen that is off
+        // not over the viewer's own CineSUB, Gamze talking, Home screen, or a screen that is off
         if (com.cinetv.launcher.ai.EmaLightningTts.isSpeaking()) return;
+        if (!com.cinetv.launcher.CinePlayerActivity.active && com.cinetv.launcher.MainActivity.isInFront()) return;
+        boolean playingNow = (com.cinetv.launcher.CinePlayerActivity.active && com.cinetv.launcher.CinePlayerActivity.isPlayingNow())
+                || com.cinetv.launcher.device.DeviceTweaks.isMediaPlaying(ctx);
+        if (!playingNow) return;
         android.os.PowerManager pm = (android.os.PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
         if (pm != null && !pm.isInteractive()) return;
         long now = SystemClock.elapsedRealtime();
@@ -186,6 +190,11 @@ public final class CineSubOverlay {
                 }
                 int[] sig = AmbientGate.signature(jpeg);
                 lastAmbientAt = SystemClock.elapsedRealtime();
+                if (askedSig == null) {
+                    // Store baseline frame first so static/paused scenes never trigger until real motion occurs
+                    askedSig = sig;
+                    return;
+                }
                 if (!AmbientGate.changed(askedSig, sig)) return;
                 // 2. the budget: a short pause after each request (longer after empty ones) and a daily cap
                 long nowMs = System.currentTimeMillis();
@@ -219,6 +228,9 @@ public final class CineSubOverlay {
             final SceneInspector.Scene found = scene;
             main.post(() -> {
                 if (active != null) return;
+                boolean stillPlaying = (com.cinetv.launcher.CinePlayerActivity.active && com.cinetv.launcher.CinePlayerActivity.isPlayingNow())
+                        || (!com.cinetv.launcher.MainActivity.isInFront() && com.cinetv.launcher.device.DeviceTweaks.isMediaPlaying(app));
+                if (!stillPlaying) return;
                 CineSubOverlay o = new CineSubOverlay(host(ctx), true);
                 if (!o.attach()) return;
                 active = o;
@@ -445,7 +457,7 @@ public final class CineSubOverlay {
             return Math.max(getWidth(), 1) / 1920f;
         }
 
-        /** Places every card: beside its subject on the emptiest side, inside the safe area, off the subtitles. */
+        /** Places every card: beside its subject on the emptiest side, inside the safe area, off the subtitles, never overlapping another card. */
         void relayout() {
             cards.clear();
             texts.clear();
@@ -454,9 +466,11 @@ public final class CineSubOverlay {
             title.setTextSize(30 * u);
             body.setTextSize(25 * u);
             small.setTextSize(17 * u);
-            float safeL = W * 0.05f, safeT = H * 0.06f, safeR = W * 0.95f, subtitleTop = H * 0.80f;
-            float nextAmbientTopL = safeT + 50 * u;
-            float nextAmbientTopR = safeT + 50 * u;
+            float safeL = W * 0.05f, safeT = H * 0.06f, safeR = W * 0.95f, subtitleTop = H * 0.82f;
+            float pad = 16 * u;
+            RectF badgeKeepOut = ambient ? null : new RectF(0, 0, 420 * u, 148 * u);
+            float nextAmbientTopL = safeT + (ambient ? 24 * u : 88 * u);
+            float nextAmbientTopR = safeT + 24 * u;
             for (int i = 0; i < scene.pois.size(); i++) {
                 Poi p = scene.pois.get(i);
                 boolean f = i == focus || ambient;
@@ -470,37 +484,97 @@ public final class CineSubOverlay {
                 }
                 float ch = (f ? 112 : 64) * u + sl.getHeight() + (f && !ambient ? 50 * u : 0);
                 RectF card = new RectF();
+                float minTop = safeT + (ambient ? 20 * u : 24 * u);
+                float maxTop = Math.max(minTop, subtitleTop - ch);
                 if (p.box.isEmpty() || ambient) {
-                    // Notes in ambient mode or without a box stack cleanly in the top corner farthest from the subject.
-                    boolean left = !p.box.isEmpty() && p.box.centerX() > 0.5f;
+                    boolean left = !p.box.isEmpty() ? p.box.centerX() > 0.5f : (i % 2 == 1);
                     float x = left ? safeL : safeR - cw;
                     float y = left ? nextAmbientTopL : nextAmbientTopR;
                     if (!p.box.isEmpty() && ambient && i == 0 && p.box.centerY() < 0.38f && scene.pois.size() == 1) {
-                        y = subtitleTop - ch - 20 * u;
+                        y = Math.min(maxTop, subtitleTop - ch - 20 * u);
                     }
-                    y = Math.min(y, subtitleTop - ch - 12 * u);
+                    y = Math.max(minTop, Math.min(y, maxTop));
                     card.set(x, y, x + cw, y + ch);
-                    if (left) {
-                        nextAmbientTopL = card.bottom + 16 * u;
+                    placeWithoutOverlap(card, cw, ch, safeL, safeR, minTop, maxTop, pad, badgeKeepOut);
+                    if (card.centerX() < W * 0.5f) {
+                        nextAmbientTopL = Math.max(nextAmbientTopL, card.bottom + pad);
                     } else {
-                        nextAmbientTopR = card.bottom + 16 * u;
+                        nextAmbientTopR = Math.max(nextAmbientTopR, card.bottom + pad);
                     }
                 } else {
                     RectF b = new RectF(p.box.left * W, p.box.top * H, p.box.right * W, p.box.bottom * H);
                     float gap = 34 * u;
                     float spaceR = safeR - b.right, spaceL = b.left - safeL;
-                    float x = spaceR >= cw + gap || spaceR >= spaceL ? b.right + gap : b.left - gap - cw;
-                    x = Math.max(safeL, Math.min(x, safeR - cw));
-                    float y = Math.max(safeT + 70 * u, Math.min(b.centerY() - ch / 2, subtitleTop - ch));
-                    card.set(x, y, x + cw, y + ch);
-                    // Don't sit on another card.
-                    for (RectF other : cards) {
-                        if (RectF.intersects(card, other)) card.offsetTo(card.left, Math.min(subtitleTop - ch, other.bottom + 16 * u));
+                    boolean preferRight = spaceR >= cw + gap || spaceR >= spaceL;
+                    float xPrimary = clampX(preferRight ? b.right + gap : b.left - gap - cw, cw, safeL, safeR);
+                    float xOpposite = clampX(preferRight ? b.left - gap - cw : b.right + gap, cw, safeL, safeR);
+                    float yCenter = clampY(b.centerY() - ch / 2f, minTop, maxTop);
+                    float xCenter = clampX(b.centerX() - cw / 2f, cw, safeL, safeR);
+                    float[][] candidates = new float[][]{
+                            {xPrimary, yCenter},
+                            {xOpposite, yCenter},
+                            {xPrimary, clampY(b.top, minTop, maxTop)},
+                            {xOpposite, clampY(b.top, minTop, maxTop)},
+                            {xCenter, clampY(b.bottom + gap, minTop, maxTop)},
+                            {xCenter, clampY(b.top - gap - ch, minTop, maxTop)},
+                            {safeR - cw, yCenter},
+                            {safeL, yCenter}
+                    };
+                    boolean placed = false;
+                    for (float[] cand : candidates) {
+                        card.set(cand[0], cand[1], cand[0] + cw, cand[1] + ch);
+                        if (!overlapsExisting(card, pad, badgeKeepOut)) {
+                            placed = true;
+                            break;
+                        }
+                    }
+                    if (!placed) {
+                        card.set(xPrimary, yCenter, xPrimary + cw, yCenter + ch);
+                        placeWithoutOverlap(card, cw, ch, safeL, safeR, minTop, maxTop, pad, badgeKeepOut);
                     }
                 }
                 cards.add(card);
                 texts.add(sl);
             }
+        }
+
+        private float clampX(float x, float cw, float safeL, float safeR) {
+            return Math.max(safeL, Math.min(x, safeR - cw));
+        }
+
+        private float clampY(float y, float minTop, float maxTop) {
+            return Math.max(minTop, Math.min(y, maxTop));
+        }
+
+        private boolean overlapsExisting(RectF candidate, float pad, RectF badgeKeepOut) {
+            if (badgeKeepOut != null && RectF.intersects(candidate, badgeKeepOut)) return true;
+            RectF expanded = new RectF(candidate.left - pad * 0.5f, candidate.top - pad * 0.5f,
+                    candidate.right + pad * 0.5f, candidate.bottom + pad * 0.5f);
+            for (RectF other : cards) {
+                if (RectF.intersects(expanded, other)) return true;
+            }
+            return false;
+        }
+
+        private void placeWithoutOverlap(RectF card, float cw, float ch, float safeL, float safeR,
+                                         float minTop, float maxTop, float pad, RectF badgeKeepOut) {
+            if (!overlapsExisting(card, pad, badgeKeepOut)) return;
+            float[] cols = card.left < (safeL + safeR - cw) * 0.5f
+                    ? new float[]{card.left, safeR - cw, safeL, (safeL + safeR - cw) * 0.5f}
+                    : new float[]{card.left, safeL, safeR - cw, (safeL + safeR - cw) * 0.5f};
+            float step = Math.max(18f, pad);
+            for (float colX : cols) {
+                float x = clampX(colX, cw, safeL, safeR);
+                for (float y = minTop; y <= maxTop + 1f; y += step) {
+                    float cy = Math.min(y, maxTop);
+                    card.set(x, cy, x + cw, cy + ch);
+                    if (!overlapsExisting(card, pad, badgeKeepOut)) return;
+                }
+            }
+            // Final fallback if screen is completely packed: stagger cleanly down from the least crowded column.
+            float fallbackX = (cards.size() % 2 == 0) ? safeR - cw : safeL;
+            float fallbackY = clampY(minTop + (cards.size() / 2) * (ch + pad), minTop, maxTop);
+            card.set(fallbackX, fallbackY, fallbackX + cw, fallbackY + ch);
         }
 
         @Override

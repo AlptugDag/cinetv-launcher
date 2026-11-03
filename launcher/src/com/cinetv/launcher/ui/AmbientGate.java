@@ -9,7 +9,7 @@ import android.graphics.BitmapFactory;
  * with the last one asked about); the AI is asked only when the scene or the subtitle line changed, within a
  * daily budget that always leaves the yellow key some requests, and less often after looks that found nothing.
  */
-final class AmbientGate {
+public final class AmbientGate {
     /** Grid of the whole frame, and a finer one of the subtitle band at the bottom. */
     static final int GW = 16, GH = 9, SW = 32, SH = 6;
     private static final String DAY = "cinesub_amb_day", COUNT = "cinesub_amb_count";
@@ -48,9 +48,8 @@ final class AmbientGate {
     }
 
     /** A new scene (the picture moved on) or a new subtitle line (the bottom band changed). */
-    static boolean changed(int[] last, int[] now) {
-        if (now == null) return false;
-        if (last == null || last.length != now.length) return true;
+    public static boolean changed(int[] last, int[] now) {
+        if (now == null || last == null || last.length != now.length) return false;
         long frame = 0, band = 0;
         for (int i = 0; i < GW * GH; i++) frame += Math.abs(now[i] - last[i]);
         int bandChanged = 0;

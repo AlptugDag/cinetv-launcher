@@ -78,12 +78,24 @@ public final class HardwareKeys {
             case KeyEvent.KEYCODE_VOLUME_UP:
             case KeyEvent.KEYCODE_VOLUME_DOWN:
             case KeyEvent.KEYCODE_VOLUME_MUTE:
+            case KeyEvent.KEYCODE_CHANNEL_UP:
+            case KeyEvent.KEYCODE_CHANNEL_DOWN:
+            case KeyEvent.KEYCODE_PAGE_UP:
+            case KeyEvent.KEYCODE_PAGE_DOWN:
             case KeyEvent.KEYCODE_POWER:
             case KeyEvent.KEYCODE_MENU:
                 return true;
             default:
                 return false;
         }
+    }
+
+    /** True for Volume Up/Down and Channel Up/Down, which must repeat continuously while held on the remote. */
+    public static boolean isRepeatableHoldKey(int keyCode) {
+        return keyCode == KeyEvent.KEYCODE_VOLUME_UP
+                || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
+                || keyCode == KeyEvent.KEYCODE_CHANNEL_UP
+                || keyCode == KeyEvent.KEYCODE_CHANNEL_DOWN;
     }
 
     /**
