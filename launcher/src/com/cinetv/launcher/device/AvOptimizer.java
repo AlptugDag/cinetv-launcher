@@ -381,9 +381,7 @@ public final class AvOptimizer {
             // HDR: honour dynamic metadata, list HDR picture modes, and disable Amlogic forced SDR-to-HDR conversion
             {"global", "tv_picture_hdr10_plus", "1"}, {"global", "picture_list_hdr", "1"},
             {"global", "hdr_policy", "0"}, {"global", "hdmi_deep_color", "1"},
-            // Sound as mixed: no volume levelling or extra compression, no fake surround on top of Atmos
-            {"global", "sound_auto_volume_leveling", "0"}, {"global", "sound_advanced_volume_leveler", "0"},
-            {"global", "sound_auto_volume", "0"}, {"global", "sound_auto_volume_control", "0"},
+            // Sound as mixed: preserve TV's auto volume leveler and hardware settings
             {"global", "sound_dts_drc", "0"}, {"global", "sound_DRC_mode", "0"}, {"global", "dolby_drc_mode", "0"},
             {"global", "sound_dts_limiter", "0"},
             // Flat response: no "studio sound", loudness or bass tricks layered over the mix

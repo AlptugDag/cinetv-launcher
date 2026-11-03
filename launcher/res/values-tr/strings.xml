@@ -138,6 +138,8 @@
     <string name="tour_shelf">Bu filmler tam bu an için seçildi: saate, güne, şehrine ve havaya göre. Sağa sola git; oda filmin rengiyle aydınlanır.</string>
     <string name="tour_dvd_t">Bir DVD aç</string>
     <string name="tour_dvd">Bir kutuda OK: raftan çıkar ve açılır, iç kapağında konusu yazar; filmin fragmanı otomatik olarak oynar. Bir daha OK: film doğrudan Nuvio\'da başlar.</string>
+    <string name="tour_similar_t">Sarı Tuş ile Benzer Filmler</string>
+    <string name="tour_similar">Ana sayfada iken kumandanın SARI tuşuna bastığınızda, vitrindeki odakta bulunan filmin benzerleri anında taranıp vitrine dizilir.</string>
     <string name="tour_trailers_t">Fragman anları</string>
     <string name="tour_trailers">Fragman anları varsayılan olarak açıktır: açılan DVD yan yatar ve filmin fragmanı kendiliğinden, sessizce oynar; konusu diğer iç kapakta yazar. Ayarlar sayfasındaki Fragman Anları düğmesiyle kapatabilirsin.</string>
     <string name="tour_search_t">Konuşur gibi ara</string>

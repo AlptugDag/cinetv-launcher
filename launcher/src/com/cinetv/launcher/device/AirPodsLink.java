@@ -63,12 +63,15 @@ public final class AirPodsLink {
         @Override
         public void run() {
             if (!running) return;
-            try {
-                attempt();
-            } catch (Throwable t) {
-                Log.w(TAG, "attempt failed: " + t);
+            boolean connectedNow = isHeadphoneConnected(ctx);
+            if (!connectedNow) {
+                try {
+                    attempt();
+                } catch (Throwable t) {
+                    Log.w(TAG, "attempt failed: " + t);
+                }
             }
-            handler.postDelayed(this, EVERY_MS);
+            handler.postDelayed(this, connectedNow ? 60_000L : EVERY_MS);
         }
     };
 
@@ -164,8 +167,14 @@ public final class AirPodsLink {
         BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();
         PowerManager pm = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
         if (bt == null || !bt.isEnabled() || a2dp == null || pm == null || !pm.isInteractive()) return;
-        // Something is already playing over Bluetooth (these AirPods, a soundbar...): leave it alone.
+
+        // Check if ANY audio is already routed to Bluetooth, or headphones are connected
+        android.media.AudioManager am = (android.media.AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
+        if (am != null && (am.isBluetoothA2dpOn() || isHeadphoneConnected(ctx))) {
+            return; // Already connected and active, never interfere with active Bluetooth audio!
+        }
         if (!a2dp.getConnectedDevices().isEmpty()) return;
+
         for (BluetoothDevice d : bt.getBondedDevices()) {
             if (!isHeadphones(d)) continue;
             if (a2dp.getConnectionState(d) != BluetoothProfile.STATE_DISCONNECTED) continue;

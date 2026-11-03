@@ -351,8 +351,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         com.cinetv.launcher.device.MainThreadSampler.maybeStart("start", 40_000);
         loadApps(true);
+        showCachedShelf();
         if (freshStart) startFreshShelf(false);
-        else showCachedShelf();
         Calendar cal = Calendar.getInstance();
         lastShelfHour = cal.get(Calendar.HOUR_OF_DAY);
         lastShelfDay = cal.get(Calendar.DAY_OF_YEAR);
@@ -531,6 +531,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (home.tour != null && home.tour.isShowing()) return;
         SecretStore.migrateLegacy(getApplicationContext());
         if (Panels.hasRequiredSetup(this)) return;
+        // User request: Do NOT force API key setup if user has already passed the wizard / dismissed it!
+        if (Prefs.get(this).getBoolean("wizard_done", false)) return;
         if (home.modal.isShowing()) return;
         if (!Prefs.get(this).getBoolean("wizard_done", false)) {
             home.modal.setOnClosed(this::onWizardFinished);
@@ -793,6 +795,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         handler.removeCallbacks(sleepPanel);
         hideScreensaver();
         // Deep background hibernation: immediately free memory for external media player & 4K video playback
+        releaseShelfMemory();
         PosterCache.trimMemory();
         Glow.clear();
         MemoryOptimizer.cleanBackground(this, getPackageName());
@@ -936,6 +939,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         if (home == null) return super.dispatchKeyEvent(e);
+        int keyCode = e.getKeyCode();
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_MUTE) {
+            return super.dispatchKeyEvent(e);
+        }
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         if (down && isDpad(e.getKeyCode())) {
             // Some remotes deliver one press twice (IR + CEC, or a bouncing key): the focus jumped two items.
@@ -1965,7 +1972,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             background(() -> {
                 MovieCatalog.ensureImdb(app, m);
                 if ((m.imdbId == null || !m.imdbId.startsWith("tt")) && m.title != null && !m.title.isEmpty()) {
-                    Movie resolved = MovieCatalog.resolve(app, m.title, m.year, m.type);
+                    Movie resolved = MovieCatalog.resolve(app, m.title, m.originalTitle, m.year, m.type);
                     if (resolved != null && resolved.imdbId != null && resolved.imdbId.startsWith("tt")) {
                         m.imdbId = resolved.imdbId;
                     }
@@ -1974,7 +1981,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             });
             return;
         }
-        boolean ok = AppLauncher.openInNuvio(this, m.title, m.imdbId, m.tmdbId, m.type, m.posterUrl, preferResume);
+        boolean ok = AppLauncher.openInNuvio(this, m.title, m.originalTitle, m.year, m.imdbId, m.tmdbId, m.type, m.posterUrl, preferResume);
         if (!ok) {
             showNuvioNotFoundDialog(m);
         } else {
@@ -2098,7 +2105,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             background(() -> {
                 MovieCatalog.ensureImdb(appCtx, m);
                 if (m.imdbId.isEmpty() && m.title != null && !m.title.isEmpty()) {
-                    Movie resolved = MovieCatalog.resolve(appCtx, m.title, m.year, m.type);
+                    Movie resolved = MovieCatalog.resolve(appCtx, m.title, m.originalTitle, m.year, m.type);
                     if (resolved != null && !resolved.imdbId.isEmpty()) m.imdbId = resolved.imdbId;
                 }
                 ui(() -> launchFilm(m));
@@ -2642,29 +2649,36 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void startTour() {
-        home.modal.close();
-        home.shelf.requestFocus();
-        home.tour.setListener((index, step) -> {
-            if (index == 2) {
-                // Step 3 (0-indexed 2: "Bir DVD aç"): Automatically open focused DVD case!
-                final DvdCaseView v = home.shelf.focusedCase();
-                final Movie m = home.shelf.focusedMovie();
-                if (v != null && m != null && !home.opening.isPlaying()) {
-                    openTitle(m, v);
+        if (home == null) return;
+        if (home.modal != null && home.modal.isShowing()) {
+            home.modal.closeImmediate();
+        }
+        hidePartyStage();
+        hideLiveSnakePhileScene();
+        home.root.post(() -> {
+            home.shelf.requestFocus();
+            home.tour.setListener((index, step) -> {
+                if (index == 2) {
+                    // Step 3 (0-indexed 2: "Bir DVD aç"): Automatically open focused DVD case!
+                    final DvdCaseView v = home.shelf.focusedCase();
+                    final Movie m = home.shelf.focusedMovie();
+                    if (v != null && m != null && !home.opening.isPlaying()) {
+                        openTitle(m, v);
+                    }
+                } else {
+                    // Step 4 ("Fragman anları") and other steps: close opened DVD case
+                    if (home.opening.isPlaying()) {
+                        home.opening.dismiss();
+                    }
                 }
-            } else {
-                // Step 4 ("Fragman anları") and other steps: close opened DVD case
-                if (home.opening.isPlaying()) {
-                    home.opening.dismiss();
-                }
-            }
+            });
+            home.tour.start(home.tourSteps(),
+                    () -> {
+                        home.tour.setListener(null);
+                        if (home.opening.isPlaying()) home.opening.dismiss();
+                        Prefs.setFlag(this, Prefs.TOUR_DONE, true);
+                    });
         });
-        home.shelf.post(() -> home.tour.start(home.tourSteps(),
-                () -> {
-                    home.tour.setListener(null);
-                    if (home.opening.isPlaying()) home.opening.dismiss();
-                    Prefs.setFlag(this, Prefs.TOUR_DONE, true);
-                }));
     }
 
     @Override

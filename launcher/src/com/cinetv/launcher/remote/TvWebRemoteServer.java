@@ -80,6 +80,18 @@ public final class TvWebRemoteServer {
 
     private static volatile PairRequest pending;
     private static String aboutBio, aboutPhoto;
+    private static volatile JSONObject latestTrack;
+
+    public static void notifyTrackIdentified(String title, String artist, String artworkUrl) {
+        try {
+            JSONObject t = new JSONObject();
+            t.put("title", title == null ? "" : title);
+            t.put("artist", artist == null ? "" : artist);
+            t.put("artwork", artworkUrl == null ? "" : artworkUrl);
+            t.put("at", System.currentTimeMillis());
+            latestTrack = t;
+        } catch (Throwable ignored) {}
+    }
 
     private static final String TAG = "CineTvRemote";
     private static final int[] PORTS = {8080, 8081, 8765};
@@ -645,7 +657,8 @@ public final class TvWebRemoteServer {
         switch (path) {
             case "/api/status":
                 return ok.put("inputFocused", TvKeyInterceptorService.isInputFocused() || com.cinetv.launcher.MainActivity.isTvInputActive())
-                        .put("shot", ScreenShot.id());
+                        .put("shot", ScreenShot.id())
+                        .put("track", latestTrack);
             case "/api/shot": {
                 // the latest screenshot, inline so it also reaches a phone on the relay
                 byte[] jpg = ScreenShot.latest();

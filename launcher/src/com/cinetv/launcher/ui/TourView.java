@@ -268,6 +268,10 @@ public final class TourView extends FrameLayout {
             case KeyEvent.KEYCODE_ESCAPE:
                 finish();
                 return true;
+            case KeyEvent.KEYCODE_VOLUME_UP:
+            case KeyEvent.KEYCODE_VOLUME_DOWN:
+            case KeyEvent.KEYCODE_VOLUME_MUTE:
+                return false;
             default:
                 return true;
         }

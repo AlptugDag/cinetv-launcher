@@ -142,6 +142,8 @@
     <string name="tour_shelf">These films are picked for this moment: the hour, the day, your city and the weather. Move left and right; the room lights up in the film\'s colour.</string>
     <string name="tour_dvd_t">Open a DVD</string>
     <string name="tour_dvd">OK on a case: it comes off the shelf and opens, with the story inside the cover and the film\'s trailer playing automatically. OK again: the film starts straight in Nuvio.</string>
+    <string name="tour_similar_t">Similar Movies with Yellow Key</string>
+    <string name="tour_similar">Press the YELLOW key on your remote while on Home: CineTV instantly finds and showcases movies similar to the currently focused title on the shelf.</string>
     <string name="tour_trailers_t">Trailer moments</string>
     <string name="tour_trailers">Trailer moments are on by default: an opened DVD turns sideways and its trailer plays automatically and muted, with the story across the other side. Switch it off with the Trailer moments tile in Settings.</string>
     <string name="tour_search_t">Search the way you talk</string>

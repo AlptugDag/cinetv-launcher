@@ -67,7 +67,7 @@ public final class SceneInspector {
             BitmapFactory.Options o = new BitmapFactory.Options();
             o.inJustDecodeBounds = true;
             BitmapFactory.decodeByteArray(raw, start, raw.length - start, o);
-            o.inSampleSize = Math.max(1, o.outWidth / 768);
+            o.inSampleSize = Math.max(1, o.outWidth / 640);
             o.inJustDecodeBounds = false;
             o.inPreferredConfig = Bitmap.Config.RGB_565;
             Bitmap b = BitmapFactory.decodeByteArray(raw, start, raw.length - start, o);
@@ -88,7 +88,7 @@ public final class SceneInspector {
                 return new byte[0];
             }
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            b.compress(Bitmap.CompressFormat.JPEG, 70, out);
+            b.compress(Bitmap.CompressFormat.JPEG, 65, out);
             b.recycle();
             return out.toByteArray();
         } catch (Throwable t) {
@@ -97,7 +97,7 @@ public final class SceneInspector {
         }
     }
 
-    /** Android 11+: the accessibility service's own screenshot, scaled to about 768 px. Blocking, null when unavailable. */
+    /** Android 11+: the accessibility service's own screenshot, scaled to about 640 px. Blocking, null when unavailable. */
     @android.annotation.TargetApi(30)
     private static Bitmap serviceScreenshot() {
         if (android.os.Build.VERSION.SDK_INT < 30) return null;
@@ -113,7 +113,7 @@ public final class SceneInspector {
                             try (android.hardware.HardwareBuffer hb = r.getHardwareBuffer()) {
                                 Bitmap hw = Bitmap.wrapHardwareBuffer(hb, r.getColorSpace());
                                 if (hw != null) {
-                                    int w = Math.min(768, hw.getWidth());
+                                    int w = Math.min(640, hw.getWidth());
                                     int h = Math.round(hw.getHeight() * (w / (float) hw.getWidth()));
                                     Bitmap soft = hw.copy(Bitmap.Config.ARGB_8888, false);
                                     hw.recycle();
@@ -244,7 +244,7 @@ public final class SceneInspector {
                 + "with box in 0-1000 screen coordinates. The box must enclose exactly that one thing and nothing else: the painting's frame, "
                 + "the plate, the building's facade, the car's body, the cameo's face and shoulders; never a whole region, never a box around "
                 + "several things. If you cannot place it precisely, leave box empty rather than guess.";
-        LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, ambient ? 750 : 1200, ambient);
+        LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, ambient ? 500 : 650, ambient);
         if (!r.success) {
             scene.error = r.text;
             return scene;

@@ -39,11 +39,10 @@ public final class LlmClient {
     static final String DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
     static final String FAST_CLAUDE_MODEL = "claude-haiku-5-5";
     static final String FALLBACK_CLAUDE_MODEL = "claude-haiku-5-5";
-    /** Gemini 3.8 Flash: the newest stable Flash (thinking kept low for a TV's patience). */
-    static final String DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
-    // Flash's free tier allows only 20 requests a day: quick text jobs go to Flash-Lite, so the vision model is left for CineSUB.
-    static final String FAST_GEMINI_MODEL = "gemini-3.5-flash-lite";
-    static final String FALLBACK_GEMINI_MODEL = "gemini-3.5-flash-lite";
+    /** Gemini 2.5 Flash: stable and fast for vision and cinephile trivia */
+    static final String DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+    static final String FAST_GEMINI_MODEL = "gemini-2.5-flash-lite";
+    static final String FALLBACK_GEMINI_MODEL = "gemini-2.5-flash-lite";
 
     private static final String TAG = "CineTvLlm";
 
@@ -150,8 +149,8 @@ public final class LlmClient {
                 : Prefs.get(ctx).getString(claude ? "ai_claude_model" : "ai_gemini_model", claude ? DEFAULT_CLAUDE_MODEL : DEFAULT_GEMINI_MODEL);
         // Busy (429/5xx), missing for this key (404) or slow: walk down a short chain of models.
         String[] chain = claude ? new String[]{first, FALLBACK_CLAUDE_MODEL}
-                : fast ? new String[]{first, "gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-flash-latest", "gemini-2.5-flash-lite"}
-                : new String[]{first, "gemini-flash-latest", "gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash"};
+                : fast ? new String[]{first, "gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-flash-latest"}
+                : new String[]{first, "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"};
         Result r = null;
         java.util.Set<String> tried = new java.util.HashSet<>();
         for (String model : chain) {
@@ -306,8 +305,8 @@ public final class LlmClient {
         if (compat != null) models = new String[]{compat[2], compat[4]};
         else if (PROVIDER_CLAUDE.equals(provider)) models = new String[]{FAST_CLAUDE_MODEL, DEFAULT_CLAUDE_MODEL};
         // Each model has its own per-minute quota: a busy one (429) hands over to the next instead of giving up.
-        else if (liteOnly) models = new String[]{"gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"};
-        else models = new String[]{"gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"};
+        else if (liteOnly) models = new String[]{"gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-flash-latest"};
+        else models = new String[]{"gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"};
         Result r = null;
         for (String model : models) {
             r = visionCall(ctx, provider, compat, model, key, system, user, b64, maxTokens, true);

@@ -133,10 +133,17 @@ final class QuizDeck {
             if (q == null) continue;
             if (!q.image.isEmpty() && PosterCache.load(ctx, q.image, 960, 960) == null) continue;
             out.add(q);
+            if (out.size() >= n) break;
         }
-        if (LlmClient.isConfigured(ctx) && !LlmClient.quotaOut()) addFacts(out);
-        // Gamze always has something to tell: without the AI (or when its daily quota is spent) the film's own data speaks
-        for (Question q : out) if (q.fact.isEmpty()) q.fact = localFact(q.tmdbId);
+        // Immediately assign rich local fact so questions load instantly
+        for (Question q : out) {
+            if (q.fact.isEmpty()) q.fact = localFact(q.tmdbId);
+        }
+        // Asynchronously enrich with AI trivia in background if key is present
+        if (!out.isEmpty() && LlmClient.isConfigured(ctx) && !LlmClient.quotaOut()) {
+            final List<Question> bgList = new ArrayList<>(out);
+            new Thread(() -> addFacts(bgList), "cinetv-quiz-facts").start();
+        }
         return out;
     }
 

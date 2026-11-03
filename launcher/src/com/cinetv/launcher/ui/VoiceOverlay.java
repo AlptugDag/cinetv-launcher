@@ -341,6 +341,7 @@ public class VoiceOverlay extends FrameLayout {
     private void startBluetoothScoIfConnected() {
         try {
             android.media.AudioManager am = (android.media.AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+            if (am != null && am.isBluetoothA2dpOn()) return; // Never disrupt active A2DP stereo audio link!
             boolean headset = false;
             if (am != null) {
                 for (android.media.AudioDeviceInfo d : am.getDevices(android.media.AudioManager.GET_DEVICES_INPUTS)) {

@@ -102,7 +102,31 @@ public final class SnakePhileView extends View {
             "Fight Club (1999) · 8.8/10",
             "Taxi Driver (1976) · 8.2/10",
             "Blade Runner (1982) · 8.1/10",
-            "Whiplash (2014) · 8.5/10"
+            "Whiplash (2014) · 8.5/10",
+            "The Dark Knight (2008) · 9.0/10",
+            "Matrix (1999) · 8.7/10",
+            "Hababam Sınıfı (1975) · 9.2/10",
+            "Yol (1982) · 8.1/10",
+            "Tosun Paşa (1976) · 8.9/10",
+            "Eşkıya (1996) · 8.1/10",
+            "Bir Zamanlar Anadolu'da (2011) · 7.8/10",
+            "Kış Uykusu (2014) · 8.0/10",
+            "G.O.R.A. (2004) · 8.0/10",
+            "Leon (1994) · 8.5/10",
+            "Gladiator (2000) · 8.5/10",
+            "Se7en (1995) · 8.6/10",
+            "Goodfellas (1990) · 8.7/10",
+            "Spirited Away (2001) · 8.6/10",
+            "Parasite (2019) · 8.5/10",
+            "The Prestige (2006) · 8.5/10",
+            "Forrest Gump (1994) · 8.8/10",
+            "Apocalypse Now (1979) · 8.4/10",
+            "Alien (1979) · 8.5/10",
+            "The Shining (1980) · 8.4/10",
+            "Oldboy (2003) · 8.3/10",
+            "Cinema Paradiso (1988) · 8.5/10",
+            "Memento (2000) · 8.4/10",
+            "Casablanca (1942) · 8.5/10"
     };
 
     private final List<Bitmap> posterBitmaps = new ArrayList<>();
@@ -424,14 +448,10 @@ public final class SnakePhileView extends View {
             currentFoodIndex = (currentFoodIndex + 1) % POSTER_TITLES.length;
             String nextMovie = cleanMovieTitle(POSTER_TITLES[currentFoodIndex % POSTER_TITLES.length]);
             if (isManualControl) {
-                // Gamze tells something about the film just swallowed (every other one, so she never talks over herself)
+                // Instant Gamze audio feedback without slow remote LLM delay
                 if (eaten % 2 == 1) {
-                    CinePartyManager.get(getContext()).getGamzeMovieLore(eatenMovie, lore -> {
-                        if (lore != null && !lore.isEmpty() && !isGameOver && !com.cinetv.launcher.ai.EmaLightningTts.isSpeaking())
-                            com.cinetv.launcher.ai.EmaLightningTts.speakGame(getContext(), eatenMovie + " yutuldu. " + lore);
-                    });
-                } else if (!com.cinetv.launcher.ai.EmaLightningTts.isSpeaking()) {
-                    // never over a film note still being read
+                    com.cinetv.launcher.ai.EmaLightningTts.speakGame(getContext(), eatenMovie + " yutuldu! Harika seçim.");
+                } else {
                     com.cinetv.launcher.ai.EmaLightningTts.speakGame(getContext(), "Sıradaki hedef: " + nextMovie + ".");
                 }
             }

@@ -78,6 +78,28 @@ public final class WatchHistory {
     public static synchronized void noteNuvioPlayback(Context ctx, Movie movie, String title, long positionMs, long durationMs) {
         if (movie == null || movie.title == null || movie.title.trim().isEmpty() || durationMs <= 0) return;
         try {
+            // Check if PENDING contains rich metadata for this title
+            String pendingStr = Prefs.get(ctx).getString(PENDING, "{}");
+            if (!pendingStr.isEmpty() && !"{}".equals(pendingStr)) {
+                JSONObject pending = new JSONObject(pendingStr);
+                String pTitle = pending.optString("title", "");
+                String pOrig = pending.optString("original", "");
+                String pImdb = pending.optString("imdb", "");
+                boolean match = (!pImdb.isEmpty() && pImdb.equals(movie.imdbId))
+                        || (!pTitle.isEmpty() && pTitle.equalsIgnoreCase(movie.title))
+                        || (!pOrig.isEmpty() && pOrig.equalsIgnoreCase(movie.title))
+                        || (title != null && (!pTitle.isEmpty() && title.contains(pTitle)));
+                if (match) {
+                    if (movie.imdbId.isEmpty() && !pImdb.isEmpty()) movie.imdbId = pImdb;
+                    if (movie.tmdbId <= 0) movie.tmdbId = pending.optInt("tmdb", 0);
+                    if (movie.originalTitle == null || movie.originalTitle.isEmpty()) movie.originalTitle = pOrig;
+                    if (movie.year <= 0) movie.year = pending.optInt("year", 0);
+                    if (movie.posterUrl == null || movie.posterUrl.isEmpty()) movie.posterUrl = pending.optString("poster", "");
+                    if (movie.backdropUrl == null || movie.backdropUrl.isEmpty()) movie.backdropUrl = pending.optString("backdrop", "");
+                    if (movie.overview == null || movie.overview.isEmpty()) movie.overview = pending.optString("overview", "");
+                    if (movie.logoUrl == null || movie.logoUrl.isEmpty()) movie.logoUrl = pending.optString("logo", "");
+                }
+            }
             JSONObject item = movie.toJson();
             item.put("logo", movie.logoUrl == null ? "" : movie.logoUrl);
             storeProgress(ctx, item, title, positionMs, durationMs, "nuvio");
@@ -235,7 +257,10 @@ public final class WatchHistory {
     private static String key(JSONObject o) {
         if (!o.optString("imdb").isEmpty()) return o.optString("imdb");
         if (o.optInt("tmdb") > 0) return "tmdb" + o.optInt("tmdb");
-        return o.optString("title").toLowerCase(Locale.ROOT) + o.optInt("year");
+        String orig = o.optString("original").toLowerCase(Locale.ROOT);
+        int yr = o.optInt("year");
+        if (!orig.isEmpty()) return orig + yr;
+        return o.optString("title").toLowerCase(Locale.ROOT) + yr;
     }
 
     private static Entry entry(JSONObject o) {

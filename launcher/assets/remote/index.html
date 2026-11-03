@@ -333,9 +333,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .pt-results{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;min-width:0}
 .pt-results button{border:0;padding:0;background:none;color:var(--ink);text-align:left;font-size:11.5px;font-weight:600}
 .pt-results img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:12px;display:block;margin-bottom:4px;background:#111}
-.pt-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:300px;margin:0 auto}
-.pt-pad button{height:76px;border-radius:20px;border:1px solid var(--edge);background:rgba(255,255,255,.08);color:#fff;font-size:24px}
-.pt-pad button:active{background:rgba(255,255,255,.2)}
+.pt-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:360px;margin:12px auto}
+.pt-pad button{height:96px;border-radius:26px;border:1px solid var(--edge);background:rgba(255,255,255,.08);color:#fff;font-size:32px;font-weight:700}
+.pt-pad button:active{background:rgba(255,255,255,.25);transform:scale(.96)}
 .pt-spin{width:46px;height:46px;border-radius:50%;border:4px solid rgba(255,255,255,.12);border-top-color:var(--pt);animation:ptSpin .9s linear infinite;justify-self:center}
 @keyframes ptSpin{to{transform:rotate(360deg)}}
 </style>
@@ -1140,8 +1140,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   typer.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== typer) kbd.hidden = true; }, 350));
   $("saver").onclick = () => api("screensaver");
 
-  // A screenshot taken with the TV remote (yellow key held) opens here, ready to save or share
-  let seenShot = -1, shotBlob = null;
+  // A screenshot taken with the TV remote (blue key held) opens here, ready to save or share
+  let seenShot = -1, shotBlob = null, lastTrack = "";
   const showShot = async () => {
     try {
       const r = await api("shot");
@@ -1157,6 +1157,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       $("shotShare").hidden = !(navigator.canShare && navigator.canShare({files: [new File([shotBlob], name, {type: "image/jpeg"})]}));
       $("shotShare").onclick = () => navigator.share({files: [new File([shotBlob], name, {type: "image/jpeg"})]}).catch(() => {});
       $("shotView").hidden = false;
+      // Auto-save screenshot to phone
+      try {
+        const dl = document.createElement("a");
+        dl.href = url;
+        dl.download = name;
+        document.body.appendChild(dl);
+        dl.click();
+        document.body.removeChild(dl);
+      } catch (e) {}
       if (navigator.vibrate) navigator.vibrate(30);
     } catch (e) {}
   };
@@ -1171,6 +1180,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       if (s && typeof s.shot === "number") {
         if (seenShot >= 0 && s.shot > seenShot) showShot();
         seenShot = s.shot;
+      }
+      if (s && s.track && s.track !== lastTrack) {
+        lastTrack = s.track;
+        if (typeof toast === "function") toast("🎵 " + s.track);
       }
       if (s && s.inputFocused && !lastFocusState && kbd.hidden) {
         openKbd("");

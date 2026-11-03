@@ -287,14 +287,15 @@ public final class AppLauncher {
     private static void pressPlayWhenReady(final Context app, final long startedAt, final boolean series, final boolean preferResume) {
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
             com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
-            boolean clicked = !com.cinetv.launcher.MainActivity.foreground && svc != null && svc.clickNuvioPlay(series, preferResume);
+            long elapsed = System.currentTimeMillis() - startedAt;
+            boolean clicked = !com.cinetv.launcher.MainActivity.foreground && svc != null && svc.clickNuvioPlay(series, preferResume, elapsed);
             if (clicked) android.util.Log.i("CineTvPlay", (series ? "Series: resumed or episode list" : "Oynat") + " on Nuvio's title page");
-            if (!clicked && System.currentTimeMillis() - startedAt < 15_000) pressPlayWhenReady(app, startedAt, series, preferResume);
+            if (!clicked && elapsed < 15_000) pressPlayWhenReady(app, startedAt, series, preferResume);
         }, 800);
     }
 
     public static boolean openInNuvio(Context ctx, String title, String imdbId, String type, String posterUrl) {
-        return openInNuvio(ctx, title, imdbId, 0, type, posterUrl, false);
+        return openInNuvio(ctx, title, null, 0, imdbId, 0, type, posterUrl, false);
     }
 
     /**
@@ -303,14 +304,31 @@ public final class AppLauncher {
      * Nuvio's home screen.
      */
     public static boolean openInNuvio(Context ctx, String title, String imdbId, int tmdbId, String type, String posterUrl) {
-        return openInNuvio(ctx, title, imdbId, tmdbId, type, posterUrl, false);
+        return openInNuvio(ctx, title, null, 0, imdbId, tmdbId, type, posterUrl, false);
     }
 
     /** Opens a title and selects Nuvio's resume action first only for CineTV's Continue Watching card. */
     public static boolean openInNuvio(Context ctx, String title, String imdbId, int tmdbId, String type,
                                       String posterUrl, boolean preferResume) {
+        return openInNuvio(ctx, title, null, 0, imdbId, tmdbId, type, posterUrl, preferResume);
+    }
+
+    public static boolean openInNuvio(Context ctx, String title, String originalTitle, int year,
+                                      String imdbId, int tmdbId, String type,
+                                      String posterUrl, boolean preferResume) {
         if ((title != null && "sessiz".equals(Creator.fold(title))) || "tt38983576".equals(imdbId)) {
             return openYouTubeVideo(ctx, Creator.SESSIZ_YOUTUBE_URL);
+        }
+        // If imdbId is missing or doesn't start with "tt", attempt to resolve using original title + year to prevent duplicate Turkish title conflicts
+        if ((imdbId == null || !imdbId.startsWith("tt")) && title != null && !title.trim().isEmpty()) {
+            try {
+                com.cinetv.launcher.service.MovieCatalog.Movie resolved =
+                        com.cinetv.launcher.service.MovieCatalog.resolve(ctx, title, originalTitle, year, type);
+                if (resolved != null && resolved.imdbId != null && resolved.imdbId.startsWith("tt")) {
+                    imdbId = resolved.imdbId;
+                    if (resolved.tmdbId > 0) tmdbId = resolved.tmdbId;
+                }
+            } catch (Throwable ignored) {}
         }
         // Only fall back to "tmdb:<id>" if no valid "tt..." IMDb ID is available; stream addons in Nuvio require "tt..." IDs.
         if ((imdbId == null || !imdbId.startsWith("tt")) && tmdbId > 0 && !"tv".equals(type) && !"channel".equals(type)) {
@@ -355,9 +373,10 @@ public final class AppLauncher {
             if (start(ctx, detail)) return true;
         }
         // Fallback: If imdbId is missing or stream intent didn't catch, deep-link search directly into Nuvio
-        if (title != null && !title.trim().isEmpty()) {
+        String searchTarget = (originalTitle != null && !originalTitle.trim().isEmpty()) ? originalTitle.trim() : (title != null ? title.trim() : "");
+        if (!searchTarget.isEmpty()) {
             try {
-                Intent searchIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///search?search=" + Uri.encode(title.trim())));
+                Intent searchIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///search?search=" + Uri.encode(searchTarget)));
                 if (targetPkg != null) searchIntent.setPackage(targetPkg);
                 searchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 if (start(ctx, searchIntent)) return true;

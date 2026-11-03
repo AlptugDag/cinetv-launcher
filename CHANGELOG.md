@@ -1,5 +1,28 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.42
+
+- **Nuvio Kaynak Seçiminde Çökme & Yeniden Başlama Giderildi:** Nuvio akış ve kaynak ararken bellek kullanımının zirveye ulaştığı anlar tespit edildi; kaynak seçim pencerelerinde arka plan ekran yakalama ve CineSUB işlemleri tamamen durdurularak Low Memory Killer (OOM) kaynaklı launcher çökmeleri önlendi.
+- **Aynı Türkçe İsimli Filmlerde Doğru Kaynak Eşleşmesi:** Türkçe isimleri birebir aynı olan filmlerde (örneğin *Equilibrium* ve *Mutiny* her ikisi de "İsyan") orijinal İngilizce isim ve yapım yılı (`originalTitle` ve `year`) korunarak Nuvio'ya iletiliyor; kaynak seçim ekranında doğru filmin gelmesi garanti altına alındı.
+- **"Kaldığın Yerden Devam Et" İyileştirmeleri:** 
+  - Nuvio'daki süre içeren devam butonları ("Devam Et (42 dk)", "Devam Et (35:10)") tam olarak tanınıyor; asenkron yüklemeler tamamlanmadan aceleyle "Oynat"a basılarak filmin en baştan başlaması engellendi.
+  - Aynı isimdeki farklı bir filmin açılması `originalTitle + year` ve IMDb/TMDB kimlikleri ile engellendi.
+- **Ses Tuşuna Basılı Tutma ve Ses Seviyesi Ayarlayıcı:** Kumandadaki ses açma/kısma tuşlarına basılı tutulduğunda sesin kesintisiz akıcı şekilde artıp azalması sağlandı; TV'nin dahili "Ses Seviyesi Ayarlayıcı" / AVL fonksiyonlarının engellenmesi önlendi.
+- **Anında Açılan 3D DVD Vitrini (0ms Başlangıç):** TV yeniden başlatıldığında rafın uzun süre boş kalıp sonradan belirmesi sorunu giderildi; önbellekteki DVD kutuları açılışta sıfır gecikmeyle (0 ms) hemen ekrana basılıyor.
+- **Açılışta Gamze Sesli Selamlama Düzeltildi:** Soğuk açılışta Gamze'nin konuşma balonu görünmesine rağmen sesin çıkmaması sorunu, TTS motorunun bağlanma sürecinde sesli bildirimlerin kuyruğa alınıp bağlanma tamamlandığında seslendirilmesiyle giderildi.
+- **Sessiz Saatler Özelliği Kaldırıldı:** Kullanıcı isteği doğrultusunda "Sessiz Saatler" ses kısıtlaması ve ayarları tamamen sistemden kaldırıldı.
+- **CineSUB Manuel Mod Tarama Hızlandırması:** Sarı tuş ile yapılan manuel sahne analizinde ekran yakalama boyutu 640px JPEG formatına optimize edildi; `gemini-2.5-flash` ve `gemini-2.5-flash-lite` modellerine doğrudan erişilerek tarama süresi saniyeler seviyesine indirildi.
+- **Ekran Görüntülerinin Telefona Otomatik Kaydedilmesi:** Mavi tuşa basılı tutarak alınan ekran görüntüleri, telefon kumandası açıkken doğrudan telefona otomatik olarak indirilir ve galeriye kaydedilir.
+- **CineQuiz Anında Soru Yükleme:** CineQuiz sorularının bekleterek yüklenmesi sorunu giderildi; sorular yerel kütüphane üstverileriyle anında ekrana gelir, yapay zekâ zenginleştirmeleri arka planda asenkron işlenir.
+- **SnakePhile Oyunu Geliştirmeleri:** Film havuzu 32 klasik ve yerli başyapıt filme genişletildi; filmler yutulduğunda Gamze sesli tepkileri gecikmesiz anında gelir ve telefon kumandasındaki yön kontrol tuşları büyütüldü.
+- **CineTV Turu Başlatma & Yenilik Rehberi:** Ayarlar menüsündeki CineTV Turu'na basıldığında 16 adımlı sesli tur anında başlatılıyor; gereksiz "Yenilik Rehberi" katmanı kaldırıldı.
+- **Kumandadaki SARI Tuş ile Benzer Filmler:** Ana sayfada iken kumandanın SARI tuşuna basıldığında, vitrindeki odakta bulunan filmin benzerlerinin vitrinde listelenmesi özelliği CineTV Turu'na ve belgelere eklendi.
+- **Mavi Tuş Shazam Entegrasyonu:** Kumandanın MAVİ tuşuna basıp çekildiğinde ortamda çalan müzik mikrofonla dinlenip Gemini ses analizi ve iTunes üzerinden şarkı/sanatçı ve albüm kapağıyla tanınır, Gamze seslendirir ve telefon kumandasına bildirim düşer (basılı tutma ekran görüntüsü almaya devam eder).
+- **Otomatik CineSUB Nuvio'da Tam Uyumlu:** Nuvio içinde video oynatılırken `am.isMusicActive()` ve stream başlıklarındaki "1080p", "bluray" gibi etiketler yüzünden taramanın engellenmesi giderildi. Nuvio'da film izlenirken (`idle > 12s`) otomatik CineSUB sahneleri ve altyazı göndermelerini YouTube gibi sorunsuz ve akıcı şekilde algılar.
+- **Bluetooth Kulaklık Kopmaları Engellendi:** Bluetooth kulaklık bağlıyken arka planda yapılan periyodik A2DP bağlantı denemeleri ve sesli komut başlatılırken A2DP stereo bağlantısını koparan SCO profil geçişi engellendi; Bluetooth kulaklıklarda yaşanan ani ses kesintileri ve kopmalar tamamen çözüldü.
+- **Kurulumda API Anahtarları İsteğe Bağlı Hale Getirildi:** İlk kurulum sihirbazında ve güncelleme sonrasında API anahtarlarının girilmesi zorunlu olmaktan çıkarıldı; anahtar girilmezse bazı özelliklerin (afiş, fragman, AI vitrin, CineSUB) kısıtlı çalışabileceğini belirten bilgilendirici uyarı eklendi ve anahtarsız devam etmeye izin verildi.
+- **Nuvio Ayarlarının ve Profillerinin Korunması:** Güncellemelerde kullanıcının mevcut Nuvio ayarları, eklentileri, şablonları ve profilleri kontrol edilerek üzerine yazılması kesin olarak engellendi.
+
 ## 1.0.0.41
 
 - **CineSUB'nin kendiliğinden notları akıllı ve yeniden açık:** TV, ekrana 15 saniyede bir (düşük bellekli TV'de 30 saniyede bir) kendisi bakıyor; bu bakış yapay zekâya hiç sorgu göndermiyor. Yapay zekâya sadece sahne değiştiğinde ya da yeni bir altyazı satırı çıktığında soruluyor. Böylece önemli anlarda notlar daha sık geliyor, durgun anlarda hiç sorgu harcanmıyor.

@@ -541,15 +541,28 @@ public final class EmaLightningTts {
         MAIN.post(() -> ensureNative(ctx.getApplicationContext(), null));
     }
 
+    private static final java.util.List<Runnable> pendingNativeCallbacks = new java.util.ArrayList<>();
+
     private static void ensureNative(Context app, Runnable ready) {
         synchronized (PLAYER_LOCK) {
+            if (fallbackReady) {
+                if (ready != null) ready.run();
+                return;
+            }
+            if (ready != null) {
+                pendingNativeCallbacks.add(ready);
+            }
             if (fallbackTts != null) {
-                if (fallbackReady && ready != null) ready.run();
                 return;
             }
             try {
                 fallbackTts = new TextToSpeech(app, status -> {
-                    if (status != TextToSpeech.SUCCESS || fallbackTts == null) return;
+                    if (status != TextToSpeech.SUCCESS || fallbackTts == null) {
+                        synchronized (PLAYER_LOCK) {
+                            pendingNativeCallbacks.clear();
+                        }
+                        return;
+                    }
                     try {
                         fallbackTts.setLanguage(Locale.getDefault());
                         fallbackTts.setPitch(1.0f);
@@ -558,7 +571,14 @@ public final class EmaLightningTts {
                                 .setUsage((android.os.Build.VERSION.SDK_INT >= 26 ? AudioAttributes.USAGE_ASSISTANT : AudioAttributes.USAGE_MEDIA))
                                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
                         fallbackReady = true;
-                        if (ready != null) ready.run();
+                        java.util.List<Runnable> copy;
+                        synchronized (PLAYER_LOCK) {
+                            copy = new java.util.ArrayList<>(pendingNativeCallbacks);
+                            pendingNativeCallbacks.clear();
+                        }
+                        for (Runnable r : copy) {
+                            if (r != null) r.run();
+                        }
                     } catch (Throwable ignored) {}
                 });
             } catch (Throwable ignored) {}

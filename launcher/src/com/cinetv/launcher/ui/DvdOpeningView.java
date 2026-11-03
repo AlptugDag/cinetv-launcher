@@ -436,6 +436,10 @@ public class DvdOpeningView extends View {
             }
             return true;
         }
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
+                || keyCode == KeyEvent.KEYCODE_VOLUME_MUTE) {
+            return false;
+        }
         return true;
     }
 

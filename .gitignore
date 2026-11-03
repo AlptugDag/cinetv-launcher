@@ -56,3 +56,5 @@ nuvio-collections.json
 nuvio-preferences.json
 cinetv-profile.json
 dist/
+package.json
+server.js

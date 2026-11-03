@@ -689,8 +689,13 @@ public final class MovieCatalog {
     }
 
     private static Movie pickBestResolved(List<Movie> list, String queryTitle, int targetYear) {
+        return pickBestResolved(list, queryTitle, null, targetYear);
+    }
+
+    private static Movie pickBestResolved(List<Movie> list, String queryTitle, String origTitle, int targetYear) {
         if (list == null || list.isEmpty()) return null;
         String qNorm = queryTitle == null ? "" : queryTitle.trim().toLowerCase(Locale.ROOT);
+        String origNorm = origTitle == null ? "" : origTitle.trim().toLowerCase(Locale.ROOT);
         Movie best = null;
         double bestScore = -1e9;
         for (int i = 0; i < list.size(); i++) {
@@ -699,15 +704,20 @@ public final class MovieCatalog {
             double score = (m.rating * 3.0) - (i * 1.5);
             if (targetYear > 1900 && m.year > 1900) {
                 int diff = Math.abs(m.year - targetYear);
-                if (diff == 0) score += 14.0;
-                else if (diff == 1) score += 9.0;
+                if (diff == 0) score += 22.0;
+                else if (diff == 1) score += 12.0;
                 else if (diff == 2) score += 4.0;
-                else score -= Math.min(20.0, diff * 2.0);
+                else score -= Math.min(30.0, diff * 3.0);
+            }
+            String t1 = m.title != null ? m.title.trim().toLowerCase(Locale.ROOT) : "";
+            String t2 = m.originalTitle != null ? m.originalTitle.trim().toLowerCase(Locale.ROOT) : "";
+            if (!origNorm.isEmpty()) {
+                if (origNorm.equals(t2)) score += 25.0;
+                else if (origNorm.equals(t1)) score += 18.0;
             }
             if (!qNorm.isEmpty()) {
-                String t1 = m.title != null ? m.title.trim().toLowerCase(Locale.ROOT) : "";
-                String t2 = m.originalTitle != null ? m.originalTitle.trim().toLowerCase(Locale.ROOT) : "";
-                if (qNorm.equals(t1) || qNorm.equals(t2)) score += 8.0;
+                if (qNorm.equals(t1)) score += 12.0;
+                else if (qNorm.equals(t2)) score += 10.0;
             }
             if (score > bestScore) {
                 bestScore = score;
@@ -762,16 +772,8 @@ public final class MovieCatalog {
             if (q == null || q.trim().isEmpty()) continue;
             try {
                 List<Movie> list = cinemetaList(CINEMETA + kind + "/top/search=" + enc(q.trim()) + ".json", kind, 6);
-                Movie best = null;
-                for (Movie cand : list) {
-                    if (cand == null || cand.imdbId == null || !cand.imdbId.startsWith("tt")) continue;
-                    if (m.year > 1900 && cand.year > 1900 && Math.abs(cand.year - m.year) <= 1) {
-                        best = cand;
-                        break;
-                    }
-                    if (best == null) best = cand;
-                }
-                if (best != null) {
+                Movie best = pickBestResolved(list, m.title, m.originalTitle, m.year);
+                if (best != null && best.imdbId != null && best.imdbId.startsWith("tt")) {
                     m.imdbId = best.imdbId;
                     return;
                 }
@@ -782,11 +784,16 @@ public final class MovieCatalog {
 
     /** Best match for a title (and optional year), with its IMDb id. */
     public static Movie resolve(Context ctx, String title, int year) {
-        return resolve(ctx, title, year, "movie");
+        return resolve(ctx, title, null, year, "movie");
     }
 
     /** Best match for a title, year and media type, with its IMDb id. */
     public static Movie resolve(Context ctx, String title, int year, String type) {
+        return resolve(ctx, title, null, year, type);
+    }
+
+    /** Best match for a title, originalTitle, year and media type, with its IMDb id. */
+    public static Movie resolve(Context ctx, String title, String originalTitle, int year, String type) {
         if (title == null || title.trim().isEmpty()) return null;
         if ("series".equals(type) || "tv".equals(type)) {
             List<Movie> matches = titled(ctx, title, type, 8);
@@ -812,24 +819,35 @@ public final class MovieCatalog {
         }
         if (hasTmdb(ctx)) {
             try {
-                String path = "search/movie?language=" + language() + "&query=" + enc(title.trim()) + (year > 1900 ? "&year=" + year : "");
-                List<Movie> list = parseTmdbResults(tmdb(ctx, path), "movie", 1);
+                String searchQ = (originalTitle != null && !originalTitle.trim().isEmpty() && (year > 1900 || !originalTitle.equalsIgnoreCase(title)))
+                        ? originalTitle.trim() : title.trim();
+                String path = "search/movie?language=" + language() + "&query=" + enc(searchQ) + (year > 1900 ? "&year=" + year : "");
+                List<Movie> list = parseTmdbResults(tmdb(ctx, path), "movie", 6);
+                if (list.isEmpty() && !searchQ.equalsIgnoreCase(title.trim())) {
+                    path = "search/movie?language=" + language() + "&query=" + enc(title.trim()) + (year > 1900 ? "&year=" + year : "");
+                    list = parseTmdbResults(tmdb(ctx, path), "movie", 6);
+                }
                 if (!list.isEmpty()) {
-                    Movie m = list.get(0);
-                    ensureImdb(ctx, m);
-                    return m;
+                    Movie m = pickBestResolved(list, title, originalTitle, year);
+                    if (m != null) {
+                        ensureImdb(ctx, m);
+                        return m;
+                    }
                 }
             } catch (Throwable t) {
                 Log.w(TAG, "TMDB resolve failed: " + t.getMessage());
             }
         }
-        List<Movie> list = cinemetaList(CINEMETA + "movie/top/search=" + enc(title.trim()) + ".json", "movie", 5);
-        for (Movie cand : list) {
+        String[] cmQueries = (originalTitle != null && !originalTitle.trim().isEmpty() && !originalTitle.equalsIgnoreCase(title))
+                ? new String[]{originalTitle.trim(), title.trim()} : new String[]{title.trim()};
+        for (String q : cmQueries) {
+            List<Movie> list = cinemetaList(CINEMETA + "movie/top/search=" + enc(q) + ".json", "movie", 6);
+            Movie cand = pickBestResolved(list, title, originalTitle, year);
             if (cand != null && cand.imdbId != null && cand.imdbId.startsWith("tt")) {
                 if (year <= 1900 || cand.year <= 1900 || Math.abs(cand.year - year) <= 1) return cand;
             }
         }
-        return list.isEmpty() ? null : list.get(0);
+        return null;
     }
 
     public static String imdbFor(Context ctx, int tmdbId, String type) {

@@ -87,37 +87,40 @@ public final class NuvioSetup {
             };
             for (String[] pair : files) {
                 File target = new File(dl, pair[1]);
+                if (target.exists()) continue; // Do not overwrite user's existing configs!
                 copyAndEnrichAsset(app, pair[0], target, tmdbKey, mdbKey);
                 try {
                     app.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(target)));
                 } catch (Throwable ignored) {
                 }
             }
-            // Generate hardware-calibrated nuvio-preferences.json from TV Denetçisi telemetry
-            AvOptimizer.Report av = AvOptimizer.detect(app);
-            PerformanceProfile.Tier tier = PerformanceProfile.tier(app);
-            JSONObject prefs = new JSONObject();
-            prefs.put("calibrated_by", "CineTV TV Denetçisi");
-            prefs.put("preferred_audio_language", "tr");
-            prefs.put("preferred_subtitle_language", "tr");
-            prefs.put("secondary_audio_language", "en");
-            prefs.put("auto_select_subtitle", true);
-            prefs.put("hardware_accelerated_decoding", true);
-            prefs.put("tunneled_video_playback", av.is4kPanel());
-            prefs.put("match_frame_rate", "seamless");
-            prefs.put("max_resolution", av.is4kPanel() ? "2160p" : "1080p");
-            prefs.put("dolby_vision_enabled", av.dolbyVision);
-            prefs.put("hdr10_plus_enabled", av.hdr10Plus);
-            prefs.put("hdr10_enabled", av.hdr10);
-            prefs.put("hlg_enabled", av.hlg);
-            prefs.put("wide_color_gamut_bt2020", av.wideGamut);
-            prefs.put("digital_audio_passthrough", av.hdmiAudio || !av.encodings.isEmpty());
-            prefs.put("hdmi_earc", av.earc);
-            prefs.put("supported_audio_encodings", new JSONArray(av.encodings));
-            prefs.put("stream_buffer_size_mb", tier == PerformanceProfile.Tier.HIGH ? 128 : (tier == PerformanceProfile.Tier.MID ? 64 : 32));
             File prefFile = new File(dl, "nuvio-preferences.json");
-            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(prefFile)) {
-                fos.write(prefs.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            if (!prefFile.exists()) {
+                // Generate hardware-calibrated nuvio-preferences.json from TV Denetçisi telemetry only on first install
+                AvOptimizer.Report av = AvOptimizer.detect(app);
+                PerformanceProfile.Tier tier = PerformanceProfile.tier(app);
+                JSONObject prefs = new JSONObject();
+                prefs.put("calibrated_by", "CineTV TV Denetçisi");
+                prefs.put("preferred_audio_language", "tr");
+                prefs.put("preferred_subtitle_language", "tr");
+                prefs.put("secondary_audio_language", "en");
+                prefs.put("auto_select_subtitle", true);
+                prefs.put("hardware_accelerated_decoding", true);
+                prefs.put("tunneled_video_playback", av.is4kPanel());
+                prefs.put("match_frame_rate", "seamless");
+                prefs.put("max_resolution", av.is4kPanel() ? "2160p" : "1080p");
+                prefs.put("dolby_vision_enabled", av.dolbyVision);
+                prefs.put("hdr10_plus_enabled", av.hdr10Plus);
+                prefs.put("hdr10_enabled", av.hdr10);
+                prefs.put("hlg_enabled", av.hlg);
+                prefs.put("wide_color_gamut_bt2020", av.wideGamut);
+                prefs.put("digital_audio_passthrough", av.hdmiAudio || !av.encodings.isEmpty());
+                prefs.put("hdmi_earc", av.earc);
+                prefs.put("supported_audio_encodings", new JSONArray(av.encodings));
+                prefs.put("stream_buffer_size_mb", tier == PerformanceProfile.Tier.HIGH ? 128 : (tier == PerformanceProfile.Tier.MID ? 64 : 32));
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(prefFile)) {
+                    fos.write(prefs.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                }
             }
         } catch (Throwable t) {
             Log.w(TAG, "deployConfigs failed: " + t);

@@ -32,28 +32,12 @@ public final class NightCare {
 
     private NightCare() {}
 
-    /** Called once per process: re-arms a timer set before a restart and starts quiet hours. */
+    /** Called once per process: re-arms a sleep timer set before a restart. */
     public static synchronized void start(Context ctx) {
         if (started) return;
         started = true;
         final Context app = ctx.getApplicationContext();
         arm(app);
-        BroadcastReceiver volume = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context c, Intent i) {
-                capVolume(app);
-            }
-        };
-        // Android 13+ wants every receiver marked; the volume broadcast comes from the system
-        if (android.os.Build.VERSION.SDK_INT >= 33) app.registerReceiver(volume, new IntentFilter("android.media.VOLUME_CHANGED_ACTION"), Context.RECEIVER_EXPORTED);
-        else app.registerReceiver(volume, new IntentFilter("android.media.VOLUME_CHANGED_ACTION"));
-        main.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                capVolume(app);
-                main.postDelayed(this, 5 * 60 * 1000L);
-            }
-        }, 30_000L);
     }
 
     // ---- sleep timer ----------------------------------------------------------------------------
@@ -137,14 +121,10 @@ public final class NightCare {
 
     public static void setAudioActive(Context ctx, boolean on) {
         Prefs.get(ctx).edit().putBoolean(PREF_NIGHT_AUDIO, on).apply();
-        capVolume(ctx.getApplicationContext());
     }
 
     public static void setNightViewingMode(Context ctx, boolean on) {
         Prefs.get(ctx).edit().putBoolean(PREF_NIGHT_VIEW_MODE, on).apply();
-        if (on) {
-            setQuietHours(ctx, true);
-        }
     }
 
     /**
@@ -160,30 +140,10 @@ public final class NightCare {
     }
 
     public static boolean quietHours(Context ctx) {
-        return Prefs.get(ctx).getBoolean(QUIET, false);
+        return false;
     }
 
     public static void setQuietHours(Context ctx, boolean on) {
-        Prefs.get(ctx).edit().putBoolean(QUIET, on).apply();
-        capVolume(ctx.getApplicationContext());
-    }
-
-    private static boolean isNight() {
-        int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        return h >= QUIET_FROM || h < QUIET_TO;
-    }
-
-    private static void capVolume(Context app) {
-        // Only when the viewer turned quiet hours on, only at night, and never on headphones (they wake nobody):
-        // the old check also capped any playing audio at 30% with quiet hours off.
-        if (!quietHours(app) || !isNight() || AirPodsLink.isHeadphoneConnected(app)) return;
-        try {
-            AudioManager am = (AudioManager) app.getSystemService(Context.AUDIO_SERVICE);
-            if (am == null) return;
-            int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-            int cap = Math.max(1, Math.round(max * QUIET_CAP));
-            if (am.getStreamVolume(AudioManager.STREAM_MUSIC) > cap) am.setStreamVolume(AudioManager.STREAM_MUSIC, cap, 0);
-        } catch (Throwable ignored) {
-        }
+        // Feature removed per user request
     }
 }

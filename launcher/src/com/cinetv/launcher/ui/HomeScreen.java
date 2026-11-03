@@ -1166,6 +1166,10 @@ public class HomeScreen {
                         tr ? "Kutu açıkken ▲/▼ ile bilgi kitapçığını ve künye sayfalarını çevirebilir, ▶ ile tam ekran fragman açabilirsin."
                            : "While a DVD is open, press ▲/▼ to flip through booklet pages or ▶ for the fullscreen trailer.",
                         null, null),
+                new TourView.Step(shelf, R.string.tour_similar_t, R.string.tour_similar, null, ch2,
+                        tr ? "Kumandadaki SARI tuş: Odaktaki filmin benzerlerini vitrinde anında listeler!"
+                           : "Remote YELLOW key: Instantly lists movies similar to the focused film on the shelf!",
+                        null, null),
                 new TourView.Step(gear, R.string.tour_trailers_t, R.string.tour_trailers, null, ch2,
                         tr ? "DVD içindeki fragman sesi yumuşak geçişle (crossfade) duyulur; Ayarlar › Fragman Sesi ile sessize alınabilir."
                            : "In-case trailer audio fades in smoothly and can be muted anytime in Settings › Trailer Audio.",
