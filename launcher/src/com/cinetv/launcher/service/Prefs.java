@@ -153,16 +153,22 @@ public final class Prefs {
     public static final String UI_SCALE = "pref_ui_scale_level";
     public static final String FONT_SCALE = "pref_font_scale_level";
 
+    public static int clampScaleLevel(int level) {
+        return Math.max(-2, Math.min(3, level));
+    }
+
     public static int uiScaleLevel(Context ctx) {
-        return get(ctx).getInt(UI_SCALE, 1);
+        return clampScaleLevel(get(ctx).getInt(UI_SCALE, 1));
     }
 
     public static void setUiScaleLevel(Context ctx, int level) {
-        get(ctx).edit().putInt(UI_SCALE, Math.abs(level) % 4).apply();
+        get(ctx).edit().putInt(UI_SCALE, clampScaleLevel(level)).apply();
     }
 
-    public static float uiScaleMultiplier(Context ctx) {
-        switch (uiScaleLevel(ctx)) {
+    public static float uiScaleMultiplierForLevel(int level) {
+        switch (clampScaleLevel(level)) {
+            case -2: return 0.72f;
+            case -1: return 0.80f;
             case 0: return 0.88f;
             case 2: return 1.14f;
             case 3: return 1.28f;
@@ -171,9 +177,14 @@ public final class Prefs {
         }
     }
 
-    public static String uiScaleLabel(Context ctx) {
-        boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
-        switch (uiScaleLevel(ctx)) {
+    public static float uiScaleMultiplier(Context ctx) {
+        return uiScaleMultiplierForLevel(uiScaleLevel(ctx));
+    }
+
+    public static String uiScaleLabelForLevel(int level, boolean tr) {
+        switch (clampScaleLevel(level)) {
+            case -2: return tr ? "En Küçük (%72)" : "Smallest (72%)";
+            case -1: return tr ? "Çok Küçük (%80)" : "Extra Small (80%)";
             case 0: return tr ? "Küçük (%88)" : "Small (88%)";
             case 2: return tr ? "Büyük (%114)" : "Large (114%)";
             case 3: return tr ? "Çok Büyük (%128)" : "Extra Large (128%)";
@@ -182,16 +193,23 @@ public final class Prefs {
         }
     }
 
+    public static String uiScaleLabel(Context ctx) {
+        boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+        return uiScaleLabelForLevel(uiScaleLevel(ctx), tr);
+    }
+
     public static int fontScaleLevel(Context ctx) {
-        return get(ctx).getInt(FONT_SCALE, 1);
+        return clampScaleLevel(get(ctx).getInt(FONT_SCALE, 1));
     }
 
     public static void setFontScaleLevel(Context ctx, int level) {
-        get(ctx).edit().putInt(FONT_SCALE, Math.abs(level) % 4).apply();
+        get(ctx).edit().putInt(FONT_SCALE, clampScaleLevel(level)).apply();
     }
 
-    public static float fontScaleMultiplier(Context ctx) {
-        switch (fontScaleLevel(ctx)) {
+    public static float fontScaleMultiplierForLevel(int level) {
+        switch (clampScaleLevel(level)) {
+            case -2: return 0.75f;
+            case -1: return 0.82f;
             case 0: return 0.90f;
             case 2: return 1.15f;
             case 3: return 1.30f;
@@ -200,15 +218,25 @@ public final class Prefs {
         }
     }
 
-    public static String fontScaleLabel(Context ctx) {
-        boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
-        switch (fontScaleLevel(ctx)) {
+    public static float fontScaleMultiplier(Context ctx) {
+        return fontScaleMultiplierForLevel(fontScaleLevel(ctx));
+    }
+
+    public static String fontScaleLabelForLevel(int level, boolean tr) {
+        switch (clampScaleLevel(level)) {
+            case -2: return tr ? "En Küçük (%75)" : "Smallest (75%)";
+            case -1: return tr ? "Çok Küçük (%82)" : "Extra Small (82%)";
             case 0: return tr ? "Küçük (%90)" : "Small (90%)";
             case 2: return tr ? "Büyük (%115)" : "Large (115%)";
             case 3: return tr ? "Çok Büyük (%130)" : "Extra Large (130%)";
             case 1:
             default: return tr ? "Standart (%100)" : "Standard (100%)";
         }
+    }
+
+    public static String fontScaleLabel(Context ctx) {
+        boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+        return fontScaleLabelForLevel(fontScaleLevel(ctx), tr);
     }
 
     public static final String TRAILER_AUDIO = "pref_trailer_audio_v2";

@@ -31,23 +31,23 @@ public final class Uninstaller {
     /** Null when uninstalling started, otherwise the message to show. Blocks briefly; call off the main thread. */
     public static String run(Context ctx) {
         com.cinetv.launcher.service.Prefs.get(ctx).edit().putBoolean(REMOVING, true).putLong(REMOVING_AT, System.currentTimeMillis()).commit();
-        // Restore every journaled package before checking for another usable Home activity.
+        // Restore every journaled package AND any deleted/disabled stock launcher before checking for another usable Home activity.
         String restoreCommand = DeviceTweaks.undoPowerProps()
+                + HomeLaunchers.stockRestoreCommands(ctx)
                 + "restore_failed=0; "
                 + "if [ -f /sdcard/cinetv-debloat.txt ]; then "
                         + "  restore_failed=0; "
                         + "  while read -r action pkg; do "
                         + "    case \"$action\" in "
-                        + "      disabled) pm enable \"$pkg\" >/dev/null 2>&1 || restore_failed=1 ;; "
-                        + "      uninstalled) cmd package install-existing --user 0 \"$pkg\" >/dev/null 2>&1 || restore_failed=1 ;; "
+                        + "      disabled) pm enable --user 0 \"$pkg\" >/dev/null 2>&1 || pm enable \"$pkg\" >/dev/null 2>&1 || restore_failed=1 ;; "
+                        + "      uninstalled) cmd package install-existing --user 0 \"$pkg\" >/dev/null 2>&1 || pm enable \"$pkg\" >/dev/null 2>&1 || restore_failed=1 ;; "
                         + "    esac; "
                         + "  done < /sdcard/cinetv-debloat.txt; "
                         + "  [ \"$restore_failed\" -ne 0 ] || rm -f /sdcard/cinetv-debloat.txt; "
                         + "fi; "
-                        + "for l in com.google.android.tvlauncher com.google.android.apps.tv.launcherx com.google.android.leanbacklauncher; do pm enable $l 2>/dev/null; done; "
                         + "if [ \"$restore_failed\" -eq 0 ] && [ ! -f /sdcard/cinetv-debloat.txt ]; then "
                         + "echo __CINETV_RESTORE_OK__; else echo __CINETV_RESTORE_FAILED__; fi";
-        byte[] restoreOutput = LocalAdb.exec(ctx, restoreCommand, 8000);
+        byte[] restoreOutput = LocalAdb.exec(ctx, restoreCommand, 15_000);
         String restoreStatus = restoreOutput == null ? "" : new String(restoreOutput, java.nio.charset.StandardCharsets.UTF_8);
         if (!restoreStatus.contains("__CINETV_RESTORE_OK__") || restoreStatus.contains("__CINETV_RESTORE_FAILED__")) {
             android.util.Log.e("CineTvUninstaller", "Could not verify restoration of journaled TV apps");
@@ -61,27 +61,7 @@ public final class Uninstaller {
         if (!otherHomeAvailable(ctx)) {
             return abort(ctx, R.string.destroy_no_home);
         }
-        try { AvOptimizer.restore(ctx); } catch (Throwable ignored) { }
-        try { NetworkOptimizer.restore(ctx); } catch (Throwable ignored) { }
-        try { NetworkOptimizer.apply(ctx, NetworkOptimizer.DNS_OFF); } catch (Throwable ignored) { }
-        try { PictureCalibration.reset(ctx); } catch (Throwable ignored) { }
-        try { DeviceTweaks.restoreOriginals(ctx); } catch (Throwable ignored) { }
-        // the launchers switched off from Settings › Varsayılan Başlatıcı come back
-        try { HomeLaunchers.restoreOthers(ctx); } catch (Throwable ignored) { }
-        // Google's assistant back as CineTV found it (only if CineTV switched it off), and the assistant role returned
-        try {
-            com.cinetv.launcher.remote.LocalAdb.shell(ctx, com.cinetv.launcher.device.MemoryOptimizer.compactionRestoreCommand()
-                    + "cmd notification disallow_listener " + ctx.getPackageName() + "/com.cinetv.launcher.service.NuvioPlaybackListenerService 0 2>/dev/null; "
-                    + "[ \"$(settings get global cinetv_katniss_off)\" = 1 ] && pm enable com.google.android.katniss >/dev/null 2>&1; "
-                    + "settings delete global cinetv_katniss_off 2>/dev/null; "
-                    + "cmd role remove-role-holder --user 0 android.app.role.ASSISTANT " + ctx.getPackageName() + " 0 2>/dev/null; "
-                    + "cmd role add-role-holder --user 0 android.app.role.ASSISTANT com.google.android.katniss 0 2>/dev/null", 6000);
-        } catch (Throwable ignored) { }
-        // AirPods surround keys and the output virtualizer, exactly as the TV had them.
-        try { AirPodsLink.restoreSurround(ctx); } catch (Throwable ignored) { }
-        // CineTV chosen as the default player, assistant or search: clearing its preferred activities (below)
-        // hands those back to the TV; Nuvio falls back to its own player once CineTV is gone.
-        try { MemoryOptimizer.restoreTvOptimizations(ctx); } catch (Throwable ignored) { }
+        try { DeviceTweaks.restoreAllToPreInstallState(ctx, true); } catch (Throwable ignored) { }
         // The files CineTV put in Downloads for Nuvio and for reports.
         for (String f : new String[]{"alptugun-filmleri-template.json", "xperience-kategori-setup-profile.json", "aiometadata-config.json",
                 "cinetv_verified_device.json"}) {

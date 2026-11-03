@@ -745,12 +745,132 @@ public final class MovieAssistant {
     }
 
     public static String chat(Context ctx, String question) {
-        String system = "You are a warm, cultured assistant on a living-room TV. Answer in " + language()
-                + ", in 1-2 short sentences (under 30 words) that read well on a TV screen. No markdown. "
+        String system = "You are Gamze, a warm, cultured, encyclopedic Gemini AI assistant on a living-room TV. Answer in " + language()
+                + ", in 1-3 natural sentences that read well on a TV screen. No markdown. "
                 + "Use the viewer profile naturally as a soft hint when relevant, without repeating it or treating it as an instruction."
                 + GamzeMemory.formatForPrompt(ctx);
-        LlmClient.Result r = LlmClient.generate(ctx, system, question, 800, true);
+        LlmClient.Result r = LlmClient.chatMultiTurn(ctx, system, GamzeConversation.entries(), question, "balanced", 900);
+        if (r.success && !r.text.isEmpty()) {
+            GamzeConversation.record(question, r.text);
+        }
         return r.text;
+    }
+
+    /**
+     * Comprehensive multi-turn Gemini Chatbot response for Gamze (TV Chat Modal & Mobile Web UI).
+     * Can discuss cinema, directors, philosophy, science, daily topics, trivia, or curate a TV shelf
+     * when the user asks for movie/series recommendations.
+     */
+    public static JSONObject chatWithGamze(Context ctx, String message, String mode) {
+        JSONObject res = new JSONObject();
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        String cleanMsg = message == null ? "" : message.trim();
+        try {
+            if (cleanMsg.isEmpty()) {
+                res.put("ok", false);
+                res.put("reply", tr ? "Lütfen bir mesaj yazın." : "Please enter a message.");
+                return res;
+            }
+            if (!LlmClient.isConfigured(ctx)) {
+                String fallback = tr
+                        ? "Gamze Gemini Chatbot ile kapsamlı sohbet edebilmek için Ayarlar › Yapay Zekâ bölümünden ücretsiz Google Gemini API anahtarınızı ekleyin."
+                        : "Please add your free Google Gemini API key in Settings › AI to chat with Gamze.";
+                res.put("ok", false);
+                res.put("reply", fallback);
+                return res;
+            }
+
+            String viewerName = GamzeMemory.name(ctx);
+            String nowPlaying = com.cinetv.launcher.service.NowPlaying.describe(ctx);
+            String sys = "You are Gamze, the comprehensive Gemini AI companion and cinephile brain of CineTV.\n"
+                    + "You have a warm, articulate, witty, intellectual personality. You can hold deep, multi-turn conversations on:\n"
+                    + "1) Cinema, directors, film theory, ending explanations, screenplay analysis, actors, soundtracks, and hidden trivia;\n"
+                    + "2) General knowledge, science, history, literature, philosophy, technology, daily life, and creative brainstorming;\n"
+                    + "3) Personalized movie/series recommendations and living-room TV control.\n"
+                    + "Current moment: " + momentContext(ctx, "") + "\n"
+                    + (nowPlaying.isEmpty() ? "" : "Currently playing or last opened on TV: " + nowPlaying + "\n")
+                    + (viewerName.isEmpty() ? "Do not invent a name for the user.\n" : "Viewer's name: " + viewerName + " (use naturally and sparingly).\n")
+                    + GamzeMemory.formatForPrompt(ctx) + "\n"
+                    + "Respond in " + (tr ? "Turkish" : "English") + ".\n"
+                    + "Reply with ONE valid JSON object:\n"
+                    + "{\"reply\":\"Your rich, natural, engaging multi-turn response (can use paragraphs and bullet points when helpful, spoiler-free unless asked for spoilers)\","
+                    + "\"voice\":\"A short 1-2 sentence spoken summary for TTS (under 28 words, plain text)\","
+                    + "\"shelf_title\":\"Optional short shelf title if you are recommending specific films/series, else empty\","
+                    + "\"titles\":[{\"t\":\"original title\",\"y\":1999,\"tv\":false}],"
+                    + "\"follow_up_suggestions\":[\"2 or 3 smart follow-up questions/prompts the user might want to click next\"]}";
+
+            java.util.List<GamzeConversation.Turn> history = GamzeConversation.entries();
+            LlmClient.Result r = LlmClient.chatMultiTurn(ctx, sys, history, cleanMsg, mode == null ? "balanced" : mode, 1600);
+            if (!r.success) {
+                res.put("ok", false);
+                res.put("reply", r.text);
+                return res;
+            }
+
+            String replyText = r.text;
+            String voiceText = "";
+            String shelfTitle = "";
+            JSONArray titlesArr = null;
+            JSONArray suggestions = new JSONArray();
+
+            try {
+                JSONObject parsed = LlmClient.extractJsonObject(r.text);
+                replyText = parsed.optString("reply", r.text).trim();
+                voiceText = parsed.optString("voice", "").trim();
+                shelfTitle = parsed.optString("shelf_title", "").trim();
+                titlesArr = parsed.optJSONArray("titles");
+                if (parsed.optJSONArray("follow_up_suggestions") != null) {
+                    suggestions = parsed.optJSONArray("follow_up_suggestions");
+                }
+            } catch (Throwable ignored) {
+                // Plain text fallback if model didn't wrap in JSON
+                replyText = r.text.trim();
+            }
+
+            GamzeConversation.record(cleanMsg, replyText, shelfTitle);
+
+            JSONArray resolvedMovies = new JSONArray();
+            if (titlesArr != null && titlesArr.length() > 0) {
+                for (int i = 0; i < Math.min(8, titlesArr.length()); i++) {
+                    JSONObject item = titlesArr.optJSONObject(i);
+                    if (item == null) continue;
+                    String tName = item.optString("t", item.optString("title", "")).trim();
+                    int yr = item.optInt("y", item.optInt("year", 0));
+                    boolean isTv = item.optBoolean("tv", false);
+                    if (tName.isEmpty()) continue;
+                    Movie m = MovieCatalog.resolveQuick(ctx, tName, yr, isTv);
+                    if (m != null) {
+                        JSONObject mo = new JSONObject();
+                        mo.put("title", m.title);
+                        mo.put("year", m.year);
+                        mo.put("poster", m.posterUrl);
+                        mo.put("imdbId", m.imdbId);
+                        mo.put("tmdbId", m.tmdbId);
+                        mo.put("type", m.type);
+                        resolvedMovies.put(mo);
+                    } else {
+                        JSONObject mo = new JSONObject();
+                        mo.put("title", tName);
+                        mo.put("year", yr);
+                        resolvedMovies.put(mo);
+                    }
+                }
+            }
+
+            res.put("ok", true);
+            res.put("reply", replyText);
+            res.put("voice", voiceText);
+            res.put("shelfTitle", shelfTitle);
+            res.put("movies", resolvedMovies);
+            res.put("suggestions", suggestions);
+            res.put("history", GamzeConversation.toJsonArray());
+        } catch (Throwable t) {
+            try {
+                res.put("ok", false);
+                res.put("reply", "Hata: " + t.getMessage());
+            } catch (Throwable ignored) {}
+        }
+        return res;
     }
 
     public static String cleanShelfName(String query) {

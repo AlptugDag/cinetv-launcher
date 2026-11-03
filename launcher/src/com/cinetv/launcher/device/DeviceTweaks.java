@@ -27,8 +27,13 @@ public final class DeviceTweaks {
                 == android.content.pm.PackageManager.PERMISSION_GRANTED;
     }
 
+    private static volatile boolean nameObserverRegistered;
+    private static volatile String lastSyncedAirPlayName;
+
     /** CineTV screensaver after 5 minutes, panel sleep after 15, and the remote-key service on. */
     public static void applyLauncherDefaults(Context ctx) {
+        syncAirPlayDeviceName(ctx);
+        registerDeviceNameObserver(ctx);
         if (!canWriteSecureSettings(ctx)) return;
         ContentResolver cr = ctx.getContentResolver();
         snapshotOriginals(ctx);
@@ -42,6 +47,103 @@ public final class DeviceTweaks {
         }
         enableKeyService(ctx);
         applyFastBootTweaks(ctx);
+    }
+
+    /**
+     * Watches the TV's own device name settings (Global device_name, Secure bluetooth_name, System device_name)
+     * so whenever the user renames the TV in the TV's own Settings, AirPlay and companion discovery immediately
+     * adopt the exact same name.
+     */
+    public static synchronized void registerDeviceNameObserver(Context ctx) {
+        if (ctx == null || nameObserverRegistered) return;
+        nameObserverRegistered = true;
+        final Context app = ctx.getApplicationContext();
+        try {
+            ContentResolver cr = app.getContentResolver();
+            android.database.ContentObserver obs = new android.database.ContentObserver(
+                    new android.os.Handler(android.os.Looper.getMainLooper())) {
+                @Override
+                public void onChange(boolean selfChange) {
+                    syncAirPlayDeviceName(app);
+                    com.cinetv.launcher.remote.PeerDiscovery.refreshServiceName(app);
+                }
+            };
+            cr.registerContentObserver(Settings.Global.getUriFor("device_name"), false, obs);
+            cr.registerContentObserver(Settings.Secure.getUriFor("bluetooth_name"), false, obs);
+            cr.registerContentObserver(Settings.System.getUriFor("device_name"), false, obs);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * Ensures the AirPlay receiver (io.github.jqssun.airplay and other AirPlay services), Bluetooth adapter,
+     * Wi-Fi Direct, and Android system settings all advertise the exact name the user gave the TV in the TV's own Settings.
+     */
+    public static void syncAirPlayDeviceName(Context ctx) {
+        if (ctx == null) return;
+        final Context app = ctx.getApplicationContext();
+        final String tvName = com.cinetv.launcher.remote.RemotePairing.tvName(app);
+        if (tvName == null || tvName.isEmpty()) return;
+
+        try {
+            if (canWriteSecureSettings(app)) {
+                ContentResolver cr = app.getContentResolver();
+                String curGlobal = Settings.Global.getString(cr, "device_name");
+                if (!tvName.equals(curGlobal)) Settings.Global.putString(cr, "device_name", tvName);
+                String curBt = Settings.Secure.getString(cr, "bluetooth_name");
+                if (!tvName.equals(curBt)) Settings.Secure.putString(cr, "bluetooth_name", tvName);
+                try {
+                    String curSys = Settings.System.getString(cr, "device_name");
+                    if (!tvName.equals(curSys)) Settings.System.putString(cr, "device_name", tvName);
+                    Settings.System.putString(cr, "bluetooth_name", tvName);
+                } catch (Throwable ignored) {}
+                try {
+                    Settings.Global.putString(cr, "wifi_p2p_device_name", tvName);
+                } catch (Throwable ignored) {}
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            android.bluetooth.BluetoothAdapter bt = android.bluetooth.BluetoothAdapter.getDefaultAdapter();
+            if (bt != null && !tvName.equals(bt.getName())) {
+                bt.setName(tvName);
+            }
+        } catch (Throwable ignored) {
+        }
+
+        if (tvName.equals(lastSyncedAirPlayName)) return;
+        lastSyncedAirPlayName = tvName;
+
+        new Thread(() -> {
+            try {
+                String safeShellName = tvName.replace("'", "'\\''");
+                String safeXmlName = tvName.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;");
+                StringBuilder cmd = new StringBuilder();
+                cmd.append("settings put global device_name '").append(safeShellName).append("' 2>/dev/null; ");
+                cmd.append("settings put secure bluetooth_name '").append(safeShellName).append("' 2>/dev/null; ");
+                cmd.append("settings put system device_name '").append(safeShellName).append("' 2>/dev/null; ");
+                cmd.append("settings put system bluetooth_name '").append(safeShellName).append("' 2>/dev/null; ");
+                cmd.append("settings put global wifi_p2p_device_name '").append(safeShellName).append("' 2>/dev/null; ");
+                cmd.append("setprop persist.sys.device_name '").append(safeShellName).append("' 2>/dev/null; ");
+                cmd.append("for apkg in io.github.jqssun.airplay com.waxrain.airplaydmr com.ionitech.airscreen; do ");
+                cmd.append("  if pm list packages 2>/dev/null | grep -qx \"package:$apkg\"; then ");
+                cmd.append("    pm grant \"$apkg\" android.permission.BLUETOOTH_CONNECT 2>/dev/null; ");
+                cmd.append("    pm grant \"$apkg\" android.permission.BLUETOOTH_SCAN 2>/dev/null; ");
+                cmd.append("    pm grant \"$apkg\" android.permission.WRITE_SECURE_SETTINGS 2>/dev/null; ");
+                cmd.append("    appops set \"$apkg\" SYSTEM_ALERT_WINDOW allow 2>/dev/null; ");
+                cmd.append("    for pf in \"/data/data/$apkg/shared_prefs/${apkg}_preferences.xml\" \"/data/data/$apkg/shared_prefs/airplay.xml\" \"/data/data/$apkg/shared_prefs/config.xml\"; do ");
+                cmd.append("      if [ -w \"$(dirname \"$pf\")\" ] || [ -w \"$pf\" ]; then ");
+                cmd.append("        printf '<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\" ?>\\n<map>\\n<string name=\"device_name\">%s</string>\\n<string name=\"server_name\">%s</string>\\n<string name=\"airplay_name\">%s</string>\\n<string name=\"name\">%s</string>\\n</map>\\n' '")
+                   .append(safeXmlName).append("' '").append(safeXmlName).append("' '").append(safeXmlName).append("' '").append(safeXmlName).append("' > \"$pf\" 2>/dev/null; ");
+                cmd.append("      fi; ");
+                cmd.append("    done; ");
+                cmd.append("    am broadcast -a io.github.jqssun.airplay.ACTION_SET_NAME --es name '").append(safeShellName).append("' --es device_name '").append(safeShellName).append("' \"$apkg\" 2>/dev/null; ");
+                cmd.append("  fi; ");
+                cmd.append("done; ");
+                com.cinetv.launcher.remote.LocalAdb.shell(app, cmd.toString(), 4000);
+            } catch (Throwable ignored) {
+            }
+        }, "cinetv-airplay-name").start();
     }
 
     /**
@@ -66,45 +168,141 @@ public final class DeviceTweaks {
                 + "[ \"$(getprop persist.sys.power.quickboot)\" = 1 ] && setprop persist.sys.power.quickboot '' 2>/dev/null; ";
     }
 
-    // ---- the TV's own values, kept so "Remove CineTV" can put everything back -------------------------
+    // ---- the TV's own values, kept so "Remove CineTV" or "Restore Pre-APK State" can put everything back ----
 
     private static final String ORIGINALS = "tv_originals_v1";
+    private static final String BASELINE_FILE = "/sdcard/.cinetv_baseline_snapshot.json";
     private static final String[][] TRACKED = {
-            {"system", Settings.System.SCREEN_OFF_TIMEOUT}, {"secure", "sleep_timeout"}, {"secure", "screensaver_timeout"},
-            {"secure", "screensaver_enabled"}, {"secure", "screensaver_components"},
-            {"secure", Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES}, {"secure", Settings.Secure.ACCESSIBILITY_ENABLED}};
+            {"system", Settings.System.SCREEN_OFF_TIMEOUT},
+            {"system", Settings.System.FONT_SCALE},
+            {"secure", "sleep_timeout"},
+            {"secure", "screensaver_timeout"},
+            {"secure", "screensaver_enabled"},
+            {"secure", "screensaver_components"},
+            {"secure", "screensaver_activate_on_sleep"},
+            {"secure", Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES},
+            {"secure", Settings.Secure.ACCESSIBILITY_ENABLED},
+            {"secure", "assistant"},
+            {"secure", "voice_interaction_service"},
+            {"secure", "voice_recognition_service"},
+            {"secure", "minimal_post_processing_allowed"},
+            {"secure", "match_content_frame_rate"},
+            {"secure", "odi_captions_enabled"},
+            {"secure", "night_display_activated"},
+            {"secure", "night_display_color_temperature"},
+            {"secure", "ui_night_mode"},
+            {"global", Settings.Global.WINDOW_ANIMATION_SCALE},
+            {"global", Settings.Global.TRANSITION_ANIMATION_SCALE},
+            {"global", Settings.Global.ANIMATOR_DURATION_SCALE},
+            {"global", "cached_apps_freezer"},
+            {"global", "private_dns_mode"},
+            {"global", "private_dns_specifier"},
+            {"global", "wifi_scan_always_enabled"},
+            {"global", "ble_scan_always_enabled"},
+            {"global", "wifi_sleep_policy"},
+            {"global", "hdmi_control_enabled"},
+            {"global", "hdmi_control_auto_wakeup_enabled"},
+            {"global", "hdmi_control_auto_device_off_enabled"},
+            {"global", "encoded_surround_output"},
+            {"global", "surround_sound_supported"}
+    };
 
-    /** First time only: remembers the values CineTV is about to change. */
-    static void snapshotOriginals(Context ctx) {
-        android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(ctx);
-        if (p.contains(ORIGINALS)) return;
+    private static String readSetting(ContentResolver cr, String ns, String key) {
         try {
-            org.json.JSONObject o = new org.json.JSONObject();
-            ContentResolver cr = ctx.getContentResolver();
-            for (String[] t : TRACKED) {
-                String v = "system".equals(t[0]) ? Settings.System.getString(cr, t[1]) : Settings.Secure.getString(cr, t[1]);
-                o.put(t[0] + ":" + t[1], v == null ? org.json.JSONObject.NULL : v);
+            if ("system".equals(ns)) return Settings.System.getString(cr, key);
+            if ("global".equals(ns)) return Settings.Global.getString(cr, key);
+            return Settings.Secure.getString(cr, key);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static void writeSetting(ContentResolver cr, String ns, String key, String val) {
+        try {
+            if ("system".equals(ns)) {
+                if (val != null) Settings.System.putString(cr, key, val);
+            } else if ("global".equals(ns)) {
+                Settings.Global.putString(cr, key, val);
+            } else {
+                Settings.Secure.putString(cr, key, val);
             }
-            p.edit().putString(ORIGINALS, o.toString()).apply();
         } catch (Throwable ignored) {
         }
     }
 
-    /** Puts back what CineTV changed (timeouts, screensaver, accessibility) and drops its own keys. */
+    /** First time only: remembers the values CineTV is about to change, saving to both SharedPreferences and /sdcard/.cinetv_baseline_snapshot.json. */
+    public static void snapshotOriginals(Context ctx) {
+        if (ctx == null) return;
+        HomeLaunchers.recordOriginalHomeIfNeeded(ctx);
+        android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(ctx);
+        java.io.File baselineFile = new java.io.File(BASELINE_FILE);
+        if (!p.contains(ORIGINALS) && baselineFile.isFile() && baselineFile.length() > 10) {
+            try {
+                byte[] bytes = java.nio.file.Files.readAllBytes(baselineFile.toPath());
+                String jsonStr = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+                org.json.JSONObject existing = new org.json.JSONObject(jsonStr);
+                p.edit().putString(ORIGINALS, existing.toString()).apply();
+                String origHome = existing.optString("meta:original_home_pkg", "");
+                if (!origHome.isEmpty() && p.getString("original_home_pkg", "").isEmpty()) {
+                    p.edit().putString("original_home_pkg", origHome).apply();
+                }
+                return;
+            } catch (Throwable ignored) {
+            }
+        }
+        if (p.contains(ORIGINALS)) {
+            if (!baselineFile.exists()) {
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(baselineFile)) {
+                    fos.write(p.getString(ORIGINALS, "{}").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                } catch (Throwable ignored) {
+                }
+            }
+            return;
+        }
+        try {
+            org.json.JSONObject o = new org.json.JSONObject();
+            ContentResolver cr = ctx.getContentResolver();
+            for (String[] t : TRACKED) {
+                String v = readSetting(cr, t[0], t[1]);
+                o.put(t[0] + ":" + t[1], v == null ? org.json.JSONObject.NULL : v);
+            }
+            String origHome = p.getString("original_home_pkg", "");
+            if (!origHome.isEmpty()) {
+                o.put("meta:original_home_pkg", origHome);
+            }
+            o.put("meta:timestamp", System.currentTimeMillis());
+            p.edit().putString(ORIGINALS, o.toString()).apply();
+            if (!baselineFile.exists()) {
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(baselineFile)) {
+                    fos.write(o.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                } catch (Throwable ignored) {
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /** Puts back what CineTV changed (timeouts, screensaver, accessibility, animations, DNS, audio, etc.) and drops its own keys. */
     public static void restoreOriginals(Context ctx) {
+        if (ctx == null) return;
         ContentResolver cr = ctx.getContentResolver();
         try {
-            org.json.JSONObject o = new org.json.JSONObject(com.cinetv.launcher.service.Prefs.get(ctx).getString(ORIGINALS, "{}"));
+            String raw = com.cinetv.launcher.service.Prefs.get(ctx).getString(ORIGINALS, "");
+            java.io.File baselineFile = new java.io.File(BASELINE_FILE);
+            if ((raw == null || raw.isEmpty() || "{}".equals(raw)) && baselineFile.isFile()) {
+                raw = new String(java.nio.file.Files.readAllBytes(baselineFile.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+            }
+            org.json.JSONObject o = new org.json.JSONObject(raw == null || raw.isEmpty() ? "{}" : raw);
+            String origHome = o.optString("meta:original_home_pkg", "");
+            if (!origHome.isEmpty()) {
+                com.cinetv.launcher.service.Prefs.get(ctx).edit().putString("original_home_pkg", origHome).commit();
+            }
             for (String[] t : TRACKED) {
                 String key = t[0] + ":" + t[1];
+                if (!o.has(key)) continue;
                 String v = o.isNull(key) ? null : o.optString(key, null);
-                // Values that still point at CineTV were not the TV's own: clear them.
                 if (v != null && v.contains("com.cinetv.launcher")) v = stripCineTv(v);
-                if ("system".equals(t[0])) {
-                    if (v != null) Settings.System.putString(cr, t[1], v);
-                } else {
-                    Settings.Secure.putString(cr, t[1], v);
-                }
+                writeSetting(cr, t[0], t[1], v);
             }
         } catch (Throwable ignored) {
         }
@@ -119,6 +317,55 @@ public final class DeviceTweaks {
             Settings.Global.putString(cr, "cinetv_dock", null);
         } catch (Throwable ignored) {
         }
+    }
+
+    /**
+     * Comprehensive rollback that restores the TV to its exact pre-APK installation state:
+     * re-installs and re-enables all stock launchers and any debloated packages, resets display size/density/font_scale,
+     * restores animation scales, audio/AV/network/picture settings, assistant role, and optionally restores the default Home launcher.
+     */
+    public static boolean restoreAllToPreInstallState(Context ctx, boolean handBackHomeLauncher) {
+        if (ctx == null) return false;
+        try { AvOptimizer.restore(ctx); } catch (Throwable ignored) { }
+        try { NetworkOptimizer.restore(ctx); } catch (Throwable ignored) { }
+        try { NetworkOptimizer.apply(ctx, NetworkOptimizer.DNS_OFF); } catch (Throwable ignored) { }
+        try { PictureCalibration.reset(ctx); } catch (Throwable ignored) { }
+        try { AirPodsLink.restoreSurround(ctx); } catch (Throwable ignored) { }
+        try { MemoryOptimizer.restoreTvOptimizations(ctx); } catch (Throwable ignored) { }
+        try { restoreOriginals(ctx); } catch (Throwable ignored) { }
+
+        String pkg = ctx.getPackageName();
+        String shellCmd = undoPowerProps()
+                + MemoryOptimizer.compactionRestoreCommand()
+                + HomeLaunchers.stockRestoreCommands(ctx)
+                + "if [ -f /sdcard/cinetv-debloat.txt ]; then "
+                + "  while read -r action dpkg; do "
+                + "    case \"$action\" in "
+                + "      disabled) pm enable --user 0 \"$dpkg\" >/dev/null 2>&1 || pm enable \"$dpkg\" >/dev/null 2>&1 ;; "
+                + "      uninstalled) cmd package install-existing --user 0 \"$dpkg\" >/dev/null 2>&1 || pm enable \"$dpkg\" >/dev/null 2>&1 ;; "
+                + "    esac; "
+                + "  done < /sdcard/cinetv-debloat.txt; "
+                + "  rm -f /sdcard/cinetv-debloat.txt; "
+                + "fi; "
+                + "wm size reset >/dev/null 2>&1; "
+                + "wm density reset >/dev/null 2>&1; "
+                + "settings put global window_animation_scale 1.0 2>/dev/null; "
+                + "settings put global transition_animation_scale 1.0 2>/dev/null; "
+                + "settings put global animator_duration_scale 1.0 2>/dev/null; "
+                + "settings put system font_scale 1.0 2>/dev/null; "
+                + "[ \"$(settings get global cinetv_katniss_off)\" = 1 ] && pm enable com.google.android.katniss >/dev/null 2>&1; "
+                + "settings delete global cinetv_katniss_off 2>/dev/null; "
+                + "cmd role remove-role-holder --user 0 android.app.role.ASSISTANT " + pkg + " 0 2>/dev/null; "
+                + "cmd role add-role-holder --user 0 android.app.role.ASSISTANT com.google.android.katniss 0 2>/dev/null; ";
+
+        boolean ok = com.cinetv.launcher.remote.LocalAdb.shell(ctx, shellCmd, 15_000);
+        if (handBackHomeLauncher) {
+            HomeLaunchers.restoreOthers(ctx);
+        } else {
+            HomeLaunchers.ensureStockLaunchersReady(ctx);
+            enableKeyService(ctx);
+        }
+        return ok;
     }
 
     private static String stripCineTv(String list) {

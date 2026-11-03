@@ -22,11 +22,23 @@ if [ -z "$DEVICE" ]; then
     exit 1
 fi
 
-# Core packages per platform. Only packages that exist on the firmware are touched.
+# Core packages per platform, including default stock launchers. Only packages that exist on the firmware are touched.
 CORE_PACKAGES=(
     "com.mediatek.wwtv.tvcenter"        # MediaTek TV app (HDMI / picture / HDR / inputs)
     "com.mediatek.wwtv.tvcenter.rro"    # its resource overlay
     "com.mediatek.tv.factory"           # persistent factory command service
+    "com.google.android.tvlauncher"     # Android TV stock launcher
+    "com.google.android.apps.tv.launcherx" # Google TV stock launcher
+    "com.google.android.leanbacklauncher"  # Leanback stock launcher
+    "com.android.tv.launcher"
+    "com.mitv.tvhome"
+    "com.xiaomi.mitv.tvhome"
+    "com.tcl.cyberui"
+    "com.sony.dtv.osat.launcher"
+    "com.hisense.vidaa.launcher"
+    "org.droidtv.leanback"
+    "com.arcelik.home"
+    "com.vestel.launcher"
 )
 
 ALL_PKGS="$(adb shell "pm list packages -u" 2>/dev/null | tr -d '\r')"

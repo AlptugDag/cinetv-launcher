@@ -48,14 +48,40 @@ public final class RemotePairing {
         return t;
     }
 
-    /** The TV's own name (Settings › Device name), e.g. "Alptuğ TV". */
+    /**
+     * Reads the exact device name the user gave the TV in the TV's own Settings
+     * (Settings › Device Preferences › About › Device name), checking Global, Secure,
+     * System, Wi-Fi Direct, and Bluetooth adapter names so AirPlay, Cast, DIAL, and Phone
+     * Companion always use the user's chosen TV name.
+     */
     public static String tvName(Context ctx) {
-        String n = null;
+        if (ctx == null) return android.os.Build.MODEL;
+        android.content.ContentResolver cr = ctx.getContentResolver();
+        String model = android.os.Build.MODEL != null ? android.os.Build.MODEL.trim() : "";
+        String[] candidates = new String[6];
+        try { candidates[0] = android.provider.Settings.Global.getString(cr, "device_name"); } catch (Throwable ignored) {}
+        try { candidates[1] = android.provider.Settings.Secure.getString(cr, "bluetooth_name"); } catch (Throwable ignored) {}
+        try { candidates[2] = android.provider.Settings.System.getString(cr, "device_name"); } catch (Throwable ignored) {}
+        try { candidates[3] = android.provider.Settings.System.getString(cr, "bluetooth_name"); } catch (Throwable ignored) {}
+        try { candidates[4] = android.provider.Settings.Global.getString(cr, "wifi_p2p_device_name"); } catch (Throwable ignored) {}
         try {
-            n = android.provider.Settings.Global.getString(ctx.getContentResolver(), "device_name");
-        } catch (Throwable ignored) {
+            android.bluetooth.BluetoothAdapter bt = android.bluetooth.BluetoothAdapter.getDefaultAdapter();
+            if (bt != null) candidates[5] = bt.getName();
+        } catch (Throwable ignored) {}
+
+        // First pass: prefer a user-customized name (not empty, not "null", and different from raw Build.MODEL / "Android")
+        String firstValid = null;
+        for (String c : candidates) {
+            if (c == null) continue;
+            String trimmed = c.trim();
+            if (trimmed.isEmpty() || "null".equalsIgnoreCase(trimmed)) continue;
+            if (firstValid == null) firstValid = trimmed;
+            if (!trimmed.equalsIgnoreCase(model) && !"Android".equalsIgnoreCase(trimmed) && !"Android TV".equalsIgnoreCase(trimmed)) {
+                return trimmed;
+            }
         }
-        return n == null || n.trim().isEmpty() ? android.os.Build.MODEL : n.trim();
+        if (firstValid != null && !firstValid.isEmpty()) return firstValid;
+        return model.isEmpty() ? "CineTV" : model;
     }
 
     public static String baseUrl() {

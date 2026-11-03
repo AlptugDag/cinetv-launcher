@@ -33,10 +33,8 @@ echo "    SoC Platform: $SOC"
 echo "    Android SDK:  $SDK"
 echo "----------------------------------------------------------------"
 
-# Safe Common Bloatware across all Android TV devices
+# Safe Common Bloatware across all Android TV devices (stock launchers are kept enabled as fallback)
 COMMON_BLOAT=(
-    "com.google.android.tvlauncher"
-    "com.google.android.apps.tv.launcherx"
     "com.google.android.tungsten.setupwraith"
     "com.google.android.feedback"
     "com.google.android.play.games"
@@ -86,7 +84,6 @@ XIAOMI_BLOAT=(
     "com.xiaomi.mitv.upgrade"
     "com.mitv.videoplayer"
     "com.xiaomi.mitv.advertise"
-    "com.mitv.tvhome"
     "com.xiaomi.mitv.shop"
     "com.xiaomi.devicestatistics"
     "com.xiaomi.screenrecorder"

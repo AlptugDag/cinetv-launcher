@@ -252,35 +252,41 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .pwa-card p{margin:0 0 10px;font-size:12.5px;color:var(--dim);line-height:1.45}
 .pwa-card .pwa-x{position:absolute;top:10px;right:12px;background:none;border:0;color:var(--dim);font-size:16px;cursor:pointer;padding:4px}
 
-.pt{display:grid;gap:14px;padding:6px 0 40px}
+.pt{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;padding:6px 0 40px;width:100%;max-width:100%;min-width:0;overflow-x:hidden}
+.pt>*{min-width:0;max-width:100%;box-sizing:border-box}
 .pt-eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
-.pt-h{margin:4px 0 2px;font-size:24px;font-weight:800;letter-spacing:-.02em}
-.pt-sub{margin:0 0 14px;color:var(--dim);font-size:13.5px;line-height:1.5}
-.pt-join{padding:22px}
-.pt-row{display:flex;gap:8px;flex-wrap:wrap;min-width:0}
-.pt-row input{flex:1 1 150px}
-.pt-row .pt-btn{flex:0 1 auto;padding:0 14px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.pt-row input{flex:1;min-width:0;height:50px;padding:0 16px;border-radius:16px;border:1px solid var(--edge);background:rgba(0,0,0,.32);color:var(--ink);font-size:16px;outline:0;transition:border-color .2s,box-shadow .2s}
+.pt-h{margin:4px 0 2px;font-size:22px;font-weight:800;letter-spacing:-.02em;overflow-wrap:break-word}
+.pt-sub{margin:0 0 14px;color:var(--dim);font-size:13.5px;line-height:1.5;overflow-wrap:break-word}
+.pt-join{padding:18px 16px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:hidden}
+.pt-row{display:flex;gap:8px;flex-wrap:wrap;width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+.pt-row input{flex:1 1 120px;width:0;min-width:0;max-width:100%;height:48px;padding:0 14px;border-radius:16px;border:1px solid var(--edge);background:rgba(0,0,0,.32);color:var(--ink);font-size:16px;outline:0;box-sizing:border-box;transition:border-color .2s,box-shadow .2s}
 .pt-row input:focus{border-color:rgba(255,255,255,.4);box-shadow:0 0 0 3px rgba(255,255,255,.08)}
-.pt-btn{height:50px;padding:0 20px;border:0;border-radius:16px;font-weight:700;font-size:15px;color:#fff;background:var(--pt,#8b5cf6);box-shadow:0 8px 22px -8px var(--pt,#8b5cf6);transition:transform .15s,opacity .2s;white-space:nowrap}
+.pt-row .pt-btn{flex:0 0 auto;height:48px;padding:0 18px;max-width:100%;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box}
+@media(max-width:430px){
+  .pt-join{padding:16px 14px}
+  .pt-join .pt-row{flex-direction:column;align-items:stretch}
+  .pt-join .pt-row input{flex:none;width:100%}
+  .pt-join .pt-row .pt-btn{width:100%}
+}
+.pt-btn{height:48px;padding:0 20px;border:0;border-radius:16px;font-weight:700;font-size:15px;color:#fff;background:var(--pt,#8b5cf6);box-shadow:0 8px 22px -8px var(--pt,#8b5cf6);transition:transform .15s,opacity .2s;white-space:nowrap;box-sizing:border-box}
 .pt-btn:active{transform:scale(.96)}
 .pt-btn:disabled{opacity:.4}
 .pt-btn.ghost{background:rgba(255,255,255,.08);box-shadow:none;border:1px solid var(--edge)}
 .pt-btn.wide{width:100%}
 .pt-link{border:0;background:none;color:var(--dim);font-size:13px;font-weight:600;padding:6px 4px;margin-left:auto}
-.pt-me{display:flex;align-items:center;gap:8px;padding:0 4px;font-size:14px}
+.pt-me{display:flex;align-items:center;gap:8px;padding:0 4px;font-size:14px;min-width:0}
 .pt-dot{width:10px;height:10px;border-radius:50%;background:#fff;flex-shrink:0;box-shadow:0 0 10px currentColor}
-.pt-games{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.pt-game{text-align:left;border:1px solid var(--edge);border-radius:20px;padding:16px 16px 14px;background:linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.03));color:var(--ink);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 rgba(255,255,255,.16);transition:transform .16s}
+.pt-games{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;max-width:100%}
+.pt-game{text-align:left;border:1px solid var(--edge);border-radius:20px;padding:16px 14px 14px;min-width:0;background:linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.03));color:var(--ink);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 rgba(255,255,255,.16);transition:transform .16s}
 .pt-game:first-child{grid-column:1/-1;padding:20px}
 .pt-game:active{transform:scale(.97)}
 .pt-game b{display:block;font-size:20px;font-weight:800;letter-spacing:.01em}
 .pt-game:first-child b{font-size:26px}
 .pt-game small{display:block;margin-top:4px;color:var(--dim);font-size:12px;line-height:1.4}
-.pt-top{display:flex;align-items:center;gap:10px;padding:0 2px}
+.pt-top{display:flex;align-items:center;gap:10px;padding:0 2px;min-width:0}
 .pt-word{font-size:24px;font-weight:800;letter-spacing:.01em}
 .pt-chip{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--edge);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
-.pt-card{padding:16px;display:grid;gap:12px;min-width:0;max-width:100%;overflow:hidden;box-sizing:border-box}
+.pt-card{padding:16px;display:grid;grid-template-columns:minmax(0,1fr);gap:12px;width:100%;min-width:0;max-width:100%;overflow:hidden;box-sizing:border-box}
 .pt-card>*{min-width:0}
 .pt-pic{width:100%;border-radius:18px;object-fit:cover;background:#111;box-shadow:0 18px 40px -16px rgba(0,0,0,.8);aspect-ratio:16/9}
 .pt-pic.tall{aspect-ratio:2/3;max-width:62%;justify-self:center}
@@ -338,6 +344,36 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .pt-pad button:active{background:rgba(255,255,255,.25);transform:scale(.96)}
 .pt-spin{width:46px;height:46px;border-radius:50%;border:4px solid rgba(255,255,255,.12);border-top-color:var(--pt);animation:ptSpin .9s linear infinite;justify-self:center}
 @keyframes ptSpin{to{transform:rotate(360deg)}}
+/* Gamze Multi-Turn Chatbot & TV File Manager + Screenshots Hub */
+.gamze-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 15px;margin:8px 0 10px;border-radius:18px;background:linear-gradient(135deg,rgba(139,92,246,.22),rgba(56,189,248,.14));border:1px solid rgba(196,181,253,.35);cursor:pointer}
+.gamze-bar b{font-size:14.5px;color:#fff;display:flex;align-items:center;gap:7px}
+.gamze-bar span{font-size:12px;color:var(--accent2);font-weight:600}
+.gamze-panel{padding:14px;margin:6px 0 14px;border-radius:20px;display:grid;gap:10px;background:rgba(12,14,26,.82);border:1px solid rgba(196,181,253,.3)}
+.gamze-modes{display:flex;gap:6px}
+.gamze-modes button{flex:1;border:1px solid var(--edge);background:rgba(255,255,255,.06);color:var(--dim);border-radius:10px;padding:6px 8px;font-size:12px;font-weight:600}
+.gamze-modes button.on{background:var(--accent);color:#fff;border-color:transparent}
+.gamze-thread{max-height:290px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px 2px}
+.gamze-msg{padding:10px 13px;border-radius:14px;font-size:13.5px;line-height:1.48;word-break:break-word}
+.gamze-msg.user{align-self:flex-end;max-width:85%;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border-bottom-right-radius:4px}
+.gamze-msg.assistant{align-self:flex-start;max-width:92%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:var(--ink);border-bottom-left-radius:4px}
+.gamze-sug{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+.gamze-sug::-webkit-scrollbar{display:none}
+.gamze-sug button{flex-shrink:0;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.12);color:#bae6fd;border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:600}
+.files-card{padding:16px;margin-top:12px;display:grid;gap:12px}
+.shots-strip{display:flex;gap:10px;overflow-x:auto;padding:4px 0;scrollbar-width:none}
+.shots-strip::-webkit-scrollbar{display:none}
+.shot-thumb{flex:0 0 145px;border-radius:12px;overflow:hidden;border:1px solid var(--edge);background:rgba(0,0,0,.35);position:relative;cursor:pointer}
+.shot-thumb img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.shot-thumb .sc-meta{padding:5px 7px;font-size:10.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-list{display:grid;gap:7px;max-height:420px;overflow-y:auto;padding-right:2px}
+.file-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+.file-row.dir{cursor:pointer;background:rgba(139,92,246,.09);border-color:rgba(139,92,246,.25)}
+.file-row .f-ic{font-size:20px;flex-shrink:0;width:28px;text-align:center}
+.file-row .f-info{flex:1;min-width:0}
+.file-row .f-name{font-size:13.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-row .f-sub{font-size:11px;color:var(--dim);margin-top:1px}
+.file-row .f-acts{display:flex;gap:5px;flex-shrink:0}
+.file-row .f-acts button,.file-row .f-acts a{border:1px solid var(--edge);background:rgba(255,255,255,.08);color:#fff;border-radius:9px;padding:6px 8px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
 </style>
 </head>
 <body>
@@ -365,6 +401,27 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     <div class="kindbar">
       <div class="seg glass" id="kindSeg"><button type="button" data-kind="movie" class="on">Filmler</button><button type="button" data-kind="series">Diziler</button></div>
       <button type="button" class="glass refresh" id="refreshBtn" aria-label="Yenile">↻</button>
+    </div>
+    <div class="gamze-bar glass" id="gamzeToggleBar">
+      <b>✨ Gamze · Gemini Sinema &amp; TV Sohbeti</b>
+      <span id="gamzeToggleLbl">Sohbeti Aç ▾</span>
+    </div>
+    <div class="gamze-panel glass" id="gamzeChatPanel" hidden>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="font-size:12.5px;font-weight:700;color:var(--accent2)">Çok Turlu Gemini Asistanı (Hafızalı)</div>
+        <button type="button" id="gamzeClearBtn" style="border:0;background:rgba(255,255,255,.08);color:var(--dim);border-radius:8px;padding:4px 9px;font-size:11px;font-weight:600">Sohbeti Temizle</button>
+      </div>
+      <div class="gamze-modes" id="gamzeModeSeg">
+        <button type="button" data-mode="balanced" class="on">Dengeli</button>
+        <button type="button" data-mode="deep">Derin Analiz</button>
+        <button type="button" data-mode="fast">Hızlı</button>
+      </div>
+      <div class="gamze-thread" id="gamzeThread"></div>
+      <div class="gamze-sug" id="gamzeSugRow"></div>
+      <form id="gamzeForm" style="display:flex;gap:8px;margin:0" action="javascript:void(0);">
+        <input id="gamzeInput" type="text" placeholder="Gamze'ye film, yönetmen, sahne veya tavsiye sor…" autocomplete="off" style="flex:1;min-width:0;height:42px;border-radius:12px;border:1px solid var(--edge);background:rgba(0,0,0,.35);color:#fff;padding:0 12px;font-size:14px;outline:0">
+        <button type="submit" id="gamzeSendBtn" class="pt-btn" style="height:42px;padding:0 16px;border-radius:12px;font-size:14px">Gönder</button>
+      </form>
     </div>
     <div class="vibe-chips" id="vibeChips">
       <button type="button" class="mtag" data-vibe="ailece izlenecek sürükleyici ve temiz">Ailece</button>
@@ -491,6 +548,68 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     </div>
   </section>
 
+  <section id="tab-files">
+    <div class="files-card glass">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div>
+          <h2 style="margin:0;color:#fff;font-size:15px;text-transform:none;letter-spacing:0">📸 TV Ekran Görüntüsü &amp; Galeri</h2>
+          <div style="font-size:12px;color:var(--dim);margin-top:2px">TV ekranını anında yakalayın, indirin veya kaydedilenleri yönetin</div>
+        </div>
+        <button type="button" class="btn" id="btnTakeShot" style="width:auto;padding:10px 14px;font-size:13px;border-radius:12px;white-space:nowrap">📸 Ekran Görüntüsü Al</button>
+      </div>
+      <div id="filesShotPreviewWrap" hidden style="background:rgba(0,0,0,.35);border:1px solid var(--edge);border-radius:14px;padding:10px;display:grid;gap:8px">
+        <img id="filesShotPreviewImg" alt="TV Ekran Görüntüsü" style="width:100%;max-height:240px;object-fit:contain;border-radius:10px;background:#000">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn" id="filesShotDownloadBtn" download="CineTV-Screenshot.jpg" style="flex:1;padding:10px;font-size:13px;border-radius:11px">⬇ Telefona Kaydet</a>
+          <button type="button" class="btn ghost" id="filesShotShareBtn" style="flex:1;padding:10px;font-size:13px;border-radius:11px">Paylaş</button>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:12px;font-weight:600;color:var(--dim)">Kaydedilen Ekran Görüntüleri (/Pictures/CineTV_Screenshots)</span>
+          <button type="button" id="btnRefreshShots" style="border:0;background:none;color:var(--accent2);font-size:12px;font-weight:600">↻ Yenile</button>
+        </div>
+        <div class="shots-strip" id="savedShotsStrip">
+          <div style="font-size:12px;color:var(--dim);padding:8px 2px">Yükleniyor…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="files-card glass">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div>
+          <h2 style="margin:0;color:#fff;font-size:15px;text-transform:none;letter-spacing:0">📁 TV Dosyalar Klasörü (/sdcard)</h2>
+          <div id="filesStorageText" style="font-size:11.5px;color:var(--dim);margin-top:2px">Depolama bilgisi alınıyor…</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn ghost" id="btnNewFolder" style="width:auto;padding:8px 11px;font-size:12px;border-radius:10px">+ Klasör</button>
+          <label class="btn" style="width:auto;padding:8px 12px;font-size:12px;border-radius:10px;margin:0">
+            <input type="file" id="tvFileUploadInput" hidden>
+            <span>📤 Dosya Yükle</span>
+          </label>
+        </div>
+      </div>
+      <div style="height:5px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden">
+        <div id="filesStorageBar" style="height:100%;width:35%;background:linear-gradient(90deg,#8b5cf6,#38bdf8)"></div>
+      </div>
+      <div class="vibe-chips" id="filesQuickDirs" style="padding:2px 0">
+        <button type="button" class="mtag on" data-dir="/sdcard">Ana Dizin</button>
+        <button type="button" class="mtag" data-dir="/sdcard/Download">İndirilenler</button>
+        <button type="button" class="mtag" data-dir="/sdcard/Pictures/CineTV_Screenshots">Ekran Görüntüleri</button>
+        <button type="button" class="mtag" data-dir="/sdcard/Movies">Filmler</button>
+        <button type="button" class="mtag" data-dir="/sdcard/Music">Müzikler</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.28);border:1px solid var(--edge);border-radius:12px;padding:8px 10px">
+        <button type="button" id="btnFilesUp" style="border:0;background:rgba(255,255,255,.1);color:#fff;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700">⬆️ Üst</button>
+        <div id="filesCurrentPath" style="flex:1;font-size:12px;font-family:monospace;color:var(--accent2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">/sdcard</div>
+        <button type="button" id="btnFilesRefresh" style="border:0;background:none;color:#fff;font-size:15px;padding:2px 6px">↻</button>
+      </div>
+      <div class="file-list" id="filesListBox">
+        <div class="empty" style="padding:24px 10px">Klasör içeriği yükleniyor…</div>
+      </div>
+    </div>
+  </section>
+
   <section id="tab-about">
     <div class="about glass">
       <div class="photo-ring"><img class="photo" id="aboutPhoto" src="static/creator.jpg" alt="Alptuğ Dağ" onerror="this.parentElement.hidden=true"></div>
@@ -523,6 +642,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   <button data-tab="remote"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="6" y="2" width="12" height="20" rx="3"/><circle cx="12" cy="7" r="1.5"/><path d="M9 13h6M12 10v6"/></svg><span data-i="tabRemote"></span></button>
   <button data-tab="party"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="6" width="18" height="12" rx="4"/><path d="M7 12h4M9 10v4M15 11h.01M17 13h.01"/></svg><span data-i="tabParty"></span></button>
   <button data-tab="cast"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><circle cx="2" cy="20" r="1"/></svg><span data-i="tabCast"></span></button>
+  <button data-tab="files"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span data-i="tabFiles"></span></button>
   <button data-tab="bg"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span data-i="tabBg"></span></button>
   <button data-tab="about"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span data-i="tabAbout"></span></button>
 </nav>
@@ -567,7 +687,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     en: {filmFound:"Film found: tap the video, or the button below",playOnTv:"Play on TV",open:"Open",browseHint:"Type or paste the film page’s address above and press Open. The page appears here; tap it as on a phone.",browseTip:"Skip the site’s ads, then press the film’s play button: the film starts on the TV.",airMouse:"Air mouse",mouseTip:"Move a finger · Tap = click · Two fingers = scroll",swipeHint:"Swipe to move · tap for OK",touchTip:"Swipe · Tap = OK · Hold = long OK",powerAgain:"Tap again to switch the TV off",powerOff:"TV is switching off",listening:"Listening…",assistant:"Assistant",aboutBio:"Alptuğ Dağ (b. 2000, Ankara) is an independent film director, creative technologist, editor and voice artist known for his short film Sessiz (2023). He designed and built CineTV from scratch as a free gift to cinema lovers. Follow @alptugdag on Instagram for new film projects, directing/editing collaborations, or just to say hello.",tabBg:"Background",bgTitle:"Background of Home",bgNote:"Pick a photo: it becomes the backdrop of the TV's home screen right away. Picking a theme on the TV brings the built-in scenery back.",bgPick:"Choose a photo",bgReset:"Restore Theme Background",bgResetDone:"Theme background restored",bgSent:"Now on your TV",bgFail:"Could not send the picture",
       installAndroid:"Install CineTV on this phone for one-tap access.",installGo:"Install",installIos:"Tap Share, then “Add to Home Screen” to keep CineTV one tap away.",
       otherTvs:"CineTV TVs here",onTv:"On your TV now",waiting:"Allow this phone on your TV with the remote",denied:"Not allowed on the TV. Tap to ask again.",busy:"Another phone is asking. Retrying…",
-      tabCast:"Cast",tabAbout:"Creator",castTitle:"Play a video on the TV",castPh:"Film page address",paste:"Paste",shotSave:"Save",shotShare:"Share",castPlay:"Play on TV",
+      tabCast:"Cast",tabAbout:"Developer",castTitle:"Play a video on the TV",castPh:"Film page address",paste:"Paste",shotSave:"Save",shotShare:"Share",castPlay:"Play on TV",
       castNote:"Works with direct links (mp4, m3u8…) and film pages: the TV opens the page, presses play itself and skips the ads.",castFinding:"Looking for the film… ads are skipped (up to 45 s)",castNone:"No film found on that page (videos under 3 minutes are skipped as ads).",castPlaying:"Playing on your TV",
       aboutRole:"Director · Creative Technologist & Editor · Voice Artist",followIg:"📸 Follow on Instagram · @alptugdag",watchSessiz:"▶ Short Film: Sessiz (2023)",watchSessizTr:"🎞️ Official Trailer: Sessiz",playSessizTv:"Play 'Sessiz' on TV",followLi:"💼 LinkedIn · Collaborations & Career",followYt:"Subscribe on YouTube · @AlptugDag",hisFilms:"Show His Films on TV",
       mCreator:"Alptuğ Dağ Picks",mNoir:"Midnight Neo-Noir",mRain:"Rainy Night",mFest:"Festival Gems",mMind:"Mind-Benders",mTr:"Turkish Cinema",
@@ -575,7 +695,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       connecting:"Connecting…",connected:"Connected",offline:"TV not reachable",searchPh:"Films, series, people…",trending:"Trending",
       results:"Results",noResults:"Nothing found",openTv:"Open on TV",opening:"Opening on your TV…",movie:"Film",series:"Series",similarMovies:"Similar Titles",
       back:"Back",home:"Home",menu:"Menu",send:"Send",input:"Input",guide:"Guide",info:"Info",subs:"Subtitles",audio:"Audio",last:"Last",typePh:"Type on the TV…",sleepOff:"Sleep timer: off",sleepIn:"Sleeps in {n} min",typeNote:"Letters appear in the field that is selected on the TV, in any app; ↵ confirms.",tvSearchPh:"Search or ask on the TV",screensaver:"Start screensaver",
-      tabSearch:"Discover",tabRemote:"Remote",tabParty:"Party",partyTitle:"Party & Games",tabCal:"Picture",presets:"Presets",patterns:"Test patterns",picture:"Picture engine",
+      tabSearch:"Discover",tabRemote:"Remote",tabParty:"Party",tabFiles:"Files",partyTitle:"Party & Games",tabCal:"Picture",presets:"Presets",patterns:"Test patterns",picture:"Picture engine",
       warmth:"Colour temperature",reset:"Restore my original settings",patternNote:"Choose a pattern, adjust until it looks right, then tap Off.",
       noPanel:"This TV takes picture changes only from its own menu. Show a pattern here, then adjust Picture settings with the TV remote until the pattern looks right.",
       p_natural:"Natural",p_cinema:"Cinema",p_night:"Dark room",p_vivid:"Vivid",
@@ -584,7 +704,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     tr: {filmFound:"Film bulundu: videoya ya da aşağıdaki tuşa dokunun",playOnTv:"TV’de oynat",open:"Aç",browseHint:"Filmin sayfasının adresini yukarı yazın ya da yapıştırın, Aç’a basın. Sayfa burada açılır; telefondaki gibi dokunun.",browseTip:"Sitenin reklamlarını geçin, sonra filmin oynat tuşuna basın: film televizyonda başlar.",airMouse:"Hava faresi",mouseTip:"Parmağını kaydır · Dokun = tıkla · İki parmak = kaydır",swipeHint:"Kaydırarak gez · dokununca Tamam",touchTip:"Kaydır · Dokun = Tamam · Basılı tut = uzun Tamam",powerAgain:"Televizyonu kapatmak için tekrar dokun",powerOff:"Televizyon kapanıyor",listening:"Dinliyorum…",assistant:"Asistan",aboutBio:"Alptuğ Dağ (d. 2000, Ankara); sinemayı, kurguyu ve yaratıcı yazılım mimarisini tek potada buluşturan bağımsız bir yönetmen, içerik üreticisi ve seslendirme sanatçısıdır. Yönettiği kısa film Sessiz (2023) ile tanınır. Ev sinemasını reklamsız ve özgür kılmak için CineTV'yi sıfırdan tasarlayıp ücretsiz olarak armağan etti. Yeni film projeleri, reklam/kurgu yönetmenliği, yaratıcı iş birlikleri veya sadece bir teşekkür için Instagram'da @alptugdag hesabını takip edebilirsiniz.",tabBg:"Arka plan",bgTitle:"Ana ekranın arka planı",bgNote:"Bir fotoğraf seçin: televizyonun ana ekranında hemen arka plan olur. Televizyonda bir tema seçince yerleşik manzara geri gelir.",bgPick:"Fotoğraf seç",bgReset:"Temanın Kendi Arka Planına Dön",bgResetDone:"Temanın arka planına dönüldü",bgSent:"Televizyonda",bgFail:"Resim gönderilemedi",
       installAndroid:"CineTV'yi bu telefona uygulama olarak ekleyin, tek dokunuşla açılsın.",installGo:"Ekle",installIos:"Paylaş'a, ardından “Ana Ekrana Ekle”ye dokunun; CineTV tek dokunuşla açılsın.",
       otherTvs:"Bu ağdaki CineTV televizyonları",onTv:"TV'de vitrine geldi",waiting:"Bu telefona TV'den kumandayla izin verin",denied:"TV'de izin verilmedi. Tekrar sormak için dokunun.",busy:"Başka bir telefon soruyor. Tekrar deneniyor…",
-      tabCast:"Yayınla",tabAbout:"Yaratıcı",castTitle:"TV'de video oynat",castPh:"Filmin sayfasının adresi",paste:"Yapıştır",shotSave:"Kaydet",shotShare:"Paylaş",castPlay:"TV'de oynat",
+      tabCast:"Yayınla",tabAbout:"Geliştirici",castTitle:"TV'de video oynat",castPh:"Filmin sayfasının adresi",paste:"Yapıştır",shotSave:"Kaydet",shotShare:"Paylaş",castPlay:"TV'de oynat",
       castNote:"Doğrudan bağlantılarla (mp4, m3u8…) ve film sayfalarıyla çalışır: TV sayfayı açar, oynat tuşuna kendisi basar, reklamları atlar.",castFinding:"Film aranıyor… reklam varsa geçiliyor (en fazla 45 sn)",castNone:"Bu sayfada film bulunamadı (3 dakikadan kısa videolar reklam sayılıp atlanır).",castPlaying:"TV'de oynatılıyor",
       aboutRole:"Yönetmen · Kurgu & Yaratıcı Teknoloji · Seslendirme",followIg:"📸 Instagram'da Takip Et · @alptugdag",watchSessiz:"▶ Kısa Film: Sessiz (2023)",watchSessizTr:"🎞️ Resmi Fragman: Sessiz",playSessizTv:"'Sessiz'i TV'de Oynat",followLi:"💼 LinkedIn · İş Birliği & Kariyer",followYt:"YouTube'da Abone Ol · @AlptugDag",hisFilms:"🎬 Filmlerini TV'de Vitrine Getir",
       mCreator:"Alptuğ Dağ Seçkisi",mNoir:"Gece Yarısı Neo-Noir",mRain:"Yağmurlu Gece",mFest:"Festival Seçkisi",mMind:"Psikolojik Gizem",mTr:"Türk Sineması",
@@ -592,7 +712,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       connecting:"Bağlanıyor…",connected:"Bağlı",offline:"TV'ye ulaşılamıyor",searchPh:"Film, dizi, oyuncu…",trending:"Trend",
       results:"Sonuçlar",noResults:"Bir şey bulunamadı",openTv:"TV'ye Gönder",opening:"TV'de açılıyor…",movie:"Film",series:"Dizi",similarMovies:"Benzerleri",
       back:"Geri",home:"Ana sayfa",menu:"Menü",send:"Gönder",input:"Kaynak",guide:"Rehber",info:"Bilgi",subs:"Altyazı",audio:"Ses dili",last:"Önceki",typePh:"Televizyona yaz…",sleepOff:"Uyku zamanlayıcı: kapalı",sleepIn:"{n} dk sonra kapanır",typeNote:"Yazdıkların televizyonda seçili alana gelir, hangi uygulama olursa olsun; ↵ onaylar.",tvSearchPh:"TV'de ara veya sor",screensaver:"Ekran koruyucuyu başlat",
-      tabSearch:"Keşfet",tabRemote:"Kumanda",tabParty:"Oyunlar",partyTitle:"Parti & Oyunlar",tabCal:"Görüntü",presets:"Hazır ayarlar",patterns:"Test desenleri",picture:"Görüntü motoru",
+      tabSearch:"Keşfet",tabRemote:"Kumanda",tabParty:"Oyunlar",tabFiles:"Dosyalar",partyTitle:"Parti & Oyunlar",tabCal:"Görüntü",presets:"Hazır ayarlar",patterns:"Test desenleri",picture:"Görüntü motoru",
       warmth:"Renk sıcaklığı",reset:"Orijinal ayarlarıma dön",patternNote:"Bir desen seçin, doğru görünene kadar ayarlayın, sonra Kapat'a dokunun.",
       noPanel:"Bu TV görüntü değişikliklerini yalnızca kendi menüsünden kabul ediyor. Buradan bir desen gösterin, sonra TV kumandasıyla Görüntü ayarlarını desen doğru görünene kadar değiştirin.",
       p_natural:"Doğal",p_cinema:"Sinema",p_night:"Karanlık oda",p_vivid:"Canlı",
@@ -796,6 +916,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     document.body.classList.toggle("remote", name === "remote" || name === "cast");
     if (name === "cast") browseLoop(); else browsing = false;
     if (name === "party") startPartyPolling(); else stopPartyPolling();
+    if (name === "files") { loadSavedShots(); loadTvFiles(currentFilesDir); }
     if (name !== "remote") $("kbd").hidden = true;
     requestAnimationFrame(() => document.documentElement.style.setProperty("--hdr", document.querySelector("header").offsetHeight + "px"));
   };
@@ -2103,6 +2224,342 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
   if ($("remoteCineSubBtn")) $("remoteCineSubBtn").onclick = triggerCineSubHelper;
 
+  // ---- Gamze Multi-Turn Gemini Chatbot ----
+  let gamzeMode = "balanced";
+  const renderGamzeHistory = (history, suggestions = []) => {
+    const box = $("gamzeThread");
+    if (!box) return;
+    if (!history || !history.length) {
+      box.innerHTML = `<div class="gamze-msg assistant">Merhaba! Ben Gamze, CineTV sinema ve televizyon asistanın. Bugün hangi atmosferde bir film ya da dizi arıyorsun? Yönetmen sineması, gizli başyapıtlar veya sahne analizleri üzerine sohbet edebiliriz.</div>`;
+    } else {
+      box.innerHTML = history.map(m => `<div class="gamze-msg ${m.role === "user" ? "user" : "assistant"}">${esc(m.text)}</div>`).join("");
+      box.scrollTop = box.scrollHeight;
+    }
+    const sugBox = $("gamzeSugRow");
+    if (sugBox) {
+      const sugs = suggestions.length ? suggestions : [
+        "Bu akşam için karanlık atmosferli neo-noir öner",
+        "Nuri Bilge Ceylan filmlerini sırala",
+        "Az bilinen bilimkurgu başyapıtları"
+      ];
+      sugBox.innerHTML = sugs.map(s => `<button type="button">${esc(s)}</button>`).join("");
+      sugBox.querySelectorAll("button").forEach(b => b.onclick = () => {
+        $("gamzeInput").value = b.textContent;
+        sendGamzeMessage();
+      });
+    }
+  };
+  const loadGamzeHistory = async () => {
+    try {
+      const r = await api("gamze/history");
+      renderGamzeHistory(r.history || []);
+    } catch (e) {
+      renderGamzeHistory([]);
+    }
+  };
+  const sendGamzeMessage = async () => {
+    const inp = $("gamzeInput");
+    const q = (inp.value || "").trim();
+    if (!q) return;
+    inp.value = "";
+    const box = $("gamzeThread");
+    if (box) {
+      box.insertAdjacentHTML("beforeend", `<div class="gamze-msg user">${esc(q)}</div><div class="gamze-msg assistant" id="gamzeTyping">Gamze düşünüyor…</div>`);
+      box.scrollTop = box.scrollHeight;
+    }
+    try {
+      const r = await api("gamze/chat", {q, mode: gamzeMode});
+      renderGamzeHistory(r.history || [], r.suggestions || []);
+      if (r.movies && r.movies.length) {
+        render(r.movies, r.shelfTitle || "Gamze Seçkisi");
+      }
+    } catch (e) {
+      const tp = $("gamzeTyping");
+      if (tp) tp.textContent = "TV'ye ulaşılamadı.";
+    }
+  };
+  if ($("gamzeToggleBar")) {
+    $("gamzeToggleBar").onclick = () => {
+      const p = $("gamzeChatPanel");
+      const openNow = p.hidden;
+      p.hidden = !openNow;
+      $("gamzeToggleLbl").textContent = openNow ? "Kapat ▴" : "Sohbeti Aç ▾";
+      if (openNow) loadGamzeHistory();
+    };
+  }
+  document.querySelectorAll("#gamzeModeSeg button").forEach(b => b.onclick = () => {
+    gamzeMode = b.dataset.mode;
+    document.querySelectorAll("#gamzeModeSeg button").forEach(x => x.classList.toggle("on", x === b));
+  });
+  if ($("gamzeForm")) {
+    $("gamzeForm").onsubmit = e => { e.preventDefault(); sendGamzeMessage(); };
+  }
+  if ($("gamzeClearBtn")) {
+    $("gamzeClearBtn").onclick = async () => {
+      try {
+        const r = await api("gamze/clear");
+        renderGamzeHistory(r.history || []);
+        toast("Sohbet geçmişi temizlendi");
+      } catch (e) {}
+    };
+  }
+
+  // ---- TV File Manager (/sdcard) & Screenshots Hub ----
+  let currentFilesDir = "/sdcard";
+  let parentFilesDir = "";
+  const formatBytes = b => {
+    const n = +b || 0;
+    if (n < 1024) return n + " B";
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+    if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + " MB";
+    return (n / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+  };
+  const fileIconFor = item => {
+    if (item.dir) return "📁";
+    const ext = (item.ext || "").toLowerCase();
+    if (["jpg", "jpeg", "png", "webp", "gif", "bmp"].includes(ext)) return "🖼️";
+    if (["mp4", "mkv", "avi", "mov", "webm", "m3u8", "ts"].includes(ext)) return "🎬";
+    if (["mp3", "flac", "wav", "m4a", "aac", "ogg"].includes(ext)) return "🎵";
+    if (ext === "apk") return "📦";
+    if (["json", "xml", "txt", "log", "srt", "vtt", "ass"].includes(ext)) return "📄";
+    return "📄";
+  };
+  const buildDownloadUrl = (path, inline = false) =>
+    "/api/files/download?k=" + encodeURIComponent(token || "preview-token") + "&path=" + encodeURIComponent(path) + (inline ? "&inline=1" : "");
+
+  const loadSavedShots = async () => {
+    const strip = $("savedShotsStrip");
+    if (!strip) return;
+    try {
+      const r = await api("shot/list");
+      const items = (r && r.items) || [];
+      if (!items.length) {
+        strip.innerHTML = `<div style="font-size:12px;color:var(--dim);padding:8px 2px">Henüz kaydedilmiş ekran görüntüsü yok. Yukarıdan "📸 Ekran Görüntüsü Al" tuşuna dokunun.</div>`;
+        return;
+      }
+      strip.innerHTML = items.map((it, idx) => {
+        const imgUrl = buildDownloadUrl(it.path, true);
+        return `<div class="shot-thumb" data-idx="${idx}">
+          <img src="${esc(imgUrl)}" alt="${esc(it.name)}" loading="lazy">
+          <div class="sc-meta">${esc(it.name)}</div>
+        </div>`;
+      }).join("");
+      strip.querySelectorAll(".shot-thumb").forEach(el => {
+        el.onclick = () => {
+          const it = items[+el.dataset.idx];
+          if (!it) return;
+          const imgUrl = buildDownloadUrl(it.path, true);
+          const dlUrl = buildDownloadUrl(it.path, false);
+          $("filesShotPreviewImg").src = imgUrl;
+          $("filesShotDownloadBtn").href = dlUrl;
+          $("filesShotDownloadBtn").download = it.name;
+          $("filesShotPreviewWrap").hidden = false;
+        };
+      });
+    } catch (e) {
+      strip.innerHTML = `<div style="font-size:12px;color:var(--dim);padding:8px 2px">Ekran görüntüleri alınamadı.</div>`;
+    }
+  };
+
+  const takeScreenshotFromHub = async () => {
+    const btn = $("btnTakeShot");
+    if (btn) { btn.disabled = true; btn.textContent = "📸 Çekiliyor…"; }
+    try {
+      const r = await api("shot/take", {sync: 1});
+      if (r && r.ok && r.jpg) {
+        const bin = atob(r.jpg), bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const blob = new Blob([bytes], {type: "image/jpeg"});
+        const objUrl = URL.createObjectURL(blob);
+        const name = r.name || ("CineTV-" + Date.now() + ".jpg");
+        $("filesShotPreviewImg").src = objUrl;
+        $("filesShotDownloadBtn").href = objUrl;
+        $("filesShotDownloadBtn").download = name;
+        $("filesShotPreviewWrap").hidden = false;
+        $("filesShotShareBtn").onclick = () => {
+          if (navigator.share) navigator.share({files: [new File([blob], name, {type: "image/jpeg"})]}).catch(() => {});
+          else toast("İndir düğmesiyle kaydedebilirsiniz");
+        };
+        toast("📸 TV ekran görüntüsü alındı ve kaydedildi");
+        loadSavedShots();
+        if (currentFilesDir.includes("CineTV_Screenshots")) loadTvFiles(currentFilesDir);
+      } else {
+        toast("Ekran görüntüsü alınamadı");
+      }
+    } catch (e) {
+      toast(t("offline"));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "📸 Ekran Görüntüsü Al"; }
+    }
+  };
+  if ($("btnTakeShot")) $("btnTakeShot").onclick = takeScreenshotFromHub;
+  if ($("btnRefreshShots")) $("btnRefreshShots").onclick = loadSavedShots;
+
+  const loadTvFiles = async (dirPath = "/sdcard") => {
+    const box = $("filesListBox");
+    if (!box) return;
+    currentFilesDir = dirPath || "/sdcard";
+    $("filesCurrentPath").textContent = currentFilesDir;
+    document.querySelectorAll("#filesQuickDirs .mtag").forEach(b => b.classList.toggle("on", b.dataset.dir === currentFilesDir));
+    try {
+      const r = await api("files/list", {path: currentFilesDir});
+      if (!r || !r.ok) {
+        box.innerHTML = `<div class="empty" style="padding:20px">${esc((r && r.error) || "Klasör açılamadı")}</div>`;
+        return;
+      }
+      currentFilesDir = r.path || currentFilesDir;
+      parentFilesDir = r.parent || "";
+      $("filesCurrentPath").textContent = currentFilesDir;
+      $("btnFilesUp").disabled = !parentFilesDir;
+      if (r.totalMb > 0) {
+        const usedMb = Math.max(0, r.totalMb - r.freeMb);
+        const pct = Math.min(100, Math.round((usedMb / r.totalMb) * 100));
+        $("filesStorageText").textContent = `Boş: ${(r.freeMb / 1024).toFixed(1)} GB / Toplam: ${(r.totalMb / 1024).toFixed(1)} GB (%${pct} dolu)`;
+        $("filesStorageBar").style.width = pct + "%";
+      }
+      const items = r.items || [];
+      if (!items.length) {
+        box.innerHTML = `<div class="empty" style="padding:24px 10px">Bu klasör boş</div>`;
+        return;
+      }
+      box.innerHTML = items.map((it, idx) => {
+        const ic = fileIconFor(it);
+        const sub = it.dir ? "Klasör" : formatBytes(it.size);
+        const dlUrl = buildDownloadUrl(it.path, false);
+        return `<div class="file-row ${it.dir ? "dir" : ""}" data-idx="${idx}">
+          <span class="f-ic">${ic}</span>
+          <div class="f-info">
+            <div class="f-name">${esc(it.name)}</div>
+            <div class="f-sub">${esc(sub)}</div>
+          </div>
+          <div class="f-acts">
+            ${!it.dir ? `<button type="button" data-act="open" title="TV'de Aç">▶</button><a href="${esc(dlUrl)}" download="${esc(it.name)}" title="İndir">⬇</a>` : ""}
+            <button type="button" data-act="rename" title="Yeniden Adlandır">✎</button>
+            <button type="button" data-act="delete" title="Sil" style="color:#f87171">🗑</button>
+          </div>
+        </div>`;
+      }).join("");
+
+      box.querySelectorAll(".file-row").forEach(row => {
+        const it = items[+row.dataset.idx];
+        if (!it) return;
+        row.onclick = e => {
+          if (e.target.closest(".f-acts")) return;
+          if (it.dir) loadTvFiles(it.path);
+          else if (["jpg", "jpeg", "png", "webp"].includes((it.ext || "").toLowerCase())) {
+            const imgUrl = buildDownloadUrl(it.path, true);
+            $("filesShotPreviewImg").src = imgUrl;
+            $("filesShotDownloadBtn").href = buildDownloadUrl(it.path, false);
+            $("filesShotDownloadBtn").download = it.name;
+            $("filesShotPreviewWrap").hidden = false;
+          }
+        };
+        const openBtn = row.querySelector('[data-act="open"]');
+        if (openBtn) {
+          openBtn.onclick = async e => {
+            e.stopPropagation();
+            try {
+              const res = await api("files/open", {path: it.path});
+              toast(res && res.ok ? `TV'de açılıyor: ${it.name}` : "TV'de açılamadı");
+            } catch (err) { toast(t("offline")); }
+          };
+        }
+        const renBtn = row.querySelector('[data-act="rename"]');
+        if (renBtn) {
+          renBtn.onclick = async e => {
+            e.stopPropagation();
+            const nw = prompt("Yeni ad:", it.name);
+            if (!nw || nw.trim() === it.name) return;
+            try {
+              const res = await api("files/rename", {path: it.path, name: nw.trim()});
+              if (res && res.ok) { toast("Yeniden adlandırıldı ✓"); loadTvFiles(currentFilesDir); }
+              else toast((res && res.error) || "Adlandırılamadı");
+            } catch (err) { toast(t("offline")); }
+          };
+        }
+        const delBtn = row.querySelector('[data-act="delete"]');
+        if (delBtn) {
+          delBtn.onclick = async e => {
+            e.stopPropagation();
+            if (!confirm(`"${it.name}" silinsin mi?`)) return;
+            try {
+              const res = await api("files/delete", {path: it.path});
+              if (res && res.ok) {
+                toast("Silindi ✓");
+                loadTvFiles(currentFilesDir);
+                if (currentFilesDir.includes("CineTV_Screenshots")) loadSavedShots();
+              } else toast((res && res.error) || "Silinemedi");
+            } catch (err) { toast(t("offline")); }
+          };
+        }
+      });
+    } catch (e) {
+      box.innerHTML = `<div class="empty" style="padding:20px">TV dosya sistemine ulaşılamadı</div>`;
+    }
+  };
+
+  document.querySelectorAll("#filesQuickDirs .mtag").forEach(b => {
+    b.onclick = () => loadTvFiles(b.dataset.dir);
+  });
+  if ($("btnFilesUp")) $("btnFilesUp").onclick = () => { if (parentFilesDir) loadTvFiles(parentFilesDir); };
+  if ($("btnFilesRefresh")) $("btnFilesRefresh").onclick = () => loadTvFiles(currentFilesDir);
+  if ($("btnNewFolder")) {
+    $("btnNewFolder").onclick = async () => {
+      const name = prompt("Yeni klasör adı:");
+      if (!name || !name.trim()) return;
+      try {
+        const r = await api("files/mkdir", {path: currentFilesDir, name: name.trim()});
+        if (r && r.ok) { toast("Klasör oluşturuldu ✓"); loadTvFiles(currentFilesDir); }
+        else toast((r && r.error) || "Klasör oluşturulamadı");
+      } catch (e) { toast(t("offline")); }
+    };
+  }
+  if ($("tvFileUploadInput")) {
+    $("tvFileUploadInput").onchange = async e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      toast(`📤 "${file.name}" TV'ye yükleniyor…`);
+      try {
+        if (RELAY) {
+          const buf = await file.arrayBuffer();
+          let binary = "";
+          const bytes = new Uint8Array(buf);
+          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+          const data = btoa(binary);
+          const r = await api("files/upload64", {path: currentFilesDir, name: file.name, data});
+          toast(r && r.ok ? "Dosya TV'ye yüklendi ✓" : "Yükleme başarısız");
+        } else {
+          const qs = new URLSearchParams({k: token || "preview-token", path: currentFilesDir, name: file.name});
+          const res = await fetch("/api/files/upload?" + qs, {method: "POST", body: file});
+          const r = await res.json();
+          toast(r && r.ok ? "Dosya TV'ye yüklendi ✓" : "Yükleme başarısız");
+        }
+        loadTvFiles(currentFilesDir);
+      } catch (err) {
+        toast("Dosya yüklenemedi");
+      } finally {
+        e.target.value = "";
+      }
+    };
+  }
+
+  window.openFilesAndShotsTab = () => {
+    closeMobileSettingsModal();
+    show("files");
+    location.hash = "files";
+  };
+
+  window.restorePreApkBaseline = async () => {
+    if (!confirm("Televizyonun tüm sistem, ekran ve başlatıcı ayarları CineTV APK yüklenmeden önceki orijinal haline döndürülsün mü?")) return;
+    closeMobileSettingsModal();
+    try {
+      const r = await api("system/restore-baseline");
+      toast((r && r.message) || "APK öncesi orijinal ayarlar geri yüklendi ✓");
+    } catch (e) {
+      toast(t("offline"));
+    }
+  };
+
   // several CineTV TVs on this network: tap the status to switch
   open("info").then(info => {
     if (info.name) $("status").dataset.tv = info.name;
@@ -2137,7 +2594,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
   if (token) connected(); else pair();
   const start = RELAY ? (hp.get("s") || location.hash.replace("#", "")) : location.hash.replace("#", "");
-  if (["remote", "search", "party", "cast", "about", "bg", "background"].includes(start)) show(start === "background" ? "bg" : start);
+  if (["remote", "search", "party", "cast", "files", "about", "bg", "background"].includes(start)) show(start === "background" ? "bg" : start);
 })();
 </script>
   <!-- Mobile Translucent Settings Overlay (Liquid Glass) -->
@@ -2152,6 +2609,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         <span>Televizyon Ayarları Menüsü</span>
         <span>›</span>
       </button>
+      <button class="btn glass" onclick="openFilesAndShotsTab()" style="text-align:left;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between;border-color:rgba(139,92,246,0.35);background:rgba(139,92,246,0.12)">
+        <span>TV Dosyaları &amp; Ekran Görüntüsü Al</span>
+        <span style="font-size:12px;color:#c4b5fd">📸 / 📁</span>
+      </button>
       <button class="btn glass" onclick="calibrateAcoustics()" id="btnCalAcoustics" style="text-align:left;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between;border-color:rgba(56,189,248,0.3);background:rgba(56,189,248,0.1)">
         <span>Oda Akustiğini Kalibre Et (Mikrofon)</span>
         <span style="font-size:12px;color:#38bdf8">Sweep</span>
@@ -2165,8 +2626,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         <span style="font-size:12px;color:#f59e0b">22s</span>
       </button>
       <button class="btn glass" onclick="cleanRam()" style="text-align:left;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between">
-        <span>RAM Temizle & TV'yi Hızlandır</span>
+        <span>RAM Temizle &amp; TV'yi Hızlandır</span>
         <span style="font-size:12px;color:#10b981">Hızlandır</span>
+      </button>
+      <button class="btn glass" onclick="restorePreApkBaseline()" style="text-align:left;padding:12px 14px;border-radius:14px;font-size:13.5px;font-weight:600;display:flex;align-items:center;justify-content:space-between;border-color:rgba(248,113,113,0.35);background:rgba(248,113,113,0.12);color:#fca5a5">
+        <span>APK Öncesi Orijinal Ayarlara Döndür</span>
+        <span style="font-size:11.5px;color:#f87171">Sıfırla</span>
       </button>
       <button class="btn" onclick="closeMobileSettingsModal()" style="margin-top:6px;width:100%;background:rgba(255,255,255,0.12);color:#fff">Kapat</button>
     </div>

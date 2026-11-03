@@ -21,8 +21,36 @@ public final class PeerDiscovery {
     private static final String TYPE = "_cinetv._tcp.";
     private static final Map<String, String> peers = new ConcurrentHashMap<>();
     private static boolean started;
+    private static NsdManager.RegistrationListener regListener;
+    private static String registeredName;
 
     private PeerDiscovery() {}
+
+    public static synchronized void refreshServiceName(Context ctx) {
+        if (!started || ctx == null) return;
+        String currentName = RemotePairing.tvName(ctx);
+        if (currentName == null || currentName.equals(registeredName)) return;
+        try {
+            final NsdManager nsd = (NsdManager) ctx.getSystemService(Context.NSD_SERVICE);
+            if (nsd == null) return;
+            if (regListener != null) {
+                try { nsd.unregisterService(regListener); } catch (Throwable ignored) {}
+            }
+            NsdServiceInfo me = new NsdServiceInfo();
+            me.setServiceName(currentName);
+            me.setServiceType(TYPE);
+            me.setPort(TvWebRemoteServer.port());
+            registeredName = currentName;
+            regListener = new NsdManager.RegistrationListener() {
+                @Override public void onServiceRegistered(NsdServiceInfo i) {}
+                @Override public void onRegistrationFailed(NsdServiceInfo i, int e) {}
+                @Override public void onServiceUnregistered(NsdServiceInfo i) {}
+                @Override public void onUnregistrationFailed(NsdServiceInfo i, int e) {}
+            };
+            nsd.registerService(me, NsdManager.PROTOCOL_DNS_SD, regListener);
+        } catch (Throwable ignored) {
+        }
+    }
 
     public static synchronized void start(Context ctx) {
         if (started) return;
@@ -31,15 +59,17 @@ public final class PeerDiscovery {
             final NsdManager nsd = (NsdManager) ctx.getSystemService(Context.NSD_SERVICE);
             if (nsd == null) return;
             NsdServiceInfo me = new NsdServiceInfo();
-            me.setServiceName(RemotePairing.tvName(ctx));
+            registeredName = RemotePairing.tvName(ctx);
+            me.setServiceName(registeredName);
             me.setServiceType(TYPE);
             me.setPort(TvWebRemoteServer.port());
-            nsd.registerService(me, NsdManager.PROTOCOL_DNS_SD, new NsdManager.RegistrationListener() {
+            regListener = new NsdManager.RegistrationListener() {
                 @Override public void onServiceRegistered(NsdServiceInfo i) {}
                 @Override public void onRegistrationFailed(NsdServiceInfo i, int e) {}
                 @Override public void onServiceUnregistered(NsdServiceInfo i) {}
                 @Override public void onUnregistrationFailed(NsdServiceInfo i, int e) {}
-            });
+            };
+            nsd.registerService(me, NsdManager.PROTOCOL_DNS_SD, regListener);
             nsd.discoverServices(TYPE, NsdManager.PROTOCOL_DNS_SD, new NsdManager.DiscoveryListener() {
                 @Override
                 public void onServiceFound(NsdServiceInfo info) {

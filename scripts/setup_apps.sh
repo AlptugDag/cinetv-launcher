@@ -51,6 +51,19 @@ if want nova; then
 fi
 if want airplay; then
     if installed io.github.jqssun.airplay; then echo "  ✓ AirPlay receiver already installed"
-    else gh_apk jqssun/android-airplay-server "app-release\.apk$" && tv monkey -p io.github.jqssun.airplay 1 >/dev/null 2>&1 || true; fi
+    else gh_apk jqssun/android-airplay-server "app-release\.apk$" || true; fi
+    if installed io.github.jqssun.airplay; then
+        tv pm grant io.github.jqssun.airplay android.permission.BLUETOOTH_CONNECT >/dev/null 2>&1 || true
+        tv pm grant io.github.jqssun.airplay android.permission.BLUETOOTH_SCAN >/dev/null 2>&1 || true
+        tv appops set io.github.jqssun.airplay SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1 || true
+        TV_NAME="$(tv settings get global device_name)"
+        if [ -z "$TV_NAME" ] || [ "$TV_NAME" = "null" ]; then TV_NAME="$(tv settings get secure bluetooth_name)"; fi
+        if [ -n "$TV_NAME" ] && [ "$TV_NAME" != "null" ]; then
+            tv settings put global device_name "\"$TV_NAME\"" >/dev/null 2>&1 || true
+            tv settings put secure bluetooth_name "\"$TV_NAME\"" >/dev/null 2>&1 || true
+            tv am broadcast -a io.github.jqssun.airplay.ACTION_SET_NAME --es name "\"$TV_NAME\"" --es device_name "\"$TV_NAME\"" io.github.jqssun.airplay >/dev/null 2>&1 || true
+        fi
+        tv monkey -p io.github.jqssun.airplay 1 >/dev/null 2>&1 || true
+    fi
 fi
-echo "Done. Chromecast is built into Android TV; AirPlay runs in the background once opened."
+echo "Done. Chromecast is built into Android TV; AirPlay runs in the background with your TV's device name."

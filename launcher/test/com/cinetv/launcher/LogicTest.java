@@ -295,4 +295,57 @@ public class LogicTest {
         assertTrue(recent.contains("Porsche 911 Carrera"));
         assertTrue(recent.contains("Galata Kulesi"));
     }
+
+    @Test
+    public void accessibilitySixLevelUiAndFontScalesSupportEnKucukAndCokKucuk() {
+        assertEquals(-2, com.cinetv.launcher.service.Prefs.clampScaleLevel(-9));
+        assertEquals(3, com.cinetv.launcher.service.Prefs.clampScaleLevel(9));
+        assertEquals(0.72f, com.cinetv.launcher.service.Prefs.uiScaleMultiplierForLevel(-2), 0.001f);
+        assertEquals(0.80f, com.cinetv.launcher.service.Prefs.uiScaleMultiplierForLevel(-1), 0.001f);
+        assertEquals(0.88f, com.cinetv.launcher.service.Prefs.uiScaleMultiplierForLevel(0), 0.001f);
+        assertEquals(1.00f, com.cinetv.launcher.service.Prefs.uiScaleMultiplierForLevel(1), 0.001f);
+        assertEquals(1.14f, com.cinetv.launcher.service.Prefs.uiScaleMultiplierForLevel(2), 0.001f);
+        assertEquals(1.28f, com.cinetv.launcher.service.Prefs.uiScaleMultiplierForLevel(3), 0.001f);
+
+        assertEquals(0.75f, com.cinetv.launcher.service.Prefs.fontScaleMultiplierForLevel(-2), 0.001f);
+        assertEquals(0.82f, com.cinetv.launcher.service.Prefs.fontScaleMultiplierForLevel(-1), 0.001f);
+        assertTrue(com.cinetv.launcher.service.Prefs.uiScaleLabelForLevel(-2, true).contains("En Küçük"));
+        assertTrue(com.cinetv.launcher.service.Prefs.uiScaleLabelForLevel(-1, true).contains("Çok Küçük"));
+        assertTrue(com.cinetv.launcher.service.Prefs.fontScaleLabelForLevel(-2, true).contains("En Küçük"));
+        assertTrue(com.cinetv.launcher.service.Prefs.fontScaleLabelForLevel(-1, true).contains("Çok Küçük"));
+    }
+
+    @Test
+    public void realShazamSignatureProducesValidVibraPacketWithoutGoogle() {
+        short[] pcm = new short[16000 * 3];
+        for (int i = 0; i < pcm.length; i++) {
+            pcm[i] = (short) (Math.sin(2.0 * Math.PI * 440.0 * i / 16000.0) * 14000
+                    + Math.sin(2.0 * Math.PI * 880.0 * i / 16000.0) * 8000);
+        }
+        byte[] sig = com.cinetv.launcher.ai.ShazamRecognizer.encodeShazamSignature(pcm);
+        org.junit.Assert.assertNotNull(sig);
+        assertTrue(sig.length > 48);
+        // Little-endian 0xCAFE2580 magic header
+        assertEquals((byte) 0x80, sig[0]);
+        assertEquals((byte) 0x25, sig[1]);
+        assertEquals((byte) 0xFE, sig[2]);
+        assertEquals((byte) 0xCA, sig[3]);
+    }
+
+    @Test
+    public void gamzeConversationAndStockLauncherRecoveryWork() {
+        com.cinetv.launcher.ai.GamzeConversation.clear();
+        com.cinetv.launcher.ai.GamzeConversation.record("Bana karanlık atmosferli film öner", "Se7en ve Prisoners harika seçimlerdir.", "Karanlık Atmosfer");
+        assertEquals(1, com.cinetv.launcher.ai.GamzeConversation.entries().size());
+        assertEquals("Se7en ve Prisoners harika seçimlerdir.", com.cinetv.launcher.ai.GamzeConversation.entries().get(0).gamze);
+
+        java.util.List<String> available = java.util.Arrays.asList(
+                "com.example.other",
+                "com.google.android.tvlauncher"
+        );
+        assertEquals("com.google.android.tvlauncher",
+                com.cinetv.launcher.device.HomeLaunchers.pickBestStockPackage(available, java.util.Collections.emptyList()));
+        assertTrue(java.util.Arrays.asList(com.cinetv.launcher.device.HomeLaunchers.STOCK_LAUNCHERS)
+                .contains("com.google.android.leanbacklauncher"));
+    }
 }

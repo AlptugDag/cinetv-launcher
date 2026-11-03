@@ -388,6 +388,14 @@ public final class TvWebRemoteServer {
                 json(out, saveWallpaper(in, length));
                 return;
             }
+            if ("POST".equals(method) && "/api/files/upload".equals(path)) {
+                json(out, saveUploadedFile(in, length, q.get("dir"), q.get("name")));
+                return;
+            }
+            if ("GET".equals(method) && "/api/files/download".equals(path)) {
+                serveTvFileDownload(out, q.get("path"), "1".equals(q.get("inline")));
+                return;
+            }
             post(() -> {
                 Controller c = controller;
                 if (c != null) c.onPhoneActivity();
@@ -424,6 +432,10 @@ public final class TvWebRemoteServer {
         if ("/api/wallpaper64".equals(path)) {
             byte[] body = android.util.Base64.decode(q.get("data") == null ? "" : q.get("data"), android.util.Base64.DEFAULT);
             return saveWallpaper(new java.io.ByteArrayInputStream(body), body.length);
+        }
+        if ("/api/files/upload64".equals(path)) {
+            byte[] body = android.util.Base64.decode(q.get("data") == null ? "" : q.get("data"), android.util.Base64.DEFAULT);
+            return saveUploadedFile(new java.io.ByteArrayInputStream(body), body.length, q.get("dir"), q.get("name"));
         }
         return api(path, q);
     }
@@ -663,11 +675,67 @@ public final class TvWebRemoteServer {
                 // the latest screenshot, inline so it also reaches a phone on the relay
                 byte[] jpg = ScreenShot.latest();
                 if (jpg == null) return new JSONObject().put("ok", false);
-                return ok.put("id", ScreenShot.id()).put("jpg", android.util.Base64.encodeToString(jpg, android.util.Base64.NO_WRAP));
+                return ok.put("id", ScreenShot.id())
+                        .put("path", ScreenShot.lastSavedPath())
+                        .put("jpg", android.util.Base64.encodeToString(jpg, android.util.Base64.NO_WRAP));
             }
-            case "/api/shot/take":
+            case "/api/shot/take": {
+                if ("1".equals(q.get("sync"))) {
+                    boolean taken = ScreenShot.takeSync(app);
+                    byte[] jpg = ScreenShot.latest();
+                    return new JSONObject()
+                            .put("ok", taken && jpg != null)
+                            .put("id", ScreenShot.id())
+                            .put("path", ScreenShot.lastSavedPath())
+                            .put("jpg", jpg == null ? "" : android.util.Base64.encodeToString(jpg, android.util.Base64.NO_WRAP))
+                            .put("screenshots", ScreenShot.listSavedScreenshots());
+                }
                 ScreenShot.takeAsync(app, null);
                 return ok;
+            }
+            case "/api/shot/list": {
+                return ok.put("screenshots", ScreenShot.listSavedScreenshots())
+                        .put("dir", ScreenShot.screenshotsDir().getAbsolutePath());
+            }
+            case "/api/files/list": {
+                return listTvDirectory(q.get("dir"));
+            }
+            case "/api/files/delete": {
+                return deleteTvFile(q.get("path"));
+            }
+            case "/api/files/rename": {
+                return renameTvFile(q.get("path"), q.get("name"));
+            }
+            case "/api/files/mkdir": {
+                return mkdirTvFolder(q.get("dir"), q.get("name"));
+            }
+            case "/api/files/open": {
+                return openTvFile(q.get("path"));
+            }
+            case "/api/gamze/chat": {
+                String msg = clip(q.get("q"), 1000);
+                String mode = clip(q.get("mode"), 20);
+                JSONObject chatRes = com.cinetv.launcher.ai.MovieAssistant.chatWithGamze(app, msg, mode);
+                if ("1".equals(q.get("speak")) && chatRes.optBoolean("ok")) {
+                    final String voice = chatRes.optString("voice", "");
+                    if (!voice.isEmpty()) {
+                        post(() -> com.cinetv.launcher.ai.EmaLightningTts.speak(app, voice));
+                    }
+                }
+                return chatRes;
+            }
+            case "/api/gamze/history": {
+                return ok.put("history", com.cinetv.launcher.ai.GamzeConversation.toJsonArray());
+            }
+            case "/api/gamze/clear": {
+                com.cinetv.launcher.ai.GamzeConversation.clear();
+                return ok.put("history", new JSONArray());
+            }
+            case "/api/system/restore-baseline": {
+                final boolean handBackHome = "1".equals(q.get("home"));
+                new Thread(() -> com.cinetv.launcher.device.DeviceTweaks.restoreAllToPreInstallState(app, handBackHome), "cinetv-web-baseline").start();
+                return ok.put("restored", true);
+            }
             case "/api/hello":
                 post(() -> {
                     Controller c = controller;
@@ -1463,5 +1531,230 @@ public final class TvWebRemoteServer {
 
     private static void post(Runnable r) {
         main.post(r);
+    }
+
+    // ---- TV File Manager & Screenshots Helpers (/sdcard) ------------------------------------------
+
+    private static java.io.File safeSdcardRoot() {
+        java.io.File ext = android.os.Environment.getExternalStorageDirectory();
+        if (ext != null && ext.exists()) return ext;
+        return new java.io.File("/sdcard");
+    }
+
+    private static java.io.File resolveSafeTvPath(String rawPath) {
+        try {
+            java.io.File root = safeSdcardRoot().getCanonicalFile();
+            if (rawPath == null || rawPath.trim().isEmpty() || "/sdcard".equals(rawPath.trim())) {
+                return root;
+            }
+            String p = rawPath.trim();
+            if (p.startsWith("/sdcard/")) {
+                p = new java.io.File(root, p.substring("/sdcard/".length())).getAbsolutePath();
+            }
+            java.io.File target = new java.io.File(p).getCanonicalFile();
+            String rootPath = root.getPath();
+            String targetPath = target.getPath();
+            if (targetPath.equals(rootPath) || targetPath.startsWith(rootPath + java.io.File.separator)
+                    || targetPath.startsWith("/storage/emulated/0") || targetPath.startsWith("/sdcard")) {
+                return target;
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
+    private static JSONObject listTvDirectory(String rawDir) {
+        JSONObject res = new JSONObject();
+        try {
+            java.io.File root = safeSdcardRoot().getCanonicalFile();
+            java.io.File dir = resolveSafeTvPath(rawDir);
+            if (dir == null || !dir.exists() || !dir.isDirectory()) {
+                dir = root;
+            }
+            // Ensure CineTV_Screenshots and Download exist for convenience
+            ScreenShot.screenshotsDir();
+            java.io.File dl = new java.io.File(root, "Download");
+            if (!dl.exists()) dl.mkdirs();
+
+            java.io.File[] children = dir.listFiles();
+            List<java.io.File> list = new ArrayList<>();
+            if (children != null) {
+                Collections.addAll(list, children);
+            }
+            list.sort((a, b) -> {
+                if (a.isDirectory() != b.isDirectory()) return a.isDirectory() ? -1 : 1;
+                return Long.compare(b.lastModified(), a.lastModified());
+            });
+
+            JSONArray items = new JSONArray();
+            for (int i = 0; i < Math.min(list.size(), 250); i++) {
+                java.io.File f = list.get(i);
+                String name = f.getName();
+                if (name.startsWith(".")) continue;
+                JSONObject o = new JSONObject();
+                o.put("name", name);
+                o.put("path", f.getAbsolutePath());
+                o.put("isDir", f.isDirectory());
+                o.put("size", f.isDirectory() ? 0L : f.length());
+                o.put("modified", f.lastModified());
+                int dot = name.lastIndexOf('.');
+                o.put("ext", (!f.isDirectory() && dot > 0) ? name.substring(dot + 1).toLowerCase(Locale.ROOT) : "");
+                items.put(o);
+            }
+
+            long freeMb = dir.getUsableSpace() / (1024L * 1024L);
+            long totalMb = dir.getTotalSpace() / (1024L * 1024L);
+            String parentPath = "";
+            if (!dir.getPath().equals(root.getPath()) && dir.getParentFile() != null) {
+                java.io.File pf = resolveSafeTvPath(dir.getParentFile().getAbsolutePath());
+                if (pf != null) parentPath = pf.getAbsolutePath();
+            }
+
+            res.put("ok", true);
+            res.put("dir", dir.getAbsolutePath());
+            res.put("root", root.getAbsolutePath());
+            res.put("parent", parentPath);
+            res.put("freeMb", freeMb);
+            res.put("totalMb", totalMb);
+            res.put("items", items);
+            res.put("screenshotsDir", ScreenShot.screenshotsDir().getAbsolutePath());
+        } catch (Throwable t) {
+            try {
+                res.put("ok", false);
+                res.put("error", t.getMessage());
+            } catch (Throwable ignored) {}
+        }
+        return res;
+    }
+
+    private static JSONObject deleteTvFile(String rawPath) {
+        JSONObject res = new JSONObject();
+        try {
+            java.io.File root = safeSdcardRoot().getCanonicalFile();
+            java.io.File target = resolveSafeTvPath(rawPath);
+            if (target == null || !target.exists() || target.getPath().equals(root.getPath())) {
+                return res.put("ok", false).put("error", "invalid_path");
+            }
+            boolean deleted = deleteRecursively(target, 0);
+            return res.put("ok", deleted);
+        } catch (Throwable t) {
+            try { return res.put("ok", false).put("error", t.getMessage()); } catch (Throwable ignored) { return res; }
+        }
+    }
+
+    private static boolean deleteRecursively(java.io.File f, int depth) {
+        if (f == null || depth > 5) return false;
+        if (f.isDirectory()) {
+            java.io.File[] children = f.listFiles();
+            if (children != null) {
+                for (java.io.File c : children) deleteRecursively(c, depth + 1);
+            }
+        }
+        return f.delete();
+    }
+
+    private static JSONObject renameTvFile(String rawPath, String newName) {
+        JSONObject res = new JSONObject();
+        try {
+            java.io.File target = resolveSafeTvPath(rawPath);
+            String cleanName = newName == null ? "" : newName.trim().replaceAll("[/\\\\:*?\"<>|]", "_");
+            if (target == null || !target.exists() || cleanName.isEmpty()) {
+                return res.put("ok", false).put("error", "invalid");
+            }
+            java.io.File dest = new java.io.File(target.getParentFile(), cleanName);
+            boolean ok = target.renameTo(dest);
+            return res.put("ok", ok).put("path", dest.getAbsolutePath());
+        } catch (Throwable t) {
+            try { return res.put("ok", false).put("error", t.getMessage()); } catch (Throwable ignored) { return res; }
+        }
+    }
+
+    private static JSONObject mkdirTvFolder(String rawDir, String folderName) {
+        JSONObject res = new JSONObject();
+        try {
+            java.io.File dir = resolveSafeTvPath(rawDir);
+            String cleanName = folderName == null ? "" : folderName.trim().replaceAll("[/\\\\:*?\"<>|]", "_");
+            if (dir == null || !dir.isDirectory() || cleanName.isEmpty()) {
+                return res.put("ok", false).put("error", "invalid");
+            }
+            java.io.File target = new java.io.File(dir, cleanName);
+            boolean ok = target.exists() || target.mkdirs();
+            return res.put("ok", ok).put("path", target.getAbsolutePath());
+        } catch (Throwable t) {
+            try { return res.put("ok", false).put("error", t.getMessage()); } catch (Throwable ignored) { return res; }
+        }
+    }
+
+    private static JSONObject openTvFile(String rawPath) {
+        JSONObject res = new JSONObject();
+        try {
+            final java.io.File target = resolveSafeTvPath(rawPath);
+            if (target == null || !target.exists() || target.isDirectory()) {
+                return res.put("ok", false).put("error", "not_found");
+            }
+            final String path = target.getAbsolutePath();
+            final String low = target.getName().toLowerCase(Locale.ROOT);
+            if (low.endsWith(".apk")) {
+                new Thread(() -> LocalAdb.shell(app, "pm install -r '" + path.replace("'", "'\\''") + "'", 45_000), "cinetv-apk-install").start();
+                return res.put("ok", true).put("action", "installing_apk");
+            }
+            post(() -> {
+                try {
+                    String mimeType = "*/*";
+                    if (low.endsWith(".mp4") || low.endsWith(".mkv") || low.endsWith(".avi") || low.endsWith(".webm") || low.endsWith(".mov")) mimeType = "video/*";
+                    else if (low.endsWith(".mp3") || low.endsWith(".flac") || low.endsWith(".wav") || low.endsWith(".m4a")) mimeType = "audio/*";
+                    else if (low.endsWith(".jpg") || low.endsWith(".jpeg") || low.endsWith(".png") || low.endsWith(".webp")) mimeType = "image/*";
+                    Intent viewIntent = new Intent(Intent.ACTION_VIEW);
+                    viewIntent.setDataAndType(android.net.Uri.fromFile(target), mimeType);
+                    viewIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    app.startActivity(viewIntent);
+                } catch (Throwable t) {
+                    LocalAdb.shell(app, "am start -a android.intent.action.VIEW -d 'file://" + path.replace("'", "'\\''") + "'", 4000);
+                }
+            });
+            return res.put("ok", true).put("action", "opened_on_tv");
+        } catch (Throwable t) {
+            try { return res.put("ok", false).put("error", t.getMessage()); } catch (Throwable ignored) { return res; }
+        }
+    }
+
+    private static JSONObject saveUploadedFile(InputStream in, int length, String rawDir, String rawName) throws Exception {
+        if (length <= 0 || length > 64 * 1024 * 1024) return new JSONObject().put("ok", false).put("error", "size");
+        java.io.File dir = resolveSafeTvPath(rawDir);
+        if (dir == null || !dir.isDirectory()) {
+            dir = new java.io.File(safeSdcardRoot(), "Download");
+            if (!dir.exists()) dir.mkdirs();
+        }
+        String cleanName = (rawName == null || rawName.trim().isEmpty())
+                ? ("upload_" + System.currentTimeMillis() + ".bin")
+                : rawName.trim().replaceAll("[/\\\\:*?\"<>|]", "_");
+        java.io.File dest = new java.io.File(dir, cleanName);
+        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(dest)) {
+            byte[] buf = new byte[16384];
+            int remaining = length;
+            while (remaining > 0) {
+                int r = in.read(buf, 0, Math.min(buf.length, remaining));
+                if (r < 0) break;
+                fos.write(buf, 0, r);
+                remaining -= r;
+            }
+        }
+        return new JSONObject().put("ok", true).put("path", dest.getAbsolutePath()).put("name", dest.getName()).put("size", dest.length());
+    }
+
+    private static void serveTvFileDownload(OutputStream out, String rawPath, boolean inline) throws Exception {
+        java.io.File target = resolveSafeTvPath(rawPath);
+        if (target == null || !target.exists() || !target.isFile() || target.length() > 80 * 1024 * 1024L) {
+            send(out, 404, "text/plain", "Not Found".getBytes(StandardCharsets.UTF_8));
+            return;
+        }
+        byte[] bytes = java.nio.file.Files.readAllBytes(target.toPath());
+        String contentType = mime(target.getName().toLowerCase(Locale.ROOT));
+        String disp = (inline ? "inline" : "attachment") + "; filename=\"" + target.getName().replace("\"", "_") + "\"";
+        String head = "HTTP/1.1 200 OK\r\nContent-Type: " + contentType + "\r\n"
+                + "Content-Disposition: " + disp + "\r\n"
+                + "Content-Length: " + bytes.length + "\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n";
+        out.write(head.getBytes(StandardCharsets.UTF_8));
+        out.write(bytes);
+        out.flush();
     }
 }

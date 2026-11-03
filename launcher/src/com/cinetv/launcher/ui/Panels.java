@@ -451,6 +451,15 @@ public final class Panels {
         emaTile.setTag("opt_ema_tts");
         cAi.addView(emaTile);
 
+        LinearLayout gamzeChatTile = Controls.tile(ctx,
+                tr ? "Gamze Gemini Chatbot (Kapsamlı Sohbet)" : "Gamze Gemini Chatbot (Multi-Turn Chat)",
+                tr ? "Sinema, genel kültür, felsefe, sahne analizi ve vitrin küratörlüğü için çok turlu sohbeti aç"
+                   : "Open multi-turn Gemini chat for cinema, trivia, general knowledge & shelf curation",
+                LlmClient.isConfigured(ctx),
+                v -> host.push(() -> buildGamzeChatModal(ctx, host, a)));
+        gamzeChatTile.setTag("opt_gamze_chat");
+        cAi.addView(gamzeChatTile);
+
 
         // TV-owned pages are opened from the single TV Settings tile in the TV section below.
         LinearLayout cSys = column(ctx, cols, tr ? "Sistem" : "System", colWidth);
@@ -594,6 +603,20 @@ public final class Panels {
         cMaint.addView(Controls.tile(ctx, tr ? "Nuvio Eklentilerini Yönet & Kur" : "Manage & Install Nuvio Addons",
                 tr ? "Eklenti ve profil seçim penceresini aç" : "Select and install curated addons", false,
                 v -> host.push(() -> buildNuvioUpdateAddons(ctx, host))));
+        cMaint.addView(Controls.tile(ctx,
+                tr ? "Kurulum Öncesi Orijinal TV Ayarlarına Döndür" : "Restore Pre-Install TV Baseline",
+                tr ? "Görüntü, ses, DNS, animasyon, zRAM ve varsayılan başlatıcıyı APK yüklenmeden önceki haline döndür"
+                   : "Restore picture, audio, DNS, animation, zRAM and stock launcher to pre-APK state",
+                false, v -> {
+                    Toast.makeText(ctx, tr ? "Kurulum öncesi orijinal TV yedeği geri yükleniyor..." : "Restoring pre-install TV baseline...", Toast.LENGTH_SHORT).show();
+                    new Thread(() -> {
+                        com.cinetv.launcher.device.DeviceTweaks.restoreAllToPreInstallState(ctx.getApplicationContext(), false);
+                        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> Toast.makeText(ctx,
+                                tr ? "Tüm sistem ayarları ve orijinal başlatıcı APK kurulumu öncesi haline döndürüldü."
+                                   : "All system settings and stock launcher restored to pre-install state.",
+                                Toast.LENGTH_LONG).show());
+                    }, "cinetv-baseline-restore").start();
+                }));
         cMaint.addView(Controls.tile(ctx, ctx.getString(R.string.reboot), null, false, v -> a.reboot()));
         cMaint.addView(Controls.alarm(ctx, ctx.getString(R.string.destroy), v -> host.push(() -> buildDestroy(ctx, host))));
 
@@ -1380,21 +1403,30 @@ public final class Panels {
                                 Toast.LENGTH_LONG).show());
                     }, "cinetv-home-off").start();
                 }));
-        root.addView(Controls.tile(ctx, tr ? "TV'nin Başlatıcısını Geri Getir" : "Bring Back the TV's Launcher",
-                com.cinetv.launcher.device.HomeLaunchers.hasDisabled(ctx) ? (tr ? "Kapatılan başlatıcılar yeniden açılır" : "The launchers switched off come back")
-                        : (tr ? "Kapatılmış başlatıcı yok" : "None switched off"), false, v -> new Thread(() -> {
+        root.addView(Controls.tile(ctx, tr ? "TV'nin Orijinal Başlatıcısını Kurtar ve Geri Getir" : "Recover & Bring Back the TV's Default Launcher",
+                tr ? "Silinmiş veya devre dışı kalmış fabrika başlatıcısını sistemden geri yükler ve etkinleştirir"
+                   : "Re-installs and re-enables the factory default launcher even if previously removed or disabled",
+                false, v -> new Thread(() -> {
                     boolean ok = com.cinetv.launcher.device.HomeLaunchers.restoreOthers(ctx);
                     new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
-                        Toast.makeText(ctx, ok ? (tr ? "TV'nin başlatıcısı geri geldi. Ana ekran tuşuyla seçebilirsiniz." : "The TV's launcher is back. Choose it with Home.")
-                                : (tr ? "TV'nin ağ hata ayıklaması kapalı" : "Network debugging is off"), Toast.LENGTH_LONG).show();
-                        if (ok) {
-                            try {
-                                ctx.startActivity(new android.content.Intent(android.provider.Settings.ACTION_HOME_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
-                            } catch (Throwable ignored) {
-                            }
+                        Toast.makeText(ctx, ok ? (tr ? "TV'nin orijinal başlatıcısı kurtarıldı ve etkinleştirildi." : "The TV's default launcher was recovered and enabled.")
+                                : (tr ? "TV'nin ağ hata ayıklaması kapalı; yine de sistem başlatıcı seçici açılıyor." : "Network debugging is off; opening system home settings."), Toast.LENGTH_LONG).show();
+                        try {
+                            ctx.startActivity(new android.content.Intent(android.provider.Settings.ACTION_HOME_SETTINGS).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+                        } catch (Throwable ignored) {
                         }
                     });
                 }, "cinetv-home-on").start()));
+        root.addView(Controls.tile(ctx, tr ? "APK Öncesi Orijinal Duruma Tam Dönüş (Ayarlar + Başlatıcı)" : "Full Rollback to Pre-APK State (Settings + Launcher)",
+                tr ? "Tüm sistem ayarlarını APK kurulmadan önceki yedeğe döndürür ve TV'nin orijinal başlatıcısına geçer"
+                   : "Restores all system settings to pre-APK baseline and hands Home back to the stock launcher",
+                false, v -> new Thread(() -> {
+                    com.cinetv.launcher.device.DeviceTweaks.restoreAllToPreInstallState(ctx.getApplicationContext(), true);
+                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> Toast.makeText(ctx,
+                            tr ? "Cihaz APK kurulumu öncesi orijinal durumuna ve varsayılan başlatıcısına döndürüldü."
+                               : "Device restored to pre-APK state and stock launcher.",
+                            Toast.LENGTH_LONG).show());
+                }, "cinetv-full-rollback").start()));
         return root;
     }
 
@@ -1433,8 +1465,9 @@ public final class Panels {
                 });
         root.addView(motionTile);
 
-        root.addView(Controls.tile(ctx, tr ? "Arayüz ve Yazı Boyutu" : "Interface & Text Size",
-                Prefs.uiScaleLabel(ctx) + " · " + Prefs.fontScaleLabel(ctx), false,
+        root.addView(Controls.tile(ctx, tr ? "Ekran Oranı ve Yazı Tipi Boyutu" : "Screen Scale & Font Size",
+                Prefs.uiScaleLabel(ctx) + " · " + Prefs.fontScaleLabel(ctx)
+                        + (tr ? " (En Küçük, Çok Küçük, Küçük, Standart, Büyük, Çok Büyük)" : " (Smallest to Extra Large)"), false,
                 v -> host.push(() -> buildScalePreviewModal(ctx, host, a))));
         root.addView(Controls.tile(ctx, tr ? "TV'nin Erişilebilirlik Ayarları" : "TV Accessibility Settings",
                 tr ? "Ekran okuyucu, altyazı stili, renk düzeltme" : "Screen reader, caption style, colour correction", false, v -> {
@@ -1821,8 +1854,8 @@ public final class Panels {
 
         final Runnable updatePreview = () -> {
             previewBox.removeAllViews();
-            float uiMultiplier = curUi[0] == 0 ? 0.88f : (curUi[0] == 2 ? 1.14f : (curUi[0] == 3 ? 1.28f : 1.0f));
-            float fontMultiplier = curFont[0] == 0 ? 0.90f : (curFont[0] == 2 ? 1.15f : (curFont[0] == 3 ? 1.30f : 1.0f));
+            float uiMultiplier = Prefs.uiScaleMultiplierForLevel(curUi[0]);
+            float fontMultiplier = Prefs.fontScaleMultiplierForLevel(curFont[0]);
 
             LinearLayout card = new LinearLayout(ctx);
             card.setOrientation(LinearLayout.VERTICAL);
@@ -1830,7 +1863,8 @@ public final class Panels {
             card.setPadding(Math.round(UiKit.px(18) * uiMultiplier), Math.round(UiKit.px(14) * uiMultiplier), Math.round(UiKit.px(18) * uiMultiplier), Math.round(UiKit.px(14) * uiMultiplier));
 
             TextView prevBadge = UiKit.bold(ctx, Math.round(12 * fontMultiplier), Color.parseColor("#34C759"));
-            prevBadge.setText(tr ? "CANLI ÖNİZLEME · 60 FPS SİNEMA" : "LIVE PREVIEW · 60 FPS CINEMA");
+            prevBadge.setText((tr ? "CANLI ÖNİZLEME · " : "LIVE PREVIEW · ")
+                    + Prefs.uiScaleLabelForLevel(curUi[0], tr) + " / " + Prefs.fontScaleLabelForLevel(curFont[0], tr));
             card.addView(prevBadge);
 
             TextView prevTitle = UiKit.bold(ctx, Math.round(26 * fontMultiplier), UiKit.INK);
@@ -1877,87 +1911,99 @@ public final class Panels {
         LinearLayout leftCol = new LinearLayout(ctx);
         leftCol.setOrientation(LinearLayout.VERTICAL);
 
-        // Section A: Arayüz Ölçeği
+        // Section A: Ekran Oranı & Arayüz Ölçeği (6 levels: -2 to 3)
         TextView lblUi = UiKit.bold(ctx, 16, UiKit.INK);
-        lblUi.setText(tr ? "1. Arayüz Ölçeği" : "1. UI Scale");
+        lblUi.setText(tr ? "1. Ekran Oranı & Arayüz Ölçeği" : "1. Screen Ratio & UI Scale");
         leftCol.addView(lblUi);
 
-        final String[][] uiChoices = {
-                {tr ? "Küçük (%88) · Kompakt" : "Small (88%) · Compact", "0"},
-                {tr ? "Standart (%100) · Varsayılan" : "Standard (100%) · Default", "1"},
-                {tr ? "Büyük (%114) · Rahat Okuma" : "Large (114%) · Comfy", "2"},
-                {tr ? "Çok Büyük (%128) · Uzak Ekran" : "Extra Large (128%) · Living Room", "3"}
+        final int[] uiLevels = {-2, -1, 0, 1, 2, 3};
+        final String[] uiLabels = {
+                tr ? "En Küçük (%72) · Maksimum Alan" : "Smallest (72%) · Maximum Space",
+                tr ? "Çok Küçük (%80) · Ultra Kompakt" : "Extra Small (80%) · Ultra Compact",
+                tr ? "Küçük (%88) · Kompakt" : "Small (88%) · Compact",
+                tr ? "Standart (%100) · Varsayılan" : "Standard (100%) · Default",
+                tr ? "Büyük (%114) · Rahat Okuma" : "Large (114%) · Comfy",
+                tr ? "Çok Büyük (%128) · Uzak Ekran" : "Extra Large (128%) · Living Room"
         };
-        final View[] uiButtons = new View[4];
-        for (int i = 0; i < uiChoices.length; i++) {
-            final int idx = i;
-            final TextView chip = UiKit.bold(ctx, 14, curUi[0] == idx ? Color.parseColor("#34C759") : UiKit.INK);
-            chip.setText((curUi[0] == idx ? "● " : "○ ") + uiChoices[i][0]);
+        final View[] uiButtons = new View[uiLevels.length];
+        View initialFocusBtn = null;
+        for (int i = 0; i < uiLevels.length; i++) {
+            final int levelVal = uiLevels[i];
+            final boolean isSel = (curUi[0] == levelVal);
+            final TextView chip = UiKit.bold(ctx, 13.5f, isSel ? Color.parseColor("#34C759") : UiKit.INK);
+            chip.setText((isSel ? "● " : "○ ") + uiLabels[i]);
             chip.setFocusable(true);
             chip.setClickable(true);
-            chip.setPadding(UiKit.px(14), UiKit.px(8), UiKit.px(14), UiKit.px(8));
-            final Glass cg = new Glass(chip, UiKit.pxf(14), curUi[0] == idx ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
+            chip.setPadding(UiKit.px(14), UiKit.px(7), UiKit.px(14), UiKit.px(7));
+            final Glass cg = new Glass(chip, UiKit.pxf(14), isSel ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
             chip.setBackground(cg);
             chip.setOnFocusChangeListener((v, has) -> {
                 if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
-                cg.setStyle(has ? Glass.Style.FOCUSED : (curUi[0] == idx ? Glass.Style.FOCUSED : Glass.Style.CONTROL));
-                chip.setTextColor(has ? UiKit.INK_DARK : (curUi[0] == idx ? Color.parseColor("#34C759") : UiKit.INK));
-                UiKit.lift(v, has, 1.04f, 120);
+                cg.setStyle(has ? Glass.Style.FOCUSED : (curUi[0] == levelVal ? Glass.Style.FOCUSED : Glass.Style.CONTROL));
+                chip.setTextColor(has ? UiKit.INK_DARK : (curUi[0] == levelVal ? Color.parseColor("#34C759") : UiKit.INK));
+                UiKit.lift(v, has, 1.03f, 120);
             });
             chip.setOnClickListener(v -> {
                 com.cinetv.launcher.device.SystemAudio.click(ctx);
-                curUi[0] = idx;
-                for (int j = 0; j < 4; j++) {
-                    ((TextView) uiButtons[j]).setText((curUi[0] == j ? "● " : "○ ") + uiChoices[j][0]);
-                    ((TextView) uiButtons[j]).setTextColor(curUi[0] == j ? Color.parseColor("#34C759") : UiKit.INK);
+                curUi[0] = levelVal;
+                for (int j = 0; j < uiLevels.length; j++) {
+                    boolean sel = (curUi[0] == uiLevels[j]);
+                    ((TextView) uiButtons[j]).setText((sel ? "● " : "○ ") + uiLabels[j]);
+                    ((TextView) uiButtons[j]).setTextColor(sel ? Color.parseColor("#34C759") : UiKit.INK);
                 }
                 updatePreview.run();
             });
             LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            clp.topMargin = UiKit.px(5);
+            clp.topMargin = UiKit.px(4);
             leftCol.addView(chip, clp);
             uiButtons[i] = chip;
+            if (isSel) initialFocusBtn = chip;
         }
 
-        // Section B: Yazı Boyutu
+        // Section B: Yazı Tipi Boyutu (6 levels: -2 to 3)
         TextView lblFont = UiKit.bold(ctx, 16, UiKit.INK);
-        lblFont.setText(tr ? "2. Yazı Boyutu" : "2. Font Size");
-        lblFont.setPadding(0, UiKit.px(14), 0, 0);
+        lblFont.setText(tr ? "2. Yazı Tipi Boyutu" : "2. Font Size");
+        lblFont.setPadding(0, UiKit.px(12), 0, 0);
         leftCol.addView(lblFont);
 
-        final String[][] fontChoices = {
-                {tr ? "Küçük (%90)" : "Small (90%)", "0"},
-                {tr ? "Normal (%100)" : "Normal (100%)", "1"},
-                {tr ? "Büyük (%115)" : "Large (115%)", "2"},
-                {tr ? "Çok Büyük (%130)" : "Extra Large (130%)", "3"}
+        final int[] fontLevels = {-2, -1, 0, 1, 2, 3};
+        final String[] fontLabels = {
+                tr ? "En Küçük (%75)" : "Smallest (75%)",
+                tr ? "Çok Küçük (%82)" : "Extra Small (82%)",
+                tr ? "Küçük (%90)" : "Small (90%)",
+                tr ? "Normal (%100)" : "Normal (100%)",
+                tr ? "Büyük (%115)" : "Large (115%)",
+                tr ? "Çok Büyük (%130)" : "Extra Large (130%)"
         };
-        final View[] fontButtons = new View[4];
-        for (int i = 0; i < fontChoices.length; i++) {
-            final int idx = i;
-            final TextView chip = UiKit.bold(ctx, 14, curFont[0] == idx ? Color.parseColor("#34C759") : UiKit.INK);
-            chip.setText((curFont[0] == idx ? "● " : "○ ") + fontChoices[i][0]);
+        final View[] fontButtons = new View[fontLevels.length];
+        for (int i = 0; i < fontLevels.length; i++) {
+            final int levelVal = fontLevels[i];
+            final boolean isSel = (curFont[0] == levelVal);
+            final TextView chip = UiKit.bold(ctx, 13.5f, isSel ? Color.parseColor("#34C759") : UiKit.INK);
+            chip.setText((isSel ? "● " : "○ ") + fontLabels[i]);
             chip.setFocusable(true);
             chip.setClickable(true);
-            chip.setPadding(UiKit.px(14), UiKit.px(8), UiKit.px(14), UiKit.px(8));
-            final Glass cg = new Glass(chip, UiKit.pxf(14), curFont[0] == idx ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
+            chip.setPadding(UiKit.px(14), UiKit.px(7), UiKit.px(14), UiKit.px(7));
+            final Glass cg = new Glass(chip, UiKit.pxf(14), isSel ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
             chip.setBackground(cg);
             chip.setOnFocusChangeListener((v, has) -> {
                 if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
-                cg.setStyle(has ? Glass.Style.FOCUSED : (curFont[0] == idx ? Glass.Style.FOCUSED : Glass.Style.CONTROL));
-                chip.setTextColor(has ? UiKit.INK_DARK : (curFont[0] == idx ? Color.parseColor("#34C759") : UiKit.INK));
-                UiKit.lift(v, has, 1.04f, 120);
+                cg.setStyle(has ? Glass.Style.FOCUSED : (curFont[0] == levelVal ? Glass.Style.FOCUSED : Glass.Style.CONTROL));
+                chip.setTextColor(has ? UiKit.INK_DARK : (curFont[0] == levelVal ? Color.parseColor("#34C759") : UiKit.INK));
+                UiKit.lift(v, has, 1.03f, 120);
             });
             chip.setOnClickListener(v -> {
                 com.cinetv.launcher.device.SystemAudio.click(ctx);
-                curFont[0] = idx;
-                for (int j = 0; j < 4; j++) {
-                    ((TextView) fontButtons[j]).setText((curFont[0] == j ? "● " : "○ ") + fontChoices[j][0]);
-                    ((TextView) fontButtons[j]).setTextColor(curFont[0] == j ? Color.parseColor("#34C759") : UiKit.INK);
+                curFont[0] = levelVal;
+                for (int j = 0; j < fontLevels.length; j++) {
+                    boolean sel = (curFont[0] == fontLevels[j]);
+                    ((TextView) fontButtons[j]).setText((sel ? "● " : "○ ") + fontLabels[j]);
+                    ((TextView) fontButtons[j]).setTextColor(sel ? Color.parseColor("#34C759") : UiKit.INK);
                 }
                 updatePreview.run();
             });
             LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            clp.topMargin = UiKit.px(5);
+            clp.topMargin = UiKit.px(4);
             leftCol.addView(chip, clp);
             fontButtons[i] = chip;
         }
@@ -1980,7 +2026,7 @@ public final class Panels {
             Prefs.setFontScaleLevel(ctx, curFont[0]);
             UiKit.init(ctx);
             a.applyAppearance();
-            Toast.makeText(ctx, tr ? "Arayüz ölçeği başarıyla uygulandı" : "UI scale successfully applied", Toast.LENGTH_SHORT).show();
+            Toast.makeText(ctx, tr ? "Ekran oranı ve yazı boyutu başarıyla uygulandı" : "UI scale and font size applied", Toast.LENGTH_SHORT).show();
             host.back();
         });
         LinearLayout.LayoutParams saveLp = new LinearLayout.LayoutParams(UiKit.px(210), UiKit.px(46));
@@ -1990,7 +2036,150 @@ public final class Panels {
         root.addView(footer);
 
         updatePreview.run();
-        uiButtons[curUi[0]].requestFocus();
+        if (initialFocusBtn != null) initialFocusBtn.requestFocus();
+        else uiButtons[3].requestFocus();
+        return root;
+    }
+
+    // ---- Comprehensive Gamze Gemini Chatbot Modal (TV UI) -----------------------------------------
+
+    public static View buildGamzeChatModal(final Context ctx, final ModalHost host, final Actions a) {
+        final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        final android.util.DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
+        final int modalW = Math.round(dm.widthPixels * 0.84f);
+        final int modalH = Math.round(dm.heightPixels * 0.82f);
+
+        final LinearLayout root = new LinearLayout(ctx);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(UiKit.px(32), UiKit.px(22), UiKit.px(32), UiKit.px(22));
+        root.setBackground(Glass.panel(root, 26));
+        root.setLayoutParams(new LinearLayout.LayoutParams(modalW, modalH));
+
+        LinearLayout header = new LinearLayout(ctx);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView title = UiKit.bold(ctx, 26, UiKit.INK);
+        title.setText(tr ? "Gamze · Kapsamlı Gemini Sohbet Asistanı" : "Gamze · Comprehensive Gemini Chatbot");
+        header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        final String[] activeMode = {"balanced"};
+        final TextView modeBtn = Controls.button(ctx, tr ? "Mod: Dengeli (Gemini Flash)" : "Mode: Balanced", null);
+        modeBtn.setOnClickListener(v -> {
+            if ("balanced".equals(activeMode[0])) {
+                activeMode[0] = "deep";
+                modeBtn.setText(tr ? "Mod: Derin Analiz" : "Mode: Deep Analysis");
+            } else if ("deep".equals(activeMode[0])) {
+                activeMode[0] = "fast";
+                modeBtn.setText(tr ? "Mod: Hızlı Yanıt" : "Mode: Fast");
+            } else {
+                activeMode[0] = "balanced";
+                modeBtn.setText(tr ? "Mod: Dengeli (Gemini Flash)" : "Mode: Balanced");
+            }
+        });
+        header.addView(modeBtn);
+
+        View spH = new View(ctx);
+        header.addView(spH, new LinearLayout.LayoutParams(UiKit.px(12), 1));
+
+        TextView clearBtn = Controls.button(ctx, tr ? "Sohbeti Temizle" : "Clear Chat", v -> {
+            com.cinetv.launcher.ai.GamzeConversation.clear();
+            host.replace(() -> buildGamzeChatModal(ctx, host, a));
+        });
+        header.addView(clearBtn);
+        root.addView(header);
+
+        final ScrollView chatScroll = new ScrollView(ctx);
+        chatScroll.setVerticalScrollBarEnabled(false);
+        final LinearLayout chatList = new LinearLayout(ctx);
+        chatList.setOrientation(LinearLayout.VERTICAL);
+        chatList.setPadding(0, UiKit.px(14), 0, UiKit.px(14));
+        chatScroll.addView(chatList);
+        root.addView(chatScroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        final Runnable renderHistory = () -> {
+            chatList.removeAllViews();
+            java.util.List<com.cinetv.launcher.ai.GamzeConversation.Turn> turns = com.cinetv.launcher.ai.GamzeConversation.entries();
+            if (turns.isEmpty()) {
+                TextView emptyTv = UiKit.label(ctx, 16, UiKit.INK_DIM);
+                emptyTv.setText(tr
+                        ? "Merhaba! Ben Gamze. Benimle filmler, yönetmenler, senaryo ve final analizleri, felsefe, bilim, genel kültür üzerine derinlemesine sohbet edebilir veya ruh halinize göre özel vitrin oluşturmamı isteyebilirsiniz."
+                        : "Hello! I'm Gamze. Ask me anything about cinema, directors, ending explanations, philosophy, science, or ask me to curate a custom shelf.");
+                emptyTv.setLineSpacing(UiKit.pxf(4), 1.15f);
+                emptyTv.setPadding(UiKit.px(16), UiKit.px(14), UiKit.px(16), UiKit.px(14));
+                emptyTv.setBackground(Glass.panel(emptyTv, 16));
+                chatList.addView(emptyTv);
+            } else {
+                for (com.cinetv.launcher.ai.GamzeConversation.Turn t : turns) {
+                    TextView uTv = UiKit.bold(ctx, 15, Color.parseColor("#38BDF8"));
+                    uTv.setText((tr ? "Siz: " : "You: ") + t.viewer);
+                    uTv.setPadding(UiKit.px(14), UiKit.px(8), UiKit.px(14), UiKit.px(4));
+                    chatList.addView(uTv);
+
+                    TextView gTv = UiKit.label(ctx, 15.5f, UiKit.INK);
+                    gTv.setText("Gamze: " + t.gamze);
+                    gTv.setLineSpacing(UiKit.pxf(3.5f), 1.14f);
+                    gTv.setPadding(UiKit.px(16), UiKit.px(10), UiKit.px(16), UiKit.px(12));
+                    gTv.setBackground(Glass.panel(gTv, 16));
+                    LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    glp.bottomMargin = UiKit.px(10);
+                    chatList.addView(gTv, glp);
+                }
+            }
+            chatScroll.post(() -> chatScroll.fullScroll(View.FOCUS_DOWN));
+        };
+        renderHistory.run();
+
+        LinearLayout inputRow = new LinearLayout(ctx);
+        inputRow.setOrientation(LinearLayout.HORIZONTAL);
+        inputRow.setGravity(Gravity.CENTER_VERTICAL);
+        inputRow.setPadding(0, UiKit.px(8), 0, 0);
+
+        final EditText input = field(ctx, "", R.string.search_hint, false);
+        input.setHint(tr ? "Gamze'ye istediğinizi sorun (film analizi, öneri, genel kültür, sohbet)..." : "Ask Gamze anything...");
+        inputRow.addView(input, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        View spIn = new View(ctx);
+        inputRow.addView(spIn, new LinearLayout.LayoutParams(UiKit.px(12), 1));
+
+        final View.OnClickListener sendAction = v -> {
+            final String q = input.getText().toString().trim();
+            if (q.isEmpty()) return;
+            input.setText("");
+            TextView thinking = UiKit.label(ctx, 15, Color.parseColor("#A78BFA"));
+            thinking.setText(tr ? "Gamze düşünüyor..." : "Gamze is thinking...");
+            thinking.setPadding(UiKit.px(14), UiKit.px(8), UiKit.px(14), UiKit.px(8));
+            chatList.addView(thinking);
+            chatScroll.post(() -> chatScroll.fullScroll(View.FOCUS_DOWN));
+
+            new Thread(() -> {
+                org.json.JSONObject res = com.cinetv.launcher.ai.MovieAssistant.chatWithGamze(ctx.getApplicationContext(), q, activeMode[0]);
+                final String voice = res.optString("voice", "");
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                    renderHistory.run();
+                    if (!voice.isEmpty() && Prefs.emaTts(ctx)) {
+                        com.cinetv.launcher.ai.EmaLightningTts.speak(ctx, voice);
+                    }
+                });
+            }, "cinetv-gamze-chat").start();
+        };
+
+        TextView sendBtn = Controls.button(ctx, tr ? "Gönder" : "Send", sendAction);
+        inputRow.addView(sendBtn);
+
+        View spClose = new View(ctx);
+        inputRow.addView(spClose, new LinearLayout.LayoutParams(UiKit.px(10), 1));
+
+        TextView closeBtn = Controls.button(ctx, tr ? "Kapat" : "Close", v -> host.back());
+        inputRow.addView(closeBtn);
+
+        input.setOnEditorActionListener((v, id, e) -> {
+            sendAction.onClick(v);
+            return true;
+        });
+
+        root.addView(inputRow);
+        root.post(input::requestFocus);
         return root;
     }
 

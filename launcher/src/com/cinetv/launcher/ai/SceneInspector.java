@@ -41,13 +41,20 @@ public final class SceneInspector {
 
     private SceneInspector() {}
 
-    /** Blocking: the current frame as a small JPEG (about 768 px wide), or null when it can't be captured. */
+    /** Blocking: the current frame as a small JPEG, or null when it can't be captured. */
     public static byte[] captureJpeg(Context ctx) {
+        return captureJpeg(ctx, false);
+    }
+
+    /** Blocking: captures frame at 768px for manual inspection or 640px for ambient background scan. */
+    public static byte[] captureJpeg(Context ctx, boolean manualHighDetail) {
+        int targetWidth = manualHighDetail ? 768 : 640;
+        int jpegQuality = manualHighDetail ? 76 : 65;
         try {
             // Fast path on Android 11+ (API 30+): AccessibilityService.takeScreenshot takes ~100ms vs 4-7s for adb screencap
-            Bitmap fastShot = serviceScreenshot();
+            Bitmap fastShot = serviceScreenshot(targetWidth);
             if (fastShot != null) {
-                byte[] fastBytes = encodeFrame(fastShot);
+                byte[] fastBytes = encodeFrame(fastShot, jpegQuality);
                 if (fastBytes != null && fastBytes.length > 0) {
                     return fastBytes;
                 }
@@ -67,12 +74,12 @@ public final class SceneInspector {
             BitmapFactory.Options o = new BitmapFactory.Options();
             o.inJustDecodeBounds = true;
             BitmapFactory.decodeByteArray(raw, start, raw.length - start, o);
-            o.inSampleSize = Math.max(1, o.outWidth / 640);
+            o.inSampleSize = Math.max(1, o.outWidth / targetWidth);
             o.inJustDecodeBounds = false;
             o.inPreferredConfig = Bitmap.Config.RGB_565;
             Bitmap b = BitmapFactory.decodeByteArray(raw, start, raw.length - start, o);
             if (b == null) return null;
-            return encodeFrame(b);
+            return encodeFrame(b, jpegQuality);
         } catch (Throwable t) {
             Log.w(TAG, "Capture failed: " + t);
             return null;
@@ -80,7 +87,7 @@ public final class SceneInspector {
     }
 
     /** The frame as a JPEG (empty when the picture is protected and captured black). Recycles {@code b}. */
-    private static byte[] encodeFrame(Bitmap b) {
+    private static byte[] encodeFrame(Bitmap b, int quality) {
         try {
             // Protected video (Netflix and the like) captures as pure black: say so instead of guessing.
             if (isBlank(b)) {
@@ -88,7 +95,7 @@ public final class SceneInspector {
                 return new byte[0];
             }
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            b.compress(Bitmap.CompressFormat.JPEG, 65, out);
+            b.compress(Bitmap.CompressFormat.JPEG, quality, out);
             b.recycle();
             return out.toByteArray();
         } catch (Throwable t) {
@@ -97,9 +104,9 @@ public final class SceneInspector {
         }
     }
 
-    /** Android 11+: the accessibility service's own screenshot, scaled to about 640 px. Blocking, null when unavailable. */
+    /** Android 11+: the accessibility service's own screenshot, scaled to targetWidth. Blocking, null when unavailable. */
     @android.annotation.TargetApi(30)
-    private static Bitmap serviceScreenshot() {
+    private static Bitmap serviceScreenshot(final int targetWidth) {
         if (android.os.Build.VERSION.SDK_INT < 30) return null;
         com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
         if (svc == null) return null;
@@ -113,7 +120,7 @@ public final class SceneInspector {
                             try (android.hardware.HardwareBuffer hb = r.getHardwareBuffer()) {
                                 Bitmap hw = Bitmap.wrapHardwareBuffer(hb, r.getColorSpace());
                                 if (hw != null) {
-                                    int w = Math.min(640, hw.getWidth());
+                                    int w = Math.min(targetWidth, hw.getWidth());
                                     int h = Math.round(hw.getHeight() * (w / (float) hw.getWidth()));
                                     Bitmap soft = hw.copy(Bitmap.Config.ARGB_8888, false);
                                     hw.recycle();
@@ -147,6 +154,7 @@ public final class SceneInspector {
     }
 
     private static final java.util.LinkedList<String> RECENT_AMBIENT_TITLES = new java.util.LinkedList<>();
+    private static final java.util.LinkedList<String> RECENT_MANUAL_TITLES = new java.util.LinkedList<>();
 
     public static synchronized void recordAmbientTitle(String title) {
         if (title == null) return;
@@ -156,6 +164,17 @@ public final class SceneInspector {
         RECENT_AMBIENT_TITLES.addLast(clean);
         while (RECENT_AMBIENT_TITLES.size() > 8) {
             RECENT_AMBIENT_TITLES.removeFirst();
+        }
+    }
+
+    public static synchronized void recordManualTitle(String title) {
+        if (title == null) return;
+        String clean = title.trim();
+        if (clean.isEmpty()) return;
+        RECENT_MANUAL_TITLES.remove(clean);
+        RECENT_MANUAL_TITLES.addLast(clean);
+        while (RECENT_MANUAL_TITLES.size() > 10) {
+            RECENT_MANUAL_TITLES.removeFirst();
         }
     }
 
@@ -169,10 +188,20 @@ public final class SceneInspector {
         return sb.toString();
     }
 
+    public static synchronized String recentManualSummary() {
+        if (RECENT_MANUAL_TITLES.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String s : RECENT_MANUAL_TITLES) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(s);
+        }
+        return sb.toString();
+    }
+
     /**
      * Blocking. {@code ambient} asks for the 1 or 2 most rewarding pieces of trivia across visual,
      * cultural, prop, actor, location, music, and subtitle categories for unprompted notes during playback;
-     * otherwise up to five things to point at.
+     * otherwise up to five things to point at with deep cinephile & cultural analysis.
      */
     public static Scene inspect(Context ctx, boolean ambient) {
         return inspect(ctx, ambient, null);
@@ -187,7 +216,7 @@ public final class SceneInspector {
                     : "Add an AI key in Settings to use CineSUB (Gemini is free).";
             return scene;
         }
-        byte[] jpeg = frame != null ? frame : captureJpeg(ctx);
+        byte[] jpeg = frame != null ? frame : captureJpeg(ctx, !ambient);
         if (jpeg == null) {
             scene.error = tr ? "Ekran yakalanamadı. Kurulumdaki 'Ağ hata ayıklaması' izni kapalı olabilir."
                     : "Couldn't capture the screen. Network debugging may be off.";
@@ -198,21 +227,21 @@ public final class SceneInspector {
                     : "This app protects its picture (DRM); CineSUB can't see this scene.";
             return scene;
         }
-        // The last film started from CineTV is only a hint: the viewer may be watching anything since. The title
-        // shown on screen is the one the model recognises in this frame (it used to stay "Oldboy" whatever played).
+        // The last film started from CineTV is only a hint: the viewer may be watching anything since.
         String hint = NowPlaying.describe(ctx);
         String lang = tr ? "Turkish" : "English";
         String context = hint.isEmpty() ? "" : "The last film opened from the launcher was " + hint
                 + ", but the viewer may be watching something else: trust only what the frame shows. ";
-        String recent = ambient ? recentAmbientSummary() : "";
-        String avoidRecent = recent.isEmpty() ? "" : "Already shown recently (do NOT repeat these items; pick different details in the scene or subtitles): " + recent + ". ";
-        String sys = "You are CineSUB, a cinephile's trivia companion that tells a film viewer what is worth knowing about what they see, "
-                + "without spoiling anything that has not happened yet. " + context + avoidRecent
-                + "Only state facts you are confident about; if you can't identify something, describe what it is instead of naming it. "
+        String recent = ambient ? recentAmbientSummary() : recentManualSummary();
+        String avoidRecent = recent.isEmpty() ? "" : "Already shown recently (prefer fresh, deeper details in this scene or subtitles rather than repeating these): " + recent + ". ";
+        String sys = "You are CineSUB, an encyclopedic film historian, cinematographer, art curator, and cultural critic sitting beside the viewer. "
+                + "You reveal what is truly fascinating, hidden, or meaningful in the frame and subtitles without ever spoiling future plot points. "
+                + context + avoidRecent
+                + "Only state facts you are confident about; if you can't identify a specific name, explain the historical/cinematic/visual significance of what is shown. "
                 + "Never identify a real person from their face alone unless the film/series is recognisable or their name appears on screen; "
-                + "when the film or series is recognisable, name both the character and the actor and share an insightful production or career fact. "
-                + "Never return generic descriptions ('a man standing', 'a dark room'): every item must teach something "
-                + "specific and interesting. Write in " + lang + ".";
+                + "when the film or series is recognisable, name both the character and the actor and share a sharp behind-the-scenes, directorial, or career insight. "
+                + "Never return shallow descriptions ('a man standing', 'a dark room'): every item must make the viewer say 'I didn't know that!'. "
+                + "Write in fluent, natural " + lang + ".";
         String ask = ambient
                 ? "Actively scan this frame and its visible subtitles and return the 1 or 2 most fascinating details you can detect across ANY of these categories: "
                 + "(1) visible subtitles: idioms, slang, cultural/historical references, real events/people, or quotes/allusions to films, books, myths or songs (set subtitle:true, kind text or event); "
@@ -225,26 +254,18 @@ public final class SceneInspector {
                 + "Aim to find at least 1 rewarding detail whenever the frame shows a real scene or dialogue; only return an empty list on blank/loading/logo screens. "
                 + "JSON: {\"film\":\"the film or series if you recognise it, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 words\",\"title\":\"name\",\"fact\":\"1-2 rich sentences under 180 characters\","
                 + "\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":false}]} with box in 0-1000 screen coordinates enclosing that specific item (leave box empty for subtitle/music/general scene notes)."
-                : "List the 1 to 4 most rewarding things in this frame (quality over quantity: a weak or obvious item is worse than none): "
-                + "cameos (a director, writer, musician or other real celebrity appearing briefly in a known film: kind cameo, say who and why it is there), "
-                + "historic buildings and landmarks (kind landmark: name, city, era, architect when known) and filming locations (kind place), "
-                + "the music playing in this scene when the film is known and the scene is recognisable, or a song named or shown on screen "
-                + "(kind music: song, artist, year and why it was chosen; no box), artworks, notable objects, vehicles, clothing, "
-                + "food and drink, characters, and any name, place, event, book or song mentioned in the visible subtitles. "
-                + "Read the visible subtitles closely: explain any specific concept, term, slang, idiom or historical reference in them, "
-                + "and when a line quotes or alludes to something (another film, a book, the Bible, a myth, a famous speech, a song, a real event), "
-                + "say what it refers to and why the character says it, e.g. 'He is quoting Apocalypse Now (1979)'. These come with subtitle:true and kind text or event; "
-                + "a strong subtitle reference beats a weak object in the frame. "
-                + "Think like a film buff and an art historian: an artwork gets its title, artist and year (e.g. 'Napoleon Crossing the Alps, Jacques-Louis David, 1801'); "
-                + "a landmark its name and city; a car, weapon, watch or record its exact model and era; a prop or costume the story behind it in this film. "
-                + "Food comes first when it is on screen: name the dish itself (e.g. 'Ratatouille', 'Spaghetti alla puttanesca') and say where it comes from or why it matters. "
-                + "Never return an unnamed person ('a man', 'male character'): a person needs a character or actor name, otherwise leave them out. "
-                + "JSON: {\"film\":\"the film or series if you recognise it, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 words\",\"title\":\"what or who it is\","
-                + "\"fact\":\"one or two sentences, under 220 characters\",\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":true if it came from the subtitles}]} "
-                + "with box in 0-1000 screen coordinates. The box must enclose exactly that one thing and nothing else: the painting's frame, "
-                + "the plate, the building's facade, the car's body, the cameo's face and shoulders; never a whole region, never a box around "
-                + "several things. If you cannot place it precisely, leave box empty rather than guess.";
-        LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, ambient ? 500 : 650, ambient);
+                : "The viewer pressed the CineSUB button to inspect this exact moment. Deliver the 2 to 5 sharpest, smartest, most rewarding insights in this frame (high intellectual & cinephile value): "
+                + "(1) SUBTITLES & DIALOGUE SUBTEXT: Read visible subtitles closely—decode cultural idioms, historical events, philosophical/literary/religious allusions, double meanings, or intertextual film quotes (subtitle:true, kind text or event, explain the exact reference and why the character invokes it); "
+                + "(2) ACTORS, CHARACTERS & CAMEOS: When the work is recognisable, identify key characters/actors or cameos (kind person or cameo) with a non-obvious production secret, improvisation, method-acting detail, or career connection; "
+                + "(3) DIRECTORIAL & CINEMATOGRAPHIC CRAFT: Notice visual symbolism, framing/blocking, lens choice, color palette motif, production design easter eggs, or homage to another filmmaker/painting (kind event or art); "
+                + "(4) EXACT OBJECTS, PROPS & HOROLOGY/AUTOMOTIVE: Identify exact models and eras of cars, motorcycles, watches, firearms, cameras, musical instruments, books, vinyl records, or bespoke costumes and their symbolic role in the scene (kind object); "
+                + "(5) ARCHITECTURE, FILMING LOCATIONS & ARTWORKS: Name real filming locations, historic buildings/architects (kind landmark or place), paintings/sculptures with artist & year (kind art), or regional dishes/drinks on screen (kind food); "
+                + "(6) SCORE & SOUNDTRACK: When the scene's music or leitmotif is known, name the piece/composer/artist and how it shapes the tension (kind music, no box). "
+                + "Never return an unnamed person ('Erkek karakter', 'A man'): every person must have a real character or actor name. "
+                + "JSON: {\"film\":\"the film, series, or video title if recognisable, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 punchy words\",\"title\":\"specific name or concept\","
+                + "\"fact\":\"2-3 dense, insightful sentences (up to 250 characters) packed with concrete trivia, history, or cinematic subtext\",\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":true if from subtitles}]} "
+                + "with box in 0-1000 screen coordinates tightly enclosing that specific item (leave box empty for subtitle, music, or whole-frame cinematography notes).";
+        LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, ambient ? 500 : 780, ambient);
         if (!r.success) {
             scene.error = r.text;
             return scene;
@@ -271,6 +292,8 @@ public final class SceneInspector {
                 scene.pois.add(p);
                 if (ambient) {
                     recordAmbientTitle(p.title);
+                } else {
+                    recordManualTitle(p.title);
                 }
             }
         } catch (Throwable t) {

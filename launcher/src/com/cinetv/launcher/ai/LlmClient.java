@@ -39,7 +39,7 @@ public final class LlmClient {
     static final String DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
     static final String FAST_CLAUDE_MODEL = "claude-haiku-5-5";
     static final String FALLBACK_CLAUDE_MODEL = "claude-haiku-5-5";
-    /** Gemini 2.5 Flash: stable and fast for vision and cinephile trivia */
+    /** Gemini models: supports modern Gemini 3.8/3.1/2.5 Flash & Argon with automatic fallback */
     static final String DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
     static final String FAST_GEMINI_MODEL = "gemini-2.5-flash-lite";
     static final String FALLBACK_GEMINI_MODEL = "gemini-2.5-flash-lite";
@@ -74,6 +74,133 @@ public final class LlmClient {
             return generate(ctx, system, user, maxTokens, true);
         } finally {
             MINIMAL_THINKING.set(false);
+        }
+    }
+
+    /**
+     * Native multi-turn chat call for Gamze Gemini Chatbot.
+     * Supports mode selection ("deep" -> gemini-4-argon / gemini-2.5-pro / gemini-2.5-flash,
+     * "balanced" -> gemini-3.8-flash / gemini-2.5-flash, "fast" -> gemini-3.1-flash-lite / gemini-2.5-flash-lite).
+     */
+    public static Result chatMultiTurn(Context ctx, String system, java.util.List<GamzeConversation.Turn> history,
+                                       String userMessage, String mode, int maxTokens) {
+        String key = SecretStore.get(ctx, SecretStore.AI_KEY);
+        if (key == null || key.isEmpty()) return new Result(false, ctx.getString(R.string.ai_err_no_key), 401);
+        String provider = providerFor(key);
+        String[] compat = compatible(provider);
+        if (compat != null || PROVIDER_CLAUDE.equals(provider)) {
+            StringBuilder fullUser = new StringBuilder();
+            if (history != null && !history.isEmpty()) {
+                fullUser.append("Conversation history:\n");
+                for (GamzeConversation.Turn t : history) {
+                    fullUser.append("User: ").append(t.viewer).append("\n");
+                    if (!t.gamze.isEmpty()) fullUser.append("Gamze: ").append(t.gamze).append("\n");
+                }
+                fullUser.append("\nCurrent message:\n");
+            }
+            fullUser.append(userMessage);
+            return generate(ctx, system, fullUser.toString(), maxTokens, "fast".equalsIgnoreCase(mode));
+        }
+
+        String[] chain;
+        if ("deep".equalsIgnoreCase(mode) || "pro".equalsIgnoreCase(mode)) {
+            chain = new String[]{"gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"};
+        } else if ("fast".equalsIgnoreCase(mode) || "lite".equalsIgnoreCase(mode)) {
+            chain = new String[]{"gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash"};
+        } else {
+            chain = new String[]{"gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest"};
+        }
+
+        Result r = null;
+        for (String model : chain) {
+            r = callGeminiMultiTurn(ctx, model, key, system, history, userMessage, maxTokens, "deep".equalsIgnoreCase(mode));
+            if (r.status == 503 || r.status == 429) {
+                try { Thread.sleep(350); } catch (Throwable ignored) {}
+                r = callGeminiMultiTurn(ctx, model, key, system, history, userMessage, maxTokens, false);
+            }
+            int st = r.status;
+            if (r.success || !(st == 400 || st == 404 || st == 408 || st == 429 || st >= 500 || st == -1)) return r;
+        }
+        return r != null ? r : new Result(false, ctx.getString(R.string.ai_err_network), -1);
+    }
+
+    private static Result callGeminiMultiTurn(Context ctx, String model, String key, String system,
+                                              java.util.List<GamzeConversation.Turn> history, String userMessage,
+                                              int maxTokens, boolean deepThinking) {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL("https://generativelanguage.googleapis.com/v1beta/models/"
+                    + model + ":generateContent").openConnection();
+            conn.setRequestProperty("x-goog-api-key", key);
+            JSONObject body = new JSONObject();
+            if (system != null && !system.isEmpty()) {
+                body.put("system_instruction", new JSONObject().put("parts",
+                        new JSONArray().put(new JSONObject().put("text", system))));
+            }
+            JSONArray contents = new JSONArray();
+            if (history != null) {
+                int start = Math.max(0, history.size() - 12);
+                for (int i = start; i < history.size(); i++) {
+                    GamzeConversation.Turn t = history.get(i);
+                    if (t.viewer != null && !t.viewer.isEmpty()) {
+                        contents.put(new JSONObject().put("role", "user")
+                                .put("parts", new JSONArray().put(new JSONObject().put("text", t.viewer))));
+                    }
+                    if (t.gamze != null && !t.gamze.isEmpty()) {
+                        contents.put(new JSONObject().put("role", "model")
+                                .put("parts", new JSONArray().put(new JSONObject().put("text", t.gamze))));
+                    }
+                }
+            }
+            contents.put(new JSONObject().put("role", "user")
+                    .put("parts", new JSONArray().put(new JSONObject().put("text", userMessage))));
+            body.put("contents", contents);
+
+            JSONObject genCfg = new JSONObject().put("maxOutputTokens", maxTokens);
+            if (model.startsWith("gemini-2.5-flash") && !model.contains("lite")) {
+                genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", deepThinking ? 512 : 0));
+            }
+            body.put("generationConfig", genCfg);
+
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(25000);
+            conn.setDoOutput(true);
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+            }
+            int status = conn.getResponseCode();
+            if (status != 200) {
+                String errBody = "";
+                try { if (conn.getErrorStream() != null) errBody = read(conn.getErrorStream()); } catch (Throwable ignored) {}
+                noteQuota(model, status, errBody);
+                return new Result(false, errorText(ctx, status, errBody), status);
+            }
+            JSONObject resp = new JSONObject(read(conn.getInputStream()));
+            String text = "";
+            JSONArray cands = resp.optJSONArray("candidates");
+            if (cands != null && cands.length() > 0) {
+                JSONObject contentObj = cands.getJSONObject(0).optJSONObject("content");
+                JSONArray parts = contentObj != null ? contentObj.optJSONArray("parts") : null;
+                if (parts != null) {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < parts.length(); i++) {
+                        JSONObject p = parts.getJSONObject(i);
+                        if (!p.optBoolean("thought", false)) {
+                            sb.append(p.optString("text", ""));
+                        }
+                    }
+                    text = sb.toString().trim();
+                }
+            }
+            return text.isEmpty() ? new Result(false, ctx.getString(R.string.ai_err_empty), 204) : new Result(true, text, 200);
+        } catch (SocketTimeoutException e) {
+            return new Result(false, ctx.getString(R.string.ai_err_timeout), 408);
+        } catch (Throwable t) {
+            return new Result(false, ctx.getString(R.string.ai_err_network), -1);
+        } finally {
+            if (conn != null) conn.disconnect();
         }
     }
 

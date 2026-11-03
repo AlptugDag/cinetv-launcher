@@ -41,6 +41,12 @@ is_protected_pkg() {
         # --- Anything that smells like HDMI / display / HDR / picture / tuner / input plumbing ---
         *hdmi*|*tvinput*|*tvapi*|*tvservice*|*display*|*hdr*|*panel*|*picture*|*tuner*|*dvb*|*cec*)
             return 0 ;;
+        # --- Default / Stock TV Launchers (never remove or disable so the TV always has a default Home fallback) ---
+        com.google.android.tvlauncher|com.google.android.apps.tv.launcherx|com.google.android.leanbacklauncher|\
+        com.android.tv.launcher|com.android.launcher3|com.mitv.tvhome|com.xiaomi.mitv.tvhome|\
+        com.tcl.cyberui|com.sony.dtv.osat.launcher|com.hisense.vidaa.launcher|com.jamdeo.tv.mediacenter|\
+        org.droidtv.leanback|org.droidtv.eum|com.arcelik.home|com.vestel.launcher|*.tvlauncher*|*.leanbacklauncher*)
+            return 0 ;;
         # --- This project ---
         com.cinetv.launcher|com.nuvio.tv|org.courville.nova|io.github.jqssun.airplay)
             return 0 ;;

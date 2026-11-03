@@ -45,6 +45,8 @@ public final class HomeGuard {
         updateOptRunning = true;
         new Thread(() -> {
             try {
+                com.cinetv.launcher.device.DeviceTweaks.snapshotOriginals(app);
+                com.cinetv.launcher.device.HomeLaunchers.ensureStockLaunchersReady(app);
                 com.cinetv.launcher.service.PosterCache.configure(app);
                 com.cinetv.launcher.device.PerformanceProfile.noteMemory(app);
                 com.cinetv.launcher.device.DeviceTweaks.applyLauncherDefaults(app);
@@ -101,6 +103,7 @@ public final class HomeGuard {
             if (system != null) system.uncaughtException(thread, error);
         });
         new Thread(() -> {
+            com.cinetv.launcher.device.DeviceTweaks.snapshotOriginals(app);
             // Not while the TV itself is still starting (it competed with the TV's own boot), and once per version
             // unless something is missing (CineTV not Home): these are setup steps, not start-up steps.
             long sinceBoot = SystemClock.elapsedRealtime();
@@ -131,8 +134,9 @@ public final class HomeGuard {
             }
             // without a stream addon Nuvio shows "Oynatma Kullanılamıyor" on every title
             if (p.getBoolean("nuvio_install_allowed", true)) com.cinetv.launcher.device.NuvioSetup.ensureStreamAddon(app);
-            // the TV's own launchers stay on (see HomeLaunchers): any an earlier version switched off come back
-            if (com.cinetv.launcher.device.HomeLaunchers.hasDisabled(app)) com.cinetv.launcher.device.HomeLaunchers.reenableKeepingHome(app);
+            // Always verify the TV's stock/default launchers are installed and enabled (re-installing if deleted),
+            // so both new users and updating users automatically fall back to their default TV launcher if CineTV is removed.
+            com.cinetv.launcher.device.HomeLaunchers.ensureStockLaunchersReady(app);
             String stamp = currentOptimizationStamp(app);
             if (p.getInt("setup_done_version", 0) == version
                     && stamp.equals(p.getString(KEY_AUTO_OPT_STAMP, ""))

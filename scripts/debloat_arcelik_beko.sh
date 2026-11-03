@@ -47,9 +47,7 @@ PACKAGES_TO_REMOVE=(
     "com.google.android.apps.nbu.smartconnect.tv"
     "com.android.printspooler"
 
-    # The stock home and its feeds (only once CineTV is Home; the installer sets that first)
-    "com.google.android.tvlauncher"
-    "com.google.android.apps.tv.launcherx"
+    # Promo feeds (stock home launchers are kept enabled as fallback)
     "com.google.android.tvrecommendations"
     "com.google.android.backdrop"
 )
