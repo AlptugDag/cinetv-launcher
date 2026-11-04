@@ -54,14 +54,17 @@ public final class SceneInspector {
             // Fast path on Android 11+ (API 30+): AccessibilityService.takeScreenshot takes ~100ms vs 4-7s for adb screencap
             Bitmap fastShot = serviceScreenshot(targetWidth);
             if (fastShot != null) {
-                byte[] fastBytes = encodeFrame(fastShot, jpegQuality);
-                if (fastBytes != null && fastBytes.length > 0) {
-                    return fastBytes;
-                }
+                return encodeFrame(fastShot, jpegQuality);
+            }
+            // Never spawn heavy ADB screencap -p processes during unprompted ambient scans over Nuvio or on low-RAM TVs,
+            // as repeated SurfaceFlinger full-frame PNG allocations trigger LMK kills of the foreground player.
+            if (!manualHighDetail && (!com.cinetv.launcher.CinePlayerActivity.active
+                    || com.cinetv.launcher.device.PerformanceProfile.lowMemory(ctx))) {
+                return null;
             }
             byte[] raw = com.cinetv.launcher.remote.LocalAdb.exec(ctx, "screencap -p", 4500);
             if (raw == null || raw.length < 1000) {
-                return fastShot != null ? new byte[0] : null;
+                return null;
             }
             // Some MediaTek firmwares print a line before the PNG: start at its signature.
             int start = 0;

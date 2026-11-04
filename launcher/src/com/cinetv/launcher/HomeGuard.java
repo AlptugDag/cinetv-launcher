@@ -32,6 +32,15 @@ public final class HomeGuard {
         return version + "|" + android.os.Build.FINGERPRINT + "|" + android.os.Build.VERSION.SDK_INT;
     }
 
+    /** True when the viewer is inside Nuvio, another third-party app, or actively playing media. */
+    private static boolean isUserInMediaOrThirdPartyApp(Context ctx) {
+        if (!MainActivity.isInFront()) return true;
+        if (CinePlayerActivity.active) return true;
+        if (com.cinetv.launcher.device.DeviceTweaks.isMediaPlaying(ctx)) return true;
+        TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
+        return svc != null && svc.isInMediaOrThirdPartyApp();
+    }
+
     /**
      * Runs hardware/software detection and applies picture, audio, network, performance, memory,
      * Nuvio config, and ART AOT compilation in the background whenever the app or TV OS is updated.
@@ -39,12 +48,14 @@ public final class HomeGuard {
     public static void runUpdateOptimizationsAsync(final Context ctx) {
         if (ctx == null || updateOptRunning || com.cinetv.launcher.device.Uninstaller.isRemoving(ctx)) return;
         final Context app = ctx.getApplicationContext();
+        if (isUserInMediaOrThirdPartyApp(app)) return;
         final android.content.SharedPreferences p = Prefs.get(app);
         final String stamp = currentOptimizationStamp(app);
         if (stamp.equals(p.getString(KEY_AUTO_OPT_STAMP, "")) && isDefault(app)) return;
         updateOptRunning = true;
         new Thread(() -> {
             try {
+                if (isUserInMediaOrThirdPartyApp(app)) return;
                 com.cinetv.launcher.device.DeviceTweaks.snapshotOriginals(app);
                 com.cinetv.launcher.device.HomeLaunchers.ensureStockLaunchersReady(app);
                 com.cinetv.launcher.service.PosterCache.configure(app);
@@ -59,7 +70,9 @@ public final class HomeGuard {
                 if (p.contains("dns_choice") && !com.cinetv.launcher.device.NetworkOptimizer.DNS_OFF.equals(dns)) {
                     com.cinetv.launcher.device.NetworkOptimizer.apply(app, dns);
                 }
-                com.cinetv.launcher.device.MemoryOptimizer.applyTvOptimizations(app);
+                if (!isUserInMediaOrThirdPartyApp(app)) {
+                    com.cinetv.launcher.device.MemoryOptimizer.applyTvOptimizations(app);
+                }
                 com.cinetv.launcher.device.NuvioSetup.deployConfigs(app);
                 if (!com.cinetv.launcher.service.NuvioPlaybackListenerService.hasNotificationAccess(app)) {
                     com.cinetv.launcher.remote.LocalAdb.shell(app, "cmd notification allow_listener " + app.getPackageName()
@@ -114,6 +127,14 @@ public final class HomeGuard {
                 } catch (InterruptedException ignored) {
                 }
             }
+            // Wait if the user is already inside Nuvio or watching media so 90s post-boot ADB commands never interrupt Nuvio!
+            while (isUserInMediaOrThirdPartyApp(app)) {
+                try {
+                    Thread.sleep(15_000L);
+                } catch (InterruptedException ignored) {
+                    return;
+                }
+            }
             int version = 0;
             try {
                 version = (int) app.getPackageManager().getPackageInfo(app.getPackageName(), 0).versionCode;
@@ -137,14 +158,18 @@ public final class HomeGuard {
             if (p.getBoolean("nuvio_install_allowed", true)) com.cinetv.launcher.device.NuvioSetup.ensureStreamAddon(app);
             // Always verify the TV's stock/default launchers are installed and enabled (re-installing if deleted),
             // so both new users and updating users automatically fall back to their default TV launcher if CineTV is removed.
-            com.cinetv.launcher.device.HomeLaunchers.ensureStockLaunchersReady(app);
+            if (!isUserInMediaOrThirdPartyApp(app)) {
+                com.cinetv.launcher.device.HomeLaunchers.ensureStockLaunchersReady(app);
+            }
             String stamp = currentOptimizationStamp(app);
             if (p.getInt("setup_done_version", 0) == version
                     && stamp.equals(p.getString(KEY_AUTO_OPT_STAMP, ""))
                     && isDefault(app)) return;
-            ensureDefault(app);
+            if (!isUserInMediaOrThirdPartyApp(app)) {
+                ensureDefault(app);
+            }
             // installed from the APK alone: Nuvio and its addons come too, plus background-app optimization
-            if (com.cinetv.launcher.service.Prefs.get(app).getBoolean("nuvio_install_allowed", true)) {
+            if (!isUserInMediaOrThirdPartyApp(app) && com.cinetv.launcher.service.Prefs.get(app).getBoolean("nuvio_install_allowed", true)) {
                 com.cinetv.launcher.device.NuvioSetup.runOnce(app);
                 com.cinetv.launcher.device.NuvioSetup.playerOnce(app);
                 com.cinetv.launcher.device.NuvioSetup.allowSelfUpdate(app);

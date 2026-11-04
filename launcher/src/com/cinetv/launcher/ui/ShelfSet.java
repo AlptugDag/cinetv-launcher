@@ -106,7 +106,7 @@ final class ShelfSet {
             this.scene = scene;
             this.caseW = caseW;
             this.caseH = caseH;
-            this.spatial = Prefs.spatial3d(ctx);
+            this.spatial = false;
             setTranslationZ(BACK_Z);
             setFocusable(false);
             setClickable(false);
@@ -114,8 +114,8 @@ final class ShelfSet {
         }
 
         public void setSpatial(boolean on) {
-            if (this.spatial != on) {
-                this.spatial = on;
+            if (this.spatial) {
+                this.spatial = false;
                 cachedW = -1;
                 invalidate();
             }

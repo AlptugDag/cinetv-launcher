@@ -343,9 +343,10 @@ public final class VoiceCineSubOverlay extends FrameLayout {
     }
 
     /**
-     * Atmospheric Golden Glow perimeter shader view.
-     * Animates four radiant golden gradients around the screen edges with voice volume reactivity,
-     * shimmering travelling light, and zero text or card artifacts.
+     * Atmospheric Golden Glow talk animation view around the TV display edges.
+     * Renders four radiant golden edge gradients plus organic, voice-reactive golden wave ribbons
+     * that undulate with user speech (LISTENING) and AI TTS speech cadence (SPEAKING) while the
+     * film playback remains frozen underneath, with zero UI boxes or cards.
      */
     private static final class GoldenGlowEdgeView extends View {
 
@@ -353,24 +354,25 @@ public final class VoiceCineSubOverlay extends FrameLayout {
         private final Paint bottomPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint leftPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint rightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint waveFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint accentPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Path wavePath = new android.graphics.Path();
 
-        private final RectF bounds = new RectF();
         private State currentState = State.STARTING;
         private float volume = 0f;
         private float targetVolume = 0f;
         private float phase = 0f;
-        private int lastW = -1, lastH = -1;
 
         // Radiant golden spectrum
         private static final int GOLD_BRIGHT = Color.parseColor("#FFFFD700"); // Rich gold
         private static final int GOLD_AMBER = Color.parseColor("#FFF59E0B");  // Deep amber
-        private static final int GOLD_HONEY = Color.parseColor("#FFFBBF24");  // Radiant honey
+        private static final int GOLD_HONEY = Color.parseColor("#FFFDE68A");  // Luminous champagne gold
         private static final int GOLD_TRANSPARENT = Color.argb(0, 245, 158, 11);
 
         public GoldenGlowEdgeView(Context ctx) {
             super(ctx);
             setWillNotDraw(false);
+            waveFillPaint.setStyle(Paint.Style.FILL);
         }
 
         public void setState(State state) {
@@ -379,14 +381,14 @@ public final class VoiceCineSubOverlay extends FrameLayout {
         }
 
         public void onBeginningOfSpeech() {
-            targetVolume = 0.5f;
+            targetVolume = 0.55f;
             postInvalidateOnAnimation();
         }
 
         public void setRms(float rmsdB) {
             // Map rmsdB (-2 to 10 typical) to 0.0 - 1.0
             float norm = Math.max(0f, Math.min(1f, (rmsdB + 2f) / 10f));
-            targetVolume = norm;
+            targetVolume = Math.max(targetVolume * 0.7f, norm);
             postInvalidateOnAnimation();
         }
 
@@ -397,34 +399,48 @@ public final class VoiceCineSubOverlay extends FrameLayout {
             int h = getHeight();
             if (w <= 0 || h <= 0) return;
 
-            // Smooth volume interpolation
-            volume += (targetVolume - volume) * 0.22f;
-            phase += (currentState == State.THINKING ? 0.07f : 0.035f);
-            if (phase > (float) (Math.PI * 2.0)) {
-                phase -= (float) (Math.PI * 2.0);
+            // Natural talk cadence modulation while TTS is speaking the response
+            if (currentState == State.SPEAKING) {
+                float talkCadence = 0.35f + 0.52f * Math.abs((float) (Math.sin(phase * 2.8f) * Math.cos(phase * 1.35f + 0.7f)));
+                targetVolume = talkCadence;
+            } else if (currentState == State.THINKING) {
+                targetVolume = 0.28f + 0.18f * (float) Math.sin(phase * 2.2f);
+            } else if (currentState == State.LISTENING) {
+                targetVolume *= 0.90f;
+            } else {
+                targetVolume = 0f;
             }
 
-            // Glow depth expands dynamically with user speech
-            float depthFactor = 0.16f + (volume * 0.10f);
+            // Smooth spring-like volume interpolation
+            volume += (targetVolume - volume) * 0.25f;
+            float speed = currentState == State.SPEAKING ? (0.065f + volume * 0.055f)
+                    : currentState == State.THINKING ? 0.075f : (0.042f + volume * 0.05f);
+            phase += speed;
+            if (phase > (float) (Math.PI * 20.0)) {
+                phase -= (float) (Math.PI * 20.0);
+            }
+
+            // Glow depth expands dynamically with speech energy
+            float depthFactor = 0.14f + (volume * 0.11f);
             int edgeDepth = (int) (Math.min(w, h) * depthFactor);
-            edgeDepth = Math.max(UiKit.px(90), Math.min(edgeDepth, UiKit.px(240)));
+            edgeDepth = Math.max(UiKit.px(88), Math.min(edgeDepth, UiKit.px(250)));
 
             // Modulation alpha based on state & speech volume
             float baseAlpha = 0.65f;
             if (currentState == State.LISTENING) {
-                baseAlpha = 0.60f + (volume * 0.38f);
+                baseAlpha = 0.58f + (volume * 0.40f);
             } else if (currentState == State.THINKING) {
-                baseAlpha = 0.65f + (float) Math.sin(phase * 2f) * 0.20f;
+                baseAlpha = 0.64f + (float) Math.sin(phase * 2f) * 0.20f;
             } else if (currentState == State.SPEAKING) {
-                baseAlpha = 0.70f + (float) Math.sin(phase * 1.5f) * 0.18f;
+                baseAlpha = 0.68f + (volume * 0.30f);
             } else if (currentState == State.DISMISSING) {
-                baseAlpha = 0.25f;
+                baseAlpha = 0.20f;
             }
             baseAlpha = Math.max(0.1f, Math.min(1f, baseAlpha));
 
             int alphaInt = (int) (255 * baseAlpha);
             int cEdge = Color.argb(alphaInt, Color.red(GOLD_BRIGHT), Color.green(GOLD_BRIGHT), Color.blue(GOLD_BRIGHT));
-            int cMid = Color.argb((int) (alphaInt * 0.60f), Color.red(GOLD_AMBER), Color.green(GOLD_AMBER), Color.blue(GOLD_AMBER));
+            int cMid = Color.argb((int) (alphaInt * 0.58f), Color.red(GOLD_AMBER), Color.green(GOLD_AMBER), Color.blue(GOLD_AMBER));
 
             // Rebuild edge linear gradient shaders
             topPaint.setShader(new LinearGradient(0, 0, 0, edgeDepth,
@@ -436,14 +452,17 @@ public final class VoiceCineSubOverlay extends FrameLayout {
             rightPaint.setShader(new LinearGradient(w, 0, w - edgeDepth, 0,
                     new int[]{cEdge, cMid, GOLD_TRANSPARENT}, new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
 
-            // Draw four edge auras
+            // Draw four ambient golden edge auras
             canvas.drawRect(0, 0, w, edgeDepth, topPaint);
             canvas.drawRect(0, h - edgeDepth, w, h, bottomPaint);
             canvas.drawRect(0, 0, edgeDepth, h, leftPaint);
             canvas.drawRect(w - edgeDepth, 0, w, h, rightPaint);
 
-            // Shimmering accent pulse traveling along the perimeter
-            drawPerimeterAccent(canvas, w, h, phase, baseAlpha);
+            // Draw organic golden talk waves along the 4 edges of the TV display
+            drawGoldenTalkWaves(canvas, w, h, edgeDepth, baseAlpha);
+
+            // Shimmering golden rim around the perimeter
+            drawPerimeterAccent(canvas, w, h, baseAlpha);
 
             // Keep 60fps animation active while overlay is showing
             if (currentState != State.DISMISSING) {
@@ -451,16 +470,78 @@ public final class VoiceCineSubOverlay extends FrameLayout {
             }
         }
 
-        private void drawPerimeterAccent(Canvas canvas, int w, int h, float phase, float alpha) {
-            float perimeter = 2f * (w + h);
-            float offset = ((phase / (float) (Math.PI * 2.0)) * perimeter) % perimeter;
+        private void drawGoldenTalkWaves(Canvas canvas, int w, int h, int edgeDepth, float alpha) {
+            float amp = UiKit.pxf(12f) + volume * UiKit.pxf(38f);
+            float baseThickness = UiKit.pxf(10f) + volume * UiKit.pxf(16f);
+            int waveAlpha = Math.min(235, (int) (135 * alpha + volume * 95));
+            waveFillPaint.setColor(Color.argb(waveAlpha, Color.red(GOLD_HONEY), Color.green(GOLD_HONEY), Color.blue(GOLD_HONEY)));
 
+            int steps = 28;
+            // Top & Bottom horizontal talk waves
+            wavePath.reset();
+            wavePath.moveTo(0, 0);
+            for (int i = 0; i <= steps; i++) {
+                float t = i / (float) steps;
+                float x = t * w;
+                float env = (float) Math.sin(t * Math.PI);
+                float wave = (float) (Math.sin(t * 9.0 + phase * 2.4f) * 0.6f + Math.cos(t * 15.0 - phase * 3.1f) * 0.4f);
+                float y = baseThickness + env * amp * (0.55f + 0.45f * wave);
+                wavePath.lineTo(x, Math.max(2f, y));
+            }
+            wavePath.lineTo(w, 0);
+            wavePath.close();
+            canvas.drawPath(wavePath, waveFillPaint);
+
+            wavePath.reset();
+            wavePath.moveTo(0, h);
+            for (int i = 0; i <= steps; i++) {
+                float t = i / (float) steps;
+                float x = t * w;
+                float env = (float) Math.sin(t * Math.PI);
+                float wave = (float) (Math.sin(t * 9.0 - phase * 2.6f + 1.2f) * 0.6f + Math.cos(t * 14.0 + phase * 3.3f) * 0.4f);
+                float y = h - (baseThickness + env * amp * (0.55f + 0.45f * wave));
+                wavePath.lineTo(x, Math.min(h - 2f, y));
+            }
+            wavePath.lineTo(w, h);
+            wavePath.close();
+            canvas.drawPath(wavePath, waveFillPaint);
+
+            // Left & Right vertical talk waves
+            int vSteps = 20;
+            wavePath.reset();
+            wavePath.moveTo(0, 0);
+            for (int i = 0; i <= vSteps; i++) {
+                float t = i / (float) vSteps;
+                float y = t * h;
+                float env = (float) Math.sin(t * Math.PI);
+                float wave = (float) (Math.sin(t * 7.0 + phase * 2.2f + 0.5f) * 0.6f + Math.cos(t * 11.0 - phase * 2.9f) * 0.4f);
+                float x = baseThickness * 0.85f + env * amp * 0.8f * (0.55f + 0.45f * wave);
+                wavePath.lineTo(Math.max(2f, x), y);
+            }
+            wavePath.lineTo(0, h);
+            wavePath.close();
+            canvas.drawPath(wavePath, waveFillPaint);
+
+            wavePath.reset();
+            wavePath.moveTo(w, 0);
+            for (int i = 0; i <= vSteps; i++) {
+                float t = i / (float) vSteps;
+                float y = t * h;
+                float env = (float) Math.sin(t * Math.PI);
+                float wave = (float) (Math.sin(t * 7.0 - phase * 2.5f + 2.1f) * 0.6f + Math.cos(t * 11.0 + phase * 2.7f) * 0.4f);
+                float x = w - (baseThickness * 0.85f + env * amp * 0.8f * (0.55f + 0.45f * wave));
+                wavePath.lineTo(Math.min(w - 2f, x), y);
+            }
+            wavePath.lineTo(w, h);
+            wavePath.close();
+            canvas.drawPath(wavePath, waveFillPaint);
+        }
+
+        private void drawPerimeterAccent(Canvas canvas, int w, int h, float alpha) {
             accentPaint.setStyle(Paint.Style.STROKE);
             accentPaint.setStrokeWidth(UiKit.pxf(6));
-            int accentAlpha = (int) (190 * alpha);
-            accentPaint.setColor(Color.argb(accentAlpha, 255, 240, 160));
-
-            // Subtle outer edge stroke with golden glow
+            int accentAlpha = Math.min(255, (int) ((185 + volume * 65) * alpha));
+            accentPaint.setColor(Color.argb(accentAlpha, 255, 242, 168));
             canvas.drawRect(0, 0, w, h, accentPaint);
         }
     }

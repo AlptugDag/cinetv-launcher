@@ -56,6 +56,9 @@ public class CineTvApp extends Application {
         for (long delay : BOOT_RESCUES_MS) {
             h.postDelayed(() -> {
                 if (!DeviceTweaks.isUnwantedBootTuner() || MainActivity.isInFront()) return;
+                TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
+                if (svc != null && svc.isInMediaOrThirdPartyApp()) return;
+                if (DeviceTweaks.isMediaPlaying(this)) return;
                 try {
                     startActivity(new Intent(this, MainActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));

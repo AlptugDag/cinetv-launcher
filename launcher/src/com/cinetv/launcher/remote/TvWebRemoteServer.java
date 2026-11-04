@@ -694,8 +694,32 @@ public final class TvWebRemoteServer {
                 return ok;
             }
             case "/api/shot/list": {
-                return ok.put("screenshots", ScreenShot.listSavedScreenshots())
+                JSONArray shots = ScreenShot.listSavedScreenshots();
+                return ok.put("screenshots", shots)
+                        .put("items", shots)
                         .put("dir", ScreenShot.screenshotsDir().getAbsolutePath());
+            }
+            case "/api/shazam/list": {
+                return ok.put("tracks", com.cinetv.launcher.ai.ShazamRecognizer.getHistoryJson(app))
+                        .put("recognizing", com.cinetv.launcher.ai.ShazamRecognizer.isBusy())
+                        .put("latest", latestTrack);
+            }
+            case "/api/shazam/recognize": {
+                post(() -> com.cinetv.launcher.ai.ShazamRecognizer.recognize(app));
+                return ok.put("started", true);
+            }
+            case "/api/shazam/delete": {
+                long at = 0L;
+                try {
+                    String rawAt = q.get("at");
+                    if (rawAt != null && !rawAt.isEmpty()) at = Long.parseLong(rawAt.trim());
+                } catch (Throwable ignored) {}
+                com.cinetv.launcher.ai.ShazamRecognizer.removeHistoryItem(app, at, q.get("title"));
+                return ok.put("tracks", com.cinetv.launcher.ai.ShazamRecognizer.getHistoryJson(app));
+            }
+            case "/api/shazam/clear": {
+                com.cinetv.launcher.ai.ShazamRecognizer.clearHistory(app);
+                return ok.put("tracks", new JSONArray());
             }
             case "/api/files/list": {
                 return listTvDirectory(q.get("dir"));
@@ -717,9 +741,37 @@ public final class TvWebRemoteServer {
                 String mode = clip(q.get("mode"), 20);
                 JSONObject chatRes = com.cinetv.launcher.ai.MovieAssistant.chatWithGamze(app, msg, mode);
                 if ("1".equals(q.get("speak")) && chatRes.optBoolean("ok")) {
-                    final String voice = chatRes.optString("voice", "");
-                    if (!voice.isEmpty()) {
-                        post(() -> com.cinetv.launcher.ai.EmaLightningTts.speak(app, voice));
+                    final String voice = chatRes.optString("voice", "").trim();
+                    final String spoken = !voice.isEmpty() ? voice : chatRes.optString("reply", "").trim();
+                    if (!spoken.isEmpty()) {
+                        post(() -> com.cinetv.launcher.ai.EmaLightningTts.speak(app, spoken));
+                    }
+                }
+                final JSONArray mvArr = chatRes.optJSONArray("movies");
+                final String sTitle = chatRes.optString("shelfTitle", "");
+                if (mvArr != null && mvArr.length() > 0 && com.cinetv.launcher.MainActivity.isInFront()) {
+                    final List<MovieCatalog.Movie> tvMovies = new ArrayList<>();
+                    for (int i = 0; i < mvArr.length(); i++) {
+                        JSONObject mo = mvArr.optJSONObject(i);
+                        if (mo == null) continue;
+                        String poster = mo.optString("poster", "");
+                        if (poster.isEmpty()) continue;
+                        MovieCatalog.Movie m = new MovieCatalog.Movie();
+                        m.title = mo.optString("title", "");
+                        m.year = mo.optInt("year", 0);
+                        m.posterUrl = poster;
+                        m.imdbId = mo.optString("imdbId", "");
+                        m.tmdbId = mo.optInt("tmdbId", 0);
+                        m.type = mo.optString("type", "movie");
+                        tvMovies.add(m);
+                    }
+                    if (!tvMovies.isEmpty()) {
+                        post(() -> {
+                            Controller c = controller;
+                            if (c != null && com.cinetv.launcher.MainActivity.isInFront()) {
+                                c.showSimilarOnTv(sTitle.isEmpty() ? "GAMZE SEÇKİSİ" : sTitle.toUpperCase(Locale.getDefault()), tvMovies);
+                            }
+                        });
                     }
                 }
                 return chatRes;

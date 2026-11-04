@@ -84,8 +84,9 @@ public final class ShazamRecognizer {
     }
 
     /**
-     * Triggered on blue button short press. Records ~4.2 seconds of 16 kHz mono PCM audio,
-     * computes a real Shazam 0xCAFE2580 acoustic signature, and queries amp.shazam.com.
+     * Triggered on blue button short press or mobile web remote. Records ~4.2 seconds of 16 kHz mono PCM audio,
+     * shows the CineSUB-style blue Shazam overlay & Liquid Glass track card, computes a real Shazam
+     * 0xCAFE2580 acoustic signature, and queries amp.shazam.com.
      */
     public static void recognize(Context context) {
         if (recognizing) return;
@@ -93,7 +94,7 @@ public final class ShazamRecognizer {
         final Context app = context.getApplicationContext();
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
 
-        mainHandler.post(() -> Toast.makeText(app, tr ? "🎵 Shazam ile müzik dinleniyor..." : "🎵 Identifying music with Shazam...", Toast.LENGTH_SHORT).show());
+        com.cinetv.launcher.ui.ShazamOverlay.showListening(context);
 
         new Thread(() -> {
             try {
@@ -107,34 +108,101 @@ public final class ShazamRecognizer {
                 }
 
                 final TrackInfo finalInfo = info;
+                if (finalInfo != null && !finalInfo.title.isEmpty()) {
+                    saveToHistory(app, finalInfo);
+                }
+
                 mainHandler.post(() -> {
                     recognizing = false;
                     if (finalInfo != null && !finalInfo.title.isEmpty()) {
-                        String msg = (finalInfo.artist.isEmpty() ? "" : finalInfo.artist + " — ") + finalInfo.title;
-                        Toast.makeText(app, "🎵 Shazam: " + msg, Toast.LENGTH_LONG).show();
+                        com.cinetv.launcher.ui.ShazamOverlay.showResult(app, finalInfo);
 
                         EmaLightningTts.speak(app, tr
                                 ? "Çalan parça: " + finalInfo.title + (finalInfo.artist.isEmpty() ? "" : ", " + finalInfo.artist)
                                 : "Now playing: " + finalInfo.title + (finalInfo.artist.isEmpty() ? "" : " by " + finalInfo.artist));
 
-                        String sub = (finalInfo.artist.isEmpty() ? "" : finalInfo.artist)
-                                + (!finalInfo.album.isEmpty() ? " · " + finalInfo.album : "")
-                                + (!finalInfo.year.isEmpty() ? " (" + finalInfo.year + ")" : "");
-                        CineSubOverlay.showInsight(app, "🎵 " + finalInfo.title, sub.isEmpty() ? "Shazam" : sub);
                         TvWebRemoteServer.notifyTrackIdentified(finalInfo.title, finalInfo.artist, finalInfo.artworkUrl);
                     } else {
-                        Toast.makeText(app, tr
-                                ? "Shazam müziği tanıyamadı. Lütfen müziğin net duyulduğu bir anda tekrar deneyin."
-                                : "Shazam could not identify the track. Please try again when the music is clearer.",
-                                Toast.LENGTH_SHORT).show();
+                        com.cinetv.launcher.ui.ShazamOverlay.showResult(app, null);
                     }
                 });
             } catch (Throwable t) {
                 Log.w(TAG, "Shazam recognition failed: " + t);
                 recognizing = false;
-                mainHandler.post(() -> Toast.makeText(app, tr ? "Shazam bağlantısında hata oluştu." : "Shazam connection error.", Toast.LENGTH_SHORT).show());
+                mainHandler.post(() -> com.cinetv.launcher.ui.ShazamOverlay.showError(app,
+                        tr ? "Shazam bağlantısında hata oluştu." : "Shazam connection error."));
             }
         }, "cinetv-shazam").start();
+    }
+
+    private static final String PREF_SHAZAM_HISTORY = "shazam_history_v1";
+    private static final int MAX_HISTORY_ITEMS = 60;
+
+    public static synchronized void saveToHistory(Context ctx, TrackInfo info) {
+        if (ctx == null || info == null || info.title == null || info.title.trim().isEmpty()) return;
+        try {
+            JSONArray existing = getHistoryJson(ctx);
+            JSONArray updated = new JSONArray();
+            long now = System.currentTimeMillis();
+
+            JSONObject entry = new JSONObject();
+            entry.put("title", info.title.trim());
+            entry.put("artist", info.artist == null ? "" : info.artist.trim());
+            entry.put("album", info.album == null ? "" : info.album.trim());
+            entry.put("year", info.year == null ? "" : info.year.trim());
+            entry.put("artwork", info.artworkUrl == null ? "" : info.artworkUrl.trim());
+            entry.put("shazamUrl", info.shazamUrl == null ? "" : info.shazamUrl.trim());
+            entry.put("at", now);
+            updated.put(entry);
+
+            String keyNew = (info.title.trim() + "|" + (info.artist == null ? "" : info.artist.trim())).toLowerCase(Locale.ROOT);
+            for (int i = 0; i < existing.length() && updated.length() < MAX_HISTORY_ITEMS; i++) {
+                JSONObject old = existing.optJSONObject(i);
+                if (old == null) continue;
+                String oldKey = (old.optString("title", "").trim() + "|" + old.optString("artist", "").trim()).toLowerCase(Locale.ROOT);
+                if (oldKey.equals(keyNew)) continue; // Deduplicate and move latest to top
+                updated.put(old);
+            }
+            com.cinetv.launcher.service.Prefs.get(ctx).edit().putString(PREF_SHAZAM_HISTORY, updated.toString()).apply();
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to save Shazam history: " + t);
+        }
+    }
+
+    public static synchronized JSONArray getHistoryJson(Context ctx) {
+        if (ctx == null) return new JSONArray();
+        try {
+            String raw = com.cinetv.launcher.service.Prefs.get(ctx).getString(PREF_SHAZAM_HISTORY, "[]");
+            return new JSONArray(raw == null || raw.isEmpty() ? "[]" : raw);
+        } catch (Throwable t) {
+            return new JSONArray();
+        }
+    }
+
+    public static synchronized void removeHistoryItem(Context ctx, long at, String title) {
+        if (ctx == null) return;
+        try {
+            JSONArray existing = getHistoryJson(ctx);
+            JSONArray updated = new JSONArray();
+            for (int i = 0; i < existing.length(); i++) {
+                JSONObject o = existing.optJSONObject(i);
+                if (o == null) continue;
+                boolean matchAt = at > 0 && o.optLong("at", -1L) == at;
+                boolean matchTitle = at <= 0 && title != null && !title.isEmpty() && title.equalsIgnoreCase(o.optString("title", ""));
+                if (matchAt || matchTitle) continue;
+                updated.put(o);
+            }
+            com.cinetv.launcher.service.Prefs.get(ctx).edit().putString(PREF_SHAZAM_HISTORY, updated.toString()).apply();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    public static synchronized void clearHistory(Context ctx) {
+        if (ctx == null) return;
+        try {
+            com.cinetv.launcher.service.Prefs.get(ctx).edit().putString(PREF_SHAZAM_HISTORY, "[]").apply();
+        } catch (Throwable ignored) {
+        }
     }
 
     /**
@@ -483,8 +551,16 @@ public final class ShazamRecognizer {
             int totalRead = 0;
             long deadline = System.currentTimeMillis() + durationMs + 500;
             while (totalRead < targetSamples && System.currentTimeMillis() < deadline) {
-                int r = recorder.read(out, totalRead, targetSamples - totalRead);
+                int chunk = Math.min(1280, targetSamples - totalRead);
+                int r = recorder.read(out, totalRead, chunk);
                 if (r > 0) {
+                    long sum = 0;
+                    for (int i = 0; i < r; i++) {
+                        sum += Math.abs(out[totalRead + i]);
+                    }
+                    float avg = sum / (float) r;
+                    float norm = Math.max(0.15f, Math.min(1.0f, avg / 2400f));
+                    com.cinetv.launcher.ui.ShazamOverlay.updateEnergy(norm);
                     totalRead += r;
                 } else {
                     break;

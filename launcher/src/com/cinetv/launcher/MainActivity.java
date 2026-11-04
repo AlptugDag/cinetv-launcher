@@ -187,14 +187,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         home = new HomeScreen(this, this, this);
         setContentView(home.root);
-        // A power-on (or the first start of the day) never shows the previous session's shelf: the opening stays up
-        // while the new one is made. Otherwise the opening plays once and the last shelf is shown.
+        // No black splash screen on startup: background and showcase shelf appear immediately on frame 1,
+        // followed by DVD boxes dissolving one by one in place as they finish loading.
         final boolean freshStart = shelfIsStale();
-        if (!splashShown) {
-            splashShown = true;
-            if (freshStart) home.showSplashHeld();
-            else home.showSplash();
-        }
+        splashShown = true;
         // Waking from standby does not start a new process (the key service keeps it), so the opening is played
         // again whenever the screen comes on, not only at the very first start.
         if (android.os.Build.VERSION.SDK_INT >= 24) {
@@ -372,7 +368,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // during the TV's own boot the phone link waits (CineTvApp starts it 20 s later); otherwise at once
         if (android.os.SystemClock.elapsedRealtime() > 120_000L) TvWebRemoteServer.start(this);
         com.cinetv.launcher.party.CinePartyManager.get(this).addListener(partyLauncher);
-        handler.postDelayed(() -> com.cinetv.launcher.ai.EmaLightningTts.prewarmFillers(this), 25_000);
+        handler.postDelayed(() -> {
+            if (!isFinishing() && inFront) {
+                com.cinetv.launcher.ai.EmaLightningTts.prewarmFillers(this);
+            }
+        }, 25_000);
 
         scheduleDynamicStartup(freshStart);
 
@@ -466,7 +466,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         // Phase 2: Continue card & local watch history
         handler.postDelayed(() -> {
-            if (!isFinishing() && home != null) {
+            if (!isFinishing() && inFront && home != null) {
                 refreshContinueCard();
                 com.cinetv.launcher.service.WatchHistory.syncWithNuvio(app);
             }
@@ -474,7 +474,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         // Phase 3: Weather & Night Care
         handler.postDelayed(() -> {
-            if (!isFinishing() && home != null) {
+            if (!isFinishing() && inFront && home != null) {
                 refreshWeather();
                 DeviceTweaks.syncNightMode(this);
             }
@@ -483,13 +483,18 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // Phase 4: Fresh shelf if requested, after UI navigation has settled
         if (freshStart) {
             handler.postDelayed(() -> {
-                if (!isFinishing() && home != null) startFreshShelf(false);
+                if (isFinishing() || home == null) return;
+                if (!inFront) {
+                    freshOnResume = true;
+                    return;
+                }
+                startFreshShelf(false);
             }, p4);
         }
 
         // Phase 5: Non-critical background daemons & warm-ups
         handler.postDelayed(() -> {
-            if (isFinishing()) return;
+            if (isFinishing() || !inFront) return;
             AppUpdater.checkAndAutoUpdateOnBoot(app);
             MemoryOptimizer.ensureAirPlayReceiver(app);
             com.cinetv.launcher.device.AirPodsLink.ensureStarted(app);
@@ -559,10 +564,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (!freshPending && away >= AWAY_FOR_NEW_SHELF_MS) startFreshShelf(true);
         else if (!freshPending && android.os.SystemClock.elapsedRealtime() - lastShelfAt > AI_SHELF_EVERY_MS && shelfIsStale()) refreshShelf();
         handler.postDelayed(() -> {
+            if (!inFront || !foreground || isFinishing()) return;
             TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
             String currentPkg = svc != null ? svc.getLastPackage() : null;
             boolean isOemTuner = "com.mediatek.wwtv.tvcenter".equals(currentPkg) || "com.arcelik.tv.livetv".equals(currentPkg);
-            if (!isFinishing() && !hasWindowFocus() && isOemTuner && DeviceTweaks.isUnwantedTuner()) {
+            if (!hasWindowFocus() && isOemTuner && DeviceTweaks.isUnwantedBootTuner()) {
                 background(() -> LocalAdb.shell(this, "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null", 800));
                 try {
                     startActivity(new Intent(this, MainActivity.class)
@@ -577,17 +583,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (freshOnResume && home != null) {
             freshOnResume = false;
             splashOnResume = false;
-            startFreshShelf(true);
+            startFreshShelf(false);
         } else if (splashOnResume && home != null) {
             splashOnResume = false;
-            home.showSplash();
         }
         checkPendingUpdateBanner();
-        if (pendingBanner != null) {
-            String[] b = pendingBanner;
-            pendingBanner = null;
-            presentUpdateBannerGuaranteed(b[0], b[1], !b[2].isEmpty());
-        }
+        pendingBanner = null;
         checkNightViewingPrompt();
         handler.postDelayed(this::ensureMandatorySetup, 1400);
         maybeSpeakStartupGreeting();
@@ -677,16 +678,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (lastGreetingMs > 0 && now - lastGreetingMs < GREETING_INTERVAL_MS) return;
         greetingAttempts = 0;
         handler.removeCallbacks(greetingRetryRunnable);
-        handler.postDelayed(greetingRetryRunnable, 1800L);
+        // Wait until the background, showcase shelf, and initial DVD boxes have appeared on screen
+        handler.postDelayed(greetingRetryRunnable, 2400L);
     }
 
     private final Runnable greetingRetryRunnable = new Runnable() {
         @Override
         public void run() {
             if (isFinishing() || !inFront) return;
-            // never over the opening: Gamze greets once Home itself is on screen
-            if (home != null && home.splashShowing()) {
-                handler.postDelayed(this, 600L);
+            if (home != null && (home.splashShowing() || (home.shelf != null && !home.shelf.hasAnyLoadedCase() && greetingAttempts < 6))) {
+                greetingAttempts++;
+                handler.postDelayed(this, 650L);
                 return;
             }
             greetingAttempts++;
@@ -733,76 +735,20 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private boolean userInteractedDuringBanner = false;
 
     public void presentUpdateBannerGuaranteed(final String title, final String message, final boolean isError) {
-        android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
-        final boolean screenWasOn = pm != null && pm.isInteractive();
-
-        if (!screenWasOn) {
-            // Never light up a sleeping TV for a notice: it waits for the next time the screen is on.
-            pendingBanner = new String[]{title, message, isError ? "1" : ""};
-            return;
-        } else {
-            wokenForBanner = false;
-            userInteractedDuringBanner = false;
-        }
-
-        handler.postDelayed(new Runnable() {
-            int attempts = 0;
-            @Override
-            public void run() {
-                android.os.PowerManager p = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
-                boolean interactive = p != null && p.isInteractive();
-                if (!interactive && attempts < 4) {
-                    attempts++;
-                    com.cinetv.launcher.remote.LocalAdb.shell(MainActivity.this, "input keyevent KEYCODE_WAKEUP", 800);
-                    handler.postDelayed(this, 350);
-                    return;
-                }
-
-                if (home != null) {
-                    home.showUpdateBanner(title, message, isError, () -> {
-                        if (wokenForBanner && !userInteractedDuringBanner) {
-                            wokenForBanner = false;
-                            com.cinetv.launcher.device.DeviceTweaks.sleepPanel(MainActivity.this);
-                        }
-                    });
-                }
-            }
-        }, screenWasOn ? 100 : 900);
+        // Silent background updates: never show update popups/banners or wake the TV screen for update notices.
     }
 
     private void checkPendingUpdateBanner() {
         android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(this);
-        // An update installed while the viewer was away: say so the next time they are here.
-        String pending = p.getString("pending_update_version", null);
-        if (pending != null) {
-            String now = AppUpdater.currentVersion(this);
-            boolean done = !AppUpdater.isNewer(pending, now);
-            if (done || System.currentTimeMillis() - p.getLong("pending_update_at", 0) > 6 * 3600_000L) {
-                p.edit().remove("pending_update_version").remove("pending_update_at").apply();
-            }
-            if (done) {
-                presentUpdateBannerGuaranteed("CineTV v" + now + " yüklendi", "Yenilikler için Ayarlar › CineTV Turu.", false);
-                com.cinetv.launcher.ai.EmaLightningTts.speakMoment(this, com.cinetv.launcher.ai.EmaLightningTts.ProactiveMoment.SYSTEM,
-                        "CineTV yeni sürüme güncellendi.");
-            }
-        }
-        String available = p.getString("auto_update_notice_version", null);
-        if (available != null) {
-            String now = AppUpdater.currentVersion(this);
-            if (AppUpdater.isNewer(available, now)) {
-                presentUpdateBannerGuaranteed("CineTV v" + available + " güncellemesi bulundu",
-                        "Yeni sürüm arka planda indiriliyor. Kurulum onayı gerekirse ekranda görünecek.", false);
-            }
-            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
-            if (!AppUpdater.isNewer(available, now) || (home != null && pm != null && pm.isInteractive())) {
-                p.edit().remove("auto_update_notice_version").apply();
-            }
-        }
-        String updateErr = p.getString("update_error_message", null);
-        if (updateErr != null) {
-            String detail = p.getString("update_error_detail", "Lütfen Ayarlar › Sistem › Sürüm menüsünden manuel güncellemeyi deneyin.");
-            p.edit().remove("update_error_message").remove("update_error_detail").apply();
-            presentUpdateBannerGuaranteed(updateErr, detail, true);
+        // Clean up any legacy update banner keys silently without showing banners or TTS announcements
+        if (p.contains("pending_update_version") || p.contains("auto_update_notice_version") || p.contains("update_error_message")) {
+            p.edit()
+                    .remove("pending_update_version")
+                    .remove("pending_update_at")
+                    .remove("auto_update_notice_version")
+                    .remove("update_error_message")
+                    .remove("update_error_detail")
+                    .apply();
         }
         AppUpdater.onHomeResumed(this);
         com.cinetv.launcher.remote.RelayHost.resumeIfStopped(this);
@@ -860,6 +806,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         handler.removeCallbacks(clockTick);
         handler.removeCallbacks(idle);
         handler.removeCallbacks(sleepPanel);
+        handler.removeCallbacks(freshDeadline);
+        handler.removeCallbacks(freshHardLimit);
+        handler.removeCallbacks(staleRetry);
+        handler.removeCallbacks(preloadTrailer);
+        if (trailerPrefetchRunnable != null) handler.removeCallbacks(trailerPrefetchRunnable);
+        handler.removeCallbacks(greetingRetryRunnable);
+        handler.removeCallbacks(tourCheck);
         hideScreensaver();
         // Free unused off-screen poster cache when leaving Home without destroying active shelf views
         PosterCache.trimMemory();
@@ -1013,22 +966,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             return true;
         }
         if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_MUTE) {
-            if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() > 0
-                    && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
-                android.media.AudioManager am = (android.media.AudioManager) getSystemService(Context.AUDIO_SERVICE);
-                if (am != null) {
-                    int dir = keyCode == KeyEvent.KEYCODE_VOLUME_UP ? android.media.AudioManager.ADJUST_RAISE : android.media.AudioManager.ADJUST_LOWER;
-                    try {
-                        am.adjustSuggestedStreamVolume(dir, android.media.AudioManager.USE_DEFAULT_STREAM_TYPE, android.media.AudioManager.FLAG_SHOW_UI);
-                        am.adjustVolume(dir, android.media.AudioManager.FLAG_SHOW_UI);
-                    } catch (Throwable t) {
-                        try {
-                            am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, dir, android.media.AudioManager.FLAG_SHOW_UI);
-                        } catch (Throwable ignored) {}
-                    }
-                    return true;
-                }
-            }
             return super.dispatchKeyEvent(e);
         }
         if ((keyCode == KeyEvent.KEYCODE_CHANNEL_UP || keyCode == KeyEvent.KEYCODE_CHANNEL_DOWN) && e.getAction() == KeyEvent.ACTION_DOWN) {
@@ -1425,7 +1362,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
      */
     private void startFreshShelf(boolean showOpening) {
         if (home == null) return;
-        if (showOpening || !home.splashHeld()) home.showSplashHeld();
         freshPending = true;
         needFresh = true;
         handler.removeCallbacks(freshDeadline);
@@ -1437,22 +1373,20 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     private final Runnable freshDeadline = () -> {
-        if (!freshPending) return;
+        if (!freshPending || !inFront) return;
         freshTimedOutAt = android.os.SystemClock.uptimeMillis();
         isCurating = false;
         categoryShelf();
     };
 
     private final Runnable freshHardLimit = () -> {
-        if (home == null || !home.splashHeld()) return;
+        if (home == null || !inFront) return;
         freshPending = false;
-        // never last session's shelf: an empty stage that says the new one is coming; its cases cascade in when ready
         if (home.shelf.movies().isEmpty()) {
             home.shelfLabel.setText(("tr".equals(Locale.getDefault().getLanguage()) ? "Yeni vitrin hazırlanıyor…" : "Your new shelf is coming…")
                     .toUpperCase(Locale.getDefault()));
         }
         home.releaseSplash();
-        // no new shelf yet (no network at power-on): keep trying until one lands
         handler.removeCallbacks(MainActivity.this.staleRetry);
         handler.postDelayed(MainActivity.this.staleRetry, 15_000);
     };
@@ -1461,7 +1395,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private final Runnable staleRetry = new Runnable() {
         @Override
         public void run() {
-            if (isFinishing() || home == null || !(needFresh || shelfIsStale())) return;
+            if (isFinishing() || home == null || !inFront || !(needFresh || shelfIsStale())) return;
             if (!isCurating) refreshShelf();
             handler.postDelayed(this, 15_000);
         }
@@ -1835,6 +1769,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private void refreshShelf() {
         // ("built" is recorded only when a new shelf really lands, in setShelf: right after a power-on the network is
         // often not up yet, and a failed attempt used to count as done, leaving last night's shelf for hours)
+        if (!inFront) {
+            freshOnResume = true;
+            return;
+        }
         if (isCurating) return;
         lastShelfAt = android.os.SystemClock.elapsedRealtime();
         // With the AI key's daily quota spent, the category shelf comes at once instead of after four refusals.

@@ -135,19 +135,22 @@ public final class LlmClient {
 
         String[] chain;
         if ("deep".equalsIgnoreCase(mode) || "pro".equalsIgnoreCase(mode)) {
-            chain = new String[]{"gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"};
+            chain = new String[]{"gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.0-flash-lite"};
         } else if ("fast".equalsIgnoreCase(mode) || "lite".equalsIgnoreCase(mode)) {
-            chain = new String[]{"gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash"};
+            chain = new String[]{"gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-2.0-flash"};
         } else {
-            chain = new String[]{"gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest"};
+            chain = new String[]{"gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-2.0-flash", "gemini-2.0-flash-lite"};
         }
 
         Result r = null;
         for (String model : chain) {
+            if (isModelCoolingDown(model)) continue;
             r = callGeminiMultiTurn(ctx, model, key, system, history, userMessage, maxTokens, "deep".equalsIgnoreCase(mode));
             if (r.status == 503 || r.status == 429) {
-                try { Thread.sleep(350); } catch (Throwable ignored) {}
-                r = callGeminiMultiTurn(ctx, model, key, system, history, userMessage, maxTokens, false);
+                try { Thread.sleep(250); } catch (Throwable ignored) {}
+                if (!isModelCoolingDown(model)) {
+                    r = callGeminiMultiTurn(ctx, model, key, system, history, userMessage, maxTokens, false);
+                }
             }
             int st = r.status;
             if (r.success || !(st == 400 || st == 404 || st == 408 || st == 429 || st >= 500 || st == -1)) return r;
@@ -187,7 +190,9 @@ public final class LlmClient {
                     .put("parts", new JSONArray().put(new JSONObject().put("text", userMessage))));
             body.put("contents", contents);
 
-            JSONObject genCfg = new JSONObject().put("maxOutputTokens", maxTokens);
+            JSONObject genCfg = new JSONObject()
+                    .put("maxOutputTokens", maxTokens)
+                    .put("responseMimeType", "application/json");
             if (model.startsWith("gemini-2.5-flash") && !model.contains("lite")) {
                 genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", deepThinking ? 512 : 0));
             }

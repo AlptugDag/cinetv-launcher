@@ -347,6 +347,10 @@ public class LogicTest {
                 com.cinetv.launcher.device.HomeLaunchers.pickBestStockPackage(available, java.util.Collections.emptyList()));
         assertTrue(java.util.Arrays.asList(com.cinetv.launcher.device.HomeLaunchers.STOCK_LAUNCHERS)
                 .contains("com.google.android.leanbacklauncher"));
+        assertTrue(java.util.Arrays.asList(com.cinetv.launcher.device.HomeLaunchers.STOCK_LAUNCHERS)
+                .contains("com.droidlogic.mboxlauncher"));
+        assertTrue(java.util.Arrays.asList(com.cinetv.launcher.device.HomeLaunchers.STOCK_LAUNCHERS)
+                .contains("com.ugoos.launcher"));
     }
 
     @Test
@@ -375,6 +379,29 @@ public class LogicTest {
         assertTrue("Villeneuve'ün should be respelled and joined: " + spoken, spoken.contains("Vilnövün"));
         assertTrue("4K HDR inside parentheses should be expanded without raw brackets: " + spoken,
                 spoken.contains("Dört Ka Eyç Di Ar sürümü") && !spoken.contains("(") && !spoken.contains(")"));
+
+        // Years, suffixed years, decimals, ordinals, and thousands must be expanded to full Turkish words (never digit-by-digit)
+        assertEquals("bin dokuz yüz otuz", com.cinetv.launcher.ai.EmaLightningTts.numberToTurkishWords(1930));
+        assertEquals("bin dokuz yüz doksan dört", com.cinetv.launcher.ai.EmaLightningTts.numberToTurkishWords(1994));
+        assertEquals("iki bin yirmi dört", com.cinetv.launcher.ai.EmaLightningTts.numberToTurkishWords(2024));
+        assertEquals("yüz", com.cinetv.launcher.ai.EmaLightningTts.numberToTurkishWords(100));
+        assertEquals("bin", com.cinetv.launcher.ai.EmaLightningTts.numberToTurkishWords(1000));
+        assertEquals("dördüncü", com.cinetv.launcher.ai.EmaLightningTts.ordinalToTurkishWords(4));
+        assertEquals("ikinci", com.cinetv.launcher.ai.EmaLightningTts.ordinalToTurkishWords(2));
+        assertEquals("yirminci", com.cinetv.launcher.ai.EmaLightningTts.ordinalToTurkishWords(20));
+
+        String yearsAndNumbers = com.cinetv.launcher.ai.EmaLightningTts.normalizeForSpeech(
+                "1930 yapımı bu başyapıt 1930'larda çekildi, 1995'te restore edildi ve IMDb puanı 8.6 oldu.");
+        assertTrue("1930 should be read as bin dokuz yüz otuz: " + yearsAndNumbers,
+                yearsAndNumbers.contains("bin dokuz yüz otuz yapımı"));
+        assertTrue("1930'larda should be read as bin dokuz yüz otuzlarda: " + yearsAndNumbers,
+                yearsAndNumbers.contains("bin dokuz yüz otuzlarda"));
+        assertTrue("1995'te should be read as bin dokuz yüz doksan beşte: " + yearsAndNumbers,
+                yearsAndNumbers.contains("bin dokuz yüz doksan beşte"));
+        assertTrue("8.6 should be read as sekiz nokta altı: " + yearsAndNumbers,
+                yearsAndNumbers.contains("sekiz nokta altı"));
+        assertFalse("Raw digits must not remain in normalized speech: " + yearsAndNumbers,
+                yearsAndNumbers.matches(".*\\d.*"));
 
         int[] sample = new int[64];
         assertFalse("First ambient frame with no previous reference must not trigger as changed",

@@ -75,8 +75,8 @@ public class DvdCaseView extends View {
     }
 
     /**
-     * A case arriving in an empty slot is placed on the shelf: a short fade and settle (after {@code appearDelayMs}),
-     * so a row filling in reads as an arrangement, not as loading. Replacing one case with another is instant.
+     * A case arriving in an empty slot dissolves in place at its exact shelf position (after {@code appearDelayMs}),
+     * without vertical dropping or scale jumping. Replacing one case with another is instant.
      */
     public void setCase(DvdCase dvd, long appearDelayMs) {
         boolean arriving = this.dvd == null && dvd != null && appearDelayMs >= 0;
@@ -84,21 +84,14 @@ public class DvdCaseView extends View {
         animate().cancel();
         if (dvd == null) {
             setAlpha(0f);
-            setTranslationY(0f);
         } else if (arriving) {
             setAlpha(0f);
-            setScaleX(0.92f);
-            setScaleY(0.92f);
-            setTranslationY(-UiKit.pxf(14));
-            animate().alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
+            animate().alpha(1f)
                     .setStartDelay(appearDelayMs)
-                    .setDuration(com.cinetv.launcher.device.PerformanceProfile.animationMs(getContext(), 380))
-                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.8f)).start();
+                    .setDuration(com.cinetv.launcher.device.PerformanceProfile.animationMs(getContext(), 340))
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.5f)).start();
         } else {
             setAlpha(1f);
-            setScaleX(1f);
-            setScaleY(1f);
-            setTranslationY(0f);
         }
         invalidate();
     }

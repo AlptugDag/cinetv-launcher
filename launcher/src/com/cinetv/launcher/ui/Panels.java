@@ -1064,9 +1064,8 @@ public final class Panels {
         View sp = new View(ctx);
         row.addView(sp, new LinearLayout.LayoutParams(UiKit.px(24), 1));
         row.addView(Controls.alarmButton(ctx, tr ? "Evet, Yok Et" : "Yes, Remove", v -> {
-            final Context app = ctx.getApplicationContext();
             new Thread(() -> {
-                String problem = com.cinetv.launcher.device.Uninstaller.run(app);
+                String problem = com.cinetv.launcher.device.Uninstaller.run(ctx);
                 v.post(() -> {
                     if (problem != null) UiKit.toast(ctx, problem);
                     else host.close();

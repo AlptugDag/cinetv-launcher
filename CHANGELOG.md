@@ -3,6 +3,8 @@
 ## 1.0.0.46
 
 - **Nuvio'da Sesli CineSUB Deneyimi:** Kumandasında mikrofon tuşu olan TV'lerde Nuvio'da film/dizi izlerken kumandadaki mikrofon tuşuna basıldığında ekranda hiçbir kutucuk ya da kart çıkmadan video karesi anında dondurulur, ekranın kenarlarından büyüleyici golden glow konuşma animasyonları yayılır. Kullanıcının sorduğu soruya ("Bu oyuncunun adı ne?", "Bu sahnede gözüken kırmızı şey ne?", "Şu arabanın modeli ne?") Gemini Vision ile doğrudan sahneden analiz edilerek sesli yanıt (TTS) verilir ve yanıt bitince film otomatik olarak kaldığı yerden oynamaya devam eder.
+- **Mavi Liquid Glass Shazam Müzik Tanıma:** Shazam ile müzik aramada TV ekranının dört kenarında elektrik mavisi / camgöbeği akustik dalga animasyonu (`ShazamOverlay`) ve ekranın alt kısmında 18 saniye boyunca kalan, albüm kapaklı **Liquid Glass** şarkı bilgi kapsülü eklendi.
+- **Mobil Arayüzde Shazam Taranan Şarkılar & Modern Tasarım:** Mobil arayüzdeki dosya yöneticisi kaldırılarak yerine Shazam'da taranan şarkıların geçmişi eklendi; bulunan şarkılara dokunulduğunda doğrudan **YouTube Music** ve **Spotify** üzerinde açılması sağlandı. Mobil arayüz ferahlatılarak yüzen Liquid Glass alt bar ve modern kart yerleşimiyle yenilendi.
 - **Sürüm ve Paket İlerlemesi:** Build, release ve APK sürüm numaraları 1.0.0.46 olarak güncellendi.
 
 ## 1.0.0.45

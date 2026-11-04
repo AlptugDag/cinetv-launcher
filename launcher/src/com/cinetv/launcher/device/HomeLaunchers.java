@@ -36,7 +36,7 @@ public final class HomeLaunchers {
     private static final String[] NEVER = {"com.android.settings", "com.android.tv.settings", "com.android.provision",
             "com.google.android.tungsten.setupwraith", "com.android.managedprovisioning"};
 
-    /** Known Android TV, Google TV, and OEM default launchers across firmware builds. */
+    /** Known Android TV, Google TV, and OEM default launchers across firmware builds (Android 6–14). */
     public static final String[] STOCK_LAUNCHERS = {
             "com.google.android.apps.tv.launcherx",
             "com.google.android.tvlauncher",
@@ -44,6 +44,19 @@ public final class HomeLaunchers {
             "com.google.android.tvrecommendations",
             "com.android.tv.launcher",
             "com.android.launcher3",
+            "com.android.launcher2",
+            "com.android.launcher",
+            "com.google.android.launcher",
+            "com.droidlogic.tvlauncher",
+            "com.droidlogic.mboxlauncher",
+            "com.droidlogic.Launcher",
+            "com.amlogic.tvlauncher",
+            "com.amlogic.mboxlauncher",
+            "com.ugoos.launcher",
+            "com.UGOOS.launcher",
+            "com.ampere.launcher",
+            "com.mstar.tv.launcher",
+            "com.rockchip.mediacenter",
             "com.mitv.tvhome",
             "com.xiaomi.mitv.tvhome",
             "com.tcl.cyberui",
@@ -76,18 +89,24 @@ public final class HomeLaunchers {
         }
     }
 
-    /** The other apps that answer the Home button. */
+    /** The other apps that answer the Home button. Uses MATCH_ALL so Android 6 firmwares never filter to only the preferred Home. */
     public static List<String> others(Context ctx) {
         Set<String> out = new LinkedHashSet<>();
         if (ctx == null) return new ArrayList<>(out);
         try {
             Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
-            for (ResolveInfo ri : ctx.getPackageManager().queryIntentActivities(home, 0)) {
-                if (ri.activityInfo == null) continue;
-                String p = ri.activityInfo.packageName;
-                if (p.equals(ctx.getPackageName()) || isNever(p) || ri.activityInfo.name.endsWith("FallbackHome")) continue;
-                if (!ri.activityInfo.enabled || !isPackageEnabled(ctx, p)) continue;
-                out.add(p);
+            PackageManager pm = ctx.getPackageManager();
+            int[] flagSets = new int[]{PackageManager.MATCH_ALL, 0};
+            for (int flags : flagSets) {
+                List<ResolveInfo> list = pm.queryIntentActivities(home, flags);
+                if (list == null) continue;
+                for (ResolveInfo ri : list) {
+                    if (ri.activityInfo == null || ri.activityInfo.packageName == null) continue;
+                    String p = ri.activityInfo.packageName;
+                    if (p.equals(ctx.getPackageName()) || isNever(p) || ri.activityInfo.name.endsWith("FallbackHome")) continue;
+                    if (!ri.activityInfo.enabled || !isPackageEnabled(ctx, p)) continue;
+                    out.add(p);
+                }
             }
         } catch (Throwable ignored) {
         }
@@ -103,7 +122,7 @@ public final class HomeLaunchers {
             String self = ctx.getPackageName();
             try {
                 Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
-                int flags = PackageManager.MATCH_DISABLED_COMPONENTS | 0x00002000; // MATCH_UNINSTALLED_PACKAGES
+                int flags = PackageManager.MATCH_ALL | PackageManager.MATCH_DISABLED_COMPONENTS | 0x00002000; // MATCH_UNINSTALLED_PACKAGES
                 List<ResolveInfo> all = ctx.getPackageManager().queryIntentActivities(home, flags);
                 if (all != null) {
                     for (ResolveInfo ri : all) {
@@ -123,7 +142,7 @@ public final class HomeLaunchers {
     /**
      * Shell script that checks firmware packages (`pm list packages -u`), re-installs any stock launcher
      * that was uninstalled/deleted for user 0 (`cmd package install-existing` or `pm path -u` APK install),
-     * and re-enables/unhides any stock launcher that was disabled.
+     * and re-enables/unhides any stock launcher that was disabled. Compatible with Android 6+ (API 23+).
      */
     public static String stockRestoreCommands(Context ctx) {
         List<String> candidates = discoverStockPackages(ctx);
@@ -133,9 +152,9 @@ public final class HomeLaunchers {
         sb.append("dis=$(pm list packages -d 2>/dev/null | tr -d '\\r'); ");
         sb.append("extra=''; ");
         sb.append("if [ -f /sdcard/cinetv-debloat.txt ]; then ");
-        sb.append("extra=$(awk '{print $2}' /sdcard/cinetv-debloat.txt 2>/dev/null | grep -E 'launcher|tvhome|leanback|cyberui' | tr '\\n' ' '); ");
+        sb.append("extra=$(awk '{print $2}' /sdcard/cinetv-debloat.txt 2>/dev/null | grep -iE 'launcher|tvhome|leanback|cyberui|mbox' | tr '\\n' ' '); ");
         sb.append("fi; ");
-        sb.append("fw_launchers=$(printf '%s\\n' \"$all_u\" | sed 's/^package://' | grep -E 'tvlauncher|launcherx|leanbacklauncher|tv\\.launcher|tvhome|cyberui|vidaa\\.launcher|osat\\.launcher' | grep -v 'com\\.cinetv\\.launcher' | tr '\\n' ' '); ");
+        sb.append("fw_launchers=$(printf '%s\\n' \"$all_u\" | sed 's/^package://' | grep -iE 'tvlauncher|mboxlauncher|launcherx|leanbacklauncher|tv\\.launcher|launcher2|launcher3|tvhome|cyberui|vidaa\\.launcher|osat\\.launcher|ugoos.*launcher|droidlogic.*launcher|amlogic.*launcher' | grep -v 'com\\.cinetv\\.launcher' | tr '\\n' ' '); ");
         sb.append("for p in ");
         for (String p : candidates) {
             if (p != null && p.matches("[a-zA-Z0-9._]+")) {
@@ -148,10 +167,10 @@ public final class HomeLaunchers {
         sb.append("case \"$inst\" in *\"package:$p\"*) ;; *) ");
         sb.append("cmd package install-existing --user 0 \"$p\" >/dev/null 2>&1 || pm install-existing --user 0 \"$p\" >/dev/null 2>&1 || { ");
         sb.append("apk=$(pm path -u \"$p\" 2>/dev/null | head -n 1 | cut -d: -f2); ");
-        sb.append("[ -n \"$apk\" ] && pm install -r --user 0 \"$apk\" >/dev/null 2>&1; }; ");
+        sb.append("[ -n \"$apk\" ] && (pm install -r --user 0 \"$apk\" >/dev/null 2>&1 || pm install -r \"$apk\" >/dev/null 2>&1); }; ");
         sb.append(";; esac; ");
         sb.append("pm enable --user 0 \"$p\" >/dev/null 2>&1 || pm enable \"$p\" >/dev/null 2>&1; ");
-        sb.append("pm unhide --user 0 \"$p\" >/dev/null 2>&1; ");
+        sb.append("pm unhide --user 0 \"$p\" >/dev/null 2>&1 || pm unhide \"$p\" >/dev/null 2>&1; ");
         sb.append("pm default-state --user 0 \"$p\" >/dev/null 2>&1; ");
         sb.append(";; esac; ");
         sb.append("done; ");
@@ -271,7 +290,11 @@ public final class HomeLaunchers {
         if (origHome != null && origHome.matches("[a-zA-Z0-9._]+")) {
             cmd.append(origHome).append(' ');
         }
-        cmd.append("com.google.android.apps.tv.launcherx com.google.android.tvlauncher com.google.android.leanbacklauncher com.android.tv.launcher com.mitv.tvhome com.xiaomi.mitv.tvhome com.tcl.cyberui com.sony.dtv.osat.launcher com.hisense.vidaa.launcher org.droidtv.leanback; do ");
+        for (String s : STOCK_LAUNCHERS) {
+            cmd.append(s).append(' ');
+        }
+        cmd.append("; do ");
+        cmd.append("pm enable --user 0 \"$s\" 2>/dev/null || pm enable \"$s\" 2>/dev/null; ");
         cmd.append("h=$(cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME \"$s\" 2>/dev/null | grep '/' | tail -1 | tr -d '\\r '); ");
         cmd.append("if [ -n \"$h\" ]; then ");
         cmd.append("cmd role add-role-holder --user 0 android.app.role.HOME \"$s\" 2>/dev/null; ");
@@ -288,7 +311,8 @@ public final class HomeLaunchers {
         if (!available.isEmpty()) {
             String stock = pickBestStockPackage(available, list);
             if (stock != null) {
-                String handoff = "cmd role add-role-holder --user 0 android.app.role.HOME " + stock + " 2>/dev/null; "
+                String handoff = "pm enable --user 0 " + stock + " 2>/dev/null || pm enable " + stock + " 2>/dev/null; "
+                        + "cmd role add-role-holder --user 0 android.app.role.HOME " + stock + " 2>/dev/null; "
                         + "h=$(cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME "
                         + stock + " 2>/dev/null | grep '/' | tail -1 | tr -d '\\r '); "
                         + "[ -n \"$h\" ] && cmd package set-home-activity --user 0 \"$h\" 2>/dev/null";
@@ -296,6 +320,43 @@ public final class HomeLaunchers {
             }
             Prefs.get(ctx).edit().remove(JOURNAL).commit();
             return true;
+        }
+        return false;
+    }
+
+    /** Resolves and launches the best available non-CineTV stock Home activity (even on Android 6 where cmd role does not exist). */
+    public static boolean startStockHome(Context ctx) {
+        if (ctx == null) return false;
+        try {
+            PackageManager pm = ctx.getPackageManager();
+            List<String> avail = others(ctx);
+            String stock = pickBestStockPackage(avail, journal(ctx));
+            Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            List<ResolveInfo> list = pm.queryIntentActivities(home, PackageManager.MATCH_ALL);
+            if (list != null) {
+                ResolveInfo chosen = null;
+                for (ResolveInfo ri : list) {
+                    if (ri.activityInfo == null || ri.activityInfo.packageName == null) continue;
+                    String p = ri.activityInfo.packageName;
+                    if (p.equals(ctx.getPackageName())) continue;
+                    if (stock != null && stock.equals(p)) {
+                        chosen = ri;
+                        break;
+                    }
+                    if (chosen == null && !isNever(p)) {
+                        chosen = ri;
+                    }
+                }
+                if (chosen != null && chosen.activityInfo != null) {
+                    Intent launch = new Intent(Intent.ACTION_MAIN)
+                            .addCategory(Intent.CATEGORY_HOME)
+                            .setClassName(chosen.activityInfo.packageName, chosen.activityInfo.name)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    ctx.startActivity(launch);
+                    return true;
+                }
+            }
+        } catch (Throwable ignored) {
         }
         return false;
     }

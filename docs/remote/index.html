@@ -21,53 +21,56 @@
 <link rel="apple-touch-icon-precomposed" href="apple-touch-icon-precomposed.png?v=20">
 <style>
 :root{
-  --bg:#07070c;--ink:#f5f5f7;--dim:rgba(235,235,245,.6);--faint:rgba(235,235,245,.32);
-  --glass:rgba(255,255,255,.08);--glass-hi:rgba(255,255,255,.14);--edge:rgba(255,255,255,.16);
-  --accent:#8b5cf6;--accent2:#c4b5fd;--ok:#34d399;--radius:22px;
+  --bg:#05060b;--ink:#f8fafc;--dim:rgba(226,232,240,.64);--faint:rgba(226,232,240,.32);
+  --glass:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.035));
+  --glass-hi:rgba(255,255,255,.15);--edge:rgba(255,255,255,.14);
+  --accent:#8b5cf6;--accent2:#c4b5fd;--shazam:#0ea5e9;--shazam2:#38bdf8;--ok:#34d399;--radius:24px;
   --safe-b:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
-  font:15px/1.4 'Poppins',-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+  font:15px/1.48 'Poppins',-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font-family:'Poppins',-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
-body::before{content:"";position:fixed;inset:-20%;z-index:-1;
-  background:radial-gradient(40% 35% at 20% 10%,rgba(139,92,246,.35),transparent 70%),
-             radial-gradient(35% 30% at 85% 30%,rgba(56,189,248,.18),transparent 70%),
-             radial-gradient(45% 40% at 50% 100%,rgba(236,72,153,.16),transparent 70%);filter:blur(10px)}
+body::before{content:"";position:fixed;inset:-25%;z-index:-1;pointer-events:none;
+  background:radial-gradient(42% 36% at 16% 12%,rgba(139,92,246,.32),transparent 72%),
+             radial-gradient(38% 34% at 86% 24%,rgba(14,165,233,.24),transparent 72%),
+             radial-gradient(46% 42% at 50% 96%,rgba(236,72,153,.15),transparent 74%);filter:blur(18px)}
 .glass{background:var(--glass);border:1px solid var(--edge);border-radius:var(--radius);
-  -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 10px 30px rgba(0,0,0,.35)}
-header{position:sticky;top:0;z-index:5;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 10px;
-  background:linear-gradient(var(--bg) 55%,transparent)}
-.brand{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.brand b{font-size:22px;letter-spacing:-.02em}
-.tv{color:#ff1e1e}
-.brand .logo{width:38px;height:38px;border-radius:9px;object-fit:cover;box-shadow:0 4px 12px rgba(0,0,0,.45);flex-shrink:0}
-.brand .sig{width:30px;height:30px;object-fit:contain;margin-left:-4px;margin-right:-2px;opacity:.92}
-.brand .st{font-size:12px;color:var(--dim);margin-left:auto;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0}
+  -webkit-backdrop-filter:blur(30px) saturate(175%);backdrop-filter:blur(30px) saturate(175%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.20),0 14px 36px -8px rgba(0,0,0,.48)}
+header{position:sticky;top:0;z-index:10;padding:calc(env(safe-area-inset-top,0px) + 16px) 20px 14px;
+  background:linear-gradient(180deg,rgba(5,6,11,.92) 55%,rgba(5,6,11,.65) 82%,transparent);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.brand b{font-size:23px;font-weight:800;letter-spacing:-.025em}
+.tv{color:#ff2424}
+.brand .logo{width:38px;height:38px;border-radius:10px;object-fit:cover;box-shadow:0 4px 12px rgba(0,0,0,.45);flex-shrink:0}
+.brand .sig{width:32px;height:32px;object-fit:contain;margin-left:-4px;margin-right:-2px;opacity:.94}
+.brand .st{font-size:12px;font-weight:600;color:var(--dim);margin-left:auto;display:flex;align-items:center;gap:7px;white-space:nowrap;flex-shrink:0;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.11);padding:6px 12px;border-radius:999px}
 .brand em{font-style:normal}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--faint);transition:background .25s,box-shadow .25s}
 .dot.on{background:var(--ok);box-shadow:0 0 10px var(--ok)}
-.search{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 16px;transition:border-color .2s,box-shadow .2s}
-.search:focus-within{border-color:rgba(196,181,253,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 0 0 3px rgba(139,92,246,.22),0 10px 30px rgba(0,0,0,.4)}
-.search input{flex:1;background:none;border:0;outline:0;color:var(--ink);font-size:16px;min-width:0}
-.search svg{opacity:.7;flex-shrink:0}
-.qmic{width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:var(--ink);display:grid;place-items:center;padding:0;flex-shrink:0;transition:transform .18s,background .2s}
+.search{display:flex;align-items:center;gap:12px;padding:11px 13px 11px 18px;border-radius:20px;transition:border-color .22s,box-shadow .22s,transform .18s}
+.search:focus-within{border-color:rgba(196,181,253,.48);box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 0 0 3px rgba(139,92,246,.22),0 14px 34px rgba(0,0,0,.45)}
+.search input{flex:1;background:none;border:0;outline:0;color:var(--ink);font-size:15.5px;min-width:0}
+.search svg{opacity:.68;flex-shrink:0}
+.qmic{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.09);color:var(--ink);display:grid;place-items:center;padding:0;flex-shrink:0;transition:transform .18s,background .2s}
 .qmic:active{transform:scale(.9)}
-.qmic.on{background:var(--accent);box-shadow:0 0 16px var(--accent)}
-.moods{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:10px 2px 2px;margin:0 -2px}
+.qmic.on{background:var(--accent);box-shadow:0 0 18px var(--accent)}
+.moods{display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;padding:12px 2px 4px;margin:0 -2px}
 .moods::-webkit-scrollbar{display:none}
-.mtag{flex-shrink:0;border:1px solid var(--edge);background:rgba(255,255,255,.06);color:var(--ink);border-radius:999px;padding:7px 13px;font-size:12.5px;font-weight:600;white-space:nowrap;transition:transform .18s,background .2s,border-color .2s}
+.mtag{flex-shrink:0;border:1px solid var(--edge);background:rgba(255,255,255,.065);color:var(--ink);border-radius:999px;padding:8px 15px;font-size:13px;font-weight:600;white-space:nowrap;transition:transform .18s,background .2s,border-color .2s}
 .mtag:active{transform:scale(.95)}
-.mtag.on{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.5)}
-.kindbar{display:flex;gap:10px;align-items:center;margin:4px 0 8px}
-.seg{display:flex;flex:1;border-radius:999px;padding:4px;gap:4px}
-.seg button{flex:1;border:0;background:none;color:var(--dim);font-weight:700;font-size:14px;padding:8px 0;border-radius:999px;transition:background .2s,color .2s}
-.seg button.on{background:rgba(255,255,255,.16);color:var(--ink)}
-.refresh{width:42px;height:42px;border-radius:50%;border:0;color:var(--ink);font-size:20px;flex-shrink:0;transition:transform .5s}
+.mtag.on{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.55);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.kindbar{display:flex;gap:12px;align-items:center;margin:6px 0 12px}
+.seg{display:flex;flex:1;border-radius:999px;padding:5px;gap:5px}
+.seg button{flex:1;border:0;background:none;color:var(--dim);font-weight:700;font-size:14px;padding:9px 0;border-radius:999px;transition:background .2s,color .2s}
+.seg button.on{background:rgba(255,255,255,.18);color:var(--ink);box-shadow:0 2px 10px rgba(0,0,0,.2)}
+.refresh{width:44px;height:44px;border-radius:50%;border:0;color:var(--ink);font-size:20px;flex-shrink:0;transition:transform .5s}
 .refresh.spin{transform:rotate(360deg)}
-.vibe-chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.vibe-chips{display:flex;gap:9px;overflow-x:auto;padding:6px 0 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .vibe-chips::-webkit-scrollbar{display:none}
 .mtag.creator{background:linear-gradient(135deg,rgba(229,9,20,.22),rgba(139,92,246,.22));border-color:rgba(229,9,20,.42);color:#fff}
 .voice-edge{position:fixed;inset:0;pointer-events:none;z-index:55;opacity:0;transition:opacity .28s ease;
@@ -78,56 +81,64 @@ header{position:sticky;top:0;z-index:5;padding:calc(env(safe-area-inset-top,0px)
   0%{box-shadow:inset 0 0 24px 5px rgba(56,189,248,.8),inset 0 0 58px 12px rgba(139,92,246,.55),inset 0 0 95px 18px rgba(236,72,153,.35)}
   100%{box-shadow:inset 0 0 36px 9px rgba(229,9,20,.85),inset 0 0 78px 18px rgba(139,92,246,.65),inset 0 0 120px 26px rgba(56,189,248,.45)}
 }
-main{padding:0 16px calc(96px + var(--safe-b));max-width:960px;margin:0 auto}
-section{display:none;animation:fadeIn .22s cubic-bezier(.22,1,.36,1)}section.on{display:block}
-@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:16px 2px 10px}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-@media(min-width:520px){.grid{grid-template-columns:repeat(4,1fr)}}
-@media(min-width:740px){.grid{grid-template-columns:repeat(5,1fr);gap:14px}}
-@media(max-width:350px){.grid{grid-template-columns:repeat(2,1fr)}}
-.card{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:2/3;background:var(--glass);
-  box-shadow:0 8px 20px rgba(0,0,0,.45);transform:translateZ(0);transition:transform .22s cubic-bezier(.22,1,.36,1),box-shadow .22s;contain:layout paint}
+main{padding:2px 20px calc(108px + var(--safe-b));max-width:960px;margin:0 auto}
+section{display:none;animation:fadeIn .26s cubic-bezier(.22,1,.36,1)}section.on{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+h2{font-size:13px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin:20px 4px 12px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(min-width:520px){.grid{grid-template-columns:repeat(4,1fr);gap:16px}}
+@media(min-width:740px){.grid{grid-template-columns:repeat(5,1fr);gap:18px}}
+@media(max-width:350px){.grid{grid-template-columns:repeat(2,1fr);gap:12px}}
+.card{position:relative;border-radius:18px;overflow:hidden;aspect-ratio:2/3;background:var(--glass);
+  border:1px solid rgba(255,255,255,.11);
+  box-shadow:0 12px 28px -6px rgba(0,0,0,.55);transform:translateZ(0);transition:transform .22s cubic-bezier(.22,1,.36,1),box-shadow .22s;contain:layout paint}
 .card:active{transform:scale(.95)}
 .card img{width:100%;height:100%;object-fit:cover;display:block}
-.card .t{position:absolute;inset:auto 0 0 0;padding:22px 8px 7px;font-size:11.5px;font-weight:600;
-  background:linear-gradient(transparent,rgba(0,0,0,.85))}
-.card .badge{position:absolute;top:6px;left:6px;font-size:10px;padding:2px 7px;border-radius:999px;background:rgba(0,0,0,.55)}
-.empty{color:var(--dim);text-align:center;padding:40px 10px}
-.answer{padding:14px 16px;font-size:15px;line-height:1.45;border-left:3px solid var(--accent2)}
-nav{position:fixed;left:12px;right:12px;bottom:calc(10px + var(--safe-b));z-index:9;display:flex;padding:6px}
-nav button{flex:1;background:none;border:0;color:var(--dim);font-size:11px;padding:8px 0;border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:3px}
-nav button.on{color:var(--ink);background:var(--glass-hi)}
-.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.25s;z-index:20}
+.card .t{position:absolute;inset:auto 0 0 0;padding:28px 10px 9px;font-size:12px;font-weight:600;line-height:1.25;
+  background:linear-gradient(transparent,rgba(0,0,0,.88))}
+.card .badge{position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.62);backdrop-filter:blur(8px)}
+.empty{color:var(--dim);text-align:center;padding:44px 14px;font-size:14px}
+.answer{padding:16px 18px;font-size:15px;line-height:1.5;border-left:3px solid var(--accent2)}
+nav{position:fixed;left:14px;right:14px;bottom:calc(12px + var(--safe-b));z-index:18;display:flex;gap:4px;padding:6px;
+  border-radius:26px;background:rgba(12,14,24,.82);border:1px solid rgba(255,255,255,.16);
+  -webkit-backdrop-filter:blur(36px) saturate(190%);backdrop-filter:blur(36px) saturate(190%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 20px 44px rgba(0,0,0,.65);
+  overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:1 0 auto;min-width:56px;background:none;border:0;color:var(--dim);font-size:11px;font-weight:600;padding:9px 6px;border-radius:20px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:background .2s,color .2s,transform .15s}
+nav button:active{transform:scale(.94)}
+nav button.on{color:#fff;background:linear-gradient(160deg,rgba(255,255,255,.18),rgba(255,255,255,.08));box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 4px 14px rgba(0,0,0,.3)}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:.25s;z-index:20}
 .sheet-bg.on{opacity:1;pointer-events:auto}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.9,.2,1);
-  border-radius:28px 28px 0 0;padding:18px 18px calc(22px + var(--safe-b));max-height:86vh;overflow:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;transform:translateY(105%);transition:transform .34s cubic-bezier(.2,.9,.2,1);
+  border-radius:30px 30px 0 0;padding:22px 20px calc(26px + var(--safe-b));max-height:86vh;overflow:auto}
 .sheet.on{transform:none}
-.sheet .row{display:flex;gap:16px}
-.sheet img{width:110px;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.5)}
-.sheet h3{margin:4px 0 6px;font-size:20px;line-height:1.2}
-.dvd-stage{perspective:1000px;display:flex;justify-content:center;margin:6px 0 16px}
-.dvd-3d{width:140px;height:205px;position:relative;transform-style:preserve-3d;transform:rotateY(-16deg) rotateX(4deg);transition:transform .4s cubic-bezier(.2,.9,.2,1);box-shadow:0 16px 36px rgba(0,0,0,.65)}
+.sheet .row{display:flex;gap:18px}
+.sheet img{width:112px;border-radius:14px;box-shadow:0 12px 28px rgba(0,0,0,.55)}
+.sheet h3{margin:4px 0 6px;font-size:21px;line-height:1.22}
+.dvd-stage{perspective:1000px;display:flex;justify-content:center;margin:8px 0 18px}
+.dvd-3d{width:142px;height:208px;position:relative;transform-style:preserve-3d;transform:rotateY(-16deg) rotateX(4deg);transition:transform .4s cubic-bezier(.2,.9,.2,1);box-shadow:0 18px 40px rgba(0,0,0,.68)}
 .dvd-3d:active{transform:rotateY(0deg) rotateX(0deg) scale(1.04)}
 .dvd-3d .cover{width:100%;height:100%;border-radius:6px 12px 12px 6px;object-fit:cover;display:block}
 .dvd-3d .sheen{position:absolute;inset:0;border-radius:6px 12px 12px 6px;background:linear-gradient(135deg,rgba(255,255,255,.32) 0%,rgba(255,255,255,.05) 35%,transparent 55%,rgba(255,255,255,.12) 100%);pointer-events:none;box-shadow:inset 2px 0 3px rgba(255,255,255,.4),inset -1px 0 2px rgba(0,0,0,.5)}
 .dvd-3d .spine{position:absolute;left:0;top:0;bottom:0;width:7px;border-radius:6px 0 0 6px;background:linear-gradient(90deg,rgba(255,255,255,.25),rgba(0,0,0,.4));pointer-events:none}
 .dvd-3d .badge-4k{position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.75);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;letter-spacing:0.5px}
-.hud-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0 12px}
-.hud-tag{background:var(--glass-hi);border:1px solid var(--edge);padding:3px 8px;border-radius:8px;font-size:12px;color:var(--dim)}
-.hud-tag.rating{background:rgba(245,194,107,.15);border-color:rgba(245,194,107,.4);color:#f5c26b;font-weight:600}
-.meta{color:var(--dim);font-size:13px}
-.ov{color:var(--dim);font-size:14px;margin:14px 0}
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:16px;padding:15px;font-size:16px;font-weight:600;color:#fff;
-  background:linear-gradient(180deg,#9b6cff,#7c3aed);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 10px 24px rgba(124,58,237,.45)}
+.hud-meta{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:10px 0 14px}
+.hud-tag{background:var(--glass-hi);border:1px solid var(--edge);padding:4px 10px;border-radius:9px;font-size:12px;color:var(--dim)}
+.hud-tag.rating{background:rgba(245,194,107,.16);border-color:rgba(245,194,107,.42);color:#f5c26b;font-weight:600}
+.meta{color:var(--dim);font-size:13.5px}
+.ov{color:var(--dim);font-size:14.5px;line-height:1.55;margin:16px 0}
+.btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;border:0;border-radius:18px;padding:15px 18px;font-size:15.5px;font-weight:600;color:#fff;
+  background:linear-gradient(180deg,#9b6cff,#7c3aed);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 10px 26px rgba(124,58,237,.42);transition:transform .16s,opacity .2s}
+.btn:active{transform:scale(.97)}
 a.btn{text-decoration:none}
 label.btn{cursor:pointer}
-.install{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:10px;font-size:13px}
+.install{display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:12px;font-size:13px}
 .install span{flex:1}
-.install button{border:0;border-radius:12px;padding:8px 12px;background:var(--accent);color:#fff;font-weight:600}
+.install button{border:0;border-radius:12px;padding:8px 13px;background:var(--accent);color:#fff;font-weight:600}
 .install .x{background:none;color:var(--dim);padding:6px}
-.btn.ghost{background:var(--glass-hi);box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
-.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 16px);transform:translate(-50%,-140%);transition:.3s;z-index:40;padding:10px 18px;font-size:14px}
+.btn.ghost{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.15);box-shadow:inset 0 1px 0 rgba(255,255,255,.16)}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 18px);transform:translate(-50%,-150%);transition:.32s cubic-bezier(.22,1,.36,1);z-index:60;padding:11px 20px;font-size:14px;font-weight:600;border-radius:999px}
 .toast.on{transform:translate(-50%,0)}
 /* remote: one screen, no scrolling, no zoom; a touchpad like the TV makers' own apps, in liquid glass */
 html,body,button{touch-action:manipulation;-webkit-user-select:none;user-select:none}
@@ -344,36 +355,100 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .pt-pad button:active{background:rgba(255,255,255,.25);transform:scale(.96)}
 .pt-spin{width:46px;height:46px;border-radius:50%;border:4px solid rgba(255,255,255,.12);border-top-color:var(--pt);animation:ptSpin .9s linear infinite;justify-self:center}
 @keyframes ptSpin{to{transform:rotate(360deg)}}
-/* Gamze Multi-Turn Chatbot & TV File Manager + Screenshots Hub */
-.gamze-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 15px;margin:8px 0 10px;border-radius:18px;background:linear-gradient(135deg,rgba(139,92,246,.22),rgba(56,189,248,.14));border:1px solid rgba(196,181,253,.35);cursor:pointer}
-.gamze-bar b{font-size:14.5px;color:#fff;display:flex;align-items:center;gap:7px}
-.gamze-bar span{font-size:12px;color:var(--accent2);font-weight:600}
-.gamze-panel{padding:14px;margin:6px 0 14px;border-radius:20px;display:grid;gap:10px;background:rgba(12,14,26,.82);border:1px solid rgba(196,181,253,.3)}
-.gamze-modes{display:flex;gap:6px}
-.gamze-modes button{flex:1;border:1px solid var(--edge);background:rgba(255,255,255,.06);color:var(--dim);border-radius:10px;padding:6px 8px;font-size:12px;font-weight:600}
-.gamze-modes button.on{background:var(--accent);color:#fff;border-color:transparent}
-.gamze-thread{max-height:290px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px 2px}
-.gamze-msg{padding:10px 13px;border-radius:14px;font-size:13.5px;line-height:1.48;word-break:break-word}
-.gamze-msg.user{align-self:flex-end;max-width:85%;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border-bottom-right-radius:4px}
-.gamze-msg.assistant{align-self:flex-start;max-width:92%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:var(--ink);border-bottom-left-radius:4px}
-.gamze-sug{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+/* Apple visionOS Spatial Glass — Gamze Multi-Turn Chat & Shazam Music Hub */
+.gamze-bar{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 18px;margin:12px 0 14px;border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.15) 0%,rgba(139,92,246,.22) 48%,rgba(14,165,233,.16) 100%);border:1px solid rgba(255,255,255,.28);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.42),inset 0 -1px 0 rgba(255,255,255,.08),0 18px 40px -12px rgba(0,0,0,.55),0 0 28px rgba(139,92,246,.22);backdrop-filter:blur(36px) saturate(190%);-webkit-backdrop-filter:blur(36px) saturate(190%);cursor:pointer;transition:transform .2s cubic-bezier(.22,1,.36,1),box-shadow .25s,border-color .25s}
+.gamze-bar:hover{border-color:rgba(255,255,255,.42);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5),0 22px 44px -12px rgba(0,0,0,.6),0 0 34px rgba(139,92,246,.32)}
+.gamze-bar:active{transform:scale(.982)}
+.gamze-bar-left{display:flex;align-items:center;gap:13px;min-width:0}
+.gamze-orb{position:relative;width:42px;height:42px;border-radius:50%;flex-shrink:0;background:radial-gradient(circle at 30% 28%,#e0f2fe 0%,#c084fc 38%,#6366f1 72%,#0ea5e9 100%);box-shadow:inset 0 2px 4px rgba(255,255,255,.75),0 0 22px rgba(168,85,247,.65),0 4px 12px rgba(0,0,0,.4);display:grid;place-items:center;color:#fff;font-size:18px;animation:gamzeOrbPulse 3.6s ease-in-out infinite alternate}
+.gamze-orb::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1px solid rgba(255,255,255,.38);pointer-events:none}
+@keyframes gamzeOrbPulse{0%{transform:scale(.97);box-shadow:inset 0 2px 4px rgba(255,255,255,.75),0 0 16px rgba(168,85,247,.55)}100%{transform:scale(1.04);box-shadow:inset 0 2px 6px rgba(255,255,255,.9),0 0 28px rgba(56,189,248,.75)}}
+.gamze-bar-titles{min-width:0}
+.gamze-bar-eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#e0f2fe;opacity:.9}
+.gamze-bar-eyebrow i{width:6px;height:6px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d399;display:inline-block}
+.gamze-bar b{font-size:15.5px;font-weight:700;color:#fff;display:block;letter-spacing:-.01em;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gamze-bar-sub{font-size:12px;color:rgba(240,244,255,.72);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gamze-bar-pill{flex-shrink:0;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);box-shadow:inset 0 1px 0 rgba(255,255,255,.35);font-size:12px;color:#fff;font-weight:700;letter-spacing:.01em;transition:background .2s}
+.gamze-panel{position:relative;padding:18px;margin:8px 0 18px;border-radius:30px;display:grid;gap:14px;background:linear-gradient(165deg,rgba(32,36,58,.86) 0%,rgba(14,17,32,.92) 100%);border:1px solid rgba(255,255,255,.24);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(255,255,255,.08),0 28px 64px -12px rgba(0,0,0,.72),0 0 42px rgba(139,92,246,.16);backdrop-filter:blur(44px) saturate(200%);-webkit-backdrop-filter:blur(44px) saturate(200%)}
+.gamze-panel[hidden]{display:none !important}
+.gamze-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.1)}
+.gamze-head-left{display:flex;align-items:center;gap:10px}
+.gamze-head-title{font-size:13.5px;font-weight:700;color:#fff;letter-spacing:-.01em}
+.gamze-head-sub{font-size:11px;color:rgba(224,242,254,.7);font-weight:500}
+.gamze-head-actions{display:flex;align-items:center;gap:7px}
+.gamze-chip-btn{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:rgba(255,255,255,.85);border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:600;display:inline-flex;align-items:center;gap:5px;box-shadow:inset 0 1px 0 rgba(255,255,255,.2);transition:all .18s}
+.gamze-chip-btn.on{background:linear-gradient(135deg,rgba(56,189,248,.32),rgba(139,92,246,.32));border-color:rgba(125,211,252,.55);color:#fff}
+.gamze-chip-btn:active{transform:scale(.95)}
+.gamze-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:4px;border-radius:16px;background:rgba(0,0,0,.34);border:1px solid rgba(255,255,255,.12);box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
+.gamze-modes button{border:1px solid transparent;background:transparent;color:var(--dim);border-radius:12px;padding:8px 10px;font-size:12px;font-weight:700;transition:all .18s}
+.gamze-modes button.on{background:linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,.09));color:#fff;border-color:rgba(255,255,255,.26);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 12px rgba(0,0,0,.3)}
+.gamze-thread{max-height:360px;min-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:8px 4px;scroll-behavior:smooth}
+.gamze-row{display:flex;gap:10px;align-items:flex-end}
+.gamze-row.user{justify-content:flex-end}
+.gamze-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;background:radial-gradient(circle at 30% 30%,#e0f2fe,#a855f7 55%,#3b82f6);box-shadow:inset 0 1px 2px rgba(255,255,255,.7),0 2px 8px rgba(139,92,246,.45);display:grid;place-items:center;font-size:13px;color:#fff;font-weight:800}
+.gamze-msg{padding:12px 15px;border-radius:20px;font-size:14px;line-height:1.52;word-break:break-word;position:relative;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.gamze-msg.user{max-width:84%;background:linear-gradient(135deg,#8b5cf6 0%,#6366f1 55%,#0ea5e9 100%);border:1px solid rgba(255,255,255,.32);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 8px 22px rgba(99,102,241,.35);color:#fff;border-bottom-right-radius:6px;font-weight:500}
+.gamze-msg.assistant{max-width:88%;background:linear-gradient(155deg,rgba(255,255,255,.14),rgba(255,255,255,.06));border:1px solid rgba(255,255,255,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 8px 24px rgba(0,0,0,.32);color:#f8fafc;border-bottom-left-radius:6px}
+.gamze-cards{display:flex;gap:10px;overflow-x:auto;padding:8px 2px 2px;scrollbar-width:none;margin-top:6px}
+.gamze-cards::-webkit-scrollbar{display:none}
+.gamze-mcard{flex:0 0 112px;border-radius:14px;overflow:hidden;background:rgba(0,0,0,.42);border:1px solid rgba(255,255,255,.18);box-shadow:0 6px 16px rgba(0,0,0,.4);cursor:pointer;transition:transform .16s;text-align:left;padding:0;color:#fff}
+.gamze-mcard:active{transform:scale(.95)}
+.gamze-mcard img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#111}
+.gamze-mcard-info{padding:6px 7px}
+.gamze-mcard-title{font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.gamze-mcard-sub{font-size:10px;color:#bae6fd;margin-top:1px}
+.gamze-dots{display:inline-flex;align-items:center;gap:5px;padding:4px 2px}
+.gamze-dots i{width:7px;height:7px;border-radius:50%;background:#c4b5fd;animation:gmzDot .9s infinite ease-in-out alternate}
+.gamze-dots i:nth-child(2){animation-delay:.2s;background:#93c5fd}
+.gamze-dots i:nth-child(3){animation-delay:.4s;background:#67e8f9}
+@keyframes gmzDot{from{opacity:.35;transform:translateY(2px) scale(.85)}to{opacity:1;transform:translateY(-3px) scale(1.1)}}
+.gamze-sug{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
 .gamze-sug::-webkit-scrollbar{display:none}
-.gamze-sug button{flex-shrink:0;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.12);color:#bae6fd;border-radius:999px;padding:5px 11px;font-size:11.5px;font-weight:600}
-.files-card{padding:16px;margin-top:12px;display:grid;gap:12px}
-.shots-strip{display:flex;gap:10px;overflow-x:auto;padding:4px 0;scrollbar-width:none}
+.gamze-sug button{flex-shrink:0;border:1px solid rgba(255,255,255,.22);background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.05));box-shadow:inset 0 1px 0 rgba(255,255,255,.25);color:#e0f2fe;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:600;transition:all .16s}
+.gamze-sug button:active{transform:scale(.95);background:rgba(255,255,255,.22)}
+.gamze-input-bar{display:flex;align-items:center;gap:8px;margin:0;padding:5px 6px 5px 14px;border-radius:999px;background:rgba(8,10,20,.65);border:1px solid rgba(255,255,255,.24);box-shadow:inset 0 1px 3px rgba(0,0,0,.55),0 4px 16px rgba(0,0,0,.25)}
+.gamze-input-bar:focus-within{border-color:rgba(167,139,250,.65);box-shadow:inset 0 1px 3px rgba(0,0,0,.55),0 0 0 3px rgba(139,92,246,.22)}
+.gamze-input-bar input{flex:1;min-width:0;height:38px;border:0;background:transparent;color:#fff;font-size:14px;outline:0}
+.gamze-input-bar input::placeholder{color:rgba(240,244,255,.45)}
+.gamze-mic-btn{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#e0f2fe;display:grid;place-items:center;flex-shrink:0;padding:0;transition:all .18s}
+.gamze-mic-btn.rec{background:rgba(239,68,68,.35);border-color:#f87171;color:#fff;animation:pulse 1.1s infinite}
+.gamze-send-btn{height:38px;padding:0 18px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:linear-gradient(135deg,#8b5cf6 0%,#6366f1 55%,#0ea5e9 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 16px rgba(99,102,241,.4);color:#fff;font-size:13.5px;font-weight:700;flex-shrink:0;transition:transform .15s}
+.gamze-send-btn:active{transform:scale(.95)}
+.files-card{padding:20px;margin-top:16px;display:grid;gap:16px;border-radius:28px}
+.shazam-hero{position:relative;overflow:hidden;border-radius:30px;border:1px solid rgba(255,255,255,.26);background:linear-gradient(155deg,rgba(255,255,255,.14) 0%,rgba(14,165,233,.22) 45%,rgba(37,99,235,.12) 80%,rgba(15,23,42,.88) 100%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.42),inset 0 -1px 0 rgba(255,255,255,.08),0 24px 56px -12px rgba(0,0,0,.65),0 0 36px rgba(14,165,233,.18);backdrop-filter:blur(40px) saturate(190%);-webkit-backdrop-filter:blur(40px) saturate(190%)}
+.shazam-top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.shazam-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(56,189,248,.16);border:1px solid rgba(125,211,252,.38);font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:#e0f2fe;margin-bottom:8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.28)}
+.shazam-listen-btn{width:auto;padding:12px 20px;font-size:13.5px;font-weight:700;border-radius:999px;white-space:nowrap;border:1px solid rgba(255,255,255,.38);background:linear-gradient(135deg,#38bdf8 0%,#0284c7 52%,#2563eb 100%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5),0 12px 28px rgba(14,165,233,.45);color:#fff}
+.shazam-wave-banner{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:20px;background:linear-gradient(135deg,rgba(14,165,233,.24),rgba(56,189,248,.12));border:1px solid rgba(125,211,252,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.3);color:#f0f9ff;font-size:13.5px;font-weight:600}
+.shazam-bars{display:inline-flex;align-items:center;gap:3px;height:18px}
+.shazam-bars i{width:3px;border-radius:3px;background:#38bdf8;animation:szBar .8s ease-in-out infinite alternate}
+.shazam-bars i:nth-child(1){height:8px;animation-delay:0s}
+.shazam-bars i:nth-child(2){height:16px;animation-delay:.15s}
+.shazam-bars i:nth-child(3){height:11px;animation-delay:.3s}
+.shazam-bars i:nth-child(4){height:18px;animation-delay:.1s}
+.shazam-bars i:nth-child(5){height:9px;animation-delay:.25s}
+@keyframes szBar{from{transform:scaleY(.35);opacity:.6}to{transform:scaleY(1);opacity:1}}
+.shazam-list{display:grid;gap:12px}
+.shazam-item{display:flex;flex-direction:column;gap:12px;padding:15px 16px;border-radius:24px;background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 10px 26px rgba(0,0,0,.35);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);transition:transform .18s,border-color .2s}
+.shazam-item:hover{border-color:rgba(125,211,252,.48)}
+.shazam-item-main{display:flex;align-items:center;gap:14px;min-width:0;cursor:pointer}
+.shazam-art{width:62px;height:62px;border-radius:16px;flex-shrink:0;overflow:hidden;background:radial-gradient(circle at 30% 30%,#38bdf8,#0284c7 55%,#1e3a8a);border:1px solid rgba(255,255,255,.35);display:grid;place-items:center;color:#fff;font-size:24px;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 8px 18px rgba(0,0,0,.42)}
+.shazam-art img{width:100%;height:100%;object-fit:cover;display:block}
+.shazam-info{flex:1;min-width:0}
+.shazam-title{font-size:16px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.shazam-artist{font-size:13.5px;font-weight:600;color:#bae6fd;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shazam-time{font-size:11px;color:rgba(240,244,255,.6);margin-top:4px;display:inline-flex;align-items:center;gap:5px}
+.shazam-del{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:var(--dim);width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:13px;flex-shrink:0}
+.shazam-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn-ytm,.btn-spotify{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 12px;border-radius:16px;font-size:12.5px;font-weight:700;text-decoration:none;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 6px 14px rgba(0,0,0,.25);transition:transform .15s,filter .2s}
+.btn-spotify{background:linear-gradient(135deg,rgba(16,185,129,.36),rgba(5,150,105,.24));border:1px solid rgba(52,211,153,.55);color:#d1fae5}
+.btn-ytm{background:linear-gradient(135deg,rgba(239,68,68,.36),rgba(185,28,28,.24));border:1px solid rgba(248,113,113,.55);color:#fee2e2}
+.btn-ytm:active,.btn-spotify:active{transform:scale(.96)}
+.shots-strip{display:flex;gap:12px;overflow-x:auto;padding:6px 0;scrollbar-width:none}
 .shots-strip::-webkit-scrollbar{display:none}
-.shot-thumb{flex:0 0 145px;border-radius:12px;overflow:hidden;border:1px solid var(--edge);background:rgba(0,0,0,.35);position:relative;cursor:pointer}
+.shot-thumb{flex:0 0 155px;border-radius:14px;overflow:hidden;border:1px solid var(--edge);background:rgba(0,0,0,.35);position:relative;cursor:pointer}
 .shot-thumb img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
-.shot-thumb .sc-meta{padding:5px 7px;font-size:10.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.file-list{display:grid;gap:7px;max-height:420px;overflow-y:auto;padding-right:2px}
-.file-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
-.file-row.dir{cursor:pointer;background:rgba(139,92,246,.09);border-color:rgba(139,92,246,.25)}
-.file-row .f-ic{font-size:20px;flex-shrink:0;width:28px;text-align:center}
-.file-row .f-info{flex:1;min-width:0}
-.file-row .f-name{font-size:13.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.file-row .f-sub{font-size:11px;color:var(--dim);margin-top:1px}
-.file-row .f-acts{display:flex;gap:5px;flex-shrink:0}
-.file-row .f-acts button,.file-row .f-acts a{border:1px solid var(--edge);background:rgba(255,255,255,.08);color:#fff;border-radius:9px;padding:6px 8px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.shot-thumb .sc-meta{padding:6px 8px;font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
 </head>
 <body>
@@ -403,24 +478,41 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       <button type="button" class="glass refresh" id="refreshBtn" aria-label="Yenile">↻</button>
     </div>
     <div class="gamze-bar glass" id="gamzeToggleBar">
-      <b>✨ Gamze · Gemini Sinema &amp; TV Sohbeti</b>
-      <span id="gamzeToggleLbl">Sohbeti Aç ▾</span>
+      <div class="gamze-bar-left">
+        <div class="gamze-orb">✨</div>
+        <div class="gamze-bar-titles">
+          <span class="gamze-bar-eyebrow"><i></i>SPATIAL AI · VISION GLASS</span>
+          <b>Gamze ile Sohbet Et</b>
+          <div class="gamze-bar-sub">Kişisel sinema küratörün · Çok turlu hafızalı sohbet</div>
+        </div>
+      </div>
+      <span class="gamze-bar-pill" id="gamzeToggleLbl">Sohbeti Aç ▾</span>
     </div>
     <div class="gamze-panel glass" id="gamzeChatPanel" hidden>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <div style="font-size:12.5px;font-weight:700;color:var(--accent2)">Çok Turlu Gemini Asistanı (Hafızalı)</div>
-        <button type="button" id="gamzeClearBtn" style="border:0;background:rgba(255,255,255,.08);color:var(--dim);border-radius:8px;padding:4px 9px;font-size:11px;font-weight:600">Sohbeti Temizle</button>
+      <div class="gamze-head">
+        <div class="gamze-head-left">
+          <div class="gamze-avatar">G</div>
+          <div>
+            <div class="gamze-head-title">Gamze · Sinema &amp; TV Küratörü</div>
+            <div class="gamze-head-sub">TV vitrini ve sesli yanıt ile senkronize</div>
+          </div>
+        </div>
+        <div class="gamze-head-actions">
+          <button type="button" class="gamze-chip-btn on" id="gamzeSpeakToggle" title="Gamze yanıtlarını TV'de seslendir">🔊 TV'de Seslendir</button>
+          <button type="button" class="gamze-chip-btn" id="gamzeClearBtn">Temizle</button>
+        </div>
       </div>
       <div class="gamze-modes" id="gamzeModeSeg">
-        <button type="button" data-mode="balanced" class="on">Dengeli</button>
-        <button type="button" data-mode="deep">Derin Analiz</button>
-        <button type="button" data-mode="fast">Hızlı</button>
+        <button type="button" data-mode="balanced" class="on">✨ Dengeli</button>
+        <button type="button" data-mode="deep">🎬 Derin Analiz</button>
+        <button type="button" data-mode="fast">⚡ Hızlı</button>
       </div>
       <div class="gamze-thread" id="gamzeThread"></div>
       <div class="gamze-sug" id="gamzeSugRow"></div>
-      <form id="gamzeForm" style="display:flex;gap:8px;margin:0" action="javascript:void(0);">
-        <input id="gamzeInput" type="text" placeholder="Gamze'ye film, yönetmen, sahne veya tavsiye sor…" autocomplete="off" style="flex:1;min-width:0;height:42px;border-radius:12px;border:1px solid var(--edge);background:rgba(0,0,0,.35);color:#fff;padding:0 12px;font-size:14px;outline:0">
-        <button type="submit" id="gamzeSendBtn" class="pt-btn" style="height:42px;padding:0 16px;border-radius:12px;font-size:14px">Gönder</button>
+      <form id="gamzeForm" class="gamze-input-bar" action="javascript:void(0);">
+        <input id="gamzeInput" type="text" placeholder="Gamze'ye film, yönetmen, ruh hali veya tavsiye sor…" autocomplete="off">
+        <button type="button" class="gamze-mic-btn" id="gamzeMicBtn" aria-label="Sesle Sor" title="Sesle Sor"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 17.5V21" stroke="currentColor" stroke-width="2"/></svg></button>
+        <button type="submit" id="gamzeSendBtn" class="gamze-send-btn">Gönder</button>
       </form>
     </div>
     <div class="vibe-chips" id="vibeChips">
@@ -549,63 +641,60 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   </section>
 
   <section id="tab-files">
-    <div class="files-card glass">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <div class="files-card glass shazam-hero">
+      <div class="shazam-top">
         <div>
-          <h2 style="margin:0;color:#fff;font-size:15px;text-transform:none;letter-spacing:0">📸 TV Ekran Görüntüsü &amp; Galeri</h2>
-          <div style="font-size:12px;color:var(--dim);margin-top:2px">TV ekranını anında yakalayın, indirin veya kaydedilenleri yönetin</div>
+          <div class="shazam-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            <span>APPLE VISION SPATIAL GLASS · SHAZAM ID</span>
+          </div>
+          <h2 style="margin:0;color:#fff;font-size:18px;text-transform:none;letter-spacing:-.015em">🎵 Shazam'da Taranan Şarkılar</h2>
+          <div style="font-size:12.5px;color:rgba(240,244,255,.74);margin-top:5px;line-height:1.48">TV'de çalan film ve dizi müziklerini uzamsal Shazam dalgasıyla tanıyın; bulunan şarkıları anında <b>Spotify</b> veya <b>YouTube Music</b>'te açın.</div>
         </div>
-        <button type="button" class="btn" id="btnTakeShot" style="width:auto;padding:10px 14px;font-size:13px;border-radius:12px;white-space:nowrap">📸 Ekran Görüntüsü Al</button>
+        <button type="button" class="btn shazam-listen-btn" id="btnShazamListen">🎵 Şimdi Dinlet</button>
       </div>
-      <div id="filesShotPreviewWrap" hidden style="background:rgba(0,0,0,.35);border:1px solid var(--edge);border-radius:14px;padding:10px;display:grid;gap:8px">
-        <img id="filesShotPreviewImg" alt="TV Ekran Görüntüsü" style="width:100%;max-height:240px;object-fit:contain;border-radius:10px;background:#000">
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <a class="btn" id="filesShotDownloadBtn" download="CineTV-Screenshot.jpg" style="flex:1;padding:10px;font-size:13px;border-radius:11px">⬇ Telefona Kaydet</a>
-          <button type="button" class="btn ghost" id="filesShotShareBtn" style="flex:1;padding:10px;font-size:13px;border-radius:11px">Paylaş</button>
+
+      <div id="shazamListeningBar" class="shazam-wave-banner" hidden>
+        <span class="shazam-bars"><i></i><i></i><i></i><i></i><i></i></span>
+        <span>TV mikrofonu ortam sesini dinliyor… TV ekranında Apple Vision Shazam katmanı aktif.</span>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:4px">
+        <span style="font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(224,242,254,.75)">Taranan Şarkı Geçmişi</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <button type="button" id="btnShazamRefresh" style="border:0;background:none;color:#7dd3fc;font-size:12.5px;font-weight:700;padding:0">↻ Yenile</button>
+          <button type="button" id="btnShazamClear" style="border:0;background:none;color:var(--dim);font-size:12px;font-weight:600;padding:0">Temizle</button>
+        </div>
+      </div>
+
+      <div class="shazam-list" id="shazamListBox">
+        <div class="empty" style="padding:26px 12px">Taranan şarkılar yükleniyor…</div>
+      </div>
+    </div>
+
+    <div class="files-card glass">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+          <h2 style="margin:0;color:#fff;font-size:15.5px;text-transform:none;letter-spacing:0">📸 TV Ekran Görüntüsü</h2>
+          <div style="font-size:12px;color:var(--dim);margin-top:3px">TV ekranını anında yakalayın veya telefonunuza indirin</div>
+        </div>
+        <button type="button" class="btn" id="btnTakeShot" style="width:auto;padding:10px 15px;font-size:13px;border-radius:14px;white-space:nowrap">📸 Ekran Görüntüsü Al</button>
+      </div>
+      <div id="filesShotPreviewWrap" hidden style="background:rgba(0,0,0,.35);border:1px solid var(--edge);border-radius:16px;padding:12px;display:grid;gap:10px">
+        <img id="filesShotPreviewImg" alt="TV Ekran Görüntüsü" style="width:100%;max-height:240px;object-fit:contain;border-radius:12px;background:#000">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <a class="btn" id="filesShotDownloadBtn" download="CineTV-Screenshot.jpg" style="flex:1;padding:10px;font-size:13px;border-radius:12px">⬇ Telefona Kaydet</a>
+          <button type="button" class="btn ghost" id="filesShotShareBtn" style="flex:1;padding:10px;font-size:13px;border-radius:12px">Paylaş</button>
         </div>
       </div>
       <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:12px;font-weight:600;color:var(--dim)">Kaydedilen Ekran Görüntüleri (/Pictures/CineTV_Screenshots)</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:12px;font-weight:600;color:var(--dim)">Son Ekran Görüntüleri</span>
           <button type="button" id="btnRefreshShots" style="border:0;background:none;color:var(--accent2);font-size:12px;font-weight:600">↻ Yenile</button>
         </div>
         <div class="shots-strip" id="savedShotsStrip">
           <div style="font-size:12px;color:var(--dim);padding:8px 2px">Yükleniyor…</div>
         </div>
-      </div>
-    </div>
-
-    <div class="files-card glass">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <div>
-          <h2 style="margin:0;color:#fff;font-size:15px;text-transform:none;letter-spacing:0">📁 TV Dosyalar Klasörü (/sdcard)</h2>
-          <div id="filesStorageText" style="font-size:11.5px;color:var(--dim);margin-top:2px">Depolama bilgisi alınıyor…</div>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button type="button" class="btn ghost" id="btnNewFolder" style="width:auto;padding:8px 11px;font-size:12px;border-radius:10px">+ Klasör</button>
-          <label class="btn" style="width:auto;padding:8px 12px;font-size:12px;border-radius:10px;margin:0">
-            <input type="file" id="tvFileUploadInput" hidden>
-            <span>📤 Dosya Yükle</span>
-          </label>
-        </div>
-      </div>
-      <div style="height:5px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden">
-        <div id="filesStorageBar" style="height:100%;width:35%;background:linear-gradient(90deg,#8b5cf6,#38bdf8)"></div>
-      </div>
-      <div class="vibe-chips" id="filesQuickDirs" style="padding:2px 0">
-        <button type="button" class="mtag on" data-dir="/sdcard">Ana Dizin</button>
-        <button type="button" class="mtag" data-dir="/sdcard/Download">İndirilenler</button>
-        <button type="button" class="mtag" data-dir="/sdcard/Pictures/CineTV_Screenshots">Ekran Görüntüleri</button>
-        <button type="button" class="mtag" data-dir="/sdcard/Movies">Filmler</button>
-        <button type="button" class="mtag" data-dir="/sdcard/Music">Müzikler</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.28);border:1px solid var(--edge);border-radius:12px;padding:8px 10px">
-        <button type="button" id="btnFilesUp" style="border:0;background:rgba(255,255,255,.1);color:#fff;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700">⬆️ Üst</button>
-        <div id="filesCurrentPath" style="flex:1;font-size:12px;font-family:monospace;color:var(--accent2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">/sdcard</div>
-        <button type="button" id="btnFilesRefresh" style="border:0;background:none;color:#fff;font-size:15px;padding:2px 6px">↻</button>
-      </div>
-      <div class="file-list" id="filesListBox">
-        <div class="empty" style="padding:24px 10px">Klasör içeriği yükleniyor…</div>
       </div>
     </div>
   </section>
@@ -642,7 +731,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   <button data-tab="remote"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="6" y="2" width="12" height="20" rx="3"/><circle cx="12" cy="7" r="1.5"/><path d="M9 13h6M12 10v6"/></svg><span data-i="tabRemote"></span></button>
   <button data-tab="party"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="6" width="18" height="12" rx="4"/><path d="M7 12h4M9 10v4M15 11h.01M17 13h.01"/></svg><span data-i="tabParty"></span></button>
   <button data-tab="cast"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><circle cx="2" cy="20" r="1"/></svg><span data-i="tabCast"></span></button>
-  <button data-tab="files"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span data-i="tabFiles"></span></button>
+  <button data-tab="files"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span data-i="tabFiles"></span></button>
   <button data-tab="bg"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span data-i="tabBg"></span></button>
   <button data-tab="about"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span data-i="tabAbout"></span></button>
 </nav>
@@ -695,7 +784,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       connecting:"Connecting…",connected:"Connected",offline:"TV not reachable",searchPh:"Films, series, people…",trending:"Trending",
       results:"Results",noResults:"Nothing found",openTv:"Open on TV",opening:"Opening on your TV…",movie:"Film",series:"Series",similarMovies:"Similar Titles",
       back:"Back",home:"Home",menu:"Menu",send:"Send",input:"Input",guide:"Guide",info:"Info",subs:"Subtitles",audio:"Audio",last:"Last",typePh:"Type on the TV…",sleepOff:"Sleep timer: off",sleepIn:"Sleeps in {n} min",typeNote:"Letters appear in the field that is selected on the TV, in any app; ↵ confirms.",tvSearchPh:"Search or ask on the TV",screensaver:"Start screensaver",
-      tabSearch:"Discover",tabRemote:"Remote",tabParty:"Party",tabFiles:"Files",partyTitle:"Party & Games",tabCal:"Picture",presets:"Presets",patterns:"Test patterns",picture:"Picture engine",
+      tabSearch:"Discover",tabRemote:"Remote",tabParty:"Party",tabFiles:"Shazam",partyTitle:"Party & Games",tabCal:"Picture",presets:"Presets",patterns:"Test patterns",picture:"Picture engine",
       warmth:"Colour temperature",reset:"Restore my original settings",patternNote:"Choose a pattern, adjust until it looks right, then tap Off.",
       noPanel:"This TV takes picture changes only from its own menu. Show a pattern here, then adjust Picture settings with the TV remote until the pattern looks right.",
       p_natural:"Natural",p_cinema:"Cinema",p_night:"Dark room",p_vivid:"Vivid",
@@ -712,7 +801,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       connecting:"Bağlanıyor…",connected:"Bağlı",offline:"TV'ye ulaşılamıyor",searchPh:"Film, dizi, oyuncu…",trending:"Trend",
       results:"Sonuçlar",noResults:"Bir şey bulunamadı",openTv:"TV'ye Gönder",opening:"TV'de açılıyor…",movie:"Film",series:"Dizi",similarMovies:"Benzerleri",
       back:"Geri",home:"Ana sayfa",menu:"Menü",send:"Gönder",input:"Kaynak",guide:"Rehber",info:"Bilgi",subs:"Altyazı",audio:"Ses dili",last:"Önceki",typePh:"Televizyona yaz…",sleepOff:"Uyku zamanlayıcı: kapalı",sleepIn:"{n} dk sonra kapanır",typeNote:"Yazdıkların televizyonda seçili alana gelir, hangi uygulama olursa olsun; ↵ onaylar.",tvSearchPh:"TV'de ara veya sor",screensaver:"Ekran koruyucuyu başlat",
-      tabSearch:"Keşfet",tabRemote:"Kumanda",tabParty:"Oyunlar",tabFiles:"Dosyalar",partyTitle:"Parti & Oyunlar",tabCal:"Görüntü",presets:"Hazır ayarlar",patterns:"Test desenleri",picture:"Görüntü motoru",
+      tabSearch:"Keşfet",tabRemote:"Kumanda",tabParty:"Oyunlar",tabFiles:"Shazam",partyTitle:"Parti & Oyunlar",tabCal:"Görüntü",presets:"Hazır ayarlar",patterns:"Test desenleri",picture:"Görüntü motoru",
       warmth:"Renk sıcaklığı",reset:"Orijinal ayarlarıma dön",patternNote:"Bir desen seçin, doğru görünene kadar ayarlayın, sonra Kapat'a dokunun.",
       noPanel:"Bu TV görüntü değişikliklerini yalnızca kendi menüsünden kabul ediyor. Buradan bir desen gösterin, sonra TV kumandasıyla Görüntü ayarlarını desen doğru görünene kadar değiştirin.",
       p_natural:"Doğal",p_cinema:"Sinema",p_night:"Karanlık oda",p_vivid:"Canlı",
@@ -916,7 +1005,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     document.body.classList.toggle("remote", name === "remote" || name === "cast");
     if (name === "cast") browseLoop(); else browsing = false;
     if (name === "party") startPartyPolling(); else stopPartyPolling();
-    if (name === "files") { loadSavedShots(); loadTvFiles(currentFilesDir); }
+    if (name === "files") { loadShazamHistory(); loadSavedShots(); }
     if (name !== "remote") $("kbd").hidden = true;
     requestAnimationFrame(() => document.documentElement.style.setProperty("--hdr", document.querySelector("header").offsetHeight + "px"));
   };
@@ -941,7 +1030,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       // only the new cards are added: the posters already shown stay in place (no reload, no blank cards)
       const seen = new Set(currentList.map(m => m.type + ":" + (m.tmdb || m.imdb || m.title)));
       const fresh = list.filter(m => !seen.has(m.type + ":" + (m.tmdb || m.imdb || m.title)));
-      if (!fresh.length) { hasMore = false; return; }
+      if (!fresh.length) {
+        if (currentPage < 30) loadMore();
+        else hasMore = false;
+        return;
+      }
       const start = currentList.length;
       currentList = currentList.concat(fresh);
       box.insertAdjacentHTML("beforeend", fresh.map((m, j) => card(m, start + j)).join(""));
@@ -992,6 +1085,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     if (hasMore && !isLoadingMore && currentList.length < 18 && document.documentElement.scrollHeight <= window.innerHeight + 360) loadMore();
   }, 60);
   const loadMore = async () => {
+      if (isLoadingMore || !hasMore) return;
       isLoadingMore = true;
       currentPage++;
       try {
@@ -1017,7 +1111,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   window.addEventListener("scroll", () => {
     if (isLoadingMore || !hasMore || location.hash === "#remote" || location.hash === "#cast") return;
     // body is height:100% here, so the page's real length is the document's scroll height
-    if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 360) loadMore();
+    if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 500) loadMore();
   });
 
   const cleanSearchQuery = text => (text || "").replace(/\b(filmleri|filmler|filmi|dizileri|dizisi|dizi|movies|movie|films|film|tavsiyesi|önerisi|seçkisi)\b/gi, "").replace(/\s+/g, " ").trim();
@@ -1302,9 +1396,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         if (seenShot >= 0 && s.shot > seenShot) showShot();
         seenShot = s.shot;
       }
-      if (s && s.track && s.track !== lastTrack) {
-        lastTrack = s.track;
-        if (typeof toast === "function") toast("🎵 " + s.track);
+      if (s && s.track) {
+        const trackKey = typeof s.track === "object" ? (s.track.at || s.track.title || "") : String(s.track);
+        if (trackKey && trackKey !== lastTrack) {
+          if (lastTrack !== "") {
+            const label = typeof s.track === "object"
+              ? ((s.track.artist ? s.track.artist + " — " : "") + (s.track.title || ""))
+              : String(s.track);
+            if (label && typeof toast === "function") toast("🎵 " + label);
+            if (typeof loadShazamHistory === "function") loadShazamHistory();
+          }
+          lastTrack = trackKey;
+        }
       }
       if (s && s.inputFocused && !lastFocusState && kbd.hidden) {
         openKbd("");
@@ -2224,23 +2327,87 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
   if ($("remoteCineSubBtn")) $("remoteCineSubBtn").onclick = triggerCineSubHelper;
 
-  // ---- Gamze Multi-Turn Gemini Chatbot ----
+  // ---- Gamze Multi-Turn Spatial Glass Chatbot ----
   let gamzeMode = "balanced";
+  let gamzeSpeakOnTv = localStorage.getItem("cinetv.gamze.speak") !== "0";
+  let gamzeLocalHistory = (() => {
+    try { return JSON.parse(localStorage.getItem("cinetv.gamze.history") || "[]"); } catch (e) { return []; }
+  })();
+
+  const saveGamzeLocalHistory = hist => {
+    gamzeLocalHistory = Array.isArray(hist) ? hist.slice(-24) : [];
+    try { localStorage.setItem("cinetv.gamze.history", JSON.stringify(gamzeLocalHistory)); } catch (e) {}
+  };
+
+  if ($("gamzeSpeakToggle")) {
+    $("gamzeSpeakToggle").classList.toggle("on", gamzeSpeakOnTv);
+    $("gamzeSpeakToggle").onclick = () => {
+      gamzeSpeakOnTv = !gamzeSpeakOnTv;
+      localStorage.setItem("cinetv.gamze.speak", gamzeSpeakOnTv ? "1" : "0");
+      $("gamzeSpeakToggle").classList.toggle("on", gamzeSpeakOnTv);
+      toast(gamzeSpeakOnTv ? "🔊 Gamze yanıtları TV'de seslendirilecek" : "🔇 TV seslendirmesi kapatıldı");
+    };
+  }
+
+  const renderGamzeMovieCards = movies => {
+    if (!Array.isArray(movies) || !movies.length) return "";
+    return `<div class="gamze-cards">` + movies.slice(0, 8).map((m, i) => {
+      const title = m.title || m.name || "";
+      const year = m.year || (m.release_date || "").slice(0, 4) || "";
+      const poster = m.poster || (m.poster_path ? IMG + "w342" + m.poster_path : "");
+      const payload = encodeURIComponent(JSON.stringify(m));
+      return `<button type="button" class="gamze-mcard" data-gmz-movie="${esc(payload)}" data-idx="${i}">
+        ${poster ? `<img src="${esc(poster)}" alt="${esc(title)}" loading="lazy" onerror="this.style.display='none'">` : `<div style="aspect-ratio:2/3;display:grid;place-items:center;background:#1e1b4b;font-size:22px">🎬</div>`}
+        <div class="gamze-mcard-info">
+          <div class="gamze-mcard-title">${esc(title)}</div>
+          ${year ? `<div class="gamze-mcard-sub">${esc(year)}</div>` : ""}
+        </div>
+      </button>`;
+    }).join("") + `</div>`;
+  };
+
+  const bindGamzeMovieCards = box => {
+    if (!box) return;
+    box.querySelectorAll(".gamze-mcard").forEach(btn => {
+      btn.onclick = () => {
+        try {
+          const m = JSON.parse(decodeURIComponent(btn.dataset.gmzMovie || "{}"));
+          if (m && (m.id || m.title)) openSheet(m);
+        } catch (e) {}
+      };
+    });
+  };
+
   const renderGamzeHistory = (history, suggestions = []) => {
     const box = $("gamzeThread");
     if (!box) return;
-    if (!history || !history.length) {
-      box.innerHTML = `<div class="gamze-msg assistant">Merhaba! Ben Gamze, CineTV sinema ve televizyon asistanın. Bugün hangi atmosferde bir film ya da dizi arıyorsun? Yönetmen sineması, gizli başyapıtlar veya sahne analizleri üzerine sohbet edebiliriz.</div>`;
+    const list = (history && history.length) ? history : gamzeLocalHistory;
+    if (!list || !list.length) {
+      box.innerHTML = `<div class="gamze-row"><div class="gamze-avatar">G</div><div class="gamze-msg assistant">Merhaba! Ben <b>Gamze</b>, CineTV uzamsal sinema küratörün. Bugün hangi atmosferde bir film ya da dizi arıyorsun? Yönetmen sineması, gizli başyapıtlar veya ruh haline özel seçkiler hazırlayabilirim.</div></div>`;
     } else {
-      box.innerHTML = history.map(m => `<div class="gamze-msg ${m.role === "user" ? "user" : "assistant"}">${esc(m.text)}</div>`).join("");
+      let html = "";
+      for (const m of list) {
+        const userMsg = m.viewer || m.user || (m.role === "user" ? m.text : "");
+        const assistantMsg = m.gamze || m.reply || (m.role === "assistant" || m.role === "model" ? m.text : "");
+        const movies = m.movies || [];
+        if (userMsg) {
+          html += `<div class="gamze-row user"><div class="gamze-msg user">${esc(userMsg)}</div></div>`;
+        }
+        if (assistantMsg) {
+          html += `<div class="gamze-row"><div class="gamze-avatar">G</div><div class="gamze-msg assistant">${esc(assistantMsg)}${renderGamzeMovieCards(movies)}</div></div>`;
+        }
+      }
+      box.innerHTML = html || `<div class="gamze-row"><div class="gamze-avatar">G</div><div class="gamze-msg assistant">Merhaba! Ben Gamze, CineTV sinema ve televizyon asistanın. Bugün hangi atmosferde bir film ya da dizi arıyorsun?</div></div>`;
+      bindGamzeMovieCards(box);
       box.scrollTop = box.scrollHeight;
     }
     const sugBox = $("gamzeSugRow");
     if (sugBox) {
-      const sugs = suggestions.length ? suggestions : [
+      const sugs = (suggestions && suggestions.length) ? suggestions : [
         "Bu akşam için karanlık atmosferli neo-noir öner",
         "Nuri Bilge Ceylan filmlerini sırala",
-        "Az bilinen bilimkurgu başyapıtları"
+        "Yağmurlu gecede izlenecek gizemli bilimkurgu",
+        "Tek mekanda geçen gerilim başyapıtları"
       ];
       sugBox.innerHTML = sugs.map(s => `<button type="button">${esc(s)}</button>`).join("");
       sugBox.querySelectorAll("button").forEach(b => b.onclick = () => {
@@ -2249,42 +2416,100 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       });
     }
   };
+
   const loadGamzeHistory = async () => {
+    renderGamzeHistory(gamzeLocalHistory);
     try {
       const r = await api("gamze/history");
-      renderGamzeHistory(r.history || []);
-    } catch (e) {
-      renderGamzeHistory([]);
-    }
+      if (r && Array.isArray(r.history) && r.history.length) {
+        saveGamzeLocalHistory(r.history);
+        renderGamzeHistory(r.history);
+      }
+    } catch (e) {}
   };
+
+  const fallbackClientSideGamze = async q => {
+    try {
+      const items = await tmdb("search/multi", {query: q});
+      const filtered = (items || []).filter(x => x.media_type !== "person" && (x.poster_path || x.backdrop_path)).slice(0, 6);
+      if (filtered.length) {
+        const mapped = filtered.map(x => ({
+          id: x.id,
+          kind: x.media_type === "tv" ? "series" : "movie",
+          title: x.title || x.name || "",
+          year: (x.release_date || x.first_air_date || "").slice(0, 4),
+          poster: x.poster_path ? IMG + "w342" + x.poster_path : "",
+          overview: x.overview || ""
+        }));
+        const topNames = mapped.slice(0, 3).map(m => m.title + (m.year ? ` (${m.year})` : "")).join(", ");
+        return {
+          reply: `"${q}" için senin adına öne çıkan şu yapımları derledim: ${topNames}. Kartlara dokunarak detayları inceleyebilir veya TV'de hemen başlatabilirsin.`,
+          movies: mapped
+        };
+      }
+    } catch (e) {}
+    return {
+      reply: `"${q}" üzerine harika bir sinema seçkisi düşündüm. İstersen yönetmen, dönem veya ruh hali belirterek (örneğin "90'lar psikolojik gerilim" veya "uzayda geçen yalnızlık filmleri") daraltabiliriz.`,
+      movies: []
+    };
+  };
+
   const sendGamzeMessage = async () => {
     const inp = $("gamzeInput");
+    if (!inp) return;
     const q = (inp.value || "").trim();
     if (!q) return;
     inp.value = "";
+    const panel = $("gamzeChatPanel");
+    if (panel && panel.hidden) {
+      panel.hidden = false;
+      if ($("gamzeToggleLbl")) $("gamzeToggleLbl").textContent = "Kapat ▴";
+    }
     const box = $("gamzeThread");
     if (box) {
-      box.insertAdjacentHTML("beforeend", `<div class="gamze-msg user">${esc(q)}</div><div class="gamze-msg assistant" id="gamzeTyping">Gamze düşünüyor…</div>`);
+      box.insertAdjacentHTML("beforeend",
+        `<div class="gamze-row user"><div class="gamze-msg user">${esc(q)}</div></div>` +
+        `<div class="gamze-row" id="gamzeTypingRow"><div class="gamze-avatar">G</div><div class="gamze-msg assistant"><span class="gamze-dots"><i></i><i></i><i></i></span></div></div>`
+      );
       box.scrollTop = box.scrollHeight;
     }
     try {
-      const r = await api("gamze/chat", {q, mode: gamzeMode});
-      renderGamzeHistory(r.history || [], r.suggestions || []);
-      if (r.movies && r.movies.length) {
-        render(r.movies, r.shelfTitle || "Gamze Seçkisi");
+      const r = await api("gamze/chat", {q, mode: gamzeMode, speak: gamzeSpeakOnTv ? "1" : "0"});
+      const replyText = (r && (r.reply || r.voice)) ? (r.reply || r.voice) : "";
+      const movies = (r && Array.isArray(r.movies)) ? r.movies : [];
+      if (replyText) {
+        let nextHist = (r && Array.isArray(r.history) && r.history.length)
+          ? r.history.map((turn, idx, arr) => idx === arr.length - 1 ? Object.assign({}, turn, {movies}) : turn)
+          : gamzeLocalHistory.concat([{viewer: q, gamze: replyText, movies}]);
+        saveGamzeLocalHistory(nextHist);
+        renderGamzeHistory(nextHist, (r && r.suggestions) || []);
+        if (movies.length) {
+          render(movies, (r && r.shelfTitle) || "Gamze Seçkisi");
+        }
+        return;
       }
+      throw new Error("empty_reply");
     } catch (e) {
-      const tp = $("gamzeTyping");
-      if (tp) tp.textContent = "TV'ye ulaşılamadı.";
+      const fb = await fallbackClientSideGamze(q);
+      const nextHist = gamzeLocalHistory.concat([{viewer: q, gamze: fb.reply, movies: fb.movies}]);
+      saveGamzeLocalHistory(nextHist);
+      renderGamzeHistory(nextHist);
+      if (fb.movies && fb.movies.length) {
+        render(fb.movies, "Gamze Seçkisi");
+      }
     }
   };
+
   if ($("gamzeToggleBar")) {
     $("gamzeToggleBar").onclick = () => {
       const p = $("gamzeChatPanel");
       const openNow = p.hidden;
       p.hidden = !openNow;
       $("gamzeToggleLbl").textContent = openNow ? "Kapat ▴" : "Sohbeti Aç ▾";
-      if (openNow) loadGamzeHistory();
+      if (openNow) {
+        loadGamzeHistory();
+        setTimeout(() => { if ($("gamzeInput")) $("gamzeInput").focus(); }, 120);
+      }
     };
   }
   document.querySelectorAll("#gamzeModeSeg button").forEach(b => b.onclick = () => {
@@ -2294,38 +2519,193 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   if ($("gamzeForm")) {
     $("gamzeForm").onsubmit = e => { e.preventDefault(); sendGamzeMessage(); };
   }
+  if ($("gamzeMicBtn")) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      $("gamzeMicBtn").style.display = "none";
+    } else {
+      let gmzRec = null;
+      $("gamzeMicBtn").onclick = () => {
+        if (gmzRec) { try { gmzRec.stop(); } catch (e) {} gmzRec = null; $("gamzeMicBtn").classList.remove("rec"); return; }
+        gmzRec = new SR();
+        gmzRec.lang = lang === "tr" ? "tr-TR" : (navigator.language || "tr-TR");
+        gmzRec.interimResults = false;
+        $("gamzeMicBtn").classList.add("rec");
+        gmzRec.onresult = ev => {
+          const txt = ev.results && ev.results[0] && ev.results[0][0] ? ev.results[0][0].transcript : "";
+          if (txt && $("gamzeInput")) {
+            $("gamzeInput").value = txt;
+            sendGamzeMessage();
+          }
+        };
+        gmzRec.onend = () => { $("gamzeMicBtn").classList.remove("rec"); gmzRec = null; };
+        gmzRec.onerror = () => { $("gamzeMicBtn").classList.remove("rec"); gmzRec = null; };
+        try { gmzRec.start(); } catch (e) { $("gamzeMicBtn").classList.remove("rec"); gmzRec = null; }
+      };
+    }
+  }
   if ($("gamzeClearBtn")) {
     $("gamzeClearBtn").onclick = async () => {
-      try {
-        const r = await api("gamze/clear");
-        renderGamzeHistory(r.history || []);
-        toast("Sohbet geçmişi temizlendi");
-      } catch (e) {}
+      saveGamzeLocalHistory([]);
+      renderGamzeHistory([]);
+      try { await api("gamze/clear"); } catch (e) {}
+      toast("Sohbet geçmişi temizlendi");
     };
   }
 
-  // ---- TV File Manager (/sdcard) & Screenshots Hub ----
-  let currentFilesDir = "/sdcard";
-  let parentFilesDir = "";
-  const formatBytes = b => {
-    const n = +b || 0;
-    if (n < 1024) return n + " B";
-    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
-    if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + " MB";
-    return (n / (1024 * 1024 * 1024)).toFixed(2) + " GB";
-  };
-  const fileIconFor = item => {
-    if (item.dir) return "📁";
-    const ext = (item.ext || "").toLowerCase();
-    if (["jpg", "jpeg", "png", "webp", "gif", "bmp"].includes(ext)) return "🖼️";
-    if (["mp4", "mkv", "avi", "mov", "webm", "m3u8", "ts"].includes(ext)) return "🎬";
-    if (["mp3", "flac", "wav", "m4a", "aac", "ogg"].includes(ext)) return "🎵";
-    if (ext === "apk") return "📦";
-    if (["json", "xml", "txt", "log", "srt", "vtt", "ass"].includes(ext)) return "📄";
-    return "📄";
-  };
+  // ---- Shazam Scanned Songs Hub & Screenshots (Apple visionOS Spatial Glass) ----
   const buildDownloadUrl = (path, inline = false) =>
     "/api/files/download?k=" + encodeURIComponent(token || "preview-token") + "&path=" + encodeURIComponent(path) + (inline ? "&inline=1" : "");
+
+  const formatShazamTime = ts => {
+    const n = +ts || 0;
+    if (!n) return "";
+    try {
+      const d = new Date(n);
+      const now = new Date();
+      const sameDay = d.toDateString() === now.toDateString();
+      return sameDay
+        ? "Bugün " + d.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})
+        : d.toLocaleDateString([], {day: "numeric", month: "short"}) + " " + d.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+    } catch (e) { return ""; }
+  };
+
+  const buildMusicLinks = (title, artist) => {
+    const q = [artist || "", title || ""].join(" ").trim() || title || "";
+    const enc = encodeURIComponent(q);
+    return {
+      ytm: "https://music.youtube.com/search?q=" + enc,
+      spotify: "https://open.spotify.com/search/" + enc
+    };
+  };
+
+  const renderShazamTracks = tracks => {
+    const box = $("shazamListBox");
+    if (!box) return;
+    if (!tracks || !tracks.length) {
+      box.innerHTML = `<div class="empty" style="padding:28px 14px;line-height:1.55">
+        Henüz Shazam ile taranmış bir şarkı yok.<br>
+        <span style="font-size:12px;color:var(--dim)">Yukarıdaki <b>"🎵 Şimdi Dinlet"</b> tuşuna veya kumandadaki Shazam tuşuna bastığınızda TV'de çalan şarkılar burada listelenir; <b>Spotify</b> ve <b>YouTube Music</b>'te anında açabilirsiniz.</span>
+      </div>`;
+      return;
+    }
+    box.innerHTML = tracks.map((tr, idx) => {
+      const title = tr.title || "Bilinmeyen Şarkı";
+      const artist = tr.artist || "Bilinmeyen Sanatçı";
+      const art = tr.artwork || "";
+      const timeStr = formatShazamTime(tr.at);
+      const links = buildMusicLinks(title, artist);
+      const spUrl = tr.spotify || links.spotify;
+      const ytmUrl = tr.ytm || links.ytm;
+      return `<div class="shazam-item" data-idx="${idx}">
+        <div class="shazam-item-main" data-open-url="${esc(spUrl)}" title="Spotify'da Aç">
+          <div class="shazam-art">
+            ${art ? `<img src="${esc(art)}" alt="${esc(title)}" loading="lazy" onerror="this.remove()">` : `<span>🎵</span>`}
+          </div>
+          <div class="shazam-info">
+            <div class="shazam-title">${esc(title)}</div>
+            <div class="shazam-artist">${esc(artist)}</div>
+            ${timeStr ? `<div class="shazam-time"><span>●</span> ${esc(timeStr)}</div>` : ""}
+          </div>
+          <button type="button" class="shazam-del" data-del-at="${esc(tr.at || 0)}" title="Listeden Kaldır">✕</button>
+        </div>
+        <div class="shazam-actions">
+          <a class="btn-spotify" href="${esc(spUrl)}" target="_blank" rel="noopener">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.59 14.42c-.18.3-.56.39-.86.21-2.35-1.44-5.31-1.76-8.8-.96-.33.08-.67-.13-.75-.47-.08-.33.13-.67.47-.75 3.82-.87 7.09-.5 9.73 1.11.3.18.39.56.21.86zm1.22-2.72c-.23.37-.71.49-1.08.26-2.69-1.65-6.79-2.13-9.97-1.16-.42.13-.86-.11-.99-.52-.13-.42.11-.86.52-.99 3.63-1.1 8.15-.57 11.26 1.34.37.23.49.71.26 1.07zm.11-2.83c-3.22-1.91-8.54-2.09-11.62-1.15-.49.15-1.02-.13-1.17-.62-.15-.49.13-1.02.62-1.17 3.53-1.07 9.4-.86 13.11 1.34.45.26.59.84.33 1.29-.26.44-.84.58-1.27.31z"/></svg>
+            <span>Spotify'da Aç</span>
+          </a>
+          <a class="btn-ytm" href="${esc(ytmUrl)}" target="_blank" rel="noopener">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+            <span>YouTube Music</span>
+          </a>
+        </div>
+      </div>`;
+    }).join("");
+
+    box.querySelectorAll(".shazam-item-main").forEach(mainEl => {
+      mainEl.onclick = e => {
+        if (e.target.closest(".shazam-del")) return;
+        const u = mainEl.dataset.openUrl;
+        if (u) window.open(u, "_blank", "noopener");
+      };
+    });
+    box.querySelectorAll(".shazam-del").forEach(delBtn => {
+      delBtn.onclick = async e => {
+        e.stopPropagation();
+        const at = delBtn.dataset.delAt;
+        try {
+          await api("shazam/delete", {at});
+          loadShazamHistory();
+        } catch (err) { toast(t("offline")); }
+      };
+    });
+  };
+
+  const loadShazamHistory = async () => {
+    const box = $("shazamListBox");
+    if (!box) return;
+    try {
+      const r = await api("shazam/list");
+      const bar = $("shazamListeningBar");
+      if (bar) bar.hidden = !(r && r.recognizing);
+      const tracks = (r && r.tracks) || [];
+      try { localStorage.setItem("cinetv.shazam.tracks", JSON.stringify(tracks)); } catch (e) {}
+      renderShazamTracks(tracks);
+    } catch (e) {
+      let cached = [];
+      try { cached = JSON.parse(localStorage.getItem("cinetv.shazam.tracks") || "[]"); } catch (err) {}
+      renderShazamTracks(cached);
+    }
+  };
+
+  const triggerShazamFromPhone = async () => {
+    const btn = $("btnShazamListen");
+    const bar = $("shazamListeningBar");
+    if (btn) { btn.disabled = true; btn.textContent = "🎵 Dinleniyor…"; }
+    if (bar) bar.hidden = false;
+    try {
+      await api("shazam/recognize");
+      toast("🎵 TV'de Apple Vision Shazam müzik tanıma başlatıldı");
+      let checks = 0;
+      const pollId = setInterval(async () => {
+        checks++;
+        try {
+          const r = await api("shazam/list");
+          await loadShazamHistory();
+          if (!r || !r.recognizing || checks >= 14) {
+            clearInterval(pollId);
+            if (bar) bar.hidden = true;
+            if (btn) { btn.disabled = false; btn.textContent = "🎵 Şimdi Dinlet"; }
+          }
+        } catch (err) {
+          clearInterval(pollId);
+          if (bar) bar.hidden = true;
+          if (btn) { btn.disabled = false; btn.textContent = "🎵 Şimdi Dinlet"; }
+        }
+      }, 1500);
+    } catch (e) {
+      if (bar) bar.hidden = true;
+      if (btn) { btn.disabled = false; btn.textContent = "🎵 Şimdi Dinlet"; }
+      toast(t("offline"));
+    }
+  };
+
+  if ($("btnShazamListen")) $("btnShazamListen").onclick = triggerShazamFromPhone;
+  if ($("btnShazamRefresh")) $("btnShazamRefresh").onclick = loadShazamHistory;
+  if ($("btnShazamClear")) {
+    $("btnShazamClear").onclick = async () => {
+      if (!confirm("Shazam'da taranan tüm şarkı geçmişi temizlensin mi?")) return;
+      try { localStorage.removeItem("cinetv.shazam.tracks"); } catch (e) {}
+      try {
+        await api("shazam/clear");
+        loadShazamHistory();
+        toast("Shazam geçmişi temizlendi");
+      } catch (e) {
+        renderShazamTracks([]);
+        toast("Shazam geçmişi temizlendi");
+      }
+    };
+  }
 
   const loadSavedShots = async () => {
     const strip = $("savedShotsStrip");
@@ -2382,7 +2762,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         };
         toast("📸 TV ekran görüntüsü alındı ve kaydedildi");
         loadSavedShots();
-        if (currentFilesDir.includes("CineTV_Screenshots")) loadTvFiles(currentFilesDir);
       } else {
         toast("Ekran görüntüsü alınamadı");
       }
@@ -2394,154 +2773,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
   if ($("btnTakeShot")) $("btnTakeShot").onclick = takeScreenshotFromHub;
   if ($("btnRefreshShots")) $("btnRefreshShots").onclick = loadSavedShots;
-
-  const loadTvFiles = async (dirPath = "/sdcard") => {
-    const box = $("filesListBox");
-    if (!box) return;
-    currentFilesDir = dirPath || "/sdcard";
-    $("filesCurrentPath").textContent = currentFilesDir;
-    document.querySelectorAll("#filesQuickDirs .mtag").forEach(b => b.classList.toggle("on", b.dataset.dir === currentFilesDir));
-    try {
-      const r = await api("files/list", {path: currentFilesDir});
-      if (!r || !r.ok) {
-        box.innerHTML = `<div class="empty" style="padding:20px">${esc((r && r.error) || "Klasör açılamadı")}</div>`;
-        return;
-      }
-      currentFilesDir = r.path || currentFilesDir;
-      parentFilesDir = r.parent || "";
-      $("filesCurrentPath").textContent = currentFilesDir;
-      $("btnFilesUp").disabled = !parentFilesDir;
-      if (r.totalMb > 0) {
-        const usedMb = Math.max(0, r.totalMb - r.freeMb);
-        const pct = Math.min(100, Math.round((usedMb / r.totalMb) * 100));
-        $("filesStorageText").textContent = `Boş: ${(r.freeMb / 1024).toFixed(1)} GB / Toplam: ${(r.totalMb / 1024).toFixed(1)} GB (%${pct} dolu)`;
-        $("filesStorageBar").style.width = pct + "%";
-      }
-      const items = r.items || [];
-      if (!items.length) {
-        box.innerHTML = `<div class="empty" style="padding:24px 10px">Bu klasör boş</div>`;
-        return;
-      }
-      box.innerHTML = items.map((it, idx) => {
-        const ic = fileIconFor(it);
-        const sub = it.dir ? "Klasör" : formatBytes(it.size);
-        const dlUrl = buildDownloadUrl(it.path, false);
-        return `<div class="file-row ${it.dir ? "dir" : ""}" data-idx="${idx}">
-          <span class="f-ic">${ic}</span>
-          <div class="f-info">
-            <div class="f-name">${esc(it.name)}</div>
-            <div class="f-sub">${esc(sub)}</div>
-          </div>
-          <div class="f-acts">
-            ${!it.dir ? `<button type="button" data-act="open" title="TV'de Aç">▶</button><a href="${esc(dlUrl)}" download="${esc(it.name)}" title="İndir">⬇</a>` : ""}
-            <button type="button" data-act="rename" title="Yeniden Adlandır">✎</button>
-            <button type="button" data-act="delete" title="Sil" style="color:#f87171">🗑</button>
-          </div>
-        </div>`;
-      }).join("");
-
-      box.querySelectorAll(".file-row").forEach(row => {
-        const it = items[+row.dataset.idx];
-        if (!it) return;
-        row.onclick = e => {
-          if (e.target.closest(".f-acts")) return;
-          if (it.dir) loadTvFiles(it.path);
-          else if (["jpg", "jpeg", "png", "webp"].includes((it.ext || "").toLowerCase())) {
-            const imgUrl = buildDownloadUrl(it.path, true);
-            $("filesShotPreviewImg").src = imgUrl;
-            $("filesShotDownloadBtn").href = buildDownloadUrl(it.path, false);
-            $("filesShotDownloadBtn").download = it.name;
-            $("filesShotPreviewWrap").hidden = false;
-          }
-        };
-        const openBtn = row.querySelector('[data-act="open"]');
-        if (openBtn) {
-          openBtn.onclick = async e => {
-            e.stopPropagation();
-            try {
-              const res = await api("files/open", {path: it.path});
-              toast(res && res.ok ? `TV'de açılıyor: ${it.name}` : "TV'de açılamadı");
-            } catch (err) { toast(t("offline")); }
-          };
-        }
-        const renBtn = row.querySelector('[data-act="rename"]');
-        if (renBtn) {
-          renBtn.onclick = async e => {
-            e.stopPropagation();
-            const nw = prompt("Yeni ad:", it.name);
-            if (!nw || nw.trim() === it.name) return;
-            try {
-              const res = await api("files/rename", {path: it.path, name: nw.trim()});
-              if (res && res.ok) { toast("Yeniden adlandırıldı ✓"); loadTvFiles(currentFilesDir); }
-              else toast((res && res.error) || "Adlandırılamadı");
-            } catch (err) { toast(t("offline")); }
-          };
-        }
-        const delBtn = row.querySelector('[data-act="delete"]');
-        if (delBtn) {
-          delBtn.onclick = async e => {
-            e.stopPropagation();
-            if (!confirm(`"${it.name}" silinsin mi?`)) return;
-            try {
-              const res = await api("files/delete", {path: it.path});
-              if (res && res.ok) {
-                toast("Silindi ✓");
-                loadTvFiles(currentFilesDir);
-                if (currentFilesDir.includes("CineTV_Screenshots")) loadSavedShots();
-              } else toast((res && res.error) || "Silinemedi");
-            } catch (err) { toast(t("offline")); }
-          };
-        }
-      });
-    } catch (e) {
-      box.innerHTML = `<div class="empty" style="padding:20px">TV dosya sistemine ulaşılamadı</div>`;
-    }
-  };
-
-  document.querySelectorAll("#filesQuickDirs .mtag").forEach(b => {
-    b.onclick = () => loadTvFiles(b.dataset.dir);
-  });
-  if ($("btnFilesUp")) $("btnFilesUp").onclick = () => { if (parentFilesDir) loadTvFiles(parentFilesDir); };
-  if ($("btnFilesRefresh")) $("btnFilesRefresh").onclick = () => loadTvFiles(currentFilesDir);
-  if ($("btnNewFolder")) {
-    $("btnNewFolder").onclick = async () => {
-      const name = prompt("Yeni klasör adı:");
-      if (!name || !name.trim()) return;
-      try {
-        const r = await api("files/mkdir", {path: currentFilesDir, name: name.trim()});
-        if (r && r.ok) { toast("Klasör oluşturuldu ✓"); loadTvFiles(currentFilesDir); }
-        else toast((r && r.error) || "Klasör oluşturulamadı");
-      } catch (e) { toast(t("offline")); }
-    };
-  }
-  if ($("tvFileUploadInput")) {
-    $("tvFileUploadInput").onchange = async e => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      toast(`📤 "${file.name}" TV'ye yükleniyor…`);
-      try {
-        if (RELAY) {
-          const buf = await file.arrayBuffer();
-          let binary = "";
-          const bytes = new Uint8Array(buf);
-          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-          const data = btoa(binary);
-          const r = await api("files/upload64", {path: currentFilesDir, name: file.name, data});
-          toast(r && r.ok ? "Dosya TV'ye yüklendi ✓" : "Yükleme başarısız");
-        } else {
-          const qs = new URLSearchParams({k: token || "preview-token", path: currentFilesDir, name: file.name});
-          const res = await fetch("/api/files/upload?" + qs, {method: "POST", body: file});
-          const r = await res.json();
-          toast(r && r.ok ? "Dosya TV'ye yüklendi ✓" : "Yükleme başarısız");
-        }
-        loadTvFiles(currentFilesDir);
-      } catch (err) {
-        toast("Dosya yüklenemedi");
-      } finally {
-        e.target.value = "";
-      }
-    };
-  }
 
   window.openFilesAndShotsTab = () => {
     closeMobileSettingsModal();
@@ -2594,7 +2825,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
   if (token) connected(); else pair();
   const start = RELAY ? (hp.get("s") || location.hash.replace("#", "")) : location.hash.replace("#", "");
-  if (["remote", "search", "party", "cast", "files", "about", "bg", "background"].includes(start)) show(start === "background" ? "bg" : start);
+  if (["remote", "search", "party", "cast", "files", "shazam", "about", "bg", "background"].includes(start)) show(start === "background" ? "bg" : (start === "shazam" ? "files" : start));
 })();
 </script>
   <!-- Mobile Translucent Settings Overlay (Liquid Glass) -->
@@ -2609,9 +2840,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         <span>Televizyon Ayarları Menüsü</span>
         <span>›</span>
       </button>
-      <button class="btn glass" onclick="openFilesAndShotsTab()" style="text-align:left;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between;border-color:rgba(139,92,246,0.35);background:rgba(139,92,246,0.12)">
-        <span>TV Dosyaları &amp; Ekran Görüntüsü Al</span>
-        <span style="font-size:12px;color:#c4b5fd">📸 / 📁</span>
+      <button class="btn glass" onclick="openFilesAndShotsTab()" style="text-align:left;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between;border-color:rgba(56,189,248,0.38);background:rgba(14,165,233,0.14)">
+        <span>Shazam Şarkıları &amp; Ekran Görüntüsü</span>
+        <span style="font-size:12px;color:#7dd3fc">🎵 / 📸</span>
       </button>
       <button class="btn glass" onclick="calibrateAcoustics()" id="btnCalAcoustics" style="text-align:left;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between;border-color:rgba(56,189,248,0.3);background:rgba(56,189,248,0.1)">
         <span>Oda Akustiğini Kalibre Et (Mikrofon)</span>

@@ -930,6 +930,8 @@ public final class MovieCatalog {
         return "";
     }
 
+    private static final Map<String, String> imdbPosterCache = Collections.synchronizedMap(new HashMap<>());
+
     public static int tmdbIdFromImdb(Context ctx, String imdbId) {
         if (imdbId == null || !hasTmdb(ctx)) return 0;
         Integer cached = tmdbIdCache.get(imdbId);
@@ -939,11 +941,129 @@ public final class MovieCatalog {
             JSONObject found = tmdb(ctx, "find/" + imdbId + "?external_source=imdb_id");
             JSONArray r = found.optJSONArray("movie_results");
             if (r == null || r.length() == 0) r = found.optJSONArray("tv_results");
-            if (r != null && r.length() > 0) id = r.getJSONObject(0).optInt("id");
+            if (r != null && r.length() > 0) {
+                JSONObject first = r.getJSONObject(0);
+                id = first.optInt("id");
+                String pp = first.optString("poster_path", "");
+                if (!pp.isEmpty() && !"null".equals(pp)) {
+                    imdbPosterCache.put(imdbId, TMDB_IMG + "w500" + pp);
+                }
+            }
         } catch (Throwable ignored) {
         }
         tmdbIdCache.put(imdbId, id);
         return id;
+    }
+
+    /**
+     * Resolves a reliable poster URL for an IMDb ID using TMDB (if configured) or IMDb's keyless
+     * CloudFront suggestion endpoint (m.media-amazon.com), which works globally without an API key.
+     */
+    public static String posterForImdb(Context ctx, String imdbId) {
+        if (imdbId == null || !imdbId.startsWith("tt")) return "";
+        String cached = imdbPosterCache.get(imdbId);
+        if (cached != null && !cached.isEmpty()) return cached;
+        if (ctx != null && hasTmdb(ctx)) {
+            try {
+                JSONObject found = tmdb(ctx, "find/" + imdbId + "?external_source=imdb_id&language=" + language());
+                JSONArray r = found.optJSONArray("movie_results");
+                if (r == null || r.length() == 0) r = found.optJSONArray("tv_results");
+                if (r != null && r.length() > 0) {
+                    JSONObject first = r.getJSONObject(0);
+                    int id = first.optInt("id");
+                    if (id > 0) tmdbIdCache.put(imdbId, id);
+                    String pp = first.optString("poster_path", "");
+                    if (!pp.isEmpty() && !"null".equals(pp)) {
+                        String url = TMDB_IMG + "w500" + pp;
+                        imdbPosterCache.put(imdbId, url);
+                        return url;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        String imdbCdn = imdbSuggestionPoster(imdbId);
+        if (!imdbCdn.isEmpty()) {
+            imdbPosterCache.put(imdbId, imdbCdn);
+            return imdbCdn;
+        }
+        return "";
+    }
+
+    private static String imdbSuggestionPoster(String query) {
+        if (query == null || query.trim().isEmpty()) return "";
+        try {
+            String q = query.trim().toLowerCase(Locale.ROOT);
+            char first = q.charAt(0);
+            if (!Character.isLetterOrDigit(first)) first = 't';
+            String url = "https://v3.sg.media-imdb.com/suggestion/" + first + "/" + enc(q) + ".json";
+            JSONObject root = Http.getJson(url, null, 6000);
+            if (root == null) return "";
+            JSONArray d = root.optJSONArray("d");
+            if (d == null || d.length() == 0) return "";
+            for (int i = 0; i < d.length(); i++) {
+                JSONObject item = d.optJSONObject(i);
+                if (item == null) continue;
+                JSONObject img = item.optJSONObject("i");
+                if (img == null) continue;
+                String imgUrl = img.optString("imageUrl", "");
+                if (!imgUrl.isEmpty() && imgUrl.startsWith("http")) {
+                    // Resize full-res Amazon image to 500px width for fast TV decoding
+                    return imgUrl.replaceAll("\\._V1_.*\\.jpg$", "._V1_QL75_UX500_.jpg");
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return "";
+    }
+
+    /**
+     * Ensures {@code m} has a working poster URL when its initial URL is empty or failed to load.
+     * Returns true if {@code m.posterUrl} was updated to a new URL.
+     */
+    public static boolean ensurePoster(Context ctx, Movie m) {
+        if (m == null) return false;
+        String before = m.posterUrl == null ? "" : m.posterUrl;
+        if (m.imdbId != null && m.imdbId.startsWith("tt")) {
+            String resolved = posterForImdb(ctx, m.imdbId);
+            if (!resolved.isEmpty() && !resolved.equals(before)) {
+                m.posterUrl = resolved;
+                return true;
+            }
+            if (!before.startsWith("https://m.media-amazon.com/")) {
+                String cdn = imdbSuggestionPoster(m.imdbId);
+                if (!cdn.isEmpty() && !cdn.equals(before)) {
+                    m.posterUrl = cdn;
+                    return true;
+                }
+            }
+        }
+        if (ctx != null && hasTmdb(ctx) && m.tmdbId > 0) {
+            try {
+                String kind = "series".equals(m.type) || "tv".equals(m.type) ? "tv" : "movie";
+                JSONObject d = tmdb(ctx, kind + "/" + m.tmdbId + "?language=" + language());
+                String pp = d.optString("poster_path", "");
+                if (!pp.isEmpty() && !"null".equals(pp)) {
+                    String candidate = (before.contains("image.tmdb.org") ? "https://media.themoviedb.org/t/p/w500" : TMDB_IMG + "w500") + pp;
+                    if (!candidate.equals(before)) {
+                        m.posterUrl = candidate;
+                        return true;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        String[] queries = {m.originalTitle, m.title};
+        for (String q : queries) {
+            if (q == null || q.trim().isEmpty()) continue;
+            String cdn = imdbSuggestionPoster(q.trim() + (m.year > 1900 ? " " + m.year : ""));
+            if (cdn.isEmpty()) cdn = imdbSuggestionPoster(q.trim());
+            if (!cdn.isEmpty() && !cdn.equals(before)) {
+                m.posterUrl = cdn;
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The director's (or else actor's) best-known films. */

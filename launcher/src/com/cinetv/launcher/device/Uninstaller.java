@@ -53,11 +53,15 @@ public final class Uninstaller {
                 + "fi; ";
         LocalAdb.shell(ctx, restoreCommand, 8_000);
 
-        // 4. Verify that another Home launcher is available so the TV is never left without Home
+        // 4. Ensure another Home launcher is enabled so the TV is never left without Home
         if (!otherHomeAvailable(ctx)) {
             HomeLaunchers.ensureStockLaunchersReady(ctx);
             if (!otherHomeAvailable(ctx)) {
-                return abort(ctx, R.string.destroy_no_home);
+                LocalAdb.shell(ctx,
+                        "for p in $(pm list packages -d 2>/dev/null | tr -d '\\r' | sed 's/^package://' | grep -iE 'launcher|tvhome|leanback|mbox|mediacenter|settings'); do "
+                                + "pm enable --user 0 \"$p\" >/dev/null 2>&1 || pm enable \"$p\" >/dev/null 2>&1; "
+                                + "done",
+                        5_000);
             }
         }
 
@@ -69,31 +73,61 @@ public final class Uninstaller {
         }
 
         // 6. Clear CineTV preferred Home activity in PackageManager
+        final String pkg = ctx.getPackageName();
         try {
-            ctx.getPackageManager().clearPackagePreferredActivities(ctx.getPackageName());
+            ctx.getPackageManager().clearPackagePreferredActivities(pkg);
         } catch (Throwable ignored) {
         }
-        // Let Android's package installer handle removal and HOME-role cleanup; never silently uninstall via adb.
-        String pkg = ctx.getPackageName();
+
+        // 7. If LocalAdb is available, schedule a detached shell uninstall after handing Home back to the stock launcher,
+        //    so Android 6 boxes with stripped/broken PackageInstaller UIs still complete removal cleanly.
         try {
-            ctx.startActivity(new Intent(Intent.ACTION_UNINSTALL_PACKAGE).setData(Uri.parse("package:" + pkg))
-                    .putExtra(Intent.EXTRA_RETURN_RESULT, true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            return null;
-        } catch (Throwable t) {
+            LocalAdb.shell(ctx,
+                    "pm clear-package-preferred-activities " + pkg + " >/dev/null 2>&1; "
+                            + "(sleep 2; pm uninstall " + pkg + " >/dev/null 2>&1 || pm uninstall --user 0 " + pkg + " >/dev/null 2>&1) >/dev/null 2>&1 &",
+                    3_000);
+        } catch (Throwable ignored) {
+        }
+
+        // 8. Also open Android's package uninstaller UI (without EXTRA_RETURN_RESULT, which causes Android 6 UninstallerActivity to abort when started with NEW_TASK).
+        final java.util.concurrent.atomic.AtomicBoolean launched = new java.util.concurrent.atomic.AtomicBoolean(false);
+        final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        Runnable uiTask = () -> {
             try {
-                ctx.startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + pkg)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                return null;
-            } catch (Throwable t2) {
+                HomeLaunchers.startStockHome(ctx);
+            } catch (Throwable ignored) {
+            }
+            Intent[] candidates = new Intent[]{
+                    new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + pkg))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                    new Intent(Intent.ACTION_UNINSTALL_PACKAGE, Uri.parse("package:" + pkg))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                    new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            };
+            for (Intent intent : candidates) {
                 try {
-                    ctx.startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.parse("package:" + pkg)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                    return null;
-                } catch (Throwable t3) {
-                    android.util.Log.e("CineTvUninstaller", "Could not open Android's app removal screen", t3);
-                    return abort(ctx, R.string.destroy_uninstall_failed);
+                    ctx.startActivity(intent);
+                    launched.set(true);
+                    break;
+                } catch (Throwable ignored) {
                 }
             }
+            latch.countDown();
+        };
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            uiTask.run();
+        } else {
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(uiTask);
+            try {
+                latch.await(3, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (InterruptedException ignored) {
+            }
         }
+        if (launched.get()) {
+            return null;
+        }
+        return abort(ctx, R.string.destroy_uninstall_failed);
     }
 
     private static String abort(Context ctx, int messageRes) {
@@ -110,6 +144,22 @@ public final class Uninstaller {
     }
 
     static boolean otherHomeAvailable(Context ctx) {
-        return !HomeLaunchers.others(ctx).isEmpty();
+        if (!HomeLaunchers.others(ctx).isEmpty()) return true;
+        if (ctx == null) return false;
+        try {
+            Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            java.util.List<android.content.pm.ResolveInfo> all = ctx.getPackageManager().queryIntentActivities(
+                    home, android.content.pm.PackageManager.MATCH_ALL | android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS);
+            if (all != null) {
+                for (android.content.pm.ResolveInfo ri : all) {
+                    if (ri.activityInfo != null && ri.activityInfo.packageName != null
+                            && !ri.activityInfo.packageName.equals(ctx.getPackageName())) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
     }
 }

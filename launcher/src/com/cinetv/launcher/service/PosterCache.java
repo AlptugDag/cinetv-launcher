@@ -79,24 +79,84 @@ public final class PosterCache {
         return new File(dir, Integer.toHexString(url.hashCode()) + "_" + url.length() + ".jpg");
     }
 
-    /** Blocking: memory, then disk, then network. Returns null when the image cannot be fetched. */
+    private static final java.util.concurrent.ConcurrentHashMap<String, Object> IN_FLIGHT = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static Object lockFor(String url) {
+        Object lock = IN_FLIGHT.get(url);
+        if (lock != null) return lock;
+        Object created = new Object();
+        Object existing = IN_FLIGHT.putIfAbsent(url, created);
+        return existing != null ? existing : created;
+    }
+
+    /** Blocking: memory, then disk, then network (with mirror fallbacks). Returns null when the image cannot be fetched. */
     public static Bitmap load(Context ctx, String url, int reqW, int reqH) {
-        if (url == null || url.isEmpty()) return null;
+        if (ctx == null || url == null || url.isEmpty()) return null;
         String key = url + "@" + reqW + "x" + reqH;
         Bitmap hit = memory().get(key);
         if (hit != null && !hit.isRecycled()) return hit;
         File f = fileFor(ctx, url);
-        if (!f.exists() || f.length() < 1024) {
-            if (!Http.download(url, f, 9000)) return null;
+        synchronized (lockFor(url)) {
+            hit = memory().get(key);
+            if (hit != null && !hit.isRecycled()) return hit;
+            if (!f.exists() || f.length() < 512) {
+                if (!downloadWithFallbacks(ctx, url, f)) return null;
+            }
+            Bitmap bmp = decodeFile(f, reqW, reqH);
+            if (bmp == null) {
+                f.delete();
+                if (!downloadWithFallbacks(ctx, url, f)) return null;
+                bmp = decodeFile(f, reqW, reqH);
+                if (bmp == null) {
+                    f.delete();
+                    return null;
+                }
+            }
+            f.setLastModified(System.currentTimeMillis());
+            memory().put(key, bmp);
+            return bmp;
         }
-        Bitmap bmp = decodeFile(f, reqW, reqH);
-        if (bmp == null) {
-            f.delete();
-            return null;
+    }
+
+    private static boolean downloadWithFallbacks(Context ctx, String url, File target) {
+        if (Http.download(url, target, 9000) && target.length() >= 512) return true;
+        for (String alt : fallbackUrls(ctx, url)) {
+            if (alt == null || alt.isEmpty() || alt.equals(url)) continue;
+            if (Http.download(alt, target, 9000) && target.length() >= 512) return true;
         }
-        f.setLastModified(System.currentTimeMillis());
-        memory().put(key, bmp);
-        return bmp;
+        return false;
+    }
+
+    private static java.util.List<String> fallbackUrls(Context ctx, String url) {
+        java.util.List<String> out = new java.util.ArrayList<>(4);
+        if (url.contains("image.tmdb.org/t/p/")) {
+            out.add(url.replace("image.tmdb.org/t/p/", "media.themoviedb.org/t/p/"));
+            if (url.contains("/w500/")) {
+                out.add(url.replace("/w500/", "/w342/"));
+                out.add(url.replace("image.tmdb.org/t/p/w500/", "media.themoviedb.org/t/p/w342/"));
+            }
+        } else if (url.contains("media.themoviedb.org/t/p/")) {
+            out.add(url.replace("media.themoviedb.org/t/p/", "image.tmdb.org/t/p/"));
+            if (url.contains("/w500/")) {
+                out.add(url.replace("/w500/", "/w342/"));
+            }
+        }
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(tt\\d{6,10})").matcher(url);
+        if (m.find()) {
+            String imdbId = m.group(1);
+            String resolved = MovieCatalog.posterForImdb(ctx, imdbId);
+            if (resolved != null && !resolved.isEmpty() && !resolved.equals(url)) {
+                out.add(resolved);
+                if (resolved.contains("image.tmdb.org/t/p/")) {
+                    out.add(resolved.replace("image.tmdb.org/t/p/", "media.themoviedb.org/t/p/"));
+                }
+            }
+            if (url.contains("images.metahub.space/poster/medium/")) {
+                out.add(url.replace("/poster/medium/", "/poster/small/"));
+                out.add(url.replace("/poster/medium/", "/poster/large/"));
+            }
+        }
+        return out;
     }
 
     public static Bitmap decodeAsset(Context ctx, String path, int reqW, int reqH) {

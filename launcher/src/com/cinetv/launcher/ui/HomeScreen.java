@@ -1126,7 +1126,6 @@ public class HomeScreen {
     public boolean skipSplash() {
         if (splash == null || splash.getVisibility() != View.VISIBLE || splash.getAlpha() < 0.05f) return false;
         splash.animate().cancel();
-        revealUnderSplash();
         splash.animate().alpha(0f).setStartDelay(0).setDuration(180).withEndAction(() -> splash.setVisibility(View.GONE)).start();
         return true;
     }
@@ -1307,44 +1306,33 @@ public class HomeScreen {
     /** While true the opening stays up (a fresh shelf is being made); {@link #releaseSplash} lets it go. */
     private boolean splashHeld;
 
-    /** The opening, held until {@link #releaseSplash}: nothing of the previous session shows before the new shelf. */
+    /** No black splash screen on startup: background and showcase shelf are shown immediately on frame 1. */
     public void showSplashHeld() {
-        splashHeld = true;
-        showSplash();
+        splashHeld = false;
+        if (splash != null) splash.setVisibility(View.GONE);
     }
 
     public void releaseSplash() {
-        if (!splashHeld) return;
         splashHeld = false;
-        splash.removeCallbacks(splashSheenAgain);
-        if (splash.getVisibility() != View.VISIBLE) return;
-        splash.animate().cancel();
-        revealUnderSplash();
-        splash.animate().alpha(0f).setStartDelay(0).setDuration(300).withEndAction(() -> splash.setVisibility(View.GONE)).start();
+        if (splash != null) {
+            splash.removeCallbacks(splashSheenAgain);
+            splash.setVisibility(View.GONE);
+        }
     }
 
     public boolean splashHeld() {
-        return splashHeld;
+        return false;
     }
 
     /** The opening is on screen (held or playing). */
     public boolean splashShowing() {
-        return splashHeld || (splash.getVisibility() == View.VISIBLE && splash.getAlpha() > 0.05f);
+        return false;
     }
 
     /** While held, the light runs across the logo again every couple of seconds. */
     private final Runnable splashSheenAgain = new Runnable() {
         @Override
         public void run() {
-            if (!splashHeld || splash.getVisibility() != View.VISIBLE) return;
-            final SplashLogoLayout col = (SplashLogoLayout) splash.getChildAt(1);
-            heartbeat(splash.getChildAt(0)).start();
-            android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(-0.25f, 1.25f);
-            a.setDuration(900);
-            a.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
-            a.addUpdateListener(an -> col.setSheenProgress((float) an.getAnimatedValue()));
-            a.start();
-            splash.postDelayed(this, 2200);
         }
     };
 
@@ -1371,127 +1359,9 @@ public class HomeScreen {
         return beat;
     }
 
-    /** Views of Home hidden while the opening covers them (Android draws covered views too: each opening frame was all of Home). */
-    private final java.util.List<View> underSplash = new java.util.ArrayList<>();
-
-    private void hideUnderSplash() {
-        if (!underSplash.isEmpty()) return;
-        if (shelf != null) shelf.holdEntranceUntilReveal();
-        if (shelfLabel != null) shelfLabel.setAlpha(0f);
-        if (rail != null) rail.setAlpha(0f);
-        for (int i = 0; i < root.getChildCount(); i++) {
-            View v = root.getChildAt(i);
-            if (v == splash || v.getVisibility() != View.VISIBLE) continue;
-            v.setVisibility(View.INVISIBLE); // still laid out (covers keep baking), just not drawn
-            underSplash.add(v);
-        }
-    }
-
-    private void revealUnderSplash() {
-        for (View v : underSplash) if (v.getVisibility() == View.INVISIBLE) v.setVisibility(View.VISIBLE);
-        underSplash.clear();
-        long shelfDurMs = PerformanceProfile.animationMs(ctx, 420);
-        if (shelfLabel != null) {
-            shelfLabel.setAlpha(0f);
-            shelfLabel.setTranslationY(UiKit.pxf(14));
-            shelfLabel.animate()
-                    .alpha(1f)
-                    .translationY(0f)
-                    .setStartDelay(200L)
-                    .setDuration(shelfDurMs)
-                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
-                    .start();
-        }
-        if (rail != null) {
-            rail.setAlpha(0f);
-            rail.setTranslationY(UiKit.pxf(16));
-            rail.animate()
-                    .alpha(1f)
-                    .translationY(0f)
-                    .setStartDelay(260L)
-                    .setDuration(shelfDurMs)
-                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
-                    .start();
-        }
-        if (shelf != null) {
-            shelf.playStagedEntrance();
-        }
-        root.post(() -> {
-            if (root.findFocus() == null && shelf != null) shelf.requestFocus();
-        });
-    }
-
     public void showSplash() {
-        splash.setVisibility(View.VISIBLE);
-        splash.setAlpha(1f);
-        hideUnderSplash();
-        final View aura = splash.getChildAt(0);
-        final SplashLogoLayout col = (SplashLogoLayout) splash.getChildAt(1);
-        final View mark = col.getChildAt(0);
-        final TextView word = (TextView) col.getChildAt(1);
-        final View by = col.getChildAt(2);
-        final CharSequence full = Brand.wordmark();
-
-        aura.setAlpha(0f);
-        aura.setScaleX(0.85f);
-        aura.setScaleY(0.85f);
-
-        // The red glow behind the logo beats like a heart (lub-dub), as in the original opening.
-        final android.animation.ObjectAnimator heartbeat = heartbeat(aura);
-        heartbeat.start();
-
-        mark.setAlpha(0f);
-        mark.setScaleX(0.85f);
-        mark.setScaleY(0.85f);
-        mark.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(400)
-                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
-
-        word.setAlpha(0f);
-        word.setScaleX(0.92f);
-        word.setScaleY(0.92f);
-        word.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(60).setDuration(450)
-                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
-
-        android.animation.ValueAnimator a = android.animation.ValueAnimator.ofFloat(0f, 1f);
-        a.setDuration(500);
-        a.setInterpolator(new android.view.animation.DecelerateInterpolator());
-        a.addUpdateListener(v -> {
-            float t = (float) v.getAnimatedValue();
-            int shown = Math.round(Math.max(0f, (t - 0.2f) / 0.65f) * full.length());
-            android.text.SpannableString s = new android.text.SpannableString(full.toString());
-            for (int i = 0; i < full.length(); i++) {
-                int c = i >= shown ? Color.TRANSPARENT : i >= 4 ? Brand.TV_RED : UiKit.INK;
-                s.setSpan(new android.text.style.ForegroundColorSpan(c), i, i + 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
-            word.setText(s);
-        });
-        a.start();
-
-        // Collector's specular sheen glint passing across the logo mark & letters
-        android.animation.ValueAnimator sheenAnim = android.animation.ValueAnimator.ofFloat(-0.25f, 1.25f);
-        sheenAnim.setStartDelay(350);
-        sheenAnim.setDuration(400);
-        sheenAnim.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
-        sheenAnim.addUpdateListener(anim -> col.setSheenProgress((float) anim.getAnimatedValue()));
-        sheenAnim.start();
-
-        by.setAlpha(0f);
-        by.setTranslationY(UiKit.pxf(24));
-        by.animate().alpha(1f).translationY(0f).setStartDelay(300).setDuration(300)
-                .setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
-
-        if (splashHeld) {
-            splash.removeCallbacks(splashSheenAgain);
-            splash.postDelayed(splashSheenAgain, 1600);
-            return;
-        }
-        splash.animate().alpha(0f).setStartDelay(650).setDuration(250)
-                .withStartAction(this::revealUnderSplash)
-                .withEndAction(() -> {
-                    heartbeat.cancel();
-                    sheenAnim.cancel();
-                    splash.setVisibility(View.GONE);
-                }).start();
+        splashHeld = false;
+        if (splash != null) splash.setVisibility(View.GONE);
     }
 
     public boolean isSearchOrInputFocused() {
@@ -1506,13 +1376,13 @@ public class HomeScreen {
         logoButton.requestFocus();
     }
 
-    /** Applies or removes the HUD visor curvature of the header and spreads spatial 3D across overlays. */
+    /** Applies or removes the HUD visor curvature of the header and spreads spatial 3D across overlays (excluding the showcase and DVD boxes). */
     public void applySpatial(boolean on) {
         this.spatialOn = on;
         float cam = ctx.getResources().getDisplayMetrics().density * (on ? 3200f : 8500f);
-        View[] groups = {leftGroup, searchBox, rightGroup, shelfLabel};
-        float[][] rot = {{24f, 11f}, {0f, 11f}, {-24f, 11f}, {18f, 6f}};
-        float[] z = {UiKit.pxf(18), UiKit.pxf(26), UiKit.pxf(18), UiKit.pxf(14)};
+        View[] groups = {leftGroup, searchBox, rightGroup};
+        float[][] rot = {{24f, 11f}, {0f, 11f}, {-24f, 11f}};
+        float[] z = {UiKit.pxf(18), UiKit.pxf(26), UiKit.pxf(18)};
         for (int i = 0; i < groups.length; i++) {
             groups[i].setCameraDistance(cam);
             groups[i].animate()
@@ -1520,6 +1390,14 @@ public class HomeScreen {
                     .rotationX(on ? rot[i][1] : 0f)
                     .translationZ(on ? z[i] : 0f)
                     .setDuration(PerformanceProfile.animationMs(ctx, 240)).start();
+        }
+        if (shelfLabel != null) {
+            shelfLabel.animate().cancel();
+            shelfLabel.setRotationX(0f);
+            shelfLabel.setRotationY(0f);
+            shelfLabel.setTranslationX(0f);
+            shelfLabel.setTranslationY(0f);
+            shelfLabel.setTranslationZ(200f);
         }
         aiCard.setCameraDistance(cam);
         aiCard.setRotationX(on ? 7.5f : 0f);
@@ -1532,7 +1410,7 @@ public class HomeScreen {
         moveHint.setCameraDistance(cam);
         moveHint.setRotationX(on ? -8f : 0f);
         moveHint.setTranslationZ(on ? UiKit.pxf(34) : 0f);
-        shelf.setSpatial(on);
+        shelf.setSpatial(false);
         apps.setSpatial(on);
         keyboard.setSpatial(on);
         modal.setSpatial(on);
@@ -1540,7 +1418,7 @@ public class HomeScreen {
 
     private float lastParallaxNx = Float.NaN, lastParallaxNy = Float.NaN;
 
-    /** Multi-plane 3D optical parallax on the curved HUD visor as focus moves across the screen. */
+    /** Multi-plane 3D optical parallax on the curved HUD visor as focus moves across the screen (does not affect showcase). */
     public void updateVisorParallax(float focusX, float focusY) {
         if (!spatialOn || root.getWidth() <= 0 || root.getHeight() <= 0) return;
         float nx = Math.max(-1f, Math.min(1f, (focusX / root.getWidth() - 0.5f) * 2f));
@@ -1576,13 +1454,6 @@ public class HomeScreen {
                 .rotationX(pitch)
                 .translationX(tX * 0.75f)
                 .translationY(tY * 0.75f)
-                .setDuration(ms).start();
-
-        shelfLabel.animate()
-                .rotationY(18f - nx * 3.0f)
-                .rotationX(6f - ny * 2.0f)
-                .translationX(tX * 0.5f)
-                .translationY(tY * 0.5f)
                 .setDuration(ms).start();
 
         if (buttonHint != null && buttonHint.getVisibility() == View.VISIBLE) {

@@ -76,25 +76,27 @@ public final class LocalAdb {
     }
 
     /**
-     * Runs a command and returns what it printed (binary-safe), or null. The TV must already trust
-     * CineTV's key (granted once during setup); this never prompts.
+     * Runs a command and returns what it printed (binary-safe), or null.
      */
     public static byte[] exec(Context ctx, String command, int timeoutMs) {
         try (Socket s = new Socket()) {
             s.connect(new InetSocketAddress("127.0.0.1", 5555), 1500);
-            s.setSoTimeout(2500);
+            s.setSoTimeout(Math.max(3000, timeoutMs));
             InputStream in = s.getInputStream();
             OutputStream out = s.getOutputStream();
             KeyPair keys = keys(ctx);
             write(out, CNXN, 0x01000001, 256 * 1024, "host::\0".getBytes(StandardCharsets.UTF_8));
+            boolean sentSignature = false;
             while (true) {
                 Msg m = read(in);
                 if (m.cmd == CNXN) break;
                 if (m.cmd != AUTH || m.arg0 != AUTH_TOKEN) return null;
-                write(out, AUTH, AUTH_SIGNATURE, 0, sign((RSAPrivateKey) keys.getPrivate(), m.data));
-                Msg next = read(in);
-                if (next.cmd != CNXN) return null;
-                break;
+                if (!sentSignature) {
+                    write(out, AUTH, AUTH_SIGNATURE, 0, sign((RSAPrivateKey) keys.getPrivate(), m.data));
+                    sentSignature = true;
+                } else {
+                    write(out, AUTH, AUTH_RSAPUBLICKEY, 0, publicKey((RSAPublicKey) keys.getPublic()));
+                }
             }
             write(out, OPEN, 1, 0, ("shell:" + command + "\0").getBytes(StandardCharsets.UTF_8));
             java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream(512 * 1024);

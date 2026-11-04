@@ -96,11 +96,13 @@ public final class MemoryOptimizer {
      * (under a third of RAM free); killing healthy apps only makes the next launch slower. Never on the main thread.
      */
     public static void sweepAsync(Context ctx) {
+        if (!com.cinetv.launcher.MainActivity.isInFront() && DeviceTweaks.isMediaPlaying(ctx)) return;
         long now = System.currentTimeMillis();
         if (now - lastSweep < 45_000L) return;
         lastSweep = now;
         final Context app = ctx.getApplicationContext();
         new Thread(() -> {
+            if (!com.cinetv.launcher.MainActivity.isInFront() && DeviceTweaks.isMediaPlaying(app)) return;
             try {
                 ActivityManager am = (ActivityManager) app.getSystemService(Context.ACTIVITY_SERVICE);
                 ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
@@ -156,9 +158,8 @@ public final class MemoryOptimizer {
         } catch (Throwable ignored) {
         }
 
-        // The adb part starts some eight Android command processes: it ran from eight places (every Home return, the
-        // key service, a timer), about every 30 s all day, and during the TV's own boot. Now: not in the first two
-        // minutes after boot, at most once every 30 minutes, and never while the receiver is already running.
+        // Never spawn ADB command processes while the viewer is watching media in Nuvio or another app.
+        if (!com.cinetv.launcher.MainActivity.isInFront() && DeviceTweaks.isMediaPlaying(app)) return;
         long up = android.os.SystemClock.elapsedRealtime();
         if (up < 120_000L || (lastAirPlaySetup > 0 && up - lastAirPlaySetup < 30 * 60_000L)) return;
         PackageManager pm = app.getPackageManager();
@@ -255,6 +256,15 @@ public final class MemoryOptimizer {
     private static volatile boolean compactionOn;
     private static volatile boolean compactionChecked;
 
+    private static boolean isFreezerUnsafeBoard(Context ctx) {
+        String soc = AvOptimizer.detectSocFamily(Build.BOARD, Build.HARDWARE, Build.DEVICE, Build.MANUFACTURER);
+        String brand = ((Build.MANUFACTURER == null ? "" : Build.MANUFACTURER) + " " + (Build.BRAND == null ? "" : Build.BRAND)
+                + " " + (Build.MODEL == null ? "" : Build.MODEL)).toLowerCase(Locale.ROOT);
+        return "mediatek".equals(soc) || brand.contains("arcelik") || brand.contains("arçelik")
+                || brand.contains("beko") || brand.contains("grundig")
+                || (ctx != null && PerformanceProfile.lowMemory(ctx));
+    }
+
     /**
      * Device-aware zRAM / freezer tuning:
      * On MediaTek / Arçelik / Beko / Grundig TVs (and low-RAM boards), Android 11's cached_apps_freezer and
@@ -266,12 +276,7 @@ public final class MemoryOptimizer {
         if (android.os.Build.VERSION.SDK_INT < 30 || compactionChecked) return;
         compactionChecked = true;
         Context app = ctx.getApplicationContext();
-        String soc = AvOptimizer.detectSocFamily(Build.BOARD, Build.HARDWARE, Build.DEVICE, Build.MANUFACTURER);
-        String brand = ((Build.MANUFACTURER == null ? "" : Build.MANUFACTURER) + " " + (Build.BRAND == null ? "" : Build.BRAND)
-                + " " + (Build.MODEL == null ? "" : Build.MODEL)).toLowerCase(Locale.ROOT);
-        boolean mediatekOrArcelik = "mediatek".equals(soc) || brand.contains("arcelik") || brand.contains("arçelik")
-                || brand.contains("beko") || brand.contains("grundig") || PerformanceProfile.lowMemory(app);
-        if (mediatekOrArcelik) {
+        if (isFreezerUnsafeBoard(app)) {
             LocalAdb.shell(app,
                     "device_config delete activity_manager use_compaction 2>/dev/null; "
                             + "settings delete global cinetv_compaction 2>/dev/null; "
@@ -330,16 +335,23 @@ public final class MemoryOptimizer {
 
     /**
      * System-level tuning a launcher may do without root: Android's cached-app freezer (background
-     * apps stop using the CPU; active after a restart) and shorter window/transition animations.
+     * apps stop using the CPU; active after a restart, skipped on MediaTek/Arçelik/low-RAM boards where
+     * freezer stalls Binder IPC during 4K Nuvio playback) and shorter window/transition animations.
      * Returns how many settings changed.
      */
     public static int tuneSystem(Context ctx) {
         int changed = 0;
         android.content.ContentResolver cr = ctx.getContentResolver();
         try {
-            if (android.os.Build.VERSION.SDK_INT >= 30 && !"enabled".equals(android.provider.Settings.Global.getString(cr, "cached_apps_freezer"))) {
-                android.provider.Settings.Global.putString(cr, "cached_apps_freezer", "enabled");
-                changed++;
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                if (isFreezerUnsafeBoard(ctx)) {
+                    if (!"disabled".equals(android.provider.Settings.Global.getString(cr, "cached_apps_freezer"))) {
+                        android.provider.Settings.Global.putString(cr, "cached_apps_freezer", "disabled");
+                    }
+                } else if (!"enabled".equals(android.provider.Settings.Global.getString(cr, "cached_apps_freezer"))) {
+                    android.provider.Settings.Global.putString(cr, "cached_apps_freezer", "enabled");
+                    changed++;
+                }
             }
             for (String key : new String[]{
                     android.provider.Settings.Global.WINDOW_ANIMATION_SCALE,

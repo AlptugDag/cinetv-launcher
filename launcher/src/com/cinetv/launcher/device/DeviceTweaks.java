@@ -425,11 +425,17 @@ public final class DeviceTweaks {
 
     /** True right after boot or standby wake when the tuner screen appeared on its own. */
     public static boolean isUnwantedBootTuner() {
-        return true;
+        return android.os.SystemClock.elapsedRealtime() < BOOT_GUARD_MS && isUnwantedTuner();
     }
 
     public static boolean isMediaPlaying(Context ctx) {
         try {
+            if (com.cinetv.launcher.CinePlayerActivity.active && com.cinetv.launcher.CinePlayerActivity.isPlayingNow()) {
+                return true;
+            }
+            if (com.cinetv.launcher.service.NuvioPlaybackListenerService.isRecentlyPlaying()) {
+                return true;
+            }
             AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
             return am != null && am.isMusicActive();
         } catch (Throwable t) {

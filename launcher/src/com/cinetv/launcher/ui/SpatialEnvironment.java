@@ -178,12 +178,8 @@ public class SpatialEnvironment extends View {
                     if (pat != null) pattern = pat;
                     blurred = blur;
                     baseCache = done;
-                    if (!firstRevealDone) {
-                        firstRevealDone = true;
-                        setAlpha(0f);
-                        animate().alpha(1f).setDuration(320)
-                                .setInterpolator(new DecelerateInterpolator(1.6f)).start();
-                    }
+                    firstRevealDone = true;
+                    setAlpha(1f);
                     invalidate();
                 });
             } catch (OutOfMemoryError oom) {

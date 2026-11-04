@@ -143,7 +143,7 @@ public final class NuvioSetup {
                 }
                 Prefs.get(app).edit().putBoolean(SYNC_KEY, true).apply();
                 Log.i(TAG, "Nuvio configs synchronized without altering stream scraper speed");
-                if (force) {
+                if (force && com.cinetv.launcher.MainActivity.isInFront()) {
                     try {
                         Intent home = new Intent(app, com.cinetv.launcher.MainActivity.class)
                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION);
@@ -213,69 +213,21 @@ public final class NuvioSetup {
     static final String OFFICIAL_CERT = "1cba06fbdf978d0e3f9ad58de6ba3d69e24a948384adde3aed95451e830e5210";
 
     /**
-     * A Nuvio signed with CineTV's own key (made by an early setup) can never take Nuvio's updates: Android refuses a
-     * different signature ("Uygulama yüklenmedi"). Such a copy is replaced once by the official build, then CineTV
-     * puts its addons and configs back. An official Nuvio, or anyone else's, is never touched; nothing happens while
-     * Nuvio is open, and if the download fails the old copy stays. Blocking (adb, download).
+     * Ensures Nuvio configuration files are deployed if Nuvio is installed, without ever uninstalling or killing Nuvio
+     * in the background while the viewer may be watching.
      */
     public static boolean ensureOfficialNuvio(Context ctx) {
         final Context app = ctx.getApplicationContext();
-        String nuvio = certOf(app, AppLauncher.NUVIO), mine = certOf(app, app.getPackageName());
+        String nuvio = certOf(app, AppLauncher.NUVIO);
         if (nuvio == null) return false;
-        if (OFFICIAL_CERT.equals(nuvio)) {
-            if (!Prefs.get(app).getBoolean("nuvio_official_addons", false)) {
-                try {
-                    deployConfigs(app);
-                    Prefs.get(app).edit().putBoolean("nuvio_official_addons", true).putBoolean(DONE, true).putBoolean(SYNC_KEY, true).apply();
-                } catch (Throwable ignored) {
-                }
+        if (!Prefs.get(app).getBoolean("nuvio_official_addons", false)) {
+            try {
+                deployConfigs(app);
+                Prefs.get(app).edit().putBoolean("nuvio_official_addons", true).putBoolean(DONE, true).putBoolean(SYNC_KEY, true).apply();
+            } catch (Throwable ignored) {
             }
-            return true;
         }
-        if (!nuvio.equals(mine)) return false;
-        com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
-        if (svc != null && AppLauncher.NUVIO.equals(svc.getLastPackage())) return false; // in use: next time
-        try {
-            // the newest Nuvio, betas included (a viewer on the beta track must not drop back to the stable one)
-            String url = apkUrl("NuvioMedia/NuvioTV", "app-full-", "-release\\.apk", true);
-            if (url == null) return false;
-            File dir = app.getExternalFilesDir(null);
-            if (dir == null) return false;
-            File apk = new File(dir, "nuvio.apk");
-            if (!Http.download(url, apk, 180_000)) return false;
-            try { apk.setReadable(true, false); } catch (Throwable ignored) {}
-            // the official package must really be the official one before the old copy goes
-            android.content.pm.PackageInfo pi = app.getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(), 0);
-            if (pi == null || !AppLauncher.NUVIO.equals(pi.packageName)) {
-                apk.delete();
-                return false;
-            }
-            Log.i(TAG, "Replacing the CineTV-signed Nuvio with the official build (its updates will install)");
-            String path = apk.getAbsolutePath();
-            // Detached on the TV, like CineTV's own self-update: a 50-70 MB copy outlived one adb command's time, and
-            // the copy was cut in half. The old copy goes only after the new file is complete (same size).
-            String tmp = "/data/local/tmp/nuvio.apk";
-            String job = "cp '" + path + "' " + tmp + " && [ $(stat -c %s " + tmp + ") -eq " + apk.length() + " ] && pm uninstall "
-                    + AppLauncher.NUVIO + " && pm install -r " + tmp + "; rm -f " + tmp;
-            if (LocalAdb.exec(app, "nohup sh -c \"" + job + "\" >/dev/null 2>&1 &", 5000) == null) return false;
-            boolean ok = false;
-            for (int i = 0; i < 120 && !ok; i++) { // up to 10 minutes on a slow TV
-                Thread.sleep(5000);
-                ok = OFFICIAL_CERT.equals(certOf(app, AppLauncher.NUVIO));
-            }
-            Log.i(TAG, "Nuvio swap: official installed " + ok);
-            apk.delete();
-            if (!ok) return false;
-            Prefs.get(app).edit().remove(DONE).apply();
-            // CineTV's addons and configs back in the fresh Nuvio
-            deployConfigs(app);
-            for (String addon : CURATED_ADDONS) addAddon(app, addon);
-            Prefs.get(app).edit().putBoolean(DONE, true).putBoolean(SYNC_KEY, true).putBoolean("nuvio_official_addons", true).apply();
-            return true;
-        } catch (Throwable t) {
-            Log.w(TAG, "Official Nuvio swap failed: " + t);
-            return false;
-        }
+        return true;
     }
 
     /** SHA-256 of an installed package's signing certificate, or null. */

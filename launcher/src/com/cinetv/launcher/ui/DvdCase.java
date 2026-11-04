@@ -43,15 +43,17 @@ public final class DvdCase {
      */
     public final Bitmap bloom;
     public final boolean halo;
+    public final boolean hasPoster;
     /** The shared empty case shown until the film's own cover is baked. */
     boolean placeholder;
 
-    private DvdCase(Bitmap cover, Bitmap spine, int accent, Bitmap bloom, boolean halo) {
+    private DvdCase(Bitmap cover, Bitmap spine, int accent, Bitmap bloom, boolean halo, boolean hasPoster) {
         this.cover = cover;
         this.spine = spine;
         this.accent = accent;
         this.bloom = bloom;
         this.halo = halo;
+        this.hasPoster = hasPoster;
         this.coverSoft = soften(cover, 4, 2);
         this.spineSoft = spine == null ? null : soften(spine, 3, 2);
     }
@@ -68,11 +70,14 @@ public final class DvdCase {
 
     /** With the film's own title logo, printed down the spine like a studio release. */
     public static DvdCase bake(Context ctx, Bitmap poster, Bitmap logo, String title, int year, int accent, int w, int h, int glowPad, boolean asCase) {
+        boolean gotPoster = poster != null && !poster.isRecycled();
         if (!asCase) {
-            return new DvdCase(bakePoster(poster, w, h), null, accent, glowPad > 0 ? Glow.bloom(w, h, glowPad, w * 0.085f, accent) : null, false);
+            return new DvdCase(bakePoster(ctx, poster, title, year, accent, w, h), null, accent,
+                    glowPad > 0 ? Glow.bloom(w, h, glowPad, w * 0.085f, accent) : null, false, gotPoster);
         }
-        return new DvdCase(bakeCover(poster, w, h), bakeSpine(ctx, title, logo, year, accent, Math.max(6, Math.round(w * DEPTH)), h), accent,
-                glowPad > 0 ? bakeHalo(accent) : null, true);
+        return new DvdCase(bakeCover(ctx, poster, title, year, accent, w, h),
+                bakeSpine(ctx, title, logo, year, accent, Math.max(6, Math.round(w * DEPTH)), h), accent,
+                glowPad > 0 ? bakeHalo(accent) : null, true, gotPoster);
     }
 
     /** Downscales hard then back up with filtering: a cheap, smooth blur. */
@@ -188,14 +193,14 @@ public final class DvdCase {
         return new RectF(lip * 0.6f, lip, w - lip, h - lip);
     }
 
-    static Bitmap bakeCover(Bitmap poster, int w, int h) {
+    static Bitmap bakeCover(Context ctx, Bitmap poster, String title, int year, int accent, int w, int h) {
         Bitmap[] shell = shell(w, h);
         Bitmap out = shell[0].copy(Bitmap.Config.ARGB_8888, true);
         Canvas c = new Canvas(out);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         float corner = w * 0.03f;
         RectF insert = insert(w, h);
-        if (poster != null) {
+        if (poster != null && !poster.isRecycled()) {
             BitmapShader bs = new BitmapShader(poster, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
             float s = Math.max(insert.width() / poster.getWidth(), insert.height() / poster.getHeight());
             Matrix m = new Matrix();
@@ -206,9 +211,52 @@ public final class DvdCase {
             p.setShader(bs);
             c.drawRoundRect(insert, corner * 0.4f, corner * 0.4f, p);
             p.setShader(null);
+        } else if (title != null && !title.isEmpty()) {
+            drawFallbackInsert(ctx, c, insert, corner * 0.4f, title, year, accent);
         }
         c.drawBitmap(shell[1], 0, 0, null);
         return out;
+    }
+
+    private static void drawFallbackInsert(Context ctx, Canvas c, RectF insert, float radius, String title, int year, int accent) {
+        float[] hsv = new float[3];
+        Color.colorToHSV(accent, hsv);
+        hsv[1] = Math.min(0.65f, Math.max(0.28f, hsv[1]));
+        hsv[2] = 0.28f;
+        int topColor = Color.HSVToColor(hsv);
+        hsv[2] = 0.10f;
+        int botColor = Color.HSVToColor(hsv);
+
+        Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bg.setShader(new LinearGradient(insert.left, insert.top, insert.right, insert.bottom,
+                topColor, botColor, Shader.TileMode.CLAMP));
+        c.drawRoundRect(insert, radius, radius, bg);
+
+        if (ctx != null && title != null && !title.isEmpty()) {
+            TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+            tp.setTypeface(FontManager.getBold(ctx));
+            tp.setColor(Color.argb(230, 255, 255, 255));
+            tp.setTextSize(insert.width() * 0.105f);
+            float padX = insert.width() * 0.12f;
+            int availW = Math.max(40, Math.round(insert.width() - padX * 2f));
+            android.text.StaticLayout sl = new android.text.StaticLayout(
+                    title.toUpperCase(Locale.getDefault()), tp, availW,
+                    android.text.Layout.Alignment.ALIGN_CENTER, 1.08f, 0f, false);
+            c.save();
+            float textY = insert.centerY() - sl.getHeight() / 2f;
+            c.translate(insert.left + padX, Math.max(insert.top + padX, textY));
+            sl.draw(c);
+            c.restore();
+
+            if (year > 1900) {
+                tp.setTypeface(FontManager.getMedium(ctx));
+                tp.setTextSize(insert.width() * 0.068f);
+                tp.setColor(Color.argb(150, 255, 255, 255));
+                String yStr = String.valueOf(year);
+                float yW = tp.measureText(yStr);
+                c.drawText(yStr, insert.centerX() - yW / 2f, insert.bottom - insert.height() * 0.09f, tp);
+            }
+        }
     }
 
     /**
@@ -222,7 +270,8 @@ public final class DvdCase {
         DvdCase d = BLANKS.get(key);
         if (d == null) {
             int grey = UiKit.isLight() ? Color.parseColor("#C9CCD3") : Color.parseColor("#2A2A30");
-            d = new DvdCase(bakeCover(null, w, h), bakeSpine(ctx, "", null, 0, grey, Math.max(6, Math.round(w * DEPTH)), h), grey, null, true);
+            d = new DvdCase(bakeCover(ctx, null, "", 0, grey, w, h),
+                    bakeSpine(ctx, "", null, 0, grey, Math.max(6, Math.round(w * DEPTH)), h), grey, null, true, false);
             d.placeholder = true;
             BLANKS.put(key, d);
         }
@@ -230,10 +279,13 @@ public final class DvdCase {
     }
 
     /** A plain poster with rounded corners and no outline. */
-    static Bitmap bakePoster(Bitmap poster, int w, int h) {
+    static Bitmap bakePoster(Context ctx, Bitmap poster, String title, int year, int accent, int w, int h) {
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        if (poster == null) return out;
         Canvas c = new Canvas(out);
+        if (poster == null || poster.isRecycled()) {
+            drawFallbackInsert(ctx, c, new RectF(0, 0, w, h), w * 0.085f, title, year, accent);
+            return out;
+        }
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         BitmapShader bs = new BitmapShader(poster, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
         float s = Math.max(w / (float) poster.getWidth(), h / (float) poster.getHeight());

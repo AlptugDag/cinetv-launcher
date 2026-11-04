@@ -333,12 +333,14 @@ public final class EmaLightningTts {
                 .replaceAll("(?i)\\bHD(?='|\\b)", "Eyç Di")
                 .replaceAll("(?i)\\b4K(?='|\\b)", "Dört Ka")
                 .replaceAll("(?i)\\b8K(?='|\\b)", "Sekiz Ka")
+                .replaceAll("(?i)\\b3D(?='|\\b)", "Üç De")
+                .replaceAll("(?i)\\b2D(?='|\\b)", "İki De")
                 .replaceAll("(?i)\\b1080p(?='|\\b)", "Bin Seksen Pi")
                 .replaceAll("(?i)\\b720p(?='|\\b)", "Yedi Yüz Yirmi Pi")
                 .replaceAll("(?i)\\bOLED(?='|\\b)", "Oled")
                 .replaceAll("(?i)\\bQLED(?='|\\b)", "Kyuled")
                 .replaceAll("(?i)\\bLED(?='|\\b)", "Led")
-                .replaceAll("(?i)\\bHDMI(?='|\\b)", "Eyç Di Em Ay")
+                .replaceAll("(?i)\\bHDMI(?='|\\b)", "Eyç Di Ar".equals("") ? "" : "Eyç Di Em Ay")
                 .replaceAll("(?i)\\bUSB(?='|\\b)", "Yu Es Bi")
                 .replaceAll("(?i)\\bDNS(?='|\\b)", "Di En Es")
                 .replaceAll("(?i)\\bzRAM(?='|\\b)", "Zet Ram")
@@ -382,8 +384,9 @@ public final class EmaLightningTts {
                 .replaceAll("(?i)\\bMatrix\\b", "Metriks")
                 .replaceAll("(?i)\\bGame of Thrones\\b", "Taht Oyunları")
                 .replaceAll("(?i)\\bthe\\b", "dı");
+        s = expandNumbersToTurkishWords(s);
         s = turkishPhonetics(s);
-        // Join apostrophes inside words/numbers (e.g. "Nolın'ın" -> "Nolının", "Di Vi Di'nin" -> "Di Vi Dinin", "1995'te" -> "1995te")
+        // Join apostrophes inside words/numbers (e.g. "Nolın'ın" -> "Nolının", "Di Vi Di'nin" -> "Di Vi Dinin", "bin dokuz yüz otuz'larda" -> "bin dokuz yüz otuzlarda")
         // so Turkish neural TTS reads the suffix smoothly instead of pausing or spelling after the apostrophe.
         s = s.replaceAll("([\\p{L}\\p{N}])'([\\p{L}\\p{N}])", "$1$2")
                 .replace("'", "")
@@ -398,6 +401,226 @@ public final class EmaLightningTts {
             else s = s.substring(0, 300).trim();
         }
         return s;
+    }
+
+    private static final String[] TR_ONES = {"", "bir", "iki", "üç", "dört", "beş", "altı", "yedi", "sekiz", "dokuz"};
+    private static final String[] TR_TENS = {"", "on", "yirmi", "otuz", "kırk", "elli", "altmış", "yetmiş", "seksen", "doksan"};
+    private static final java.util.Map<String, String> TR_ORDINAL_LAST = new java.util.HashMap<>();
+    static {
+        String[] ord = {
+                "sıfır", "sıfırıncı", "bir", "birinci", "iki", "ikinci", "üç", "üçüncü", "dört", "dördüncü",
+                "beş", "beşinci", "altı", "altıncı", "yedi", "yedinci", "sekiz", "sekizinci", "dokuz", "dokuzuncu",
+                "on", "onuncu", "yirmi", "yirminci", "otuz", "otuzuncu", "kırk", "kırkıncı", "elli", "ellinci",
+                "altmış", "altmışıncı", "yetmiş", "yetmişinci", "seksen", "sekseninci", "doksan", "doksanıncı",
+                "yüz", "yüzüncü", "bin", "bininci", "milyon", "milyonuncu", "milyar", "milyarıncı"
+        };
+        for (int i = 0; i + 1 < ord.length; i += 2) TR_ORDINAL_LAST.put(ord[i], ord[i + 1]);
+    }
+
+    private static final java.util.regex.Pattern P_APOS_ORDINAL =
+            java.util.regex.Pattern.compile("(?i)\\b(\\d{1,6})'(?:inci|ıncı|uncu|üncü|nci|ncı)\\b");
+    private static final java.util.regex.Pattern P_DOT_ORDINAL_NOUN =
+            java.util.regex.Pattern.compile("(?i)\\b(\\d{1,3})\\.\\s+(?=(?:yüzyıl|sezon|bölüm|sınıf|dünya|kısım|perde|baskı|sıra|tur|adım|kuşak|nesil|dalga|film|gün|ay|yıl|hafta|çeyrek|yarı|derece|kat|cadde|sokak|madde|sayfa|kanal|lig|kupa|festival|ödül|oscar|altın)\\b)");
+    private static final java.util.regex.Pattern P_DOT_ORDINAL_LOWER =
+            java.util.regex.Pattern.compile("\\b([1-9]\\d?)\\.\\s+(?=[a-zçğıöşü])");
+    private static final java.util.regex.Pattern P_THOUSANDS_DOT =
+            java.util.regex.Pattern.compile("\\b(\\d{1,3}(?:\\.\\d{3})+)\\b");
+    private static final java.util.regex.Pattern P_TIME_HHMM =
+            java.util.regex.Pattern.compile("\\b([01]?\\d|2[0-3]):([0-5]\\d)\\b");
+    private static final java.util.regex.Pattern P_DECIMAL =
+            java.util.regex.Pattern.compile("(?<!\\d)(\\d{1,3})[.,](\\d{1,2})(?!\\d)");
+    private static final java.util.regex.Pattern P_NUMBER_RANGE =
+            java.util.regex.Pattern.compile("(\\d)\\s*[-–—]\\s*(\\d)");
+    private static final java.util.regex.Pattern P_INTEGER =
+            java.util.regex.Pattern.compile("(?<!\\d)(\\d{1,12})(?!\\d)");
+
+    /**
+     * Converts years (e.g. 1930 -> "bin dokuz yüz otuz", 1930'larda -> "bin dokuz yüz otuz'larda"),
+     * decimals (8.6 -> "sekiz nokta altı"), ordinals (2. Dünya -> "ikinci Dünya"), times (09:05 -> "dokuz sıfır beş"),
+     * and integers into natural Turkish words so TTS engines never spell digits one by one.
+     */
+    public static String expandNumbersToTurkishWords(String text) {
+        if (text == null || text.isEmpty()) return "";
+        String s = text;
+
+        // 1. Apostrophe ordinals: 2'nci, 4'üncü, 20'nci
+        java.util.regex.Matcher mAposOrd = P_APOS_ORDINAL.matcher(s);
+        StringBuffer sb = new StringBuffer();
+        while (mAposOrd.find()) {
+            try {
+                long n = Long.parseLong(mAposOrd.group(1));
+                mAposOrd.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(ordinalToTurkishWords(n)));
+            } catch (Throwable ignored) {}
+        }
+        mAposOrd.appendTail(sb);
+        s = sb.toString();
+
+        // 2. Dot ordinals before known ordinal nouns: "20. yüzyıl", "2. Dünya Savaşı", "103. Yılı", "1. Sezon"
+        java.util.regex.Matcher mDotNoun = P_DOT_ORDINAL_NOUN.matcher(s);
+        sb.setLength(0);
+        while (mDotNoun.find()) {
+            try {
+                long n = Long.parseLong(mDotNoun.group(1));
+                mDotNoun.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(ordinalToTurkishWords(n) + " "));
+            } catch (Throwable ignored) {}
+        }
+        mDotNoun.appendTail(sb);
+        s = sb.toString();
+
+        // 3. Dot ordinals (1..99) before lowercase continuation word: "3. sırada"
+        java.util.regex.Matcher mDotLower = P_DOT_ORDINAL_LOWER.matcher(s);
+        sb.setLength(0);
+        while (mDotLower.find()) {
+            try {
+                long n = Long.parseLong(mDotLower.group(1));
+                mDotLower.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(ordinalToTurkishWords(n) + " "));
+            } catch (Throwable ignored) {}
+        }
+        mDotLower.appendTail(sb);
+        s = sb.toString();
+
+        // 4. Turkish thousands-separated numbers: 10.000 -> 10000
+        java.util.regex.Matcher mTh = P_THOUSANDS_DOT.matcher(s);
+        sb.setLength(0);
+        while (mTh.find()) {
+            String rawDigits = mTh.group(1).replace(".", "");
+            try {
+                long n = Long.parseLong(rawDigits);
+                mTh.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(numberToTurkishWords(n)));
+            } catch (Throwable ignored) {}
+        }
+        mTh.appendTail(sb);
+        s = sb.toString();
+
+        // 5. Clock times: 09:05 -> "dokuz sıfır beş", 23:00 -> "yirmi üç sıfır sıfır"
+        java.util.regex.Matcher mTime = P_TIME_HHMM.matcher(s);
+        sb.setLength(0);
+        while (mTime.find()) {
+            try {
+                int hh = Integer.parseInt(mTime.group(1));
+                int mm = Integer.parseInt(mTime.group(2));
+                String hWords = numberToTurkishWords(hh);
+                String mWords = mm == 0 ? "sıfır sıfır" : (mm < 10 ? "sıfır " + numberToTurkishWords(mm) : numberToTurkishWords(mm));
+                mTime.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(hWords + " " + mWords));
+            } catch (Throwable ignored) {}
+        }
+        mTime.appendTail(sb);
+        s = sb.toString();
+
+        // 6. Decimals (ratings, scores): 8.6 or 8,6 -> "sekiz nokta altı"
+        java.util.regex.Matcher mDec = P_DECIMAL.matcher(s);
+        sb.setLength(0);
+        while (mDec.find()) {
+            try {
+                long whole = Long.parseLong(mDec.group(1));
+                String fracStr = mDec.group(2);
+                long frac = Long.parseLong(fracStr);
+                String fracWords;
+                if (fracStr.length() == 2 && fracStr.startsWith("0")) {
+                    fracWords = "sıfır " + numberToTurkishWords(frac);
+                } else {
+                    fracWords = numberToTurkishWords(frac);
+                }
+                String rep = numberToTurkishWords(whole) + " nokta " + fracWords;
+                mDec.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(rep));
+            } catch (Throwable ignored) {}
+        }
+        mDec.appendTail(sb);
+        s = sb.toString();
+
+        // 7. Number ranges with dash: 1930-1940 -> 1930, 1940
+        s = P_NUMBER_RANGE.matcher(s).replaceAll("$1, $2");
+
+        // 8. All remaining integers & years (e.g. 1930 -> "bin dokuz yüz otuz", 1930'larda -> "bin dokuz yüz otuz'larda")
+        java.util.regex.Matcher mInt = P_INTEGER.matcher(s);
+        sb.setLength(0);
+        while (mInt.find()) {
+            String numStr = mInt.group(1);
+            try {
+                long n = Long.parseLong(numStr);
+                String words = numberToTurkishWords(n);
+                // Separate from adjacent Latin letters if no space/apostrophe exists (unless it is a Turkish suffix)
+                int start = mInt.start();
+                int end = mInt.end();
+                boolean prevLetter = start > 0 && Character.isLetter(s.charAt(start - 1));
+                boolean nextLetter = end < s.length() && Character.isLetter(s.charAt(end));
+                String prefix = prevLetter ? " " : "";
+                String suffix = "";
+                if (nextLetter) {
+                    String rest = s.substring(end).toLowerCase(new Locale("tr"));
+                    if (!rest.matches("^(?:lar|ler|da|de|ta|te|dan|den|tan|ten|in|ın|un|ün|nin|nın|nun|nün|li|lı|lu|lü|lik|lık|luk|lük|a|e|ya|ye|i|ı|u|ü)\\b.*")) {
+                        suffix = " ";
+                    }
+                }
+                mInt.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(prefix + words + suffix));
+            } catch (Throwable ignored) {}
+        }
+        mInt.appendTail(sb);
+        return sb.toString();
+    }
+
+    /** Converts a non-negative integer into natural spoken Turkish words (e.g. 1930 -> "bin dokuz yüz otuz"). */
+    public static String numberToTurkishWords(long n) {
+        if (n == 0) return "sıfır";
+        if (n < 0) return "eksi " + numberToTurkishWords(-n);
+        StringBuilder sb = new StringBuilder();
+        long billions = (n / 1_000_000_000L) % 1000L;
+        long millions = (n / 1_000_000L) % 1000L;
+        long thousands = (n / 1_000L) % 1000L;
+        long ones = n % 1000L;
+
+        if (billions > 0) {
+            sb.append(underThousandToTurkish((int) billions)).append(" milyar");
+        }
+        if (millions > 0) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(underThousandToTurkish((int) millions)).append(" milyon");
+        }
+        if (thousands > 0) {
+            if (sb.length() > 0) sb.append(' ');
+            if (thousands == 1) {
+                sb.append("bin");
+            } else {
+                sb.append(underThousandToTurkish((int) thousands)).append(" bin");
+            }
+        }
+        if (ones > 0) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(underThousandToTurkish((int) ones));
+        }
+        return sb.toString();
+    }
+
+    private static String underThousandToTurkish(int n) {
+        StringBuilder sb = new StringBuilder();
+        int h = n / 100;
+        int rem = n % 100;
+        int t = rem / 10;
+        int u = rem % 10;
+        if (h == 1) {
+            sb.append("yüz");
+        } else if (h > 1) {
+            sb.append(TR_ONES[h]).append(" yüz");
+        }
+        if (t > 0) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(TR_TENS[t]);
+        }
+        if (u > 0) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(TR_ONES[u]);
+        }
+        return sb.toString();
+    }
+
+    /** Converts an integer into its spoken Turkish ordinal form (e.g. 1 -> "birinci", 2 -> "ikinci", 4 -> "dördüncü", 20 -> "yirminci"). */
+    public static String ordinalToTurkishWords(long n) {
+        String cardinal = numberToTurkishWords(n);
+        int lastSpace = cardinal.lastIndexOf(' ');
+        String prefix = lastSpace >= 0 ? cardinal.substring(0, lastSpace + 1) : "";
+        String lastWord = lastSpace >= 0 ? cardinal.substring(lastSpace + 1) : cardinal;
+        String ordLast = TR_ORDINAL_LAST.get(lastWord);
+        return prefix + (ordLast != null ? ordLast : lastWord + "inci");
     }
 
     private static File getOrSynthesizeWav(Context ctx, String text, int gen) {
@@ -636,7 +859,13 @@ public final class EmaLightningTts {
                         return;
                     }
                     try {
-                        fallbackTts.setLanguage(Locale.getDefault());
+                        Locale trLoc = new Locale("tr", "TR");
+                        int trAvail = fallbackTts.isLanguageAvailable(trLoc);
+                        if (trAvail >= TextToSpeech.LANG_AVAILABLE) {
+                            fallbackTts.setLanguage(trLoc);
+                        } else {
+                            fallbackTts.setLanguage(Locale.getDefault());
+                        }
                         fallbackTts.setPitch(1.0f);
                         fallbackTts.setSpeechRate(1.02f);
                         fallbackTts.setAudioAttributes(new AudioAttributes.Builder()

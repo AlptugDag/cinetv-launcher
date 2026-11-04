@@ -26,8 +26,10 @@ public class BootReceiver extends BroadcastReceiver {
                 || Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
                 || "android.intent.action.QUICKBOOT_POWERON".equals(action)
                 || "com.htc.intent.action.QUICKBOOT_POWERON".equals(action)) {
-            // The TV's tuner app is left running: killing it at boot made the TV restart it (3 times, the heaviest
-            // start there is), which slowed the whole power-on. CineTV simply comes to the front.
+            TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
+            if (svc != null && svc.isInMediaOrThirdPartyApp()) {
+                return;
+            }
             Intent launch = new Intent(context, MainActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
             try {
@@ -35,11 +37,13 @@ public class BootReceiver extends BroadcastReceiver {
             } catch (Throwable t) {
                 Log.w(TAG, "failed to start on boot: " + t);
             }
-            // Aggressive follow-up reinforcements to suppress OEM launchers (Android 9, 11, 14 TV boxes)
             android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
-            long[] delays = {2500L}; // one follow-up is enough; four launches in 4.5 s weighed on the TV's own boot
+            long[] delays = {2500L};
             for (long delay : delays) {
                 h.postDelayed(() -> {
+                    TvKeyInterceptorService s = TvKeyInterceptorService.getInstance();
+                    if (s != null && s.isInMediaOrThirdPartyApp()) return;
+                    if (com.cinetv.launcher.device.DeviceTweaks.isMediaPlaying(context)) return;
                     try {
                         Intent followUp = new Intent(context, MainActivity.class)
                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION);
@@ -48,7 +52,6 @@ public class BootReceiver extends BroadcastReceiver {
                     }
                 }, delay);
             }
-            // the setup check (adb) waits until the TV has finished starting: HomeGuard.install runs it later, once
             com.cinetv.launcher.device.MemoryOptimizer.ensureAirPlayReceiver(context);
             com.cinetv.launcher.service.AppUpdater.checkAndAutoUpdateOnBoot(context);
         }

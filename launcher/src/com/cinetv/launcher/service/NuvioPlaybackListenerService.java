@@ -29,6 +29,12 @@ public final class NuvioPlaybackListenerService extends NotificationListenerServ
     private long lastSaveAt;
     private String lastSavedKey = "";
     private int lastPlaybackState = PlaybackState.STATE_NONE;
+    private static volatile long lastPlayingAtElapsed = -60_000L;
+
+    /** True when a Nuvio/Stremio MediaSession reported playing or buffering within the last 18 seconds. */
+    public static boolean isRecentlyPlaying() {
+        return android.os.SystemClock.elapsedRealtime() - lastPlayingAtElapsed < 18_000L;
+    }
 
     private final Runnable poll = new Runnable() {
         @Override
@@ -93,6 +99,9 @@ public final class NuvioPlaybackListenerService extends NotificationListenerServ
                 PlaybackState state = controller.getPlaybackState();
                 if (state == null) continue;
                 int value = state.getState();
+                if (value == PlaybackState.STATE_PLAYING || value == PlaybackState.STATE_BUFFERING) {
+                    lastPlayingAtElapsed = android.os.SystemClock.elapsedRealtime();
+                }
                 if (value != PlaybackState.STATE_PLAYING && value != PlaybackState.STATE_PAUSED
                         && value != PlaybackState.STATE_BUFFERING) continue;
                 if (chosen == null || value == PlaybackState.STATE_PLAYING) {
