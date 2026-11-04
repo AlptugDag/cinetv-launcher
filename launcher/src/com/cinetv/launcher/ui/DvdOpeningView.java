@@ -451,9 +451,9 @@ public class DvdOpeningView extends View {
         }
         if (dvd == null) return;
         int w = getWidth(), h = getHeight();
-        float fly = ease(clamp(t / (float) FLY_END));
+        float fly = easeInOut(clamp(t / (float) FLY_END));
         float open = easeInOut(clamp((t - FLY_END) / (float) (OPEN_END - FLY_END)));
-        float rise = play < 0 ? 0f : ease(clamp(play / 260f));
+        float rise = play < 0 ? 0f : easeInOut(clamp(play / 260f));
         float approach = play < 0 ? 0f : easeInOut(clamp((play - 180) / 950f));
 
         // Room dims, and the film's colour glows behind the case (the CineTV bloom, full screen).

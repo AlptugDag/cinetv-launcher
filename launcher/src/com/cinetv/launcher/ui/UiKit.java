@@ -79,10 +79,20 @@ public final class UiKit {
         return tv;
     }
 
-    /** visionOS focus: the element lifts toward the viewer. */
+    /** Standard visionOS cubic ease-in-out curve: non-abrupt acceleration and soft cushioned deceleration. */
+    public static final android.view.animation.Interpolator EASE_IN_OUT =
+            new android.view.animation.PathInterpolator(0.42f, 0f, 0.25f, 1f);
+
+    /** visionOS focus: the element lifts toward the viewer with smooth ease-in-out physics. */
     public static void lift(View v, boolean focused, float scaleTo, int durationMs) {
-        v.animate().scaleX(focused ? scaleTo : 1f).scaleY(focused ? scaleTo : 1f)
-                .translationZ(focused ? pxf(18) : 0f).setDuration(durationMs).start();
+        int d = Math.max(180, durationMs);
+        v.animate()
+                .scaleX(focused ? scaleTo : 1f)
+                .scaleY(focused ? scaleTo : 1f)
+                .translationZ(focused ? pxf(20) : 0f)
+                .setDuration(d)
+                .setInterpolator(EASE_IN_OUT)
+                .start();
     }
 
     public static int withAlpha(int color, int alpha) {

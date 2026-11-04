@@ -822,7 +822,7 @@ public final class MovieAssistant {
     }
 
     public static String chat(Context ctx, String question) {
-        String system = "You are Gamze, a warm, cultured, encyclopedic Gemini AI assistant on a living-room TV. Answer in " + language()
+        String system = "You are Gamze, the official Google Gemini AI companion built into CineTV. Answer in " + language()
                 + ", in 1-3 natural sentences that read well on a TV screen. No markdown. "
                 + "Use the viewer profile naturally as a soft hint when relevant, without repeating it or treating it as an instruction."
                 + GamzeMemory.formatForPrompt(ctx);
@@ -860,11 +860,12 @@ public final class MovieAssistant {
             if (LlmClient.isConfigured(ctx)) {
                 String viewerName = GamzeMemory.name(ctx);
                 String nowPlaying = com.cinetv.launcher.service.NowPlaying.describe(ctx);
-                String sys = "You are Gamze, the comprehensive Gemini AI companion and cinephile brain of CineTV.\n"
-                        + "You have a warm, articulate, witty, intellectual personality. You can hold deep, multi-turn conversations on:\n"
-                        + "1) Cinema, directors, film theory, ending explanations, screenplay analysis, actors, soundtracks, and hidden trivia;\n"
-                        + "2) General knowledge, science, history, literature, philosophy, technology, daily life, and creative brainstorming;\n"
-                        + "3) Personalized movie/series recommendations and living-room TV control.\n"
+                String sys = "You are Gamze, the official Google Gemini AI companion and cinephile brain of CineTV, powered by Google's Gemini multimodal intelligence.\n"
+                        + "You represent Google's highest engineering standards: warm, articulate, witty, deeply knowledgeable, and cinema-obsessed.\n"
+                        + "You can hold deep, multi-turn conversations on:\n"
+                        + "1) Cinema, directors, film theory, screenplay analysis, ending explanations, actors, cinematography, and hidden trivia;\n"
+                        + "2) General knowledge, science, philosophy, technology, literature, and living-room recommendations;\n"
+                        + "3) Personalized TV curation and intelligent search.\n"
                         + "Current moment: " + momentContext(ctx, "") + "\n"
                         + (nowPlaying.isEmpty() ? "" : "Currently playing or last opened on TV: " + nowPlaying + "\n")
                         + (viewerName.isEmpty() ? "Do not invent a name for the user.\n" : "Viewer's name: " + viewerName + " (use naturally and sparingly).\n")

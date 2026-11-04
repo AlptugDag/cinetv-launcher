@@ -34,15 +34,17 @@ public final class LlmClient {
     private static final String[][] COMPATIBLE = {
             {PROVIDER_OPENAI, "https://api.openai.com/v1/chat/completions", "gpt-5-mini", "gpt-5-nano", "gpt-4o-mini"},
             {PROVIDER_GROK, "https://api.x.ai/v1/chat/completions", "grok-4-fast", "grok-4-fast", "grok-3-mini"},
-            {PROVIDER_OPENROUTER, "https://openrouter.ai/api/v1/chat/completions", "google/gemini-3.8-flash", "google/gemini-3.5-flash-lite", "openai/gpt-5-mini"}};
+            {PROVIDER_OPENROUTER, "https://openrouter.ai/api/v1/chat/completions", "google/gemini-3.8-flash", "google/gemini-3.1-flash-lite", "openai/gpt-5-mini"}};
 
     static final String DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
     static final String FAST_CLAUDE_MODEL = "claude-haiku-5-5";
     static final String FALLBACK_CLAUDE_MODEL = "claude-haiku-5-5";
-    /** Gemini models: supports modern Gemini 3.8/3.1/2.5 Flash & Argon with automatic fallback */
-    static final String DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
-    static final String FAST_GEMINI_MODEL = "gemini-2.5-flash-lite";
-    static final String FALLBACK_GEMINI_MODEL = "gemini-2.5-flash-lite";
+
+    /** Official Google Gemini models (Gemini 3 and 4 series) */
+    public static final String DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+    public static final String FAST_GEMINI_MODEL = "gemini-3.1-flash-lite";
+    public static final String DEEP_GEMINI_MODEL = "gemini-4-argon";
+    public static final String FALLBACK_GEMINI_MODEL = "gemini-flash-latest";
 
     private static final String TAG = "CineTvLlm";
 
@@ -88,9 +90,9 @@ public final class LlmClient {
         if (model != null) {
             modelCooldownUntil.put(model, now + wait);
         }
-        if (daily && model != null && (model.contains("lite") || model.contains("2.0-flash"))) {
+        if (daily && model != null && (model.contains("lite") || model.contains("flash"))) {
             // Check if all primary fast models are on cooldown
-            if (isModelCoolingDown("gemini-2.5-flash-lite") && isModelCoolingDown("gemini-2.0-flash")) {
+            if (isModelCoolingDown(FAST_GEMINI_MODEL) && isModelCoolingDown(DEFAULT_GEMINI_MODEL)) {
                 quotaOutUntil = now + Math.max(60_000L, wait);
             }
         }
@@ -135,11 +137,11 @@ public final class LlmClient {
 
         String[] chain;
         if ("deep".equalsIgnoreCase(mode) || "pro".equalsIgnoreCase(mode)) {
-            chain = new String[]{"gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.0-flash-lite"};
+            chain = new String[]{DEEP_GEMINI_MODEL, DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL, FAST_GEMINI_MODEL};
         } else if ("fast".equalsIgnoreCase(mode) || "lite".equalsIgnoreCase(mode)) {
-            chain = new String[]{"gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-2.0-flash"};
+            chain = new String[]{FAST_GEMINI_MODEL, "gemini-flash-lite-latest", DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL};
         } else {
-            chain = new String[]{"gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-2.0-flash", "gemini-2.0-flash-lite"};
+            chain = new String[]{DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL, FAST_GEMINI_MODEL, "gemini-flash-lite-latest"};
         }
 
         Result r = null;
@@ -158,6 +160,86 @@ public final class LlmClient {
         return r != null ? r : new Result(false, ctx.getString(R.string.ai_err_network), -1);
     }
 
+    private static void applyGoogleHeaders(HttpURLConnection conn, String key) {
+        conn.setRequestProperty("x-goog-api-key", key);
+        conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+        conn.setRequestProperty("User-Agent", "google-genai-sdk/3.8.0 CineTV/1.0 (Android TV)");
+        conn.setRequestProperty("x-goog-api-client", "gl-android/ CineTV/1.0.0 genai/3.8.0");
+    }
+
+    private static JSONArray buildGoogleSafetySettings() {
+        try {
+            return new JSONArray()
+                    .put(new JSONObject().put("category", "HARM_CATEGORY_HARASSMENT").put("threshold", "BLOCK_ONLY_HIGH"))
+                    .put(new JSONObject().put("category", "HARM_CATEGORY_HATE_SPEECH").put("threshold", "BLOCK_ONLY_HIGH"))
+                    .put(new JSONObject().put("category", "HARM_CATEGORY_SEXUALLY_EXPLICIT").put("threshold", "BLOCK_ONLY_HIGH"))
+                    .put(new JSONObject().put("category", "HARM_CATEGORY_DANGEROUS_CONTENT").put("threshold", "BLOCK_ONLY_HIGH"));
+        } catch (Throwable t) {
+            return new JSONArray();
+        }
+    }
+
+    private static JSONObject buildGoogleGenerationConfig(String model, int maxTokens, boolean wantsJson, boolean quick, boolean deep) {
+        try {
+            JSONObject genCfg = new JSONObject();
+            if (maxTokens > 0) genCfg.put("maxOutputTokens", maxTokens);
+            if (wantsJson) genCfg.put("responseMimeType", "application/json");
+
+            // Official Gemini 3 & 4 thinkingConfig (thinkingLevel: LOW, MEDIUM, HIGH, MINIMAL)
+            if (model != null && (model.startsWith("gemini-4") || model.startsWith("gemini-3.8"))) {
+                genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", deep ? "HIGH" : (quick ? "LOW" : "MEDIUM")));
+            } else if (model != null && (model.contains("lite") || model.startsWith("gemini-3.1"))) {
+                genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", "MINIMAL"));
+            }
+            return genCfg;
+        } catch (Throwable t) {
+            return new JSONObject();
+        }
+    }
+
+    private static Result parseGoogleGeminiResponse(Context ctx, String rawJson) {
+        try {
+            JSONObject resp = new JSONObject(rawJson);
+            JSONArray cands = resp.optJSONArray("candidates");
+            if (cands != null && cands.length() > 0) {
+                JSONObject cand = cands.getJSONObject(0);
+                String finishReason = cand.optString("finishReason", "");
+                if ("SAFETY".equalsIgnoreCase(finishReason)) {
+                    boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+                    return new Result(false, tr ? "Bu yanıt Google Gemini Güvenlik Politikası nedeniyle filtrelendi."
+                            : "This response was filtered by Google Gemini Safety Policy.", 200);
+                }
+                JSONObject contentObj = cand.optJSONObject("content");
+                JSONArray parts = contentObj != null ? contentObj.optJSONArray("parts") : null;
+                if (parts != null) {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < parts.length(); i++) {
+                        JSONObject p = parts.getJSONObject(i);
+                        if (!p.optBoolean("thought", false)) {
+                            sb.append(p.optString("text", ""));
+                        }
+                    }
+                    String text = sb.toString().trim();
+                    if (!text.isEmpty()) {
+                        return new Result(true, text, 200);
+                    }
+                }
+            }
+            JSONObject feedback = resp.optJSONObject("promptFeedback");
+            if (feedback != null) {
+                String blockReason = feedback.optString("blockReason", "");
+                if (!blockReason.isEmpty()) {
+                    boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
+                    return new Result(false, tr ? "İstek Google Gemini güvenlik filtresine takıldı (" + blockReason + ")."
+                            : "Prompt was blocked by Google Gemini safety filter (" + blockReason + ").", 200);
+                }
+            }
+            return new Result(false, ctx.getString(R.string.ai_err_empty), 204);
+        } catch (Throwable t) {
+            return new Result(false, ctx.getString(R.string.ai_err_empty), 204);
+        }
+    }
+
     private static Result callGeminiMultiTurn(Context ctx, String model, String key, String system,
                                               java.util.List<GamzeConversation.Turn> history, String userMessage,
                                               int maxTokens, boolean deepThinking) {
@@ -165,7 +247,7 @@ public final class LlmClient {
         try {
             conn = (HttpURLConnection) new URL("https://generativelanguage.googleapis.com/v1beta/models/"
                     + model + ":generateContent").openConnection();
-            conn.setRequestProperty("x-goog-api-key", key);
+            applyGoogleHeaders(conn, key);
             JSONObject body = new JSONObject();
             if (system != null && !system.isEmpty()) {
                 body.put("system_instruction", new JSONObject().put("parts",
@@ -189,17 +271,10 @@ public final class LlmClient {
             contents.put(new JSONObject().put("role", "user")
                     .put("parts", new JSONArray().put(new JSONObject().put("text", userMessage))));
             body.put("contents", contents);
-
-            JSONObject genCfg = new JSONObject()
-                    .put("maxOutputTokens", maxTokens)
-                    .put("responseMimeType", "application/json");
-            if (model.startsWith("gemini-2.5-flash") && !model.contains("lite")) {
-                genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", deepThinking ? 512 : 0));
-            }
-            body.put("generationConfig", genCfg);
+            body.put("generationConfig", buildGoogleGenerationConfig(model, maxTokens, true, false, deepThinking));
+            body.put("safetySettings", buildGoogleSafetySettings());
 
             conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             conn.setConnectTimeout(8000);
             conn.setReadTimeout(25000);
             conn.setDoOutput(true);
@@ -213,24 +288,7 @@ public final class LlmClient {
                 noteQuota(model, status, errBody);
                 return new Result(false, errorText(ctx, status, errBody), status);
             }
-            JSONObject resp = new JSONObject(read(conn.getInputStream()));
-            String text = "";
-            JSONArray cands = resp.optJSONArray("candidates");
-            if (cands != null && cands.length() > 0) {
-                JSONObject contentObj = cands.getJSONObject(0).optJSONObject("content");
-                JSONArray parts = contentObj != null ? contentObj.optJSONArray("parts") : null;
-                if (parts != null) {
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 0; i < parts.length(); i++) {
-                        JSONObject p = parts.getJSONObject(i);
-                        if (!p.optBoolean("thought", false)) {
-                            sb.append(p.optString("text", ""));
-                        }
-                    }
-                    text = sb.toString().trim();
-                }
-            }
-            return text.isEmpty() ? new Result(false, ctx.getString(R.string.ai_err_empty), 204) : new Result(true, text, 200);
+            return parseGoogleGeminiResponse(ctx, read(conn.getInputStream()));
         } catch (SocketTimeoutException e) {
             return new Result(false, ctx.getString(R.string.ai_err_timeout), 408);
         } catch (Throwable t) {
@@ -275,7 +333,7 @@ public final class LlmClient {
             case PROVIDER_GROK: return "Grok";
             case PROVIDER_OPENAI: return "ChatGPT";
             case PROVIDER_OPENROUTER: return "OpenRouter";
-            default: return "Gemini";
+            default: return "Google Gemini";
         }
     }
 
@@ -312,8 +370,8 @@ public final class LlmClient {
                 : Prefs.get(ctx).getString(claude ? "ai_claude_model" : "ai_gemini_model", claude ? DEFAULT_CLAUDE_MODEL : DEFAULT_GEMINI_MODEL);
         // Distinct free-tier quota buckets on Google AI Studio so a 429 on one model switches immediately to another bucket.
         String[] chain = claude ? new String[]{first, FALLBACK_CLAUDE_MODEL}
-                : fast ? new String[]{first, "gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash-lite", "gemini-2.5-flash"}
-                : new String[]{first, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash-lite"};
+                : fast ? new String[]{first, "gemini-flash-lite-latest", DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL}
+                : new String[]{first, FALLBACK_GEMINI_MODEL, FAST_GEMINI_MODEL, "gemini-flash-lite-latest"};
         Result r = null;
         java.util.Set<String> tried = new java.util.HashSet<>();
         for (String model : chain) {
@@ -345,31 +403,24 @@ public final class LlmClient {
                 conn = (HttpURLConnection) new URL("https://api.anthropic.com/v1/messages").openConnection();
                 conn.setRequestProperty("x-api-key", key);
                 conn.setRequestProperty("anthropic-version", "2023-06-01");
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
                 body.put("model", model).put("max_tokens", maxTokens);
                 if (system != null) body.put("system", system);
                 body.put("messages", new JSONArray().put(new JSONObject().put("role", "user").put("content", user)));
             } else {
                 conn = (HttpURLConnection) new URL("https://generativelanguage.googleapis.com/v1beta/models/"
                         + model + ":generateContent").openConnection();
-                conn.setRequestProperty("x-goog-api-key", key);
+                applyGoogleHeaders(conn, key);
                 if (system != null) {
                     body.put("system_instruction", new JSONObject().put("parts",
                             new JSONArray().put(new JSONObject().put("text", system))));
                 }
                 body.put("contents", new JSONArray().put(new JSONObject().put("role", "user")
                         .put("parts", new JSONArray().put(new JSONObject().put("text", user)))));
-                JSONObject genCfg = new JSONObject().put("maxOutputTokens", maxTokens);
-                if (model.startsWith("gemini-3") && model.contains("flash") && !model.contains("lite")) {
-                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", quick ? "minimal" : "low"));
-                } else if (model.startsWith("gemini-2.5-flash") && !model.contains("lite")) {
-                    // 2.5 Flash-Lite rejects a budget under 512 (HTTP 400), so only 2.5 Flash gets one
-                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", quick ? 0 : 256));
-                }
-                if (wantsJson) genCfg.put("responseMimeType", "application/json");
-                body.put("generationConfig", genCfg);
+                body.put("generationConfig", buildGoogleGenerationConfig(model, maxTokens, wantsJson, quick, false));
+                body.put("safetySettings", buildGoogleSafetySettings());
             }
             conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             conn.setConnectTimeout(quick ? 4000 : 7500);
             conn.setReadTimeout(quick ? 7500 : 18000);
             conn.setDoOutput(true);
@@ -384,22 +435,19 @@ public final class LlmClient {
                 noteQuota(model, status, errBody);
                 return new Result(false, errorText(ctx, status), status);
             }
-            JSONObject resp = new JSONObject(read(conn.getInputStream()));
-            String text = "";
+            String rawResponse = read(conn.getInputStream());
             if (claude) {
+                JSONObject resp = new JSONObject(rawResponse);
+                String text = "";
                 JSONArray content = resp.optJSONArray("content");
                 for (int i = 0; content != null && i < content.length() && text.isEmpty(); i++) {
                     JSONObject part = content.getJSONObject(i);
                     if ("text".equals(part.optString("type"))) text = part.optString("text").trim();
                 }
+                return text.isEmpty() ? new Result(false, ctx.getString(R.string.ai_err_empty), 204) : new Result(true, text, 200);
             } else {
-                JSONArray cands = resp.optJSONArray("candidates");
-                if (cands != null && cands.length() > 0) {
-                    JSONArray parts = cands.getJSONObject(0).optJSONObject("content").optJSONArray("parts");
-                    if (parts != null && parts.length() > 0) text = parts.getJSONObject(0).optString("text").trim();
-                }
+                return parseGoogleGeminiResponse(ctx, rawResponse);
             }
-            return text.isEmpty() ? new Result(false, ctx.getString(R.string.ai_err_empty), 204) : new Result(true, text, 200);
         } catch (SocketTimeoutException e) {
             return new Result(false, ctx.getString(R.string.ai_err_timeout), 408);
         } catch (Throwable t) {
@@ -475,8 +523,8 @@ public final class LlmClient {
         if (compat != null) models = new String[]{compat[2], compat[4]};
         else if (PROVIDER_CLAUDE.equals(provider)) models = new String[]{FAST_CLAUDE_MODEL, DEFAULT_CLAUDE_MODEL};
         // Each model has its own per-minute quota: a busy one (429) hands over to the next instead of giving up.
-        else if (liteOnly) models = new String[]{"gemini-2.5-flash-lite", "gemini-flash-lite-latest", "gemini-flash-latest"};
-        else models = new String[]{"gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"};
+        else if (liteOnly) models = new String[]{FAST_GEMINI_MODEL, "gemini-flash-lite-latest", DEFAULT_GEMINI_MODEL};
+        else models = new String[]{DEFAULT_GEMINI_MODEL, FAST_GEMINI_MODEL, FALLBACK_GEMINI_MODEL, "gemini-flash-lite-latest"};
         Result r = null;
         for (String model : models) {
             r = visionCall(ctx, provider, compat, model, key, system, user, b64, maxTokens, true);
@@ -500,6 +548,7 @@ public final class LlmClient {
             if (compat != null) {
                 conn = (HttpURLConnection) new URL(compat[1]).openConnection();
                 conn.setRequestProperty("Authorization", "Bearer " + key);
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
                 JSONArray content = new JSONArray()
                         .put(new JSONObject().put("type", "text").put("text", user))
                         .put(new JSONObject().put("type", "image_url").put("image_url", new JSONObject().put("url", "data:image/jpeg;base64," + b64)));
@@ -512,6 +561,7 @@ public final class LlmClient {
                 conn = (HttpURLConnection) new URL("https://api.anthropic.com/v1/messages").openConnection();
                 conn.setRequestProperty("x-api-key", key);
                 conn.setRequestProperty("anthropic-version", "2023-06-01");
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
                 JSONArray content = new JSONArray()
                         .put(new JSONObject().put("type", "image").put("source", new JSONObject().put("type", "base64").put("media_type", "image/jpeg").put("data", b64)))
                         .put(new JSONObject().put("type", "text").put("text", user));
@@ -520,26 +570,16 @@ public final class LlmClient {
                 body.put("messages", new JSONArray().put(new JSONObject().put("role", "user").put("content", content)));
             } else {
                 conn = (HttpURLConnection) new URL("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent").openConnection();
-                conn.setRequestProperty("x-goog-api-key", key);
+                applyGoogleHeaders(conn, key);
                 if (system != null) body.put("system_instruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text", system))));
                 JSONArray parts = new JSONArray()
                         .put(new JSONObject().put("inline_data", new JSONObject().put("mime_type", "image/jpeg").put("data", b64)))
                         .put(new JSONObject().put("text", user));
                 body.put("contents", new JSONArray().put(new JSONObject().put("role", "user").put("parts", parts)));
-                JSONObject genCfg = new JSONObject()
-                        .put("maxOutputTokens", maxTokens)
-                        .put("responseMimeType", "application/json");
-                if (!thinking) {
-                    // plain request: the model's own thinking defaults
-                } else if (model.startsWith("gemini-3") && !model.contains("lite")) {
-                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", "low"));
-                } else if (model.startsWith("gemini-2.5")) {
-                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", 0));
-                }
-                body.put("generationConfig", genCfg);
+                body.put("generationConfig", buildGoogleGenerationConfig(model, maxTokens, true, !thinking, false));
+                body.put("safetySettings", buildGoogleSafetySettings());
             }
             conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             conn.setConnectTimeout(8000);
             conn.setReadTimeout(30000);
             conn.setDoOutput(true);
@@ -554,23 +594,25 @@ public final class LlmClient {
                 noteQuota(model, status, errBody);
                 return new Result(false, errorText(ctx, status, errBody), status);
             }
-            JSONObject resp = new JSONObject(read(conn.getInputStream()));
+            String rawResp = read(conn.getInputStream());
             String text = "";
             if (compat != null) {
+                JSONObject resp = new JSONObject(rawResp);
                 JSONArray choices = resp.optJSONArray("choices");
                 if (choices != null && choices.length() > 0) text = choices.getJSONObject(0).optJSONObject("message").optString("content", "");
+                text = text.trim();
+                return text.isEmpty() ? new Result(false, ctx.getString(R.string.ai_err_empty), 204) : new Result(true, text, 200);
             } else if (PROVIDER_CLAUDE.equals(provider)) {
+                JSONObject resp = new JSONObject(rawResp);
                 JSONArray content = resp.optJSONArray("content");
                 for (int i = 0; content != null && i < content.length() && text.isEmpty(); i++) {
                     if ("text".equals(content.getJSONObject(i).optString("type"))) text = content.getJSONObject(i).optString("text");
                 }
+                text = text.trim();
+                return text.isEmpty() ? new Result(false, ctx.getString(R.string.ai_err_empty), 204) : new Result(true, text, 200);
             } else {
-                JSONArray cands = resp.optJSONArray("candidates");
-                JSONArray parts = cands != null && cands.length() > 0 ? cands.getJSONObject(0).optJSONObject("content").optJSONArray("parts") : null;
-                for (int i = 0; parts != null && i < parts.length(); i++) text += parts.getJSONObject(i).optString("text");
+                return parseGoogleGeminiResponse(ctx, rawResp);
             }
-            text = text.trim();
-            return text.isEmpty() ? new Result(false, ctx.getString(R.string.ai_err_empty), 204) : new Result(true, text, 200);
         } catch (SocketTimeoutException e) {
             return new Result(false, ctx.getString(R.string.ai_err_timeout), 408);
         } catch (Throwable t) {
@@ -583,17 +625,17 @@ public final class LlmClient {
 
     /** A spent daily quota says so, with when it comes back, instead of "too many requests". */
     private static String errorText(Context ctx, int status, String body) {
-        if (status == 429 && body != null && body.contains("per day")) {
+        if (status == 429 && body != null && (body.contains("per day") || body.contains("PerDay") || body.contains("RESOURCE_EXHAUSTED"))) {
             java.util.regex.Matcher m = java.util.regex.Pattern.compile("retry in (?:(\\d+)h)?(?:(\\d+)m)?").matcher(body);
             String when = "";
             if (m.find() && (m.group(1) != null || m.group(2) != null)) {
                 when = (m.group(1) != null ? m.group(1) + " sa " : "") + (m.group(2) != null ? m.group(2) + " dk" : "");
             }
             boolean tr = "tr".equals(java.util.Locale.getDefault().getLanguage());
-            return tr ? "Yapay zekâ anahtarının günlük ücretsiz kotası doldu" + (when.isEmpty() ? "." : "; " + when.trim() + " sonra yenilenir.")
-                    + " Sınırsız kullanım için Google AI Studio'da faturalandırmayı açın."
-                    : "The AI key's free daily quota is used up" + (when.isEmpty() ? "." : "; it resets in " + when.trim() + ".")
-                    + " Turn on billing in Google AI Studio for unlimited use.";
+            return tr ? "Google Gemini API ücretsiz günlük kotası doldu" + (when.isEmpty() ? "." : "; " + when.trim() + " sonra yenilenir.")
+                    + " Sınırsız kullanım için aistudio.google.com adresinde faturalandırmayı açabilirsiniz."
+                    : "The Google Gemini free daily quota is reached" + (when.isEmpty() ? "." : "; it resets in " + when.trim() + ".")
+                    + " Enable billing at aistudio.google.com for pay-as-you-go quota.";
         }
         return errorText(ctx, status);
     }

@@ -53,16 +53,32 @@ public final class PerformanceProfile {
     private PerformanceProfile() {}
 
     /**
-     * Returns the active visual tier. In MODE_AUTO, Home keeps its rich High look while memory/player
-     * caches adapt to {@link #detectedTier(Context)} and {@link #boardProfile(Context)} underneath.
+     * Returns the active visual tier. In MODE_AUTO, the system dynamically determines the best tier
+     * based on hardware classification and live runtime metrics (frame timing and memory pressure).
      * Explicit user choices (Low / Medium / High) in Settings are honoured directly.
      */
     public static synchronized Tier tier(Context ctx) {
         if (cached == null) {
             String m = ctx != null ? mode(ctx) : MODE_AUTO;
-            if (MODE_LOW.equals(m)) cached = Tier.LOW;
-            else if (MODE_MID.equals(m)) cached = Tier.MID;
-            else cached = Tier.HIGH;
+            if (MODE_LOW.equals(m)) {
+                cached = Tier.LOW;
+            } else if (MODE_MID.equals(m)) {
+                cached = Tier.MID;
+            } else if (MODE_HIGH.equals(m)) {
+                cached = Tier.HIGH;
+            } else {
+                // MODE_AUTO: dynamic and intelligent adaptation
+                Tier hw = detect(ctx);
+                boolean tightMem = ctx != null && (lowMemory(ctx) || limited(ctx, LIMIT_RAM));
+                boolean slowGpu = ctx != null && (gpuLimited(ctx) || limited(ctx, LIMIT_GPU));
+                if (tightMem || hw == Tier.LOW) {
+                    cached = Tier.LOW;
+                } else if (slowGpu || hw == Tier.MID) {
+                    cached = Tier.MID;
+                } else {
+                    cached = Tier.HIGH;
+                }
+            }
             Log.i(TAG, "Performance tier " + cached + " (mode=" + m + ")");
         }
         return cached;
@@ -70,6 +86,7 @@ public final class PerformanceProfile {
 
     /** low, mid, high, or auto before a choice; the older eco / max read as low / high. */
     public static String mode(Context ctx) {
+        if (ctx == null) return MODE_AUTO;
         String m = Prefs.get(ctx).getString(KEY_MODE, MODE_AUTO);
         if ("eco".equals(m)) return MODE_LOW;
         if ("max".equals(m)) return MODE_HIGH;
@@ -77,8 +94,11 @@ public final class PerformanceProfile {
     }
 
     public static synchronized void setMode(Context ctx, String mode) {
-        Prefs.get(ctx).edit().putString(KEY_MODE, mode).remove(KEY_LIMITS).remove(KEY_SMOOTH_RUNS).apply();
+        if (ctx != null) {
+            Prefs.get(ctx).edit().putString(KEY_MODE, mode).remove(KEY_LIMITS).remove(KEY_SMOOTH_RUNS).apply();
+        }
         cached = null;
+        gpuLimitedCache = null;
     }
 
     public static String modeFor(Tier t) {
@@ -143,18 +163,26 @@ public final class PerformanceProfile {
 
     /** What currently holds this TV back (LIMIT_* bits), as measured while it runs. */
     public static int limits(Context ctx) {
+        if (ctx == null) return 0;
         return Prefs.get(ctx).getInt(KEY_LIMITS, 0);
     }
 
-    /** Single mode: no TV is held back by a recorded limit any more. */
-    private static boolean limited(Context ctx, int bit) {
-        return false;
+    /** True when this TV is currently held back by the specified bottleneck bit. */
+    public static boolean limited(Context ctx, int bit) {
+        return (limits(ctx) & bit) != 0;
     }
 
     private static void setLimit(Context ctx, int bit, boolean on) {
+        if (ctx == null) return;
         int now = limits(ctx);
-        int next = on ? now | bit : now & ~bit;
-        if (next != now) Prefs.get(ctx).edit().putInt(KEY_LIMITS, next).apply();
+        int next = on ? (now | bit) : (now & ~bit);
+        if (next != now) {
+            Prefs.get(ctx).edit().putInt(KEY_LIMITS, next).apply();
+            synchronized (PerformanceProfile.class) {
+                cached = null;
+                gpuLimitedCache = null;
+            }
+        }
     }
 
     /** Hardware facts are read once: RAM, cores and clock never change while the TV runs. */
@@ -390,7 +418,10 @@ public final class PerformanceProfile {
     }
 
     public static synchronized boolean noteFrame(Context ctx, long totalNs) {
-        if (cached == Tier.HIGH) return false; // single mode: nothing steps down
+        if (ctx == null) return false;
+        // In explicit LOW mode, already on lightest shelf; in explicit HIGH mode, keep rich look unless frame time severely drops
+        String m = mode(ctx);
+        if (MODE_LOW.equals(m)) return false;
 
         frames[frameCount++ % frames.length] = totalNs;
         if (frameCount < frames.length || frameCount % 12 != 0) return false;
@@ -398,7 +429,8 @@ public final class PerformanceProfile {
         java.util.Arrays.sort(sorted);
         long median = sorted[sorted.length / 2];
         boolean was = gpuLimited(ctx);
-        boolean now = was ? median > 14_000_000L : median > 24_000_000L;
+        // Hysteresis: switch on if slower than 24ms (~41fps), switch off when recovering below 15ms (~66fps)
+        boolean now = was ? (median > 15_000_000L) : (median > 24_000_000L);
         if (now == was) return false;
         setLimit(ctx, LIMIT_GPU, now);
         gpuLimitedCache = now;

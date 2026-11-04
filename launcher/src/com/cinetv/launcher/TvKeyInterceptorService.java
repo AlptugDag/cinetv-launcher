@@ -53,9 +53,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
     public boolean isInMediaOrThirdPartyApp() {
         if (MainActivity.foreground) return false;
         String pkg = lastPackage;
-        if (pkg == null || pkg.equals(getPackageName())) return false;
+        if (pkg == null || pkg.equals(getPackageName()) || isLiveTvApp(pkg)) return false;
         return isNuvioApp(pkg) || isYouTubeApp(pkg) || pkg.contains("nova") || pkg.contains("vlc") || pkg.contains("kodi")
-                || pkg.contains("stremio") || pkg.contains("player");
+                || pkg.contains("stremio") || (pkg.contains("player") && !isLiveTvApp(pkg));
     }
 
     private com.cinetv.launcher.ui.SignatureOverlay signature;
@@ -84,19 +84,27 @@ public class TvKeyInterceptorService extends AccessibilityService {
      * Grundig, Philips, TCL, Hisense, Sony, Xiaomi, Toshiba, Vestel and stock Android TV). Stopping a package a
      * TV does not have does nothing.
      */
-    static final String[] LIVE_TV_APPS = {
+    public static final String[] LIVE_TV_APPS = {
             "com.mediatek.wwtv.tvcenter", "com.mediatek.tv.oneworld.tvcenter", "com.arcelik.tv.livetv",
-            "org.droidtv.playtv", "org.droidtv.nettvbrowser", "com.tcl.tv", "com.tcl.tvweishi", "com.tcl.esticker",
-            "com.hisense.tv", "com.jamdeo.tv.vod", "com.sony.dtv.tvx", "com.sony.dtv.tvinput.tuner",
-            "com.xiaomi.mitv.tvplayer", "com.mitv.tvhome.atv", "com.toshiba.tv.livetv", "com.vestel.livetv", "com.vestel.tvcenter",
-            "com.android.tv", "com.google.android.tv"};
+            "com.arcelik.tv.dtv", "org.droidtv.playtv", "org.droidtv.nettvbrowser", "org.droidtv.channels",
+            "com.tcl.tv", "com.tcl.tvplayer", "com.tcl.live", "com.tcl.tvweishi", "com.tcl.esticker",
+            "com.hisense.tv", "com.hisense.tv.livetv", "com.jamdeo.tv.vod",
+            "com.sony.dtv.tvx", "com.sony.dtv.tvinput.tuner", "com.sony.dtv.tvplayer",
+            "com.xiaomi.mitv.tvplayer", "com.mitv.tvhome.atv", "com.xiaomi.mitv.media.tvplayer",
+            "com.toshiba.tv.livetv", "com.toshiba.livetv", "com.vestel.livetv", "com.vestel.tvcenter", "com.vestel.dtv",
+            "com.android.tv", "com.google.android.tv", "com.droidlogic.tvinput", "org.droidlogic.tvinput",
+            "com.mstar.tv.tvplayer", "com.realtek.tvplayer", "com.realtek.dtv"};
 
     /** When the screen last came on: other makers' live TV is only sent away in the seconds after power-on. */
     private static volatile long wokeAt = -60_000L;
 
-    static boolean isLiveTvApp(String pkg) {
+    public static boolean isLiveTvApp(String pkg) {
+        if (pkg == null || pkg.isEmpty()) return false;
         for (String p : LIVE_TV_APPS) if (p.equals(pkg)) return true;
-        return pkg.contains("livetv") || pkg.contains("tvcenter") || pkg.contains("tvplayer") || pkg.startsWith("org.droidtv.playtv");
+        String lower = pkg.toLowerCase(java.util.Locale.US);
+        return lower.contains("livetv") || lower.contains("tvcenter") || lower.contains("tvplayer")
+                || lower.contains("tvinput") || lower.contains("tuner") || lower.contains(".dtv")
+                || lower.startsWith("org.droidtv.playtv") || lower.contains("droidtv.channels");
     }
 
     /** Wake from standby: CineTV first, and the tuner the TV starts by itself is stopped before it shows. */
@@ -1060,10 +1068,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
                     return;
                 }
                 String pkg = lastPackage;
-                if (pkg == null || pkg.equals(getPackageName())) return;
+                if (pkg == null || pkg.equals(getPackageName()) || isLiveTvApp(pkg)) return;
                 boolean nuvio = isNuvioApp(pkg);
                 boolean player = nuvio || isYouTubeApp(pkg) || pkg.contains("nova") || pkg.contains("vlc")
-                        || pkg.contains("mxtech") || pkg.contains("kodi") || pkg.contains("player") || pkg.contains("video");
+                        || pkg.contains("mxtech") || pkg.contains("kodi") || (!isLiveTvApp(pkg) && (pkg.contains("player") || pkg.contains("video")));
                 if (!player) return;
                 android.media.AudioManager am = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
                 boolean audioActive = am != null && am.isMusicActive();

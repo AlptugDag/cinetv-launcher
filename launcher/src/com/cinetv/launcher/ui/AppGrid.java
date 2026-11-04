@@ -380,26 +380,26 @@ public class AppGrid {
     }
 
     private void applyFocus(View frame, ImageView bloom, View art, AppTileItem item, boolean has, float[] rest) {
-        int ms = PerformanceProfile.animationMs(ctx, 170);
+        int ms = PerformanceProfile.animationMs(ctx, 220);
         if (has) {
             bloom.setImageBitmap(Glow.bloom(UiKit.px(TILE_W), UiKit.px(TILE_H), UiKit.px(BLOOM_PAD), UiKit.pxf(36), item.neonColor));
             // On light rooms a full neon bloom looks smeared: keep it as a faint tint.
-            bloom.animate().alpha(UiKit.isLight() ? 0.35f : 1f).setDuration(ms).start();
+            bloom.animate().alpha(UiKit.isLight() ? 0.35f : 1f).setDuration(ms).setInterpolator(UiKit.EASE_IN_OUT).start();
         } else {
-            bloom.animate().alpha(0f).setDuration(ms).withEndAction(() -> bloom.setImageDrawable(null)).start();
+            bloom.animate().alpha(0f).setDuration(ms).setInterpolator(UiKit.EASE_IN_OUT).withEndAction(() -> bloom.setImageDrawable(null)).start();
         }
-        art.animate().alpha(has ? 1f : 0.92f).setDuration(ms).start();
+        art.animate().alpha(has ? 1f : 0.92f).setDuration(ms).setInterpolator(UiKit.EASE_IN_OUT).start();
         if (art instanceof ViewGroup) {
             View focusedArt = ((ViewGroup) art).findViewWithTag("art_focused");
             if (focusedArt != null) {
-                focusedArt.animate().alpha(has ? 1f : 0f).setDuration(ms).start();
+                focusedArt.animate().alpha(has ? 1f : 0f).setDuration(ms).setInterpolator(UiKit.EASE_IN_OUT).start();
             }
         }
         pushNeighbours(frame, has, ms);
         frame.animate().scaleX(has ? 1.10f : 1f).scaleY(has ? 1.10f : 1f)
                 .rotationY(has ? 0f : rest[0]).rotationX(has ? 0f : rest[1])
                 .translationY(has ? -UiKit.pxf(12) : rest[3]).translationZ(has ? UiKit.pxf(55) : rest[2])
-                .setDuration(ms).start();
+                .setDuration(ms).setInterpolator(UiKit.EASE_IN_OUT).start();
     }
 
     /** The focused tile grows; its row-mates move aside by half the growth so nothing overlaps. */
@@ -411,7 +411,7 @@ public class AppGrid {
         for (int i = 0; i < row.getChildCount(); i++) {
             View n = row.getChildAt(i);
             if (n == tile) continue;
-            n.animate().translationX(has ? (i < at ? -shift : shift) : 0f).setDuration(ms).start();
+            n.animate().translationX(has ? (i < at ? -shift : shift) : 0f).setDuration(ms).setInterpolator(UiKit.EASE_IN_OUT).start();
         }
     }
 

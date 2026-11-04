@@ -212,8 +212,8 @@
     <string name="tier_high">powerful TV profile</string>
     <string name="screensaver">Screensaver</string>
     <string name="screensaver_preview">Preview film moments</string>
-    <string name="ai_key">AI API key</string>
-    <string name="ai_key_hint">Gemini, Claude, Grok or OpenAI key</string>
+    <string name="ai_key">AI API Key</string>
+    <string name="ai_key_hint">AI key (aistudio.google.com) or Claude, Grok, OpenAI</string>
     <string name="tmdb_key">TMDB key</string>
     <string name="tmdb_key_hint">TMDB API key (v3)</string>
     <string name="secret_body">Stored encrypted with a key that never leaves this TV\'s secure keystore. It is never shown again or sent anywhere except to its own service.</string>

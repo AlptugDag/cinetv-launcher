@@ -243,16 +243,6 @@ public final class Panels {
         // 2. SECTION: SİNEMA DENEYİMİ & 3D (CINEMA & 3D EXPERIENCE)
         // =========================================================================
         LinearLayout cVisual = column(ctx, cols, R.string.col_visual, colWidth);
-        boolean spatial = Prefs.spatial3d(ctx);
-        LinearLayout spatialTile = Controls.toggleTile(ctx, ctx.getString(R.string.spatial_hud),
-                spatial ? (tr ? "Açık · 3D Derinlik, Vizör Kırılması & Akustik" : "On · 3D Depth, Visor Refraction & Acoustics") : ctx.getString(R.string.state_off),
-                spatial, (newActive, subLabel, sw) -> {
-            Prefs.setFlag(ctx, Prefs.SPATIAL_3D, newActive);
-            subLabel.setText(newActive ? (tr ? "Açık · 3D Derinlik, Vizör Kırılması & Akustik" : "On · 3D Depth, Visor Refraction & Acoustics") : ctx.getString(R.string.state_off));
-            a.setSpatial(newActive);
-        });
-        spatialTile.setTag("opt_spatial");
-        cVisual.addView(spatialTile);
 
         boolean bevel = Prefs.glassBevel(ctx);
         LinearLayout bevelTile = Controls.toggleTile(ctx, ctx.getString(R.string.glass_bevel),
@@ -443,9 +433,9 @@ public final class Panels {
         cAi.addView(emaTile);
 
         LinearLayout gamzeChatTile = Controls.tile(ctx,
-                tr ? "Gamze Gemini Chatbot (Kapsamlı Sohbet)" : "Gamze Gemini Chatbot (Multi-Turn Chat)",
-                tr ? "Sinema, genel kültür, felsefe, sahne analizi ve vitrin küratörlüğü için çok turlu sohbeti aç"
-                   : "Open multi-turn Gemini chat for cinema, trivia, general knowledge & shelf curation",
+                tr ? "Gamze · Sinema Asistanı" : "Gamze · Cinema Assistant",
+                tr ? "Sinema teorisi, felsefe, sahne analizi ve canlı vitrin küratörlüğü için çok turlu akıllı sohbet"
+                   : "Multi-turn smart chat for cinema theory, scene analysis & live curation",
                 LlmClient.isConfigured(ctx),
                 v -> host.push(() -> buildGamzeChatModal(ctx, host, a)));
         gamzeChatTile.setTag("opt_gamze_chat");
@@ -2051,21 +2041,21 @@ public final class Panels {
         header.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView title = UiKit.bold(ctx, 26, UiKit.INK);
-        title.setText(tr ? "Gamze · Kapsamlı Gemini Sohbet Asistanı" : "Gamze · Comprehensive Gemini Chatbot");
+        title.setText(tr ? "Gamze · Sinema & Sohbet Asistanı" : "Gamze · Cinema & Chat Assistant");
         header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         final String[] activeMode = {"balanced"};
-        final TextView modeBtn = Controls.button(ctx, tr ? "Mod: Dengeli (Gemini Flash)" : "Mode: Balanced", null);
+        final TextView modeBtn = Controls.button(ctx, tr ? "Mod: Dengeli (3.8 Flash)" : "Mode: Balanced (3.8 Flash)", null);
         modeBtn.setOnClickListener(v -> {
             if ("balanced".equals(activeMode[0])) {
                 activeMode[0] = "deep";
-                modeBtn.setText(tr ? "Mod: Derin Analiz" : "Mode: Deep Analysis");
+                modeBtn.setText(tr ? "Mod: Derin Düşünce (Argon)" : "Mode: Deep Reasoning (Argon)");
             } else if ("deep".equals(activeMode[0])) {
                 activeMode[0] = "fast";
-                modeBtn.setText(tr ? "Mod: Hızlı Yanıt" : "Mode: Fast");
+                modeBtn.setText(tr ? "Mod: Ultra Hızlı (Lite)" : "Mode: Ultra Fast (Lite)");
             } else {
                 activeMode[0] = "balanced";
-                modeBtn.setText(tr ? "Mod: Dengeli (Gemini Flash)" : "Mode: Balanced");
+                modeBtn.setText(tr ? "Mod: Dengeli (3.8 Flash)" : "Mode: Balanced (3.8 Flash)");
             }
         });
         header.addView(modeBtn);
@@ -2614,8 +2604,8 @@ public final class Panels {
 
         TextView title = UiKit.bold(ctx, 25, UiKit.INK);
         title.setText(turkish
-                ? "TMDB Anahtarı, Google API Key ve Hitap İsmi"
-                : "TMDB Key, Google API Key & Viewer Name");
+                ? "TMDB Anahtarı, Yapay Zekâ API Anahtarı ve Hitap İsmi"
+                : "TMDB Key, AI API Key & Viewer Name");
         titleCol.addView(title);
         head.addView(titleCol);
         root.addView(head);
@@ -2633,8 +2623,8 @@ public final class Panels {
         warnTv.setLineSpacing(UiKit.pxf(3.5f), 1.12f);
         warnTv.setText(allReady
                 ? (turkish
-                    ? "✓ Harika! Kullanıcı adınız (" + viewerName + "), TMDB anahtarınız ve Google Gemini API anahtarınız eksiksiz tanımlandı. Aşağıdaki butonla CineTV'yi başlatabilirsiniz."
-                    : "✓ Great! Your name (" + viewerName + "), TMDB key, and Google Gemini API key are all set. Press the button below to launch CineTV.")
+                    ? "✓ Harika! Kullanıcı adınız (" + viewerName + "), TMDB anahtarınız ve Yapay Zekâ API anahtarınız eksiksiz tanımlandı. Aşağıdaki butonla CineTV'yi başlatabilirsiniz."
+                    : "✓ Great! Your name (" + viewerName + "), TMDB key, and AI API key are all set. Press the button below to launch CineTV.")
                 : (turkish
                     ? "ℹ️ BİLGİLENDİRME: API anahtarları zorunlu değildir. Ancak anahtarlar girilmezse; afişler, fragmanlar, yapay zekâ vitrin önerileri, Gamze sesli asistan ve CineSUB kısıtlı veya hatalı çalışabilir. İsterseniz sağdaki QR kodları okutarak ücretsiz anahtarlarınızı alabilir ya da anahtarsız doğrudan devam edebilirsiniz."
                     : "ℹ️ NOTE: API keys are optional. However, if not provided; posters, trailers, AI shelves, Gamze voice assistant, and CineSUB may function with limitations or errors. You can scan the QR codes on the right to get your free keys, or continue directly without keys."));
@@ -2689,13 +2679,13 @@ public final class Panels {
                 v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.TMDB_KEY, R.string.tmdb_key, R.string.tmdb_key_hint, refreshSelf)));
         leftCol.addView(tmdbTile);
 
-        // 3. Google Gemini API Key
+        // 3. AI Key
         View aiTile = Controls.tile(ctx,
-                turkish ? "3. Google Gemini API Key (Yapay Zekâ, CineSUB & Gamze)" : "3. Google Gemini API Key (AI, CineSUB & Gamze)",
-                hasAi ? (turkish ? ("✓ Hazır ve Aktif (" + (provider != null ? provider : "Gemini") + ") · Yapay zekâ ve CineSUB devrede")
-                                 : ("✓ Ready & Active (" + (provider != null ? provider : "Gemini") + ")"))
-                      : (turkish ? "Sağdaki 2. QR kodu okutup ücretsiz Google API anahtarınızı girin"
-                                 : "Scan QR #2 on the right and enter your free Google API key"),
+                turkish ? "3. Yapay Zekâ API Anahtarı (CineSUB & Gamze)" : "3. AI API Key (CineSUB & Gamze)",
+                hasAi ? (turkish ? ("✓ Hazır ve Aktif (" + (provider != null ? provider : "Aktif") + ") · Yapay zekâ ve CineSUB devrede")
+                                 : ("✓ Ready & Active (" + (provider != null ? provider : "Active") + ")"))
+                      : (turkish ? "Sağdaki 2. QR kodu okutup ücretsiz API anahtarınızı girin"
+                                 : "Scan QR #2 on the right and enter your free API key"),
                 hasAi,
                 v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.AI_KEY, R.string.ai_key, R.string.ai_key_hint, refreshSelf)));
         leftCol.addView(aiTile);
@@ -2753,9 +2743,9 @@ public final class Panels {
         qrSub.setLineSpacing(UiKit.pxf(3f), 1.12f);
         qrSub.setPadding(0, UiKit.px(4), 0, UiKit.px(10));
         qrSub.setText(turkish
-                ? "1. TMDB ve Google AI Studio QR kodlarını telefonunuzla okutup ücretsiz anahtarlarınızı kopyalayın.\n"
+                ? "1. TMDB ve Yapay Zekâ QR kodlarını telefonunuzla okutup ücretsiz anahtarlarınızı kopyalayın.\n"
                 + "2. Sol listeden ilgili satıra tıklayıp 3. QR kod (Telefon Kumandası) ile telefonunuzdan TV'ye doğrudan yapıştırın."
-                : "1. Scan the TMDB and Google AI QR codes with your phone to copy your free keys.\n"
+                : "1. Scan the TMDB and AI QR codes with your phone to copy your free keys.\n"
                 + "2. Click a row on the left and use QR #3 (Phone Remote) to paste directly from your phone into the TV.");
         qrCol.addView(qrSub);
 
@@ -2771,7 +2761,7 @@ public final class Panels {
 
         qrRow.addView(followCode(ctx,
                 "https://aistudio.google.com/apikey",
-                turkish ? "2. Google API Key Al" : "2. Get Google API Key",
+                turkish ? "2. Yapay Zekâ Anahtarı Al" : "2. Get AI Key",
                 "aistudio.google.com/apikey",
                 122, 12));
 
@@ -2879,8 +2869,8 @@ public final class Panels {
 
         TextView subtitle = UiKit.label(ctx, 17, UiKit.INK_DIM);
         subtitle.setText(turkish
-                ? "Sol sütundan sistem/medya bileşenlerini, sağ sütundan ise zorunlu Kullanıcı Adı (TTS), TMDB ve Google Gemini anahtarlarınızı QR kodlarla kolayca yapılandırabilirsiniz:"
-                : "Configure system & media components on the left, and set your required Name (TTS), TMDB & Google Gemini keys with QR codes on the right:");
+                ? "Sol sütundan sistem/medya bileşenlerini, sağ sütundan ise zorunlu Kullanıcı Adı (TTS), TMDB ve Yapay Zekâ anahtarlarınızı QR kodlarla kolayca yapılandırabilirsiniz:"
+                : "Configure system & media components on the left, and set your required Name (TTS), TMDB & AI keys with QR codes on the right:");
         subtitle.setPadding(0, UiKit.px(8), 0, UiKit.px(14));
         root.addView(subtitle);
 
@@ -2972,7 +2962,7 @@ public final class Panels {
                     v.postDelayed(() -> host.replace(() -> buildWizard(ctx, host)), 800);
                 }));
 
-        // Right Column: Mandatory Name, Gemini AI Key, TMDB Key & QR Codes
+        // Right Column: Mandatory Name, AI Key, TMDB Key & QR Codes
         String viewerName = com.cinetv.launcher.ai.GamzeMemory.name(ctx);
         boolean hasName = com.cinetv.launcher.ai.GamzeMemory.isValidViewerName(viewerName);
         rightCol.addView(Controls.tile(ctx,
@@ -2981,12 +2971,12 @@ public final class Panels {
                         : (turkish ? "Zorunlu · Gamze'nin size hitap edeceği ismi girmek için dokunun" : "Required · Tap to enter your name for TTS"),
                 hasName, v -> host.push(() -> buildRequiredNameInput(ctx, host, () -> host.replace(() -> buildWizard(ctx, host))))));
 
-        // 7. Gemini AI Key
+        // 7. AI Key
         String provider = LlmClient.providerName(ctx);
         boolean hasAi = SecretStore.has(ctx, SecretStore.AI_KEY) || provider != null;
         rightCol.addView(Controls.tile(ctx,
-                turkish ? "7. Google Gemini API Anahtarı (%100 Ücretsiz — Zorunlu)" : "7. Google Gemini API Key (100% Free — Required)",
-                hasAi ? (turkish ? "Aktif (" + (provider != null ? provider : "Gemini") + ") · Değiştirmek için dokunun" : "Active (" + provider + ")")
+                turkish ? "7. Yapay Zekâ API Anahtarı (%100 Ücretsiz — Zorunlu)" : "7. AI API Key (100% Free — Required)",
+                hasAi ? (turkish ? "Aktif (" + (provider != null ? provider : "Yapay Zekâ") + ") · Değiştirmek için dokunun" : "Active (" + provider + ")")
                       : (turkish ? "aistudio.google.com/apikey · QR kodlu rehber ve anahtar girişi için dokunun" : "Tap for QR guide & key input (aistudio.google.com)"),
                 hasAi, v -> host.push(() -> buildSecretInput(ctx, host, SecretStore.AI_KEY, R.string.ai_key, R.string.ai_key_hint,
                         () -> host.replace(() -> buildWizard(ctx, host))))));
@@ -3013,7 +3003,7 @@ public final class Panels {
         qrRow.setOrientation(LinearLayout.HORIZONTAL);
         qrRow.setPadding(0, UiKit.px(8), 0, 0);
         qrRow.addView(followCode(ctx, "https://www.themoviedb.org/settings/api", "TMDB API QR", "themoviedb.org", 96, 0));
-        qrRow.addView(followCode(ctx, "https://aistudio.google.com/apikey", "Google AI QR", "aistudio.google.com", 96, 12));
+        qrRow.addView(followCode(ctx, "https://aistudio.google.com/apikey", "Yapay Zekâ QR", "aistudio.google.com", 96, 12));
         qrRow.addView(followCode(ctx, com.cinetv.launcher.remote.RelayHost.pairingUrl(ctx, "keys"),
                 turkish ? "Telefondan Gir" : "Phone Input", "CineTV Remote", 96, 12));
         rightCol.addView(qrRow);

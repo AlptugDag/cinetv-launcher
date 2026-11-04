@@ -208,8 +208,8 @@
     <string name="tier_high">güçlü TV profili</string>
     <string name="screensaver">Ekran koruyucu</string>
     <string name="screensaver_preview">Film anlarını önizle</string>
-    <string name="ai_key">AI API anahtarı</string>
-    <string name="ai_key_hint">Gemini, Claude, Grok ya da OpenAI anahtarı</string>
+    <string name="ai_key">Yapay Zekâ API Anahtarı</string>
+    <string name="ai_key_hint">Yapay zekâ anahtarı (aistudio.google.com) ya da Claude, Grok, OpenAI</string>
     <string name="tmdb_key">TMDB anahtarı</string>
     <string name="tmdb_key_hint">TMDB API anahtarı (v3)</string>
     <string name="secret_body">Bu TV\'nin güvenli anahtar deposundan hiç çıkmayan bir anahtarla şifrelenerek saklanır. Bir daha gösterilmez, kendi servisi dışında hiçbir yere gönderilmez.</string>

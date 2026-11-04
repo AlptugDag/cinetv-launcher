@@ -428,6 +428,20 @@ public final class DeviceTweaks {
         return android.os.SystemClock.elapsedRealtime() < BOOT_GUARD_MS && isUnwantedTuner();
     }
 
+    /**
+     * Prevents OEM Live TV / DVB tuners from forcing unwanted closed captions / Teletext subtitles
+     * across broadcast channels on TVs with accessibility services enabled.
+     */
+    public static void preventUnwantedLiveTvSubtitles(Context ctx) {
+        if (ctx == null) return;
+        try {
+            ContentResolver cr = ctx.getContentResolver();
+            writeSetting(cr, "secure", "accessibility_captioning_enabled", "0");
+            writeSetting(cr, "secure", "odi_captions_enabled", "0");
+        } catch (Throwable ignored) {
+        }
+    }
+
     public static boolean isMediaPlaying(Context ctx) {
         try {
             if (com.cinetv.launcher.CinePlayerActivity.active && com.cinetv.launcher.CinePlayerActivity.isPlayingNow()) {

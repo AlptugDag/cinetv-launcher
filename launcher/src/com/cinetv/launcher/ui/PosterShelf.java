@@ -616,13 +616,13 @@ public class PosterShelf extends FrameLayout {
         main.postDelayed(prefetchRunnable, 150);
         if (anim != null) anim.cancel();
         anim = ValueAnimator.ofFloat(focusPos, targetPos);
-        // Natural, organic weighted glide: decelerates smoothly into the focal slot
+        // Dynamic, fluid ease-in-out glide: non-abrupt start and soft cushioned arrival
         if (holding) {
-            anim.setDuration(150);
-            anim.setInterpolator(new android.view.animation.LinearInterpolator());
+            anim.setDuration(160);
+            anim.setInterpolator(UiKit.EASE_IN_OUT);
         } else {
-            anim.setDuration(PerformanceProfile.animationMs(getContext(), 560));
-            anim.setInterpolator(new android.view.animation.DecelerateInterpolator(1.85f));
+            anim.setDuration(PerformanceProfile.animationMs(getContext(), 520));
+            anim.setInterpolator(UiKit.EASE_IN_OUT);
         }
         lastPos = focusPos;
         lastFrameNs = 0;
@@ -661,7 +661,7 @@ public class PosterShelf extends FrameLayout {
         // two turns in one run (0..2), so the reflection can ease in at the start and out at the end
         swayAnim = ValueAnimator.ofFloat(0f, 2f);
         swayAnim.setDuration(SWAY_MS * 2);
-        swayAnim.setInterpolator(new android.view.animation.LinearInterpolator());
+        swayAnim.setInterpolator(UiKit.EASE_IN_OUT);
         swayAnim.addUpdateListener(a -> {
             sway = (float) a.getAnimatedValue();
             layoutCases();

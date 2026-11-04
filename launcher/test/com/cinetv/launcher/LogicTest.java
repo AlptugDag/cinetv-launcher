@@ -36,6 +36,30 @@ public class LogicTest {
     }
 
     @Test
+    public void dynamicPerformanceProfilePickAndAdaptiveLimits() {
+        // Low RAM or low free RAM automatically forces Tier.LOW
+        assertEquals(PerformanceProfile.Tier.LOW, PerformanceProfile.pick(120, 110, 1500, 200, false));
+        assertEquals(PerformanceProfile.Tier.LOW, PerformanceProfile.pick(200, 200, 4000, 250, false));
+        assertEquals(PerformanceProfile.Tier.LOW, PerformanceProfile.pick(200, 200, 4000, 1000, true));
+
+        // Weak CPU or GPU score forces Tier.LOW even with ample RAM
+        assertEquals(PerformanceProfile.Tier.LOW, PerformanceProfile.pick(50, 150, 3000, 800, false));
+        assertEquals(PerformanceProfile.Tier.LOW, PerformanceProfile.pick(150, 45, 3000, 800, false));
+
+        // Balanced mid-range TV
+        assertEquals(PerformanceProfile.Tier.MID, PerformanceProfile.pick(110, 100, 2500, 600, false));
+
+        // High-end TV requires strong CPU/draw and plentiful free & total RAM
+        assertEquals(PerformanceProfile.Tier.HIGH, PerformanceProfile.pick(210, 195, 4000, 1200, false));
+        assertEquals(PerformanceProfile.Tier.MID, PerformanceProfile.pick(210, 195, 3000, 1200, false));
+
+        // Validate bitmask constants
+        assertEquals(1, PerformanceProfile.LIMIT_GPU);
+        assertEquals(2, PerformanceProfile.LIMIT_RAM);
+        assertEquals(4, PerformanceProfile.LIMIT_CPU);
+    }
+
+    @Test
     public void remoteButtonsMapToApps() {
         assertEquals(HardwareKeys.NUVIO, HardwareKeys.builtIn(207, 0));          // KEYCODE_NETFLIX
         assertEquals(HardwareKeys.YOUTUBE, HardwareKeys.builtIn(0, 218));        // YouTube scan code
@@ -351,6 +375,21 @@ public class LogicTest {
                 .contains("com.droidlogic.mboxlauncher"));
         assertTrue(java.util.Arrays.asList(com.cinetv.launcher.device.HomeLaunchers.STOCK_LAUNCHERS)
                 .contains("com.ugoos.launcher"));
+    }
+
+    @Test
+    public void officialGoogleGeminiIntegrationStandardsHold() {
+        // Official model identifiers per Google Gemini specification
+        assertEquals("gemini-3.8-flash", com.cinetv.launcher.ai.LlmClient.DEFAULT_GEMINI_MODEL);
+        assertEquals("gemini-3.1-flash-lite", com.cinetv.launcher.ai.LlmClient.FAST_GEMINI_MODEL);
+        assertEquals("gemini-4-argon", com.cinetv.launcher.ai.LlmClient.DEEP_GEMINI_MODEL);
+        assertEquals("gemini-flash-latest", com.cinetv.launcher.ai.LlmClient.FALLBACK_GEMINI_MODEL);
+
+        // Provider mapping
+        assertEquals(com.cinetv.launcher.ai.LlmClient.PROVIDER_GEMINI, com.cinetv.launcher.ai.LlmClient.providerFor("AIzaSyD-fakeKey"));
+        assertEquals(com.cinetv.launcher.ai.LlmClient.PROVIDER_CLAUDE, com.cinetv.launcher.ai.LlmClient.providerFor("sk-ant-fakeKey"));
+        assertEquals(com.cinetv.launcher.ai.LlmClient.PROVIDER_GROK, com.cinetv.launcher.ai.LlmClient.providerFor("xai-fakeKey"));
+        assertEquals(com.cinetv.launcher.ai.LlmClient.PROVIDER_OPENAI, com.cinetv.launcher.ai.LlmClient.providerFor("sk-proj-fakeKey"));
     }
 
     @Test

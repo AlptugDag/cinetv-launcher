@@ -321,7 +321,12 @@ public class HomeScreen {
         searchBox.addView(searchBevel, match());
         search.setOnFocusChangeListener((v, has) -> {
             searchBevel.setFocusedState(has);
-            searchBox.animate().scaleX(has ? 1.03f : 1f).scaleY(has ? 1.03f : 1f).setDuration(160).start();
+            searchBox.animate()
+                    .scaleX(has ? 1.03f : 1f)
+                    .scaleY(has ? 1.03f : 1f)
+                    .setDuration(200)
+                    .setInterpolator(UiKit.EASE_IN_OUT)
+                    .start();
             searchBox.setAlpha(has ? 1f : 0.92f);
             if (has) {
                 com.cinetv.launcher.device.SystemAudio.tick(ctx);
@@ -527,10 +532,11 @@ public class HomeScreen {
                 v.animate().scaleX(root.getWidth() / (float) v.getWidth()).scaleY(root.getHeight() / (float) v.getHeight())
                         .translationX(-v.getLeft()).translationY(-v.getTop())
                         .setDuration(com.cinetv.launcher.device.PerformanceProfile.animationMs(v.getContext(), 560))
-                        .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f))
+                        .setInterpolator(UiKit.EASE_IN_OUT)
                         .withEndAction(() -> {
                             grown.run();
                             v.animate().alpha(0f).setDuration(com.cinetv.launcher.device.PerformanceProfile.animationMs(v.getContext(), 420))
+                                    .setInterpolator(UiKit.EASE_IN_OUT)
                                     .withEndAction(() -> {
                                         trailer.stop();
                                         v.setScaleX(1f);
@@ -626,7 +632,8 @@ public class HomeScreen {
                 .scaleX(1f)
                 .scaleY(1f)
                 .setStartDelay(180)
-                .setDuration(PerformanceProfile.animationMs(ctx, 180))
+                .setDuration(PerformanceProfile.animationMs(ctx, 220))
+                .setInterpolator(UiKit.EASE_IN_OUT)
                 .start();
     }
 
@@ -737,8 +744,8 @@ public class HomeScreen {
             updateBanner.animate()
                     .alpha(1f)
                     .translationY(0f)
-                    .setDuration(350)
-                    .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .setDuration(420)
+                    .setInterpolator(UiKit.EASE_IN_OUT)
                     .withEndAction(this::startBannerPulse)
                     .start();
             root.postDelayed(dismissUpdateBannerRunnable, 15_000L); // 15 seconds popup
@@ -1188,9 +1195,9 @@ public class HomeScreen {
                         null, null),
                 new TourView.Step(gear, R.string.tour_ai_t, R.string.tour_ai,
                         keyStatus(com.cinetv.launcher.ai.LlmClient.isConfigured(ctx)), ch4,
-                        tr ? "Sağdaki QR kodu telefonunla okutarak ücretsiz Google Gemini API anahtarını saniyeler içinde alabilirsin."
-                           : "Scan the QR code on the right with your phone to get a free Google Gemini API key.",
-                        geminiQr, tr ? "Google Gemini API QR" : "Google Gemini API QR"),
+                        tr ? "Sağdaki QR kodu telefonunla okutarak ücretsiz yapay zekâ API anahtarını saniyeler içinde alabilirsin."
+                           : "Scan the QR code on the right with your phone to get a free AI API key.",
+                        geminiQr, tr ? "Yapay Zekâ API QR" : "AI API QR"),
                 new TourView.Step(gear, R.string.tour_tmdb_t, R.string.tour_tmdb,
                         keyStatus(com.cinetv.launcher.service.MovieCatalog.hasTmdb(ctx)), ch4,
                         tr ? "Hem TMDB v3 API Anahtarı (32 karakter) hem de v4 Okuma Jetonu (eyJ...) otomatik olarak tanınır."
@@ -1389,7 +1396,9 @@ public class HomeScreen {
                     .rotationY(on ? rot[i][0] : 0f)
                     .rotationX(on ? rot[i][1] : 0f)
                     .translationZ(on ? z[i] : 0f)
-                    .setDuration(PerformanceProfile.animationMs(ctx, 240)).start();
+                    .setDuration(PerformanceProfile.animationMs(ctx, 320))
+                    .setInterpolator(UiKit.EASE_IN_OUT)
+                    .start();
         }
         if (shelfLabel != null) {
             shelfLabel.animate().cancel();

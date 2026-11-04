@@ -1,5 +1,20 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.48
+
+- **Spatial HUD Standartlaştırıldı:** HUD açıp kapama ayarı ayarlardan kaldırıldı ve bütün cihazlarda standart olarak varsayılan ve açık hale getirildi.
+- **Akıcı ve Dinamik Ana Sayfa Animasyonları (Ease In-Out):** Ana sayfadaki tüm animasyonlar aniden başlayıp bitmek yerine sinematik visionOS cubic ease-in-out (`UiKit.EASE_IN_OUT`) eğrisiyle güncellendi.
+- **Yeni DVD Kutuları Smooth Geliş Deneyimi:** Ana ekrana yeni gelen DVD kutuları düz soluk geçiş yerine derinlikten yükselen, yumuşak ölçeklenen (0.92x -> 1.0x) ve hafif ötelenen pürüzsüz ease-in-out geçişiyle rafa oturuyor.
+- **Canlı Gamze Hologram Avatarı (Mobil Arayüz):** Mobil web kumandadaki Gamze bölümünden emojiler kaldırıldı; yerine gerçek zamanlı mimik yapan, konuşma esnasında visem/fonem uyumlu dudak oynatan ve göz kırpan fütüristik VisionOS kadın yüzü hologramı eklendi.
+- **Kullanıcı Arayüzü Marka Temizliği:** Gamze sohbet modallarından ve kullanıcı ekranlarından gereksiz "Google" ifadeleri kaldırılarak temiz ve doğrudan asistan kimliği sağlandı.
+- **Sürüm ve Paket İlerlemesi:** Build, release ve APK sürüm numaraları 1.0.0.48 olarak güncellendi.
+
+## 1.0.0.47
+
+- **Sessiz ve Kesintisiz Arka Plan Güncellemeleri:** Kullanıcı TV izlerken veya film esnasında ekranı bölmeden güncellemelerin arka planda indirilip uygulanması sağlandı.
+- **Türkçe TTS Sayı ve Yıl Telaffuz İyileştirmeleri:** 1930 gibi tarih ve yılların rakam rakam okunması engellenerek doğal Türkçe ("bin dokuz yüz otuz") okuması sağlandı.
+- **Akıllı TV Performans Modları:** Donanıma göre dinamik ölçeklenen otomatik TV optimizasyonu ve VisionOS Liquid Glass mobil kumanda revizyonu tamamlandı.
+
 ## 1.0.0.46
 
 - **Nuvio'da Sesli CineSUB Deneyimi:** Kumandasında mikrofon tuşu olan TV'lerde Nuvio'da film/dizi izlerken kumandadaki mikrofon tuşuna basıldığında ekranda hiçbir kutucuk ya da kart çıkmadan video karesi anında dondurulur, ekranın kenarlarından büyüleyici golden glow konuşma animasyonları yayılır. Kullanıcının sorduğu soruya ("Bu oyuncunun adı ne?", "Bu sahnede gözüken kırmızı şey ne?", "Şu arabanın modeli ne?") Gemini Vision ile doğrudan sahneden analiz edilerek sesli yanıt (TTS) verilir ve yanıt bitince film otomatik olarak kaldığı yerden oynamaya devam eder.

@@ -65,8 +65,9 @@ public final class Prefs {
         return ctx.getApplicationContext().getSharedPreferences(FILE, Context.MODE_PRIVATE);
     }
 
+    /** Spatial HUD is standard on all devices. */
     public static boolean spatial3d(Context ctx) {
-        return get(ctx).getBoolean(SPATIAL_3D, true);
+        return true;
     }
 
     public static boolean dvdCases(Context ctx) {
