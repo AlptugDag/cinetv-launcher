@@ -350,10 +350,15 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             return code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT;
         });
 
-        if (!PerformanceProfile.lowProfile(this)) {
+        boolean lowRamLazyStartup = PerformanceProfile.lowMemory(this) || PerformanceProfile.lowProfile(this);
+        if (!lowRamLazyStartup) {
             com.cinetv.launcher.device.MainThreadSampler.maybeStart("start", 40_000);
+            showCachedShelf(freshStart);
+        } else {
+            // Hafif Açılış (Lazy-Load): On low-RAM TVs (e.g. 1.3 GB), skip synchronous showcase cache
+            // loading and 3D case baking during onCreate() so the room, header, and dock render immediately.
+            home.shelfLabel.setText(MovieAssistant.buildMomentShelfTitle(this, "").toUpperCase(Locale.getDefault()));
         }
-        showCachedShelf(freshStart);
         Calendar cal = Calendar.getInstance();
         lastShelfHour = cal.get(Calendar.HOUR_OF_DAY);
         lastShelfDay = cal.get(Calendar.DAY_OF_YEAR);
@@ -449,13 +454,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     private void scheduleDynamicStartup(boolean freshStart) {
         final Context app = getApplicationContext();
-        boolean lowPower = PerformanceProfile.lowMemory(this) || PerformanceProfile.detectedTier(this) == PerformanceProfile.Tier.LOW;
-        // User-visible UI elements (dock, continue card, fresh shelf, weather) load immediately;
-        // heavy disk/daemon tasks wait in Phase 5 after the home screen is completely responsive.
-        long p1 = 90L;
-        long p2 = 260L;
-        long p3 = 650L;
-        long p4 = 160L;
+        final boolean lowPower = PerformanceProfile.lowMemory(this) || PerformanceProfile.lowProfile(this);
+        // On low-RAM TVs, Hafif Açılış (lazy-load) brings up the dock and header first, then lazy-loads
+        // the showcase after the initial UI wave settles (~950ms) so startup never stalls on 1.3 GB devices.
+        long p1 = lowPower ? 60L : 90L;
+        long p2 = lowPower ? 300L : 260L;
+        long p3 = lowPower ? 680L : 650L;
+        long p4 = lowPower ? 960L : 160L;
         long p5 = lowPower ? 20_000L : 8_000L;
 
         // Phase 1: Load Installed Apps catalog for the dock (dock renders first in ~60ms before off-screen grid)
@@ -481,8 +486,33 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
         }, p3);
 
-        // Phase 4: Fresh shelf immediately when stale (no 7.5s wait staring at yesterday's showcase)
-        if (freshStart) {
+        // Phase 4: Showcase shelf (lazy-loaded on low-RAM TVs; refreshed immediately when stale)
+        if (lowPower) {
+            handler.postDelayed(() -> {
+                if (isFinishing() || home == null) return;
+                if (!inFront) {
+                    freshOnResume = freshStart;
+                    if (home.shelf.count() == 0) {
+                        showCachedShelf(freshStart);
+                    }
+                    return;
+                }
+                if (freshStart && isNetworkAvailable()) {
+                    // Fetch today's fresh showcase directly without baking yesterday's stale cache first
+                    startFreshShelf(false);
+                    handler.postDelayed(() -> {
+                        if (!isFinishing() && home != null && home.shelf.count() == 0) {
+                            showCachedShelf(true);
+                        }
+                    }, 1800L);
+                } else {
+                    showCachedShelf(freshStart);
+                    if (freshStart) {
+                        startFreshShelf(false);
+                    }
+                }
+            }, p4);
+        } else if (freshStart) {
             handler.postDelayed(() -> {
                 if (isFinishing() || home == null) return;
                 if (!inFront) {

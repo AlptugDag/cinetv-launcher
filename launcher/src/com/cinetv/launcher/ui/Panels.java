@@ -109,14 +109,14 @@ public final class Panels {
         // One unified, continuous scrollable settings screen containing all settings sequentially.
         final android.util.DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
         final int settingsW = Math.round(dm.widthPixels * 0.82f);
-        final int settingsH = Math.round(dm.heightPixels * 0.84f);
+        final int settingsH = Math.round(dm.heightPixels * 0.78f);
         final boolean wide = settingsW >= UiKit.px(1100);
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
 
         LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setClipChildren(false);
-        root.setClipToPadding(false);
+        root.setClipChildren(true);
+        root.setClipToPadding(true);
         root.setLayoutParams(new LinearLayout.LayoutParams(settingsW, settingsH));
 
         LinearLayout head = new LinearLayout(ctx);
@@ -147,14 +147,14 @@ public final class Panels {
         final ScrollView scroll = new ScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setClipChildren(true);
-        scroll.setClipToPadding(false);
+        scroll.setClipToPadding(true);
         scroll.setFillViewport(true);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.addView(cols, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         final FrameLayout frame = new FrameLayout(ctx);
-        frame.setClipChildren(false);
-        frame.setClipToPadding(false);
+        frame.setClipChildren(true);
+        frame.setClipToPadding(true);
         FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         slp.setMargins(UiKit.px(30), UiKit.px(8), UiKit.px(30), UiKit.px(14));
         frame.addView(scroll, slp);
@@ -695,11 +695,12 @@ public final class Panels {
             int count = base + (r < extra ? 1 : 0);
             LinearLayout row = new LinearLayout(ctx);
             row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setBaselineAligned(false);
             row.setClipChildren(false);
             row.setClipToPadding(false);
             for (int k = 0; k < count; k++) {
                 View tile = tiles.get(at++);
-                tile.setMinimumHeight(UiKit.px(110));
+                tile.setMinimumHeight(UiKit.px(108));
                 if (tile instanceof ViewGroup) {
                     ((ViewGroup) tile).setClipChildren(false);
                     ((ViewGroup) tile).setClipToPadding(false);
@@ -713,7 +714,7 @@ public final class Panels {
                         ((TextView) st).setEllipsize(android.text.TextUtils.TruncateAt.END);
                     }
                 }
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
                 lp.setMargins(UiKit.px(4), UiKit.px(4), k < count - 1 ? gap : UiKit.px(4), UiKit.px(4));
                 row.addView(tile, lp);
             }
@@ -1793,14 +1794,14 @@ public final class Panels {
     public static View buildScalePreviewModal(final Context ctx, final ModalHost host, final Actions a) {
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         final android.util.DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
-        final int modalW = Math.round(dm.widthPixels * 0.84f);
-        final int modalH = Math.round(dm.heightPixels * 0.82f);
+        final int modalW = Math.round(dm.widthPixels * 0.82f);
+        final int modalH = Math.round(dm.heightPixels * 0.76f);
 
         final LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setClipChildren(false);
-        root.setClipToPadding(false);
-        root.setPadding(UiKit.px(36), UiKit.px(24), UiKit.px(36), UiKit.px(24));
+        root.setClipChildren(true);
+        root.setClipToPadding(true);
+        root.setPadding(UiKit.px(24), UiKit.px(16), UiKit.px(24), UiKit.px(16));
         root.setLayoutParams(new LinearLayout.LayoutParams(modalW, modalH));
 
         // Header
@@ -2027,12 +2028,14 @@ public final class Panels {
     public static View buildGamzeChatModal(final Context ctx, final ModalHost host, final Actions a) {
         final boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         final android.util.DisplayMetrics dm = ctx.getResources().getDisplayMetrics();
-        final int modalW = Math.round(dm.widthPixels * 0.84f);
-        final int modalH = Math.round(dm.heightPixels * 0.82f);
+        final int modalW = Math.round(dm.widthPixels * 0.82f);
+        final int modalH = Math.round(dm.heightPixels * 0.76f);
 
         final LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(UiKit.px(32), UiKit.px(22), UiKit.px(32), UiKit.px(22));
+        root.setClipChildren(true);
+        root.setClipToPadding(true);
+        root.setPadding(UiKit.px(28), UiKit.px(18), UiKit.px(28), UiKit.px(18));
         root.setBackground(Glass.panel(root, 26));
         root.setLayoutParams(new LinearLayout.LayoutParams(modalW, modalH));
 
@@ -2216,10 +2219,10 @@ public final class Panels {
             if (choices.getChildCount() > 1) choices.getChildAt(1).requestFocus();
         };
 
-        // Preset 4-Color Keys Bar
-        LinearLayout colorKeysRow = new LinearLayout(ctx);
-        colorKeysRow.setOrientation(LinearLayout.HORIZONTAL);
-        colorKeysRow.setPadding(0, 0, 0, UiKit.px(16));
+        // Preset Remote Keys Grid (3 columns x 3 rows so buttons never overflow menu width or height)
+        LinearLayout colorKeysGrid = new LinearLayout(ctx);
+        colorKeysGrid.setOrientation(LinearLayout.VERTICAL);
+        colorKeysGrid.setPadding(0, 0, 0, UiKit.px(12));
 
         final Object[][] presets = {
                 {tr ? "Kırmızı Tuş" : "Red Button", KeyEvent.KEYCODE_PROG_RED, 183},
@@ -2233,60 +2236,72 @@ public final class Panels {
                 {tr ? "Rehber / TV" : "Guide / TV", KeyEvent.KEYCODE_GUIDE, 172}
         };
 
+        LinearLayout currentRow = null;
+        View firstKeyBtn = null;
         for (int i = 0; i < presets.length; i++) {
+            if (i % 3 == 0) {
+                currentRow = new LinearLayout(ctx);
+                currentRow.setOrientation(LinearLayout.HORIZONTAL);
+                currentRow.setBaselineAligned(false);
+                LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                if (i > 0) rlp.topMargin = UiKit.px(10);
+                colorKeysGrid.addView(currentRow, rlp);
+            }
             final String name = (String) presets[i][0];
             final int pkc = (Integer) presets[i][1];
             final int psc = (Integer) presets[i][2];
 
-            final TextView btn = UiKit.bold(ctx, 13, UiKit.INK);
+            final TextView btn = UiKit.bold(ctx, 13.5f, UiKit.INK);
             String curAct = HardwareKeys.actionFor(ctx, pkc, psc);
             String actLabel = tr ? "Varsayılan" : "Default";
             if (curAct != null) {
                 for (String[] act : actions) {
                     if (act[0].equals(curAct)) {
-                        actLabel = act[1].replace("✦ ", "");
+                        actLabel = act[1];
                         break;
                     }
                 }
             }
-            if (actLabel.length() > 18) actLabel = actLabel.substring(0, 16) + "...";
+            if (actLabel.length() > 22) actLabel = actLabel.substring(0, 20) + "...";
             btn.setText(name + "\n" + actLabel);
             btn.setGravity(Gravity.CENTER);
             btn.setFocusable(true);
             btn.setClickable(true);
-            btn.setPadding(UiKit.px(16), UiKit.px(10), UiKit.px(16), UiKit.px(10));
+            btn.setPadding(UiKit.px(16), UiKit.px(12), UiKit.px(16), UiKit.px(12));
             final Glass bg = new Glass(btn, UiKit.pxf(14), Glass.Style.CONTROL);
             btn.setBackground(bg);
             btn.setOnFocusChangeListener((v, has) -> {
                 if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
                 bg.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
                 btn.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
-                UiKit.lift(v, has, 1.05f, 120);
+                UiKit.lift(v, has, 1.03f, 120);
             });
             btn.setOnClickListener(v -> {
                 com.cinetv.launcher.device.SystemAudio.click(ctx);
                 body.setText(name + (tr ? " tuşu seçildi. Yeni görevini belirleyin:" : " selected. Choose action:"));
-                colorKeysRow.setVisibility(View.GONE);
+                colorKeysGrid.setVisibility(View.GONE);
                 showActionChooser.accept(pkc, psc);
             });
-            LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            if (i > 0) blp.leftMargin = UiKit.px(12);
-            colorKeysRow.addView(btn, blp);
+            LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            if (i % 3 > 0) blp.leftMargin = UiKit.px(12);
+            currentRow.addView(btn, blp);
+            if (firstKeyBtn == null) firstKeyBtn = btn;
         }
-        root.addView(colorKeysRow);
+        root.addView(colorKeysGrid, new LinearLayout.LayoutParams(UiKit.px(740), ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(choices);
 
         root.setOnKeyListener((v, keyCode, e) -> {
             if (e.getAction() != KeyEvent.ACTION_DOWN || HardwareKeys.isNavigation(keyCode) || choices.getChildCount() > 0) return false;
             final int kc = keyCode, sc = e.getScanCode();
             body.setText(ctx.getString(R.string.remote_keys_captured, kc, sc));
-            colorKeysRow.setVisibility(View.GONE);
+            colorKeysGrid.setVisibility(View.GONE);
             showActionChooser.accept(kc, sc);
             return true;
         });
 
+        final View focusTarget = firstKeyBtn;
         root.post(() -> {
-            if (colorKeysRow.getChildCount() > 0) colorKeysRow.getChildAt(0).requestFocus();
+            if (focusTarget != null) focusTarget.requestFocus();
             else root.requestFocus();
         });
         return root;
@@ -2327,11 +2342,11 @@ public final class Panels {
         scrollContent.addView(buttons, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         scroller.setClipChildren(true);
-        scroller.setClipToPadding(false);
+        scroller.setClipToPadding(true);
         scrollContent.setClipChildren(false);
         scrollContent.setClipToPadding(false);
-        root.setClipChildren(false);
-        root.setClipToPadding(false);
+        root.setClipChildren(true);
+        root.setClipToPadding(true);
         scroller.addView(scrollContent, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(scroller, new LinearLayout.LayoutParams(UiKit.px(1040), UiKit.px(480)));
         final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());

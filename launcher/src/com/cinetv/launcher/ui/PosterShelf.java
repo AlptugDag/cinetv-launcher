@@ -184,6 +184,7 @@ public class PosterShelf extends FrameLayout {
         long stepMs = PerformanceProfile.lowProfile(getContext()) ? 85L : 65L;
         nextCaseRevealUptimeMs = startAt + stepMs;
         v.setCase(dvd, delayMs);
+        layoutCases();
         if (slot == index && hasFocus() && listener != null) {
             listener.onFocusCase(v, dvd.accent);
         }
@@ -529,6 +530,7 @@ public class PosterShelf extends FrameLayout {
                     if (gen != generation || slot >= cases.size()) return;
                     DvdCaseView cv = cases.get(slot);
                     cv.setCase(dvd, 0L);
+                    layoutCases();
                     if (slot == index && hasFocus() && listener != null) {
                         listener.onFocusCase(cv, dvd.accent);
                     }
@@ -540,7 +542,7 @@ public class PosterShelf extends FrameLayout {
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
-        if (changed) layoutCases();
+        layoutCases();
     }
 
     @Override
@@ -721,7 +723,7 @@ public class PosterShelf extends FrameLayout {
         if (index < 0 || index >= cases.size()) return;
         DvdCaseView v = cases.get(index);
         boolean focused = hasFocus();
-        float focusScale = focused ? FOCUS_SCALE : 1.12f;
+        float focusScale = focused ? FOCUS_SCALE : 0.86f;
         float dim = focused ? 1f : 0.94f;
         float lift = focused ? 1f : 0f;
         float tilt = spatial ? (7.0f - 1.2f * lift) : 0f;
@@ -781,6 +783,8 @@ public class PosterShelf extends FrameLayout {
                 v.setVisibility(INVISIBLE);
                 continue;
             }
+            int vw = v.getWidth() > 0 ? v.getWidth() : v.viewWidth();
+            int vh = v.getHeight() > 0 ? v.getHeight() : v.viewHeight();
             if (!asCases) {
                 // The original poster vitrin: overlapping posters, depth steps 1.30 / 0.94 / 0.80 / 0.68,
                 // fading back and, with Spatial HUD, turning 18 / 25 / 30 degrees towards the focus.
@@ -790,8 +794,8 @@ public class PosterShelf extends FrameLayout {
                 float pDim = focused ? interp(t, 1f, 0.82f, 0.55f, 0.35f) : interp(t, 0.9f, 0.8f, 0.6f, 0.45f);
                 float pYaw = spatial ? Math.signum(d) * interp(t, 0f, 18f, 25f, 30f) : 0f;
                 float pLift = focused ? Math.max(0f, 1f - ad) : 0f;
-                v.setTranslationX(px - v.getWidth() / 2f);
-                v.setTranslationY((h - v.getHeight()) / 2f - UiKit.pxf(24) * pLift + UiKit.pxf(8) * Math.min(ad, 2f));
+                v.setTranslationX(px - vw / 2f);
+                v.setTranslationY((h - vh) / 2f - UiKit.pxf(24) * pLift + UiKit.pxf(8) * Math.min(ad, 2f));
                 v.setTranslationZ(100f - ad * 10f);
                 v.setDepthBlur(0.55f * Math.max(0f, Math.min(1f, (ad - 3f) / 4f)));
                 v.setPose(pYaw, spatial ? 5.5f * (1f - pLift) : 0f, pScale, pLift, lean * 0.6f, pDim, false, focusPos);
@@ -803,7 +807,7 @@ public class PosterShelf extends FrameLayout {
             float far = Math.max(0f, ad - 1f);
             float offset = step1 * near + stepN * far;
             float x = anchor + Math.signum(d) * offset;
-            float focusScale = focused ? FOCUS_SCALE : 1.12f;
+            float focusScale = focused ? FOCUS_SCALE : 0.86f;
             float scale = focusScale + (0.86f - focusScale) * near - Math.min(0.08f, 0.012f * far);
             // Further down the shelf: darker and out of focus, like a real room lit at the front.
             float dim = (focused ? 1f : 0.94f) - 0.10f * near - Math.min(0.52f, 0.075f * far);
@@ -838,9 +842,9 @@ public class PosterShelf extends FrameLayout {
                 continue;
             }
             v.setVisibility(VISIBLE);
-            v.setTranslationX(x - v.getWidth() / 2f);
+            v.setTranslationX(x - vw / 2f);
             // Grounded shelf baseline: subtle bow and anchor contact keep all cases firmly planted on shelf plane:
-            v.setTranslationY((h - v.getHeight()) / 2f + (UiKit.pxf(5f) - bow) + UiKit.pxf(2f) * lift);
+            v.setTranslationY((h - vh) / 2f + (UiKit.pxf(5f) - bow) + UiKit.pxf(2f) * lift);
             v.setTranslationZ(100f - ad * 10f);
             v.setDepthBlur(blur);
             v.setGlint(glint);

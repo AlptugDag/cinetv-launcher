@@ -198,9 +198,27 @@ public class ModalHost extends FrameLayout {
         cancelable = true;
         onBlockedDismiss = null;
         View content = stack.peek().build();
-        LinearLayout card = new LinearLayout(getContext());
-        card.setOrientation(LinearLayout.VERTICAL);
         final View near = anchor;
+        final android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        final int maxCardH = Math.round(dm.heightPixels * (near != null ? 0.82f : 0.88f));
+        final int maxCardW = Math.round(dm.widthPixels * 0.92f);
+        LinearLayout card = new LinearLayout(getContext()) {
+            @Override
+            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                int wMode = MeasureSpec.getMode(widthMeasureSpec);
+                int wSize = MeasureSpec.getSize(widthMeasureSpec);
+                int hMode = MeasureSpec.getMode(heightMeasureSpec);
+                int hSize = MeasureSpec.getSize(heightMeasureSpec);
+                if (wMode == MeasureSpec.UNSPECIFIED || wSize > maxCardW) {
+                    widthMeasureSpec = MeasureSpec.makeMeasureSpec(maxCardW, wMode == MeasureSpec.EXACTLY ? MeasureSpec.EXACTLY : MeasureSpec.AT_MOST);
+                }
+                if (hMode == MeasureSpec.UNSPECIFIED || hSize > maxCardH) {
+                    heightMeasureSpec = MeasureSpec.makeMeasureSpec(maxCardH, hMode == MeasureSpec.EXACTLY ? MeasureSpec.EXACTLY : MeasureSpec.AT_MOST);
+                }
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+            }
+        };
+        card.setOrientation(LinearLayout.VERTICAL);
         if (near != null) card.setPadding(UiKit.px(14), UiKit.px(12), UiKit.px(14), UiKit.px(12));
         else card.setPadding(UiKit.px(38), UiKit.px(22), UiKit.px(38), UiKit.px(22));
         card.setBackground(Glass.panel(card, near != null ? 36 : 44));
@@ -209,10 +227,26 @@ public class ModalHost extends FrameLayout {
         if (clp == null) {
             clp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
-        card.addView(content, clp);
-        // Focused edge tiles lift slightly outside the card; clipping here cuts their click/focus animation.
-        card.setClipChildren(false);
-        card.setClipToPadding(false);
+        if (near == null && !(content instanceof android.widget.ScrollView) && clp.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
+            android.widget.ScrollView autoScroll = new android.widget.ScrollView(getContext());
+            autoScroll.setVerticalScrollBarEnabled(false);
+            autoScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+            autoScroll.setClipChildren(true);
+            autoScroll.setClipToPadding(false);
+            autoScroll.setPadding(UiKit.px(6), UiKit.px(4), UiKit.px(6), UiKit.px(6));
+            ViewGroup.LayoutParams innerLp = new FrameLayout.LayoutParams(
+                    clp.width > 0 ? clp.width : ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            autoScroll.addView(content, innerLp);
+            LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
+                    clp.width > 0 ? clp.width + UiKit.px(12) : ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            card.addView(autoScroll, slp);
+        } else {
+            card.addView(content, clp);
+        }
+        card.setClipChildren(true);
+        card.setClipToPadding(true);
         LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                 near != null ? Gravity.TOP | Gravity.START : Gravity.CENTER);
         addView(card, lp);

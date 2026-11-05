@@ -21,15 +21,16 @@ public final class Controls {
 
     private Controls() {}
 
-    /** Ensures parent containers do not clip focused/scaled controls at their edges. */
+    /** Ensures immediate row/column containers do not clip focused controls, while preserving ScrollView & modal bounds. */
     private static void ensureParentUnclipped(View v) {
         android.view.ViewParent p = v != null ? v.getParent() : null;
         int depth = 0;
-        while (p instanceof ViewGroup && depth < 4) {
+        while (p instanceof ViewGroup && depth < 3) {
             ViewGroup vg = (ViewGroup) p;
-            if (!(vg instanceof android.widget.ScrollView)) {
-                vg.setClipChildren(false);
+            if (vg instanceof android.widget.ScrollView) {
+                break;
             }
+            vg.setClipChildren(false);
             vg.setClipToPadding(false);
             p = vg.getParent();
             depth++;

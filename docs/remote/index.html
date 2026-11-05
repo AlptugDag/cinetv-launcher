@@ -31,7 +31,7 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
   font:15px/1.48 'Poppins',-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;overscroll-behavior:none;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font-family:'Poppins',-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
 body::before{content:"";position:fixed;inset:-30%;z-index:-1;pointer-events:none;
@@ -43,9 +43,10 @@ body::before{content:"";position:fixed;inset:-30%;z-index:-1;pointer-events:none
 .glass{position:relative;background:var(--glass);border:1px solid var(--edge);border-radius:var(--radius);
   -webkit-backdrop-filter:blur(36px) saturate(190%);backdrop-filter:blur(36px) saturate(190%);
   box-shadow:inset 0 1.5px 0 var(--specular),inset 0 -1px 0 rgba(255,255,255,.06),0 20px 48px -12px rgba(0,0,0,.62)}
-header{position:sticky;top:0;z-index:10;padding:calc(env(safe-area-inset-top,0px) + 16px) 20px 14px;
+header{position:sticky;top:0;z-index:45;padding:calc(env(safe-area-inset-top,0px) + 16px) 20px 14px;
   background:linear-gradient(180deg,rgba(3,4,8,.94) 55%,rgba(3,4,8,.72) 85%,transparent);
-  -webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px)}
+  -webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px);
+  transform:translateZ(0);-webkit-transform:translateZ(0)}
 .brand{display:flex;align-items:center;gap:11px;margin-bottom:14px}
 .brand b{font-size:24px;font-weight:800;letter-spacing:-.03em}
 .tv{color:#ff3b3b;text-shadow:0 0 16px rgba(255,59,59,.65)}
@@ -104,12 +105,12 @@ h2{font-size:12.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercas
 .card .badge{position:absolute;top:8px;left:8px;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;background:rgba(3,4,8,.75);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(10px)}
 .empty{color:var(--dim);text-align:center;padding:44px 14px;font-size:14px}
 .answer{padding:16px 18px;font-size:15px;line-height:1.5;border-left:3px solid var(--accent2)}
-nav{position:fixed;left:14px;right:14px;bottom:calc(12px + var(--safe-b));z-index:18;display:flex;gap:5px;padding:7px;
+nav,nav.glass{position:fixed!important;left:14px;right:14px;bottom:calc(12px + var(--safe-b));z-index:50;display:flex;gap:5px;padding:7px;
   border-radius:32px;background:linear-gradient(155deg,rgba(25,28,45,.88) 0%,rgba(10,12,24,.94) 100%);
   border:1px solid rgba(255,255,255,.24);
   -webkit-backdrop-filter:blur(44px) saturate(210%);backdrop-filter:blur(44px) saturate(210%);
   box-shadow:inset 0 1.5px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(255,255,255,.08),0 24px 56px rgba(0,0,0,.75);
-  overflow-x:auto;scrollbar-width:none}
+  overflow-x:auto;scrollbar-width:none;transform:translateZ(0);-webkit-transform:translateZ(0);will-change:transform}
 nav::-webkit-scrollbar{display:none}
 nav button{flex:1 0 auto;min-width:56px;background:none;border:0;color:var(--dim);font-size:11px;font-weight:600;padding:10px 6px;border-radius:24px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:background .2s,color .2s,transform .15s}
 nav button:active{transform:scale(.94)}
@@ -2892,7 +2893,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 </script>
   <!-- Mobile Translucent Settings Overlay (Liquid Glass) -->
   <div id="mobileSettingsModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(5,8,17,0.78);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);align-items:center;justify-content:center;padding:20px">
-    <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);box-shadow:0 24px 60px rgba(0,0,0,0.6);border-radius:24px;padding:24px;width:100%;max-width:380px;display:flex;flex-direction:column;gap:12px">
+    <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);box-shadow:0 24px 60px rgba(0,0,0,0.6);border-radius:24px;padding:24px;width:100%;max-width:380px;max-height:calc(100dvh - 40px);overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <div style="font-size:18px;font-weight:700;color:#fff">CineTV Ayarlar</div>
         <button class="glass ic" onclick="closeMobileSettingsModal()" style="width:36px;height:36px;border-radius:50%;color:var(--dim)">✕</button>
