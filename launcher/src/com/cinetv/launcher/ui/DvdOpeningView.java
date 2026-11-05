@@ -443,6 +443,30 @@ public class DvdOpeningView extends View {
         return true;
     }
 
+    /** Handles an AirMouse click when the 3D DVD case is open: clicking the open case starts playback, clicking outside closes it. */
+    public boolean handleAirMouseClick(int screenX, int screenY) {
+        if (getVisibility() != VISIBLE || dvd == null) return false;
+        if (closing) return true;
+        int w = getWidth(), h = getHeight();
+        float dx = Math.abs(screenX - w * 0.5f);
+        float dy = Math.abs(screenY - h * 0.5f);
+        boolean insideCase = dx <= caseW * 1.18f && dy <= caseH * 0.62f;
+        if (insideCase) {
+            if (play < 0 && t < OPEN_END) {
+                if (anim != null) anim.cancel();
+                t = OPEN_END;
+                invalidate();
+            } else if (play < 0) {
+                startPlay();
+            } else if (!launched) {
+                launch();
+            }
+        } else {
+            close();
+        }
+        return true;
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         if (blackout) {

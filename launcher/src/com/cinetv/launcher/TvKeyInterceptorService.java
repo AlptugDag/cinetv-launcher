@@ -804,11 +804,82 @@ public class TvKeyInterceptorService extends AccessibilityService {
             android.graphics.Path path = new android.graphics.Path();
             path.moveTo(Math.max(0, x), Math.max(0, y));
             android.accessibilityservice.GestureDescription.StrokeDescription stroke =
-                    new android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 50);
+                    new android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 55);
             return dispatchGesture(new android.accessibilityservice.GestureDescription.Builder().addStroke(stroke).build(), null, null);
         } catch (Throwable t) {
             return false;
         }
+    }
+
+    /**
+     * Performs an AirMouse click at screen coordinates (x, y) in any app without requiring ADB:
+     * 1. Dispatches a hardware-level Accessibility gesture tap at (x, y) (enabled via canPerformGestures="true").
+     * 2. Also resolves the deepest clickable/focusable AccessibilityNodeInfo at (x, y) and triggers ACTION_FOCUS + ACTION_CLICK
+     *    for TV apps that only listen to D-pad / Accessibility click actions rather than touch events.
+     */
+    public boolean performAirMouseClick(int x, int y) {
+        boolean tapped = dispatchTap(x, y);
+        boolean clickedNode = false;
+        try {
+            android.view.accessibility.AccessibilityNodeInfo bestNode = null;
+            long[] bestArea = new long[]{Long.MAX_VALUE};
+            if (android.os.Build.VERSION.SDK_INT >= 21) {
+                for (android.view.accessibility.AccessibilityWindowInfo w : getWindows()) {
+                    if (w.getType() == android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY) continue;
+                    android.view.accessibility.AccessibilityNodeInfo r = w.getRoot();
+                    if (r != null) {
+                        android.view.accessibility.AccessibilityNodeInfo hit = findSmallestClickableAt(r, x, y, bestArea, 0);
+                        if (hit != null) bestNode = hit;
+                    }
+                }
+            }
+            if (bestNode == null) {
+                android.view.accessibility.AccessibilityNodeInfo r = getRootInActiveWindow();
+                if (r != null) {
+                    bestNode = findSmallestClickableAt(r, x, y, bestArea, 0);
+                }
+            }
+            if (bestNode != null) {
+                if (bestNode.isFocusable()) {
+                    bestNode.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS);
+                }
+                if (!tapped) {
+                    clickedNode = bestNode.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return tapped || clickedNode;
+    }
+
+    private static android.view.accessibility.AccessibilityNodeInfo findSmallestClickableAt(
+            android.view.accessibility.AccessibilityNodeInfo node, int x, int y, long[] bestArea, int depth) {
+        if (node == null || depth > 36 || !node.isVisibleToUser()) return null;
+        android.graphics.Rect b = new android.graphics.Rect();
+        node.getBoundsInScreen(b);
+        if (!b.contains(x, y)) return null;
+
+        android.view.accessibility.AccessibilityNodeInfo best = null;
+        if (node.isClickable() || node.isEditable()) {
+            long area = (long) Math.max(1, b.width()) * Math.max(1, b.height());
+            if (area <= bestArea[0]) {
+                bestArea[0] = area;
+                best = node;
+            }
+        }
+        int count = node.getChildCount();
+        for (int i = 0; i < count; i++) {
+            android.view.accessibility.AccessibilityNodeInfo childBest = findSmallestClickableAt(node.getChild(i), x, y, bestArea, depth + 1);
+            if (childBest != null) best = childBest;
+        }
+        if (best == null && node.isFocusable()) {
+            long area = (long) Math.max(1, b.width()) * Math.max(1, b.height());
+            if (area <= bestArea[0]) {
+                bestArea[0] = area;
+                best = node;
+            }
+        }
+        return best;
     }
 
     /** Injects a long-press tap at (x, y) via AccessibilityService gesture API when KeyBridge is unavailable. */

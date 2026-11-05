@@ -28,7 +28,7 @@ public final class AirMouse {
     private static int width = 1920, height = 1080;
     private static float targetX = 960, targetY = 540;
     private static float currentX = 960, currentY = 540;
-    private static int pointerSize = 52;
+    private static int pointerSize = 76;
     private static boolean animating = false;
     private static final Runnable hide = AirMouse::hideNow;
 
@@ -86,23 +86,124 @@ public final class AirMouse {
             if (view != null) view.pulse();
             keepAlive();
         });
+        final com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+        if (ma != null && com.cinetv.launcher.MainActivity.isInFront()) {
+            main.post(() -> {
+                if (clickInMainActivity(ma, cx, cy)) return;
+                long now = android.os.SystemClock.uptimeMillis();
+                android.view.MotionEvent down = android.view.MotionEvent.obtain(now, now, android.view.MotionEvent.ACTION_DOWN, cx, cy, 0);
+                android.view.MotionEvent up = android.view.MotionEvent.obtain(now, now + 50, android.view.MotionEvent.ACTION_UP, cx, cy, 0);
+                ma.dispatchTouchEvent(down);
+                ma.dispatchTouchEvent(up);
+                down.recycle();
+                up.recycle();
+            });
+            return;
+        }
         new Thread(() -> {
             if (KeyBridge.tap(ctx, cx, cy)) return;
             com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
-            if (svc != null && svc.dispatchTap(cx, cy)) return;
-            final com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-            if (ma != null && com.cinetv.launcher.MainActivity.isInFront()) {
-                main.post(() -> {
-                    long now = android.os.SystemClock.uptimeMillis();
-                    android.view.MotionEvent down = android.view.MotionEvent.obtain(now, now, android.view.MotionEvent.ACTION_DOWN, cx, cy, 0);
-                    android.view.MotionEvent up = android.view.MotionEvent.obtain(now, now + 50, android.view.MotionEvent.ACTION_UP, cx, cy, 0);
-                    ma.dispatchTouchEvent(down);
-                    ma.dispatchTouchEvent(up);
-                    down.recycle();
-                    up.recycle();
-                });
-            }
+            if (svc != null && svc.performAirMouseClick(cx, cy)) return;
         }, "cinetv-mouse").start();
+    }
+
+    /**
+     * Resolves and executes a click at screen coordinates (cx, cy) inside MainActivity:
+     * handles GlassKeyboard, ModalHost, open 3D DVD case (DvdOpeningView), 3D DVD shelf (PosterShelf),
+     * and any clickable/editable/focusable View in the hierarchy without relying on touch-mode state.
+     */
+    private static boolean clickInMainActivity(com.cinetv.launcher.MainActivity ma, int cx, int cy) {
+        try {
+            com.cinetv.launcher.ui.HomeScreen home = ma.getHome();
+            if (home != null) {
+                // 1. On-screen GlassKeyboard if visible
+                if (home.keyboard != null && home.keyboard.getVisibility() == View.VISIBLE) {
+                    View kbHit = findClickableViewAt(home.keyboard, cx, cy);
+                    if (kbHit != null) {
+                        if (kbHit.isFocusable()) kbHit.requestFocus();
+                        if (kbHit.performClick()) return true;
+                    }
+                    if (isPointInsideView(home.keyboard, cx, cy)) {
+                        return dispatchSyntheticTouchTo(ma, cx, cy);
+                    }
+                }
+                // 2. Modal dialog if showing
+                if (home.modal != null && home.modal.isShowing()) {
+                    View modalHit = findClickableViewAt(home.modal, cx, cy);
+                    if (modalHit != null && modalHit != home.modal) {
+                        if (modalHit.isFocusable()) modalHit.requestFocus();
+                        if (modalHit.performClick()) return true;
+                        return dispatchSyntheticTouchTo(ma, cx, cy);
+                    }
+                    home.modal.close();
+                    return true;
+                }
+                // 3. Open 3D DVD case / trailer overlay
+                if (home.opening != null && home.opening.getVisibility() == View.VISIBLE) {
+                    if (home.opening.handleAirMouseClick(cx, cy)) return true;
+                }
+            }
+
+            View decor = ma.getWindow() != null ? ma.getWindow().getDecorView() : null;
+            if (decor != null) {
+                View hit = findClickableViewAt(decor, cx, cy);
+                if (hit instanceof com.cinetv.launcher.ui.PosterShelf) {
+                    return ((com.cinetv.launcher.ui.PosterShelf) hit).handleAirMouseClick(cx, cy);
+                }
+                if (hit != null) {
+                    if (hit.isFocusable()) hit.requestFocus();
+                    if (hit.performClick()) return true;
+                }
+            }
+            if (home != null && home.shelf != null && home.shelf.getVisibility() == View.VISIBLE) {
+                if (home.shelf.handleAirMouseClick(cx, cy)) return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
+    private static boolean dispatchSyntheticTouchTo(com.cinetv.launcher.MainActivity ma, int cx, int cy) {
+        long now = android.os.SystemClock.uptimeMillis();
+        android.view.MotionEvent down = android.view.MotionEvent.obtain(now, now, android.view.MotionEvent.ACTION_DOWN, cx, cy, 0);
+        android.view.MotionEvent up = android.view.MotionEvent.obtain(now, now + 50, android.view.MotionEvent.ACTION_UP, cx, cy, 0);
+        boolean handled = ma.dispatchTouchEvent(down) | ma.dispatchTouchEvent(up);
+        down.recycle();
+        up.recycle();
+        return handled;
+    }
+
+    private static boolean isPointInsideView(View v, int x, int y) {
+        if (v == null || v.getVisibility() != View.VISIBLE || v.getAlpha() <= 0.02f) return false;
+        int w = v.getWidth(), h = v.getHeight();
+        if (w <= 0 || h <= 0) return false;
+        int[] loc = new int[2];
+        v.getLocationOnScreen(loc);
+        float sx = v.getScaleX(), sy = v.getScaleY();
+        float cx = loc[0] + w * 0.5f;
+        float cy = loc[1] + h * 0.5f;
+        float hw = (w * Math.max(0.5f, sx)) * 0.5f;
+        float hh = (h * Math.max(0.5f, sy)) * 0.5f;
+        return x >= cx - hw && x <= cx + hw && y >= cy - hh && y <= cy + hh;
+    }
+
+    private static View findClickableViewAt(View v, int x, int y) {
+        if (v == null || v.getVisibility() != View.VISIBLE || !v.isShown() || v.getAlpha() <= 0.02f) return null;
+        if (v instanceof com.cinetv.launcher.ui.PosterShelf) {
+            return isPointInsideView(v, x, y) ? v : null;
+        }
+        if (v instanceof android.view.ViewGroup) {
+            android.view.ViewGroup vg = (android.view.ViewGroup) v;
+            for (int i = vg.getChildCount() - 1; i >= 0; i--) {
+                View child = vg.getChildAt(i);
+                View hit = findClickableViewAt(child, x, y);
+                if (hit != null) return hit;
+            }
+        }
+        if ((v.isClickable() || v.hasOnClickListeners() || v instanceof android.widget.EditText) && isPointInsideView(v, x, y)) {
+            return v;
+        }
+        return null;
     }
 
     /** Scrolls the page under the pointer: a short swipe (positive dy moves the content up). Any thread. */
@@ -146,7 +247,7 @@ public final class AirMouse {
             height = m.heightPixels;
             targetX = currentX = width / 2f;
             targetY = currentY = height / 2f;
-            pointerSize = Math.max(40, Math.round(width / 1920f * 52));
+            pointerSize = Math.max(60, Math.round(width / 1920f * 76));
             int winType = (!canAppOverlay && svc != null)
                     ? WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
                     : (Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE);
@@ -178,35 +279,81 @@ public final class AirMouse {
     }
 
     /**
-     * Futuristic VR Laser Game Controller Reticle:
-     * Sleek optical targeting ring, luminous halo, precision laser core dot, and expanding pulse shockwave.
+     * Modern Spatial Glow Orb Cursor:
+     * Multi-layered radial luminescence (soft cyan-violet atmospheric bloom, bright inner halo,
+     * specular frosted rim, and pure white glowing core) with an expanding glow wave on click.
      */
     private static final class Pointer extends View {
-        private final Paint haloPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint outerBloomPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint innerHaloPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint glassRimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint corePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint ripplePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint rippleFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint rippleRingPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private float rippleProgress = 1f;
+        private int cachedW = -1, cachedH = -1;
 
         Pointer(Context c) {
             super(c);
-            haloPaint.setStyle(Paint.Style.STROKE);
-            haloPaint.setColor(Color.argb(100, 56, 189, 248)); // luminous cyan
+            outerBloomPaint.setStyle(Paint.Style.FILL);
+            innerHaloPaint.setStyle(Paint.Style.FILL);
 
-            ringPaint.setStyle(Paint.Style.STROKE);
-            ringPaint.setColor(Color.argb(235, 255, 255, 255)); // sleek white glass ring
+            glassRimPaint.setStyle(Paint.Style.STROKE);
+            glassRimPaint.setColor(Color.argb(135, 224, 242, 254));
 
             corePaint.setStyle(Paint.Style.FILL);
-            corePaint.setColor(Color.WHITE);
+            rippleFillPaint.setStyle(Paint.Style.FILL);
 
-            ripplePaint.setStyle(Paint.Style.STROKE);
-            ripplePaint.setColor(Color.argb(220, 52, 211, 153)); // green/cyan confirmation shockwave
+            rippleRingPaint.setStyle(Paint.Style.STROKE);
+            rippleRingPaint.setColor(Color.argb(235, 125, 211, 252));
+        }
+
+        private void ensureShaders(int w, int h) {
+            if (w == cachedW && h == cachedH) return;
+            cachedW = w;
+            cachedH = h;
+            float cx = w * 0.5f, cy = h * 0.5f;
+            float maxR = Math.min(cx, cy);
+
+            // 1. Soft atmospheric outer glow (cyan -> violet -> transparent)
+            outerBloomPaint.setShader(new android.graphics.RadialGradient(
+                    cx, cy, Math.max(1f, maxR * 0.96f),
+                    new int[]{
+                            Color.argb(150, 56, 189, 248),
+                            Color.argb(85, 139, 92, 246),
+                            Color.argb(26, 56, 189, 248),
+                            Color.TRANSPARENT
+                    },
+                    new float[]{0f, 0.36f, 0.72f, 1f},
+                    android.graphics.Shader.TileMode.CLAMP));
+
+            // 2. Concentrated inner neon glow halo
+            innerHaloPaint.setShader(new android.graphics.RadialGradient(
+                    cx, cy, Math.max(1f, maxR * 0.48f),
+                    new int[]{
+                            Color.argb(235, 186, 230, 253),
+                            Color.argb(165, 56, 189, 248),
+                            Color.TRANSPARENT
+                    },
+                    new float[]{0f, 0.45f, 1f},
+                    android.graphics.Shader.TileMode.CLAMP));
+
+            // 3. Hot white-cyan core gradient
+            corePaint.setShader(new android.graphics.RadialGradient(
+                    cx, cy, Math.max(1f, maxR * 0.19f),
+                    new int[]{
+                            Color.WHITE,
+                            Color.argb(250, 224, 242, 254),
+                            Color.argb(180, 56, 189, 248)
+                    },
+                    new float[]{0f, 0.65f, 1f},
+                    android.graphics.Shader.TileMode.CLAMP));
         }
 
         void pulse() {
             rippleProgress = 0f;
             android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofFloat(0f, 1f);
-            anim.setDuration(320);
+            anim.setDuration(340);
             anim.setInterpolator(new android.view.animation.DecelerateInterpolator());
             anim.addUpdateListener(a -> {
                 rippleProgress = (Float) a.getAnimatedValue();
@@ -217,37 +364,48 @@ public final class AirMouse {
 
         @Override
         protected void onDraw(Canvas c) {
-            float w = getWidth(), h = getHeight();
+            int w = getWidth(), h = getHeight();
+            if (w <= 0 || h <= 0) return;
+            ensureShaders(w, h);
+
             float cx = w * 0.5f, cy = h * 0.5f;
-            float r = Math.min(cx, cy) * 0.72f;
+            float maxR = Math.min(cx, cy);
 
-            // 1. Soft glowing outer halo
-            haloPaint.setStrokeWidth(w * 0.16f);
-            c.drawCircle(cx, cy, r * 0.85f, haloPaint);
+            // Subtle scale flare during click pulse
+            float clickFlare = rippleProgress < 1f ? (float) Math.sin(rippleProgress * Math.PI) : 0f;
+            float bloomScale = 1f + clickFlare * 0.14f;
+            float coreScale = 1f - clickFlare * 0.16f;
 
-            // 2. Precision targeting ring
-            ringPaint.setStrokeWidth(w * 0.055f);
-            c.drawCircle(cx, cy, r, ringPaint);
+            // 1. Soft outer atmospheric glow bloom
+            c.save();
+            c.scale(bloomScale, bloomScale, cx, cy);
+            c.drawCircle(cx, cy, maxR * 0.95f, outerBloomPaint);
+            c.restore();
 
-            // 3. 4 optical crosshair pips (North, South, East, West)
-            float pipLen = r * 0.28f;
-            float pipGap = r * 0.08f;
-            c.drawLine(cx, cy - r - pipGap, cx, cy - r - pipGap - pipLen, ringPaint);
-            c.drawLine(cx, cy + r + pipGap, cx, cy + r + pipGap + pipLen, ringPaint);
-            c.drawLine(cx - r - pipGap, cy, cx - r - pipGap - pipLen, cy, ringPaint);
-            c.drawLine(cx + r + pipGap, cy, cx + r + pipGap + pipLen, cy, ringPaint);
+            // 2. Concentrated inner glow halo
+            c.drawCircle(cx, cy, maxR * 0.46f * bloomScale, innerHaloPaint);
 
-            // 4. Center laser pip
-            c.drawCircle(cx, cy, r * 0.22f, corePaint);
-
-            // 5. VR trigger shockwave ripple on click
+            // 3. Expanding luminous glow wave on click
             if (rippleProgress < 1f) {
-                float rippleR = r + rippleProgress * r * 0.9f;
-                int alpha = Math.round(230 * (1f - rippleProgress));
-                ripplePaint.setAlpha(alpha);
-                ripplePaint.setStrokeWidth(w * 0.045f * (1f - rippleProgress * 0.5f));
-                c.drawCircle(cx, cy, rippleR, ripplePaint);
+                float rippleR = maxR * (0.24f + rippleProgress * 0.68f);
+                int ringAlpha = Math.round(235 * (1f - rippleProgress));
+                rippleRingPaint.setAlpha(ringAlpha);
+                rippleRingPaint.setStrokeWidth(Math.max(1.5f, w * 0.038f * (1f - rippleProgress * 0.55f)));
+                c.drawCircle(cx, cy, rippleR, rippleRingPaint);
+
+                rippleFillPaint.setColor(Color.argb(Math.round(90 * (1f - rippleProgress)), 56, 189, 248));
+                c.drawCircle(cx, cy, rippleR, rippleFillPaint);
             }
+
+            // 4. Frosted specular glass rim around the core
+            glassRimPaint.setStrokeWidth(Math.max(1.2f, w * 0.024f));
+            c.drawCircle(cx, cy, maxR * 0.25f * coreScale, glassRimPaint);
+
+            // 5. Pure white-cyan glowing center orb
+            c.save();
+            c.scale(coreScale, coreScale, cx, cy);
+            c.drawCircle(cx, cy, maxR * 0.18f, corePaint);
+            c.restore();
         }
     }
 }

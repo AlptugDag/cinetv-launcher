@@ -587,6 +587,54 @@ public class PosterShelf extends FrameLayout {
         return super.onKeyDown(keyCode, event);
     }
 
+    /** Handles an AirMouse click at screen coordinates (screenX, screenY): opens the center case or glides to a side case. */
+    public boolean handleAirMouseClick(int screenX, int screenY) {
+        int n = cases.size();
+        if (n == 0 || movies.isEmpty() || !isShown()) return false;
+        int[] loc = new int[2];
+        getLocationOnScreen(loc);
+        float lx = screenX - loc[0];
+        float ly = screenY - loc[1];
+        if (lx < 0 || lx > getWidth() || ly < 0 || ly > getHeight()) return false;
+
+        float caseH = caseW / DvdCase.ASPECT;
+        int bestIdx = -1;
+        float bestDist = Float.MAX_VALUE;
+
+        for (int i = 0; i < n; i++) {
+            DvdCaseView v = cases.get(i);
+            if (v.getVisibility() != VISIBLE) continue;
+            int vw = v.getWidth() > 0 ? v.getWidth() : v.viewWidth();
+            int vh = v.getHeight() > 0 ? v.getHeight() : v.viewHeight();
+            float cx = v.getTranslationX() + vw * 0.5f;
+            float cy = v.getTranslationY() + vh * 0.5f;
+            float halfW = (i == index ? caseW * 0.65f : caseW * 0.45f);
+            float halfH = caseH * 0.65f;
+            if (Math.abs(lx - cx) <= halfW && Math.abs(ly - cy) <= halfH) {
+                float d = Math.abs(lx - cx) + (i == index ? -caseW * 0.25f : 0f);
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestIdx = i;
+                }
+            }
+        }
+        if (bestIdx < 0) return false;
+        if (!hasFocus()) requestFocus();
+        if (bestIdx == index) {
+            if (listener != null && index >= 0 && index < movies.size()) {
+                com.cinetv.launcher.device.SystemAudio.open(getContext());
+                listener.onOpen(movies.get(index), cases.get(index));
+            }
+            return true;
+        }
+        int delta = Math.round(ShelfPosition.distance(bestIdx, targetPos, n, circular));
+        if (delta != 0) {
+            holding = false;
+            step(delta);
+        }
+        return true;
+    }
+
     private int pressKey;
     private long pressAt;
     /** A held arrow: the shelf glides through films at an even pace and the case details wait for the release. */
