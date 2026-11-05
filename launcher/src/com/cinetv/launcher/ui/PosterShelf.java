@@ -587,6 +587,188 @@ public class PosterShelf extends FrameLayout {
         return super.onKeyDown(keyCode, event);
     }
 
+    private int hoveredIndex = -1;
+    private float[] hoverAmounts = new float[0];
+    private ValueAnimator hoverAnim;
+    private long lastHoverFrameNs;
+    private float touchDownX, touchDownY;
+
+    private void ensureHoverArray(int n) {
+        if (hoverAmounts.length != n) {
+            float[] next = new float[n];
+            System.arraycopy(hoverAmounts, 0, next, 0, Math.min(hoverAmounts.length, n));
+            hoverAmounts = next;
+        }
+    }
+
+    private boolean hasAnyActiveHover() {
+        if (hoveredIndex >= 0) return true;
+        for (float v : hoverAmounts) {
+            if (v > 0.002f) return true;
+        }
+        return false;
+    }
+
+    private int findCaseIndexAt(float lx, float ly) {
+        int n = cases.size();
+        if (n == 0 || movies.isEmpty() || !isShown()) return -1;
+        int w = getWidth(), h = getHeight();
+        if (lx < 0 || lx > w || ly < 0 || ly > h) return -1;
+
+        boolean focused = hasFocus();
+        float anchor = w * 0.5f;
+        float step1 = caseW * (focused ? 1.14f : 0.94f);
+        int perSide = circular ? Math.max(1, (n - 1) / 2) : VISIBLE_RANGE;
+        float stepN = Math.max(caseW * 0.30f, Math.min(caseW * 0.48f, (w * 0.47f - step1) / Math.max(1, perSide - 1)));
+        float caseH = caseW / DvdCase.ASPECT;
+        int bestIdx = -1;
+        float bestDist = Float.MAX_VALUE;
+
+        for (int i = 0; i < n; i++) {
+            DvdCaseView v = cases.get(i);
+            if (v.getVisibility() != VISIBLE) continue;
+            float d = ShelfPosition.distance(i, focusPos, n, circular);
+            float ad = Math.abs(d);
+            float near = Math.min(ad, 1f);
+            float far = Math.max(0f, ad - 1f);
+            float cx = asCases
+                    ? anchor + Math.signum(d) * (step1 * near + stepN * far)
+                    : anchor + Math.signum(d) * caseW * 0.72f * ad;
+            int vh = v.getHeight() > 0 ? v.getHeight() : v.viewHeight();
+            float cy = (h - vh) * 0.5f + vh * 0.5f;
+            float hyst = (i == hoveredIndex) ? caseW * 0.06f : 0f;
+            float halfW = (i == index ? caseW * 0.64f : caseW * 0.44f) + hyst;
+            float halfH = caseH * 0.68f + hyst;
+            if (Math.abs(lx - cx) <= halfW && Math.abs(ly - cy) <= halfH) {
+                float dist = Math.abs(lx - cx) + (i == index ? -caseW * 0.22f : 0f) - hyst * 0.5f;
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    bestIdx = i;
+                }
+            }
+        }
+        return bestIdx;
+    }
+
+    private void setHoveredIndex(int newIdx) {
+        int n = cases.size();
+        if (newIdx < -1 || newIdx >= n) newIdx = -1;
+        if (newIdx == hoveredIndex) return;
+        hoveredIndex = newIdx;
+        ensureHoverArray(n);
+        if (Prefs.reduceMotion(getContext())) {
+            for (int i = 0; i < hoverAmounts.length; i++) {
+                hoverAmounts[i] = (i == hoveredIndex) ? 1f : 0f;
+            }
+            layoutCases();
+            return;
+        }
+        startHoverLoop();
+    }
+
+    private void startHoverLoop() {
+        if (hoverAnim != null && hoverAnim.isRunning()) return;
+        lastHoverFrameNs = System.nanoTime();
+        hoverAnim = ValueAnimator.ofFloat(0f, 1f);
+        hoverAnim.setDuration(1000L);
+        hoverAnim.setRepeatCount(ValueAnimator.INFINITE);
+        hoverAnim.addUpdateListener(a -> {
+            int n = cases.size();
+            ensureHoverArray(n);
+            long now = System.nanoTime();
+            float dt = Math.max(0.004f, Math.min(0.050f, (now - lastHoverFrameNs) / 1e9f));
+            lastHoverFrameNs = now;
+            // Smooth spring-damped exponential approach (slide out a bit faster than slide back)
+            float alphaIn = 1f - (float) Math.exp(-dt * 15f);
+            float alphaOut = 1f - (float) Math.exp(-dt * 11f);
+            boolean active = false;
+            for (int i = 0; i < n; i++) {
+                float target = (i == hoveredIndex) ? 1f : 0f;
+                float cur = hoverAmounts[i];
+                float diff = target - cur;
+                if (Math.abs(diff) > 0.002f) {
+                    cur += diff * (target > cur ? alphaIn : alphaOut);
+                    hoverAmounts[i] = cur;
+                    active = true;
+                } else if (cur != target) {
+                    hoverAmounts[i] = target;
+                }
+            }
+            layoutCases();
+            if (!active) {
+                ValueAnimator running = hoverAnim;
+                hoverAnim = null;
+                if (running != null) running.cancel();
+            }
+        });
+        hoverAnim.start();
+    }
+
+    /** Updates hover state from screen coordinates (called by AirMouse as the pointer moves). */
+    public void updateAirMouseHover(int screenX, int screenY) {
+        if (!isShown() || cases.isEmpty()) {
+            setHoveredIndex(-1);
+            return;
+        }
+        int[] loc = new int[2];
+        getLocationOnScreen(loc);
+        float lx = screenX - loc[0];
+        float ly = screenY - loc[1];
+        setHoveredIndex(findCaseIndexAt(lx, ly));
+    }
+
+    /** Clears any active hover state (e.g. when the pointer hides or an overlay opens). */
+    public void clearHover() {
+        setHoveredIndex(-1);
+    }
+
+    @Override
+    public boolean dispatchHoverEvent(android.view.MotionEvent event) {
+        onHoverEvent(event);
+        return super.dispatchHoverEvent(event);
+    }
+
+    @Override
+    public boolean onHoverEvent(android.view.MotionEvent event) {
+        if (event == null) return false;
+        int action = event.getActionMasked();
+        if (action == android.view.MotionEvent.ACTION_HOVER_MOVE || action == android.view.MotionEvent.ACTION_HOVER_ENTER) {
+            setHoveredIndex(findCaseIndexAt(event.getX(), event.getY()));
+            return true;
+        } else if (action == android.view.MotionEvent.ACTION_HOVER_EXIT) {
+            setHoveredIndex(-1);
+            return true;
+        }
+        return super.onHoverEvent(event);
+    }
+
+    @Override
+    public boolean onTouchEvent(android.view.MotionEvent event) {
+        if (event == null) return false;
+        int action = event.getActionMasked();
+        if (action == android.view.MotionEvent.ACTION_DOWN) {
+            touchDownX = event.getX();
+            touchDownY = event.getY();
+            setHoveredIndex(findCaseIndexAt(touchDownX, touchDownY));
+            return true;
+        } else if (action == android.view.MotionEvent.ACTION_MOVE) {
+            setHoveredIndex(findCaseIndexAt(event.getX(), event.getY()));
+            return true;
+        } else if (action == android.view.MotionEvent.ACTION_UP) {
+            float dx = Math.abs(event.getX() - touchDownX);
+            float dy = Math.abs(event.getY() - touchDownY);
+            if (dx <= UiKit.pxf(28) && dy <= UiKit.pxf(28)) {
+                int[] loc = new int[2];
+                getLocationOnScreen(loc);
+                return handleAirMouseClick(Math.round(loc[0] + event.getX()), Math.round(loc[1] + event.getY()));
+            }
+            return true;
+        } else if (action == android.view.MotionEvent.ACTION_CANCEL) {
+            setHoveredIndex(-1);
+        }
+        return super.onTouchEvent(event);
+    }
+
     /** Handles an AirMouse click at screen coordinates (screenX, screenY): opens the center case or glides to a side case. */
     public boolean handleAirMouseClick(int screenX, int screenY) {
         int n = cases.size();
@@ -595,29 +777,7 @@ public class PosterShelf extends FrameLayout {
         getLocationOnScreen(loc);
         float lx = screenX - loc[0];
         float ly = screenY - loc[1];
-        if (lx < 0 || lx > getWidth() || ly < 0 || ly > getHeight()) return false;
-
-        float caseH = caseW / DvdCase.ASPECT;
-        int bestIdx = -1;
-        float bestDist = Float.MAX_VALUE;
-
-        for (int i = 0; i < n; i++) {
-            DvdCaseView v = cases.get(i);
-            if (v.getVisibility() != VISIBLE) continue;
-            int vw = v.getWidth() > 0 ? v.getWidth() : v.viewWidth();
-            int vh = v.getHeight() > 0 ? v.getHeight() : v.viewHeight();
-            float cx = v.getTranslationX() + vw * 0.5f;
-            float cy = v.getTranslationY() + vh * 0.5f;
-            float halfW = (i == index ? caseW * 0.65f : caseW * 0.45f);
-            float halfH = caseH * 0.65f;
-            if (Math.abs(lx - cx) <= halfW && Math.abs(ly - cy) <= halfH) {
-                float d = Math.abs(lx - cx) + (i == index ? -caseW * 0.25f : 0f);
-                if (d < bestDist) {
-                    bestDist = d;
-                    bestIdx = i;
-                }
-            }
-        }
+        int bestIdx = findCaseIndexAt(lx, ly);
         if (bestIdx < 0) return false;
         if (!hasFocus()) requestFocus();
         if (bestIdx == index) {
@@ -743,7 +903,7 @@ public class PosterShelf extends FrameLayout {
         swayAnim.setInterpolator(UiKit.EASE_IN_OUT);
         swayAnim.addUpdateListener(a -> {
             sway = (float) a.getAnimatedValue();
-            if ((anim == null || !anim.isRunning()) && asCases && index >= 0 && index < cases.size()) {
+            if ((anim == null || !anim.isRunning()) && !hasAnyActiveHover() && asCases && index >= 0 && index < cases.size()) {
                 updateFocusedCaseSwayOnly();
             } else {
                 layoutCases();
@@ -755,7 +915,7 @@ public class PosterShelf extends FrameLayout {
                 if (swayAnim != animation) return;
                 swayAnim = null;
                 sway = 0f;
-                if ((anim == null || !anim.isRunning()) && asCases && index >= 0 && index < cases.size()) {
+                if ((anim == null || !anim.isRunning()) && !hasAnyActiveHover() && asCases && index >= 0 && index < cases.size()) {
                     updateFocusedCaseSwayOnly();
                 } else {
                     layoutCases();
@@ -771,7 +931,8 @@ public class PosterShelf extends FrameLayout {
         if (index < 0 || index >= cases.size()) return;
         DvdCaseView v = cases.get(index);
         boolean focused = hasFocus();
-        float focusScale = focused ? FOCUS_SCALE : 0.86f;
+        float focusScale = focused ? FOCUS_SCALE : 0.80f;
+        float centerYaw = focused ? PROFILE_ANGLE : -34f;
         float dim = focused ? 1f : 0.94f;
         float lift = focused ? 1f : 0f;
         float tilt = spatial ? (7.0f - 1.2f * lift) : 0f;
@@ -784,7 +945,7 @@ public class PosterShelf extends FrameLayout {
             glint = (0.5f + 0.5f * swaySine) * env;
         }
         v.setGlint(glint);
-        v.setPose(PROFILE_ANGLE + turn, tilt, focusScale, lift, lean * 0.5f, dim, false, focusPos + swaySine * 0.8f);
+        v.setPose(centerYaw + turn, tilt, focusScale, lift, lean * 0.5f, dim, false, focusPos + swaySine * 0.8f);
     }
 
     private void stopSway() {
@@ -804,6 +965,11 @@ public class PosterShelf extends FrameLayout {
     @Override
     protected void onDetachedFromWindow() {
         stopSway();
+        if (hoverAnim != null) {
+            hoverAnim.cancel();
+            hoverAnim = null;
+        }
+        hoveredIndex = -1;
         super.onDetachedFromWindow();
     }
 
@@ -812,13 +978,14 @@ public class PosterShelf extends FrameLayout {
         int w = getWidth(), h = getHeight();
         int n = cases.size();
         if (w == 0 || n == 0) return;
+        ensureHoverArray(n);
         boolean focused = hasFocus();
         float anchor = w * 0.5f;
         // A TV whose frames run slow draws a shorter shelf: the far cases are tiny anyway.
         boolean light = PerformanceProfile.gpuLimited(getContext());
         // Every TV shows the full row again (weak TVs were cut to 7 a side, leaving the edges empty).
         float range = Math.min(VISIBLE_RANGE, n / 2f);
-        float step1 = caseW * (focused ? 1.14f : 0.98f);
+        float step1 = caseW * (focused ? 1.14f : 0.94f);
         // Fewer films spread a little wider so both sides of the screen are always filled.
         int perSide = circular ? Math.max(1, (n - 1) / 2) : VISIBLE_RANGE;
         float stepN = Math.max(caseW * 0.30f, Math.min(caseW * 0.48f, (w * 0.47f - step1) / Math.max(1, perSide - 1)));
@@ -833,19 +1000,22 @@ public class PosterShelf extends FrameLayout {
             }
             int vw = v.getWidth() > 0 ? v.getWidth() : v.viewWidth();
             int vh = v.getHeight() > 0 ? v.getHeight() : v.viewHeight();
+            float rawHover = hoverAmounts[i];
+            float hv = rawHover * rawHover * (3f - 2f * rawHover);
             if (!asCases) {
                 // The original poster vitrin: overlapping posters, depth steps 1.30 / 0.94 / 0.80 / 0.68,
                 // fading back and, with Spatial HUD, turning 18 / 25 / 30 degrees towards the focus.
                 float t = Math.min(ad, 3f);
                 float px = anchor + Math.signum(d) * caseW * 0.72f * ad;
-                float pScale = focused ? interp(t, 1.30f, 0.94f, 0.80f, 0.68f) : interp(t, 1.0f, 0.92f, 0.84f, 0.76f);
+                float pScale = (focused ? interp(t, 1.30f, 0.94f, 0.80f, 0.68f) : interp(t, 1.0f, 0.92f, 0.84f, 0.76f)) + 0.12f * hv;
                 float pDim = focused ? interp(t, 1f, 0.82f, 0.55f, 0.35f) : interp(t, 0.9f, 0.8f, 0.6f, 0.45f);
+                pDim += (1f - pDim) * (0.88f * hv);
                 float pYaw = spatial ? Math.signum(d) * interp(t, 0f, 18f, 25f, 30f) : 0f;
-                float pLift = focused ? Math.max(0f, 1f - ad) : 0f;
+                float pLift = Math.max(focused ? Math.max(0f, 1f - ad) : 0f, 0.65f * hv);
                 v.setTranslationX(px - vw / 2f);
-                v.setTranslationY((h - vh) / 2f - UiKit.pxf(24) * pLift + UiKit.pxf(8) * Math.min(ad, 2f));
-                v.setTranslationZ(100f - ad * 10f);
-                v.setDepthBlur(0.55f * Math.max(0f, Math.min(1f, (ad - 3f) / 4f)));
+                v.setTranslationY((h - vh) / 2f - UiKit.pxf(24) * pLift + UiKit.pxf(8) * Math.min(ad, 2f) - UiKit.pxf(12) * hv);
+                v.setTranslationZ(100f - ad * 10f + 18f * hv);
+                v.setDepthBlur(0.55f * Math.max(0f, Math.min(1f, (ad - 3f) / 4f)) * (1f - hv));
                 v.setPose(pYaw, spatial ? 5.5f * (1f - pLift) : 0f, pScale, pLift, lean * 0.6f, pDim, false, focusPos);
                 continue;
             }
@@ -854,18 +1024,25 @@ public class PosterShelf extends FrameLayout {
             float near = Math.min(ad, 1f);
             float far = Math.max(0f, ad - 1f);
             float offset = step1 * near + stepN * far;
-            float x = anchor + Math.signum(d) * offset;
-            float focusScale = focused ? FOCUS_SCALE : 0.86f;
+            // Hovering a DVD case slides it slightly outward from its slot so its cover peeks out cleanly:
+            float hoverOutX = Math.signum(d) * caseW * 0.055f * hv * near;
+            float x = anchor + Math.signum(d) * offset + hoverOutX;
+            float focusScale = focused ? FOCUS_SCALE : 0.80f;
             float scale = focusScale + (0.86f - focusScale) * near - Math.min(0.08f, 0.012f * far);
+            scale += (near < 0.5f ? (focused ? 0.065f : 0.14f) : 0.135f) * hv;
             // Further down the shelf: darker and out of focus, like a real room lit at the front.
+            // Hovered case catches the light and becomes distinctly prominent:
             float dim = (focused ? 1f : 0.94f) - 0.10f * near - Math.min(0.52f, 0.075f * far);
-            // Only a hint of depth of field: soft, never smeared.
-            float blur = light ? 0f : 0.55f * Math.max(0f, Math.min(1f, (far - 2f) / 4f));
+            dim = Math.min(1f, dim + (1f - dim) * (0.90f * hv));
+            // Only a hint of depth of field: soft, never smeared (clears completely when hovered).
+            float blur = (light ? 0f : 0.55f * Math.max(0f, Math.min(1f, (far - 2f) / 4f))) * (1f - hv);
             float spatialWrap = spatial ? -Math.signum(d) * Math.min(7.5f, far * 1.8f) : 0f;
-            float yaw = Math.signum(d) * SIDE_ANGLE * near + PROFILE_ANGLE * (1f - near) + spatialWrap;
-            float lift = focused ? 1f - near : 0f;
+            float centerYaw = focused ? PROFILE_ANGLE : (-34f + (PROFILE_ANGLE - (-34f)) * hv);
+            float sideYaw = SIDE_ANGLE * (1f - 0.34f * hv);
+            float yaw = Math.signum(d) * sideYaw * near + centerYaw * (1f - near) + spatialWrap;
+            float lift = Math.max(focused ? 1f - near : 0f, (focused ? 0.58f : 0.68f) * hv);
             float tilt = spatial ? (7.0f - 1.2f * lift) : 0f;
-            float turn = 0f, glint = 0f;
+            float turn = 0f, glint = 0.65f * hv;
             float swaySine = 0f;
             if (i == index && swayAnim != null) {
                 // The focused case turns slowly on its axis (±7.5°, starting and ending square) so the light runs
@@ -875,7 +1052,7 @@ public class PosterShelf extends FrameLayout {
                 // the sleeve's reflection fades in over the first second and out over the last, never switching on
                 float in = Math.min(1f, sway / 0.3f), out = Math.min(1f, (2f - sway) / 0.3f);
                 float env = in * in * (3f - 2f * in) * out * out * (3f - 2f * out);
-                glint = (0.5f + 0.5f * swaySine) * env;
+                glint = Math.max(glint, (0.5f + 0.5f * swaySine) * env);
             }
 
             // Continuous subtle architectural bow (apex in center, NO flat zone, NO artificial vertical climb):
@@ -891,15 +1068,19 @@ public class PosterShelf extends FrameLayout {
             }
             v.setVisibility(VISIBLE);
             v.setTranslationX(x - vw / 2f);
-            // Grounded shelf baseline: subtle bow and anchor contact keep all cases firmly planted on shelf plane:
-            v.setTranslationY((h - vh) / 2f + (UiKit.pxf(5f) - bow) + UiKit.pxf(2f) * lift);
-            v.setTranslationZ(100f - ad * 10f);
+            // Grounded shelf baseline: subtle bow and anchor contact keep all cases firmly planted on shelf plane.
+            // When unfocused, tuck the center case back onto the shelf plank so its wide front face does not hang over the lip:
+            float unfocusedCenterTuck = (!focused && near < 1f) ? -UiKit.pxf(10f) * (1f - near) * (1f - hv) : 0f;
+            float hoverSlideY = -UiKit.pxf(14f) * hv;
+            v.setTranslationY((h - vh) / 2f + (UiKit.pxf(5f) - bow) + UiKit.pxf(2f) * lift + unfocusedCenterTuck + hoverSlideY);
+            v.setTranslationZ(100f - ad * 10f + 22f * hv);
             v.setDepthBlur(blur);
             v.setGlint(glint);
-            v.setSleeve(!light || ad < 1.5f);
+            v.setSleeve(!light || ad < 1.5f || hv > 0.05f);
             // Continuous drift without discontinuity: uses swaySine so it returns exactly to 0 at animation end
             // Only the focused case drifts while it turns: the rest of the shelf stays still and is not redrawn.
-            v.setPose(yaw + turn, tilt, scale, lift, lean * (0.5f + 0.5f * near), dim, d > 0.5f, i == index ? focusPos + swaySine * 0.8f : focusPos);
+            float driftVal = (i == index ? focusPos + swaySine * 0.8f : focusPos) + hv * 0.45f;
+            v.setPose(yaw + turn, tilt, scale, lift, lean * (0.5f + 0.5f * near), dim, d > 0.5f, driftVal);
         }
         updateShelfFurniture(w, h);
     }

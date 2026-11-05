@@ -261,6 +261,7 @@ public final class CinePartyManager {
             p.answer = null;
             p.spins = 2;
         }
+        if (m == Mode.QUIZ) prewarmQuizIntro();
         if (m == Mode.ROULETTE) resetChambers();
         if (m == Mode.SESSIZ) {
             feed.clear();
@@ -285,6 +286,19 @@ public final class CinePartyManager {
 
     // ---- CineQuiz -------------------------------------------------------------------------------
 
+    private String buildQuizIntroLine() {
+        String level = (tr ? new String[]{"kolay", "orta", "zor", "sinefil"} : new String[]{"easy", "medium", "hard", "cinephile"})[Math.max(0, Math.min(3, quizDifficulty))];
+        return quizMinutes == 0
+                ? (tr ? "CineQuiz başlıyor, " + level + " seviye. Süre yok; yeter dediğinizde ev sahibi bitirir. Telefonlar hazır mı?"
+                      : "CineQuiz is starting, " + level + " level. No time limit; the host ends it. Phones ready?")
+                : (tr ? "CineQuiz başlıyor, " + level + " seviye. " + quizMinutes + " dakikanız var. Telefonlar hazır mı?"
+                      : "CineQuiz is starting, " + level + " level. You have " + quizMinutes + " minutes. Phones ready?");
+    }
+
+    private void prewarmQuizIntro() {
+        EmaLightningTts.prewarmText(ctx, buildQuizIntroLine());
+    }
+
     public synchronized void quizSettings(String id, int minutes, int seconds, int difficulty) {
         quizSettings(id, minutes, seconds, difficulty, -1);
     }
@@ -296,6 +310,7 @@ public final class CinePartyManager {
         if (category >= 0 && category <= 4) quizCategory = category;
         if (minutes == 0 || (minutes >= 2 && minutes <= 30)) quizMinutes = minutes;
         if (seconds >= 10 && seconds <= 60) quizSeconds = seconds;
+        prewarmQuizIntro();
         bump();
     }
 
@@ -330,12 +345,7 @@ public final class CinePartyManager {
         sfx(Sfx.RISER);
         bump();
         fetchQuiz(gen);
-        String level = (tr ? new String[]{"kolay", "orta", "zor", "sinefil"} : new String[]{"easy", "medium", "hard", "cinephile"})[quizDifficulty];
-        sayThen(quizMinutes == 0
-                ? (tr ? "CineQuiz başlıyor, " + level + " seviye. Süre yok; yeter dediğinizde ev sahibi bitirir. Telefonlar hazır mı?"
-                      : "CineQuiz is starting, " + level + " level. No time limit; the host ends it. Phones ready?")
-                : (tr ? "CineQuiz başlıyor, " + level + " seviye. " + quizMinutes + " dakikanız var. Telefonlar hazır mı?"
-                      : "CineQuiz is starting, " + level + " level. You have " + quizMinutes + " minutes. Phones ready?"), 600, () -> {
+        sayThen(buildQuizIntroLine(), 600, () -> {
             introDone = true;
             if ("loading".equals(phase) && !quizQueue.isEmpty()) startFirstQuestion();
         });
@@ -346,6 +356,11 @@ public final class CinePartyManager {
         fetchingQuiz = true;
         work.execute(() -> {
             List<QuizDeck.Question> got = quizDeck.next(3);
+            for (QuizDeck.Question q : got) {
+                if (q != null && q.prompt != null) {
+                    EmaLightningTts.prewarmText(ctx, q.prompt);
+                }
+            }
             synchronized (CinePartyManager.this) {
                 fetchingQuiz = false;
                 if (g != gen) return;

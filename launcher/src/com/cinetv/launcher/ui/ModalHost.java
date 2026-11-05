@@ -135,6 +135,10 @@ public class ModalHost extends FrameLayout {
     }
 
     public void closeImmediate() {
+        closeImmediate(true);
+    }
+
+    public void closeImmediate(boolean restorePrevFocus) {
         if (!cancelable) {
             if (onBlockedDismiss != null) onBlockedDismiss.run();
             return;
@@ -148,7 +152,11 @@ public class ModalHost extends FrameLayout {
         setVisibility(GONE);
         removeAllViews();
         if (onClosed != null) onClosed.run();
-        restoreFocus();
+        if (restorePrevFocus) {
+            restoreFocus();
+        } else {
+            returnFocus = null;
+        }
     }
 
     public void forceClose() {

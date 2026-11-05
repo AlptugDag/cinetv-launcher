@@ -95,14 +95,10 @@ public final class Prefs {
 
     /**
      * Natural Turkish TTS powered by canberkkkkkk/ema-lightning.
-     * Enabled by default only on supported MID and HIGH performance tier devices.
+     * Enabled by default across all CineTV devices.
      */
     public static boolean emaTts(Context ctx) {
-        SharedPreferences p = get(ctx);
-        if (p.contains(EMA_TTS)) {
-            return p.getBoolean(EMA_TTS, true);
-        }
-        return com.cinetv.launcher.device.PerformanceProfile.tier(ctx) != com.cinetv.launcher.device.PerformanceProfile.Tier.LOW;
+        return get(ctx).getBoolean(EMA_TTS, true);
     }
 
     public static final String EMA_TTS_LEVEL = "ema_tts_level";

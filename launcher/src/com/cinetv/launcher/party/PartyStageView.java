@@ -284,17 +284,21 @@ public final class PartyStageView extends View implements CinePartyManager.Liste
         text.clearShadowLayer();
         text.setLetterSpacing(0);
         String stat = statusLine();
+        boolean showCornerQr = qr != null && (!"setup".equals(phase) || "roulette".equals(mode));
         if (!stat.isEmpty()) {
             text.setTypeface(medium);
             text.setTextSize(26);
-            float tw = text.measureText(stat);
             float px = x + w + measure(black, 68, tail) + 34;
+            float maxRight = showCornerQr ? (W - 96 - 150 - 32) : (W - 96);
+            float maxStatW = Math.max(120, maxRight - px - 52);
+            String clippedStat = ellipsize(stat, maxStatW);
+            float tw = text.measureText(clippedStat);
             glassRect(c, px, 82, px + tw + 52, 132, 25, 0x24FFFFFF);
             text.setColor(0xE6F5F5F7);
-            c.drawText(stat, px + 26, 116, text);
+            c.drawText(clippedStat, px + 26, 116, text);
         }
-        // Join code, always visible once a game runs (the setup card shows it large): anyone can join mid-game.
-        if (qr != null && !"setup".equals(phase)) {
+        // Join code, always visible once a game runs (and in Roulette setup, since Roulette has no setup card): anyone can join mid-game.
+        if (showCornerQr) {
             float qx = W - 96 - 150, qy = 56;
             glassRect(c, qx - 14, qy - 14, qx + 164, qy + 192, 26, 0x2EFFFFFF);
             r.set(qx, qy, qx + 150, qy + 150);

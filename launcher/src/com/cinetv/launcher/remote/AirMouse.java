@@ -50,6 +50,7 @@ public final class AirMouse {
                 try {
                     ((WindowManager) view.getContext().getSystemService(Context.WINDOW_SERVICE)).updateViewLayout(view, lp);
                 } catch (Throwable ignored) {}
+                notifyHover(Math.round(currentX), Math.round(currentY));
                 android.view.Choreographer.getInstance().postFrameCallback(this);
             } else {
                 currentX = targetX;
@@ -59,10 +60,29 @@ public final class AirMouse {
                 try {
                     ((WindowManager) view.getContext().getSystemService(Context.WINDOW_SERVICE)).updateViewLayout(view, lp);
                 } catch (Throwable ignored) {}
+                notifyHover(Math.round(currentX), Math.round(currentY));
                 animating = false;
             }
         }
     };
+
+    private static void notifyHover(int cx, int cy) {
+        try {
+            com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+            if (ma == null || !com.cinetv.launcher.MainActivity.isInFront()) return;
+            com.cinetv.launcher.ui.HomeScreen home = ma.getHome();
+            if (home == null || home.shelf == null) return;
+            boolean blocked = (home.keyboard != null && home.keyboard.getVisibility() == View.VISIBLE)
+                    || (home.modal != null && home.modal.isShowing())
+                    || (home.opening != null && home.opening.getVisibility() == View.VISIBLE);
+            if (blocked || home.shelf.getVisibility() != View.VISIBLE) {
+                home.shelf.clearHover();
+            } else {
+                home.shelf.updateAirMouseHover(cx, cy);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
 
     private AirMouse() {}
 
@@ -269,6 +289,13 @@ public final class AirMouse {
     }
 
     private static void hideNow() {
+        try {
+            com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+            if (ma != null && ma.getHome() != null && ma.getHome().shelf != null) {
+                ma.getHome().shelf.clearHover();
+            }
+        } catch (Throwable ignored) {
+        }
         if (view == null) return;
         try {
             ((WindowManager) view.getContext().getSystemService(Context.WINDOW_SERVICE)).removeView(view);

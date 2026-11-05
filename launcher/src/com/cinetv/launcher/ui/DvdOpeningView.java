@@ -75,7 +75,7 @@ public class DvdOpeningView extends View {
     /** The trailer has filled the screen: from here on the view is black until the film is in front. */
     private boolean blackout;
 
-    private static final long FLY_END = 380, OPEN_END = 1150;
+    private static final long FLY_DURATION = 720, OPEN_START = 140, OPEN_END = 1080;
     private static final long PLAY_TOTAL = 1350, PLAY_LAUNCH = 1180;
     private static final float OPEN_ANGLE = 174f;
 
@@ -88,6 +88,7 @@ public class DvdOpeningView extends View {
     private final float[] src = new float[8], dst = new float[8];
 
     private DvdCase dvd;
+    private View sourceView;
     private Bitmap inner, disc;
     private RectF from;
     private int accent;
@@ -110,6 +111,14 @@ public class DvdOpeningView extends View {
 
     public void setTrailerSlot(TrailerSlot s) {
         slot = s;
+    }
+
+    /** Hides the shelf's original DvdCaseView while the 3D opening animation is active so there is no double image. */
+    public void setSourceView(View v) {
+        if (sourceView != null && sourceView != v) {
+            sourceView.setAlpha(1f);
+        }
+        sourceView = v;
     }
 
     public DvdOpeningView(Context ctx) {
@@ -239,6 +248,7 @@ public class DvdOpeningView extends View {
         play = -1;
         spin = 0;
         removeCallbacks(autoPlay);
+        if (sourceView != null) sourceView.setAlpha(0f);
         setVisibility(VISIBLE);
         requestFocus();
         setLayerType(LAYER_TYPE_HARDWARE, null);
@@ -346,6 +356,10 @@ public class DvdOpeningView extends View {
         if (slot != null) slot.hide();
         if (anim != null) anim.cancel();
         removeCallbacks(autoPlay);
+        if (sourceView != null) {
+            sourceView.setAlpha(1f);
+            sourceView = null;
+        }
         setLayerType(LAYER_TYPE_NONE, null);
         setVisibility(INVISIBLE);
         inner = null;
@@ -359,7 +373,7 @@ public class DvdOpeningView extends View {
     private final RectF trayDst = new RectF();
     private final Paint stillPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
 
-    /** Back: the opening played backwards (same path, same timing and easing), then the case is on the shelf again. */
+    /** Back: the opening played backwards along one continuous quintic curve, then the case is on the shelf again. */
     private void close() {
         if (closing) return;
         if (play >= 0 || launched || t <= 0) {
@@ -375,8 +389,9 @@ public class DvdOpeningView extends View {
         if (anim != null) anim.cancel();
         setLayerType(LAYER_TYPE_HARDWARE, null);
         final long from = t;
+        final long closeDur = Math.max(280L, Math.round(760f * (from / (float) OPEN_END)));
         anim = ValueAnimator.ofFloat(from, 0);
-        anim.setDuration(from);
+        anim.setDuration(closeDur);
         anim.setInterpolator(new LinearInterpolator());
         anim.addUpdateListener(a -> {
             t = (long) (float) a.getAnimatedValue();
@@ -475,25 +490,30 @@ public class DvdOpeningView extends View {
         }
         if (dvd == null) return;
         int w = getWidth(), h = getHeight();
-        float fly = easeInOut(clamp(t / (float) FLY_END));
-        float open = easeInOut(clamp((t - FLY_END) / (float) (OPEN_END - FLY_END)));
-        float rise = play < 0 ? 0f : easeInOut(clamp(play / 260f));
-        float approach = play < 0 ? 0f : easeInOut(clamp((play - 180) / 950f));
+        // Overlapping flight and cover swing with C2-continuous quintic easing:
+        // the case never stops dead at an intermediate point before swinging open.
+        float fly = quinticInOut(clamp(t / (float) FLY_DURATION));
+        float open = quinticInOut(clamp((t - OPEN_START) / (float) (OPEN_END - OPEN_START)));
+        float roomDim = quinticInOut(clamp(t / 680f));
+        float rise = play < 0 ? 0f : quinticInOut(clamp(play / 260f));
+        float approach = play < 0 ? 0f : quinticInOut(clamp((play - 180) / 950f));
 
-        // Room dims, and the film's colour glows behind the case (the CineTV bloom, full screen).
-        canvas.drawColor(Color.argb((int) (215 * fly), 3, 3, 6));
-        if (fly > 0) {
+        // Room dims smoothly, and the film's colour glows behind the case (the CineTV bloom, full screen).
+        canvas.drawColor(Color.argb((int) (215 * roomDim), 3, 3, 6));
+        if (roomDim > 0) {
             fill.setShader(roomGlow);
-            fill.setAlpha((int) (255 * fly));
+            fill.setAlpha((int) (255 * roomDim));
             canvas.drawRect(0, 0, w, h, fill);
             fill.setShader(null);
             fill.setAlpha(255);
         }
 
         float caseH = this.caseH, caseW = this.caseW;
-        float tx = w / 2f + caseW / 2f * open;          // keep the open case centred
-        float cx = from.centerX() + (tx - from.centerX()) * fly;
-        float cy = from.centerY() + (h / 2f - from.centerY()) * fly;
+        // Single smooth horizontal trajectory from shelf center to open-centered position
+        float tx = w / 2f + caseW / 2f * open;
+        float cx = from.centerX() + (w / 2f - from.centerX()) * fly + (tx - w / 2f);
+        float arcLiftY = -UiKit.pxf(16) * (float) Math.sin(fly * Math.PI);
+        float cy = from.centerY() + (h / 2f - from.centerY()) * fly + arcLiftY;
         // sideways (trailer moments): the case starts as it stood on the shelf and turns as it flies
         float fromW = landscape ? from.height() : from.width(), fromH = landscape ? from.width() : from.height();
         float cw = fromW + (caseW - fromW) * fly;
@@ -515,7 +535,7 @@ public class DvdOpeningView extends View {
                 turned = canvas.save();
                 canvas.rotate(-90f * (1f - fly), cx, cy);
             }
-            if (open > 0.01f) {
+            if (open > 0.004f) {
                 // Soft ambient drop shadow under both leaves of the open case for realistic 3D presence
                 caseShadowPaint.setColor(Color.argb((int) (110 * open * (caseAlpha / 255f)), 0, 0, 0));
                 caseShadowRect.set(left - cw * open * 0.96f, top + ch * 0.04f, left + cw, top + ch + ch * 0.05f);
@@ -540,31 +560,37 @@ public class DvdOpeningView extends View {
             drawDisc(canvas, x, y, size, rise);
             canvas.restore();
         }
-        if (play < 0 && t >= OPEN_END) drawHint(canvas, w, h);
+        if (play < 0 && t > OPEN_END - 260) {
+            float hintAlpha = quinticInOut(clamp((t - (OPEN_END - 260f)) / 260f));
+            if (hintAlpha > 0.01f) drawHint(canvas, w, h, hintAlpha);
+        }
         if (approach > 0.65f) canvas.drawColor(Color.argb((int) (255 * clamp((approach - 0.65f) / 0.35f)), 0, 0, 0));
     }
 
-    private void drawHint(Canvas c, int w, int h) {
+    private void drawHint(Canvas c, int w, int h, float alpha) {
         boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         String k1 = "OK";
         String l1 = tr ? "  Filmi oynat    ·    " : "  Play movie    ·    ";
         String k2 = tr ? "Geri" : "Back";
         String l2 = tr ? "  Kutuyu kapat" : "  Close case";
 
-        hintKeyPaint.setColor(accent != 0 ? accent : Color.parseColor("#38BDF8"));
+        int keyCol = accent != 0 ? accent : Color.parseColor("#38BDF8");
+        hintKeyPaint.setColor(UiKit.withAlpha(keyCol, Math.round(255 * alpha)));
+        hintPaint.setColor(Color.argb(Math.round(220 * alpha), 240, 240, 245));
         float wK1 = hintKeyPaint.measureText(k1);
         float wL1 = hintPaint.measureText(l1);
         float wK2 = hintKeyPaint.measureText(k2);
         float wL2 = hintPaint.measureText(l2);
         float tw = wK1 + wL1 + wK2 + wL2;
 
+        float slideY = (1f - alpha) * UiKit.pxf(12);
         float ph = UiKit.pxf(54), pw = tw + UiKit.pxf(60);
-        r.set(w / 2f - pw / 2f, h - UiKit.pxf(64), w / 2f + pw / 2f, h - UiKit.pxf(64) + ph);
-        fill.setColor(Color.argb(140, 16, 16, 24));
+        r.set(w / 2f - pw / 2f, h - UiKit.pxf(64) + slideY, w / 2f + pw / 2f, h - UiKit.pxf(64) + ph + slideY);
+        fill.setColor(Color.argb(Math.round(140 * alpha), 16, 16, 24));
         c.drawRoundRect(r, ph / 2f, ph / 2f, fill);
         fill.setStyle(Paint.Style.STROKE);
         fill.setStrokeWidth(Math.max(1f, UiKit.pxf(1.5f)));
-        fill.setColor(Color.argb(70, 255, 255, 255));
+        fill.setColor(Color.argb(Math.round(70 * alpha), 255, 255, 255));
         c.drawRoundRect(r, ph / 2f, ph / 2f, fill);
         fill.setStyle(Paint.Style.FILL);
 
@@ -755,7 +781,7 @@ public class DvdOpeningView extends View {
     /** The front cover hinged on its left edge; past 90 degrees we see its inside. */
     private void drawCover(Canvas c, float l, float t, float w, float h, float angle) {
         double a = Math.toRadians(angle);
-        float d = h * 3f;
+        float d = h * 3.4f;
         float hingeX = l, cy = t + h / 2f;
         float fx = (float) Math.cos(a) * w;
         float fz = (float) -Math.sin(a) * w;
@@ -765,22 +791,32 @@ public class DvdOpeningView extends View {
         boolean front = angle < 90f;
         Bitmap tex = front ? (landscape && coverL != null ? coverL : dvd.cover) : inner;
         if (tex == null) return;
-        src[0] = 0; src[1] = 0; src[2] = tex.getWidth(); src[3] = 0;
-        src[4] = tex.getWidth(); src[5] = tex.getHeight(); src[6] = 0; src[7] = tex.getHeight();
-        if (front) {
-            dst[0] = hingeX; dst[1] = t; dst[2] = freeX; dst[3] = freeTop;
-            dst[4] = freeX; dst[5] = freeBottom; dst[6] = hingeX; dst[7] = t + h;
-        } else {
-            dst[0] = freeX; dst[1] = freeTop; dst[2] = hingeX; dst[3] = t;
-            dst[4] = hingeX; dst[5] = t + h; dst[6] = freeX; dst[7] = freeBottom;
+        float spanX = freeX - hingeX;
+        if (Math.abs(spanX) >= 1.5f) {
+            src[0] = 0; src[1] = 0; src[2] = tex.getWidth(); src[3] = 0;
+            src[4] = tex.getWidth(); src[5] = tex.getHeight(); src[6] = 0; src[7] = tex.getHeight();
+            if (front) {
+                dst[0] = hingeX; dst[1] = t; dst[2] = freeX; dst[3] = freeTop;
+                dst[4] = freeX; dst[5] = freeBottom; dst[6] = hingeX; dst[7] = t + h;
+            } else {
+                dst[0] = freeX; dst[1] = freeTop; dst[2] = hingeX; dst[3] = t;
+                dst[4] = hingeX; dst[5] = t + h; dst[6] = freeX; dst[7] = freeBottom;
+            }
+            m.setPolyToPoly(src, 0, dst, 0, 4);
+            float shade = front ? 1f - (float) Math.sin(a) * 0.28f : 0.82f + 0.18f * (float) -Math.cos(a);
+            int l8 = (int) (255 * Math.max(0.38f, Math.min(1f, shade)));
+            p.setColorFilter(l8 >= 250 ? null : new LightingColorFilter(Color.rgb(l8, l8, l8), 0));
+            c.drawBitmap(tex, m, p);
+            p.setColorFilter(null);
         }
-        if (Math.abs(freeX - hingeX) < 1f) return;
-        m.setPolyToPoly(src, 0, dst, 0, 4);
-        float shade = front ? 1f - (float) Math.sin(a) * 0.35f : 0.80f + 0.20f * (float) -Math.cos(a);
-        int l8 = (int) (255 * Math.max(0.3f, Math.min(1f, shade)));
-        p.setColorFilter(l8 >= 250 ? null : new LightingColorFilter(Color.rgb(l8, l8, l8), 0));
-        c.drawBitmap(tex, m, p);
-        p.setColorFilter(null);
+        // Subtle 3D hinge / cover rim thickness when passing near 90 degrees so the leaf never blinks out
+        float edgeVis = (float) Math.sin(a);
+        if (edgeVis > 0.15f) {
+            float rimW = Math.max(UiKit.pxf(2.5f), w * 0.014f * edgeVis);
+            fill.setColor(Color.argb(Math.round(180 * edgeVis), 28, 30, 38));
+            r.set(hingeX - rimW * 0.5f, t, hingeX + rimW * 0.5f, t + h);
+            c.drawRoundRect(r, rimW * 0.5f, rimW * 0.5f, fill);
+        }
     }
 
     public static Bitmap bakeInner(Context ctx, int w, int h, Bitmap cover, Bitmap still, Movie movie) {
@@ -1634,5 +1670,10 @@ public class DvdOpeningView extends View {
 
     private static float easeInOut(float x) {
         return x < 0.5f ? 4 * x * x * x : 1 - (float) Math.pow(-2 * x + 2, 3) / 2;
+    }
+
+    /** C2-continuous quintic smoothstep: zero velocity and zero acceleration at both endpoints. */
+    private static float quinticInOut(float x) {
+        return x * x * x * (x * (x * 6f - 15f) + 10f);
     }
 }

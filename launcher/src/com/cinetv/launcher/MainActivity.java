@@ -1196,21 +1196,25 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     @Override
     public void onPhone() {
+        if (home != null) home.hideButtonHint();
         Panels.pairing(this, home.modal, "search");
     }
 
     @Override
     public void onNetwork() {
+        if (home != null) home.hideButtonHint();
         AppLauncher.openWifiSettings(this);
     }
 
     @Override
     public void onInputs() {
+        if (home != null) home.hideButtonHint();
         Panels.inputs(this, home.modal);
     }
 
     @Override
     public void onAllApps() {
+        if (home != null) home.hideButtonHint();
         final Context app = getApplicationContext();
         background(() -> {
             List<AppCatalog.Entry> apps = AppCatalog.drawerApps(app);
@@ -1952,28 +1956,29 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     public void showPartyGamesFolderModal() {
         if (home == null || home.modal == null) return;
+        home.hideButtonHint();
         home.modal.push(() -> Panels.buildPartyGamesFolderModal(this, home.modal, new Panels.PartyLauncher() {
             @Override
             public void launchSnake() {
-                home.modal.closeImmediate();
+                home.modal.closeImmediate(false);
                 showLiveSnakePhileScene();
             }
 
             @Override
             public void launchQuiz() {
-                home.modal.closeImmediate();
+                home.modal.closeImmediate(false);
                 showParty(com.cinetv.launcher.party.CinePartyManager.Mode.QUIZ);
             }
 
             @Override
             public void launchRoulette() {
-                home.modal.closeImmediate();
+                home.modal.closeImmediate(false);
                 showParty(com.cinetv.launcher.party.CinePartyManager.Mode.ROULETTE);
             }
 
             @Override
             public void launchSessiz() {
-                home.modal.closeImmediate();
+                home.modal.closeImmediate(false);
                 showParty(com.cinetv.launcher.party.CinePartyManager.Mode.SESSIZ);
             }
         }));
@@ -2025,12 +2030,15 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     /** Opens a CineParty game full screen on the TV; the phones join it from the party tab. */
     public void showParty(com.cinetv.launcher.party.CinePartyManager.Mode mode) {
         if (home == null) return;
-        if (home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
+        home.hideButtonHint();
+        if (home.shelf != null) home.shelf.clearHover();
+        if (home.modal != null && home.modal.isShowing()) home.modal.closeImmediate(false);
         hideLiveSnakePhileScene();
         com.cinetv.launcher.party.CinePartyManager party = com.cinetv.launcher.party.CinePartyManager.get(this);
         if (party.mode() != mode) party.open(mode);
         if (partyStage == null) {
             partyStage = new com.cinetv.launcher.party.PartyStageView(this);
+            partyStage.setTranslationZ(700f);
             partyStage.setHost(new com.cinetv.launcher.party.PartyStageView.Host() {
                 @Override
                 public void exit() {
@@ -2044,9 +2052,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     launchFilmByTitle(title);
                 }
             });
-            // Under the modal layer, so a pairing request or a toast-like dialog still shows on top of the game.
+            // Under the modal layer (800f), above all Home HUD elements (<= 260f).
             home.root.addView(partyStage, home.root.indexOfChild(home.modal),
                     new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            if (home.scroll != null) home.scroll.setVisibility(View.INVISIBLE);
             home.environment.pause();
         }
         partyStage.requestFocus();
@@ -2056,6 +2065,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (partyStage == null) return;
         home.root.removeView(partyStage);
         partyStage = null;
+        if (home.scroll != null) home.scroll.setVisibility(View.VISIBLE);
+        home. hideButtonHint();
         home.environment.resume();
         if (home.shelf != null) home.shelf.requestFocus();
     }
@@ -2268,11 +2279,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
         };
         if (from != null && from.dvdCase() != null) {
+            home.hideButtonHint();
             int[] loc = new int[2];
             from.getLocationOnScreen(loc);
             float cx = loc[0] + from.getWidth() / 2f, cy = loc[1] + from.getHeight() / 2f;
             float w = from.caseWidth() * 1.52f, h = from.caseHeight() * 1.52f;
             com.cinetv.launcher.device.AmbilightSync.updateColor(this, from.dvdCase().accent);
+            home.opening.setSourceView(from);
             home.opening.play(from.dvdCase(), m, new RectF(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2), 0, cb);
             writeInnerNote(m, from.dvdCase());
             return;
@@ -2288,7 +2301,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
             DvdCase dvd = DvdCase.bake(app, poster, m.coverTitle(), m.year, AppArtwork.sampleDistinctPosterColor(poster, 0, 0), cw, ch, 0);
             ui(() -> {
+                home.hideButtonHint();
                 float cx = home.root.getWidth() / 2f, cy = home.root.getHeight() / 2f;
+                home.opening.setSourceView(null);
                 home.opening.play(dvd, m, new RectF(cx - cw / 2f, cy + ch * 0.4f, cx + cw / 2f, cy + ch * 1.4f), 3200, cb);
                 writeInnerNote(m, dvd);
             });
@@ -2909,10 +2924,15 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private com.cinetv.launcher.party.SnakePhileView liveSnakePhileView;
 
     public void showLiveSnakePhileScene() {
-        if (home != null && home.modal != null && home.modal.isShowing()) home.modal.closeImmediate();
+        if (home != null) {
+            home.hideButtonHint();
+            if (home.shelf != null) home.shelf.clearHover();
+            if (home.modal != null && home.modal.isShowing()) home.modal.closeImmediate(false);
+        }
         hidePartyStage();
         hideLiveSnakePhileScene();
         com.cinetv.launcher.party.SnakePhileView snake = new com.cinetv.launcher.party.SnakePhileView(this);
+        snake.setTranslationZ(700f);
         snake.setOnSnakePhileListener(new com.cinetv.launcher.party.SnakePhileView.OnSnakePhileListener() {
             @Override
             public void onMovieLaunch(String title) {
@@ -2927,7 +2947,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
         });
         liveSnakePhileView = snake;
-        home.root.addView(snake, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        home.root.addView(snake, home.root.indexOfChild(home.modal),
+                new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        if (home.scroll != null) home.scroll.setVisibility(View.INVISIBLE);
         snake.setFocusable(true);
         snake.requestFocus();
         snake.resetGame();
@@ -2937,6 +2959,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (liveSnakePhileView == null) return;
         home.root.removeView(liveSnakePhileView);
         liveSnakePhileView = null;
+        if (home != null) {
+            if (home.scroll != null) home.scroll.setVisibility(View.VISIBLE);
+            home.hideButtonHint();
+        }
     }
 
     private void showScreensaverInternal() {

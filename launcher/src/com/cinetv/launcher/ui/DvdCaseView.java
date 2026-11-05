@@ -269,8 +269,8 @@ public class DvdCaseView extends View {
         float up = lift * caseH * 0.05f;
         // Wide penumbra (near the focus only: down the shelf the core alone reads the same, at half the cost).
         if (dim > 0.7f) {
-            footprint(cx, cy, -hw * 1.10f + hw * 0.10f, hw * 1.10f + hw * 0.16f, -hd - caseW * 0.10f, hd + caseW * 0.34f, hh + up);
-            fxPaint.setAlpha((int) (120 * shadowVisibility * dim));
+            footprint(cx, cy, -hw * 1.06f + hw * 0.06f, hw * 1.06f + hw * 0.12f, -hd - caseW * 0.08f, hd + caseW * 0.14f, hh + up);
+            fxPaint.setAlpha((int) (110 * shadowVisibility * dim));
             drawQuad(canvas, sh, floor, fxPaint);
         }
         // Tight core right under the box.

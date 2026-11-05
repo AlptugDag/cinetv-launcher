@@ -6,11 +6,8 @@ import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.speech.tts.UtteranceProgressListener;
-import android.speech.tts.TextToSpeech;
 import android.util.Log;
 
-import com.cinetv.launcher.device.PerformanceProfile;
 import com.cinetv.launcher.service.Prefs;
 
 import org.json.JSONArray;
@@ -35,22 +32,21 @@ import java.util.concurrent.Executors;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Gamze's voice: Turkish neural speech from {@code canberkkkkkk/ema-lightning} (24 kHz flow matching),
- * synthesised on public Hugging Face Spaces, with the TV's own Turkish TTS when they cannot be reached.
+ * synthesised on public Hugging Face Spaces directly on every CineTV device without falling back to the TV's native TTS.
  *
  * <ul>
- *   <li><b>Talks like a person, not a page:</b> a reply is split into sentences; the first one plays
- *       as soon as it is ready while the next is synthesised, so she starts talking in about a second.</li>
- *   <li><b>Instant fillers:</b> the short phrases she uses while thinking are synthesised once at idle
- *       and kept, so "Hemen bakıyorum" plays immediately.</li>
- *   <li><b>No dead air:</b> a Space that fails (quota, cold start) is skipped for a while instead of
- *       being waited on every time; the CPU Space, which has no quota, is tried first.</li>
+ *   <li><b>Talks like a person, not a page:</b> a reply is split into sentences and synthesised in parallel;
+ *       the first sentence plays as soon as it is ready while the remaining sentences finish in the background.</li>
+ *   <li><b>Instant fillers & game pre-warming:</b> short phrases and game announcements are synthesised ahead of time
+ *       and cached on disk so they play with zero latency.</li>
  *   <li><b>Knows when she's done:</b> {@link #speak(Context, CharSequence, Runnable)} calls back after
- *       the last word, so a question can reopen the microphone.</li>
+ *       the last word, so a question can reopen the microphone or advance the game.</li>
  * </ul>
  */
 public final class EmaLightningTts {
@@ -61,16 +57,16 @@ public final class EmaLightningTts {
 
     /** CPU Space: no GPU quota, ~0.5 s per sentence. Tried first. */
     private static final String CPU_SPACE = "https://mrfakename-ema-lightning.hf.space/gradio_api/call/speak";
-    /** ZeroGPU Space: fast, but anonymous callers hit a daily quota. */
+    /** ZeroGPU Space: fast, backup space. */
     private static final String GPU_SPACE = "https://hugging-apps-ema-lightning.hf.space/gradio_api/call/synthesize";
-    private static final long SKIP_FAILED_MS = 5 * 60_000L;
+    private static final long SKIP_FAILED_MS = 15_000L;
     private static volatile long cpuFailedAt = -SKIP_FAILED_MS, gpuFailedAt = -SKIP_FAILED_MS;
 
     private static final int SAMPLE_RATE = 24000;
-    private static final int MAX_CACHE_FILES = 64;
+    private static final int MAX_CACHE_FILES = 96;
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
-    /** Synthesis runs here; playback waits on a latch so the next sentence is made while one plays. */
+    /** Synthesis orchestration runs here; sentence WAVs are fetched in parallel on SYNTH. */
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "cinetv-gamze-voice");
         t.setPriority(Thread.NORM_PRIORITY - 1);
@@ -79,8 +75,6 @@ public final class EmaLightningTts {
     private static final AtomicInteger GENERATION = new AtomicInteger(0);
     private static final Object PLAYER_LOCK = new Object();
     private static MediaPlayer activePlayer;
-    private static TextToSpeech fallbackTts;
-    private static volatile boolean fallbackReady = false;
     private static volatile boolean speaking;
 
     /** What Gamze says while she thinks; synthesised once and kept. */
@@ -89,8 +83,9 @@ public final class EmaLightningTts {
 
     private EmaLightningTts() {}
 
+    /** Every TV with CineTV installed uses EMA directly (synthesis is remote, playback is a lightweight WAV stream). */
     public static boolean isSupportedHardware(Context ctx) {
-        return PerformanceProfile.tier(ctx) != PerformanceProfile.Tier.LOW;
+        return true;
     }
 
     public static boolean isEnabled(Context ctx) {
@@ -136,44 +131,48 @@ public final class EmaLightningTts {
         speak(ctx, rawText, onDone);
     }
 
-    /** Game narration: always speaks (the games are built around her), unless the voice is switched off. */
+    /** Game narration: always speaks directly with EMA (unless game voice is switched off). */
     public static void speakGame(final Context ctx, final CharSequence rawText) {
         speakGame(ctx, rawText, null);
     }
 
-    /** Game narration that tells the game when she has finished ({@code onDone} runs even with the voice off). */
+    /** Game narration that tells the game when EMA has finished ({@code onDone} runs even with the voice off). */
     public static void speakGame(final Context ctx, final CharSequence rawText, final Runnable onDone) {
         if (ctx == null || rawText == null || !Prefs.get(ctx).getBoolean("game_voice", true)) {
             if (onDone != null) MAIN.post(onDone);
             return;
         }
-        start(ctx.getApplicationContext(), rawText.toString(), onDone, GAME_WAIT_MS);
+        start(ctx.getApplicationContext(), rawText.toString(), onDone);
     }
 
-    /** Game narration waits at most this long for the neural voice of a sentence; then the TV's own voice reads it. */
-    private static final long GAME_WAIT_MS = 3500;
     private static final ExecutorService SYNTH = Executors.newCachedThreadPool(r -> {
         Thread t = new Thread(r, "ema-synth");
         t.setDaemon(true);
         return t;
     });
 
-    /** Neural voice for {@code text}, or null when it is not ready within {@code waitMs} (it keeps going and is cached for next time). */
-    private static File synthesizeWithin(Context app, String text, int gen, long waitMs) {
-        if (waitMs <= 0) return getOrSynthesizeWav(app, text, gen);
-        java.util.concurrent.Future<File> f = SYNTH.submit(() -> getOrSynthesizeWav(app, text, gen));
-        try {
-            return f.get(waitMs, TimeUnit.MILLISECONDS);
-        } catch (Throwable late) {
-            return null;
-        }
+    /** Pre-synthesises and caches the EMA audio for {@code rawText} in the background so subsequent playback is instant. */
+    public static void prewarmText(final Context ctx, final CharSequence rawText) {
+        if (ctx == null || rawText == null) return;
+        final Context app = ctx.getApplicationContext();
+        final String clean = normalizeForSpeech(rawText.toString());
+        if (clean.isEmpty()) return;
+        final int snapGen = GENERATION.get();
+        SYNTH.execute(() -> {
+            try {
+                for (String part : sentences(clean)) {
+                    getOrSynthesizeWav(app, part, snapGen);
+                }
+            } catch (Throwable ignored) {
+            }
+        });
     }
 
     public static void speak(final Context ctx, final CharSequence rawText) {
         speak(ctx, rawText, null);
     }
 
-    /** Speaks, cancelling whatever she was saying; {@code onDone} runs on the main thread after the last word. */
+    /** Speaks with EMA, cancelling whatever she was saying; {@code onDone} runs on the main thread after the last word. */
     public static void speak(final Context ctx, final CharSequence rawText, final Runnable onDone) {
         if (ctx == null || rawText == null || !isEnabled(ctx)) {
             if (onDone != null) MAIN.post(onDone);
@@ -182,20 +181,16 @@ public final class EmaLightningTts {
         start(ctx.getApplicationContext(), rawText.toString(), onDone);
     }
 
-    /** Always speaks regardless of proactive settings (e.g. for user-initiated voice CineSUB queries). */
+    /** Always speaks with EMA regardless of proactive settings (e.g. for user-initiated voice CineSUB queries). */
     public static void speakAlways(final Context ctx, final CharSequence rawText, final Runnable onDone) {
         if (ctx == null || rawText == null) {
             if (onDone != null) MAIN.post(onDone);
             return;
         }
-        start(ctx.getApplicationContext(), rawText.toString(), onDone, 0);
+        start(ctx.getApplicationContext(), rawText.toString(), onDone);
     }
 
     private static void start(final Context app, String raw, final Runnable onDone) {
-        start(app, raw, onDone, 0);
-    }
-
-    private static void start(final Context app, String raw, final Runnable onDone, final long waitMs) {
         final String clean = normalizeForSpeech(raw);
         final int gen = GENERATION.incrementAndGet();
         stopActivePlayback();
@@ -207,24 +202,24 @@ public final class EmaLightningTts {
         WORKER.execute(() -> {
             try {
                 List<String> parts = sentences(clean);
+                List<Future<File>> futures = new ArrayList<>(parts.size());
+                for (final String part : parts) {
+                    futures.add(SYNTH.submit(() -> getOrSynthesizeWav(app, part, gen)));
+                }
                 CountDownLatch previous = null;
-                for (String part : parts) {
+                for (int i = 0; i < futures.size(); i++) {
                     if (gen != GENERATION.get()) return;
-                    File wav = synthesizeWithin(app, part, gen, waitMs);
+                    File wav = null;
+                    try {
+                        wav = futures.get(i).get(18, TimeUnit.SECONDS);
+                    } catch (Throwable ignored) {
+                    }
                     if (gen != GENERATION.get()) return;
                     if (previous != null) previous.await(30, TimeUnit.SECONDS);
                     if (gen != GENERATION.get()) return;
-                    if (wav == null) {
-                        // The rest goes to the TV's own voice in one go, so it never stutters between engines.
-                        StringBuilder rest = new StringBuilder();
-                        for (int i = parts.indexOf(part); i < parts.size(); i++) rest.append(parts.get(i)).append(' ');
-                        CountDownLatch done = new CountDownLatch(1);
-                        speakWithNativeFallback(app, rest.toString().trim(), gen, done);
-                        done.await(40, TimeUnit.SECONDS);
-                        previous = null;
-                        break;
+                    if (wav != null) {
+                        previous = playWavFile(app, wav, gen);
                     }
-                    previous = playWavFile(app, wav, gen);
                 }
                 if (previous != null) previous.await(30, TimeUnit.SECONDS);
             } catch (Throwable t) {
@@ -238,12 +233,16 @@ public final class EmaLightningTts {
         });
     }
 
-    /** Sentences, merged up to ~240 characters so greetings and replies play as one seamless utterance without mid-sentence cutoffs. */
+    /**
+     * Splits text into natural sentence chunks: the first sentence is kept short (~36..110 chars) so EMA
+     * starts speaking almost immediately, while remaining sentences are grouped up to ~160 chars and synthesised in parallel.
+     */
     static List<String> sentences(String text) {
         List<String> out = new ArrayList<>();
         StringBuilder cur = new StringBuilder();
         for (String piece : text.split("(?<=[.!?…])\\s+")) {
-            if (cur.length() > 0 && cur.length() + piece.length() > 240) {
+            int maxLen = out.isEmpty() ? 105 : 165;
+            if (cur.length() > 0 && (cur.length() + piece.length() > maxLen || (out.isEmpty() && cur.length() >= 36))) {
                 out.add(cur.toString().trim());
                 cur.setLength(0);
             }
@@ -269,11 +268,6 @@ public final class EmaLightningTts {
                     activePlayer.release();
                 } catch (Throwable ignored) {}
                 activePlayer = null;
-            }
-            if (fallbackTts != null) {
-                try {
-                    fallbackTts.stop();
-                } catch (Throwable ignored) {}
             }
         }
     }
@@ -639,8 +633,17 @@ public final class EmaLightningTts {
             wavUrl = callGradioSpace(GPU_SPACE, payload(text, false), gen);
             if (wavUrl == null && gen == GENERATION.get()) gpuFailedAt = now;
         }
+        // Direct retry if both spaces were cold or skipped
+        if (wavUrl == null && gen == GENERATION.get()) {
+            wavUrl = callGradioSpace(CPU_SPACE, payload(text, true), gen);
+            if (wavUrl != null) cpuFailedAt = -SKIP_FAILED_MS;
+        }
+        if (wavUrl == null && gen == GENERATION.get()) {
+            wavUrl = callGradioSpace(GPU_SPACE, payload(text, false), gen);
+            if (wavUrl != null) gpuFailedAt = -SKIP_FAILED_MS;
+        }
         if (wavUrl == null || gen != GENERATION.get()) return null;
-        byte[] wavBytes = downloadBytes(wavUrl, 10_000);
+        byte[] wavBytes = downloadBytes(wavUrl, 12_000);
         if (wavBytes == null || wavBytes.length <= 512) return null;
         File tmp = new File(dir, cached.getName() + ".tmp");
         try (FileOutputStream fos = new FileOutputStream(tmp)) {
@@ -703,8 +706,8 @@ public final class EmaLightningTts {
             URL url = new URL(callUrl);
             postConn = (HttpURLConnection) url.openConnection();
             postConn.setRequestMethod("POST");
-            postConn.setConnectTimeout(4500);
-            postConn.setReadTimeout(6000);
+            postConn.setConnectTimeout(6000);
+            postConn.setReadTimeout(8000);
             postConn.setDoOutput(true);
             postConn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             postConn.setRequestProperty("Accept", "application/json");
@@ -725,8 +728,8 @@ public final class EmaLightningTts {
             URL streamUrl = new URL(callUrl + "/" + eventId);
             sseConn = (HttpURLConnection) streamUrl.openConnection();
             sseConn.setRequestMethod("GET");
-            sseConn.setConnectTimeout(4500);
-            sseConn.setReadTimeout(9500);
+            sseConn.setConnectTimeout(6000);
+            sseConn.setReadTimeout(12000);
             sseConn.setRequestProperty("Accept", "text/event-stream");
             sseConn.setRequestProperty("User-Agent", "CineTV-EMA-Lightning/1.0 (" + MODEL_ID + ")");
 
@@ -827,84 +830,8 @@ public final class EmaLightningTts {
     }
 
     public static void prewarmNativeFallback(final Context ctx) {
-        if (ctx == null) return;
-        MAIN.post(() -> ensureNative(ctx.getApplicationContext(), null));
-    }
-
-    private static final java.util.List<Runnable> pendingNativeCallbacks = new java.util.ArrayList<>();
-
-    private static void ensureNative(Context app, Runnable ready) {
-        synchronized (PLAYER_LOCK) {
-            if (fallbackReady) {
-                if (ready != null) ready.run();
-                return;
-            }
-            if (ready != null) {
-                pendingNativeCallbacks.add(ready);
-            }
-            if (fallbackTts != null) {
-                return;
-            }
-            try {
-                fallbackTts = new TextToSpeech(app, status -> {
-                    if (status != TextToSpeech.SUCCESS || fallbackTts == null) {
-                        synchronized (PLAYER_LOCK) {
-                            pendingNativeCallbacks.clear();
-                        }
-                        return;
-                    }
-                    try {
-                        Locale trLoc = new Locale("tr", "TR");
-                        int trAvail = fallbackTts.isLanguageAvailable(trLoc);
-                        if (trAvail >= TextToSpeech.LANG_AVAILABLE) {
-                            fallbackTts.setLanguage(trLoc);
-                        } else {
-                            fallbackTts.setLanguage(Locale.getDefault());
-                        }
-                        fallbackTts.setPitch(1.0f);
-                        fallbackTts.setSpeechRate(1.02f);
-                        fallbackTts.setAudioAttributes(new AudioAttributes.Builder()
-                                .setUsage((android.os.Build.VERSION.SDK_INT >= 26 ? AudioAttributes.USAGE_ASSISTANT : AudioAttributes.USAGE_MEDIA))
-                                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
-                        fallbackReady = true;
-                        java.util.List<Runnable> copy;
-                        synchronized (PLAYER_LOCK) {
-                            copy = new java.util.ArrayList<>(pendingNativeCallbacks);
-                            pendingNativeCallbacks.clear();
-                        }
-                        for (Runnable r : copy) {
-                            if (r != null) r.run();
-                        }
-                    } catch (Throwable ignored) {}
-                });
-            } catch (Throwable ignored) {}
-        }
-    }
-
-    private static void speakWithNativeFallback(final Context ctx, final String text, final int gen, final CountDownLatch done) {
-        if (gen != GENERATION.get()) {
-            done.countDown();
-            return;
-        }
-        MAIN.post(() -> ensureNative(ctx.getApplicationContext(), () -> {
-            try {
-                if (gen != GENERATION.get()) {
-                    done.countDown();
-                    return;
-                }
-                fallbackTts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                    @Override public void onStart(String id) {}
-                    @Override public void onDone(String id) { done.countDown(); }
-                    @Override public void onError(String id) { done.countDown(); }
-                    @Override public void onStop(String id, boolean interrupted) { done.countDown(); }
-                });
-                if (fallbackTts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "gamze_" + gen) != TextToSpeech.SUCCESS) done.countDown();
-            } catch (Throwable t) {
-                done.countDown();
-            }
-        }));
-        // Allow up to 10 seconds for Android's TTS engine cold start on low-performance TVs before giving up.
-        MAIN.postDelayed(() -> { if (!fallbackReady) done.countDown(); }, 10000);
+        // Native Android TextToSpeech fallback is disabled; all speech runs directly through EMA.
+        prewarmFillers(ctx);
     }
 
     private static byte[] downloadBytes(String urlStr, int timeoutMs) {

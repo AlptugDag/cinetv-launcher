@@ -485,7 +485,7 @@ public class HomeScreen {
         buttonHint.setShadowLayer(UiKit.pxf(4), 0, UiKit.pxf(2), Color.argb(180, 0, 0, 0));
         buttonHint.setPadding(UiKit.px(22), UiKit.px(10), UiKit.px(22), UiKit.px(10));
         buttonHint.setBackground(new Glass(buttonHint, UiKit.pxf(22), Glass.Style.PANEL));
-        buttonHint.setTranslationZ(500f);
+        buttonHint.setTranslationZ(260f);
         buttonHint.setVisibility(View.GONE);
         root.addView(buttonHint, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));
 
@@ -499,14 +499,17 @@ public class HomeScreen {
         root.addView(moveHint, mlp);
 
         modal = new ModalHost(ctx);
+        modal.setTranslationZ(800f);
         root.addView(modal, match());
 
         keyboard = new GlassKeyboard(ctx);
         keyboard.setTranslationZ(1200f);
         root.addView(keyboard, match());
         opening = new DvdOpeningView(ctx);
+        opening.setTranslationZ(900f);
         root.addView(opening, match());
         trailer = new TrailerPlayer(ctx);
+        trailer.setTranslationZ(905f);
         root.addView(trailer, new FrameLayout.LayoutParams(1, 1));
         opening.setTrailerSlot(new DvdOpeningView.TrailerSlot() {
             @Override
@@ -555,6 +558,7 @@ public class HomeScreen {
             }
         });
         pattern = new CalibrationPatternView(ctx);
+        pattern.setTranslationZ(950f);
         root.addView(pattern, match());
         if (!com.cinetv.launcher.service.Integrity.isGenuine(ctx)) {
             // a changed copy always says whose work it is and where the original is, on every screen of Home
@@ -569,12 +573,16 @@ public class HomeScreen {
             root.addView(badge, blp);
         }
         tour = new TourView(ctx);
+        tour.setTranslationZ(960f);
         root.addView(tour, match());
         splash = buildSplash(ctx);
+        splash.setTranslationZ(1150f);
         root.addView(splash, match());
         voice = new VoiceOverlay(ctx);
+        voice.setTranslationZ(1000f);
         root.addView(voice, match());
         screensaver = new FrameLayout(ctx);
+        screensaver.setTranslationZ(1100f);
         screensaver.setVisibility(View.GONE);
         screensaverView = new CinemaScreensaverView(ctx);
         screensaver.addView(screensaverView, match());
@@ -583,17 +591,26 @@ public class HomeScreen {
         wireFocus();
     }
 
+    public void hideButtonHint() {
+        if (buttonHint != null) {
+            buttonHint.animate().cancel();
+            buttonHint.setVisibility(View.GONE);
+        }
+    }
+
     private View headerButton(int icon, int desc, int hint, int glowColor, View.OnClickListener click) {
-        final FrameLayout b = Controls.iconButton(ctx, ctx.getDrawable(icon), ctx.getString(desc), glowColor, click);
+        final FrameLayout b = Controls.iconButton(ctx, ctx.getDrawable(icon), ctx.getString(desc), glowColor, v -> {
+            hideButtonHint();
+            if (click != null) click.onClick(v);
+        });
         View.OnFocusChangeListener inner = b.getOnFocusChangeListener();
         b.setOnFocusChangeListener((v, has) -> {
             if (inner != null) inner.onFocusChange(v, has);
             if (has) {
                 listener.onFocusLight(v, glowColor);
                 if (hint != 0) showButtonHint(v, ctx.getString(hint));
-            } else if (buttonHint != null) {
-                buttonHint.animate().cancel();
-                buttonHint.setVisibility(View.GONE);
+            } else {
+                hideButtonHint();
             }
         });
         return b;
@@ -602,20 +619,30 @@ public class HomeScreen {
     /** Shows the icon's name just under it, kept inside the screen with exact HUD visor curvature and high Z-depth. */
     private void showButtonHint(View button, CharSequence text) {
         if (buttonHint == null) return;
+        if ((modal != null && modal.isShowing())
+                || (opening != null && opening.isPlaying())
+                || (scroll != null && scroll.getVisibility() != View.VISIBLE)) {
+            hideButtonHint();
+            return;
+        }
         buttonHint.animate().cancel();
         buttonHint.setText(text);
         buttonHint.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int[] at = new int[2], origin = new int[2];
         button.getLocationInWindow(at);
         root.getLocationInWindow(origin);
+        if (at[0] == 0 && at[1] == 0) {
+            hideButtonHint();
+            return;
+        }
         float centerX = at[0] - origin[0] + button.getWidth() / 2f;
         float x = centerX - buttonHint.getMeasuredWidth() / 2f;
         x = Math.max(UiKit.px(24), Math.min(x, root.getWidth() - buttonHint.getMeasuredWidth() - UiKit.px(24)));
         buttonHint.setTranslationX(x);
         buttonHint.setTranslationY(at[1] - origin[1] + button.getHeight() + UiKit.px(14));
 
-        // Always sit at HUD floating plane (500f Z) above curtains (95f) and header (200f)
-        buttonHint.setTranslationZ(500f);
+        // Sit above header (200f) and curtains (95f), but strictly below fullscreen games (700f) and modals (800f)
+        buttonHint.setTranslationZ(260f);
 
         // Exact HUD visor cylindrical perspective curvature matching its horizontal location on screen
         float cam = ctx.getResources().getDisplayMetrics().density * (spatialOn ? 3200f : 8500f);
@@ -1425,7 +1452,7 @@ public class HomeScreen {
         if (buttonHint != null) {
             buttonHint.setCameraDistance(cam);
             buttonHint.setRotationX(on ? 11f : 0f);
-            buttonHint.setTranslationZ(on ? 500f : 250f);
+            buttonHint.setTranslationZ(260f);
         }
         moveHint.setCameraDistance(cam);
         moveHint.setRotationX(on ? -8f : 0f);

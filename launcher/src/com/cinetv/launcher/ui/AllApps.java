@@ -348,7 +348,11 @@ public final class AllApps {
                     .translationZ(has ? UiKit.pxf(40) : 0f).setDuration(ms).start();
         });
         frame.setOnClickListener(v -> {
-            host.close();
+            if (e.packageName != null && e.packageName.startsWith("com.cinetv.party.")) {
+                host.closeImmediate(false);
+            } else {
+                host.close();
+            }
             l.open(e.packageName);
         });
         if (l != null) {
