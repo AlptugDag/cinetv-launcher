@@ -70,7 +70,7 @@ Kumandanın mikrofon tuşuna basın ve konuşun: *“90'larda yağmurlu gecelerd
 - **Çocuklar varken kural koddadır.** İstekte çocuk, aile ya da yaş geçtiğinde yetişkin içerik ile korku, gerilim, suç ve savaş türleri listeden kodla çıkarılır; yalnızca yapay zekâya bırakılmaz.
 - **Kurallara uyar.** Verdiğiniz yaş, dönem, ülke ve tema listedeki her filmde geçerlidir; yıl aralığı kodla da denetlenir.
 - **Sahneyi sorabilirsiniz.** Film oynarken mikrofona *“bu sahnede ne var?”*, *“bu yemek ne?”*, *“bu şarkı ne?”* deyin: Gamze filme döner, CineSUB kareye bakar ve en ilginç bulguyu sesli söyler.
-- **Hemen cevap verir.** Hızlı model (Gemini Flash-Lite) ve cümle cümle konuşan doğal Türkçe ses (`canberkkkkkk/ema-lightning`); İngilizce adları İngilizce okunuşuyla söyler. Yapay zekâ anahtarının günlük kotası dolduğunda beklemeden yapay zekâsız aramaya geçer.
+- **Hemen cevap verir.** Hızlı model (Gemini Flash-Lite) ve cümle cümle konuşan saf nöral Türkçe ses (`canberkkkkkk/ema-lightning`); İngilizce adları İngilizce okunuşuyla söyler. Mobil kumandada gerçek zamanlı mimik yapan ve konuşmayla senkron dudak oynatan hologram avatarı eşlik eder. Yapay zekâ anahtarının günlük kotası dolduğunda beklemeden yapay zekâsız aramaya geçer.
 
 > [!NOTE]
 > **Yapay zekâ yanıt ve önerilerinin kalitesi, kullandığınız yapay zekâ hesabına göre değişebilir.** Ücretsiz anahtarlar ve hesaplar daha küçük modellere, daha düşük kotaya ve daha yavaş yanıtlara yönlendirilebilir; arama isabeti, vitrin önerileri ve sohbet bu yüzden ücretli bir hesaba göre daha zayıf olabilir. Kota dolduğunda CineTV yapay zekâsız aramaya geçer.
@@ -84,7 +84,15 @@ Kumandanın mikrofon tuşuna basın ve konuşun: *“90'larda yağmurlu gecelerd
 <img src="docs/media/V20-cinesub-a.JPG" alt="CineSUB film sahnesi üzerinde" width="100%">
 <img src="docs/media/V20-cinesub-b.JPG" alt="CineSUB tv yayını üzerinde" width="100%">
 
-Nuvio'da, YouTube'da ya da harici oynatıcıda film dönerken **sarı tuşa** basın. CineSUB kareye bakar; bilinmeye değer **kişi, mekân, obje, yemek ve tabloların** etrafına halka çizer, notunu konunun yanına, altyazıya değmeden yerleştirir. Altyazıda geçen **isim, yer ve tarihi olayları** da yakalar. ◀ ▶ notlar arasında gezer, OK daha fazlasını anlatır; film hiç durmaz. **Eşlik modunda** izlerken ara sıra köşede kısa bir not belirir ve kendiliğinden kaybolur. Korumalı (DRM) içerikte görüntüyü göremediğini söyler, uydurmaz.
+Nuvio'da, YouTube'da ya da harici oynatıcıda film dönerken **sarı tuşa** basın. CineSUB kareye bakar; bilinmeye değer **kişi, mekân, obje, yemek ve tabloların** etrafına halka çizer, notunu konunun yanına, altyazıya değmeden yerleştirir. Altyazıda geçen **isim, yer ve tarihi olayları** da yakalar. ◀ ▶ notlar arasında gezer, OK daha fazlasını anlatır; film hiç durmaz. 
+
+Mikrofon tuşuna basarak sesli de sorabilirsiniz: *“Bu oyuncu kim?”*, *“Bu arabanın modeli ne?”*. Video anında durur, altın rengi ışıma dalgaları eşliğinde sahne Gemini Vision ile analiz edilir ve yanıt sesli olarak verildikten sonra film kaldığı yerden akmaya devam eder. **Eşlik modunda** izlerken ara sıra köşede kısa bir not belirir ve kendiliğinden kaybolur. Korumalı (DRM) içerikte görüntüyü göremediğini söyler, uydurmaz.
+
+<br>
+
+## Shazam: Salonda Çalan Müziği Yakalayın
+
+Kumandanın **MAVİ** tuşuna bastığınızda (veya telefon kumandasından dinlettiğinizde), TV ekranının kenarlarında elektrik mavisi akustik dalgalar yayılır ve çalan şarkı albüm kapağıyla birlikte alt kısımdaki **Liquid Glass** bilgi kapsülünde belirir. Gamze parçayı seslendirirken, telefon kumandanızdaki Medya sekmesinde **Spotify** ve **YouTube Music** bağlantıları tek tıkla dinlemeye hazır olur.
 
 <br>
 
@@ -96,8 +104,8 @@ Herkes TV'deki QR kodu okutur; TV ortak sahneyi, her telefon o oyuncunun kendi e
 
 | | |
 | :--- | :--- |
-| **CineQuiz** | Süreyi siz seçin. TMDB'den gerçek sahneler, oyuncu portreleri ve kadrolar, üstüne Gamze'nin kendi soruları: *bu sahne hangi filmden, bu oyuncunun oynadığı bir film, bu filmde kim yok, yönetmeni kim, hangi yıl*. Herkes telefondan cevaplar, cevaplar TV'de birlikte açılır, doğru olan 10 puan. Kazanan bu gecenin filmini seçer. |
-| **CineRoulette** | Altı haznede altı film, tek kurşun. Tetik sırayla çekilir: boş çıkan film elenir, kurşun bu gecenin filmini seçer. Kendi filmin namluya gelince riske girer misin? Süre her turda kısalır, herkesin iki çevirme hakkı var. |
+| **CineQuiz** | Süreyi siz seçin. TMDB'den gerçek sahneler, oyuncu portreleri ve kadrolar, üstüne Gamze'nin kendi soruları: *bu sahne hangi filmden, bu oyuncunun oynadığı bir film, bu filmde kim yok, yönetmeni kim, hangi yıl*. Öngörülü ses ön-yüklemesi (TTS prewarming) sayesinde sorular sıfır gecikmeyle anında seslendirilir. Herkes telefondan cevaplar, cevaplar TV'de birlikte açılır, doğru olan 10 puan. Kazanan bu gecenin filmini seçer. |
+| **CineRoulette** | Altı haznede altı film, tek kurşun. Tetik sırayla çekilir: boş çıkan film elenir, kurşun bu gecenin filmini seçer. Kendi filmin namluya gelince riske girer misin? Dinamik QR sahnesiyle katılımcılar oyuna her an dahil olabilir. Süre her turda kısalır, herkesin iki çevirme hakkı var. |
 | **CineSessiz** | Süresiz sinema tabusu: sırası gelen, salonun bileceği bir film, dizi ya da oyuncu seçer; Gamze beş kelimeyi yasaklar, herkes telefonundan tahmin eder. Takılınca Gamze şifreli bir ipucu verir. |
 | **CineDuel · SnakePhile** | Telefon nişangâh olur; ya da kumandayla sinefil yılan. |
 
@@ -105,7 +113,11 @@ Herkes TV'deki QR kodu okutur; TV ortak sahneyi, her telefon o oyuncunun kendi e
 
 ## Telefonunuz: Kumanda, Klavye, Oyun Kolu
 
-QR kodu okutun; uygulama indirmeden, hesap açmadan telefonunuz CineTV'nin parçası olur. Dokunmatik yüzey ve hava faresi televizyonun **her yerinde** çalışır (Nuvio, YouTube, sistem menüleri). Ana ekrana eklenince tam ekran bir uygulama gibi açılır.
+QR kodu okutun; uygulama indirmeden, hesap açmadan telefonunuz CineTV'nin parçası olur. Ana ekrana eklenince tam ekran bir uygulama gibi açılır.
+
+- **Hava Faresi (AirMouse) & Doğrudan Tıklama:** Telefonunuzu havada hareket ettirerek TV imlecini yönetin. Sistem düzeyindeki erişilebilirlik köprüsü (`canPerformGestures`) sayesinde televizyonun **her yerinde** (Nuvio, YouTube, sistem menüleri, 3D DVD vitrini ve açılan disk menüleri) doğrudan dokunmatik tıklama hassasiyeti sunar.
+- **Medya ve Sanatçı Filmografisi:** Film kartlarında yönetmen ve oyuncu kadrosu fotoğraflarıyla listelenir, kişiye dokunulduğunda tüm filmografisi mobil ekranda açılır. Çalan şarkılar geçmişiyle saklanır.
+- **Tek Tıkla Ekran Görüntüsü:** Kumandanın mavi tuşuna basılı tutarak aldığınız ekran görüntüleri saniyeler içinde telefonunuza aktarılır ve galeriye kaydedilebilir.
 
 <p align="center"><img src="docs/media/phone-strip.jpg" alt="Telefon kumandası" width="88%"></p>
 
@@ -113,10 +125,13 @@ QR kodu okutun; uygulama indirmeden, hesap açmadan telefonunuz CineTV'nin parç
 
 ## Donanımınızı Tanır, Ona Göre Davranır
 
-- **Tek mod, canlı ölçüm.** Düşük/Orta/Yüksek seçimi yok: her TV her efektle çalışır. CineTV ana ekranın çizdiği her karenin süresini ölçer; kareler yavaşladığında logolar, kategori önyüklemesi ve fragman hazırlığı gibi arka plan işleri ekran sakinleşene kadar bekler. Hiçbir özellik kapanmaz. Boştayken hiçbir şey çizmez.
+- **Tek mod, canlı ölçüm ve Lazy Startup.** Düşük/Orta/Yüksek seçimi yok: her TV her efektle çalışır. CineTV ana ekranın çizdiği her karenin süresini ölçer; kareler yavaşladığında arka plan işleri ekran sakinleşene kadar bekler. Düşük bellekli cihazlarda soğuk açılış tembel yükleme (lazy startup) ile hızlandırılır, bellek yükü sıfırlanır. Boştayken hiçbir şey çizmez.
+- **0ms Vitrin Başlangıcı.** TV yeniden açıldığında rafın boş kalmasını önleyen anında önbellek mimarisi.
+- **Sıfır Pembe Ekran Güvencesi.** TV'nin fabrikasyon orijinal başlatıcısını kapatmaz ya da silmez; CineTV TV'nin Ayarlar'ından kaldırılsa dahi televizyon asla ana ekransız (pembe ekran) kalmaz.
+- **ADB Kapalıyken Tam Bağımsız Çalışma.** Ağ Hata Ayıklama (ADB) kapalı olsa dahi telefon kumandası, klavye, yön tuşları, ekran görüntüsü, CineSUB ve otomatik arka plan güncellemeleri (`UPDATE_PACKAGES_WITHOUT_USER_ACTION`) kesintisiz çalışır.
 - **TV Denetçisi.** Panelin gerçek çözünürlüğü, HDR biçimleri, ses çıkışı ve kodekler; görüntü, ses, ağ ve DNS ayarları bu rapora göre yapılır.
-- **Sıkıştırılmış bellek (root gerektirmez).** Android'in uygulama sıkıştırması açılır: arka planda bekleyen uygulamaların belleği TV'nin kendi sıkıştırılmış takas alanına (zRAM) taşınır, öndeki uygulamaya daha çok RAM kalır. CineTV kendi görsellerini de bellekte sıkıştırılmış tutar. zRAM'in boyutu üreticinindir; onu büyütmek root ister.
-- **Arındırma.** Arka plan uygulamaları dondurulur, üretici izleyicileri kapatılır ve **CineTV'yi Yok Et** ile her şey eski haline döner.
+- **Sıkıştırılmış bellek (root gerektirmez).** Android'in uygulama sıkıştırması açılır: arka planda bekleyen uygulamaların belleği TV'nin kendi sıkıştırılmış takas alanına (zRAM) taşınır, öndeki uygulamaya daha çok RAM kalır. CineTV kendi görsellerini de bellekte sıkıştırılmış tutar.
+- **Arındırma.** Arka plan uygulamaları dondurulur, üretici izleyicileri kapatılır ve **CineTV'yi Yok Et** ile her şey eski fabrika haline döner.
 - **Kendini günceller.** Yeni sürüm imzası doğrulanarak arka planda kurulur, bir sonraki açılışta haber verilir; TV asla gece uyandırılmaz.
 
 <p align="center"><img src="docs/media/v20-settings.jpg" alt="Ayarlar" width="88%"></p>

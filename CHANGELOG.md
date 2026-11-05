@@ -1,5 +1,13 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.50
+
+- **Gelişmiş Hava Faresi (AirMouse) ve Evrensel Tıklama:** Telefon kumandasındaki hava faresi ve dokunmatik yüzey için sistem düzeyinde jest ve doğrudan tıklama desteği (`canPerformGestures` erişilebilirlik köprüsü) getirildi. TV'nin tüm arayüzünde, 3D DVD vitrininde ve açılan disk menülerinde akıcı imleç hareketi ve doğrudan dokunmatik seçim sağlandı.
+- **CineParty ve CineQuiz Ses Hızlandırması:** CineQuiz'de soruların anında seslendirilmesi için öngörülü yapay zekâ ses ön-yüklemesi (predictive TTS prewarming) entegre edildi. CineRoulette modunda çok oyunculu QR kod sahne görünürlüğü ve telefon eşleşmesi optimize edildi.
+- **Saf Nöral Türkçe TTS (EmaLightning):** Yerel sentezleyici katmanı sadeleştirilerek doğrudan ve saf yüksek kaliteli sinematik Türkçe ses akışına (`EmaLightningTts`) geçildi.
+- **Düşük Bellekli Cihazlarda Lazy Startup ve Görsel Kararlılık:** Açılış hızını artıran tembel bileşen yüklemesi, başlık katmanları ve Z-dönüşümü düzeltmeleri yapıldı; odaklanan kontrollerdeki görsel kırpılmalar giderildi.
+- **Sürüm ve Paket İlerlemesi:** Build, release ve APK sürüm numaraları 1.0.0.50 olarak güncellendi.
+
 ## 1.0.0.49
 
 - **ADB Kapalıyken Tam Bağımsız Çalışma ve Otomatik Arka Plan Güncellemesi:** Ağ Hata Ayıklama (ADB) tamamen kapatılsa dahi telefon kumandası, yön tuşları, klavye, ekran görüntüsü, CineSUB, APK kurulumu ve CineTV kendi kendine arka plan güncellemeleri (`UPDATE_PACKAGES_WITHOUT_USER_ACTION` + `TvKeyInterceptorService` erişilebilirlik köprüsü) kesintisiz çalışır.
