@@ -442,6 +442,7 @@ public final class MovieCatalog {
     }
 
     public static List<Movie> similar(Context ctx, int tmdbId, String type, String title, int max) {
+        int want = Math.max(max, 28);
         List<Movie> out = new ArrayList<>();
         String kind = "series".equals(type) || "tv".equals(type) ? "tv" : "movie";
         if (hasTmdb(ctx)) {
@@ -452,21 +453,119 @@ public final class MovieCatalog {
             }
             if (id > 0) {
                 try {
-                    JSONObject rec = tmdb(ctx, kind + "/" + id + "/recommendations?language=" + language());
-                    out.addAll(parseTmdbResults(rec, kind, max));
-                    if (out.size() < Math.min(max, 14)) {
-                        JSONObject sim = tmdb(ctx, kind + "/" + id + "/similar?language=" + language());
-                        List<Movie> more = parseTmdbResults(sim, kind, max - out.size());
-                        for (Movie m : more) {
-                            boolean exists = false;
-                            for (Movie ex : out) {
-                                if (ex.tmdbId == m.tmdbId || (ex.title != null && ex.title.equalsIgnoreCase(m.title))) {
-                                    exists = true;
-                                    break;
+                    JSONObject detail = tmdb(ctx, kind + "/" + id + "?append_to_response=keywords,credits,recommendations,similar&language=" + language());
+                    java.util.Set<Integer> targetGenres = new java.util.LinkedHashSet<>();
+                    int primaryGenre = 0;
+                    JSONArray gArr = detail.optJSONArray("genres");
+                    if (gArr != null) {
+                        for (int i = 0; i < gArr.length(); i++) {
+                            int gid = gArr.getJSONObject(i).optInt("id");
+                            if (gid > 0) {
+                                if (primaryGenre == 0) primaryGenre = gid;
+                                targetGenres.add(gid);
+                            }
+                        }
+                    }
+                    boolean targetIsAnim = targetGenres.contains(16);
+                    String targetLang = detail.optString("original_language", "");
+
+                    List<Integer> kwIds = new ArrayList<>();
+                    JSONObject kwObj = detail.optJSONObject("keywords");
+                    if (kwObj != null) {
+                        JSONArray kwArr = kwObj.optJSONArray("keywords");
+                        if (kwArr == null) kwArr = kwObj.optJSONArray("results");
+                        if (kwArr != null) {
+                            for (int i = 0; i < Math.min(6, kwArr.length()); i++) {
+                                int kid = kwArr.getJSONObject(i).optInt("id");
+                                if (kid > 0) kwIds.add(kid);
+                            }
+                        }
+                    }
+
+                    final java.util.Map<String, Movie> candidateMap = new java.util.LinkedHashMap<>();
+                    final java.util.Map<String, Integer> scoreMap = new java.util.HashMap<>();
+                    final int fPrimaryGenre = primaryGenre;
+                    final int fId = id;
+
+                    java.util.function.BiConsumer<List<Movie>, Integer> addCandidates = (list, baseBonus) -> {
+                        if (list == null) return;
+                        int rank = 0;
+                        for (Movie m : list) {
+                            rank++;
+                            if (m == null || m.tmdbId == fId || (title != null && title.equalsIgnoreCase(m.title))) continue;
+                            if (m.posterUrl == null || m.posterUrl.isEmpty()) continue;
+                            boolean candIsAnim = false;
+                            int sharedGenres = 0;
+                            boolean hasPrimary = false;
+                            if (m.genreIds != null) {
+                                for (int g : m.genreIds) {
+                                    if (g == 16) candIsAnim = true;
+                                    if (targetGenres.contains(g)) sharedGenres++;
+                                    if (g == fPrimaryGenre && fPrimaryGenre > 0) hasPrimary = true;
                                 }
                             }
-                            if (!exists) out.add(m);
+                            // Filter out animation mismatch and zero-genre-overlap noise
+                            if (targetIsAnim != candIsAnim) continue;
+                            if (!targetGenres.isEmpty() && m.genreIds != null && m.genreIds.length > 0 && sharedGenres == 0) continue;
+
+                            String key = m.type + ":" + (m.tmdbId > 0 ? m.tmdbId : m.title.toLowerCase(Locale.ROOT));
+                            int sc = baseBonus - Math.min(20, rank) + (sharedGenres * 28) + (hasPrimary ? 30 : 0);
+                            if (m.rating >= 7.2) sc += 18;
+                            else if (m.rating >= 6.4) sc += 10;
+                            else if (m.rating > 0 && m.rating < 5.3) sc -= 25;
+                            if (!candidateMap.containsKey(key)) {
+                                candidateMap.put(key, m);
+                                scoreMap.put(key, sc);
+                            } else {
+                                scoreMap.put(key, Math.max(scoreMap.get(key), sc) + 15);
+                            }
                         }
+                    };
+
+                    // 1. Curated TMDB Recommendations (Pages 1 & 2)
+                    JSONObject rec1 = detail.optJSONObject("recommendations");
+                    if (rec1 != null) addCandidates.accept(parseTmdbResults(rec1, "tv".equals(kind) ? "series" : "movie", 24), 45);
+                    if (candidateMap.size() < want) {
+                        try {
+                            JSONObject rec2 = tmdb(ctx, kind + "/" + id + "/recommendations?language=" + language() + "&page=2");
+                            addCandidates.accept(parseTmdbResults(rec2, "tv".equals(kind) ? "series" : "movie", 24), 38);
+                        } catch (Throwable ignored) {}
+                    }
+
+                    // 2. Targeted Keyword + Primary Genre Discovery (high thematic precision)
+                    if (!kwIds.isEmpty() && primaryGenre > 0) {
+                        try {
+                            StringBuilder kwPipe = new StringBuilder();
+                            for (int i = 0; i < Math.min(4, kwIds.size()); i++) {
+                                if (i > 0) kwPipe.append('|');
+                                kwPipe.append(kwIds.get(i));
+                            }
+                            String discPath = "discover/" + kind + "?include_adult=false&sort_by=vote_count.desc&vote_count.gte=60&language=" + language()
+                                    + "&with_genres=" + primaryGenre + "&with_keywords=" + enc(kwPipe.toString());
+                            JSONObject disc1 = tmdb(ctx, discPath + "&page=1");
+                            addCandidates.accept(parseTmdbResults(disc1, "tv".equals(kind) ? "series" : "movie", 24), 40);
+                            if (candidateMap.size() < want + 6) {
+                                JSONObject disc2 = tmdb(ctx, discPath + "&page=2");
+                                addCandidates.accept(parseTmdbResults(disc2, "tv".equals(kind) ? "series" : "movie", 20), 32);
+                            }
+                        } catch (Throwable ignored) {}
+                    }
+
+                    // 3. TMDB Similar (Pages 1 & 2), strictly filtered by genre overlap above
+                    JSONObject sim1 = detail.optJSONObject("similar");
+                    if (sim1 != null) addCandidates.accept(parseTmdbResults(sim1, "tv".equals(kind) ? "series" : "movie", 24), 25);
+                    if (candidateMap.size() < want) {
+                        try {
+                            JSONObject sim2 = tmdb(ctx, kind + "/" + id + "/similar?language=" + language() + "&page=2");
+                            addCandidates.accept(parseTmdbResults(sim2, "tv".equals(kind) ? "series" : "movie", 24), 20);
+                        } catch (Throwable ignored) {}
+                    }
+
+                    List<String> keys = new ArrayList<>(candidateMap.keySet());
+                    Collections.sort(keys, (a, b) -> Integer.compare(scoreMap.get(b), scoreMap.get(a)));
+                    for (String k : keys) {
+                        if (out.size() >= want) break;
+                        out.add(candidateMap.get(k));
                     }
                 } catch (Throwable t) {
                     Log.w(TAG, "TMDB similar failed: " + t.getMessage());
@@ -474,9 +573,189 @@ public final class MovieCatalog {
             }
         }
         if (out.isEmpty() && title != null && !title.isEmpty()) {
-            out.addAll(search(ctx, cleanSearchQuery(title), 1, max));
+            out.addAll(search(ctx, cleanSearchQuery(title), 1, want));
         }
         return out;
+    }
+
+    /**
+     * Fetches full movie/series details including director(s) and top cast members with profile photo URLs
+     * for the mobile companion UI.
+     */
+    public static JSONObject fullCreditsAndDetails(Context ctx, int tmdbId, String imdbId, String type, String title) {
+        JSONObject res = new JSONObject();
+        try {
+            String kind = ("series".equalsIgnoreCase(type) || "tv".equalsIgnoreCase(type)) ? "tv" : "movie";
+            int id = tmdbId;
+            if (hasTmdb(ctx)) {
+                if (id <= 0 && imdbId != null && imdbId.startsWith("tt")) {
+                    try {
+                        JSONObject found = tmdb(ctx, "find/" + enc(imdbId) + "?external_source=imdb_id&language=" + language());
+                        JSONArray mArr = found.optJSONArray("movie_results");
+                        JSONArray tvArr = found.optJSONArray("tv_results");
+                        if (mArr != null && mArr.length() > 0) {
+                            id = mArr.getJSONObject(0).optInt("id");
+                            kind = "movie";
+                        } else if (tvArr != null && tvArr.length() > 0) {
+                            id = tvArr.getJSONObject(0).optInt("id");
+                            kind = "tv";
+                        }
+                    } catch (Throwable ignored) {}
+                }
+                if (id <= 0 && title != null && !title.trim().isEmpty()) {
+                    List<Movie> s = search(ctx, title.trim(), 1, 3);
+                    if (!s.isEmpty()) {
+                        id = s.get(0).tmdbId;
+                        if ("series".equals(s.get(0).type)) kind = "tv";
+                    }
+                }
+                if (id > 0) {
+                    JSONObject d = tmdb(ctx, kind + "/" + id + "?append_to_response=credits,external_ids&language=" + language());
+                    res.put("ok", true);
+                    res.put("tmdbId", id);
+                    res.put("type", "tv".equals(kind) ? "series" : "movie");
+                    String extImdb = d.optString("imdb_id", "");
+                    if (extImdb.isEmpty() && d.optJSONObject("external_ids") != null) {
+                        extImdb = d.optJSONObject("external_ids").optString("imdb_id", "");
+                    }
+                    res.put("imdbId", !extImdb.isEmpty() ? extImdb : (imdbId == null ? "" : imdbId));
+                    res.put("title", d.optString("title", d.optString("name", title == null ? "" : title)));
+                    String date = d.optString("release_date", d.optString("first_air_date", ""));
+                    if (date.length() >= 4) {
+                        try { res.put("year", Integer.parseInt(date.substring(0, 4))); } catch (Throwable ignored) {}
+                    }
+                    double vote = d.optDouble("vote_average", 0);
+                    if (vote > 0) res.put("rating", String.format(Locale.US, "%.1f", vote));
+                    res.put("overview", d.optString("overview", ""));
+                    int runtime = d.optInt("runtime", 0);
+                    if (runtime <= 0 && d.optJSONArray("episode_run_time") != null && d.optJSONArray("episode_run_time").length() > 0) {
+                        runtime = d.optJSONArray("episode_run_time").optInt(0, 0);
+                    }
+                    if (runtime > 0) res.put("runtime", runtime);
+
+                    JSONArray genresOut = new JSONArray();
+                    JSONArray gArr = d.optJSONArray("genres");
+                    if (gArr != null) {
+                        for (int i = 0; i < gArr.length(); i++) {
+                            String gn = gArr.getJSONObject(i).optString("name", "");
+                            if (!gn.isEmpty()) genresOut.put(gn);
+                        }
+                    }
+                    res.put("genres", genresOut);
+
+                    JSONArray directorsOut = new JSONArray();
+                    JSONArray castOut = new JSONArray();
+                    JSONObject credits = d.optJSONObject("credits");
+                    java.util.Set<Integer> seenDir = new java.util.HashSet<>();
+                    if ("tv".equals(kind) && d.optJSONArray("created_by") != null) {
+                        JSONArray cb = d.optJSONArray("created_by");
+                        for (int i = 0; i < cb.length(); i++) {
+                            JSONObject p = cb.getJSONObject(i);
+                            int pid = p.optInt("id");
+                            if (seenDir.add(pid)) {
+                                String prof = p.optString("profile_path", "");
+                                directorsOut.put(new JSONObject()
+                                        .put("id", pid)
+                                        .put("name", p.optString("name", ""))
+                                        .put("role", "director")
+                                        .put("job", "Yaratıcı")
+                                        .put("photo", !prof.isEmpty() && !"null".equals(prof) ? "https://image.tmdb.org/t/p/w185" + prof : ""));
+                            }
+                        }
+                    }
+                    if (credits != null) {
+                        JSONArray crew = credits.optJSONArray("crew");
+                        if (crew != null) {
+                            for (int i = 0; i < crew.length(); i++) {
+                                JSONObject c = crew.getJSONObject(i);
+                                String job = c.optString("job", "");
+                                if ("Director".equalsIgnoreCase(job) || "Series Director".equalsIgnoreCase(job)) {
+                                    int pid = c.optInt("id");
+                                    if (seenDir.add(pid)) {
+                                        String prof = c.optString("profile_path", "");
+                                        directorsOut.put(new JSONObject()
+                                                .put("id", pid)
+                                                .put("name", c.optString("name", ""))
+                                                .put("role", "director")
+                                                .put("job", "Yönetmen")
+                                                .put("photo", !prof.isEmpty() && !"null".equals(prof) ? "https://image.tmdb.org/t/p/w185" + prof : ""));
+                                    }
+                                }
+                            }
+                        }
+                        JSONArray cast = credits.optJSONArray("cast");
+                        if (cast != null) {
+                            for (int i = 0; i < Math.min(14, cast.length()); i++) {
+                                JSONObject c = cast.getJSONObject(i);
+                                String prof = c.optString("profile_path", "");
+                                castOut.put(new JSONObject()
+                                        .put("id", c.optInt("id"))
+                                        .put("name", c.optString("name", ""))
+                                        .put("role", "actor")
+                                        .put("character", c.optString("character", ""))
+                                        .put("photo", !prof.isEmpty() && !"null".equals(prof) ? "https://image.tmdb.org/t/p/w185" + prof : ""));
+                            }
+                        }
+                    }
+                    res.put("directors", directorsOut);
+                    res.put("cast", castOut);
+                    return res;
+                }
+            }
+            // Fallback to Cinemeta meta if TMDB is not configured
+            if (imdbId != null && imdbId.startsWith("tt")) {
+                String cmKind = ("series".equalsIgnoreCase(type) || "tv".equalsIgnoreCase(type)) ? "series" : "movie";
+                JSONObject cm = Http.getJson("https://v3-cinemeta.strem.io/meta/" + cmKind + "/" + enc(imdbId) + ".json", null, TIMEOUT).optJSONObject("meta");
+                if (cm != null) {
+                    res.put("ok", true);
+                    res.put("imdbId", imdbId);
+                    res.put("title", cm.optString("name", title == null ? "" : title));
+                    res.put("overview", cm.optString("description", ""));
+                    res.put("rating", cm.optString("imdbRating", ""));
+                    JSONArray dirs = new JSONArray();
+                    JSONArray dArr = cm.optJSONArray("director");
+                    if (dArr != null) {
+                        for (int i = 0; i < dArr.length(); i++) {
+                            String dn = dArr.optString(i, "");
+                            if (!dn.isEmpty()) dirs.put(new JSONObject().put("id", 0).put("name", dn).put("role", "director").put("job", "Yönetmen").put("photo", ""));
+                        }
+                    }
+                    JSONArray castOut = new JSONArray();
+                    JSONArray cArr = cm.optJSONArray("cast");
+                    if (cArr != null) {
+                        for (int i = 0; i < Math.min(12, cArr.length()); i++) {
+                            String cn = cArr.optString(i, "");
+                            if (!cn.isEmpty()) castOut.put(new JSONObject().put("id", 0).put("name", cn).put("role", "actor").put("character", "").put("photo", ""));
+                        }
+                    }
+                    res.put("directors", dirs);
+                    res.put("cast", castOut);
+                    return res;
+                }
+            }
+            res.put("ok", false);
+        } catch (Throwable t) {
+            try { res.put("ok", false).put("error", t.getMessage()); } catch (Throwable ignored) {}
+        }
+        return res;
+    }
+
+    /**
+     * Returns a person's filmography by TMDB personId or name for the mobile UI person sheet.
+     */
+    public static List<Movie> personCredits(Context ctx, int personId, String personName, String role, int max) {
+        if (hasTmdb(ctx) && personId > 0) {
+            boolean isDir = "director".equalsIgnoreCase(role);
+            List<Movie> list = personWork(ctx, personId, isDir ? "director" : "actor", isDir, max);
+            if (!list.isEmpty()) return list;
+            return personWork(ctx, personId, "any", false, max);
+        }
+        if (personName != null && !personName.trim().isEmpty()) {
+            List<Movie> list = personWork(ctx, personName.trim(), role == null || role.isEmpty() ? "any" : role, max);
+            if (!list.isEmpty()) return list;
+            return filmography(ctx, personName.trim(), max);
+        }
+        return Collections.emptyList();
     }
 
     // ---- assistant search ---------------------------------------------------------------------
@@ -686,11 +965,8 @@ public final class MovieCatalog {
                         root = tmdb(ctx, basePath + "&page=" + p);
                         found = parseTmdbResults(root, "tv".equals(kind) ? "series" : "movie", max - out.size());
                     }
-                    if (found.isEmpty() && p == firstPage && concepts > 1 && any.length() > 0) {
-                        basePath = basePath.replace("&with_keywords=" + enc(kw.toString()), "&with_keywords=" + enc(any.toString()));
-                        root = tmdb(ctx, basePath + "&page=" + p);
-                        found = parseTmdbResults(root, "tv".equals(kind) ? "series" : "movie", max - out.size());
-                    }
+                    // Do NOT collapse multi-concept AND (kw) into single-concept OR (any) when concepts > 1,
+                    // because OR returns unrelated movies that match only one half of the query.
                     if (found.isEmpty()) break;
                     out.addAll(found);
                     if (root.optInt("total_pages", 1) <= p) break;

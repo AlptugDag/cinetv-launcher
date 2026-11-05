@@ -79,19 +79,47 @@ public final class UiKit {
         return tv;
     }
 
-    /** Standard visionOS cubic ease-in-out curve: non-abrupt acceleration and soft cushioned deceleration. */
+    /** Standard visionOS / Apple tvOS fluid deceleration curve (flow-launcher-tv style). */
     public static final android.view.animation.Interpolator EASE_IN_OUT =
-            new android.view.animation.PathInterpolator(0.42f, 0f, 0.25f, 1f);
+            new android.view.animation.PathInterpolator(0.16f, 1f, 0.3f, 1f);
 
-    /** visionOS focus: the element lifts toward the viewer with smooth ease-in-out physics. */
+    /** Subtle Apple tvOS spring overshoot for focused cards and tiles. */
+    public static final android.view.animation.Interpolator FLOW_SPRING =
+            new android.view.animation.OvershootInterpolator(0.75f);
+
+    /** Apple tvOS / flow-launcher-tv focus: lifts toward the viewer with spring-cushioned physics. */
     public static void lift(View v, boolean focused, float scaleTo, int durationMs) {
-        int d = Math.max(180, durationMs);
+        int d = Math.max(170, durationMs);
         v.animate()
                 .scaleX(focused ? scaleTo : 1f)
                 .scaleY(focused ? scaleTo : 1f)
-                .translationZ(focused ? pxf(20) : 0f)
+                .translationZ(focused ? pxf(22) : 0f)
                 .setDuration(d)
+                .setInterpolator(focused ? FLOW_SPRING : EASE_IN_OUT)
+                .start();
+    }
+
+    /** Tactile Apple tvOS / flow-launcher-tv press-in and spring-launch animation on tile activation. */
+    public static void pressBounce(final View v, final Runnable onReady) {
+        if (v == null) {
+            if (onReady != null) onReady.run();
+            return;
+        }
+        v.animate().cancel();
+        v.animate()
+                .scaleX(0.95f)
+                .scaleY(0.95f)
+                .setDuration(75)
                 .setInterpolator(EASE_IN_OUT)
+                .withEndAction(() -> v.animate()
+                        .scaleX(1.12f)
+                        .scaleY(1.12f)
+                        .setDuration(115)
+                        .setInterpolator(FLOW_SPRING)
+                        .withEndAction(() -> {
+                            if (onReady != null) onReady.run();
+                        })
+                        .start())
                 .start();
     }
 

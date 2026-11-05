@@ -143,13 +143,18 @@ public class HomeScreen {
         // as "more below" rather than a cut-off tile.
         View bottomFade = new View(ctx) {
             private final android.graphics.Paint fade = new android.graphics.Paint();
+            private int lastH = -1;
 
             @Override
             protected void onDraw(android.graphics.Canvas c) {
+                int curH = getHeight();
                 float h = UiKit.pxf(120);
-                fade.setShader(new android.graphics.LinearGradient(0, getHeight() - h, 0, getHeight(),
-                        Color.TRANSPARENT, Color.argb(235, 0, 0, 0), android.graphics.Shader.TileMode.CLAMP));
-                c.drawRect(0, getHeight() - h, getWidth(), getHeight(), fade);
+                if (curH != lastH) {
+                    lastH = curH;
+                    fade.setShader(new android.graphics.LinearGradient(0, curH - h, 0, curH,
+                            Color.TRANSPARENT, Color.argb(235, 0, 0, 0), android.graphics.Shader.TileMode.CLAMP));
+                }
+                c.drawRect(0, curH - h, getWidth(), curH, fade);
             }
         };
         bottomFade.setFocusable(false);
@@ -1066,18 +1071,24 @@ public class HomeScreen {
         // Grand cinematic ambient backlight: authentic brand red heartbeat glow
         View aura = new View(ctx) {
             private final Paint auraPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private int lastW = -1, lastH = -1;
             @Override
             protected void onDraw(Canvas c) {
-                float cx = getWidth() / 2f, cy = getHeight() / 2f;
-                float r = Math.min(getWidth(), getHeight()) * 0.52f;
-                auraPaint.setShader(new RadialGradient(cx, cy, r,
-                        new int[]{
-                                Color.argb(165, 235, 18, 35),
-                                Color.argb(95, 180, 0, 25),
-                                Color.argb(35, 110, 0, 15),
-                                Color.TRANSPARENT
-                        },
-                        new float[]{0f, 0.35f, 0.70f, 1f}, Shader.TileMode.CLAMP));
+                int w = getWidth(), h = getHeight();
+                float cx = w / 2f, cy = h / 2f;
+                float r = Math.min(w, h) * 0.52f;
+                if (w != lastW || h != lastH) {
+                    lastW = w;
+                    lastH = h;
+                    auraPaint.setShader(new RadialGradient(cx, cy, Math.max(1f, r),
+                            new int[]{
+                                    Color.argb(165, 235, 18, 35),
+                                    Color.argb(95, 180, 0, 25),
+                                    Color.argb(35, 110, 0, 15),
+                                    Color.TRANSPARENT
+                            },
+                            new float[]{0f, 0.35f, 0.70f, 1f}, Shader.TileMode.CLAMP));
+                }
                 c.drawCircle(cx, cy, r, auraPaint);
             }
         };

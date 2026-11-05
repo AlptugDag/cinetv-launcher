@@ -185,9 +185,15 @@ public final class LlmClient {
             if (maxTokens > 0) genCfg.put("maxOutputTokens", maxTokens);
             if (wantsJson) genCfg.put("responseMimeType", "application/json");
 
-            // Official Gemini 3 & 4 thinkingConfig (thinkingLevel: LOW, MEDIUM, HIGH, MINIMAL)
-            if (model != null && (model.startsWith("gemini-4") || model.startsWith("gemini-3.8"))) {
-                genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", deep ? "HIGH" : (quick ? "LOW" : "MEDIUM")));
+            // Official Gemini thinkingConfig: use MINIMAL / 0 budget when quick=true so interactive TV overlays (CineSUB) return in ~1.2s
+            if (quick) {
+                if (model != null && model.startsWith("gemini-2.5")) {
+                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", 0));
+                } else if (model != null && (model.startsWith("gemini-3") || model.startsWith("gemini-4"))) {
+                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", "MINIMAL"));
+                }
+            } else if (model != null && (model.startsWith("gemini-4") || model.startsWith("gemini-3.8"))) {
+                genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", deep ? "HIGH" : "MEDIUM"));
             } else if (model != null && (model.contains("lite") || model.startsWith("gemini-3.1"))) {
                 genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", "MINIMAL"));
             }
@@ -523,19 +529,24 @@ public final class LlmClient {
         if (compat != null) models = new String[]{compat[2], compat[4]};
         else if (PROVIDER_CLAUDE.equals(provider)) models = new String[]{FAST_CLAUDE_MODEL, DEFAULT_CLAUDE_MODEL};
         // Each model has its own per-minute quota: a busy one (429) hands over to the next instead of giving up.
-        else if (liteOnly) models = new String[]{FAST_GEMINI_MODEL, "gemini-flash-lite-latest", DEFAULT_GEMINI_MODEL};
+        else if (liteOnly) models = new String[]{FAST_GEMINI_MODEL, "gemini-flash-lite-latest", DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL};
         else models = new String[]{DEFAULT_GEMINI_MODEL, FAST_GEMINI_MODEL, FALLBACK_GEMINI_MODEL, "gemini-flash-lite-latest"};
         Result r = null;
         for (String model : models) {
-            r = visionCall(ctx, provider, compat, model, key, system, user, b64, maxTokens, true);
+            if (compat == null && !PROVIDER_CLAUDE.equals(provider) && isModelCoolingDown(model)) continue;
+            // Pass thinking=false (quick=true) so interactive CineSUB vision calls return immediately without multi-second thinking delay
+            r = visionCall(ctx, provider, compat, model, key, system, user, b64, maxTokens, false);
             // a 400 is usually a setting this model doesn't take: once more with the plain request
             if (r.status == 400 && compat == null && !PROVIDER_CLAUDE.equals(provider)) {
-                r = visionCall(ctx, provider, compat, model, key, system, user, b64, maxTokens, false);
+                r = visionCall(ctx, provider, compat, model, key, system, user, b64, maxTokens, true);
             }
             if (r.status == 429 || r.status == 503) {
-                try { Thread.sleep(500); } catch (Throwable ignored) {}
+                try { Thread.sleep(200); } catch (Throwable ignored) {}
             }
             if (r.success || !(r.status == 400 || r.status == 404 || r.status == 429 || r.status >= 500 || r.status == -1 || r.status == 408)) return r;
+        }
+        if (r == null) {
+            r = visionCall(ctx, provider, compat, models[0], key, system, user, b64, maxTokens, false);
         }
         return r;
     }
@@ -580,8 +591,8 @@ public final class LlmClient {
                 body.put("safetySettings", buildGoogleSafetySettings());
             }
             conn.setRequestMethod("POST");
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(30000);
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(12000);
             conn.setDoOutput(true);
             try (OutputStream os = conn.getOutputStream()) {
                 os.write(body.toString().getBytes(StandardCharsets.UTF_8));

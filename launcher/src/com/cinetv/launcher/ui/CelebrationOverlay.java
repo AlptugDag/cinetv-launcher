@@ -112,7 +112,7 @@ public final class CelebrationOverlay {
 
         // Top eyebrow label
         TextView eyebrow = new TextView(targetContext);
-        eyebrow.setText((day.mourning ? "SAYGI VE MİNNETLE  ·  " : "ÖZEL GÜN MESAJI  ·  ") + day.title.toUpperCase());
+        eyebrow.setText((day.mourning ? "SAYGI VE MİNNETLE  ·  " : "ÖZEL GÜN MESAJI  ·  ") + day.title.toUpperCase(java.util.Locale.getDefault()));
         eyebrow.setTextSize(TypedValue.COMPLEX_UNIT_PX, UiKit.px(12));
         eyebrow.setTextColor(day.mourning ? Color.parseColor("#CBD5E1") : Color.parseColor("#F5C26B"));
         eyebrow.setTypeface(FontManager.bold(targetContext));

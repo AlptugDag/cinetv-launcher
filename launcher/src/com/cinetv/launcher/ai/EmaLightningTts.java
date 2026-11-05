@@ -238,21 +238,16 @@ public final class EmaLightningTts {
         });
     }
 
-    /** Sentences, merged up to ~160 characters so short ones don't make choppy clips. */
+    /** Sentences, merged up to ~240 characters so greetings and replies play as one seamless utterance without mid-sentence cutoffs. */
     static List<String> sentences(String text) {
         List<String> out = new ArrayList<>();
         StringBuilder cur = new StringBuilder();
         for (String piece : text.split("(?<=[.!?…])\\s+")) {
-            if (cur.length() > 0 && cur.length() + piece.length() > 160) {
+            if (cur.length() > 0 && cur.length() + piece.length() > 240) {
                 out.add(cur.toString().trim());
                 cur.setLength(0);
             }
             cur.append(piece).append(' ');
-            // Let the first clip be short so she starts talking sooner.
-            if (out.isEmpty() && cur.length() > 40) {
-                out.add(cur.toString().trim());
-                cur.setLength(0);
-            }
         }
         if (cur.toString().trim().length() > 0) out.add(cur.toString().trim());
         return out;
@@ -908,8 +903,8 @@ public final class EmaLightningTts {
                 done.countDown();
             }
         }));
-        // No TTS engine on this TV at all: don't hang the conversation.
-        MAIN.postDelayed(() -> { if (!fallbackReady) done.countDown(); }, 3000);
+        // Allow up to 10 seconds for Android's TTS engine cold start on low-performance TVs before giving up.
+        MAIN.postDelayed(() -> { if (!fallbackReady) done.countDown(); }, 10000);
     }
 
     private static byte[] downloadBytes(String urlStr, int timeoutMs) {

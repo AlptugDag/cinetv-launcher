@@ -98,29 +98,40 @@ public class SpatialEnvironment extends View {
         this.light = light;
         composited = PerformanceProfile.compositedBackdrop(getContext());
         focusLight = PerformanceProfile.focusLight(getContext()) && theme.wash && !theme.pureBlack;
-        if (ThemeManager.usesCustomWallpaper(getContext())) {
-            java.io.File wpFile = ThemeManager.customWallpaper(getContext());
+        Glass.material = theme.material;
+        wallpaper = null;
+        pattern = null;
+        roomGradient = null;
+        if (getWidth() > 0 && getHeight() > 0) {
+            rebuild(getWidth(), getHeight());
+        }
+        invalidate();
+    }
+
+    private Bitmap loadWallpaperForCurrentTheme() {
+        if (theme == null) return null;
+        Context ctx = getContext();
+        boolean lowMem = PerformanceProfile.lowMemory(ctx);
+        int targetW = lowMem ? Math.min(1280, wallW()) : wallW();
+        int targetH = lowMem ? Math.min(720, wallH()) : wallH();
+        if (ThemeManager.usesCustomWallpaper(ctx)) {
+            java.io.File wpFile = ThemeManager.customWallpaper(ctx);
             try {
                 BitmapFactory.Options opts = new BitmapFactory.Options();
                 opts.inJustDecodeBounds = false;
-                opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
+                opts.inPreferredConfig = lowMem ? Bitmap.Config.RGB_565 : Bitmap.Config.ARGB_8888;
                 opts.inDither = true;
                 opts.inScaled = false;
-                wallpaper = BitmapFactory.decodeFile(wpFile.getAbsolutePath(), opts);
+                return BitmapFactory.decodeFile(wpFile.getAbsolutePath(), opts);
             } catch (Throwable t) {
-                wallpaper = PosterCache.decodeFile(wpFile, wallW(), wallH());
+                return PosterCache.decodeFile(wpFile, targetW, targetH);
             }
         } else if (theme.scene != null) {
-            wallpaper = ThemeArt.render(getContext(), theme.scene);
+            return ThemeArt.render(ctx, theme.scene);
         } else {
             String wp = ThemeManager.wallpaperNow(theme);
-            wallpaper = wp == null ? null : PosterCache.decodeAsset(getContext(), wp, wallW(), wallH());
+            return wp == null ? null : PosterCache.decodeAsset(ctx, wp, targetW, targetH);
         }
-        Glass.material = theme.material;
-        pattern = null;
-        roomGradient = null;
-        if (getWidth() > 0) rebuild(getWidth(), getHeight());
-        invalidate();
     }
 
     @Override
@@ -153,8 +164,13 @@ public class SpatialEnvironment extends View {
         rebuilding = true;
         final boolean wantPattern = theme.signaturePattern && !theme.pureBlack && pattern == null;
         final boolean comp = composited;
+        final boolean customWp = ThemeManager.usesCustomWallpaper(getContext());
+        final boolean lowMem = PerformanceProfile.lowMemory(getContext());
         builder.execute(() -> {
             try {
+                if (wallpaper == null && !theme.pureBlack) {
+                    wallpaper = loadWallpaperForCurrentTheme();
+                }
                 Bitmap pat = wantPattern ? buildPattern(w, h) : null;
                 int down = PerformanceProfile.blurDownscale(getContext());
                 Bitmap small = Bitmap.createBitmap(Math.max(8, w / down), Math.max(8, h / down), Bitmap.Config.ARGB_8888);
@@ -163,19 +179,30 @@ public class SpatialEnvironment extends View {
                 drawBaseThreadSafe(c, w, h);
                 final Bitmap blur = Blur.stack(small, 6);
                 Bitmap cache = null;
-                if (comp) {
+                if (comp && !customWp) {
                     int cw = Math.round(w * OVERSIZE), ch = Math.round(h * OVERSIZE);
-                    cache = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888);
+                    cache = Bitmap.createBitmap(cw, ch, lowMem ? Bitmap.Config.RGB_565 : Bitmap.Config.ARGB_8888);
                     Canvas cc = new Canvas(cache);
                     cc.scale(cw / (float) w, ch / (float) h);
                     drawBaseThreadSafe(cc, w, h);
                     headerShadeThreadSafe(cc, w, h);
+                    if (pat != null && !pat.isRecycled()) {
+                        Paint pp = new Paint(Paint.FILTER_BITMAP_FLAG);
+                        pp.setAlpha(light ? 18 : 28);
+                        cc.drawBitmap(pat, -pxPad(), -pxPad(), pp);
+                        pat.recycle();
+                        pat = null;
+                    }
+                    if (lowMem && wallpaper != null && !wallpaper.isRecycled()) {
+                        wallpaper = null;
+                    }
                 }
+                final Bitmap finalPat = pat;
                 final Bitmap done = cache;
                 post(() -> {
                     if (g != rebuildGen) return;
                     rebuilding = false;
-                    if (pat != null) pattern = pat;
+                    pattern = finalPat;
                     blurred = blur;
                     baseCache = done;
                     firstRevealDone = true;

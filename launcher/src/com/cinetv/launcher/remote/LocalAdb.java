@@ -36,13 +36,28 @@ public final class LocalAdb {
     private static final int AUTH_TOKEN = 1, AUTH_SIGNATURE = 2, AUTH_RSAPUBLICKEY = 3;
     private static final byte[] SHA1_DIGEST_INFO = {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05, 0x00, 0x04, 0x14};
 
+    private static volatile long adbDownUntil = 0L;
+
     private LocalAdb() {}
+
+    /** Fast check whether local ADB daemon on 127.0.0.1:5555 is reachable without blocking. */
+    public static boolean isAvailable() {
+        long now = android.os.SystemClock.elapsedRealtime();
+        return now >= adbDownUntil;
+    }
 
     /** Runs a shell command on the TV through its own adb; true once adb accepted us and ran it. */
     public static boolean shell(Context ctx, String command, int approvalTimeoutMs) {
+        if (!isAvailable()) return false;
         try (Socket s = new Socket()) {
-            s.connect(new InetSocketAddress("127.0.0.1", 5555), 1500);
-            s.setSoTimeout(approvalTimeoutMs);
+            try {
+                s.connect(new InetSocketAddress("127.0.0.1", 5555), 220);
+            } catch (Throwable connectErr) {
+                adbDownUntil = android.os.SystemClock.elapsedRealtime() + 30_000L;
+                return false;
+            }
+            adbDownUntil = 0L;
+            s.setSoTimeout(Math.min(approvalTimeoutMs, 1500));
             InputStream in = s.getInputStream();
             OutputStream out = s.getOutputStream();
             KeyPair keys = keys(ctx);
@@ -61,8 +76,8 @@ public final class LocalAdb {
                 }
             }
             write(out, OPEN, 1, 0, ("shell:" + command + "\0").getBytes(StandardCharsets.UTF_8));
-            s.setSoTimeout(4000);
-            long deadline = System.currentTimeMillis() + 4000;
+            s.setSoTimeout(2500);
+            long deadline = System.currentTimeMillis() + 2500;
             while (System.currentTimeMillis() < deadline) {
                 Msg m = read(in);
                 if (m.cmd == WRTE) write(out, OKAY, 1, m.arg0, new byte[0]);
@@ -79,9 +94,16 @@ public final class LocalAdb {
      * Runs a command and returns what it printed (binary-safe), or null.
      */
     public static byte[] exec(Context ctx, String command, int timeoutMs) {
+        if (!isAvailable()) return null;
         try (Socket s = new Socket()) {
-            s.connect(new InetSocketAddress("127.0.0.1", 5555), 1500);
-            s.setSoTimeout(Math.max(3000, timeoutMs));
+            try {
+                s.connect(new InetSocketAddress("127.0.0.1", 5555), 220);
+            } catch (Throwable connectErr) {
+                adbDownUntil = android.os.SystemClock.elapsedRealtime() + 30_000L;
+                return null;
+            }
+            adbDownUntil = 0L;
+            s.setSoTimeout(Math.max(1500, timeoutMs));
             InputStream in = s.getInputStream();
             OutputStream out = s.getOutputStream();
             KeyPair keys = keys(ctx);

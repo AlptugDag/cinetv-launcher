@@ -56,7 +56,7 @@ public final class DialServer {
     private static void ssdpLoop(Context app) {
         WifiManager.MulticastLock lock = null;
         try {
-            WifiManager wm = (WifiManager) app.getSystemService(Context.WIFI_SERVICE);
+            WifiManager wm = (WifiManager) app.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
             if (wm != null) {
                 lock = wm.createMulticastLock("cinetv-dial");
                 lock.setReferenceCounted(false);

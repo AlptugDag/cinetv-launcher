@@ -18,8 +18,19 @@ public class BootReceiver extends BroadcastReceiver {
         String action = intent.getAction();
         Log.i(TAG, "boot action received: " + action);
         if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
+            try {
+                com.cinetv.launcher.service.Prefs.get(context).edit().remove("silent_install_pending_at").apply();
+            } catch (Throwable ignored) {}
             com.cinetv.launcher.device.DeviceTweaks.ensureKeyService(context);
             HomeGuard.runUpdateOptimizationsAsync(context);
+            TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
+            if ((svc == null || !svc.isInMediaOrThirdPartyApp()) && !com.cinetv.launcher.device.DeviceTweaks.isMediaPlaying(context)) {
+                try {
+                    Intent home = new Intent(context, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                    context.startActivity(home);
+                } catch (Throwable ignored) {}
+            }
             return;
         }
         if (Intent.ACTION_BOOT_COMPLETED.equals(action)

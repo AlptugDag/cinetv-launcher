@@ -96,34 +96,151 @@ public final class NuvioSetup {
             }
             File prefFile = new File(dl, "nuvio-preferences.json");
             if (!prefFile.exists()) {
-                // Generate hardware-calibrated nuvio-preferences.json from TV Denetçisi telemetry only on first install
-                AvOptimizer.Report av = AvOptimizer.detect(app);
-                PerformanceProfile.Tier tier = PerformanceProfile.tier(app);
-                JSONObject prefs = new JSONObject();
-                prefs.put("calibrated_by", "CineTV TV Denetçisi");
-                prefs.put("preferred_audio_language", "tr");
-                prefs.put("preferred_subtitle_language", "tr");
-                prefs.put("secondary_audio_language", "en");
-                prefs.put("auto_select_subtitle", true);
-                prefs.put("hardware_accelerated_decoding", true);
-                prefs.put("tunneled_video_playback", av.is4kPanel());
-                prefs.put("match_frame_rate", "seamless");
-                prefs.put("max_resolution", av.is4kPanel() ? "2160p" : "1080p");
-                prefs.put("dolby_vision_enabled", av.dolbyVision);
-                prefs.put("hdr10_plus_enabled", av.hdr10Plus);
-                prefs.put("hdr10_enabled", av.hdr10);
-                prefs.put("hlg_enabled", av.hlg);
-                prefs.put("wide_color_gamut_bt2020", av.wideGamut);
-                prefs.put("digital_audio_passthrough", av.hdmiAudio || !av.encodings.isEmpty());
-                prefs.put("hdmi_earc", av.earc);
-                prefs.put("supported_audio_encodings", new JSONArray(av.encodings));
-                prefs.put("stream_buffer_size_mb", tier == PerformanceProfile.Tier.HIGH ? 128 : (tier == PerformanceProfile.Tier.MID ? 64 : 32));
-                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(prefFile)) {
-                    fos.write(prefs.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                }
+                writeCalibratedNuvioPrefs(app, prefFile, AvOptimizer.detect(app), null, null);
             }
         } catch (Throwable t) {
             Log.w(TAG, "deployConfigs failed: " + t);
+        }
+    }
+
+    private static JSONObject writeCalibratedNuvioPrefs(Context app, File prefFile, AvOptimizer.Report av,
+                                                        NetworkProbe.Result net, com.cinetv.launcher.service.StreamProfile profile) throws Exception {
+        if (av == null) av = AvOptimizer.detect(app);
+        PerformanceProfile.Tier tier = PerformanceProfile.tier(app);
+        int bufferMb = tier == PerformanceProfile.Tier.HIGH ? 128 : (tier == PerformanceProfile.Tier.MID ? 64 : 32);
+        if (net != null && net.ok && net.downloadMbps >= 80 && tier != PerformanceProfile.Tier.LOW) {
+            bufferMb = Math.max(bufferMb, 96);
+        }
+        String maxRes = (profile != null && profile.torrentioConfig != null)
+                ? (profile.torrentioConfig.contains(",4k,1080p") ? "720p" : (profile.torrentioConfig.contains(",4k") ? "1080p" : "2160p"))
+                : (av.is4kPanel() ? "2160p" : "1080p");
+        long maxBitrateMbps = (net != null && net.ok && net.downloadMbps > 0)
+                ? Math.max(8L, Math.round(net.downloadMbps * 0.78))
+                : (av.is4kPanel() ? 45L : 22L);
+
+        JSONObject prefs = new JSONObject();
+        prefs.put("calibrated_by", "CineTV TV Denetçisi");
+        prefs.put("updated_at", System.currentTimeMillis());
+        prefs.put("preferred_audio_language", "tr");
+        prefs.put("preferred_subtitle_language", "tr");
+        prefs.put("secondary_audio_language", "en");
+        prefs.put("auto_select_subtitle", true);
+        prefs.put("hardware_accelerated_decoding", true);
+        // CRITICAL: Tunneled playback on modified Nuvio causes ExoPlayer MediaCodec crashes during catalog/trailer browsing on TV SoCs
+        prefs.put("tunneled_video_playback", false);
+        prefs.put("preview_autoplay_in_catalog", false);
+        prefs.put("image_memory_cache_mb", tier == PerformanceProfile.Tier.LOW ? 24 : (tier == PerformanceProfile.Tier.MID ? 40 : 64));
+        prefs.put("match_frame_rate", "seamless");
+        prefs.put("max_resolution", maxRes);
+        prefs.put("max_bitrate_mbps", maxBitrateMbps);
+        prefs.put("dolby_vision_enabled", av.dolbyVision);
+        prefs.put("hdr10_plus_enabled", av.hdr10Plus);
+        prefs.put("hdr10_enabled", av.hdr10);
+        prefs.put("hlg_enabled", av.hlg);
+        prefs.put("wide_color_gamut_bt2020", av.wideGamut);
+        prefs.put("digital_audio_passthrough", av.hdmiAudio || !av.encodings.isEmpty());
+        prefs.put("hdmi_earc", av.earc);
+        prefs.put("supported_audio_encodings", new JSONArray(av.encodings));
+        prefs.put("stream_buffer_size_mb", bufferMb);
+        prefs.put("network_read_timeout_ms", (net != null && net.jitterMs > 40) ? 18000 : 12000);
+        prefs.put("parallel_chunk_connections", (net != null && net.downloadMbps >= 50) ? 6 : 4);
+        if (profile != null && profile.torrentioConfig != null) {
+            prefs.put("stream_profile_id", profile.torrentioConfig);
+        }
+        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(prefFile)) {
+            fos.write(prefs.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        return prefs;
+    }
+
+    /**
+     * Genuinely writes calibrated picture (HDR10/HDR10+/Dolby Vision/AFR), audio (HDMI passthrough/eARC/encodings),
+     * network buffer/bitrate settings, and crash-prevention flags into Nuvio's configuration files and SharedPreferences.
+     */
+    public static boolean applyHardwareAndNetworkSettings(Context ctx, AvOptimizer.Report av,
+                                                          NetworkProbe.Result net,
+                                                          com.cinetv.launcher.service.StreamProfile profile) {
+        final Context app = ctx.getApplicationContext();
+        try {
+            deployConfigs(app);
+            File dl = new File("/sdcard/Download");
+            if (!dl.exists()) dl.mkdirs();
+            File prefFile = new File(dl, "nuvio-preferences.json");
+            JSONObject prefs = writeCalibratedNuvioPrefs(app, prefFile, av, net, profile);
+
+            int bufMb = prefs.optInt("stream_buffer_size_mb", 64);
+            String maxRes = prefs.optString("max_resolution", "1080p");
+            long maxBitrate = prefs.optLong("max_bitrate_mbps", 25L);
+            boolean passthrough = prefs.optBoolean("digital_audio_passthrough", false);
+            boolean dv = prefs.optBoolean("dolby_vision_enabled", false);
+            boolean hdr = prefs.optBoolean("hdr10_enabled", false) || prefs.optBoolean("hdr10_plus_enabled", false) || dv;
+
+            String xmlContent = "<?xml version='1.0' encoding='utf-8' standalone='yes' ?>\n<map>\n"
+                    + "    <boolean name=\"hardware_accelerated_decoding\" value=\"true\" />\n"
+                    + "    <boolean name=\"hw_decoding\" value=\"true\" />\n"
+                    + "    <boolean name=\"tunneled_video_playback\" value=\"false\" />\n"
+                    + "    <boolean name=\"exo_tunneled_playback\" value=\"false\" />\n"
+                    + "    <boolean name=\"preview_autoplay\" value=\"false\" />\n"
+                    + "    <boolean name=\"dolby_vision_enabled\" value=\"" + dv + "\" />\n"
+                    + "    <boolean name=\"hdr_enabled\" value=\"" + hdr + "\" />\n"
+                    + "    <boolean name=\"digital_audio_passthrough\" value=\"" + passthrough + "\" />\n"
+                    + "    <boolean name=\"audio_passthrough\" value=\"" + passthrough + "\" />\n"
+                    + "    <string name=\"match_frame_rate\">seamless</string>\n"
+                    + "    <string name=\"max_resolution\">" + maxRes + "</string>\n"
+                    + "    <int name=\"stream_buffer_size_mb\" value=\"" + bufMb + "\" />\n"
+                    + "    <long name=\"max_bitrate_mbps\" value=\"" + maxBitrate + "\" />\n"
+                    + "    <string name=\"preferred_audio_language\">tr</string>\n"
+                    + "    <string name=\"preferred_subtitle_language\">tr</string>\n"
+                    + "</map>\n";
+
+            File tmpXml = new File(dl, ".nuvio_calibrated_prefs.xml");
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(tmpXml)) {
+                fos.write(xmlContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+
+            StringBuilder sh = new StringBuilder();
+            java.util.List<String> pkgs = AppLauncher.installedNuvioPackages(app);
+            if (pkgs.isEmpty()) pkgs = java.util.Arrays.asList("com.nuvio.tv", "com.nuvio.app");
+            byte[] prefBytes = prefs.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            for (String pkg : pkgs) {
+                try {
+                    File extDir = new File("/sdcard/Android/data/" + pkg + "/files");
+                    if (!extDir.exists()) extDir.mkdirs();
+                    try (java.io.FileOutputStream fos = new java.io.FileOutputStream(new File(extDir, "nuvio-preferences.json"))) {
+                        fos.write(prefBytes);
+                    }
+                    File extCache = new File("/sdcard/Android/data/" + pkg + "/cache/image_cache");
+                    if (extCache.exists() && extCache.isDirectory()) {
+                        File[] cachedFiles = extCache.listFiles();
+                        if (cachedFiles != null) {
+                            for (File cf : cachedFiles) cf.delete();
+                        }
+                    }
+                } catch (Throwable ignored) {}
+                sh.append("mkdir -p '/sdcard/Android/data/").append(pkg).append("/files' 2>/dev/null; ");
+                sh.append("cp '/sdcard/Download/nuvio-preferences.json' '/sdcard/Android/data/").append(pkg).append("/files/nuvio-preferences.json' 2>/dev/null; ");
+                sh.append("rm -rf '/sdcard/Android/data/").append(pkg).append("/cache/image_cache' '/data/data/").append(pkg).append("/cache/exo' 2>/dev/null; ");
+                sh.append("if [ -d '/data/data/").append(pkg).append("' ]; then ");
+                sh.append("mkdir -p '/data/data/").append(pkg).append("/shared_prefs' '/data/data/").append(pkg).append("/files' 2>/dev/null; ");
+                sh.append("cp '/sdcard/Download/nuvio-preferences.json' '/data/data/").append(pkg).append("/files/nuvio-preferences.json' 2>/dev/null; ");
+                sh.append("cp '/sdcard/Download/.nuvio_calibrated_prefs.xml' '/data/data/").append(pkg).append("/shared_prefs/").append(pkg).append("_preferences.xml' 2>/dev/null; ");
+                sh.append("cp '/sdcard/Download/.nuvio_calibrated_prefs.xml' '/data/data/").append(pkg).append("/shared_prefs/nuvio_preferences.xml' 2>/dev/null; ");
+                sh.append("chmod 660 '/data/data/").append(pkg).append("/shared_prefs/'*.xml 2>/dev/null; ");
+                sh.append("fi; ");
+            }
+            sh.append("rm -f '/sdcard/Download/.nuvio_calibrated_prefs.xml' 2>/dev/null");
+            if (LocalAdb.isAvailable()) {
+                LocalAdb.shell(app, sh.toString(), 4000);
+            }
+            tmpXml.delete();
+
+            if (profile != null) {
+                addAddon(app, profile.manifestPath());
+            }
+            return true;
+        } catch (Throwable t) {
+            Log.w(TAG, "applyHardwareAndNetworkSettings failed: " + t);
+            return false;
         }
     }
 

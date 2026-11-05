@@ -719,6 +719,7 @@ public final class ShazamOverlay extends FrameLayout {
         private final Path wavePath = new Path();
         private final Matrix bloomMatrix = new Matrix();
         private RadialGradient floorShader;
+        private int cachedEdgeW = -1, cachedEdgeH = -1, cachedEdgeDepth = -1;
 
         private State state = State.LISTENING;
         private float energy = 0.3f;
@@ -794,17 +795,23 @@ public final class ShazamOverlay extends FrameLayout {
             edgeDepth = Math.max(UiKit.px(75), Math.min(edgeDepth, UiKit.px(230)));
 
             int alphaInt = (int) (255 * edgeAlphaFactor);
-            int cEdge = Color.argb(alphaInt, Color.red(BLUE_SKY), Color.green(BLUE_SKY), Color.blue(BLUE_SKY));
-            int cMid = Color.argb((int) (alphaInt * 0.56f), Color.red(BLUE_ROYAL), Color.green(BLUE_ROYAL), Color.blue(BLUE_ROYAL));
-
-            topPaint.setShader(new LinearGradient(0, 0, 0, edgeDepth,
-                    new int[]{cEdge, cMid, BLUE_TRANSPARENT}, new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
-            bottomPaint.setShader(new LinearGradient(0, h, 0, h - edgeDepth,
-                    new int[]{cEdge, cMid, BLUE_TRANSPARENT}, new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
-            leftPaint.setShader(new LinearGradient(0, 0, edgeDepth, 0,
-                    new int[]{cEdge, cMid, BLUE_TRANSPARENT}, new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
-            rightPaint.setShader(new LinearGradient(w, 0, w - edgeDepth, 0,
-                    new int[]{cEdge, cMid, BLUE_TRANSPARENT}, new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+            if (w != cachedEdgeW || h != cachedEdgeH || edgeDepth != cachedEdgeDepth) {
+                cachedEdgeW = w;
+                cachedEdgeH = h;
+                cachedEdgeDepth = edgeDepth;
+                int baseEdge = Color.argb(255, Color.red(BLUE_SKY), Color.green(BLUE_SKY), Color.blue(BLUE_SKY));
+                int baseMid = Color.argb(143, Color.red(BLUE_ROYAL), Color.green(BLUE_ROYAL), Color.blue(BLUE_ROYAL));
+                int[] cols = new int[]{baseEdge, baseMid, BLUE_TRANSPARENT};
+                float[] stops = new float[]{0f, 0.45f, 1f};
+                topPaint.setShader(new LinearGradient(0, 0, 0, edgeDepth, cols, stops, Shader.TileMode.CLAMP));
+                bottomPaint.setShader(new LinearGradient(0, h, 0, h - edgeDepth, cols, stops, Shader.TileMode.CLAMP));
+                leftPaint.setShader(new LinearGradient(0, 0, edgeDepth, 0, cols, stops, Shader.TileMode.CLAMP));
+                rightPaint.setShader(new LinearGradient(w, 0, w - edgeDepth, 0, cols, stops, Shader.TileMode.CLAMP));
+            }
+            topPaint.setAlpha(alphaInt);
+            bottomPaint.setAlpha(alphaInt);
+            leftPaint.setAlpha(alphaInt);
+            rightPaint.setAlpha(alphaInt);
 
             canvas.drawRect(0, 0, w, edgeDepth, topPaint);
             canvas.drawRect(0, h - edgeDepth, w, h, bottomPaint);

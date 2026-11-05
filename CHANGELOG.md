@@ -1,5 +1,12 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.49
+
+- **ADB Kapalıyken Tam Bağımsız Çalışma ve Otomatik Arka Plan Güncellemesi:** Ağ Hata Ayıklama (ADB) tamamen kapatılsa dahi telefon kumandası, yön tuşları, klavye, ekran görüntüsü, CineSUB, APK kurulumu ve CineTV kendi kendine arka plan güncellemeleri (`UPDATE_PACKAGES_WITHOUT_USER_ACTION` + `TvKeyInterceptorService` erişilebilirlik köprüsü) kesintisiz çalışır.
+- **Mobil Kumanda Medya Sekmesi ve Sanatçı Filmografisi:** Mobil arayüzdeki Shazam sekmesi **Medya** olarak yenilendi; film kartlarında yönetmen ve oyuncu kadrosu fotoğraflarıyla listelenir, kişiye dokunulduğunda tüm filmografisi açılır.
+- **Akıllı Bağlamsal Vitrin ve Kusursuz Arama:** Vitrin başlıkları şehir, hava durumu, mevsim ve günün saatine göre özgün sinema kuşakları üretir; birleşik kavram aramaları ve benzer film önerileri daraltılmış yüksek isabetle çalışır.
+- **Sürüm ve Paket İlerlemesi:** Build, release ve APK sürüm numaraları 1.0.0.49 olarak güncellendi.
+
 ## 1.0.0.48
 
 - **Spatial HUD Standartlaştırıldı:** HUD açıp kapama ayarı ayarlardan kaldırıldı ve bütün cihazlarda standart olarak varsayılan ve açık hale getirildi.

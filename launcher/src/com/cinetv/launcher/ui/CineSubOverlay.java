@@ -75,7 +75,9 @@ public final class CineSubOverlay {
 
     /** Look at the current frame and mark what is worth knowing. */
     public static void trigger(Context ctx) {
+        if (TvKeyInterceptorService.isLiveTvOrTunerActive(ctx)) return;
         main.post(() -> {
+            if (TvKeyInterceptorService.isLiveTvOrTunerActive(ctx)) return;
             dismissActive();
             VoiceCineSubOverlay.dismissActive();
             final CineSubOverlay o = new CineSubOverlay(host(ctx), false);
@@ -104,7 +106,9 @@ public final class CineSubOverlay {
 
     /** A ready-made note (from the phone, or a demo). */
     public static void showInsight(Context ctx, String title, String insight) {
+        if (TvKeyInterceptorService.isLiveTvOrTunerActive(ctx)) return;
         main.post(() -> {
+            if (TvKeyInterceptorService.isLiveTvOrTunerActive(ctx)) return;
             dismissActive();
             CineSubOverlay o = new CineSubOverlay(host(ctx), false);
             if (!o.attach()) return;
@@ -124,7 +128,9 @@ public final class CineSubOverlay {
 
     /** A question typed on the phone, answered on the TV. */
     public static void searchTriviaAndDiscovery(Context ctx, final String query, final java.util.function.Consumer<String> done) {
+        if (TvKeyInterceptorService.isLiveTvOrTunerActive(ctx)) return;
         main.post(() -> {
+            if (TvKeyInterceptorService.isLiveTvOrTunerActive(ctx)) return;
             dismissActive();
             final CineSubOverlay o = new CineSubOverlay(host(ctx), false);
             if (!o.attach()) return;
@@ -166,6 +172,7 @@ public final class CineSubOverlay {
      */
     public static void ambientTick(final Context ctx) {
         if (active != null || ambientBusy || !com.cinetv.launcher.service.Prefs.cinesubAmbient(ctx)) return;
+        if (TvKeyInterceptorService.isLiveTvOrTunerActive(ctx)) return;
         if (!com.cinetv.launcher.ai.LlmClient.isConfigured(ctx) || com.cinetv.launcher.ai.LlmClient.quotaOut()) return;
         // not over the viewer's own CineSUB, Gamze talking, Home screen, or a screen that is off
         if (com.cinetv.launcher.ai.EmaLightningTts.isSpeaking()) return;
@@ -610,15 +617,24 @@ public final class CineSubOverlay {
             }
         }
 
+        private float lastVigW = -1f, lastVigH = -1f;
+        private RadialGradient vignetteShader;
+        private final RectF tmpCard = new RectF();
+
         @Override
         protected void onDraw(Canvas c) {
             long now = SystemClock.elapsedRealtime();
             float u = u(), W = getWidth(), H = getHeight();
             if (!ambient) {
                 // Soft Apple visionOS spatial vignette that adds depth without darkening the center of the frame
-                fill.setShader(new RadialGradient(W / 2f, H / 2f, W * 0.78f,
-                        new int[]{0x00000000, 0x1804060E, 0x4C04060E},
-                        new float[]{0f, 0.62f, 1f}, Shader.TileMode.CLAMP));
+                if (W != lastVigW || H != lastVigH || vignetteShader == null) {
+                    lastVigW = W;
+                    lastVigH = H;
+                    vignetteShader = new RadialGradient(W / 2f, H / 2f, Math.max(1f, W * 0.78f),
+                            new int[]{0x00000000, 0x1804060E, 0x4C04060E},
+                            new float[]{0f, 0.62f, 1f}, Shader.TileMode.CLAMP);
+                }
+                fill.setShader(vignetteShader);
                 c.drawRect(0, 0, W, H, fill);
                 fill.setShader(null);
                 drawBadge(c, u, now);
@@ -643,13 +659,13 @@ public final class CineSubOverlay {
                 if (!p.box.isEmpty()) {
                     drawRing(c, p, !ambient && f, u, W, H, t, ambient ? enter * 0.78f : enter);
                 }
-                RectF card = new RectF(cards.get(i));
+                tmpCard.set(cards.get(i));
                 float drift = lite ? 0 : (float) Math.sin(t * 1.05 + i * 0.8f) * 3.2f * u;
-                card.offset(0, drift + (1 - enter) * 18 * u);
+                tmpCard.offset(0, drift + (1 - enter) * 18 * u);
                 if (!p.box.isEmpty() && f) {
-                    drawConnector(c, p, card, u, W, H, ambient ? enter * 0.68f : enter, t);
+                    drawConnector(c, p, tmpCard, u, W, H, ambient ? enter * 0.68f : enter, t);
                 }
-                drawCard(c, p, card, texts.get(i), f, u, enter, now);
+                drawCard(c, p, tmpCard, texts.get(i), f, u, enter, now);
             }
             if (!ambient && scene.pois.size() > 1) drawDots(c, u, W, H);
             if (!lite || now - shownAt < 1400 || expanding) postInvalidateDelayed(lite ? 120 : 28);

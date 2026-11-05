@@ -148,8 +148,11 @@ public final class Uninstaller {
         if (ctx == null) return false;
         try {
             Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            int disabledFlag = android.os.Build.VERSION.SDK_INT >= 24
+                    ? android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS
+                    : android.content.pm.PackageManager.GET_DISABLED_COMPONENTS;
             java.util.List<android.content.pm.ResolveInfo> all = ctx.getPackageManager().queryIntentActivities(
-                    home, android.content.pm.PackageManager.MATCH_ALL | android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS);
+                    home, android.content.pm.PackageManager.MATCH_ALL | disabledFlag);
             if (all != null) {
                 for (android.content.pm.ResolveInfo ri : all) {
                     if (ri.activityInfo != null && ri.activityInfo.packageName != null

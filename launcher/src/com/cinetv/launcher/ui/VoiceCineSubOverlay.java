@@ -93,7 +93,9 @@ public final class VoiceCineSubOverlay extends FrameLayout {
 
     /** Triggers Voice CineSUB over the current screen. */
     public static void trigger(Context ctx) {
+        if (TvKeyInterceptorService.isLiveTvOrTunerActive(ctx)) return;
         MAIN.post(() -> {
+            if (TvKeyInterceptorService.isLiveTvOrTunerActive(ctx)) return;
             CineSubOverlay.dismissActive();
             if (active != null) {
                 active.dismiss();
@@ -357,6 +359,7 @@ public final class VoiceCineSubOverlay extends FrameLayout {
         private final Paint waveFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint accentPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final android.graphics.Path wavePath = new android.graphics.Path();
+        private int cachedEdgeW = -1, cachedEdgeH = -1, cachedEdgeDepth = -1;
 
         private State currentState = State.STARTING;
         private float volume = 0f;
@@ -439,18 +442,23 @@ public final class VoiceCineSubOverlay extends FrameLayout {
             baseAlpha = Math.max(0.1f, Math.min(1f, baseAlpha));
 
             int alphaInt = (int) (255 * baseAlpha);
-            int cEdge = Color.argb(alphaInt, Color.red(GOLD_BRIGHT), Color.green(GOLD_BRIGHT), Color.blue(GOLD_BRIGHT));
-            int cMid = Color.argb((int) (alphaInt * 0.58f), Color.red(GOLD_AMBER), Color.green(GOLD_AMBER), Color.blue(GOLD_AMBER));
-
-            // Rebuild edge linear gradient shaders
-            topPaint.setShader(new LinearGradient(0, 0, 0, edgeDepth,
-                    new int[]{cEdge, cMid, GOLD_TRANSPARENT}, new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
-            bottomPaint.setShader(new LinearGradient(0, h, 0, h - edgeDepth,
-                    new int[]{cEdge, cMid, GOLD_TRANSPARENT}, new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
-            leftPaint.setShader(new LinearGradient(0, 0, edgeDepth, 0,
-                    new int[]{cEdge, cMid, GOLD_TRANSPARENT}, new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
-            rightPaint.setShader(new LinearGradient(w, 0, w - edgeDepth, 0,
-                    new int[]{cEdge, cMid, GOLD_TRANSPARENT}, new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+            if (w != cachedEdgeW || h != cachedEdgeH || edgeDepth != cachedEdgeDepth) {
+                cachedEdgeW = w;
+                cachedEdgeH = h;
+                cachedEdgeDepth = edgeDepth;
+                int baseEdge = Color.argb(255, Color.red(GOLD_BRIGHT), Color.green(GOLD_BRIGHT), Color.blue(GOLD_BRIGHT));
+                int baseMid = Color.argb(148, Color.red(GOLD_AMBER), Color.green(GOLD_AMBER), Color.blue(GOLD_AMBER));
+                int[] cols = new int[]{baseEdge, baseMid, GOLD_TRANSPARENT};
+                float[] stops = new float[]{0f, 0.45f, 1f};
+                topPaint.setShader(new LinearGradient(0, 0, 0, edgeDepth, cols, stops, Shader.TileMode.CLAMP));
+                bottomPaint.setShader(new LinearGradient(0, h, 0, h - edgeDepth, cols, stops, Shader.TileMode.CLAMP));
+                leftPaint.setShader(new LinearGradient(0, 0, edgeDepth, 0, cols, stops, Shader.TileMode.CLAMP));
+                rightPaint.setShader(new LinearGradient(w, 0, w - edgeDepth, 0, cols, stops, Shader.TileMode.CLAMP));
+            }
+            topPaint.setAlpha(alphaInt);
+            bottomPaint.setAlpha(alphaInt);
+            leftPaint.setAlpha(alphaInt);
+            rightPaint.setAlpha(alphaInt);
 
             // Draw four ambient golden edge auras
             canvas.drawRect(0, 0, w, edgeDepth, topPaint);

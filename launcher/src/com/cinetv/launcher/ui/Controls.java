@@ -21,21 +21,40 @@ public final class Controls {
 
     private Controls() {}
 
+    /** Ensures parent containers do not clip focused/scaled controls at their edges. */
+    private static void ensureParentUnclipped(View v) {
+        android.view.ViewParent p = v != null ? v.getParent() : null;
+        int depth = 0;
+        while (p instanceof ViewGroup && depth < 4) {
+            ViewGroup vg = (ViewGroup) p;
+            if (!(vg instanceof android.widget.ScrollView)) {
+                vg.setClipChildren(false);
+            }
+            vg.setClipToPadding(false);
+            p = vg.getParent();
+            depth++;
+        }
+    }
+
     /** A capsule button. */
     public static TextView button(Context ctx, CharSequence text, View.OnClickListener onClick) {
-        final TextView b = UiKit.bold(ctx, 22, UiKit.INK);
+        final TextView b = UiKit.bold(ctx, 19, UiKit.INK);
         b.setText(text);
         b.setGravity(Gravity.CENTER);
-        b.setPadding(UiKit.px(34), UiKit.px(16), UiKit.px(34), UiKit.px(16));
+        b.setSingleLine(false);
+        b.setMaxLines(2);
+        b.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        b.setPadding(UiKit.px(26), UiKit.px(14), UiKit.px(26), UiKit.px(14));
         b.setFocusable(true);
         b.setClickable(true);
-        final Glass g = new Glass(b, UiKit.pxf(30), Glass.Style.CONTROL);
+        final Glass g = new Glass(b, UiKit.pxf(28), Glass.Style.CONTROL);
         b.setBackground(g);
         b.setOnFocusChangeListener((v, has) -> {
+            ensureParentUnclipped(v);
             if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
             g.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
             b.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
-            UiKit.lift(v, has, 1.06f, PerformanceProfile.animationMs(ctx, 150));
+            UiKit.lift(v, has, 1.045f, PerformanceProfile.animationMs(ctx, 150));
         });
         b.setOnClickListener(v -> {
             com.cinetv.launcher.device.SystemAudio.click(ctx);
@@ -181,9 +200,11 @@ public final class Controls {
         top.setGravity(Gravity.CENTER_VERTICAL);
         top.setOrientation(LinearLayout.HORIZONTAL);
 
-        final TextView t = UiKit.bold(ctx, 20, UiKit.INK);
+        final TextView t = UiKit.bold(ctx, 18, UiKit.INK);
         t.setText(title);
-        t.setSingleLine(true);
+        t.setSingleLine(false);
+        t.setMaxLines(2);
+        t.setLineSpacing(UiKit.pxf(1), 1f);
         t.setEllipsize(android.text.TextUtils.TruncateAt.END);
         top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
@@ -194,20 +215,23 @@ public final class Controls {
 
         box.addView(top);
 
-        final TextView s = UiKit.label(ctx, 15, UiKit.INK_DIM);
+        final TextView s = UiKit.label(ctx, 14, UiKit.INK_DIM);
         s.setText(state);
-        s.setSingleLine(true);
+        s.setSingleLine(false);
+        s.setMaxLines(3);
+        s.setLineSpacing(UiKit.pxf(1), 1f);
         s.setEllipsize(android.text.TextUtils.TruncateAt.END);
         s.setPadding(0, UiKit.px(4), 0, 0);
         if (state == null || state.length() == 0) s.setVisibility(View.GONE);
         box.addView(s);
 
         box.setOnFocusChangeListener((v, has) -> {
+            ensureParentUnclipped(v);
             if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
             g.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
             t.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
-            s.setTextColor(has ? UiKit.withAlpha(UiKit.INK_DARK, 170) : UiKit.INK_DIM);
-            UiKit.lift(v, has, 1.035f, PerformanceProfile.animationMs(ctx, 160));
+            s.setTextColor(has ? UiKit.withAlpha(UiKit.INK_DARK, 175) : UiKit.INK_DIM);
+            UiKit.lift(v, has, 1.028f, PerformanceProfile.animationMs(ctx, 160));
         });
         box.setOnClickListener(v -> {
             com.cinetv.launcher.device.SystemAudio.toggle(ctx);
@@ -216,7 +240,7 @@ public final class Controls {
             if (onToggle != null) onToggle.onToggle(next, s, sw);
         });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(0, 0, 0, UiKit.px(8));
+        lp.setMargins(UiKit.px(4), UiKit.px(4), UiKit.px(4), UiKit.px(10));
         box.setLayoutParams(lp);
         return box;
     }
@@ -227,7 +251,7 @@ public final class Controls {
         });
     }
 
-    /** A settings tile: title, one line of state, and a dot when the option is on. */
+    /** A settings tile: title, state lines, and a dot when the option is on. */
     public static LinearLayout tile(Context ctx, CharSequence title, CharSequence state, boolean active, View.OnClickListener onClick) {
         final LinearLayout box = new LinearLayout(ctx);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -235,7 +259,7 @@ public final class Controls {
         box.setClickable(true);
         box.setClipChildren(false);
         box.setClipToPadding(false);
-        box.setPadding(UiKit.px(18), UiKit.px(10), UiKit.px(18), UiKit.px(10));
+        box.setPadding(UiKit.px(18), UiKit.px(12), UiKit.px(18), UiKit.px(12));
         final Glass g = new Glass(box, UiKit.pxf(16), Glass.Style.CONTROL);
         box.setBackground(g);
 
@@ -248,34 +272,39 @@ public final class Controls {
         dlp.setMargins(0, 0, UiKit.px(10), 0);
         dot.setVisibility(active ? View.VISIBLE : View.GONE);
         top.addView(dot, dlp);
-        final TextView t = UiKit.bold(ctx, 20, UiKit.INK);
+        final TextView t = UiKit.bold(ctx, 18, UiKit.INK);
         t.setText(title);
-        t.setSingleLine(true);
+        t.setSingleLine(false);
+        t.setMaxLines(2);
+        t.setLineSpacing(UiKit.pxf(1), 1f);
         t.setEllipsize(android.text.TextUtils.TruncateAt.END);
         top.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         box.addView(top);
 
-        final TextView s = UiKit.label(ctx, 15, UiKit.INK_DIM);
+        final TextView s = UiKit.label(ctx, 14, UiKit.INK_DIM);
         s.setText(state);
-        s.setSingleLine(true);
+        s.setSingleLine(false);
+        s.setMaxLines(3);
+        s.setLineSpacing(UiKit.pxf(1), 1f);
         s.setEllipsize(android.text.TextUtils.TruncateAt.END);
         s.setPadding(0, UiKit.px(4), 0, 0);
         if (state == null || state.length() == 0) s.setVisibility(View.GONE);
         box.addView(s);
 
         box.setOnFocusChangeListener((v, has) -> {
+            ensureParentUnclipped(v);
             if (has) com.cinetv.launcher.device.SystemAudio.tick(ctx);
             g.setStyle(has ? Glass.Style.FOCUSED : Glass.Style.CONTROL);
             t.setTextColor(has ? UiKit.INK_DARK : UiKit.INK);
-            s.setTextColor(has ? UiKit.withAlpha(UiKit.INK_DARK, 170) : UiKit.INK_DIM);
-            UiKit.lift(v, has, 1.035f, PerformanceProfile.animationMs(ctx, 160));
+            s.setTextColor(has ? UiKit.withAlpha(UiKit.INK_DARK, 175) : UiKit.INK_DIM);
+            UiKit.lift(v, has, 1.028f, PerformanceProfile.animationMs(ctx, 160));
         });
         box.setOnClickListener(v -> {
             com.cinetv.launcher.device.SystemAudio.click(ctx);
             if (onClick != null) onClick.onClick(v);
         });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(0, 0, 0, UiKit.px(8));
+        lp.setMargins(UiKit.px(4), UiKit.px(4), UiKit.px(4), UiKit.px(10));
         box.setLayoutParams(lp);
         return box;
     }
@@ -363,7 +392,7 @@ public final class Controls {
 
     public static TextView header(Context ctx, CharSequence text) {
         TextView tv = UiKit.bold(ctx, 16, UiKit.INK_DIM);
-        tv.setText(text.toString().toUpperCase());
+        tv.setText(text.toString().toUpperCase(java.util.Locale.getDefault()));
         tv.setLetterSpacing(0.12f);
         tv.setPadding(UiKit.px(6), 0, 0, UiKit.px(14));
         return tv;

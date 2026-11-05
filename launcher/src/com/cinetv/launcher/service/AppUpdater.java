@@ -227,7 +227,9 @@ public final class AppUpdater {
         lastApk = apk;
         markSilentInstallPending(app);
         if (android.os.Build.VERSION.SDK_INT >= 26 && !app.getPackageManager().canRequestPackageInstalls()) {
-            LocalAdb.shell(app, "appops set " + app.getPackageName() + " REQUEST_INSTALL_PACKAGES allow 2>/dev/null", 3000);
+            if (LocalAdb.isAvailable()) {
+                LocalAdb.shell(app, "appops set " + app.getPackageName() + " REQUEST_INSTALL_PACKAGES allow 2>/dev/null", 3000);
+            }
         }
         // On Android 6 (API 23), PackageInstaller Session and content:// URIs often fail in OEM PackageInstaller;
         // prefer direct file:// URI installation first on API < 24.
@@ -246,6 +248,18 @@ public final class AppUpdater {
                     new android.content.pm.PackageInstaller.SessionParams(android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL);
             params.setAppPackageName(app.getPackageName());
             params.setSize(apk.length());
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                try {
+                    params.setRequireUserAction(android.content.pm.PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
+                } catch (Throwable ignored) {
+                }
+            }
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                try {
+                    params.setPackageSource(android.content.pm.PackageInstaller.PACKAGE_SOURCE_STORE);
+                } catch (Throwable ignored) {
+                }
+            }
             int id = pi.createSession(params);
             try (android.content.pm.PackageInstaller.Session session = pi.openSession(id);
                  java.io.InputStream in = new java.io.FileInputStream(apk);
@@ -281,8 +295,8 @@ public final class AppUpdater {
                     if (confirm == null) return;
                     confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     markSilentInstallPending(c);
-                    // Only open the confirm activity if the user is on CineTV Home (never interrupt Nuvio or media playback!)
-                    if (com.cinetv.launcher.MainActivity.foreground && !isViewerWatchingMedia(c)) {
+                    // Never interrupt Nuvio or media playback; otherwise launch and let TvKeyInterceptorService auto-confirm in <200ms
+                    if (!isViewerWatchingMedia(c)) {
                         try {
                             c.startActivity(confirm);
                             return;
@@ -521,25 +535,27 @@ public final class AppUpdater {
     private static void executeSilentInstallNow(final Context ctx, final File target) {
         try {
             markSilentInstallPending(ctx);
-            File shared = copyToWorldReadableLocation(ctx, target);
-            String path = (shared != null ? shared : target).getAbsolutePath();
-            String pkg = ctx.getPackageName();
-            String log = "/data/local/tmp/cinetv_update.log";
-            // Only relaunch MainActivity if MainActivity was actually in the foreground when update started!
-            boolean relaunchHome = com.cinetv.launcher.MainActivity.foreground && !isViewerWatchingMedia(ctx);
-            String postCmd = relaunchHome ? ("am start -n " + pkg + "/.MainActivity >/dev/null 2>&1") : "true";
-            String job = "appops set " + pkg + " REQUEST_INSTALL_PACKAGES allow 2>/dev/null; "
-                    + "(cp '" + path + "' /data/local/tmp/cinetv_update.apk 2>/dev/null && "
-                    + "(pm install -r -d /data/local/tmp/cinetv_update.apk > " + log + " 2>&1 || pm install -r /data/local/tmp/cinetv_update.apk >> " + log + " 2>&1)) "
-                    + "|| (pm install -r -d '" + path + "' >> " + log + " 2>&1 || pm install -r '" + path + "' >> " + log + " 2>&1); "
-                    + "rm -f /data/local/tmp/cinetv_update.apk; " + postCmd;
-            boolean started = LocalAdb.exec(ctx, "nohup sh -c \"" + job + "\" >/dev/null 2>&1 &", 5000) != null
-                    || LocalAdb.shell(ctx, "nohup sh -c \"" + job + "\" >/dev/null 2>&1 &", 5000);
-            if (started) {
-                Thread.sleep(38_000);
-                byte[] why = LocalAdb.exec(ctx, "cat " + log, 4000);
-                String res = why == null ? "" : new String(why, "UTF-8");
-                Log.w(TAG, "Silent ADB install did not replace process yet: " + res.trim());
+            if (LocalAdb.isAvailable()) {
+                File shared = copyToWorldReadableLocation(ctx, target);
+                String path = (shared != null ? shared : target).getAbsolutePath();
+                String pkg = ctx.getPackageName();
+                String log = "/data/local/tmp/cinetv_update.log";
+                // Only relaunch MainActivity if MainActivity was actually in the foreground when update started!
+                boolean relaunchHome = com.cinetv.launcher.MainActivity.foreground && !isViewerWatchingMedia(ctx);
+                String postCmd = relaunchHome ? ("am start -n " + pkg + "/.MainActivity >/dev/null 2>&1") : "true";
+                String job = "appops set " + pkg + " REQUEST_INSTALL_PACKAGES allow 2>/dev/null; "
+                        + "(cp '" + path + "' /data/local/tmp/cinetv_update.apk 2>/dev/null && "
+                        + "(pm install -r -d /data/local/tmp/cinetv_update.apk > " + log + " 2>&1 || pm install -r /data/local/tmp/cinetv_update.apk >> " + log + " 2>&1)) "
+                        + "|| (pm install -r -d '" + path + "' >> " + log + " 2>&1 || pm install -r '" + path + "' >> " + log + " 2>&1); "
+                        + "rm -f /data/local/tmp/cinetv_update.apk; " + postCmd;
+                boolean started = LocalAdb.exec(ctx, "nohup sh -c \"" + job + "\" >/dev/null 2>&1 &", 5000) != null
+                        || LocalAdb.shell(ctx, "nohup sh -c \"" + job + "\" >/dev/null 2>&1 &", 5000);
+                if (started) {
+                    Thread.sleep(38_000);
+                    byte[] why = LocalAdb.exec(ctx, "cat " + log, 4000);
+                    String res = why == null ? "" : new String(why, "UTF-8");
+                    Log.w(TAG, "Silent ADB install did not replace process yet: " + res.trim());
+                }
             }
             if (!isViewerWatchingMedia(ctx)) {
                 MAIN_HANDLER.post(() -> installWithPrompt(ctx, target));

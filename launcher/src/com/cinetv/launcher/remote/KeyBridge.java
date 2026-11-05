@@ -75,16 +75,24 @@ public final class KeyBridge {
         return false;
     }
 
+    private static volatile long bridgeDownUntil = 0L;
+
     private static boolean connect(Context ctx, boolean mayStart) {
         if (out != null) return true;
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (now < bridgeDownUntil) return false;
         final String secret = secret(ctx);
-        if (open(secret)) return true;
-        if (mayStart) ensureDaemonAsync(ctx, secret);
+        if (open(secret)) {
+            bridgeDownUntil = 0L;
+            return true;
+        }
+        bridgeDownUntil = now + (LocalAdb.isAvailable() ? 2500L : 15_000L);
+        if (mayStart && LocalAdb.isAvailable()) ensureDaemonAsync(ctx, secret);
         return false;
     }
 
     private static void ensureDaemonAsync(final Context ctx, final String secret) {
-        if (starting || System.currentTimeMillis() - lastStartAttempt < 15_000) return;
+        if (starting || !LocalAdb.isAvailable() || System.currentTimeMillis() - lastStartAttempt < 15_000) return;
         starting = true;
         lastStartAttempt = System.currentTimeMillis();
         final Context app = ctx.getApplicationContext();
@@ -97,7 +105,10 @@ public final class KeyBridge {
                 if (LocalAdb.shell(app, cmd, 30_000)) {
                     for (int i = 0; i < 15; i++) {
                         synchronized (KeyBridge.class) {
-                            if (out != null || open(secret)) break;
+                            if (out != null || open(secret)) {
+                                bridgeDownUntil = 0L;
+                                break;
+                            }
                         }
                         Thread.sleep(120);
                     }
@@ -114,9 +125,9 @@ public final class KeyBridge {
     private static boolean open(String secret) {
         try {
             Socket s = new Socket();
-            s.connect(new InetSocketAddress("127.0.0.1", KeyInjector.PORT), 80);
+            s.connect(new InetSocketAddress("127.0.0.1", KeyInjector.PORT), 45);
             s.setTcpNoDelay(true);
-            s.setSoTimeout(1200);
+            s.setSoTimeout(800);
             OutputStream o = s.getOutputStream();
             o.write((secret + "\n").getBytes(StandardCharsets.UTF_8));
             o.flush();

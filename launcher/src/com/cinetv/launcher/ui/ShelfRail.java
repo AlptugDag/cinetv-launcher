@@ -93,7 +93,7 @@ public final class ShelfRail extends HorizontalScrollView {
         addView(row, new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         boolean tr = "tr".equals(Locale.getDefault().getLanguage());
-        add(new Card(ctx, tr ? "Gamze'nin Seçimi" : "Gamze's Pick", null, true));
+        add(new Card(ctx, tr ? "Anın Seçkisi" : "Moment's Pick", null, true));
         for (MovieCatalog.Category c : MovieCatalog.CATEGORIES) add(new Card(ctx, ctx.getString(c.nameRes), c, false));
     }
 

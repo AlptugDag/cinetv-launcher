@@ -122,7 +122,9 @@ public final class HomeLaunchers {
             String self = ctx.getPackageName();
             try {
                 Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
-                int flags = PackageManager.MATCH_ALL | PackageManager.MATCH_DISABLED_COMPONENTS | 0x00002000; // MATCH_UNINSTALLED_PACKAGES
+                int disabledFlag = android.os.Build.VERSION.SDK_INT >= 24
+                        ? PackageManager.MATCH_DISABLED_COMPONENTS : PackageManager.GET_DISABLED_COMPONENTS;
+                int flags = PackageManager.MATCH_ALL | disabledFlag | 0x00002000; // MATCH_UNINSTALLED_PACKAGES
                 List<ResolveInfo> all = ctx.getPackageManager().queryIntentActivities(home, flags);
                 if (all != null) {
                     for (ResolveInfo ri : all) {

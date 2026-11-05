@@ -157,10 +157,23 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
     };
 
+    /**
+     * True when the TV is displaying its native hardware tuner / Live TV app or embedded TV input surface.
+     * CineSUB and subtitle overlays must never activate on Live TV / hardware tuner channels.
+     */
+    public static boolean isLiveTvOrTunerActive(Context ctx) {
+        if (MainActivity.isTvInputActive()) return true;
+        TvKeyInterceptorService svc = instance;
+        String pkg = svc != null ? svc.lastPackage : null;
+        if (pkg != null && isLiveTvApp(pkg)) return true;
+        return false;
+    }
+
     private final BroadcastReceiver cinesubReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent == null) return;
+            if (isLiveTvOrTunerActive(TvKeyInterceptorService.this)) return;
             String title = intent.getStringExtra("title");
             String insight = intent.getStringExtra("insight");
             if (insight != null && !insight.isEmpty()) {
@@ -187,30 +200,113 @@ public class TvKeyInterceptorService extends AccessibilityService {
     }
 
     /**
+     * Applies live typing (character deletion, text addition, or full replacement, plus optional Enter submit)
+     * directly to the currently focused input field in any app via Accessibility (or MainActivity EditText),
+     * working 100% natively without ADB.
+     */
+    public static boolean applyRemoteTyping(int del, String add, String fullText, boolean enter) {
+        final MainActivity ma = MainActivity.instance;
+        if (ma != null && MainActivity.isInFront()) {
+            final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+            final boolean[] handledOnUi = {false};
+            ma.runOnUiThread(() -> {
+                try {
+                    android.view.View fv = ma.getCurrentFocus();
+                    if (fv instanceof android.widget.EditText) {
+                        android.widget.EditText et = (android.widget.EditText) fv;
+                        android.text.Editable ed = et.getText();
+                        if (fullText != null) {
+                            et.setText(fullText);
+                            et.setSelection(et.getText().length());
+                        } else {
+                            if (del > 0 && ed != null && ed.length() > 0) {
+                                int n = Math.min(del, ed.length());
+                                ed.delete(ed.length() - n, ed.length());
+                            }
+                            if (add != null && !add.isEmpty() && ed != null) {
+                                ed.append(add);
+                            }
+                        }
+                        if (enter) {
+                            et.onEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+                            ma.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER));
+                            ma.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER));
+                        }
+                        handledOnUi[0] = true;
+                    }
+                } catch (Throwable ignored) {
+                } finally {
+                    latch.countDown();
+                }
+            });
+            try {
+                latch.await(250, java.util.concurrent.TimeUnit.MILLISECONDS);
+            } catch (InterruptedException ignored) {}
+            if (handledOnUi[0]) return true;
+        }
+
+        TvKeyInterceptorService s = instance;
+        if (s == null) return false;
+        try {
+            android.view.accessibility.AccessibilityNodeInfo node = s.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT);
+            if (node == null || !node.isEditable()) {
+                node = findEditableNode(s.getRootInActiveWindow(), 0);
+            }
+            if (node == null) return false;
+            String text;
+            if (fullText != null) {
+                text = fullText;
+            } else {
+                CharSequence cur = node.getText();
+                String base = (cur == null || (android.os.Build.VERSION.SDK_INT >= 26 && node.isShowingHintText()))
+                        ? "" : cur.toString();
+                if (del > 0 && !base.isEmpty()) {
+                    base = base.substring(0, Math.max(0, base.length() - del));
+                }
+                if (add != null && !add.isEmpty()) {
+                    base = base + add;
+                }
+                text = base;
+            }
+            android.os.Bundle args = new android.os.Bundle();
+            args.putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
+            boolean ok = node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+            if (ok) {
+                android.os.Bundle sel = new android.os.Bundle();
+                sel.putInt(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, text.length());
+                sel.putInt(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, text.length());
+                node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_SELECTION, sel);
+            }
+            if (enter) {
+                if (android.os.Build.VERSION.SDK_INT >= 30) {
+                    node.performAction(android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.getId());
+                } else {
+                    node.performAction(0x01020054);
+                }
+            }
+            return ok;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private static android.view.accessibility.AccessibilityNodeInfo findEditableNode(android.view.accessibility.AccessibilityNodeInfo n, int depth) {
+        if (n == null || depth > 35) return null;
+        if (n.isEditable() && n.isVisibleToUser()) return n;
+        for (int i = 0; i < n.getChildCount(); i++) {
+            android.view.accessibility.AccessibilityNodeInfo r = findEditableNode(n.getChild(i), depth + 1);
+            if (r != null) return r;
+        }
+        return null;
+    }
+
+    /**
      * Adds text at the end of the focused input field in one step (a paste from the phone): typed key by key it
      * outran the key bridge's timeout and characters the TV keyboard can't spell were dropped. False when there is none.
      */
     public static boolean appendToFocused(String add) {
-        TvKeyInterceptorService s = instance;
-        if (s == null || add == null || add.isEmpty()) return false;
-        try {
-            android.view.accessibility.AccessibilityNodeInfo node = s.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT);
-            if (node == null || !node.isEditable()) return false;
-            CharSequence cur = node.getText();
-            // a hint shows as the text of an empty field
-            String base = cur == null || (android.os.Build.VERSION.SDK_INT >= 26 && node.isShowingHintText()) ? "" : cur.toString();
-            String text = base + add;
-            android.os.Bundle args = new android.os.Bundle();
-            args.putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
-            if (!node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, args)) return false;
-            android.os.Bundle sel = new android.os.Bundle();
-            sel.putInt(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, text.length());
-            sel.putInt(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, text.length());
-            node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_SELECTION, sel);
-            return true;
-        } catch (Throwable t) {
-            return false;
-        }
+        if (add == null || add.isEmpty()) return false;
+        return applyRemoteTyping(0, add, null, false);
     }
 
     /** Returns true if there is an editable input field currently focused on screen. */
@@ -354,8 +450,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (screen.height() > 0 && (b.height() > screen.height() / 4 || b.width() > screen.width() / 2)) return false;
         c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS);
         boolean ok = c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);
-        if (!ok && c.isFocused()) {
-            ok = com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent 23", 1500);
+        if (!ok && !b.isEmpty()) {
+            ok = dispatchTap(b.centerX(), b.centerY());
+        }
+        if (!ok && c.isFocused() && com.cinetv.launcher.remote.LocalAdb.isAvailable()) {
+            ok = com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent 23", 1000);
         }
         android.util.Log.d("CineTvPlay", "'" + label + "' click " + ok);
         return ok;
@@ -401,14 +500,24 @@ public class TvKeyInterceptorService extends AccessibilityService {
             if (lastNuvioLaunchPreferResume) {
                 com.cinetv.launcher.service.WatchHistory.onNuvioResumeMissing(this);
             }
-            boolean ok = com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent 20", 1500);
+            boolean ok = dispatchAccessibilityKey(KeyEvent.KEYCODE_DPAD_DOWN, false);
+            if (!ok && com.cinetv.launcher.remote.LocalAdb.isAvailable()) {
+                ok = com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent 20", 1000);
+            }
             android.util.Log.d("CineTvPlay", "series never watched: episode list " + ok);
             return true;
         }
         android.view.accessibility.AccessibilityNodeInfo c = n;
         for (int i = 0; c != null && !c.isClickable() && !c.isFocusable() && i < 8; i++) c = c.getParent();
         boolean ok = c != null && c.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK);
-        if (!ok) ok = com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent 23", 1500);
+        if (!ok && c != null) {
+            android.graphics.Rect b = new android.graphics.Rect();
+            c.getBoundsInScreen(b);
+            if (!b.isEmpty()) ok = dispatchTap(b.centerX(), b.centerY());
+        }
+        if (!ok && com.cinetv.launcher.remote.LocalAdb.isAvailable()) {
+            ok = com.cinetv.launcher.remote.LocalAdb.shell(this, "input keyevent 23", 1000);
+        }
         android.util.Log.d("CineTvPlay", "series resumed (" + t + ") " + ok);
         return true;
     }
@@ -479,47 +588,213 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     public boolean dispatchAccessibilityKey(int code, boolean longPress) {
         try {
-            if (code == KeyEvent.KEYCODE_BACK) return performGlobalAction(GLOBAL_ACTION_BACK);
-            if (code == KeyEvent.KEYCODE_HOME) return performGlobalAction(GLOBAL_ACTION_HOME);
+            if (com.cinetv.launcher.ui.SpatialAudioOverlay.isShowing()
+                    && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE || code == KeyEvent.KEYCODE_DPAD_LEFT
+                    || code == KeyEvent.KEYCODE_DPAD_RIGHT || code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN
+                    || code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) {
+                final int k = code;
+                handler.post(() -> com.cinetv.launcher.ui.SpatialAudioOverlay.onKey(k));
+                return true;
+            }
+            if (com.cinetv.launcher.ui.CineSubOverlay.isShowing()) {
+                if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE) {
+                    handler.post(com.cinetv.launcher.ui.CineSubOverlay::dismissActive);
+                    return true;
+                }
+                if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT || code == KeyEvent.KEYCODE_DPAD_UP
+                        || code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) {
+                    final int k = code;
+                    handler.post(() -> com.cinetv.launcher.ui.CineSubOverlay.onKey(k));
+                    return true;
+                }
+            }
+
+            if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE) {
+                return performGlobalAction(GLOBAL_ACTION_BACK);
+            }
+            if (code == KeyEvent.KEYCODE_HOME) {
+                try {
+                    startActivity(new Intent(this, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+                    return true;
+                } catch (Throwable ignored) {
+                    return performGlobalAction(GLOBAL_ACTION_HOME);
+                }
+            }
             if (code == KeyEvent.KEYCODE_APP_SWITCH) return performGlobalAction(GLOBAL_ACTION_RECENTS);
+            if (code == KeyEvent.KEYCODE_SETTINGS || code == KeyEvent.KEYCODE_MENU) {
+                startActivity(new Intent(this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                        .putExtra("action", "settings"));
+                return true;
+            }
+            if (code == KeyEvent.KEYCODE_POWER || code == KeyEvent.KEYCODE_SLEEP) {
+                if (android.os.Build.VERSION.SDK_INT >= 28 && performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)) return true;
+                return performGlobalAction(GLOBAL_ACTION_POWER_DIALOG);
+            }
+            if (code == KeyEvent.KEYCODE_DEL) {
+                return applyRemoteTyping(1, "", null, false);
+            }
+            if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) {
+                if (applyRemoteTyping(0, String.valueOf(code - KeyEvent.KEYCODE_0), null, false)) return true;
+            }
+
+            android.view.accessibility.AccessibilityNodeInfo root = getRootInActiveWindow();
             android.view.accessibility.AccessibilityNodeInfo focused = findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT);
             if (focused == null) focused = findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
+            if (focused == null && root != null) focused = findFirstFocusedOrFocusable(root, 0);
+
             if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) {
                 if (focused != null) {
+                    if (focused.isEditable() && !longPress) {
+                        if (android.os.Build.VERSION.SDK_INT >= 30
+                                && focused.performAction(android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.getId())) {
+                            return true;
+                        }
+                    }
                     int action = longPress
                             ? android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
                             : android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK;
                     if (focused.performAction(action)) return true;
                     android.view.accessibility.AccessibilityNodeInfo p = focused.getParent();
                     while (p != null) {
-                        if (p.isClickable() && p.performAction(action)) return true;
+                        if ((longPress ? p.isLongClickable() : p.isClickable()) && p.performAction(action)) return true;
                         p = p.getParent();
+                    }
+                    android.graphics.Rect b = new android.graphics.Rect();
+                    focused.getBoundsInScreen(b);
+                    if (!b.isEmpty() && b.centerX() > 0 && b.centerY() > 0) {
+                        return longPress ? dispatchLongTap(b.centerX(), b.centerY()) : dispatchTap(b.centerX(), b.centerY());
                     }
                 }
                 return false;
             }
+
+            if (code == KeyEvent.KEYCODE_CHANNEL_UP || code == KeyEvent.KEYCODE_PAGE_UP) {
+                if (scrollActiveContainer(root, focused, false)) return true;
+                code = KeyEvent.KEYCODE_DPAD_UP;
+            } else if (code == KeyEvent.KEYCODE_CHANNEL_DOWN || code == KeyEvent.KEYCODE_PAGE_DOWN) {
+                if (scrollActiveContainer(root, focused, true)) return true;
+                code = KeyEvent.KEYCODE_DPAD_DOWN;
+            }
+
             int dir = 0;
             if (code == KeyEvent.KEYCODE_DPAD_UP) dir = android.view.View.FOCUS_UP;
             else if (code == KeyEvent.KEYCODE_DPAD_DOWN) dir = android.view.View.FOCUS_DOWN;
             else if (code == KeyEvent.KEYCODE_DPAD_LEFT) dir = android.view.View.FOCUS_LEFT;
             else if (code == KeyEvent.KEYCODE_DPAD_RIGHT) dir = android.view.View.FOCUS_RIGHT;
-            if (dir != 0 && focused != null) {
-                android.view.accessibility.AccessibilityNodeInfo next = focused.focusSearch(dir);
-                if (next != null && next.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS)) {
-                    return true;
+
+            if (dir != 0) {
+                if (focused != null) {
+                    android.view.accessibility.AccessibilityNodeInfo next = focused.focusSearch(dir);
+                    if (next != null && (next.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS)
+                            || next.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS))) {
+                        return true;
+                    }
+                    if (root != null) {
+                        android.view.accessibility.AccessibilityNodeInfo spatial = findNearestFocusableInDirection(root, focused, dir);
+                        if (spatial != null && (spatial.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS)
+                                || spatial.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS))) {
+                            return true;
+                        }
+                    }
                 }
-                android.view.accessibility.AccessibilityNodeInfo p = focused;
-                int scrollAction = (dir == android.view.View.FOCUS_DOWN || dir == android.view.View.FOCUS_RIGHT)
-                        ? android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
-                        : android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD;
-                while (p != null) {
-                    if (p.isScrollable() && p.performAction(scrollAction)) return true;
-                    p = p.getParent();
-                }
+                boolean forward = (dir == android.view.View.FOCUS_DOWN || dir == android.view.View.FOCUS_RIGHT);
+                if (scrollActiveContainer(root, focused, forward)) return true;
             }
         } catch (Throwable ignored) {
         }
         return false;
+    }
+
+    private static android.view.accessibility.AccessibilityNodeInfo findFirstFocusedOrFocusable(
+            android.view.accessibility.AccessibilityNodeInfo n, int depth) {
+        if (n == null || depth > 30) return null;
+        if (n.isFocused() || n.isAccessibilityFocused()) return n;
+        for (int i = 0; i < n.getChildCount(); i++) {
+            android.view.accessibility.AccessibilityNodeInfo r = findFirstFocusedOrFocusable(n.getChild(i), depth + 1);
+            if (r != null) return r;
+        }
+        return null;
+    }
+
+    private static boolean scrollActiveContainer(android.view.accessibility.AccessibilityNodeInfo root,
+                                                 android.view.accessibility.AccessibilityNodeInfo focused,
+                                                 boolean forward) {
+        int scrollAction = forward
+                ? android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
+                : android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD;
+        android.view.accessibility.AccessibilityNodeInfo p = focused;
+        while (p != null) {
+            if (p.isScrollable() && p.performAction(scrollAction)) return true;
+            p = p.getParent();
+        }
+        if (root != null) {
+            return scrollFirstScrollable(root, scrollAction, 0);
+        }
+        return false;
+    }
+
+    private static boolean scrollFirstScrollable(android.view.accessibility.AccessibilityNodeInfo n, int scrollAction, int depth) {
+        if (n == null || depth > 25) return false;
+        if (n.isScrollable() && n.isVisibleToUser() && n.performAction(scrollAction)) return true;
+        for (int i = 0; i < n.getChildCount(); i++) {
+            if (scrollFirstScrollable(n.getChild(i), scrollAction, depth + 1)) return true;
+        }
+        return false;
+    }
+
+    private static android.view.accessibility.AccessibilityNodeInfo findNearestFocusableInDirection(
+            android.view.accessibility.AccessibilityNodeInfo root,
+            android.view.accessibility.AccessibilityNodeInfo current,
+            int dir) {
+        if (root == null || current == null) return null;
+        android.graphics.Rect curRect = new android.graphics.Rect();
+        current.getBoundsInScreen(curRect);
+        if (curRect.isEmpty()) return null;
+        int cx = curRect.centerX(), cy = curRect.centerY();
+        android.view.accessibility.AccessibilityNodeInfo[] best = new android.view.accessibility.AccessibilityNodeInfo[1];
+        double[] bestScore = {Double.MAX_VALUE};
+        collectBestSpatialCandidate(root, current, cx, cy, dir, best, bestScore, 0);
+        return best[0];
+    }
+
+    private static void collectBestSpatialCandidate(
+            android.view.accessibility.AccessibilityNodeInfo n,
+            android.view.accessibility.AccessibilityNodeInfo current,
+            int cx, int cy, int dir,
+            android.view.accessibility.AccessibilityNodeInfo[] best,
+            double[] bestScore, int depth) {
+        if (n == null || depth > 32) return;
+        if (!n.equals(current) && n.isVisibleToUser() && n.isEnabled() && (n.isFocusable() || n.isClickable())) {
+            android.graphics.Rect r = new android.graphics.Rect();
+            n.getBoundsInScreen(r);
+            if (r.width() > 8 && r.height() > 8) {
+                int nx = r.centerX(), ny = r.centerY();
+                int dx = nx - cx, dy = ny - cy;
+                boolean inDir = false;
+                double primary = 0, orthogonal = 0;
+                if (dir == android.view.View.FOCUS_UP && dy < -8) {
+                    inDir = true; primary = -dy; orthogonal = Math.abs(dx);
+                } else if (dir == android.view.View.FOCUS_DOWN && dy > 8) {
+                    inDir = true; primary = dy; orthogonal = Math.abs(dx);
+                } else if (dir == android.view.View.FOCUS_LEFT && dx < -8) {
+                    inDir = true; primary = -dx; orthogonal = Math.abs(dy);
+                } else if (dir == android.view.View.FOCUS_RIGHT && dx > 8) {
+                    inDir = true; primary = dx; orthogonal = Math.abs(dy);
+                }
+                if (inDir) {
+                    double score = primary + orthogonal * 2.3;
+                    if (score < bestScore[0]) {
+                        bestScore[0] = score;
+                        best[0] = n;
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < n.getChildCount(); i++) {
+            collectBestSpatialCandidate(n.getChild(i), current, cx, cy, dir, best, bestScore, depth + 1);
+        }
     }
 
     /** Injects a screen tap at (x, y) via AccessibilityService gesture API when KeyBridge is unavailable. */
@@ -530,6 +805,20 @@ public class TvKeyInterceptorService extends AccessibilityService {
             path.moveTo(Math.max(0, x), Math.max(0, y));
             android.accessibilityservice.GestureDescription.StrokeDescription stroke =
                     new android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 50);
+            return dispatchGesture(new android.accessibilityservice.GestureDescription.Builder().addStroke(stroke).build(), null, null);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** Injects a long-press tap at (x, y) via AccessibilityService gesture API when KeyBridge is unavailable. */
+    public boolean dispatchLongTap(int x, int y) {
+        if (android.os.Build.VERSION.SDK_INT < 24) return false;
+        try {
+            android.graphics.Path path = new android.graphics.Path();
+            path.moveTo(Math.max(0, x), Math.max(0, y));
+            android.accessibilityservice.GestureDescription.StrokeDescription stroke =
+                    new android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 620);
             return dispatchGesture(new android.accessibilityservice.GestureDescription.Builder().addStroke(stroke).build(), null, null);
         } catch (Throwable t) {
             return false;
@@ -653,7 +942,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (event == null || event.getPackageName() == null) return;
         int eventType = event.getEventType();
         String pkg = event.getPackageName().toString();
-        if (pkg.contains("packageinstaller") || pkg.contains("installer")) {
+        if (pkg.contains("packageinstaller") || pkg.contains("installer") || pkg.contains("permissioncontroller")
+                || ((pkg.contains("settings") || pkg.contains("tv.settings"))
+                && com.cinetv.launcher.service.AppUpdater.isSilentInstallPending(this))) {
             maybeAutoConfirmPackageInstaller(event);
         }
         if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
@@ -801,8 +1092,12 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
         armIdleSaver();
         if (signature == null) signature = new com.cinetv.launcher.ui.SignatureOverlay(this);
-        if (AppLauncher.NUVIO.equals(pkg)) signature.show();
+        if (isNuvioApp(pkg)) signature.show();
         else if (isAppSwitch(pkg)) signature.hide();
+        if (isLiveTvApp(pkg)) {
+            com.cinetv.launcher.ui.CineSubOverlay.dismissActive();
+            com.cinetv.launcher.ui.VoiceCineSubOverlay.dismissActive();
+        }
     }
 
     /**
@@ -815,13 +1110,30 @@ public class TvKeyInterceptorService extends AccessibilityService {
             boolean removing = com.cinetv.launcher.device.Uninstaller.isRemoving(this);
             if (!updating && !removing) return;
             long now = android.os.SystemClock.elapsedRealtime();
-            if (now - lastInstallerAutoClickAt < 650L) return;
+            if (now - lastInstallerAutoClickAt < 450L) return;
             android.view.accessibility.AccessibilityNodeInfo root = getRootInActiveWindow();
-            if (root == null) root = event.getSource();
-            if (root == null) return;
-            if (clickInstallerPositiveNode(root, 0)) {
-                lastInstallerAutoClickAt = now;
+            if (root == null && event != null) root = event.getSource();
+            if (root != null) {
+                if (clickInstallerPositiveNode(root, 0)) {
+                    lastInstallerAutoClickAt = now;
+                    return;
+                }
             }
+            // Retry shortly in case the TV PackageInstaller finishes inflating its buttons after window transition
+            handler.postDelayed(() -> {
+                try {
+                    boolean up2 = com.cinetv.launcher.service.AppUpdater.isSilentInstallPending(this);
+                    boolean rm2 = com.cinetv.launcher.device.Uninstaller.isRemoving(this);
+                    if (!up2 && !rm2) return;
+                    long t2 = android.os.SystemClock.elapsedRealtime();
+                    if (t2 - lastInstallerAutoClickAt < 450L) return;
+                    android.view.accessibility.AccessibilityNodeInfo r2 = getRootInActiveWindow();
+                    if (r2 != null && clickInstallerPositiveNode(r2, 0)) {
+                        lastInstallerAutoClickAt = t2;
+                    }
+                } catch (Throwable ignored) {
+                }
+            }, 260L);
         } catch (Throwable ignored) {
         }
     }
@@ -831,12 +1143,18 @@ public class TvKeyInterceptorService extends AccessibilityService {
         CharSequence idCs = node.getViewIdResourceName();
         String id = idCs != null ? idCs.toString().toLowerCase(java.util.Locale.US) : "";
         CharSequence textCs = node.getText();
-        String text = textCs != null ? textCs.toString().trim().toLowerCase(new java.util.Locale("tr")) : "";
+        CharSequence descCs = node.getContentDescription();
+        java.util.Locale trLoc = new java.util.Locale("tr");
+        String text = textCs != null ? textCs.toString().trim().toLowerCase(trLoc) : "";
+        String desc = descCs != null ? descCs.toString().trim().toLowerCase(trLoc) : "";
         if (id.endsWith(":id/button1") || id.endsWith(":id/ok_button") || id.endsWith(":id/install_confirm_question")
-                || id.endsWith(":id/confirm_button")
+                || id.endsWith(":id/confirm_button") || id.endsWith(":id/guidedactions_item_content")
                 || text.equals("yükle") || text.equals("güncelle") || text.equals("install") || text.equals("update")
                 || text.equals("tamam") || text.equals("ok") || text.equals("kaldır") || text.equals("uninstall")
-                || text.equals("evet") || text.equals("yes") || text.equals("bitti") || text.equals("done")) {
+                || text.equals("evet") || text.equals("yes") || text.equals("bitti") || text.equals("done")
+                || text.equals("devam") || text.equals("continue") || text.equals("izin ver") || text.equals("allow")
+                || desc.equals("yükle") || desc.equals("güncelle") || desc.equals("install") || desc.equals("update")
+                || desc.equals("tamam") || desc.equals("ok") || desc.equals("kaldır") || desc.equals("uninstall")) {
             android.view.accessibility.AccessibilityNodeInfo target = node;
             while (target != null && !target.isClickable()) {
                 target = target.getParent();
@@ -845,11 +1163,21 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 if (target.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)) {
                     return true;
                 }
+                target.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_FOCUS);
+                target.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SELECT);
+                android.graphics.Rect b = new android.graphics.Rect();
+                target.getBoundsInScreen(b);
+                if (!b.isEmpty() && dispatchTap(b.centerX(), b.centerY())) {
+                    return true;
+                }
             }
         }
         int count = node.getChildCount();
         for (int i = 0; i < count; i++) {
             if (clickInstallerPositiveNode(node.getChild(i), depth + 1)) return true;
+        }
+        if (node.isScrollable()) {
+            node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD);
         }
         return false;
     }
@@ -1151,34 +1479,19 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     private void checkNuvioKeyForWatchlistRemoval(int code) {
         try {
-            if (!isNuvioApp(lastPackage) || DeviceTweaks.isMediaPlaying(this)) return;
-            if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN
-                    || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                handler.postDelayed(this::inspectNuvioForWatchHistorySync, 180L);
-                return;
-            }
+            // Never walk AccessibilityNodeInfo trees on D-pad navigation keys inside Nuvio!
+            // Rapidly traversing getRootInActiveWindow() during D-pad scrolling races with Nuvio's UI renderer
+            // and causes Nuvio to crash while browsing catalogs.
             if (code != KeyEvent.KEYCODE_DPAD_CENTER && code != KeyEvent.KEYCODE_ENTER) return;
-            android.view.accessibility.AccessibilityNodeInfo root = getRootInActiveWindow();
-            if (root == null) return;
-            android.view.accessibility.AccessibilityNodeInfo focused = root.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT);
-            if (focused == null) focused = root.findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
-            StringBuilder focusedText = new StringBuilder();
-            if (focused != null) {
-                collectWindowText(focused, focusedText, 0);
-                android.view.accessibility.AccessibilityNodeInfo p = focused.getParent();
-                if (p != null && focusedText.length() == 0) collectWindowText(p, focusedText, 0);
-            }
-            String ft = focusedText.toString().trim();
+            if (!isNuvioApp(lastPackage) || DeviceTweaks.isMediaPlaying(this)) return;
+            android.view.accessibility.AccessibilityNodeInfo focused = findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT);
+            if (focused == null) focused = findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
+            if (focused == null) return;
+            CharSequence t = focused.getText() != null ? focused.getText() : focused.getContentDescription();
+            String ft = t != null ? t.toString().trim() : "";
+            try { focused.recycle(); } catch (Throwable ignored) {}
             if (isNuvioRemoveLabel(ft)) {
-                StringBuilder allText = new StringBuilder();
-                collectWindowText(root, allText, 0);
-                if (lastNuvioMatchedTitle != null && !lastNuvioMatchedTitle.isEmpty()) {
-                    allText.append(' ').append(lastNuvioMatchedTitle);
-                }
-                com.cinetv.launcher.service.WatchHistory.forgetMatchingFromNuvio(this, allText.toString(), true);
                 handler.postDelayed(() -> com.cinetv.launcher.service.WatchHistory.syncWithNuvio(this), 900L);
-            } else {
-                handler.postDelayed(this::inspectNuvioForWatchHistorySync, 350L);
             }
         } catch (Throwable ignored) {
         }
@@ -1375,9 +1688,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
             return true;
         }
 
-        // The yellow key opens CineSUB over any player. Subtitles and Info stay with the player: they have jobs there.
-        // (Asked of the activity, not lastPackage: CineTV's own overlays over Nuvio report CineTV's package.)
+        // The yellow key opens CineSUB over any player, NEVER on Live TV / hardware tuner!
         if (code == KeyEvent.KEYCODE_PROG_YELLOW && !MainActivity.foreground) {
+            if (isLiveTvOrTunerActive(this)) {
+                return false;
+            }
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
                 // over AlptugPlayer the player prepares a frame CineSUB can see first
                 if (!(CinePlayerActivity.active && CinePlayerActivity.cinesub())) com.cinetv.launcher.ui.CineSubOverlay.trigger(this);
@@ -1391,7 +1706,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
         // The remote's microphone: in Nuvio it always opens voice CineSUB in-place without leaving Nuvio; otherwise launches CineTV voice search
         if (code == KeyEvent.KEYCODE_SEARCH || code == KeyEvent.KEYCODE_VOICE_ASSIST || code == KeyEvent.KEYCODE_ASSIST) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-                if (isNuvioApp(lastPackage) || (!MainActivity.foreground && isInMediaOrThirdPartyApp())) {
+                if (!isLiveTvOrTunerActive(this) && (isNuvioApp(lastPackage) || (!MainActivity.foreground && isInMediaOrThirdPartyApp()))) {
                     com.cinetv.launcher.ui.VoiceCineSubOverlay.trigger(this);
                     return true;
                 }

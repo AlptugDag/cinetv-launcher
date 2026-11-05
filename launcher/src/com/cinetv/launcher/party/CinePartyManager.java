@@ -179,10 +179,49 @@ public final class CinePartyManager {
     }
 
     public synchronized void leave(String id) {
-        if (players.remove(id) != null) {
-            if (id.equals(hostId)) hostId = players.isEmpty() ? "" : players.keySet().iterator().next();
+        if (id == null || id.isEmpty()) return;
+        Player removed = players.remove(id);
+        if (removed == null) return;
+        event("leave", removed.name);
+        if (players.isEmpty()) {
+            hostId = "";
+            stopTimers();
+            gen++;
+            mode = Mode.LOBBY;
+            phase = "setup";
+            EmaLightningTts.stop();
             bump();
+            com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+            if (ma != null) {
+                main.post(ma::hidePartyStage);
+            }
+            return;
         }
+        // Keep the game running for all remaining players!
+        if (id.equals(hostId)) {
+            List<Player> act = active();
+            hostId = !act.isEmpty() ? act.get(0).id : players.keySet().iterator().next();
+        }
+        if (mode == Mode.ROULETTE && "turn".equals(phase) && id.equals(turnId)) {
+            nextTurn();
+            return;
+        }
+        if (mode == Mode.SESSIZ && ("choosing".equals(phase) || "card".equals(phase)) && id.equals(tellerId)) {
+            nextCard();
+            return;
+        }
+        if (mode == Mode.QUIZ && "question".equals(phase)) {
+            List<Player> act = active();
+            if (!act.isEmpty()) {
+                boolean all = true;
+                for (Player x : act) all &= x.answer != null;
+                if (all) {
+                    reveal();
+                    return;
+                }
+            }
+        }
+        bump();
     }
 
     private void touch(String id) {
@@ -546,19 +585,50 @@ public final class CinePartyManager {
         return -1;
     }
 
-    /** Gamze fills the empty chambers, to a mood if the room gave one. */
+    /** Gamze fills the empty chambers, or refreshes Gamze chambers when a mood is given. */
     public synchronized void rouletteFill(String id, final String mood) {
         touch(id);
         if (mode != Mode.ROULETTE || !"setup".equals(phase)) return;
-        status = tr ? "Gamze tamburu dolduruyor…" : "Gamze is loading the cylinder…";
+        final String cleanMood = mood == null ? "" : mood.trim();
+        // If user specified a mood (or all chambers are already full), clear previous auto-filled ("gamze") chambers
+        // so the new mood actually populates the cylinder.
+        boolean hasEmpty = freeChamber() >= 0;
+        if (!cleanMood.isEmpty() || !hasEmpty) {
+            int cleared = 0;
+            for (Chamber c : chambers) {
+                if ("gamze".equals(c.owner)) {
+                    c.title = "";
+                    c.poster = "";
+                    c.owner = "";
+                    c.ownerName = "";
+                    c.year = 0;
+                    cleared++;
+                }
+            }
+            if (cleared == 0 && !hasEmpty) {
+                for (Chamber c : chambers) {
+                    c.title = "";
+                    c.poster = "";
+                    c.owner = "";
+                    c.ownerName = "";
+                    c.year = 0;
+                }
+            }
+        }
+        status = !cleanMood.isEmpty()
+                ? (tr ? ("\"" + cleanMood + "\" ruh haline göre tambur dolduruluyor…") : ("Loading cylinder for mood: " + cleanMood + "…"))
+                : (tr ? "Tambur dolduruluyor…" : "Loading the cylinder…");
         bump();
         final int g = gen;
         work.execute(() -> {
-            List<MovieCatalog.Movie> picks = pickFilms(mood, 6);
+            List<MovieCatalog.Movie> picks = pickFilms(cleanMood, 6);
             for (MovieCatalog.Movie m : picks) if (!m.posterUrl.isEmpty()) PosterCache.load(ctx, m.posterUrl, 500, 750);
             synchronized (CinePartyManager.this) {
                 if (g != gen) return;
                 int k = 0;
+                String ownerLabel = !cleanMood.isEmpty()
+                        ? (cleanMood.length() > 18 ? cleanMood.substring(0, 18) + "…" : cleanMood)
+                        : "CineTV";
                 for (Chamber c : chambers) {
                     if (!c.title.isEmpty()) continue;
                     while (k < picks.size() && taken(picks.get(k).title)) k++;
@@ -568,7 +638,7 @@ public final class CinePartyManager {
                     c.year = m.year;
                     c.poster = m.posterUrl;
                     c.owner = "gamze";
-                    c.ownerName = "Gamze";
+                    c.ownerName = ownerLabel;
                 }
                 status = "";
                 sfx(Sfx.SPIN);
@@ -584,19 +654,63 @@ public final class CinePartyManager {
 
     private List<MovieCatalog.Movie> pickFilms(String mood, int n) {
         List<MovieCatalog.Movie> out = new ArrayList<>();
+        String m = mood == null ? "" : mood.trim();
+        if (!m.isEmpty()) {
+            // 1. Primary path: MovieAssistant (uses both AI curation and rich TMDB mood/keyword/genre discovery)
+            try {
+                com.cinetv.launcher.ai.MovieAssistant.Reply reply = com.cinetv.launcher.ai.MovieAssistant.ask(ctx, m, Math.max(12, n * 3));
+                if (reply != null && reply.movies != null && !reply.movies.isEmpty()) {
+                    List<MovieCatalog.Movie> pool = new ArrayList<>(reply.movies);
+                    Collections.shuffle(pool, rnd);
+                    for (MovieCatalog.Movie mv : pool) {
+                        if (mv != null && mv.title != null && !mv.title.isEmpty() && out.size() < n) {
+                            out.add(mv);
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+            // 2. Secondary path: Direct MovieCatalog search & mood-mapped category
+            if (out.size() < n) {
+                try {
+                    List<MovieCatalog.Movie> searched = MovieCatalog.search(ctx, m, 18);
+                    Collections.shuffle(searched, rnd);
+                    for (MovieCatalog.Movie mv : searched) {
+                        if (mv != null && mv.title != null && !mv.title.isEmpty() && out.size() < n) {
+                            boolean dup = false;
+                            for (MovieCatalog.Movie ex : out) if (ex.title.equalsIgnoreCase(mv.title)) { dup = true; break; }
+                            if (!dup) out.add(mv);
+                        }
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+            if (out.size() < n) {
+                MovieCatalog.Category cat = moodToCategory(m);
+                List<MovieCatalog.Movie> byCat = MovieCatalog.category(ctx, cat, 24);
+                Collections.shuffle(byCat, rnd);
+                for (MovieCatalog.Movie mv : byCat) {
+                    if (mv != null && mv.title != null && !mv.title.isEmpty() && out.size() < n) {
+                        boolean dup = false;
+                        for (MovieCatalog.Movie ex : out) if (ex.title.equalsIgnoreCase(mv.title)) { dup = true; break; }
+                        if (!dup) out.add(mv);
+                    }
+                }
+            }
+            return out;
+        }
         if (LlmClient.isConfigured(ctx)) {
             String sys = "Pick " + n + " well-known, very different films for a group choosing tonight's movie"
-                    + (mood == null || mood.trim().isEmpty() ? "" : ", matching this mood: " + mood.trim())
                     + ". Reply only as a JSON array of {\"t\":\"original title\",\"y\":year}.";
-            LlmClient.Result r = LlmClient.generate(ctx, sys, mood == null ? "" : mood, 500, true);
+            LlmClient.Result r = LlmClient.generateQuick(ctx, sys, "diverse crowd-pleasing films", 400);
             if (r.success) {
                 try {
                     JSONArray a = LlmClient.extractJsonArray(r.text);
                     for (int i = 0; i < a.length() && out.size() < n; i++) {
                         JSONObject o = a.optJSONObject(i);
                         if (o == null) continue;
-                        MovieCatalog.Movie m = MovieCatalog.resolveQuick(ctx, o.optString("t"), o.optInt("y"), false);
-                        if (m != null) out.add(m);
+                        MovieCatalog.Movie mv = MovieCatalog.resolveQuick(ctx, o.optString("t"), o.optInt("y"), false);
+                        if (mv != null) out.add(mv);
                     }
                 } catch (Throwable ignored) {
                 }
@@ -605,9 +719,33 @@ public final class CinePartyManager {
         if (out.size() < n) {
             List<MovieCatalog.Movie> top = MovieCatalog.category(ctx, MovieCatalog.CATEGORIES[rnd.nextInt(MovieCatalog.CATEGORIES.length)], 20);
             Collections.shuffle(top, rnd);
-            for (MovieCatalog.Movie m : top) if (out.size() < n) out.add(m);
+            for (MovieCatalog.Movie mv : top) if (out.size() < n) out.add(mv);
         }
         return out;
+    }
+
+    private static MovieCatalog.Category moodToCategory(String mood) {
+        String low = mood.toLowerCase(new Locale("tr"));
+        if (low.contains("bilim") || low.contains("uzay") || low.contains("gelecek") || low.contains("distopya") || low.contains("sci-fi") || low.contains("scifi")) {
+            return MovieCatalog.CATEGORIES[2]; // cat_scifi
+        }
+        if (low.contains("korku") || low.contains("horror") || low.contains("ürpert") || low.contains("karanlık")
+                || low.contains("gerilim") || low.contains("heyecan") || low.contains("tansiyon") || low.contains("thriller")) {
+            return MovieCatalog.CATEGORIES[3]; // cat_thriller
+        }
+        if (low.contains("suç") || low.contains("polisiye") || low.contains("gizem") || low.contains("noir")) {
+            return MovieCatalog.CATEGORIES[4]; // cat_noir
+        }
+        if (low.contains("90") || low.contains("doksan")) {
+            return MovieCatalog.CATEGORIES[9]; // cat_nineties
+        }
+        if (low.contains("animasyon") || low.contains("çizgi") || low.contains("aile") || low.contains("anime")) {
+            return MovieCatalog.CATEGORIES[12]; // cat_ghibli
+        }
+        if (low.contains("klasik") || low.contains("eski")) {
+            return MovieCatalog.CATEGORIES[13]; // cat_classics
+        }
+        return MovieCatalog.CATEGORIES[1]; // cat_top_rated
     }
 
     public synchronized void rouletteStart(String id) {

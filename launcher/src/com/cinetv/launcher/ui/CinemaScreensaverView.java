@@ -79,9 +79,10 @@ public class CinemaScreensaverView extends View {
     private final boolean low;
 
     private final float[] sx = new float[STARS], sy = new float[STARS], sv = new float[STARS], sr = new float[STARS], sa = new float[STARS];
-    private final List<CinemaMoments.Moment> moments;
+    private final List<CinemaMoments.Moment> moments = new ArrayList<>();
     private final List<CinemaMoments.Moment> unplayedQueue = new ArrayList<>();
     private final java.util.Set<String> seenFilmKeys = new java.util.HashSet<>();
+    private boolean momentsLoaded = false;
     private int momentIndex;
     private Frame current, previous;
     private volatile Frame incoming;
@@ -95,9 +96,6 @@ public class CinemaScreensaverView extends View {
     public CinemaScreensaverView(Context ctx) {
         super(ctx);
         low = PerformanceProfile.tier(ctx) == PerformanceProfile.Tier.LOW;
-        moments = CinemaMoments.load(ctx);
-        unplayedQueue.addAll(moments);
-        Collections.shuffle(unplayedQueue);
         signature = Brand.mark(ctx);
         timeFmt = android.text.format.DateFormat.getTimeFormat(ctx);
         dateFmt = new SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEEdMMMM"), Locale.getDefault());
@@ -131,13 +129,22 @@ public class CinemaScreensaverView extends View {
         }
     }
 
+    private synchronized void ensureMomentsLoaded() {
+        if (momentsLoaded) return;
+        momentsLoaded = true;
+        moments.addAll(CinemaMoments.load(getContext()));
+        unplayedQueue.addAll(moments);
+        Collections.shuffle(unplayedQueue);
+    }
+
     /** A frame loaded ahead of time so the screensaver opens with its picture already there. */
     private static volatile Frame warm;
     private static volatile boolean warming;
 
-    /** Loads the first frame of the next screensaver in the background (call while the TV is still in use). */
+    /** Loads the first frame of the next screensaver in the background (skipped on low-RAM TVs to preserve shelf cache). */
     public static void warmUp(final Context context) {
-        if (warm != null || warming) return;
+        if (warm != null || warming || context == null) return;
+        if (PerformanceProfile.lowMemory(context)) return;
         warming = true;
         final Context ctx = context.getApplicationContext();
         new Thread(() -> {
@@ -174,6 +181,7 @@ public class CinemaScreensaverView extends View {
     }
 
     private synchronized CinemaMoments.Moment nextMoment() {
+        ensureMomentsLoaded();
         if (moments.isEmpty()) return null;
         if (unplayedQueue.isEmpty()) {
             List<CinemaMoments.Moment> pool = new ArrayList<>(moments);

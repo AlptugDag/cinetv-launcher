@@ -176,14 +176,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         dateFmt = new SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "EEEEdMMMM"), Locale.getDefault());
 
         final Context app = getApplicationContext();
-        new Thread(() -> {
-            SecretStore.migrateLegacy(app);
-            DeviceTweaks.applyLauncherDefaults(app);
-            PosterCache.trimDisk(app);
-            // the phone remote's key bridge (the TV may ask once to allow CineTV)
-            com.cinetv.launcher.remote.KeyBridge.warmUp(app);
-            com.cinetv.launcher.device.DeviceVerifier.autoVerify(app);
-        }, "cinetv-init").start();
+        new Thread(() -> SecretStore.migrateLegacy(app), "cinetv-secret-migrate").start();
 
         home = new HomeScreen(this, this, this);
         setContentView(home.root);
@@ -195,11 +188,14 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // again whenever the screen comes on, not only at the very first start.
         if (android.os.Build.VERSION.SDK_INT >= 24) {
             try {
+                final long createdUptime = android.os.SystemClock.uptimeMillis();
                 android.net.ConnectivityManager cm = getSystemService(android.net.ConnectivityManager.class);
                 if (cm != null) cm.registerDefaultNetworkCallback(new android.net.ConnectivityManager.NetworkCallback() {
                     @Override
                     public void onAvailable(android.net.Network n) {
                         handler.post(() -> {
+                            // Ignore only the immediate registration callback within 1.2s of onCreate while Phase 4 starts
+                            if (android.os.SystemClock.uptimeMillis() - createdUptime < 1_200L) return;
                             if (instance == MainActivity.this && home != null && (needFresh || shelfIsStale()) && !isCurating) {
                                 handler.removeCallbacks(staleRetry);
                                 staleRetry.run();
@@ -354,12 +350,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             return code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT;
         });
 
-        com.cinetv.launcher.device.MainThreadSampler.maybeStart("start", 40_000);
-        showCachedShelf();
+        if (!PerformanceProfile.lowProfile(this)) {
+            com.cinetv.launcher.device.MainThreadSampler.maybeStart("start", 40_000);
+        }
+        showCachedShelf(freshStart);
         Calendar cal = Calendar.getInstance();
         lastShelfHour = cal.get(Calendar.HOUR_OF_DAY);
         lastShelfDay = cal.get(Calendar.DAY_OF_YEAR);
-        lastShelfAt = android.os.SystemClock.elapsedRealtime();
+        if (!freshStart) {
+            lastShelfAt = android.os.SystemClock.elapsedRealtime();
+        }
 
         // Live frame timing: background work yields to drawing while frames run slow (nothing is switched off).
         if (android.os.Build.VERSION.SDK_INT >= 24) getWindow().addOnFrameMetricsAvailableListener((window, metrics, dropped) ->
@@ -450,17 +450,18 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private void scheduleDynamicStartup(boolean freshStart) {
         final Context app = getApplicationContext();
         boolean lowPower = PerformanceProfile.lowMemory(this) || PerformanceProfile.detectedTier(this) == PerformanceProfile.Tier.LOW;
-        long p1 = lowPower ? 700L : 180L;
-        long p2 = lowPower ? 2000L : 600L;
-        long p3 = lowPower ? 3800L : 1200L;
-        long p4 = lowPower ? 7500L : 2200L;
-        long p5 = lowPower ? 14000L : 4500L;
+        // User-visible UI elements (dock, continue card, fresh shelf, weather) load immediately;
+        // heavy disk/daemon tasks wait in Phase 5 after the home screen is completely responsive.
+        long p1 = 90L;
+        long p2 = 260L;
+        long p3 = 650L;
+        long p4 = 160L;
+        long p5 = lowPower ? 20_000L : 8_000L;
 
-        // Phase 1: Load Installed Apps catalog for the dock & revert any auto DNS interference
+        // Phase 1: Load Installed Apps catalog for the dock (dock renders first in ~60ms before off-screen grid)
         handler.postDelayed(() -> {
             if (!isFinishing()) {
                 loadApps(true);
-                background(() -> com.cinetv.launcher.device.NetworkOptimizer.revertAutoInterferenceIfNeeded(app));
             }
         }, p1);
 
@@ -480,7 +481,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
         }, p3);
 
-        // Phase 4: Fresh shelf if requested, after UI navigation has settled
+        // Phase 4: Fresh shelf immediately when stale (no 7.5s wait staring at yesterday's showcase)
         if (freshStart) {
             handler.postDelayed(() -> {
                 if (isFinishing() || home == null) return;
@@ -492,15 +493,26 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }, p4);
         }
 
-        // Phase 5: Non-critical background daemons & warm-ups
+        // Phase 5: Non-critical background daemons, disk trim & warm-ups once startup is completely settled
         handler.postDelayed(() -> {
             if (isFinishing() || !inFront) return;
+            background(() -> {
+                com.cinetv.launcher.device.NetworkOptimizer.revertAutoInterferenceIfNeeded(app);
+                DeviceTweaks.applyLauncherDefaults(app);
+                PosterCache.trimDisk(app);
+                com.cinetv.launcher.remote.KeyBridge.warmUp(app);
+                com.cinetv.launcher.device.DeviceVerifier.autoVerify(app);
+            });
             AppUpdater.checkAndAutoUpdateOnBoot(app);
             MemoryOptimizer.ensureAirPlayReceiver(app);
             com.cinetv.launcher.device.AirPodsLink.ensureStarted(app);
             com.cinetv.launcher.ai.EmaLightningTts.prewarmNativeFallback(app);
             HomeGuard.runUpdateOptimizationsAsync(app);
-            MemoryOptimizer.sweepAsync(app);
+            if (com.cinetv.launcher.ai.EmaLightningTts.isSpeaking()) {
+                handler.postDelayed(() -> MemoryOptimizer.sweepAsync(app), 8000L);
+            } else {
+                MemoryOptimizer.sweepAsync(app);
+            }
         }, p5);
     }
 
@@ -561,8 +573,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // Back on Home after an hour or more away (a film, an app, the TV on standby): a brand-new shelf.
         long away = homeLeftAt > 0 ? android.os.SystemClock.elapsedRealtime() - homeLeftAt : 0;
         homeLeftAt = 0;
-        if (!freshPending && away >= AWAY_FOR_NEW_SHELF_MS) startFreshShelf(true);
-        else if (!freshPending && android.os.SystemClock.elapsedRealtime() - lastShelfAt > AI_SHELF_EVERY_MS && shelfIsStale()) refreshShelf();
+        if (freshPending) {
+            // Restore deadline callbacks if onPause() cleared them during a brief boot activity transition
+            long dl = PerformanceProfile.lowProfile(this) ? 3_800L : 6_500L;
+            handler.removeCallbacks(freshDeadline);
+            handler.removeCallbacks(freshHardLimit);
+            handler.postDelayed(freshDeadline, dl);
+            handler.postDelayed(freshHardLimit, dl + 3_500L);
+            if (!isCurating) refreshShelf();
+        } else if (away >= AWAY_FOR_NEW_SHELF_MS || shelfIsStale()) {
+            startFreshShelf(away >= AWAY_FOR_NEW_SHELF_MS);
+        }
         handler.postDelayed(() -> {
             if (!inFront || !foreground || isFinishing()) return;
             TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
@@ -1364,12 +1385,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         if (home == null) return;
         freshPending = true;
         needFresh = true;
+        boolean lowProf = PerformanceProfile.lowProfile(this);
+        long deadlineMs = lowProf ? 4_200L : 7_500L;
+        long hardLimitMs = lowProf ? 7_500L : 12_000L;
         handler.removeCallbacks(freshDeadline);
         handler.removeCallbacks(freshHardLimit);
-        handler.postDelayed(freshDeadline, 4_000);
-        handler.postDelayed(freshHardLimit, 8_000);
-        isCurating = false;
-        refreshShelf();
+        handler.postDelayed(freshDeadline, deadlineMs);
+        handler.postDelayed(freshHardLimit, hardLimitMs);
+        if (!isCurating) {
+            refreshShelf();
+        }
     }
 
     private final Runnable freshDeadline = () -> {
@@ -1584,16 +1609,24 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         final String moment = MovieAssistant.momentContext(this, com.cinetv.launcher.service.WeatherService.getLastFull());
         background(() -> {
             try {
-                MovieAssistant.Shelf s = MovieAssistant.curate(this, mood, moment, PerformanceProfile.shelfSize(this));
-                // A free AI key often names only a handful of films that resolve: the row is completed before it shows,
-                // so it never opens with four cases (and nothing on it changes afterwards).
-                final List<Movie> films = s == null ? null : fillShelf(getApplicationContext(), s.movies, PerformanceProfile.shelfSize(this));
+                final Context appCtx = getApplicationContext();
+                final int want = PerformanceProfile.shelfSize(appCtx);
+                MovieAssistant.Shelf s = MovieAssistant.curate(this, mood, moment, want);
+                // On low-RAM TVs (or when AI already returned >= 10 films), skip sequential similar() top-ups
+                // so the fresh shelf lands on screen immediately without extra HTTP round-trips.
+                int minDirect = PerformanceProfile.lowProfile(appCtx) ? 8 : 12;
+                final List<Movie> films = s == null ? null
+                        : (s.movies != null && s.movies.size() >= minDirect ? s.movies : fillShelf(appCtx, s.movies, want));
                 ui(() -> {
                     try {
                         // the fresh start already fell back to a category shelf while this was thinking: no swap
                         if (freshTimedOutAt > startedAt) return;
-                        if (films != null && !films.isEmpty()) setShelf(s.title.isEmpty() ? momentTitle(gamzeName()) : s.title, films, true);
-                        else if (mood == null || refresh) categoryShelf();
+                        if (films != null && !films.isEmpty()) {
+                            String resolvedTitle = (s.title == null || s.title.isEmpty() || s.title.toUpperCase(new Locale("tr")).contains("GAMZE"))
+                                    ? MovieAssistant.buildMomentShelfTitle(MainActivity.this, "")
+                                    : s.title;
+                            setShelf(resolvedTitle, films, true);
+                        } else if (mood == null || refresh) categoryShelf();
                         else restoreShelfLabel();
                     } finally {
                         isCurating = false;
@@ -1611,7 +1644,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     // ---- shelf ------------------------------------------------------------------------------------
 
-    private void showCachedShelf() {
+    private void showCachedShelf(boolean stale) {
         List<Movie> cached = new ArrayList<>();
         try {
             JSONArray arr = new JSONArray(Prefs.get(this).getString(SHELF_CACHE, "[]"));
@@ -1639,26 +1672,38 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 cached.add(m);
             }
         }
-        setShelf(Prefs.get(this).getString(SHELF_TITLE, getString(R.string.cat_trending)), cached, false);
-        if (cached.size() < 6) {
-            refreshShelf();
+        String savedTitle = Prefs.get(this).getString(SHELF_TITLE, "");
+        // Never show a stale title from yesterday or a previous time-of-day slot on startup
+        if (stale || savedTitle == null || savedTitle.trim().isEmpty()
+                || savedTitle.toUpperCase(new Locale("tr")).contains("GAMZE")
+                || !MovieAssistant.fitsMoment(this, savedTitle)) {
+            savedTitle = MovieAssistant.buildMomentShelfTitle(this, "");
         }
+        if (stale && cached.size() > 1) {
+            // Rotate cached items by current day & hour so yesterday's exact center lineup is never repeated,
+            // and on low-RAM TVs when network is up, keep the initial placeholder small while startFreshShelf runs at 160ms
+            Calendar c = Calendar.getInstance();
+            int shift = Math.abs((c.get(Calendar.DAY_OF_YEAR) * 7 + c.get(Calendar.HOUR_OF_DAY)) % cached.size());
+            if (shift > 0) {
+                java.util.Collections.rotate(cached, -shift);
+            }
+            if (PerformanceProfile.lowProfile(this) && isNetworkAvailable() && cached.size() > 7) {
+                cached = new ArrayList<>(cached.subList(0, 7));
+            }
+        }
+        setShelf(savedTitle, cached, false);
     }
 
     /** Set just before a shelf the viewer chose (a tab, a search) is put up. */
     private boolean userChoseShelf;
 
     private String gamzeName() {
-        return "tr".equals(Locale.getDefault().getLanguage()) ? "GAMZE'NİN SEÇİMİ" : "GAMZE'S PICK";
+        return "tr".equals(Locale.getDefault().getLanguage()) ? "ANIN SEÇKİSİ" : "MOMENT'S PICK";
     }
 
-    /** "PAZAR GECESİ · <what>": from the TV's own clock, so it is always right. */
-    private static String momentTitle(String what) {
-        Calendar cal = Calendar.getInstance();
-        int hour = cal.get(Calendar.HOUR_OF_DAY);
-        String[] days = {"", "PAZAR", "PAZARTESİ", "SALI", "ÇARŞAMBA", "PERŞEMBE", "CUMA", "CUMARTESİ"};
-        String part = hour >= 5 && hour < 12 ? "SABAHI" : hour >= 12 && hour < 17 ? "ÖĞLEDEN SONRASI" : hour >= 17 && hour < 22 ? "AKŞAMI" : "GECESİ";
-        return days[cal.get(Calendar.DAY_OF_WEEK)] + " " + part + " · " + what;
+    /** Dynamic moment-based shelf title combining city, weather, season, month, weekday, and time of day. */
+    private String momentTitle(String what) {
+        return MovieAssistant.buildMomentShelfTitle(this, what);
     }
 
     /**
@@ -1717,15 +1762,32 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         setShelf(title, movies, remember, false);
     }
 
+    private String lastAppliedShelfSig = "";
+
     private void setShelf(String title, List<Movie> movies, boolean remember, boolean searchResults) {
         searchShelfQuery = null;
         String cleanTitle = (title != null) ? title.replaceAll("\\b\\d{1,2}[:.]\\d{2}\\b\\s*", "").trim() : "";
-        if (cleanTitle.isEmpty()) cleanTitle = getString(R.string.cat_trending);
+        if (cleanTitle.isEmpty() || cleanTitle.toUpperCase(new Locale("tr")).contains("GAMZE")) {
+            cleanTitle = MovieAssistant.buildMomentShelfTitle(this, "");
+        }
+        StringBuilder sigSb = new StringBuilder(cleanTitle).append('|');
+        if (movies != null) {
+            for (int i = 0; i < Math.min(8, movies.size()); i++) {
+                Movie m = movies.get(i);
+                if (m != null) sigSb.append(m.title).append(':').append(m.year).append(',');
+            }
+        }
+        String sig = sigSb.toString();
+        boolean duplicateContent = !searchResults && sig.equals(lastAppliedShelfSig) && !home.shelf.movies().isEmpty();
+        lastAppliedShelfSig = sig;
+
         home.shelfLabel.setText(cleanTitle.toUpperCase(Locale.getDefault()));
-        // the tab marker: Gamze's card for her shelves (AI or automatic), the chosen tab otherwise
+        // the tab marker: Anın Seçkisi for automatic shelves, the chosen tab otherwise
         home.rail.setActive(remember && !userChoseShelf ? gamzeName() : cleanTitle);
         userChoseShelf = false;
-        home.shelf.setMovies(movies, !searchResults);
+        if (!duplicateContent) {
+            home.shelf.setMovies(movies, !searchResults);
+        }
         if (freshPending || home.splashHeld()) {
             freshPending = false;
             handler.removeCallbacks(freshDeadline);
@@ -1733,18 +1795,20 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             // a moment for the first covers to be baked behind the opening
             handler.postDelayed(() -> home.releaseSplash(), 300);
         }
-        final Context app = getApplicationContext();
-        for (int i = 0; i < Math.min(4, movies.size()); i++) {
-            MovieCatalog.prefetchTrailer(app, movies.get(i));
-        }
         if (!remember) return;
+        final Context app = getApplicationContext();
+        if (!PerformanceProfile.lowProfile(app)) {
+            for (int i = 0; i < Math.min(4, movies.size()); i++) {
+                MovieCatalog.prefetchTrailer(app, movies.get(i));
+            }
+        }
         Prefs.get(this).edit().putLong("shelf_built_at", System.currentTimeMillis())
                 .putLong("shelf_boot_min", (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()) / 60_000L).apply();
         handler.removeCallbacks(staleRetry);
         needFresh = false;
         JSONArray arr = new JSONArray();
         for (Movie m : movies) arr.put(m.toJson());
-        Prefs.get(this).edit().putString(SHELF_CACHE, arr.toString()).putString(SHELF_TITLE, title).apply();
+        Prefs.get(this).edit().putString(SHELF_CACHE, arr.toString()).putString(SHELF_TITLE, cleanTitle).apply();
     }
 
 
@@ -1757,13 +1821,28 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     /**
      * The moment's shelf: with an AI key, one picked for this hour, weekday, city and weather
      * ("Pazar gecesi için suç filmleri"); without one, or if the AI fails, a different category.
+     * Detects power-on/reboot, calendar day change, time-of-day mismatch in saved title, or 3h age.
      */
-    /** Since the TV booted (its boot time, to the minute) and when the last shelf was built, kept across restarts. */
     private boolean shelfIsStale() {
-        long boot = (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()) / 60_000L;
+        long now = System.currentTimeMillis();
+        long boot = (now - android.os.SystemClock.elapsedRealtime()) / 60_000L;
         android.content.SharedPreferences p = Prefs.get(this);
+        long builtAt = p.getLong("shelf_built_at", 0);
+        if (builtAt <= 0) return true;
         if (Math.abs(p.getLong("shelf_boot_min", -1) - boot) > 2) return true;
-        return System.currentTimeMillis() - p.getLong("shelf_built_at", 0) > AI_SHELF_EVERY_MS;
+        if (now - builtAt > AI_SHELF_EVERY_MS) return true;
+        Calendar calNow = Calendar.getInstance();
+        Calendar calBuilt = Calendar.getInstance();
+        calBuilt.setTimeInMillis(builtAt);
+        if (calNow.get(Calendar.YEAR) != calBuilt.get(Calendar.YEAR)
+                || calNow.get(Calendar.DAY_OF_YEAR) != calBuilt.get(Calendar.DAY_OF_YEAR)) {
+            return true;
+        }
+        String savedTitle = p.getString(SHELF_TITLE, "");
+        if (savedTitle != null && !savedTitle.isEmpty() && !MovieAssistant.fitsMoment(this, savedTitle)) {
+            return true;
+        }
+        return false;
     }
 
     private void refreshShelf() {
@@ -1796,23 +1875,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             }
         }
         final MovieCatalog.Category cat = pick != null ? pick : MovieCatalog.CATEGORIES[0];
-
-        int hour = cal.get(Calendar.HOUR_OF_DAY);
-        int day = cal.get(Calendar.DAY_OF_WEEK);
-        int month = cal.get(Calendar.MONTH);
-        String[] daysTr = {"", "Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"};
-        String[] monthsTr = {"Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"};
-        String dayStr = (day >= 1 && day <= 7) ? daysTr[day] : "";
-        String monthStr = (month >= 0 && month <= 11) ? monthsTr[month] : "";
-        String timeSegment;
-        if (hour >= 5 && hour < 12) timeSegment = "Sabah";
-        else if (hour >= 12 && hour < 17) timeSegment = "İkindi";
-        else if (hour >= 17 && hour < 22) timeSegment = "Akşam";
-        else timeSegment = "Gece";
-        String weather = com.cinetv.launcher.service.WeatherService.getLastCondition();
-        // An automatic shelf is always Gamze's pick (she chose this category for the moment); only the viewer's own
-        // choice in the tabs or a search shows another shelf's name.
-        final String richTitle = momentTitle(gamzeName());
+        final String richTitle = MovieAssistant.buildMomentShelfTitle(this, getString(cat.nameRes));
 
         background(() -> {
             List<Movie> list = fillShelf(app, MovieCatalog.category(app, cat, PerformanceProfile.shelfSize(app), shelfSpin), PerformanceProfile.shelfSize(app));

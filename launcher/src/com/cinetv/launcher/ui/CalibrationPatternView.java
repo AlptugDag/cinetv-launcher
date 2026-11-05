@@ -36,6 +36,9 @@ public class CalibrationPatternView extends View {
         return getVisibility() == VISIBLE;
     }
 
+    private int lastGrayW = -1;
+    private LinearGradient grayShader;
+
     @Override
     protected void onDraw(Canvas c) {
         int w = getWidth(), h = getHeight();
@@ -48,7 +51,11 @@ public class CalibrationPatternView extends View {
                     p.setColor(Color.rgb(v, v, v));
                     c.drawRect(w * i / (float) steps, 0, w * (i + 1) / (float) steps, h * 0.6f, p);
                 }
-                p.setShader(new LinearGradient(0, 0, w, 0, Color.BLACK, Color.WHITE, Shader.TileMode.CLAMP));
+                if (w != lastGrayW || grayShader == null) {
+                    lastGrayW = w;
+                    grayShader = new LinearGradient(0, 0, Math.max(1, w), 0, Color.BLACK, Color.WHITE, Shader.TileMode.CLAMP);
+                }
+                p.setShader(grayShader);
                 c.drawRect(0, h * 0.6f, w, h, p);
                 break;
             }

@@ -389,7 +389,7 @@ public final class TvWebRemoteServer {
                 return;
             }
             if ("POST".equals(method) && "/api/files/upload".equals(path)) {
-                json(out, saveUploadedFile(in, length, q.get("dir"), q.get("name")));
+                json(out, saveUploadedFile(in, length, q.get("dir"), q.get("name"), "1".equals(q.get("install"))));
                 return;
             }
             if ("GET".equals(method) && "/api/files/download".equals(path)) {
@@ -435,7 +435,7 @@ public final class TvWebRemoteServer {
         }
         if ("/api/files/upload64".equals(path)) {
             byte[] body = android.util.Base64.decode(q.get("data") == null ? "" : q.get("data"), android.util.Base64.DEFAULT);
-            return saveUploadedFile(new java.io.ByteArrayInputStream(body), body.length, q.get("dir"), q.get("name"));
+            return saveUploadedFile(new java.io.ByteArrayInputStream(body), body.length, q.get("dir"), q.get("name"), "1".equals(q.get("install")));
         }
         return api(path, q);
     }
@@ -736,6 +736,9 @@ public final class TvWebRemoteServer {
             case "/api/files/open": {
                 return openTvFile(q.get("path"));
             }
+            case "/api/apk/install": {
+                return installApkFile(q.get("path"));
+            }
             case "/api/gamze/chat": {
                 String msg = clip(q.get("q"), 1000);
                 String mode = clip(q.get("mode"), 20);
@@ -865,6 +868,20 @@ public final class TvWebRemoteServer {
                 String title = clip(q.get("title"), 200);
                 List<MovieCatalog.Movie> sim = MovieCatalog.similar(app, tmdb, type, title, 30);
                 return ok.put("results", toJson(sim)).put("title", title);
+            }
+            case "/api/catalog/details": {
+                int tmdb = parseInt(q.get("tmdb"), 0);
+                String imdb = clip(q.get("imdb"), 64);
+                String type = clip(q.get("type"), 16);
+                String title = clip(q.get("title"), 200);
+                return MovieCatalog.fullCreditsAndDetails(app, tmdb, imdb, type, title);
+            }
+            case "/api/catalog/person": {
+                int id = parseInt(q.get("id"), 0);
+                String name = clip(q.get("name"), 120);
+                String role = clip(q.get("role"), 32);
+                List<MovieCatalog.Movie> credits = MovieCatalog.personCredits(app, id, name, role, 36);
+                return ok.put("results", toJson(credits)).put("name", name).put("id", id);
             }
             case "/api/watchlist": {
                 loadWatchlist();
@@ -1273,8 +1290,12 @@ public final class TvWebRemoteServer {
                 AirMouse.off(app);
                 return ok;
             case "/api/power/off":
-                // the bridge shuts down for real; without it, the adb the TV itself offers does
-                if (!KeyBridge.powerOff(app)) LocalAdb.shell(app, "svc power shutdown || reboot -p", 10_000);
+                if (!KeyBridge.powerOff(app)) {
+                    boolean adbPower = LocalAdb.isAvailable() && LocalAdb.shell(app, "svc power shutdown || reboot -p", 3_000);
+                    if (!adbPower) {
+                        com.cinetv.launcher.device.DeviceTweaks.sleepPanel(app);
+                    }
+                }
                 return ok;
             case "/api/key":
                 sendKey(parseInt(q.get("code")), "1".equals(q.get("long")));
@@ -1291,79 +1312,48 @@ public final class TvWebRemoteServer {
                 final String add = q.get("add");
                 final String delStr = q.get("del");
                 final boolean enter = "1".equals(q.get("enter"));
+                boolean enterHandled = false;
 
                 if (delStr != null || add != null) {
                     final int del = delStr != null ? parseInt(delStr) : 0;
-                    boolean bridged = false;
-                    if (del > 0) {
-                        bridged = KeyBridge.delete(app, del);
-                        if (!bridged && !com.cinetv.launcher.MainActivity.isInFront()) {
-                            bridged = LocalAdb.shell(app, "input keyevent 67", 1500);
+                    // Primary ADB-free path: Accessibility ACTION_SET_TEXT & MainActivity EditText
+                    boolean handledNatively = TvKeyInterceptorService.applyRemoteTyping(del, add, null, enter);
+                    if (handledNatively && enter) enterHandled = true;
+                    if (!handledNatively) {
+                        if (del > 0 && !KeyBridge.delete(app, del) && !com.cinetv.launcher.MainActivity.isInFront() && LocalAdb.isAvailable()) {
+                            LocalAdb.shell(app, "input keyevent 67", 1000);
                         }
-                    }
-                    if (add != null && !add.isEmpty()) {
-                        // a paste (or a keyboard suggestion) arrives as several characters: set in one step, keys only as a fallback
-                        boolean set = add.length() > 1 && TvKeyInterceptorService.appendToFocused(add);
-                        boolean sent = set || KeyBridge.text(app, add);
-                        if (!sent && !com.cinetv.launcher.MainActivity.isInFront()) {
+                        if (add != null && !add.isEmpty() && !KeyBridge.text(app, add) && !com.cinetv.launcher.MainActivity.isInFront() && LocalAdb.isAvailable()) {
                             String safe = add.replace("'", "'\\''").replace(" ", "%s");
-                            sent = LocalAdb.shell(app, "input text '" + safe + "'", 2000);
+                            LocalAdb.shell(app, "input text '" + safe + "'", 1200);
                         }
-                        bridged = sent || bridged;
-                    }
-                    if (!bridged) {
-                        post(() -> {
-                            com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                            if (ma != null && com.cinetv.launcher.MainActivity.isInFront() && ma.getCurrentFocus() instanceof android.widget.EditText) {
-                                android.widget.EditText et = (android.widget.EditText) ma.getCurrentFocus();
-                                android.text.Editable ed = et.getText();
-                                if (ed != null) {
-                                    if (del > 0 && ed.length() > 0) {
-                                        ed.delete(Math.max(0, ed.length() - del), ed.length());
-                                    }
-                                    if (add != null && !add.isEmpty()) {
-                                        ed.append(add);
-                                    }
-                                    et.setSelection(ed.length());
-                                }
-                            }
-                        });
                     }
                 } else if (!text.isEmpty()) {
-                    boolean replaced = TvKeyInterceptorService.typeIntoFocused(text);
+                    boolean replaced = TvKeyInterceptorService.applyRemoteTyping(0, null, text, enter);
+                    if (replaced && enter) enterHandled = true;
                     if (!replaced) {
-                        if (com.cinetv.launcher.MainActivity.isInFront()) {
-                            post(() -> {
-                                com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                                if (ma != null && ma.getCurrentFocus() instanceof android.widget.EditText) {
-                                    android.widget.EditText et = (android.widget.EditText) ma.getCurrentFocus();
-                                    et.setText(text);
-                                    et.setSelection(text.length());
-                                }
-                            });
-                        }
                         String prev = lastTyped;
                         if (prev == null) prev = "";
                         if (text.startsWith(prev)) {
                             String diff = text.substring(prev.length());
-                            if (!diff.isEmpty() && !KeyBridge.text(app, diff) && !com.cinetv.launcher.MainActivity.isInFront()) {
-                                LocalAdb.shell(app, "input text '" + diff.replace("'", "'\\''").replace(" ", "%s") + "'", 2000);
+                            if (!diff.isEmpty() && !KeyBridge.text(app, diff) && !com.cinetv.launcher.MainActivity.isInFront() && LocalAdb.isAvailable()) {
+                                LocalAdb.shell(app, "input text '" + diff.replace("'", "'\\''").replace(" ", "%s") + "'", 1200);
                             }
                         } else if (prev.startsWith(text)) {
                             int del = prev.length() - text.length();
-                            if (del > 0 && !KeyBridge.delete(app, del) && !com.cinetv.launcher.MainActivity.isInFront()) {
-                                LocalAdb.shell(app, "input keyevent 67", 1500);
+                            if (del > 0 && !KeyBridge.delete(app, del) && !com.cinetv.launcher.MainActivity.isInFront() && LocalAdb.isAvailable()) {
+                                LocalAdb.shell(app, "input keyevent 67", 1000);
                             }
                         } else {
                             int common = 0;
                             while (common < prev.length() && common < text.length() && prev.charAt(common) == text.charAt(common)) common++;
                             int del = prev.length() - common;
                             String diff = text.substring(common);
-                            if (del > 0 && !KeyBridge.delete(app, del) && !com.cinetv.launcher.MainActivity.isInFront()) {
-                                LocalAdb.shell(app, "input keyevent 67", 1500);
+                            if (del > 0 && !KeyBridge.delete(app, del) && !com.cinetv.launcher.MainActivity.isInFront() && LocalAdb.isAvailable()) {
+                                LocalAdb.shell(app, "input keyevent 67", 1000);
                             }
-                            if (!diff.isEmpty() && !KeyBridge.text(app, diff) && !com.cinetv.launcher.MainActivity.isInFront()) {
-                                LocalAdb.shell(app, "input text '" + diff.replace("'", "'\\''").replace(" ", "%s") + "'", 2000);
+                            if (!diff.isEmpty() && !KeyBridge.text(app, diff) && !com.cinetv.launcher.MainActivity.isInFront() && LocalAdb.isAvailable()) {
+                                LocalAdb.shell(app, "input text '" + diff.replace("'", "'\\''").replace(" ", "%s") + "'", 1200);
                             }
                         }
                     }
@@ -1372,17 +1362,20 @@ public final class TvWebRemoteServer {
 
                 if (enter) {
                     lastTyped = "";
-                    if (!KeyBridge.key(app, android.view.KeyEvent.KEYCODE_ENTER, false)) {
-                        if (com.cinetv.launcher.MainActivity.isInFront()) {
-                            post(() -> {
-                                com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
-                                if (ma != null) {
-                                    ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
-                                    ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
-                                }
-                            });
-                        } else {
-                            LocalAdb.shell(app, "input keyevent 66", 1500);
+                    if (!enterHandled) {
+                        if (!KeyBridge.key(app, android.view.KeyEvent.KEYCODE_ENTER, false)) {
+                            TvKeyInterceptorService keys = TvKeyInterceptorService.getInstance();
+                            if (com.cinetv.launcher.MainActivity.isInFront()) {
+                                post(() -> {
+                                    com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                                    if (ma != null) {
+                                        ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
+                                        ma.dispatchKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
+                                    }
+                                });
+                            } else if (keys == null || !keys.dispatchAccessibilityKey(android.view.KeyEvent.KEYCODE_ENTER, false)) {
+                                if (LocalAdb.isAvailable()) LocalAdb.shell(app, "input keyevent 66", 1000);
+                            }
                         }
                     }
                     if (!text.isEmpty() && com.cinetv.launcher.MainActivity.isInFront() && !TvKeyInterceptorService.isInputFocused()) {
@@ -1486,16 +1479,11 @@ public final class TvWebRemoteServer {
             return;
         }
         TvKeyInterceptorService keys = TvKeyInterceptorService.getInstance();
-        if (keys != null && (code == android.view.KeyEvent.KEYCODE_BACK
-                || code == android.view.KeyEvent.KEYCODE_HOME
-                || code == android.view.KeyEvent.KEYCODE_APP_SWITCH)) {
-            if (keys.dispatchAccessibilityKey(code, longPress)) return;
-        }
-        // Fallback to LocalAdb keyevent injection when KeyBridge daemon is still warming up or was restarted
-        if (LocalAdb.shell(app, (longPress ? "input keyevent --longpress " : "input keyevent ") + code, 2000)) {
+        if (keys != null && keys.dispatchAccessibilityKey(code, longPress)) return;
+        // Fallback to LocalAdb keyevent injection only when ADB is available and Accessibility didn't handle it
+        if (LocalAdb.isAvailable() && LocalAdb.shell(app, (longPress ? "input keyevent --longpress " : "input keyevent ") + code, 1000)) {
             return;
         }
-        if (keys != null && keys.dispatchAccessibilityKey(code, longPress)) return;
         try {
             new Instrumentation().sendKeyDownUpSync(code);
         } catch (Throwable ignored) {
@@ -1820,11 +1808,11 @@ public final class TvWebRemoteServer {
             final String path = target.getAbsolutePath();
             final String low = target.getName().toLowerCase(Locale.ROOT);
             if (low.endsWith(".apk")) {
-                new Thread(() -> LocalAdb.shell(app, "pm install -r '" + path.replace("'", "'\\''") + "'", 45_000), "cinetv-apk-install").start();
-                return res.put("ok", true).put("action", "installing_apk");
+                return installApkFile(rawPath);
             }
             post(() -> {
                 try {
+                    android.os.StrictMode.setVmPolicy(new android.os.StrictMode.VmPolicy.Builder().build());
                     String mimeType = "*/*";
                     if (low.endsWith(".mp4") || low.endsWith(".mkv") || low.endsWith(".avi") || low.endsWith(".webm") || low.endsWith(".mov")) mimeType = "video/*";
                     else if (low.endsWith(".mp3") || low.endsWith(".flac") || low.endsWith(".wav") || low.endsWith(".m4a")) mimeType = "audio/*";
@@ -1834,7 +1822,9 @@ public final class TvWebRemoteServer {
                     viewIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
                     app.startActivity(viewIntent);
                 } catch (Throwable t) {
-                    LocalAdb.shell(app, "am start -a android.intent.action.VIEW -d 'file://" + path.replace("'", "'\\''") + "'", 4000);
+                    if (LocalAdb.isAvailable()) {
+                        LocalAdb.shell(app, "am start -a android.intent.action.VIEW -d 'file://" + path.replace("'", "'\\''") + "'", 2500);
+                    }
                 }
             });
             return res.put("ok", true).put("action", "opened_on_tv");
@@ -1843,8 +1833,59 @@ public final class TvWebRemoteServer {
         }
     }
 
-    private static JSONObject saveUploadedFile(InputStream in, int length, String rawDir, String rawName) throws Exception {
-        if (length <= 0 || length > 64 * 1024 * 1024) return new JSONObject().put("ok", false).put("error", "size");
+    private static JSONObject installApkFile(String rawPath) {
+        JSONObject res = new JSONObject();
+        try {
+            final java.io.File target = resolveSafeTvPath(rawPath);
+            if (target == null || !target.exists() || target.isDirectory()) {
+                return res.put("ok", false).put("error", "not_found");
+            }
+            final String path = target.getAbsolutePath();
+            final String escaped = path.replace("'", "'\\''");
+            new Thread(() -> {
+                boolean ok = false;
+                if (LocalAdb.isAvailable()) {
+                    ok = LocalAdb.shell(app,
+                            "cp '" + escaped + "' /data/local/tmp/cinetv_push.apk && "
+                            + "chmod 644 /data/local/tmp/cinetv_push.apk && "
+                            + "pm install -r -g /data/local/tmp/cinetv_push.apk ; "
+                            + "rm -f /data/local/tmp/cinetv_push.apk", 90_000);
+                    if (!ok) {
+                        ok = LocalAdb.shell(app, "pm install -r -g '" + escaped + "'", 60_000);
+                    }
+                }
+                if (!ok) {
+                    post(() -> launchNativeApkInstaller(target));
+                }
+            }, "cinetv-apk-install").start();
+            return res.put("ok", true).put("action", "installing_apk").put("path", path).put("name", target.getName());
+        } catch (Throwable t) {
+            try { return res.put("ok", false).put("error", t.getMessage()); } catch (Throwable ignored) { return res; }
+        }
+    }
+
+    /** Launches Android's built-in Package Installer activity directly on the TV without needing ADB. */
+    public static void launchNativeApkInstaller(java.io.File apkFile) {
+        if (apkFile == null || !apkFile.exists()) return;
+        try {
+            android.os.StrictMode.setVmPolicy(new android.os.StrictMode.VmPolicy.Builder().build());
+            Intent install = new Intent(Intent.ACTION_VIEW);
+            install.setDataAndType(android.net.Uri.fromFile(apkFile), "application/vnd.android.package-archive");
+            install.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            app.startActivity(install);
+        } catch (Throwable t) {
+            try {
+                Intent fallback = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+                fallback.setData(android.net.Uri.fromFile(apkFile));
+                fallback.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                app.startActivity(fallback);
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    private static JSONObject saveUploadedFile(InputStream in, int length, String rawDir, String rawName, boolean autoInstall) throws Exception {
+        if (length <= 0 || length > 256 * 1024 * 1024) return new JSONObject().put("ok", false).put("error", "size");
         java.io.File dir = resolveSafeTvPath(rawDir);
         if (dir == null || !dir.isDirectory()) {
             dir = new java.io.File(safeSdcardRoot(), "Download");
@@ -1855,7 +1896,7 @@ public final class TvWebRemoteServer {
                 : rawName.trim().replaceAll("[/\\\\:*?\"<>|]", "_");
         java.io.File dest = new java.io.File(dir, cleanName);
         try (java.io.FileOutputStream fos = new java.io.FileOutputStream(dest)) {
-            byte[] buf = new byte[16384];
+            byte[] buf = new byte[32768];
             int remaining = length;
             while (remaining > 0) {
                 int r = in.read(buf, 0, Math.min(buf.length, remaining));
@@ -1864,7 +1905,12 @@ public final class TvWebRemoteServer {
                 remaining -= r;
             }
         }
-        return new JSONObject().put("ok", true).put("path", dest.getAbsolutePath()).put("name", dest.getName()).put("size", dest.length());
+        JSONObject out = new JSONObject().put("ok", true).put("path", dest.getAbsolutePath()).put("name", dest.getName()).put("size", dest.length());
+        if (autoInstall && dest.getName().toLowerCase(Locale.ROOT).endsWith(".apk")) {
+            installApkFile(dest.getAbsolutePath());
+            out.put("installing", true);
+        }
+        return out;
     }
 
     private static void serveTvFileDownload(OutputStream out, String rawPath, boolean inline) throws Exception {

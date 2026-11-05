@@ -98,13 +98,26 @@ public final class ShazamRecognizer {
 
         new Thread(() -> {
             try {
-                short[] samples = recordPcm16Mono(4200);
+                // Stage 1: Quick 3.4s capture + normalized Apple Shazam Vibra 0xCAFE2580 signature
+                short[] samples = recordPcm16Mono(3400);
                 TrackInfo info = null;
 
                 if (samples != null && samples.length >= SAMPLE_RATE * 2) {
-                    String sigUri = buildShazamSignatureUri(samples);
-                    int sampleDurationMs = (samples.length * 1000) / SAMPLE_RATE;
+                    short[] normSamples = normalizePcmSamples(samples);
+                    String sigUri = buildShazamSignatureUri(normSamples);
+                    int sampleDurationMs = (normSamples.length * 1000) / SAMPLE_RATE;
                     info = queryShazamDiscovery(sigUri, sampleDurationMs, tr);
+                }
+
+                // Stage 2: If first pass did not match (e.g. quiet dialogue moment), record a longer 4.8s window
+                if ((info == null || info.title.isEmpty()) && recognizing) {
+                    short[] retrySamples = recordPcm16Mono(4800);
+                    if (retrySamples != null && retrySamples.length >= SAMPLE_RATE * 2) {
+                        short[] normRetry = normalizePcmSamples(retrySamples);
+                        String sigUri2 = buildShazamSignatureUri(normRetry);
+                        int sampleDurationMs2 = (normRetry.length * 1000) / SAMPLE_RATE;
+                        info = queryShazamDiscovery(sigUri2, sampleDurationMs2, tr);
+                    }
                 }
 
                 final TrackInfo finalInfo = info;
@@ -425,95 +438,142 @@ public final class ShazamRecognizer {
     }
 
     /**
-     * Queries Shazam's official v5 discovery endpoint with the generated 0xCAFE2580 signature.
+     * Queries Apple's official Shazam v5 discovery endpoint with the generated 0xCAFE2580 signature.
+     * Tries the official Apple Shazam iOS v5 endpoint first, with fallback to the Android v5 endpoint.
      */
     private static TrackInfo queryShazamDiscovery(String sigUri, int sampleMs, boolean tr) {
-        HttpURLConnection conn = null;
-        try {
-            String lang = tr ? "tr" : "en";
-            String country = tr ? "TR" : "US";
-            String endpoint = "https://amp.shazam.com/discovery/v5/" + lang + "/" + country + "/android/-/tag/"
-                    + UUID.randomUUID().toString().toUpperCase(Locale.ROOT) + "/"
-                    + UUID.randomUUID().toString().toUpperCase(Locale.ROOT)
-                    + "?sync=true&webv3=true&sampling=true&connected=&shazamapiversion=v3&sharehub=true&hubv5minorversion=v5.1&hidelb=true&video=v3";
+        String lang = tr ? "tr-TR" : "en-US";
+        String country = tr ? "TR" : "US";
+        String[] endpoints = new String[]{
+                "https://amp.shazam.com/discovery/v5/" + (tr ? "tr" : "en") + "/" + country + "/iphone/-/tag/"
+                        + UUID.randomUUID().toString().toUpperCase(Locale.ROOT) + "/"
+                        + UUID.randomUUID().toString().toUpperCase(Locale.ROOT)
+                        + "?sync=true&webv3=true&sampling=true&connected=&shazamapiversion=v3&sharehub=true&hubv5minorversion=v5.1&hidelb=true&video=v3",
+                "https://amp.shazam.com/discovery/v5/" + (tr ? "tr" : "en") + "/" + country + "/android/-/tag/"
+                        + UUID.randomUUID().toString().toUpperCase(Locale.ROOT) + "/"
+                        + UUID.randomUUID().toString().toUpperCase(Locale.ROOT)
+                        + "?sync=true&webv3=true&sampling=true&connected=&shazamapiversion=v3&sharehub=true&hubv5minorversion=v5.1&hidelb=true&video=v3"
+        };
+        String[] userAgents = new String[]{
+                "Shazam/16.12.0 (iPhone; iOS 17.5.1; Scale/3.00)",
+                "Dalvik/2.1.0 (Linux; U; Android 13; AppleTV Build/TQ3A.230805.001) Shazam/14.24.0"
+        };
 
-            JSONObject sigObj = new JSONObject();
-            sigObj.put("samplems", sampleMs);
-            sigObj.put("timestamp", System.currentTimeMillis());
-            sigObj.put("uri", sigUri);
+        for (int attempt = 0; attempt < endpoints.length; attempt++) {
+            HttpURLConnection conn = null;
+            try {
+                long now = System.currentTimeMillis();
+                JSONObject geo = new JSONObject();
+                geo.put("altitude", 100);
+                geo.put("latitude", tr ? 41.0082 : 37.7749);
+                geo.put("longitude", tr ? 28.9784 : -122.4194);
 
-            JSONObject payload = new JSONObject();
-            payload.put("enze", 1);
-            payload.put("signature", sigObj);
-            payload.put("timestamp", System.currentTimeMillis());
-            payload.put("timezone", TimeZone.getDefault().getID());
+                JSONObject sigObj = new JSONObject();
+                sigObj.put("samplems", sampleMs);
+                sigObj.put("timestamp", now);
+                sigObj.put("uri", sigUri);
 
-            conn = (HttpURLConnection) new URL(endpoint).openConnection();
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("User-Agent", "Dalvik/2.1.0 (Linux; U; Android 12; Android TV Build/STT2.220621.001)");
-            conn.setRequestProperty("Content-Language", tr ? "tr_TR" : "en_US");
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
-            conn.setDoOutput(true);
+                JSONObject payload = new JSONObject();
+                payload.put("geolocation", geo);
+                payload.put("signature", sigObj);
+                payload.put("timestamp", now);
+                payload.put("timezone", TimeZone.getDefault().getID());
 
-            byte[] body = payload.toString().getBytes(StandardCharsets.UTF_8);
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(body);
-            }
+                conn = (HttpURLConnection) new URL(endpoints[attempt]).openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setRequestProperty("User-Agent", userAgents[attempt]);
+                conn.setRequestProperty("Content-Language", lang);
+                conn.setRequestProperty("Accept-Language", lang);
+                conn.setConnectTimeout(6500);
+                conn.setReadTimeout(6500);
+                conn.setDoOutput(true);
 
-            int code = conn.getResponseCode();
-            if (code != 200) return null;
+                byte[] body = payload.toString().getBytes(StandardCharsets.UTF_8);
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(body);
+                }
 
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            try (InputStream in = conn.getInputStream()) {
-                byte[] buf = new byte[4096];
-                int r;
-                while ((r = in.read(buf)) != -1) baos.write(buf, 0, r);
-            }
-            JSONObject resp = new JSONObject(new String(baos.toByteArray(), StandardCharsets.UTF_8));
-            JSONObject track = resp.optJSONObject("track");
-            if (track == null) return null;
+                int code = conn.getResponseCode();
+                if (code != 200) continue;
 
-            String title = track.optString("title", "").trim();
-            if (title.isEmpty()) return null;
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                try (InputStream in = conn.getInputStream()) {
+                    byte[] buf = new byte[4096];
+                    int r;
+                    while ((r = in.read(buf)) != -1) baos.write(buf, 0, r);
+                }
+                JSONObject resp = new JSONObject(new String(baos.toByteArray(), StandardCharsets.UTF_8));
+                JSONObject track = resp.optJSONObject("track");
+                if (track == null) continue;
 
-            TrackInfo info = new TrackInfo();
-            info.title = title;
-            info.artist = track.optString("subtitle", "").trim();
-            info.shazamUrl = track.optString("url", "").trim();
+                String title = track.optString("title", "").trim();
+                if (title.isEmpty()) continue;
 
-            JSONObject images = track.optJSONObject("images");
-            if (images != null) {
-                info.artworkUrl = images.optString("coverarthq", images.optString("coverart", ""));
-            }
+                TrackInfo info = new TrackInfo();
+                info.title = title;
+                info.artist = track.optString("subtitle", "").trim();
+                info.shazamUrl = track.optString("url", "").trim();
 
-            JSONArray sections = track.optJSONArray("sections");
-            if (sections != null) {
-                for (int i = 0; i < sections.length(); i++) {
-                    JSONObject sec = sections.getJSONObject(i);
-                    JSONArray meta = sec.optJSONArray("metadata");
-                    if (meta == null) continue;
-                    for (int j = 0; j < meta.length(); j++) {
-                        JSONObject m = meta.getJSONObject(j);
-                        String mTitle = m.optString("title", "").toLowerCase(Locale.ROOT);
-                        String mText = m.optString("text", "").trim();
-                        if (mTitle.contains("album") || mTitle.contains("albüm")) {
-                            info.album = mText;
-                        } else if (mTitle.contains("released") || mTitle.contains("yıl") || mTitle.contains("year") || mTitle.contains("çıkış")) {
-                            info.year = mText;
+                JSONObject images = track.optJSONObject("images");
+                if (images != null) {
+                    info.artworkUrl = images.optString("coverarthq", images.optString("coverart", images.optString("background", "")));
+                }
+
+                JSONArray sections = track.optJSONArray("sections");
+                if (sections != null) {
+                    for (int i = 0; i < sections.length(); i++) {
+                        JSONObject sec = sections.getJSONObject(i);
+                        JSONArray meta = sec.optJSONArray("metadata");
+                        if (meta == null) continue;
+                        for (int j = 0; j < meta.length(); j++) {
+                            JSONObject m = meta.getJSONObject(j);
+                            String mTitle = m.optString("title", "").toLowerCase(Locale.ROOT);
+                            String mText = m.optString("text", "").trim();
+                            if (mTitle.contains("album") || mTitle.contains("albüm")) {
+                                info.album = mText;
+                            } else if (mTitle.contains("released") || mTitle.contains("yıl") || mTitle.contains("year") || mTitle.contains("çıkış")) {
+                                info.year = mText;
+                            }
                         }
                     }
                 }
+                return info;
+            } catch (Throwable t) {
+                Log.w(TAG, "queryShazamDiscovery error on attempt " + attempt + ": " + t);
+            } finally {
+                if (conn != null) conn.disconnect();
             }
-            return info;
-        } catch (Throwable t) {
-            Log.w(TAG, "queryShazamDiscovery error: " + t);
-            return null;
-        } finally {
-            if (conn != null) conn.disconnect();
         }
+        return null;
+    }
+
+    /**
+     * Normalizes captured 16-bit PCM audio so quiet far-field TV microphones or internal submix streams
+     * reach optimal dynamic range (~24,000 peak) required by the Shazam 0xCAFE2580 FFT landmark detector.
+     */
+    private static short[] normalizePcmSamples(short[] samples) {
+        if (samples == null || samples.length == 0) return samples;
+        long sum = 0;
+        for (short s : samples) sum += s;
+        int dcOffset = (int) (sum / samples.length);
+
+        int maxPeak = 1;
+        for (short s : samples) {
+            int centered = Math.abs(s - dcOffset);
+            if (centered > maxPeak) maxPeak = centered;
+        }
+        if (maxPeak < 15) return samples;
+        float gain = Math.min(48.0f, 24000.0f / maxPeak);
+        short[] out = new short[samples.length];
+        for (int i = 0; i < samples.length; i++) {
+            float v = (samples[i] - dcOffset) * gain;
+            if (v > 32760f) v = 32760f;
+            else if (v < -32760f) v = -32760f;
+            out[i] = (short) v;
+        }
+        return out;
     }
 
     private static short[] recordPcm16Mono(int durationMs) {
@@ -522,44 +582,86 @@ public final class ShazamRecognizer {
         int minBuffer = AudioRecord.getMinBufferSize(SAMPLE_RATE, channelConfig, audioFormat);
         if (minBuffer <= 0) minBuffer = SAMPLE_RATE * 2;
 
-        // Try UNPROCESSED / VOICE_RECOGNITION / MIC in order so TV microphones capture clean room audio without aggressive AGC clipping
-        int[] sources = {
-                MediaRecorder.AudioSource.UNPROCESSED,
-                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+        // Prioritize internal loopback (REMOTE_SUBMIX on TVs that allow it), then MIC, VOICE_RECOGNITION, CAMCORDER, DEFAULT, UNPROCESSED.
+        // Verify that the selected source produces non-zero audio energy during a short probe so silent dummy sources are skipped.
+        int[] sources = android.os.Build.VERSION.SDK_INT >= 24 ? new int[]{
+                MediaRecorder.AudioSource.REMOTE_SUBMIX,
                 MediaRecorder.AudioSource.MIC,
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                MediaRecorder.AudioSource.CAMCORDER,
+                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                MediaRecorder.AudioSource.DEFAULT,
+                MediaRecorder.AudioSource.UNPROCESSED
+        } : new int[]{
+                MediaRecorder.AudioSource.REMOTE_SUBMIX,
+                MediaRecorder.AudioSource.MIC,
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                MediaRecorder.AudioSource.CAMCORDER,
+                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
                 MediaRecorder.AudioSource.DEFAULT
         };
 
         AudioRecord recorder = null;
+        short[] probeBuf = new short[1600]; // 100ms probe
+        int probeRead = 0;
+
         for (int src : sources) {
+            AudioRecord candidate = null;
             try {
-                AudioRecord candidate = new AudioRecord(src, SAMPLE_RATE, channelConfig, audioFormat, Math.max(minBuffer, SAMPLE_RATE * 2));
-                if (candidate.getState() == AudioRecord.STATE_INITIALIZED) {
+                candidate = new AudioRecord(src, SAMPLE_RATE, channelConfig, audioFormat, Math.max(minBuffer, SAMPLE_RATE * 2));
+                if (candidate.getState() != AudioRecord.STATE_INITIALIZED) {
+                    candidate.release();
+                    continue;
+                }
+                candidate.startRecording();
+                if (candidate.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
+                    candidate.release();
+                    continue;
+                }
+                int r = candidate.read(probeBuf, 0, probeBuf.length);
+                int maxAbs = 0;
+                for (int i = 0; i < r; i++) {
+                    int a = Math.abs(probeBuf[i]);
+                    if (a > maxAbs) maxAbs = a;
+                }
+                if (r > 0 && (maxAbs > 8 || src == MediaRecorder.AudioSource.DEFAULT)) {
                     recorder = candidate;
+                    probeRead = r;
                     break;
                 }
+                candidate.stop();
                 candidate.release();
             } catch (Throwable ignored) {
+                if (candidate != null) {
+                    try { candidate.release(); } catch (Throwable ignored2) {}
+                }
             }
         }
         if (recorder == null) return null;
 
         try {
-            recorder.startRecording();
             int targetSamples = (SAMPLE_RATE * durationMs) / 1000;
             short[] out = new short[targetSamples];
             int totalRead = 0;
-            long deadline = System.currentTimeMillis() + durationMs + 500;
+            if (probeRead > 0) {
+                int copy = Math.min(probeRead, targetSamples);
+                System.arraycopy(probeBuf, 0, out, 0, copy);
+                totalRead = copy;
+            }
+            long deadline = System.currentTimeMillis() + durationMs + 600;
             while (totalRead < targetSamples && System.currentTimeMillis() < deadline) {
                 int chunk = Math.min(1280, targetSamples - totalRead);
                 int r = recorder.read(out, totalRead, chunk);
                 if (r > 0) {
                     long sum = 0;
+                    int peak = 1;
                     for (int i = 0; i < r; i++) {
-                        sum += Math.abs(out[totalRead + i]);
+                        int a = Math.abs(out[totalRead + i]);
+                        sum += a;
+                        if (a > peak) peak = a;
                     }
                     float avg = sum / (float) r;
-                    float norm = Math.max(0.15f, Math.min(1.0f, avg / 2400f));
+                    float norm = Math.max(0.18f, Math.min(1.0f, Math.max(avg / 1400f, peak / 6000f)));
                     com.cinetv.launcher.ui.ShazamOverlay.updateEnergy(norm);
                     totalRead += r;
                 } else {

@@ -382,12 +382,21 @@ public final class DeviceTweaks {
         try {
             ContentResolver cr = ctx.getContentResolver();
             String current = Settings.Secure.getString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            boolean hasA11y = false;
             if (current != null) {
-                for (String part : current.split(":")) if (KEY_SERVICE.equalsIgnoreCase(part.trim())) return;
+                for (String part : current.split(":")) if (KEY_SERVICE.equalsIgnoreCase(part.trim())) { hasA11y = true; break; }
             }
-            String updated = current == null || current.trim().isEmpty() || "null".equals(current) ? KEY_SERVICE : current.trim() + ":" + KEY_SERVICE;
-            Settings.Secure.putString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, updated);
-            Settings.Secure.putInt(cr, Settings.Secure.ACCESSIBILITY_ENABLED, 1);
+            if (!hasA11y) {
+                String updated = current == null || current.trim().isEmpty() || "null".equals(current) ? KEY_SERVICE : current.trim() + ":" + KEY_SERVICE;
+                Settings.Secure.putString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, updated);
+                Settings.Secure.putInt(cr, Settings.Secure.ACCESSIBILITY_ENABLED, 1);
+            }
+            String notifFlat = ctx.getPackageName() + "/com.cinetv.launcher.service.NuvioPlaybackListenerService";
+            String nls = Settings.Secure.getString(cr, "enabled_notification_listeners");
+            if (nls == null || !nls.contains(notifFlat)) {
+                String nextNls = (nls == null || nls.trim().isEmpty() || "null".equals(nls)) ? notifFlat : (nls.trim() + ":" + notifFlat);
+                Settings.Secure.putString(cr, "enabled_notification_listeners", nextNls);
+            }
         } catch (Throwable ignored) {
         }
     }
@@ -400,16 +409,7 @@ public final class DeviceTweaks {
     /** Keeps CineTV's remote-button service in the enabled accessibility services. */
     public static void ensureKeyService(Context ctx) {
         if (!canWriteSecureSettings(ctx) || Uninstaller.isRemoving(ctx)) return;
-        try {
-            ContentResolver cr = ctx.getContentResolver();
-            final String me = ctx.getPackageName() + "/" + com.cinetv.launcher.TvKeyInterceptorService.class.getName();
-            String list = Settings.Secure.getString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-            if (list != null && list.contains(me)) return;
-            Settings.Secure.putString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-                    list == null || list.isEmpty() || "null".equals(list) ? me : list + ":" + me);
-            Settings.Secure.putInt(cr, Settings.Secure.ACCESSIBILITY_ENABLED, 1);
-        } catch (Throwable ignored) {
-        }
+        enableKeyService(ctx);
     }
 
     public static void markUserOpenedTv() {

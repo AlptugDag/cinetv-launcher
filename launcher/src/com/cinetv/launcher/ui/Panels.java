@@ -115,8 +115,8 @@ public final class Panels {
 
         LinearLayout root = new LinearLayout(ctx);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setClipChildren(true);
-        root.setClipToPadding(true);
+        root.setClipChildren(false);
+        root.setClipToPadding(false);
         root.setLayoutParams(new LinearLayout.LayoutParams(settingsW, settingsH));
 
         LinearLayout head = new LinearLayout(ctx);
@@ -134,20 +134,20 @@ public final class Panels {
         head.addView(sub, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         TextView navHint = UiKit.label(ctx, 13, UiKit.INK_DIM);
-        navHint.setText(tr ? "▲ ▼ Dairesel Gezin  ·  Geri: Kapat" : "▲ ▼ Circular Scroll  ·  Back: Close");
+        navHint.setText(tr ? "Yukarı / Aşağı Dairesel Gezin  ·  Geri: Kapat" : "Up / Down Circular Scroll  ·  Back: Close");
         head.addView(navHint);
         root.addView(head);
 
         final LinearLayout cols = new LinearLayout(ctx);
         cols.setOrientation(LinearLayout.VERTICAL);
-        cols.setClipChildren(true);
-        cols.setClipToPadding(true);
-        cols.setPadding(UiKit.px(16), UiKit.px(12), UiKit.px(16), UiKit.px(16));
+        cols.setClipChildren(false);
+        cols.setClipToPadding(false);
+        cols.setPadding(UiKit.px(24), UiKit.px(18), UiKit.px(24), UiKit.px(26));
 
         final ScrollView scroll = new ScrollView(ctx);
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setClipChildren(true);
-        scroll.setClipToPadding(true);
+        scroll.setClipToPadding(false);
         scroll.setFillViewport(true);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.addView(cols, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -156,7 +156,7 @@ public final class Panels {
         frame.setClipChildren(false);
         frame.setClipToPadding(false);
         FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        slp.setMargins(UiKit.px(44), UiKit.px(10), UiKit.px(44), UiKit.px(18));
+        slp.setMargins(UiKit.px(30), UiKit.px(8), UiKit.px(30), UiKit.px(14));
         frame.addView(scroll, slp);
         LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         flp.topMargin = UiKit.px(2);
@@ -290,8 +290,8 @@ public final class Panels {
         cVisual.addView(trailersTile);
 
         boolean stageOn = Prefs.cinematicStage(ctx);
-        final String stageSub = tr ? "Açık · Kaldığın yerden kartı" : "On · Continue watching card";
-        LinearLayout stageTile = Controls.toggleTile(ctx, tr ? "Sinematik Sahne" : "Cinematic Stage",
+        final String stageSub = tr ? "Açık · Kaldığın yerden devam kartı" : "On · Continue watching card";
+        LinearLayout stageTile = Controls.toggleTile(ctx, tr ? "Devam Kartı" : "Continue Card",
                 stageOn ? stageSub : ctx.getString(R.string.state_off), stageOn, (newActive, subLabel, sw) -> {
                     Prefs.setFlag(ctx, Prefs.CINEMATIC_STAGE, newActive);
                     subLabel.setText(newActive ? stageSub : ctx.getString(R.string.state_off));
@@ -699,7 +699,7 @@ public final class Panels {
             row.setClipToPadding(false);
             for (int k = 0; k < count; k++) {
                 View tile = tiles.get(at++);
-                tile.setMinimumHeight(UiKit.px(104));
+                tile.setMinimumHeight(UiKit.px(110));
                 if (tile instanceof ViewGroup) {
                     ((ViewGroup) tile).setClipChildren(false);
                     ((ViewGroup) tile).setClipToPadding(false);
@@ -709,12 +709,12 @@ public final class Panels {
                     View st = ((LinearLayout) tile).getChildCount() > 1 ? ((LinearLayout) tile).getChildAt(1) : null;
                     if (st instanceof TextView) {
                         ((TextView) st).setSingleLine(false);
-                        ((TextView) st).setMaxLines(2);
+                        ((TextView) st).setMaxLines(3);
                         ((TextView) st).setEllipsize(android.text.TextUtils.TruncateAt.END);
                     }
                 }
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
-                lp.rightMargin = k < count - 1 ? gap : 0;
+                lp.setMargins(UiKit.px(4), UiKit.px(4), k < count - 1 ? gap : UiKit.px(4), UiKit.px(4));
                 row.addView(tile, lp);
             }
             LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -2319,11 +2319,21 @@ public final class Panels {
         scrollContent.addView(body, new LinearLayout.LayoutParams(UiKit.px(980), ViewGroup.LayoutParams.WRAP_CONTENT));
 
         final LinearLayout buttons = new LinearLayout(ctx);
+        buttons.setOrientation(LinearLayout.VERTICAL);
+        buttons.setClipChildren(false);
+        buttons.setClipToPadding(false);
+        buttons.setPadding(UiKit.px(8), UiKit.px(6), UiKit.px(8), UiKit.px(12));
         buttons.setVisibility(View.INVISIBLE);
-        scrollContent.addView(buttons);
+        scrollContent.addView(buttons, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
+        scroller.setClipChildren(true);
+        scroller.setClipToPadding(false);
+        scrollContent.setClipChildren(false);
+        scrollContent.setClipToPadding(false);
+        root.setClipChildren(false);
+        root.setClipToPadding(false);
         scroller.addView(scrollContent, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(scroller, new LinearLayout.LayoutParams(UiKit.px(980), UiKit.px(440)));
+        root.addView(scroller, new LinearLayout.LayoutParams(UiKit.px(1040), UiKit.px(480)));
         final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
         new Thread(() -> {
           try {
@@ -2381,25 +2391,53 @@ public final class Panels {
                 }
                 body.setText(sb);
                 buttons.removeAllViews();
-                buttons.addView(Controls.button(ctx, ctx.getString(R.string.setup_apply_nuvio), v -> {
-                    new Thread(() -> NuvioSetup.deployConfigs(ctx)).start();
-                    if (!profile.openInNuvio(ctx)) UiKit.toast(ctx, R.string.app_not_found);
-                }));
-                View sp1 = new View(ctx);
-                buttons.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+                final boolean trLang = "tr".equals(Locale.getDefault().getLanguage());
+
+                LinearLayout row1 = new LinearLayout(ctx);
+                row1.setOrientation(LinearLayout.HORIZONTAL);
+                row1.setGravity(Gravity.CENTER_VERTICAL);
+                row1.setClipChildren(false);
+                row1.setClipToPadding(false);
+
+                TextView applyNuvioBtn = Controls.button(ctx, ctx.getString(R.string.setup_apply_nuvio), v -> {
+                    UiKit.toast(ctx, trLang
+                            ? "Görüntü, HDR, ses geçişi ve ağ önbellek ayarları Nuvio'ya uygulanıyor..."
+                            : "Applying HDR, audio passthrough & network buffer settings to Nuvio...");
+                    new Thread(() -> {
+                        boolean ok = NuvioSetup.applyHardwareAndNetworkSettings(ctx, av, net, profile);
+                        main.post(() -> {
+                            UiKit.toast(ctx, ok
+                                    ? (trLang ? "Görüntü, ses ve ağ ayarları Nuvio'ya başarıyla uygulandı" : "Picture, audio & network settings applied to Nuvio")
+                                    : (trLang ? "Nuvio profili güncellendi" : "Nuvio profile updated"));
+                            if (!profile.openInNuvio(ctx)) UiKit.toast(ctx, R.string.app_not_found);
+                        });
+                    }, "cinetv-apply-nuvio").start();
+                });
+                row1.addView(applyNuvioBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
                 if (!applyAv) {
-                    buttons.addView(Controls.button(ctx, ctx.getString(R.string.setup_apply_av), v -> host.replace(() -> buildSetup(ctx, host, true))));
-                    View sp2 = new View(ctx);
-                    buttons.addView(sp2, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+                    View sp1 = new View(ctx);
+                    row1.addView(sp1, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+                    TextView applyAvBtn = Controls.button(ctx, ctx.getString(R.string.setup_apply_av), v -> host.replace(() -> buildSetup(ctx, host, true)));
+                    row1.addView(applyAvBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
                 }
-                buttons.addView(Controls.button(ctx, ctx.getString(R.string.setup_restore), v -> {
+
+                View sp2 = new View(ctx);
+                row1.addView(sp2, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+                TextView restoreBtn = Controls.button(ctx, ctx.getString(R.string.setup_restore), v -> {
                     boolean done = com.cinetv.launcher.device.AvOptimizer.restore(ctx);
                     UiKit.toast(ctx, done ? R.string.setup_restored : R.string.setup_nothing_to_restore);
-                }));
-                View sp3 = new View(ctx);
-                buttons.addView(sp3, new LinearLayout.LayoutParams(UiKit.px(16), 1));
-                View sp4 = new View(ctx);
-                buttons.addView(sp4, new LinearLayout.LayoutParams(UiKit.px(16), 1));
+                });
+                row1.addView(restoreBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+                LinearLayout row2 = new LinearLayout(ctx);
+                row2.setOrientation(LinearLayout.HORIZONTAL);
+                row2.setGravity(Gravity.CENTER_VERTICAL);
+                row2.setClipChildren(false);
+                row2.setClipToPadding(false);
+                LinearLayout.LayoutParams r2lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                r2lp.topMargin = UiKit.px(14);
+
                 final TextView dnsBtn = Controls.button(ctx, ctx.getString(R.string.dns_title) + ": " + ctx.getString(dnsRes(com.cinetv.launcher.device.NetworkOptimizer.choice(ctx))), null);
                 dnsBtn.setOnClickListener(v -> {
                     final String next = com.cinetv.launcher.device.NetworkOptimizer.next(com.cinetv.launcher.device.NetworkOptimizer.choice(ctx));
@@ -2411,12 +2449,17 @@ public final class Panels {
                         });
                     }, "cinetv-dns").start();
                 });
-                buttons.addView(dnsBtn);
-                View sp5 = new View(ctx);
-                buttons.addView(sp5, new LinearLayout.LayoutParams(UiKit.px(16), 1));
-                buttons.addView(Controls.button(ctx, ctx.getString(R.string.done), v -> host.back()));
+                row2.addView(dnsBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.6f));
+
+                View sp3 = new View(ctx);
+                row2.addView(sp3, new LinearLayout.LayoutParams(UiKit.px(14), 1));
+                TextView doneBtn = Controls.button(ctx, ctx.getString(R.string.done), v -> host.back());
+                row2.addView(doneBtn, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+                buttons.addView(row1, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                buttons.addView(row2, r2lp);
                 buttons.setVisibility(View.VISIBLE);
-                buttons.getChildAt(0).requestFocus();
+                applyNuvioBtn.requestFocus();
             });
           } catch (Throwable t) {
             // A TV that hides a setting must never crash Home in a loop: finish the setup without that step.

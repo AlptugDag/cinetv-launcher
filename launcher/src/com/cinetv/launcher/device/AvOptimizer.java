@@ -268,7 +268,8 @@ public final class AvOptimizer {
                     int type = dev.getType();
                     boolean hdmi = type == AudioDeviceInfo.TYPE_HDMI || type == AudioDeviceInfo.TYPE_HDMI_ARC || type == 29; // 29: TYPE_HDMI_EARC
                     boolean optical = type == AudioDeviceInfo.TYPE_LINE_DIGITAL;
-                    boolean usb = type == AudioDeviceInfo.TYPE_USB_DEVICE || type == AudioDeviceInfo.TYPE_USB_HEADSET;
+                    boolean usb = type == AudioDeviceInfo.TYPE_USB_DEVICE
+                            || (Build.VERSION.SDK_INT >= 26 && type == AudioDeviceInfo.TYPE_USB_HEADSET);
                     boolean bt = type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || type == 26 || type == 27; // 26/27: BLE audio
                     if (hdmi) r.hdmiAudio = true;
                     if (type == 29) r.earc = true;

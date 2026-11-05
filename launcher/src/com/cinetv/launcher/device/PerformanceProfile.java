@@ -49,6 +49,9 @@ public final class PerformanceProfile {
     private static final String TAG = "CineTvPerf";
 
     private static Tier cached;
+    private static volatile String modeCache;
+    private static volatile int limitsCache = -1;
+    private static volatile Boolean lowRamDeviceCache;
 
     private PerformanceProfile() {}
 
@@ -67,9 +70,9 @@ public final class PerformanceProfile {
             } else if (MODE_HIGH.equals(m)) {
                 cached = Tier.HIGH;
             } else {
-                // MODE_AUTO: dynamic and intelligent adaptation
+                // MODE_AUTO: dynamic and intelligent adaptation (uses isLowRamHardware to avoid recursive tier() call)
                 Tier hw = detect(ctx);
-                boolean tightMem = ctx != null && (lowMemory(ctx) || limited(ctx, LIMIT_RAM));
+                boolean tightMem = ctx != null && (isLowRamHardware(ctx) || limited(ctx, LIMIT_RAM));
                 boolean slowGpu = ctx != null && (gpuLimited(ctx) || limited(ctx, LIMIT_GPU));
                 if (tightMem || hw == Tier.LOW) {
                     cached = Tier.LOW;
@@ -86,10 +89,13 @@ public final class PerformanceProfile {
 
     /** low, mid, high, or auto before a choice; the older eco / max read as low / high. */
     public static String mode(Context ctx) {
+        String mc = modeCache;
+        if (mc != null) return mc;
         if (ctx == null) return MODE_AUTO;
         String m = Prefs.get(ctx).getString(KEY_MODE, MODE_AUTO);
-        if ("eco".equals(m)) return MODE_LOW;
-        if ("max".equals(m)) return MODE_HIGH;
+        if ("eco".equals(m)) m = MODE_LOW;
+        else if ("max".equals(m)) m = MODE_HIGH;
+        modeCache = m;
         return m;
     }
 
@@ -97,6 +103,8 @@ public final class PerformanceProfile {
         if (ctx != null) {
             Prefs.get(ctx).edit().putString(KEY_MODE, mode).remove(KEY_LIMITS).remove(KEY_SMOOTH_RUNS).apply();
         }
+        modeCache = mode;
+        limitsCache = 0;
         cached = null;
         gpuLimitedCache = null;
     }
@@ -163,8 +171,12 @@ public final class PerformanceProfile {
 
     /** What currently holds this TV back (LIMIT_* bits), as measured while it runs. */
     public static int limits(Context ctx) {
+        int lc = limitsCache;
+        if (lc >= 0) return lc;
         if (ctx == null) return 0;
-        return Prefs.get(ctx).getInt(KEY_LIMITS, 0);
+        lc = Prefs.get(ctx).getInt(KEY_LIMITS, 0);
+        limitsCache = lc;
+        return lc;
     }
 
     /** True when this TV is currently held back by the specified bottleneck bit. */
@@ -177,6 +189,7 @@ public final class PerformanceProfile {
         int now = limits(ctx);
         int next = on ? (now | bit) : (now & ~bit);
         if (next != now) {
+            limitsCache = next;
             Prefs.get(ctx).edit().putInt(KEY_LIMITS, next).apply();
             synchronized (PerformanceProfile.class) {
                 cached = null;
@@ -195,17 +208,31 @@ public final class PerformanceProfile {
         if (totalRamMbCache < 0 && ctx != null) {
             ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
             ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
-            if (am != null) am.getMemoryInfo(mi);
+            if (am != null) {
+                am.getMemoryInfo(mi);
+                if (lowRamDeviceCache == null) lowRamDeviceCache = am.isLowRamDevice();
+            }
             totalRamMbCache = mi.totalMem / (1024 * 1024);
         }
         return Math.max(0, totalRamMbCache);
     }
 
+    private static boolean isLowRamHardware(Context ctx) {
+        if (ctx == null) return false;
+        if (totalRamMb(ctx) < 2000) return true;
+        Boolean lr = lowRamDeviceCache;
+        if (lr == null) {
+            ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+            lr = am != null && am.isLowRamDevice();
+            lowRamDeviceCache = lr;
+        }
+        return lr || detectedTier(ctx) == Tier.LOW;
+    }
+
     /** A TV that needs every megabyte: under 2 GB, flagged low-RAM, or the Low mode. Decides bitmap formats and cache sizes. */
     public static boolean lowMemory(Context ctx) {
         if (ctx == null) return false;
-        ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
-        return totalRamMb(ctx) < 2000 || (am != null && am.isLowRamDevice()) || detectedTier(ctx) == Tier.LOW || tier(ctx) == Tier.LOW || limited(ctx, LIMIT_RAM);
+        return isLowRamHardware(ctx) || limited(ctx, LIMIT_RAM) || tier(ctx) == Tier.LOW;
     }
 
     static synchronized Tier detect(Context ctx) {
@@ -266,6 +293,7 @@ public final class PerformanceProfile {
         r.tier = pick(r.cpuScore, r.drawScore, r.totalRamMb, r.freeRamMb, lowRam);
         r.limits = (r.drawScore < 60 ? LIMIT_GPU : 0) | (lowRam || r.freeRamMb < 550 ? LIMIT_RAM : 0) | (r.cpuScore < 90 ? LIMIT_CPU : 0);
         setMode(ctx, modeFor(r.tier));
+        limitsCache = r.limits;
         Prefs.get(ctx).edit().putInt(KEY_LIMITS, r.limits).apply();
         Log.i(TAG, "Benchmark cpu " + r.cpuScore + " draw " + r.drawScore + " ram " + r.freeRamMb + "/" + r.totalRamMb + " -> " + r.tier);
         return r;
@@ -362,6 +390,7 @@ public final class PerformanceProfile {
 
     private static volatile Boolean gpuLimitedCache;
     private static final long[] frames = new long[48];
+    private static final long[] sortedFrames = new long[48];
     private static int frameCount;
 
     /** True once frames have been measured too slow for the full shelf (cleared again when they recover). */
@@ -405,6 +434,12 @@ public final class PerformanceProfile {
         return lowMemory(ctx) || totalRamMb(ctx) <= 2100;
     }
 
+    /** True on ~1 GB - 1.5 GB RAM TVs (e.g. 1.3 GB MediaTek/Amlogic boards) that need fast startup and minimal heap churn. */
+    public static boolean ultraLowRam(Context ctx) {
+        long ram = totalRamMb(ctx);
+        return (ram > 0 && ram <= 1650) || (ctx != null && isLowRamHardware(ctx) && ram <= 1800);
+    }
+
     /** Blocking, off the main thread: waits (at most maxMs) until the screen is calm. */
     public static void awaitCalm(long maxMs) {
         long end = android.os.SystemClock.uptimeMillis() + maxMs;
@@ -425,9 +460,9 @@ public final class PerformanceProfile {
 
         frames[frameCount++ % frames.length] = totalNs;
         if (frameCount < frames.length || frameCount % 12 != 0) return false;
-        long[] sorted = frames.clone();
-        java.util.Arrays.sort(sorted);
-        long median = sorted[sorted.length / 2];
+        System.arraycopy(frames, 0, sortedFrames, 0, frames.length);
+        java.util.Arrays.sort(sortedFrames);
+        long median = sortedFrames[sortedFrames.length / 2];
         boolean was = gpuLimited(ctx);
         // Hysteresis: switch on if slower than 24ms (~41fps), switch off when recovering below 15ms (~66fps)
         boolean now = was ? (median > 15_000_000L) : (median > 24_000_000L);
@@ -455,8 +490,9 @@ public final class PerformanceProfile {
         return limited(ctx, LIMIT_GPU) ? ms * 4 / 5 : ms;
     }
 
-    /** Films on the shelf: 20 / 24 / 28 by mode, so the shelf is richly populated across the entire screen. */
+    /** Films on the shelf: 16 on ultra-low RAM (1.3 GB), 20 / 24 / 28 by mode, filling the entire screen edge-to-edge. */
     public static int shelfSize(Context ctx) {
+        if (ultraLowRam(ctx)) return 16;
         switch (tier(ctx)) {
             case LOW: return 20;
             case MID: return 24;

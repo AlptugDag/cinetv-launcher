@@ -47,15 +47,15 @@ public final class DvdCase {
     /** The shared empty case shown until the film's own cover is baked. */
     boolean placeholder;
 
-    private DvdCase(Bitmap cover, Bitmap spine, int accent, Bitmap bloom, boolean halo, boolean hasPoster) {
+    private DvdCase(Bitmap cover, Bitmap spine, int accent, Bitmap bloom, boolean halo, boolean hasPoster, boolean buildSoft) {
         this.cover = cover;
         this.spine = spine;
         this.accent = accent;
         this.bloom = bloom;
         this.halo = halo;
         this.hasPoster = hasPoster;
-        this.coverSoft = soften(cover, 4, 2);
-        this.spineSoft = spine == null ? null : soften(spine, 3, 2);
+        this.coverSoft = buildSoft ? soften(cover, 4, 2) : null;
+        this.spineSoft = (buildSoft && spine != null) ? soften(spine, 3, 2) : null;
     }
 
     /** Off the main thread: builds the textures from a poster (any size; cropped to fill). */
@@ -71,13 +71,14 @@ public final class DvdCase {
     /** With the film's own title logo, printed down the spine like a studio release. */
     public static DvdCase bake(Context ctx, Bitmap poster, Bitmap logo, String title, int year, int accent, int w, int h, int glowPad, boolean asCase) {
         boolean gotPoster = poster != null && !poster.isRecycled();
+        boolean buildSoft = ctx == null || !com.cinetv.launcher.device.PerformanceProfile.lowMemory(ctx);
         if (!asCase) {
             return new DvdCase(bakePoster(ctx, poster, title, year, accent, w, h), null, accent,
-                    glowPad > 0 ? Glow.bloom(w, h, glowPad, w * 0.085f, accent) : null, false, gotPoster);
+                    glowPad > 0 ? Glow.bloom(w, h, glowPad, w * 0.085f, accent) : null, false, gotPoster, buildSoft);
         }
         return new DvdCase(bakeCover(ctx, poster, title, year, accent, w, h),
                 bakeSpine(ctx, title, logo, year, accent, Math.max(6, Math.round(w * DEPTH)), h), accent,
-                glowPad > 0 ? bakeHalo(accent) : null, true, gotPoster);
+                glowPad > 0 ? bakeHalo(accent) : null, true, gotPoster, buildSoft);
     }
 
     /** Downscales hard then back up with filtering: a cheap, smooth blur. */
@@ -271,7 +272,7 @@ public final class DvdCase {
         if (d == null) {
             int grey = UiKit.isLight() ? Color.parseColor("#C9CCD3") : Color.parseColor("#2A2A30");
             d = new DvdCase(bakeCover(ctx, null, "", 0, grey, w, h),
-                    bakeSpine(ctx, "", null, 0, grey, Math.max(6, Math.round(w * DEPTH)), h), grey, null, true, false);
+                    bakeSpine(ctx, "", null, 0, grey, Math.max(6, Math.round(w * DEPTH)), h), grey, null, true, false, false);
             d.placeholder = true;
             BLANKS.put(key, d);
         }

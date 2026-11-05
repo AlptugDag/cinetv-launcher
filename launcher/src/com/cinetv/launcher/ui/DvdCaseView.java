@@ -391,25 +391,52 @@ public class DvdCaseView extends View {
             // reflection, travelling across the cover as the case turns. Plus the gloss on the top edge.
             if (lift > 0.05f) {
                 float tw = tex.getWidth(), th = tex.getHeight();
+                ensureSheenShaders(tw, th);
                 float travel = 0.5f + 0.5f * Math.max(-1f, Math.min(1f, x1)) * 0.6f + (glint - 0.5f) * 0.55f;
                 float cxs = tw * (0.08f + 0.84f * Math.max(0f, Math.min(1f, travel)));
-                float slant = th * 0.32f;
-                int halo = Math.round(24f * lift * dim), core = Math.round(46f * lift * dim);
-                sheenPaint.setShader(new android.graphics.LinearGradient(cxs - tw * 0.42f - slant, 0, cxs + tw * 0.42f - slant, th,
-                        new int[]{Color.TRANSPARENT, Color.argb(halo, 230, 240, 255), Color.argb(halo, 255, 250, 240), Color.TRANSPARENT},
-                        new float[]{0f, 0.42f, 0.58f, 1f}, Shader.TileMode.CLAMP));
+                int modAlpha = Math.max(0, Math.min(255, Math.round(255f * lift * dim)));
+                sheenMatrix.setTranslate(cxs, 0f);
+
+                haloShader.setLocalMatrix(sheenMatrix);
+                sheenPaint.setShader(haloShader);
+                sheenPaint.setAlpha(modAlpha);
                 canvas.drawRect(0, 0, tw, th, sheenPaint);
-                sheenPaint.setShader(new android.graphics.LinearGradient(cxs - tw * 0.07f - slant, 0, cxs + tw * 0.07f - slant, th,
-                        new int[]{Color.TRANSPARENT, Color.argb(core, 255, 255, 255), Color.TRANSPARENT},
-                        null, Shader.TileMode.CLAMP));
+
+                coreShader.setLocalMatrix(sheenMatrix);
+                sheenPaint.setShader(coreShader);
+                sheenPaint.setAlpha(modAlpha);
                 canvas.drawRect(0, 0, tw, th, sheenPaint);
-                sheenPaint.setShader(new android.graphics.LinearGradient(0, 0, 0, th * 0.035f,
-                        Color.argb(Math.round(38f * lift * dim), 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+
+                sheenPaint.setShader(topGlossShader);
+                sheenPaint.setAlpha(modAlpha);
                 canvas.drawRect(0, 0, tw, th * 0.035f, sheenPaint);
                 sheenPaint.setShader(null);
             }
             canvas.restore();
         }
+    }
+
+    private float cachedSheenW = -1f, cachedSheenH = -1f;
+    private android.graphics.LinearGradient haloShader, coreShader, topGlossShader;
+    private final Matrix sheenMatrix = new Matrix();
+    private static final float[] HALO_STOPS = {0f, 0.42f, 0.58f, 1f};
+
+    private void ensureSheenShaders(float tw, float th) {
+        if (tw == cachedSheenW && th == cachedSheenH && haloShader != null) return;
+        cachedSheenW = tw;
+        cachedSheenH = th;
+        float slant = th * 0.32f;
+        haloShader = new android.graphics.LinearGradient(
+                -tw * 0.42f - slant, 0f, tw * 0.42f - slant, th,
+                new int[]{Color.TRANSPARENT, Color.argb(24, 230, 240, 255), Color.argb(24, 255, 250, 240), Color.TRANSPARENT},
+                HALO_STOPS, Shader.TileMode.CLAMP);
+        coreShader = new android.graphics.LinearGradient(
+                -tw * 0.07f - slant, 0f, tw * 0.07f - slant, th,
+                new int[]{Color.TRANSPARENT, Color.argb(46, 255, 255, 255), Color.TRANSPARENT},
+                null, Shader.TileMode.CLAMP);
+        topGlossShader = new android.graphics.LinearGradient(
+                0f, 0f, 0f, Math.max(1f, th * 0.035f),
+                Color.argb(38, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP);
     }
 
     /** Maps the horizontal slice [x0, x1] of a texture onto the current face quad. */

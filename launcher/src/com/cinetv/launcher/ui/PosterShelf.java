@@ -326,33 +326,58 @@ public class PosterShelf extends FrameLayout {
         layoutCases();
         // nearest the focus first (the middle case, then outward on both sides of the ring): the cases in
         // view are ready long before the ones off screen
+        for (java.util.concurrent.Future<Bitmap> prev : posterJobs.values()) {
+            try { prev.cancel(false); } catch (Throwable ignored) {}
+        }
         posterJobs.clear();
         final Context app = getContext().getApplicationContext();
         final int ph = Math.round(caseW / DvdCase.ASPECT);
-        for (int d = 0; max > 0 && d <= max / 2; d++) {
+        final boolean lowProf = PerformanceProfile.lowProfile(app);
+        final int immediateRadius = lowProf ? 3 : (max / 2);
+        for (int d = 0; max > 0 && d <= Math.min(immediateRadius, max / 2); d++) {
             int right = Math.floorMod(index + d, max), left = Math.floorMod(index - d, max);
             for (int slot : left != right ? new int[]{right, left} : new int[]{right}) {
                 final String url = movies.get(slot).posterUrl;
                 if (url != null && !url.isEmpty() && !url.startsWith("asset:")) {
-                    posterJobs.put(slot, warmers.submit(() -> PosterCache.load(app, url, caseW, ph)));
+                    posterJobs.put(slot, warmers.submit(() -> gen == generation ? PosterCache.load(app, url, caseW, ph) : null));
                 }
             }
         }
-        for (int d = 0; max > 0 && d <= max / 2; d++) {
+        for (int d = 0; max > 0 && d <= Math.min(immediateRadius, max / 2); d++) {
             int right = Math.floorMod(index + d, max), left = Math.floorMod(index - d, max);
             bake(right, gen);
             if (left != right) bake(left, gen);
         }
+        if (lowProf && max / 2 > immediateRadius) {
+            // Let the center 7 visible cases finish downloading & baking first without thread contention
+            main.postDelayed(() -> {
+                if (gen != generation || movies.isEmpty()) return;
+                int curMax = movies.size();
+                for (int d = immediateRadius + 1; d <= curMax / 2; d++) {
+                    int right = Math.floorMod(index + d, curMax), left = Math.floorMod(index - d, curMax);
+                    for (int slot : left != right ? new int[]{right, left} : new int[]{right}) {
+                        if (slot < 0 || slot >= movies.size()) continue;
+                        final String url = movies.get(slot).posterUrl;
+                        if (url != null && !url.isEmpty() && !url.startsWith("asset:")) {
+                            posterJobs.put(slot, warmers.submit(() -> gen == generation ? PosterCache.load(app, url, caseW, ph) : null));
+                        }
+                    }
+                    bake(right, gen);
+                    if (left != right) bake(left, gen);
+                }
+            }, 140L);
+        }
         post(this::layoutCases);
-        if (!movies.isEmpty() && index < movies.size()) {
+        if (!movies.isEmpty() && index < movies.size() && !lowProf) {
             MovieCatalog.prefetchTrailer(getContext(), movies.get(index));
         }
     }
 
-    /** This row's posters, all downloading at once (slot -> job). */
-    private final java.util.Map<Integer, java.util.concurrent.Future<?>> posterJobs = new java.util.concurrent.ConcurrentHashMap<>();
+    /** This row's posters, downloading in parallel (slot -> job returning decoded Bitmap). */
+    private final java.util.Map<Integer, java.util.concurrent.Future<Bitmap>> posterJobs = new java.util.concurrent.ConcurrentHashMap<>();
 
-    private static final ExecutorService warmers = Executors.newFixedThreadPool(6, r -> {
+    private static final ExecutorService warmers = Executors.newFixedThreadPool(
+            Math.max(2, Math.min(4, Runtime.getRuntime().availableProcessors())), r -> {
         Thread t = new Thread(r, "cinetv-poster-warm");
         t.setPriority(Thread.NORM_PRIORITY - 1);
         return t;
@@ -435,17 +460,21 @@ public class PosterShelf extends FrameLayout {
         final DvdCaseView v = cases.get(slot);
         // the slot stays empty until its own case is ready, then the case is placed on the shelf (no blank shells)
         v.setCase(null);
-        final java.util.concurrent.Future<?> fetch = posterJobs.get(slot);
+        final java.util.concurrent.Future<Bitmap> fetch = posterJobs.get(slot);
         final int targetH = Math.round(caseW / DvdCase.ASPECT);
         baker.execute(() -> {
+            if (gen != generation) return;
+            Bitmap poster = null;
             if (fetch != null) {
                 try {
-                    fetch.get(12, java.util.concurrent.TimeUnit.SECONDS); // downloaded in parallel, decoded in the cache
+                    poster = fetch.get(10, java.util.concurrent.TimeUnit.SECONDS); // downloaded in parallel, returned directly
                 } catch (Throwable ignored) {
                 }
             }
             if (gen != generation) return;
-            Bitmap poster = loadMoviePoster(m, caseW, targetH);
+            if (poster == null || poster.isRecycled()) {
+                poster = loadMoviePoster(m, caseW, targetH);
+            }
             if (poster == null && gen == generation) {
                 if (MovieCatalog.ensurePoster(getContext().getApplicationContext(), m)) {
                     poster = loadMoviePoster(m, caseW, targetH);
@@ -664,7 +693,11 @@ public class PosterShelf extends FrameLayout {
         swayAnim.setInterpolator(UiKit.EASE_IN_OUT);
         swayAnim.addUpdateListener(a -> {
             sway = (float) a.getAnimatedValue();
-            layoutCases();
+            if ((anim == null || !anim.isRunning()) && asCases && index >= 0 && index < cases.size()) {
+                updateFocusedCaseSwayOnly();
+            } else {
+                layoutCases();
+            }
         });
         swayAnim.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override
@@ -672,12 +705,36 @@ public class PosterShelf extends FrameLayout {
                 if (swayAnim != animation) return;
                 swayAnim = null;
                 sway = 0f;
-                layoutCases();
+                if ((anim == null || !anim.isRunning()) && asCases && index >= 0 && index < cases.size()) {
+                    updateFocusedCaseSwayOnly();
+                } else {
+                    layoutCases();
+                }
                 DvdCaseView v = focusedCase();
                 if (v != null) v.setGlint(0f);
             }
         });
         swayAnim.start();
+    }
+
+    private void updateFocusedCaseSwayOnly() {
+        if (index < 0 || index >= cases.size()) return;
+        DvdCaseView v = cases.get(index);
+        boolean focused = hasFocus();
+        float focusScale = focused ? FOCUS_SCALE : 1.12f;
+        float dim = focused ? 1f : 0.94f;
+        float lift = focused ? 1f : 0f;
+        float tilt = spatial ? (7.0f - 1.2f * lift) : 0f;
+        float turn = 0f, glint = 0f, swaySine = 0f;
+        if (swayAnim != null) {
+            swaySine = (float) Math.sin(2 * Math.PI * sway);
+            turn = 7.5f * swaySine;
+            float in = Math.min(1f, sway / 0.3f), out = Math.min(1f, (2f - sway) / 0.3f);
+            float env = in * in * (3f - 2f * in) * out * out * (3f - 2f * out);
+            glint = (0.5f + 0.5f * swaySine) * env;
+        }
+        v.setGlint(glint);
+        v.setPose(PROFILE_ANGLE + turn, tilt, focusScale, lift, lean * 0.5f, dim, false, focusPos + swaySine * 0.8f);
     }
 
     private void stopSway() {
@@ -851,6 +908,10 @@ public class PosterShelf extends FrameLayout {
         outPt[1] = maxPy;
     }
 
+    private int lastFurnW = -1, lastFurnH = -1, lastFurnPerSide = -1;
+    private boolean lastFurnFocused, lastFurnSpatial, lastFurnAsCases;
+    private View lastFurnView;
+
     private void updateShelfFurniture(int w, int h) {
         if (!(setBack instanceof ShelfSet.Layer)) return;
         ShelfSet.Layer shelf = (ShelfSet.Layer) setBack;
@@ -861,6 +922,18 @@ public class PosterShelf extends FrameLayout {
         boolean focused = hasFocus();
         float step1 = caseW * (focused ? 1.14f : 0.98f);
         int perSide = circular ? Math.max(1, (n - 1) / 2) : VISIBLE_RANGE;
+        if (w == lastFurnW && h == lastFurnH && perSide == lastFurnPerSide
+                && focused == lastFurnFocused && spatial == lastFurnSpatial
+                && asCases == lastFurnAsCases && setBack == lastFurnView) {
+            return;
+        }
+        lastFurnW = w;
+        lastFurnH = h;
+        lastFurnPerSide = perSide;
+        lastFurnFocused = focused;
+        lastFurnSpatial = spatial;
+        lastFurnAsCases = asCases;
+        lastFurnView = setBack;
         float stepN = Math.max(caseW * 0.30f, Math.min(caseW * 0.48f, (w * 0.47f - step1) / Math.max(1, perSide - 1)));
 
         int maxSlots = Math.min(7, perSide + 1);

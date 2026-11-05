@@ -130,9 +130,23 @@ public final class ScreenShot {
         return arr;
     }
 
-    /** The whole screen at up to 1920 px wide, as a JPEG; null without adb. */
+    /** The whole screen at up to 1920 px wide, as a JPEG; works natively without adb via AccessibilityService. */
     private static byte[] full(Context app) {
-        byte[] raw = LocalAdb.exec(app, "screencap -p", 8000);
+        try {
+            Bitmap nativeShot = com.cinetv.launcher.ai.SceneInspector.serviceScreenshot(1920);
+            if (nativeShot == null) {
+                nativeShot = com.cinetv.launcher.ai.SceneInspector.captureActiveActivityDecor(1920);
+            }
+            if (nativeShot != null) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                nativeShot.compress(Bitmap.CompressFormat.JPEG, 88, out);
+                nativeShot.recycle();
+                byte[] bytes = out.toByteArray();
+                if (bytes.length > 0) return bytes;
+            }
+        } catch (Throwable ignored) {}
+        if (!LocalAdb.isAvailable()) return null;
+        byte[] raw = LocalAdb.exec(app, "screencap -p", 3500);
         if (raw == null || raw.length < 1000) return null;
         // Some MediaTek firmwares print a line before the PNG: start at its signature.
         int start = 0;

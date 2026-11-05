@@ -45,6 +45,10 @@ public final class PosterCache {
 
     private PosterCache() {}
 
+    private static final java.util.concurrent.ConcurrentHashMap<String, String> URL_INDEX = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.regex.Pattern IMDB_PATTERN = java.util.regex.Pattern.compile("(tt\\d{6,10})");
+    private static volatile File postersDir;
+
     private static synchronized LruCache<String, Bitmap> memory() {
         if (memory == null) {
             int targetKb = customDecodedMb > 0 ? customDecodedMb * 1024 : (lowMemory ? 8 * 1024 : 20 * 1024);
@@ -59,14 +63,22 @@ public final class PosterCache {
         return memory;
     }
 
-    /** Fast non-blocking memory lookup: returns bitmap if already in RAM cache without touching disk/network. */
+    /** Fast non-blocking O(1) memory lookup: returns bitmap if already in RAM cache without touching disk/network. */
     public static Bitmap getFast(String url) {
         if (url == null || url.isEmpty()) return null;
         try {
+            String indexedKey = URL_INDEX.get(url);
+            if (indexedKey != null) {
+                Bitmap b = memory().get(indexedKey);
+                if (b != null && !b.isRecycled()) return b;
+            }
             for (String k : memory().snapshot().keySet()) {
                 if (k.startsWith(url)) {
                     Bitmap b = memory().get(k);
-                    if (b != null && !b.isRecycled()) return b;
+                    if (b != null && !b.isRecycled()) {
+                        URL_INDEX.put(url, k);
+                        return b;
+                    }
                 }
             }
         } catch (Throwable ignored) {}
@@ -74,8 +86,12 @@ public final class PosterCache {
     }
 
     public static File fileFor(Context ctx, String url) {
-        File dir = new File(ctx.getCacheDir(), "posters");
-        if (!dir.exists()) dir.mkdirs();
+        File dir = postersDir;
+        if (dir == null) {
+            dir = new File(ctx.getCacheDir(), "posters");
+            if (!dir.exists()) dir.mkdirs();
+            postersDir = dir;
+        }
         return new File(dir, Integer.toHexString(url.hashCode()) + "_" + url.length() + ".jpg");
     }
 
@@ -114,6 +130,8 @@ public final class PosterCache {
             }
             f.setLastModified(System.currentTimeMillis());
             memory().put(key, bmp);
+            URL_INDEX.put(url, key);
+            if (IN_FLIGHT.size() > 256) IN_FLIGHT.remove(url);
             return bmp;
         }
     }
@@ -141,7 +159,7 @@ public final class PosterCache {
                 out.add(url.replace("/w500/", "/w342/"));
             }
         }
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(tt\\d{6,10})").matcher(url);
+        java.util.regex.Matcher m = IMDB_PATTERN.matcher(url);
         if (m.find()) {
             String imdbId = m.group(1);
             String resolved = MovieCatalog.posterForImdb(ctx, imdbId);
@@ -274,6 +292,7 @@ public final class PosterCache {
     public static void trimMemory() {
         // like zRAM: the pixels go, the compressed copies stay (they are a tenth of the size)
         memory().evictAll();
+        URL_INDEX.clear();
         com.cinetv.launcher.ui.AppArtwork.clearCache();
         com.cinetv.launcher.ui.Glow.clear();
     }

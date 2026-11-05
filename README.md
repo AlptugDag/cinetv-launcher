@@ -17,7 +17,7 @@
 
 <img src="docs/media/v20-home.jpg" alt="CineTV ana ekranı: 3D DVD rafı, cam dock, Gamze" width="100%">
 
-<sub>Gerçek bir Arçelik Android TV'den, v1.0.0.20 · 1920×1080</sub>
+<sub>Gerçek bir Arçelik Android TV'den, v1.0.0.21 · 1920×1080</sub>
 
 </div>
 

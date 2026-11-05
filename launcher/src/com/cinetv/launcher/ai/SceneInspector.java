@@ -46,23 +46,26 @@ public final class SceneInspector {
         return captureJpeg(ctx, false);
     }
 
-    /** Blocking: captures frame at 768px for manual inspection or 640px for ambient background scan. */
+    /** Blocking: captures frame at 540px for manual inspection or 448px for ambient background scan. */
     public static byte[] captureJpeg(Context ctx, boolean manualHighDetail) {
-        int targetWidth = manualHighDetail ? 768 : 640;
-        int jpegQuality = manualHighDetail ? 76 : 65;
+        int targetWidth = manualHighDetail ? 540 : 448;
+        int jpegQuality = manualHighDetail ? 68 : 60;
         try {
-            // Fast path on Android 11+ (API 30+): AccessibilityService.takeScreenshot takes ~100ms vs 4-7s for adb screencap
+            // Fast path on Android 11+ (API 30+): AccessibilityService.takeScreenshot takes ~80ms vs 3-5s for adb screencap -p
             Bitmap fastShot = serviceScreenshot(targetWidth);
+            if (fastShot == null) {
+                fastShot = captureActiveActivityDecor(targetWidth);
+            }
             if (fastShot != null) {
                 return encodeFrame(fastShot, jpegQuality);
             }
-            // Never spawn heavy ADB screencap -p processes during unprompted ambient scans over Nuvio or on low-RAM TVs,
-            // as repeated SurfaceFlinger full-frame PNG allocations trigger LMK kills of the foreground player.
-            if (!manualHighDetail && (!com.cinetv.launcher.CinePlayerActivity.active
-                    || com.cinetv.launcher.device.PerformanceProfile.lowMemory(ctx))) {
+            // Never spawn heavy ADB screencap -p processes during unprompted ambient scans over Nuvio or on low-RAM TVs or when ADB is off
+            if (!com.cinetv.launcher.remote.LocalAdb.isAvailable()
+                    || (!manualHighDetail && (!com.cinetv.launcher.CinePlayerActivity.active
+                    || com.cinetv.launcher.device.PerformanceProfile.lowMemory(ctx)))) {
                 return null;
             }
-            byte[] raw = com.cinetv.launcher.remote.LocalAdb.exec(ctx, "screencap -p", 4500);
+            byte[] raw = com.cinetv.launcher.remote.LocalAdb.exec(ctx, "screencap -p", 2600);
             if (raw == null || raw.length < 1000) {
                 return null;
             }
@@ -109,7 +112,7 @@ public final class SceneInspector {
 
     /** Android 11+: the accessibility service's own screenshot, scaled to targetWidth. Blocking, null when unavailable. */
     @android.annotation.TargetApi(30)
-    private static Bitmap serviceScreenshot(final int targetWidth) {
+    public static Bitmap serviceScreenshot(final int targetWidth) {
         if (android.os.Build.VERSION.SDK_INT < 30) return null;
         com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
         if (svc == null) return null;
@@ -144,6 +147,36 @@ public final class SceneInspector {
         } catch (Throwable t) {
             return null;
         }
+        return out[0];
+    }
+
+    /** Captures CineTV's own active window on Android 9/10 when takeScreenshot API 30 is unavailable. */
+    public static Bitmap captureActiveActivityDecor(final int targetWidth) {
+        final com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+        if (ma == null || !com.cinetv.launcher.MainActivity.isInFront()) return null;
+        final Bitmap[] out = {null};
+        final java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+        ma.runOnUiThread(() -> {
+            try {
+                android.view.View decor = ma.getWindow() != null ? ma.getWindow().getDecorView() : null;
+                if (decor != null && decor.getWidth() > 0 && decor.getHeight() > 0) {
+                    int w = Math.min(targetWidth, decor.getWidth());
+                    float scale = w / (float) decor.getWidth();
+                    int h = Math.max(1, Math.round(decor.getHeight() * scale));
+                    Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+                    android.graphics.Canvas c = new android.graphics.Canvas(b);
+                    c.scale(scale, scale);
+                    decor.draw(c);
+                    out[0] = b;
+                }
+            } catch (Throwable ignored) {
+            } finally {
+                done.countDown();
+            }
+        });
+        try {
+            done.await(800, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (InterruptedException ignored) {}
         return out[0];
     }
 
@@ -221,8 +254,8 @@ public final class SceneInspector {
         }
         byte[] jpeg = frame != null ? frame : captureJpeg(ctx, !ambient);
         if (jpeg == null) {
-            scene.error = tr ? "Ekran yakalanamadı. Kurulumdaki 'Ağ hata ayıklaması' izni kapalı olabilir."
-                    : "Couldn't capture the screen. Network debugging may be off.";
+            scene.error = tr ? "Ekran yakalanamadı. Ayarlar › Erişilebilirlik menüsünden CineTV servisinin açık olduğundan emin olun."
+                    : "Couldn't capture the screen. Make sure the CineTV Accessibility service is enabled in Settings.";
             return scene;
         }
         if (jpeg.length == 0) {
@@ -259,18 +292,15 @@ public final class SceneInspector {
                 + "CRITICAL: If the frame shows ANY app menu, catalog/poster grid, movie/series detail page, episode list, stream source picker, settings overlay, static wallpaper, or a PAUSED video player (visible pause icon, timeline/seekbar, or player controls overlay), you MUST return {\"film\":\"\",\"items\":[]} immediately! Only return items when the frame is an active, clean, unpaused film/series/video scene. "
                 + "JSON: {\"film\":\"exact film or TV series (dizi) title ONLY if 100% certain, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 words\",\"title\":\"name\",\"fact\":\"1-2 rich sentences under 180 characters\","
                 + "\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":false}]} with box in 0-1000 screen coordinates enclosing that specific item (leave box empty for subtitle/music/general scene notes)."
-                : "The viewer pressed the CineSUB button to inspect this exact moment in a film, TV series (dizi), or video. Deliver the 2 to 5 sharpest, smartest, most rewarding insights in this frame (high intellectual & cinephile value): "
-                + "(1) SUBTITLES & DIALOGUE SUBTEXT: Read visible subtitles closely—decode implicit cultural idioms, historical events, philosophical/literary/religious allusions, double meanings, or intertextual film/series quotes (subtitle:true, kind text or event, explain the exact reference and why the character invokes it; NEVER quote or repeat the literal subtitle line in title or fact, title must be the specific concept name); "
-                + "(2) ACTORS, CHARACTERS & CAMEOS: When the film or TV series (dizi) is unmistakably recognisable, identify key characters/actors or cameos (kind person or cameo) with a non-obvious production secret, episode/season trivia, improvisation, method-acting detail, or career connection; "
-                + "(3) DIRECTORIAL, SHOWRUNNER & CINEMATOGRAPHIC CRAFT: Notice visual symbolism, framing/blocking, lens choice, color palette motif, production design easter eggs, or homage to another filmmaker/series/painting (kind event or art); "
-                + "(4) EXACT OBJECTS, PROPS & HOROLOGY/AUTOMOTIVE: Identify exact models and eras of cars, motorcycles, watches, firearms, cameras, musical instruments, books, vinyl records, or bespoke costumes and their symbolic role in the scene (kind object); "
-                + "(5) ARCHITECTURE, FILMING LOCATIONS & ARTWORKS: Name real filming locations, historic buildings/architects (kind landmark or place), paintings/sculptures with artist & year (kind art), or regional dishes/drinks on screen (kind food); "
-                + "(6) SCORE & SOUNDTRACK: When the scene's music, series theme, or leitmotif is known, name the piece/composer/artist and how it shapes the tension (kind music, no box). "
-                + "Never return an unnamed person ('Erkek karakter', 'A man'): every person must have a real character or actor name, and never guess a wrong film/series if uncertain. "
-                + "JSON: {\"film\":\"exact film or TV series (dizi) title ONLY if 100% certain, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 punchy words\",\"title\":\"specific name or concept\","
-                + "\"fact\":\"2-3 dense, insightful sentences (up to 250 characters) packed with concrete trivia, history, or cinematic subtext\",\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":true if from subtitles}]} "
-                + "with box in 0-1000 screen coordinates tightly enclosing that specific item (leave box empty for subtitle, music, or whole-frame cinematography notes).";
-        LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, ambient ? 500 : 780, ambient);
+                : "The viewer pressed CineSUB to inspect this moment in a film or TV series (dizi). Return the 2 to 4 sharpest, highest-value insights in this frame: "
+                + "(1) SUBTITLES: decode implicit idioms, historical/cultural/literary/mythological references, or subtext (subtitle:true, kind text or event; NEVER repeat the literal subtitle line, title must be the concept name); "
+                + "(2) ACTORS & CHARACTERS: if the film/series is unmistakably recognised, name character + actor with a production secret or trivia (kind person or cameo); "
+                + "(3) CRAFT, PROPS & LOCATIONS: exact models of vehicles/watches/props (kind object), real filming locations/landmarks (kind landmark or place), artworks (kind art), food (kind food), or composer/score (kind music). "
+                + "Never return generic labels ('Erkek karakter', 'A man'). "
+                + "JSON: {\"film\":\"exact title ONLY if 100% certain, else empty\",\"items\":[{\"kind\":\"person|cameo|place|landmark|object|food|art|music|text|event\",\"label\":\"2-4 words\",\"title\":\"specific name\","
+                + "\"fact\":\"1-2 rich sentences (under 190 chars) with concrete trivia\",\"box\":[ymin,xmin,ymax,xmax],\"subtitle\":false}]} "
+                + "with box in 0-1000 screen coordinates (empty for subtitle/music/general notes).";
+        LlmClient.Result r = LlmClient.vision(ctx, sys, ask, jpeg, ambient ? 360 : 420, true);
         if (!r.success) {
             scene.error = r.text;
             return scene;

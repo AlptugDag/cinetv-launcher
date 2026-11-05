@@ -1517,7 +1517,7 @@ public class DvdOpeningView extends View {
         Path arc = new Path();
         float ar = r * 0.79f;
         arc.addArc(new RectF(r - ar, r - ar, r + ar, r + ar), 160, -140);
-        String t = title == null ? "" : title.toUpperCase();
+        String t = title == null ? "" : title.toUpperCase(java.util.Locale.getDefault());
         if (t.length() > 34) t = t.substring(0, 33) + "…";
         c.drawTextOnPath(t, arc, 0, 0, tp);
 

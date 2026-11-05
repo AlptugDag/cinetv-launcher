@@ -79,6 +79,8 @@ public final class MemoryOptimizer {
             for (ApplicationInfo ai : apps) {
                 String p = ai.packageName;
                 if (p == null || p.equals(keepPkg) || isProtected(p)) continue;
+                // Skip packages that are already in the stopped state to avoid redundant Binder IPC calls
+                if ((ai.flags & ApplicationInfo.FLAG_STOPPED) != 0) continue;
                 boolean user = (ai.flags & ApplicationInfo.FLAG_SYSTEM) == 0;
                 if (user || p.contains("youtube") || p.contains("netflix") || p.contains("amazon")
                         || p.contains("turkcell") || p.contains("stremio") || p.contains("cloudstream")) {
@@ -171,7 +173,14 @@ public final class MemoryOptimizer {
                     return;
                 }
                 lastAirPlaySetup = up;
-                // Keep AirPlay service permanently active via local ADB (bypasses non-exported service restriction)
+                try {
+                    Intent startSvc = new Intent("io.github.jqssun.airplay.START_SERVER")
+                            .setClassName(pkg, pkg + ".service.AirPlayService");
+                    if (Build.VERSION.SDK_INT >= 26) app.startForegroundService(startSvc);
+                    else app.startService(startSvc);
+                } catch (Throwable ignored) {}
+                if (!LocalAdb.isAvailable()) return;
+                // Keep AirPlay service permanently active via local ADB when available
                 new Thread(() -> {
                     String setupCmd = "cmd deviceidle whitelist +" + pkg + " 2>/dev/null; "
                             + "dumpsys deviceidle whitelist +" + pkg + " 2>/dev/null; "
@@ -277,15 +286,28 @@ public final class MemoryOptimizer {
         compactionChecked = true;
         Context app = ctx.getApplicationContext();
         if (isFreezerUnsafeBoard(app)) {
-            LocalAdb.shell(app,
-                    "device_config delete activity_manager use_compaction 2>/dev/null; "
-                            + "settings delete global cinetv_compaction 2>/dev/null; "
-                            + "settings put global cached_apps_freezer disabled 2>/dev/null; "
-                            + "cmd deviceidle whitelist +com.cinetv.launcher 2>/dev/null; "
-                            + "cmd deviceidle whitelist +com.nuvio.tv 2>/dev/null", 5000);
+            if (DeviceTweaks.canWriteSecureSettings(app)) {
+                try {
+                    Settings.Global.putString(app.getContentResolver(), "cached_apps_freezer", "disabled");
+                } catch (Throwable ignored) {}
+            }
+            if (LocalAdb.isAvailable()) {
+                LocalAdb.shell(app,
+                        "device_config delete activity_manager use_compaction 2>/dev/null; "
+                                + "settings delete global cinetv_compaction 2>/dev/null; "
+                                + "settings put global cached_apps_freezer disabled 2>/dev/null; "
+                                + "cmd deviceidle whitelist +com.cinetv.launcher 2>/dev/null; "
+                                + "cmd deviceidle whitelist +com.nuvio.tv 2>/dev/null", 5000);
+            }
             compactionOn = false;
             return;
         }
+        if (DeviceTweaks.canWriteSecureSettings(app)) {
+            try {
+                Settings.Global.putInt(app.getContentResolver(), "cinetv_compaction", 1);
+            } catch (Throwable ignored) {}
+        }
+        if (!LocalAdb.isAvailable()) return;
         boolean ok = LocalAdb.shell(app,
                 "[ \"$(device_config get activity_manager use_compaction)\" = true ] || "
                         + "{ device_config put activity_manager use_compaction true && settings put global cinetv_compaction 1; }", 6000);

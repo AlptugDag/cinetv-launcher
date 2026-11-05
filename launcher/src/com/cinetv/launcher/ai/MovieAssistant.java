@@ -118,37 +118,24 @@ public final class MovieAssistant {
             if (ex.length() < 2400) ex.append(m.title).append(m.year > 1900 ? " (" + m.year + ")" : "").append("; ");
         }
 
-        // Direct TMDB paginated search is fast (sub-100ms) and provides continuous new results
-        int startPage = Math.max(1, (shown.size() / 18) + 1);
-        List<Movie> paged = MovieCatalog.searchRange(ctx, query, startPage, count);
-        for (Movie m : paged) {
-            String k = (m.title + "|" + m.year).toLowerCase(Locale.ROOT);
-            String kid = m.tmdbId > 0 ? "id:" + m.tmdbId : null;
-            if (seen.add(k) && (kid == null || seen.add(kid))) out.add(m);
-        }
+        int startPage = Math.max(1, (shown.size() / 16) + 1);
+        boolean isThematic = isThematicRequest(query);
 
-        if (out.size() < count) {
-            List<Movie> themed = heuristicPaged(ctx, query, startPage, count - out.size());
-            for (Movie m : themed) {
-                String k = (m.title + "|" + m.year).toLowerCase(Locale.ROOT);
-                String kid = m.tmdbId > 0 ? "id:" + m.tmdbId : null;
-                if (seen.add(k) && (kid == null || seen.add(kid))) out.add(m);
-            }
-        }
-
-        if (out.size() < count && LlmClient.isConfigured(ctx) && !LlmClient.quotaOut()) {
-            String system = "You are a film search engine with encyclopedic knowledge of plots, scenes, characters, cast, "
-                    + "objects, settings, quotes and moods. Treat viewer preferences as mild ranking hints, never mandatory filters; preserve variety and never override the current request. "
+        // For thematic/plot requests ("İntikam alan baba filmleri", "emekli ajan filmleri"), NEVER run naive title-word search first
+        // because title search returns any movie with "Baba" or "İntikam" in its title without the plot intersection.
+        if (isThematic && LlmClient.isConfigured(ctx) && !LlmClient.quotaOut()) {
+            String system = "You are a precision film plot search engine. Every single constraint, character role, relationship, and action in the request MUST hold simultaneously in the plot of every film you return. "
+                    + "Never include films that only match one word or one half of the premise (for example, for 'İntikam alan baba filmleri', ONLY return films where a father personally takes revenge for his child/family; never return general fatherhood dramas or unrelated revenge movies). "
                     + GamzeMemory.formatForPrompt(ctx)
                     + "Reply ONLY with compact JSON: {\"titles\":[{\"t\":\"original title\",\"y\":1999,\"tv\":false}]}";
-            String user = "Request: " + query + "\nGive " + count + " MORE titles that match it just as well, best first, "
-                    + "none of these: " + ex + "\nEvery constraint in the request must hold for every title.";
-            LlmClient.Result r = LlmClient.generateQuick(ctx, system, user, 600);
+            String user = "Request: " + query + "\nGive " + (count + 4) + " MORE titles where EVERY plot constraint in the request holds simultaneously, best first, "
+                    + "none of these: " + ex;
+            LlmClient.Result r = LlmClient.generateQuick(ctx, system, user, 700);
             if (r.success) {
                 try {
                     JSONArray arr = LlmClient.extractJsonObject(r.text).optJSONArray("titles");
                     List<Future<List<Movie>>> jobs = new ArrayList<>();
-                    for (int i = 0; arr != null && i < arr.length() && out.size() + jobs.size() < count; i++) {
+                    for (int i = 0; arr != null && i < arr.length() && out.size() + jobs.size() < count + 4; i++) {
                         final JSONObject t = arr.getJSONObject(i);
                         jobs.add(pool.submit(() -> {
                             List<Movie> one = new ArrayList<>();
@@ -166,8 +153,34 @@ public final class MovieAssistant {
                 }
             }
         }
+
+        if (out.size() < count) {
+            List<Movie> themed = heuristicPaged(ctx, query, startPage, count - out.size());
+            for (Movie m : themed) {
+                String k = (m.title + "|" + m.year).toLowerCase(Locale.ROOT);
+                String kid = m.tmdbId > 0 ? "id:" + m.tmdbId : null;
+                if (seen.add(k) && (kid == null || seen.add(kid))) out.add(m);
+            }
+        }
+
+        if (!isThematic && out.size() < count) {
+            List<Movie> paged = MovieCatalog.searchRange(ctx, query, startPage, count - out.size());
+            for (Movie m : paged) {
+                String k = (m.title + "|" + m.year).toLowerCase(Locale.ROOT);
+                String kid = m.tmdbId > 0 ? "id:" + m.tmdbId : null;
+                if (seen.add(k) && (kid == null || seen.add(kid))) out.add(m);
+            }
+        }
         if (withChildren(ctx, query)) out = familySafe(out);
         return out;
+    }
+
+    private static boolean isThematicRequest(String query) {
+        if (query == null) return false;
+        String q = query.toLowerCase(new Locale("tr")).trim();
+        for (String w : SHELF_WORDS) if (q.contains(w)) return true;
+        for (String w : GENRE_WORDS) if (q.contains(w)) return true;
+        return q.matches(".*\\b(alan|olan|geçen|konulu|hakkında|intikam|baba|anne|kardeş|emekli|ajan|katil|soygun|hapishane|dedektif|uzay|zaman|kıyamet|distopya|psikolojik)\\b.*");
     }
 
     // ---- with AI ----------------------------------------------------------------------------------
@@ -256,10 +269,12 @@ public final class MovieAssistant {
                 + "- Content descriptions (a plot point, a scene, a character, an actor's role, an object, a place, a line of dialogue, a feeling: "
                 + "'adamın karısının kafasının kutuda çıktığı film', 'sonunda trenin kara düştüğü', 'kırmızı balonlu palyaço'): work out the exact film(s), "
                 + "put the best match first in titles with its year, then close matches; never answer with a generic list.\n"
-                + "- Complex searches ('Hollywood'un en iyi intikam filmleri'): keywords, genres and country, plus your own titles.\n"
-                + "- keywords: one short English TMDB keyword per concept of the request ('intikam alan kız babası' = [\"revenge\",\"father daughter relationship\"], "
-                + "'emekli ajan' = [\"retirement\",\"spy\"]); every keyword is REQUIRED of every film, so never add a loose or optional one. "
-                + "Your titles must match every concept too: a revenge film without a father avenging his daughter does not belong.\n"
+                + "- Complex & compound plot searches ('İntikam alan baba filmleri', 'Hollywood'un en iyi intikam filmleri', 'emekli ajan filmleri'): "
+                + "CRITICAL INTERSECTION RULE: Every single concept, actor role, relationship, and action in the request MUST hold together in the plot of EVERY film you list! "
+                + "For example, if the user asks for 'İntikam alan baba filmleri' (films where a father takes revenge), EVERY film in 'titles' MUST specifically feature a father protagonist taking revenge for his child/family (e.g. Taken, Prisoners, Law Abiding Citizen, Mystic River, Edge of Darkness, The Foreigner, Death Sentence, The Revenant, Gladiator, Sympathy for Mr. Vengeance, Oldboy, In the Bedroom, A Time to Kill, Hardcore, Eye for an Eye, Sleepless, Bull). "
+                + "NEVER include films that are merely about fatherhood without revenge (like The Pursuit of Happyness or Kramer vs. Kramer) and NEVER include revenge films where the avenger is not a father avenging his child/family! Provide up to 24 exact plot-verified titles in 'titles'.\n"
+                + "- keywords: one short English TMDB keyword per concept of the request ('intikam alan baba' = [\"revenge\",\"father daughter relationship\"], "
+                + "'emekli ajan' = [\"retirement\",\"spy\"]); every keyword is REQUIRED of every film, so never add a loose or optional one.\n"
                 + "- Family with children: nothing violent, sexual or traumatic, suited to their age. Couples: chemistry and tension. Friends: pace and laughs. Alone: anything goes.\n"
                 + "- Questions about films or people: intent answer, answer = 1-3 accurate sentences; voice = the gist. If unsure of a fact, say so briefly instead of inventing. "
                 + "When the answer is or names films (\"the film where...\", \"which film...\"), also list them in titles.\n"
@@ -269,7 +284,7 @@ public final class MovieAssistant {
                 + "Keep likes separate from dislikes and content to avoid. Use children_status=yes/no only when explicitly stated; otherwise unknown. "
                 + "Put exact saved preference items the viewer explicitly retracts into forget. Never infer a preference from a search, launch, or watch alone; never infer a name. "
                 + "Leave every unspecified field empty/false/zero.";
-        LlmClient.Result r = LlmClient.generate(ctx, system, withHearings(query), 900, true);
+        LlmClient.Result r = LlmClient.generate(ctx, system, withHearings(query), 1200, true);
         if (!r.success) return null;
         JSONObject plan;
         try {
@@ -421,59 +436,9 @@ public final class MovieAssistant {
                 }
             }
         }
-        // If still empty: Detect cinematic themes / genres / keywords
+        // If still empty: Detect cinematic themes / genres / keywords & multi-concept intersections
         if (out.movies.isEmpty()) {
-            List<String> genres = new ArrayList<>();
-            List<String> keywords = new ArrayList<>();
-            String country = "";
-            // every concept named in the request becomes a keyword that each film must carry
-            if (q.contains("intikam")) { genres.add("thriller"); keywords.add("revenge"); }
-            if (q.contains("ajan") || q.contains("casus")) { keywords.add("spy"); }
-            if (q.contains("kız babası") || q.contains("kızını") || q.contains("kızı için") || q.contains("baba kız")) keywords.add("father daughter relationship");
-            else if (q.contains("baba oğul") || q.contains("oğlunu")) keywords.add("father son relationship");
-            if (q.contains("emekli")) keywords.add("retirement");
-            if (q.contains("kaçır")) keywords.add("kidnapping");
-            if (q.contains("seri katil")) keywords.add("serial killer");
-            if (q.contains("kiralık katil") || q.contains("tetikçi")) keywords.add("hitman");
-            if (q.contains("zaman yolculu")) keywords.add("time travel");
-            if (q.contains("hapishane") || q.contains("cezaevi")) keywords.add("prison");
-            if (q.contains("soygun")) keywords.add("heist");
-            if (q.contains("yapay zek")) keywords.add("artificial intelligence");
-            if (q.contains("zombi")) keywords.add("zombie");
-            if (q.contains("uzaylı")) keywords.add("alien");
-            if (q.contains("kıyamet")) keywords.add("post-apocalyptic future");
-            if (q.contains("dedektif")) keywords.add("detective");
-            if (q.contains("vampir")) keywords.add("vampire");
-            if (q.contains("mafya")) keywords.add("mafia");
-            if (q.contains("gerçek hikaye") || q.contains("gerçek olay")) keywords.add("based on true story");
-            if (q.contains("boks")) keywords.add("boxing");
-            if (q.contains("köpek")) keywords.add("dog");
-            // nature and places are themes, never a person's name ("deniz filmleri")
-            if (q.contains("deniz") || q.contains("okyanus")) keywords.add("ocean");
-            if (q.contains("orman")) keywords.add("forest");
-            if (q.contains("çöl")) keywords.add("desert");
-            if (q.contains("dağ ") || q.contains("dağda") || q.contains("dağcı")) keywords.add("mountain");
-            if (q.contains("uzay")) keywords.add("space");
-            if (q.contains("kasvet") || q.contains("karanlık") || q.contains("noir")) { genres.add("crime"); genres.add("thriller"); keywords.add("dark"); }
-            if (q.contains("korku") || q.contains("gerilim")) { genres.add("horror"); genres.add("thriller"); }
-            if (q.contains("komedi") || q.contains("eğlence")) { genres.add("comedy"); }
-            if (q.contains("romantik") || q.contains("aşk")) { genres.add("romance"); }
-            if (q.contains("bilim kurgu") || q.contains("uzay")) { genres.add("science fiction"); }
-            if (q.contains("animasyon") || q.contains("anime")) { genres.add("animation"); }
-            if (q.contains("polisiye") || q.contains("suç")) { genres.add("crime"); }
-            if (q.contains("savaş")) { genres.add("war"); }
-            if (q.contains("western") || q.contains("kovboy")) { genres.add("western"); }
-
-            if (q.contains("hollywood") || q.contains("amerikan")) country = "US";
-            else if (q.contains("kore")) country = "KR";
-            else if (q.contains("japon")) country = "JP";
-            else if (q.contains("fransız")) country = "FR";
-            else if (q.contains("türk") || q.contains("türkiye") || q.contains("yeşilçam")) country = "TR";
-            else if (q.contains("ingiliz")) country = "GB";
-
-            if (!genres.isEmpty() || !keywords.isEmpty() || !country.isEmpty()) {
-                out.movies = MovieCatalog.discover(ctx, keywords, genres, "movie", country, 0, 0, max);
-            }
+            out.movies = discoverByQueryConcepts(ctx, q, 1, max);
         }
         if (out.movies.isEmpty()) {
             String cleaned = MovieCatalog.cleanSearchQuery(query);
@@ -487,17 +452,78 @@ public final class MovieAssistant {
         if (query == null || query.trim().isEmpty() || max <= 0) return Collections.emptyList();
         String q = query.toLowerCase(Locale.getDefault());
         String name = cleanShelfName(query);
-        if (!name.isEmpty()) {
+        if (!name.isEmpty() && !isThematicRequest(query)) {
             List<Movie> personMovies = MovieCatalog.personWork(ctx, name, "any", max * startPage);
             if (!personMovies.isEmpty()) return personMovies;
         }
+        return discoverByQueryConcepts(ctx, q, startPage, max);
+    }
+
+    private static List<Movie> discoverByQueryConcepts(Context ctx, String q, int startPage, int max) {
+        List<Movie> out = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+
+        boolean hasRevenge = q.contains("intikam") || q.contains("öç ") || q.contains("revenge") || q.contains("hesap sor");
+        boolean hasFather = q.contains("baba") || q.contains("kızını") || q.contains("oğlunu") || q.contains("evlat") || q.contains("çocuğu");
+        boolean hasAgent = q.contains("ajan") || q.contains("casus") || q.contains("emekli") || q.contains("tetikçi") || q.contains("suikast");
+
+        // Curated high-precision plot intersections for compound thematic queries
+        if (hasRevenge && hasFather && startPage == 1) {
+            String[][] fatherRevengeTitles = {
+                    {"Taken", "2008"}, {"Prisoners", "2013"}, {"Law Abiding Citizen", "2009"},
+                    {"Mystic River", "2003"}, {"Edge of Darkness", "2010"}, {"The Foreigner", "2017"},
+                    {"Death Sentence", "2007"}, {"The Revenant", "2015"}, {"Gladiator", "2000"},
+                    {"Sympathy for Mr. Vengeance", "2002"}, {"Oldboy", "2003"}, {"In the Bedroom", "2001"},
+                    {"A Time to Kill", "1996"}, {"Hardcore", "1979"}, {"The Limey", "1999"},
+                    {"Bull", "2021"}, {"Sleepless", "2017"}, {"Vendetta", "2022"},
+                    {"Blood Father", "2016"}, {"Bronx", "2020"}
+            };
+            List<Future<List<Movie>>> jobs = new ArrayList<>();
+            for (final String[] pair : fatherRevengeTitles) {
+                jobs.add(pool.submit(() -> {
+                    List<Movie> one = new ArrayList<>();
+                    Movie m = MovieCatalog.resolveQuick(ctx, pair[0], Integer.parseInt(pair[1]), false);
+                    if (m != null) one.add(m);
+                    return one;
+                }));
+            }
+            for (Movie m : collect(jobs, max)) {
+                String k = (m.title + "|" + m.year).toLowerCase(Locale.ROOT);
+                if (seen.add(k)) out.add(m);
+            }
+            if (out.size() >= max) return out;
+        } else if (hasAgent && (q.contains("emekli") || hasRevenge) && startPage == 1) {
+            String[][] agentTitles = {
+                    {"John Wick", "2014"}, {"Taken", "2008"}, {"Nobody", "2021"},
+                    {"The Equalizer", "2014"}, {"Man on Fire", "2004"}, {"A History of Violence", "2005"},
+                    {"The Man from Nowhere", "2010"}, {"Red", "2010"}, {"Leon: The Professional", "1994"},
+                    {"Unforgiven", "1992"}, {"Gran Torino", "2008"}, {"The Foreigner", "2017"},
+                    {"Polar", "2019"}, {"The Old Man", "2022"}
+            };
+            List<Future<List<Movie>>> jobs = new ArrayList<>();
+            for (final String[] pair : agentTitles) {
+                jobs.add(pool.submit(() -> {
+                    List<Movie> one = new ArrayList<>();
+                    Movie m = MovieCatalog.resolveQuick(ctx, pair[0], Integer.parseInt(pair[1]), "The Old Man".equals(pair[0]));
+                    if (m != null) one.add(m);
+                    return one;
+                }));
+            }
+            for (Movie m : collect(jobs, max)) {
+                String k = (m.title + "|" + m.year).toLowerCase(Locale.ROOT);
+                if (seen.add(k)) out.add(m);
+            }
+            if (out.size() >= max) return out;
+        }
+
         List<String> genres = new ArrayList<>();
         List<String> keywords = new ArrayList<>();
         String country = "";
-        if (q.contains("intikam")) { genres.add("thriller"); keywords.add("revenge"); }
+        if (hasRevenge) { genres.add("thriller"); keywords.add("revenge"); }
         if (q.contains("ajan") || q.contains("casus")) { keywords.add("spy"); }
         if (q.contains("kız babası") || q.contains("kızını") || q.contains("kızı için") || q.contains("baba kız")) keywords.add("father daughter relationship");
         else if (q.contains("baba oğul") || q.contains("oğlunu")) keywords.add("father son relationship");
+        else if (hasFather) keywords.add("father daughter relationship");
         if (q.contains("emekli")) keywords.add("retirement");
         if (q.contains("kaçır")) keywords.add("kidnapping");
         if (q.contains("seri katil")) keywords.add("serial killer");
@@ -537,9 +563,13 @@ public final class MovieAssistant {
         else if (q.contains("ingiliz")) country = "GB";
 
         if (!genres.isEmpty() || !keywords.isEmpty() || !country.isEmpty()) {
-            return MovieCatalog.discover(ctx, keywords, genres, "movie", country, 0, 0, max, 0, 0, "", startPage);
+            List<Movie> disc = MovieCatalog.discover(ctx, keywords, genres, "movie", country, 0, 0, max - out.size(), 0, 0, "", startPage);
+            for (Movie m : disc) {
+                String k = (m.title + "|" + m.year).toLowerCase(Locale.ROOT);
+                if (seen.add(k)) out.add(m);
+            }
         }
-        return Collections.emptyList();
+        return out;
     }
 
     // ---- the author -------------------------------------------------------------------------------
@@ -733,11 +763,13 @@ public final class MovieAssistant {
                 + (wish ? "Wish: " + mood.trim() + "\n" : "")
                 + recentInstruction
                 + "\nInfer the mood this moment calls for (weekday evening fatigue, weekend freedom, late-night solitude, a cold rainy "
-                + "morning, a summer night...). Invent ONE shelf theme that fuses that moment with a cinematic idea (a genre, a "
-                + "movement, a feeling or a subject) broad enough for " + askCount + " varied films, and pick them.\n"
-                + "category_title: max 6 words, " + language().toUpperCase(Locale.ROOT) + ", uppercase, vivid and specific to the moment, "
-                + "no clock times, no generic words like 'ÖNERİLER' or 'FİLMLER' alone.\n"
-                + "theme: the same idea in 2-4 words with no place or time (e.g. 'DİSTOPİK BAŞKALDIRI').\n"
+                + "afternoon, a crisp autumn evening...). Invent ONE specific shelf selection that fuses the viewer's current moment "
+                + "(combining at least two of: city, weather condition, season/month, weekday, and time of day) with a specific regional, stylistic, or thematic cinema selection "
+                + "for " + askCount + " varied films, and pick them.\n"
+                + "category_title: 5 to 9 words in " + language().toUpperCase(Locale.ROOT) + ", formatted like: "
+                + "'PAZAR GECE YARISI İÇİN JAPON KORKU KUŞAĞI' or 'YAĞMURLU SONBAHAR İKİNDİSİ İÇİN DOĞU AVRUPA DRAMLARI' or 'SERİN KASIM AKŞAMI İÇİN İSKANDİNAV SUÇ SEÇKİSİ'. "
+                + "Never use generic labels like 'GAMZE'NİN SEÇİMİ', 'ÖNERİLER', or 'FİLMLER' alone, and never include numerical clock times.\n"
+                + "theme: the specific cinematic selection in 2-4 words without the time/place prefix (e.g. 'JAPON KORKU KUŞAĞI' or 'DOĞU AVRUPA DRAMLARI').\n"
                 + "Films: every one must clearly belong to the theme in the title (a viewer reading the title must nod at each "
                 + "film); fewer films rather than loose ones. Well rated (IMDb >= 7), different decades and countries, at most "
                 + "one per director, mostly films, a series only when it truly fits.";
@@ -761,11 +793,13 @@ public final class MovieAssistant {
             }
             List<Movie> resolved = collect(jobs, max);
             String rawTitle = o.optString("category_title", "");
+            String theme = cleanShelfTitle(o.optString("theme", ""));
             String title = cleanShelfTitle(rawTitle);
-            // A title naming another month, weekday, time of day or city than the real ones falls back to the theme alone.
-            if (!fitsMoment(ctx, title)) {
-                String theme = cleanShelfTitle(o.optString("theme", ""));
-                title = !theme.isEmpty() && fitsMoment(ctx, theme) ? theme : "";
+            if (!fitsMoment(ctx, title) || title.toUpperCase(new Locale("tr")).contains("GAMZE")) {
+                title = buildMomentShelfTitle(ctx, theme);
+            }
+            if (title.isEmpty()) {
+                title = buildMomentShelfTitle(ctx, theme);
             }
             if (!resolved.isEmpty()) {
                 recordRecentCurated(ctx, resolved);
@@ -777,6 +811,95 @@ public final class MovieAssistant {
         }
     }
 
+    /**
+     * Synthesizes a rich, specific moment-based shelf title from the viewer's current city, weather,
+     * season, month, weekday, and time of day, paired with a specific cinema selection.
+     * Examples:
+     * - "PAZAR GECE YARISI İÇİN JAPON KORKU KUŞAĞI"
+     * - "YAĞMURLU SONBAHAR İKİNDİSİ İÇİN DOĞU AVRUPA DRAMLARI"
+     */
+    public static String buildMomentShelfTitle(Context ctx, String specificSelection) {
+        boolean tr = "tr".equals(Locale.getDefault().getLanguage());
+        Calendar c = Calendar.getInstance();
+        int hour = c.get(Calendar.HOUR_OF_DAY);
+        int dow = c.get(Calendar.DAY_OF_WEEK);
+        int month = c.get(Calendar.MONTH);
+
+        String city = ctx != null ? Prefs.city(ctx) : "";
+        if (city == null) city = "";
+        city = city.trim();
+
+        String weatherRaw = com.cinetv.launcher.service.WeatherService.getLastCondition();
+        if (weatherRaw == null) weatherRaw = "";
+        String wLower = weatherRaw.toLowerCase(new Locale("tr"));
+
+        if (!tr) {
+            String[] daysEn = {"", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+            String[] seasonsEn = {"Winter", "Winter", "Spring", "Spring", "Spring", "Summer", "Summer", "Summer", "Autumn", "Autumn", "Autumn", "Winter"};
+            String timeEn = (hour >= 0 && hour < 4) ? "Midnight" : (hour >= 4 && hour < 12) ? "Morning"
+                    : (hour >= 12 && hour < 18) ? "Afternoon" : (hour >= 18 && hour < 22) ? "Evening" : "Late Night";
+            String sel = (specificSelection != null && !specificSelection.trim().isEmpty() && !specificSelection.toLowerCase(Locale.ROOT).contains("gamze"))
+                    ? specificSelection.trim() : "Neo-Noir & Mystery Selection";
+            String prefix = (!wLower.isEmpty() ? weatherRaw + " " : "") + seasonsEn[month] + " " + daysEn[dow] + " " + timeEn;
+            return (prefix + " · " + sel).toUpperCase(Locale.ROOT);
+        }
+
+        String[] daysTr = {"", "Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"};
+        String[] monthsTr = {"Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"};
+        String seasonTr = (month >= 2 && month <= 4) ? "İlkbahar" : (month >= 5 && month <= 7) ? "Yaz" : (month >= 8 && month <= 10) ? "Sonbahar" : "Kış";
+        String dayTr = (dow >= 1 && dow <= 7) ? daysTr[dow] : "Bugün";
+        String monthTr = (month >= 0 && month <= 11) ? monthsTr[month] : "";
+
+        String timeTr;
+        if (hour >= 0 && hour < 3) timeTr = "Gece Yarısı";
+        else if (hour >= 3 && hour < 6) timeTr = "Şafak Vakti";
+        else if (hour >= 6 && hour < 12) timeTr = "Sabahı";
+        else if (hour >= 12 && hour < 15) timeTr = "Öğle Sonrası";
+        else if (hour >= 15 && hour < 18) timeTr = "İkindisi";
+        else if (hour >= 18 && hour < 21) timeTr = "Akşamı";
+        else timeTr = "Gecesi";
+
+        String weatherAdj = "";
+        if (wLower.contains("yağmur") || wLower.contains("sağanak") || wLower.contains("rain")) weatherAdj = "Yağmurlu ";
+        else if (wLower.contains("kar") || wLower.contains("snow")) weatherAdj = "Karlı ";
+        else if (wLower.contains("sis") || wLower.contains("pus") || wLower.contains("fog")) weatherAdj = "Sisli ";
+        else if (wLower.contains("rüzgar") || wLower.contains("fırtına")) weatherAdj = "Rüzgarlı ";
+        else if (wLower.contains("bulut") || wLower.contains("kapalı")) weatherAdj = "Bulutlu ";
+        else if (wLower.contains("soğuk") || wLower.contains("ayaz")) weatherAdj = "Serin ";
+        else if (wLower.contains("açık") || wLower.contains("güneş")) weatherAdj = (hour >= 18 || hour < 6) ? "Berrak " : "Güneşli ";
+
+        String[] curatedSelections = {
+                "Doğu Avrupa Dramları",
+                "Japon Korku ve Gerilim Kuşağı",
+                "İskandinav Polisiye ve Gizem Seçkisi",
+                "Neo-Noir Metropol Gerilimleri",
+                "Fransız Yeni Dalga ve Auteur Sineması",
+                "Güney Kore İntikam ve Gerilim Kuşağı",
+                "Psikolojik Labirentler ve Zihin Oyunları",
+                "Klostrofobik Tek Mekan Gerilimleri",
+                "1970'ler Politik Komplo ve Suç Sineması",
+                "Felsefi Bilim Kurgu ve Kozmik Yalnızlık"
+        };
+
+        String sel = (specificSelection != null) ? specificSelection.trim() : "";
+        if (sel.isEmpty() || sel.toUpperCase(new Locale("tr")).contains("GAMZE")) {
+            int idx = Math.abs((c.get(Calendar.DAY_OF_YEAR) * 7 + hour) % curatedSelections.length);
+            sel = curatedSelections[idx];
+        }
+
+        int pattern = Math.abs((c.get(Calendar.DAY_OF_YEAR) + hour) % 3);
+        String momentPart;
+        if (!weatherAdj.isEmpty() && pattern == 0) {
+            momentPart = weatherAdj + seasonTr + " " + timeTr;
+        } else if (!city.isEmpty() && pattern == 1) {
+            momentPart = city + " " + (!weatherAdj.isEmpty() ? weatherAdj : monthTr + " ") + timeTr;
+        } else {
+            momentPart = (!weatherAdj.isEmpty() ? weatherAdj : "") + dayTr + " " + timeTr;
+        }
+
+        return (momentPart.trim() + " İçin " + sel).toUpperCase(new Locale("tr"));
+    }
+
     private static final String[] MONTHS = {"ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim", "kasım", "aralık"};
     private static final String[] WEEKDAYS = {"pazar", "pazartesi", "salı", "çarşamba", "perşembe", "cuma", "cumartesi"};
     private static final String[] CITIES = {"istanbul", "ankara", "izmir", "bursa", "antalya", "adana", "konya", "gaziantep", "mersin",
@@ -785,7 +908,7 @@ public final class MovieAssistant {
             "berlin", "roma", "new york", "tokyo"};
 
     /** True when every month, weekday, time of day and city a shelf title names is the real one (or it names none). */
-    static boolean fitsMoment(Context ctx, String title) {
+    public static boolean fitsMoment(Context ctx, String title) {
         if (title == null || title.trim().isEmpty()) return false;
         Locale tr = new Locale("tr");
         String t = " " + title.toLowerCase(tr).replaceAll("[^\\p{L} ]", " ") + " ";

@@ -99,26 +99,55 @@ public class AppGrid {
     public void setApps(List<AppTileItem> dock, List<AppTileItem> grid) {
         this.dock = dock;
         this.grid = grid;
+        rebalance();
         boolean ready = true;
-        for (AppTileItem item : dock) if (item.bannerDrawable == null) ready = false;
-        for (AppTileItem item : grid) if (item.bannerDrawable == null) ready = false;
+        for (AppTileItem item : this.dock) if (item.bannerDrawable == null) ready = false;
+        for (AppTileItem item : this.grid) if (item.bannerDrawable == null) ready = false;
         if (ready) {
             render();
             return;
         }
-        // The tiles' artwork is drawn off the main thread (it held the first second of start-up); the row fades in.
+        // The dock's 5 visible tiles are drawn first and shown immediately; off-screen grid rows follow behind.
         final int g = ++appsGen;
-        final List<AppTileItem> d = dock, gr = grid;
+        final List<AppTileItem> d = new java.util.ArrayList<>(this.dock);
+        final List<AppTileItem> gr = new java.util.ArrayList<>(this.grid);
         artworker.execute(() -> {
-            for (AppTileItem item : d) ensureArtwork(item);
-            for (AppTileItem item : gr) ensureArtwork(item);
+            for (AppTileItem item : d) {
+                if (g != appsGen) return;
+                ensureArtwork(item);
+            }
+            if (!gr.isEmpty()) {
+                dockRow.post(() -> {
+                    if (g != appsGen) return;
+                    renderDockImmediate();
+                });
+            }
+            for (AppTileItem item : gr) {
+                if (g != appsGen) return;
+                ensureArtwork(item);
+            }
             dockRow.post(() -> {
                 if (g != appsGen) return;
                 render();
-                dockRow.setAlpha(0f);
-                dockRow.animate().alpha(1f).setDuration(260).start();
             });
         });
+    }
+
+    private void renderDockImmediate() {
+        if (dock == null || dock.isEmpty()) return;
+        int slots = Math.max(columns, dock.size());
+        boolean wasEmpty = dockRow.getChildCount() == 0;
+        dockRow.removeAllViews();
+        dockRow.setWeightSum(slots);
+        dockRow.setGravity(Gravity.CENTER_HORIZONTAL);
+        for (int i = 0; i < dock.size(); i++) {
+            dockRow.addView(tile(dock.get(i), true, i, columns), tileParams(1f));
+        }
+        if (grid.isEmpty() && dock.size() < columns) dockRow.addView(addTile(dock.size(), true), tileParams(1f));
+        if (wasEmpty) {
+            dockRow.setAlpha(0f);
+            dockRow.animate().alpha(1f).setDuration(200).start();
+        }
     }
 
     private void ensureArtwork(AppTileItem item) {
@@ -134,7 +163,9 @@ public class AppGrid {
             }
         }
         item.bannerDrawable = AppArtwork.createDesignerLogoCard(ctx, item.packageName, item.label, banner, icon, true, false);
-        item.bannerFocusedDrawable = AppArtwork.createDesignerLogoCard(ctx, item.packageName, item.label, banner, icon, true, true);
+        item.bannerFocusedDrawable = PerformanceProfile.lowMemory(ctx)
+                ? null
+                : AppArtwork.createDesignerLogoCard(ctx, item.packageName, item.label, banner, icon, true, true);
     }
 
     public void focusDock(int index) {
@@ -303,6 +334,31 @@ public class AppGrid {
         }
         final GlassBevelView bevel = new GlassBevelView(ctx, UiKit.pxf(22), false);
         face.addView(bevel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // Apple tvOS / flow-launcher-tv diagonal specular glass sheen that sweeps across on focus
+        final View sheen = new View(ctx) {
+            private final android.graphics.Paint sp = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+            private int lastW;
+
+            @Override
+            protected void onDraw(android.graphics.Canvas c) {
+                int w = getWidth(), h = getHeight();
+                if (w <= 0 || h <= 0) return;
+                if (w != lastW) {
+                    lastW = w;
+                    sp.setShader(new android.graphics.LinearGradient(
+                            0, 0, w * 0.85f, h,
+                            new int[]{Color.TRANSPARENT, Color.argb(46, 255, 255, 255), Color.argb(18, 255, 255, 255), Color.TRANSPARENT},
+                            new float[]{0f, 0.42f, 0.58f, 1f},
+                            android.graphics.Shader.TileMode.CLAMP));
+                }
+                c.drawRoundRect(0, 0, w, h, UiKit.pxf(22), UiKit.pxf(22), sp);
+            }
+        };
+        sheen.setTag("flow_sheen");
+        sheen.setAlpha(0f);
+        face.addView(sheen, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         face.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         face.setAlpha(0.92f);
         frame.addView(face, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -341,7 +397,7 @@ public class AppGrid {
                 return;
             }
             com.cinetv.launcher.device.SystemAudio.click(ctx);
-            host.onLaunch(item);
+            UiKit.pressBounce(frame, () -> host.onLaunch(item));
         });
 
         frame.setOnKeyListener((v, keyCode, e) -> {
@@ -394,12 +450,21 @@ public class AppGrid {
             if (focusedArt != null) {
                 focusedArt.animate().alpha(has ? 1f : 0f).setDuration(ms).setInterpolator(UiKit.EASE_IN_OUT).start();
             }
+            View sheen = ((ViewGroup) art).findViewWithTag("flow_sheen");
+            if (sheen != null) {
+                if (has) {
+                    sheen.setTranslationX(-UiKit.pxf(40));
+                    sheen.animate().alpha(1f).translationX(UiKit.pxf(16)).setDuration(ms + 90).setInterpolator(UiKit.EASE_IN_OUT).start();
+                } else {
+                    sheen.animate().alpha(0f).translationX(0f).setDuration(ms).setInterpolator(UiKit.EASE_IN_OUT).start();
+                }
+            }
         }
         pushNeighbours(frame, has, ms);
-        frame.animate().scaleX(has ? 1.10f : 1f).scaleY(has ? 1.10f : 1f)
+        frame.animate().scaleX(has ? 1.115f : 1f).scaleY(has ? 1.115f : 1f)
                 .rotationY(has ? 0f : rest[0]).rotationX(has ? 0f : rest[1])
-                .translationY(has ? -UiKit.pxf(12) : rest[3]).translationZ(has ? UiKit.pxf(55) : rest[2])
-                .setDuration(ms).setInterpolator(UiKit.EASE_IN_OUT).start();
+                .translationY(has ? -UiKit.pxf(14) : rest[3]).translationZ(has ? UiKit.pxf(58) : rest[2])
+                .setDuration(ms).setInterpolator(has ? UiKit.FLOW_SPRING : UiKit.EASE_IN_OUT).start();
     }
 
     /** The focused tile grows; its row-mates move aside by half the growth so nothing overlaps. */
