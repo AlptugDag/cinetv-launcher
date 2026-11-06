@@ -143,6 +143,17 @@ public final class DvdCase {
         c.drawRoundRect(new RectF(0, 0, w, h), corner, corner, p);
         p.setShader(null);
 
+        // Amaray moulded latch tabs & opening thumb-catch notch on right edge:
+        Paint latchP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        float notchY0 = h * 0.44f, notchY1 = h * 0.56f;
+        latchP.setColor(Color.argb(light ? 50 : 130, 0, 0, 0));
+        c.drawRoundRect(new RectF(w - lip * 1.6f, notchY0, w - lip * 0.2f, notchY1), lip * 0.4f, lip * 0.4f, latchP);
+        latchP.setColor(Color.argb(light ? 80 : 40, 255, 255, 255));
+        c.drawLine(w - lip * 1.6f, notchY0, w - lip * 0.2f, notchY0, latchP);
+        latchP.setColor(Color.argb(light ? 40 : 100, 0, 0, 0));
+        c.drawRect(w - lip * 1.15f, h * 0.20f, w - lip * 0.35f, h * 0.23f, latchP);
+        c.drawRect(w - lip * 1.15f, h * 0.77f, w - lip * 0.35f, h * 0.80f, latchP);
+
         Bitmap over = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         c = new Canvas(over);
         // Hinge: the moulded strip next to the spine, seen through the sleeve as soft ridges.
@@ -177,12 +188,35 @@ public final class DvdCase {
         c.drawRoundRect(insert, corner * 0.4f, corner * 0.4f, p);
         p.setShader(null);
 
+        // Ultrasonic heat-welded Mylar seams along top and bottom edges of clear sleeve:
+        float seamTop = insert.top - lip * 0.28f;
+        float seamBot = insert.bottom + lip * 0.28f;
+        Paint seamP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        seamP.setStrokeWidth(Math.max(1f, w * 0.003f));
+        seamP.setColor(Color.argb(55, 255, 255, 255));
+        c.drawLine(insert.left, seamTop, insert.right, seamTop, seamP);
+        c.drawLine(insert.left, seamBot, insert.right, seamBot, seamP);
+        seamP.setColor(Color.argb(70, 0, 0, 0));
+        c.drawLine(insert.left, seamTop + 1.2f, insert.right, seamTop + 1.2f, seamP);
+        c.drawLine(insert.left, seamBot + 1.2f, insert.right, seamBot + 1.2f, seamP);
+
+        // Embossed metallic silver "DVD VIDEO" emblem in the plastic header:
+        float logoScale = w / 260f;
+        drawDvdVideoLogo(c, w - insert.right * 0.14f - 24f * logoScale, insert.top * 0.52f, logoScale * 0.65f, 190);
+
         // Paper sits under the lip: a hairline of shadow where they meet (reads as depth, not as a frame).
         Paint inner = new Paint(Paint.ANTI_ALIAS_FLAG);
         inner.setStyle(Paint.Style.STROKE);
         inner.setStrokeWidth(Math.max(1f, w * 0.006f));
         inner.setColor(Color.argb(70, 0, 0, 0));
         c.drawRoundRect(insert, corner * 0.4f, corner * 0.4f, inner);
+
+        // Micro paper-cut edge highlight on top and right of the insert:
+        Paint paperCut = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paperCut.setStyle(Paint.Style.STROKE);
+        paperCut.setStrokeWidth(Math.max(0.75f, w * 0.0022f));
+        paperCut.setColor(Color.argb(45, 255, 255, 255));
+        c.drawRoundRect(insert, corner * 0.4f, corner * 0.4f, paperCut);
 
         cached = new Bitmap[]{under, over};
         SHELLS.put(key, cached);
@@ -328,31 +362,135 @@ public final class DvdCase {
         c.drawRect(0, 0, w, lip, p);
         c.drawRect(0, h - lip, w, h, p);
 
+        // Top: Embossed silver "DVD VIDEO" emblem
+        float spineLogoScale = w / 48f;
+        drawDvdVideoLogo(c, w / 2f, lip + w * 0.52f, spineLogoScale * 0.65f, 235);
+
         TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         tp.setTypeface(FontManager.getBlack(ctx));
         tp.setColor(Color.argb(242, 255, 255, 255));
-        tp.setTextSize(w * 0.46f);
+        tp.setTextSize(w * 0.44f);
         tp.setLetterSpacing(0.05f);
-        float available = h * 0.68f;
+        float titleStartY = lip + w * 1.10f;
+        float available = (h * 0.76f) - titleStartY;
         String text = TextUtils.ellipsize(title == null ? "" : title.toUpperCase(Locale.getDefault()), tp, available, TextUtils.TruncateAt.END).toString();
         c.save();
-        c.translate(w / 2f, h * 0.06f);
+        c.translate(w / 2f, titleStartY);
         c.rotate(90);
         Paint.FontMetrics fm = tp.getFontMetrics();
         c.drawText(text, 0, -(fm.ascent + fm.descent) / 2f, tp);
         c.restore();
 
-        // Bottom: a small studio-style badge.
-        tp.setTextSize(w * 0.26f);
-        tp.setColor(Color.argb(200, 255, 255, 255));
-        RectF badge = new RectF(w * 0.14f, h * 0.86f, w * 0.86f, h * 0.86f + w * 0.42f);
-        Paint bp = new Paint(Paint.ANTI_ALIAS_FLAG);
-        bp.setColor(Color.argb(60, 255, 255, 255));
-        c.drawRoundRect(badge, w * 0.08f, w * 0.08f, bp);
-        String y = year > 1900 ? String.valueOf(year).substring(2) : "DVD";
-        float tw = tp.measureText(y);
-        c.drawText(y, w / 2f - tw / 2f, badge.centerY() - (tp.ascent() + tp.descent()) / 2f, tp);
+        // Bottom: Authentic studio technical specs (DVD-9, Dolby Audio, Region ALL, Barcode)
+        drawSpineSpecs(c, w, h, year);
         return out;
+    }
+
+    /**
+     * Draws the iconic embossed silver metallic "DVD VIDEO" emblem with its optical disc oval.
+     */
+    static void drawDvdVideoLogo(Canvas c, float cx, float cy, float scale, int alpha) {
+        if (alpha <= 0) return;
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setShader(new LinearGradient(cx - 30 * scale, cy - 20 * scale, cx + 30 * scale, cy + 20 * scale,
+                new int[]{0xFFF1F5F9, 0xFF94A3B8, 0xFFFFFFFF, 0xFF64748B}, null, Shader.TileMode.CLAMP));
+        p.setAlpha(alpha);
+
+        TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        tp.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD));
+        tp.setTextSize(18f * scale);
+        tp.setTextAlign(Paint.Align.CENTER);
+        tp.setLetterSpacing(0.04f);
+        tp.setShader(p.getShader());
+        tp.setAlpha(alpha);
+
+        Paint shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
+        shadow.setColor(Color.argb(Math.round(alpha * 0.6f), 0, 0, 0));
+        shadow.setStyle(Paint.Style.STROKE);
+        shadow.setStrokeWidth(1.2f * scale);
+
+        RectF discOval = new RectF(cx - 24f * scale, cy + 1f * scale, cx + 24f * scale, cy + 8f * scale);
+        Paint discP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        discP.setStyle(Paint.Style.STROKE);
+        discP.setStrokeWidth(1.8f * scale);
+        discP.setShader(p.getShader());
+        discP.setAlpha(alpha);
+
+        c.drawOval(new RectF(discOval.left, discOval.top + 0.8f * scale, discOval.right, discOval.bottom + 0.8f * scale), shadow);
+        c.drawOval(discOval, discP);
+
+        RectF holeOval = new RectF(cx - 6f * scale, cy + 3.2f * scale, cx + 6f * scale, cy + 5.8f * scale);
+        c.drawOval(holeOval, discP);
+
+        c.drawText("DVD", cx + 0.5f * scale, cy + 0.5f * scale, shadow);
+        c.drawText("DVD", cx, cy, tp);
+
+        TextPaint vp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        vp.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD));
+        vp.setTextSize(6.5f * scale);
+        vp.setTextAlign(Paint.Align.CENTER);
+        vp.setLetterSpacing(0.24f);
+        vp.setShader(p.getShader());
+        vp.setAlpha(alpha);
+        c.drawText("VIDEO", cx, cy + 15f * scale, vp);
+    }
+
+    static void drawSpineSpecs(Canvas c, float w, float h, int year) {
+        float y0 = h * 0.77f;
+        float bW = w * 0.82f;
+        float bLeft = w * 0.09f;
+
+        Paint bp = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bp.setStyle(Paint.Style.STROKE);
+        bp.setStrokeWidth(Math.max(1f, w * 0.035f));
+        bp.setColor(Color.argb(90, 255, 255, 255));
+        float bh = w * 0.42f;
+        c.drawRoundRect(new RectF(bLeft, y0, bLeft + bW, y0 + bh), w * 0.08f, w * 0.08f, bp);
+        TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        tp.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        tp.setTextSize(w * 0.23f);
+        tp.setColor(Color.argb(220, 255, 255, 255));
+        tp.setTextAlign(Paint.Align.CENTER);
+        c.drawText("DVD-9", w / 2f, y0 + bh * 0.72f, tp);
+
+        float dy = y0 + bh + w * 0.16f;
+        tp.setTextSize(w * 0.17f);
+        tp.setLetterSpacing(0.08f);
+        tp.setColor(Color.argb(190, 255, 255, 255));
+        c.drawText("DOLBY", w / 2f, dy, tp);
+        c.drawText("DIGITAL", w / 2f, dy + w * 0.20f, tp);
+
+        float gy = dy + w * 0.46f;
+        float gr = w * 0.24f;
+        bp.setColor(Color.argb(85, 255, 255, 255));
+        c.drawCircle(w / 2f, gy, gr, bp);
+        c.drawLine(w / 2f - gr, gy, w / 2f + gr, gy, bp);
+        c.drawLine(w / 2f, gy - gr, w / 2f, gy + gr, bp);
+        tp.setTextSize(w * 0.21f);
+        tp.setColor(Color.argb(240, 255, 255, 255));
+        c.drawText("ALL", w / 2f, gy + gr * 0.42f, tp);
+
+        float barY0 = gy + gr + w * 0.20f;
+        float barH = h * 0.035f;
+        Paint barP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        barP.setColor(Color.argb(150, 255, 255, 255));
+        float bx = bLeft + w * 0.04f;
+        float bw = bW - w * 0.08f;
+        float[] widths = {1f, 2f, 1f, 3f, 1f, 2f, 1f, 1f, 3f, 2f, 1f, 2f, 3f, 1f};
+        float curX = bx;
+        for (int i = 0; i < widths.length && curX < bx + bw; i++) {
+            float sw = Math.max(1f, w * 0.024f * widths[i]);
+            if (i % 2 == 0) {
+                c.drawRect(curX, barY0, curX + sw, barY0 + barH, barP);
+            }
+            curX += sw + w * 0.016f;
+        }
+
+        if (year > 1900) {
+            tp.setTextSize(w * 0.20f);
+            tp.setColor(Color.argb(140, 255, 255, 255));
+            c.drawText(String.valueOf(year), w / 2f, h - h * 0.015f, tp);
+        }
     }
 
     private static Bitmap edge, edgeLight, wrap;
@@ -401,6 +539,24 @@ public final class DvdCase {
                 c.drawRect(x, 0, x + sw, h, p);
             }
             p.setShader(null);
+
+            // Prismatic thin-film interference: subtle iridescent cellophane rainbow fringes (cyan, rose, gold)
+            int[] rainbowColors = new int[]{
+                    Color.argb(0, 0, 229, 255),
+                    Color.argb(12, 0, 229, 255),
+                    Color.argb(14, 255, 64, 129),
+                    Color.argb(12, 255, 213, 79),
+                    Color.argb(0, 255, 213, 79)
+            };
+            float[] rainbowStops = new float[]{0f, 0.28f, 0.52f, 0.78f, 1f};
+            for (int i = 0; i < 3; i++) {
+                float rx = w * (0.24f + i * 0.23f);
+                float rw = 24f;
+                p.setShader(new LinearGradient(rx, 0, rx + rw, 0, rainbowColors, rainbowStops, Shader.TileMode.CLAMP));
+                c.drawRect(rx, 0, rx + rw, h, p);
+            }
+            p.setShader(null);
+
             c.restore();
             for (int i = 0; i < 6; i++) {
                 float y = r.nextFloat() * h;

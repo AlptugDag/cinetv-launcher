@@ -17,6 +17,7 @@ import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.SweepGradient;
+import android.graphics.Typeface;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
@@ -335,6 +336,7 @@ public class DvdOpeningView extends View {
         }
         if (slot != null) slot.hide();
         if (anim != null) anim.cancel();
+        com.cinetv.launcher.device.SystemAudio.play(getContext(), com.cinetv.launcher.device.SystemAudio.Sfx.POP);
         t = OPEN_END;
         play = 0;
         anim = ValueAnimator.ofFloat(0, PLAY_TOTAL);
@@ -631,7 +633,228 @@ public class DvdOpeningView extends View {
         c.clipPath(clip);
         stock.lining(c, w, h);
         c.restoreToCount(keep);
+        if (!landscape) {
+            bakePhysicalTray(c, stock, w, h);
+        } else {
+            bakePhysicalLandscapeTray(c, stock, w, h);
+        }
         return out;
+    }
+
+    private static void bakePhysicalLandscapeTray(Canvas c, Insert stock, int w, int h) {
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        // 1. Molded perimeter rim & inner edge shadow for the landscape tray
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1.5f, w * 0.005f));
+        p.setColor(Color.argb(75, 0, 0, 0));
+        c.drawRoundRect(new RectF(w * 0.012f, h * 0.014f, w * 0.988f, h * 0.986f), w * 0.025f, w * 0.025f, p);
+
+        RectF sc = trayScreen(0, 0, w, h);
+        float corner = w * 0.012f;
+
+        // 2. Deep chamfered outer bezel housing around the 16:9 trailer screen
+        RectF bezel = new RectF(sc.left - w * 0.018f, sc.top - h * 0.025f, sc.right + w * 0.018f, sc.bottom + h * 0.062f);
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(new LinearGradient(bezel.left, bezel.top, bezel.right, bezel.bottom,
+                new int[]{0xFF2A2A34, 0xFF181820, 0xFF0D0D12}, null, Shader.TileMode.CLAMP));
+        c.drawRoundRect(bezel, corner * 1.5f, corner * 1.5f, p);
+        p.setShader(null);
+
+        // Molded outer bezel edge highlight (light from top-left)
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1f, w * 0.0028f));
+        p.setColor(Color.argb(55, 255, 255, 255));
+        c.drawRoundRect(bezel, corner * 1.5f, corner * 1.5f, p);
+
+        // Inset screen cavity shadow
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(140, 0, 0, 0));
+        c.drawRoundRect(new RectF(sc.left - 2f, sc.top - 2f, sc.right + 2f, sc.bottom + 2f), corner, corner, p);
+
+        // Screen bed recess
+        p.setColor(Color.parseColor("#050507"));
+        c.drawRoundRect(sc, corner, corner, p);
+
+        // 3. 4 Structural corner hex screws / rivets at the bezel corners
+        Paint screwP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        float[] screwXs = {bezel.left + w * 0.010f, bezel.right - w * 0.010f, bezel.left + w * 0.010f, bezel.right - w * 0.010f};
+        float[] screwYs = {bezel.top + h * 0.015f, bezel.top + h * 0.015f, bezel.bottom - h * 0.015f, bezel.bottom - h * 0.015f};
+        float sRad = Math.max(2.5f, w * 0.007f);
+        for (int i = 0; i < 4; i++) {
+            screwP.setStyle(Paint.Style.FILL);
+            screwP.setColor(Color.argb(120, 0, 0, 0));
+            c.drawCircle(screwXs[i], screwYs[i], sRad, screwP);
+            screwP.setColor(Color.argb(160, 160, 165, 180));
+            c.drawCircle(screwXs[i] - 0.4f, screwYs[i] - 0.4f, sRad * 0.7f, screwP);
+            screwP.setColor(Color.argb(180, 25, 25, 30));
+            c.drawCircle(screwXs[i], screwYs[i], sRad * 0.45f, screwP);
+        }
+
+        // 4. Sub-bezel technical specification strip
+        RectF specBar = new RectF(sc.left + w * 0.02f, sc.bottom + h * 0.014f, sc.right - w * 0.02f, sc.bottom + h * 0.046f);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(180, 10, 10, 14));
+        c.drawRoundRect(specBar, corner * 0.6f, corner * 0.6f, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(0.8f, w * 0.0018f));
+        p.setColor(Color.argb(35, 255, 255, 255));
+        c.drawRoundRect(specBar, corner * 0.6f, corner * 0.6f, p);
+
+        // Technical specs typography
+        p.setStyle(Paint.Style.FILL);
+        p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        p.setTextSize(Math.max(7f, h * 0.022f));
+        p.setColor(Color.argb(140, 205, 215, 230));
+        p.setLetterSpacing(0.08f);
+        Paint.FontMetrics fm = p.getFontMetrics();
+        float ty = specBar.centerY() - (fm.ascent + fm.descent) / 2f;
+        c.drawText("16:9 ANAMORPHIC WIDESCREEN  ·  HIGH DEFINITION MASTER  ·  24 FPS PREVIEW", specBar.left + w * 0.022f, ty, p);
+
+        // Optical LED indicator dot
+        float ledX = specBar.right - w * 0.018f;
+        float ledY = specBar.centerY();
+        p.setColor(Color.argb(80, 56, 189, 248));
+        c.drawCircle(ledX, ledY, Math.max(3f, w * 0.009f), p);
+        p.setColor(Color.parseColor("#38BDF8"));
+        c.drawCircle(ledX, ledY, Math.max(1.8f, w * 0.005f), p);
+
+        // 5. Molded structural stiffener ribs flanking the screen on left & right
+        Paint ribP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        ribP.setStyle(Paint.Style.STROKE);
+        ribP.setStrokeWidth(Math.max(1f, w * 0.003f));
+        float[] leftRibXs = {bezel.left * 0.35f, bezel.left * 0.55f, bezel.left * 0.75f};
+        float[] rightRibXs = {bezel.right + (w - bezel.right) * 0.25f, bezel.right + (w - bezel.right) * 0.45f, bezel.right + (w - bezel.right) * 0.65f};
+        float ribY0 = h * 0.22f, ribY1 = h * 0.78f;
+        for (float rx : leftRibXs) {
+            ribP.setColor(Color.argb(45, 0, 0, 0));
+            c.drawLine(rx, ribY0, rx, ribY1, ribP);
+            ribP.setColor(Color.argb(25, 255, 255, 255));
+            c.drawLine(rx + 1f, ribY0, rx + 1f, ribY1, ribP);
+        }
+        for (float rx : rightRibXs) {
+            ribP.setColor(Color.argb(45, 0, 0, 0));
+            c.drawLine(rx, ribY0, rx, ribY1, ribP);
+            ribP.setColor(Color.argb(25, 255, 255, 255));
+            c.drawLine(rx + 1f, ribY0, rx + 1f, ribY1, ribP);
+        }
+
+        // 6. Polycarbonate display glass specular sheen
+        Paint sheenP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        sheenP.setShader(new LinearGradient(sc.left, sc.top, sc.right, sc.bottom,
+                new int[]{Color.TRANSPARENT, Color.argb(18, 255, 255, 255), Color.argb(40, 255, 255, 255), Color.TRANSPARENT},
+                new float[]{0f, 0.45f, 0.52f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRoundRect(sc, corner, corner, sheenP);
+    }
+
+    private static void bakePhysicalTray(Canvas c, Insert stock, int w, int h) {
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        float cx = w * 0.5f;
+        float cy = h * 0.5f;
+        float discRadius = Math.min(w, h) * 0.44f;
+
+        // 1. Molded perimeter rim & inner edge shadow for the tray body
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1.5f, w * 0.006f));
+        p.setColor(Color.argb(70, 0, 0, 0));
+        c.drawRoundRect(new RectF(w * 0.012f, h * 0.01f, w * 0.988f, h * 0.99f), w * 0.025f, w * 0.025f, p);
+
+        // 2. Circular disc recess bed (the molded well seating the 120mm DVD)
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(135, 0, 0, 0));
+        c.drawCircle(cx, cy, discRadius, p);
+
+        // Molded depth shadow on upper quadrant of circular recess
+        p.setShader(new RadialGradient(cx, cy, discRadius,
+                new int[]{Color.TRANSPARENT, Color.argb(40, 0, 0, 0), Color.argb(160, 0, 0, 0)},
+                new float[]{0.70f, 0.92f, 1.0f}, Shader.TileMode.CLAMP));
+        c.drawCircle(cx, cy, discRadius, p);
+        p.setShader(null);
+
+        // Outer lip highlight on bottom-right of the recess
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1f, w * 0.003f));
+        p.setColor(Color.argb(45, 255, 255, 255));
+        c.drawCircle(cx, cy, discRadius, p);
+
+        // 3. Dual finger access cutouts at 3 o'clock (right) and 9 o'clock (left)
+        float notchW = w * 0.075f;
+        float notchH = h * 0.065f;
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(160, 0, 0, 0));
+        RectF leftNotch = new RectF(cx - discRadius - notchW * 0.5f, cy - notchH, cx - discRadius + notchW * 0.5f, cy + notchH);
+        RectF rightNotch = new RectF(cx + discRadius - notchW * 0.5f, cy - notchH, cx + discRadius + notchW * 0.5f, cy + notchH);
+        c.drawRoundRect(leftNotch, notchW * 0.5f, notchW * 0.5f, p);
+        c.drawRoundRect(rightNotch, notchW * 0.5f, notchW * 0.5f, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1f, w * 0.0025f));
+        p.setColor(Color.argb(35, 255, 255, 255));
+        c.drawRoundRect(leftNotch, notchW * 0.5f, notchW * 0.5f, p);
+        c.drawRoundRect(rightNotch, notchW * 0.5f, notchW * 0.5f, p);
+
+        // 4. Injection-molded structural stiffening ribs (radiating spoke ribs behind the disc)
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1f, w * 0.0035f));
+        for (int i = 0; i < 8; i++) {
+            double angle = (Math.PI / 4.0) * i;
+            float cos = (float) Math.cos(angle);
+            float sin = (float) Math.sin(angle);
+            float rInner = w * 0.13f;
+            float rOuter = discRadius * 0.88f;
+            p.setColor(Color.argb(40, 0, 0, 0));
+            c.drawLine(cx + cos * rInner, cy + sin * rInner, cx + cos * rOuter, cy + sin * rOuter, p);
+            p.setColor(Color.argb(25, 255, 255, 255));
+            c.drawLine(cx + cos * rInner + 0.8f, cy + sin * rInner + 0.8f, cx + cos * rOuter + 0.8f, cy + sin * rOuter + 0.8f, p);
+        }
+
+        // 5. Circular ejector pin marks (manufacturing details)
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(0.8f, w * 0.002f));
+        p.setColor(Color.argb(35, 0, 0, 0));
+        float pinDist = discRadius * 0.62f;
+        for (int i = 0; i < 4; i++) {
+            double angle = (Math.PI / 2.0) * i + Math.PI / 4.0;
+            float px = cx + (float) Math.cos(angle) * pinDist;
+            float py = cy + (float) Math.sin(angle) * pinDist;
+            c.drawCircle(px, py, w * 0.016f, p);
+        }
+
+        // 6. Center Hub Rosette (authentic Amaray push hub)
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(stock.hubBase);
+        c.drawCircle(cx, cy, w * 0.095f, p);
+
+        // Molded hub shoulder bevel
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1f, w * 0.004f));
+        p.setColor(Color.argb(80, 0, 0, 0));
+        c.drawCircle(cx, cy, w * 0.095f, p);
+        p.setColor(Color.argb(40, 255, 255, 255));
+        c.drawCircle(cx, cy, w * 0.092f, p);
+
+        // 8 flexible spring retaining teeth
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(stock.hubTeeth);
+        for (int i = 0; i < 8; i++) {
+            double a = Math.PI * 2 * i / 8.0;
+            float toothX = cx + (float) Math.cos(a) * w * 0.065f;
+            float toothY = cy + (float) Math.sin(a) * w * 0.065f;
+            c.drawCircle(toothX, toothY, w * 0.012f, p);
+        }
+
+        // Central push button well
+        p.setColor(Color.parseColor("#0E0E12"));
+        c.drawCircle(cx, cy, w * 0.038f, p);
+
+        // Debossed "PUSH" text stamped into center button
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(160, 210, 210, 220));
+        p.setTextSize(Math.max(8f, w * 0.022f));
+        p.setTextAlign(Paint.Align.CENTER);
+        p.setTypeface(Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD));
+        Paint.FontMetrics fm = p.getFontMetrics();
+        float textY = cy - (fm.ascent + fm.descent) / 2f;
+        c.drawText("PUSH", cx, textY, p);
     }
 
     private void drawTray(Canvas c, float l, float t, float w, float h) {
@@ -698,23 +921,7 @@ public class DvdOpeningView extends View {
             up.quadTo(labelX + tw * 0.5f, labelY + w * 0.002f, labelX + tw * 1.05f, labelY + w * 0.006f);
             c.drawPath(up, under);
             c.restore();
-
-            return;
         }
-        float cx = l + w / 2f, cy = t + h / 2f, rr = w * 0.45f;
-        fill.setColor(Color.argb(140, 0, 0, 0));
-        c.drawCircle(cx, cy, rr, fill);
-        // Hub rosette: the ring of teeth that holds the disc, in the room's own material.
-        Insert hub = Insert.of(com.cinetv.launcher.service.ThemeManager.current(getContext()).id);
-        fill.setColor(hub.hubBase);
-        c.drawCircle(cx, cy, w * 0.09f, fill);
-        fill.setColor(hub.hubTeeth);
-        for (int i = 0; i < 12; i++) {
-            double a = Math.PI * 2 * i / 12;
-            c.drawCircle(cx + (float) Math.cos(a) * w * 0.065f, cy + (float) Math.sin(a) * w * 0.065f, w * 0.012f, fill);
-        }
-        fill.setColor(Color.parseColor("#101014"));
-        c.drawCircle(cx, cy, w * 0.035f, fill);
     }
 
     /** The 16:9 screen inside the sideways tray. */
@@ -838,12 +1045,33 @@ public class DvdOpeningView extends View {
 
         float lip = w * 0.03f;
         RectF paper = new RectF(lip, lip, w - lip * 1.6f, h - lip);
+
+        // Multi-page booklet paper stack: micro offset edges giving realistic physical thickness
+        Paint pageStack = new Paint(Paint.ANTI_ALIAS_FLAG);
+        pageStack.setColor(Color.argb(85, 0, 0, 0));
+        c.drawRoundRect(new RectF(paper.left + 1.2f, paper.top + 1.2f, paper.right + 2.8f, paper.bottom + 2.8f), w * 0.01f, w * 0.01f, pageStack);
+        pageStack.setColor(Color.argb(55, 240, 235, 225));
+        c.drawRoundRect(new RectF(paper.left + 0.6f, paper.top + 0.6f, paper.right + 1.8f, paper.bottom + 1.8f), w * 0.01f, w * 0.01f, pageStack);
+        c.drawRoundRect(new RectF(paper.left, paper.top, paper.right + 0.9f, paper.bottom + 0.9f), w * 0.01f, w * 0.01f, pageStack);
+
         // The insert is printed on the room's own stock: parchment by default, kraft in the closet, a gilded
         // programme in the cinema and on the red carpet, frosted acrylic on glass, brushed aluminium on metal,
         // and a dark card with bright ink under neon.
         p.setColor(stock.paper);
         c.drawRoundRect(paper, w * 0.01f, w * 0.01f, p);
         stock.decorate(c, paper, w);
+
+        // Metallic binding staples along booklet spine fold
+        Paint stapleP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        stapleP.setShader(new LinearGradient(0, 0, 0, h * 0.045f,
+                new int[]{0xFFCBD5E1, 0xFF475569, 0xFF94A3B8, 0xFF1E293B},
+                new float[]{0f, 0.35f, 0.70f, 1f}, Shader.TileMode.CLAMP));
+        float stW = Math.max(2.4f, w * 0.008f);
+        float stH = Math.max(12f, h * 0.045f);
+        float stX = paper.left + w * 0.016f;
+        c.drawRoundRect(new RectF(stX - stW / 2f, h * 0.20f, stX + stW / 2f, h * 0.20f + stH), stW / 2f, stW / 2f, stapleP);
+        c.drawRoundRect(new RectF(stX - stW / 2f, h * 0.76f, stX + stW / 2f, h * 0.76f + stH), stW / 2f, stW / 2f, stapleP);
+        stapleP.setShader(null);
 
         // Archival film image overlay: barely visible watermark embedded into parchment paper pulp
         Bitmap watermarkBmp = (still != null) ? still : cover;
@@ -1312,9 +1540,24 @@ public class DvdOpeningView extends View {
                     p.setShadowLayer(r.height() * 0.8f, 0, 0, Color.argb(230, 244, 114, 182));
                     c.drawRoundRect(r, rad * 1.6f, rad * 1.6f, p);
                     break;
-                default: // the moulded black plastic tabs
-                    p.setColor(Color.parseColor("#26262D"));
-                    c.drawRoundRect(r, rad, rad, p);
+                default: // authentic moulded polypropylene Amaray booklet retention clips
+                    // Cast shadow onto booklet paper
+                    p.setColor(Color.argb(120, 0, 0, 0));
+                    c.drawRoundRect(new RectF(r.left - 2f, r.top + 2f, r.right, r.bottom + 3f), rad * 0.7f, rad * 0.7f, p);
+                    // Molded plastic body
+                    p.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
+                            new int[]{0xFF383842, 0xFF222228, 0xFF141418}, null, Shader.TileMode.CLAMP));
+                    c.drawRoundRect(r, rad * 0.7f, rad * 0.7f, p);
+                    p.setShader(null);
+                    // Specular edge highlight along top/left rim
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(Math.max(1f, w * 0.003f));
+                    p.setColor(Color.argb(70, 255, 255, 255));
+                    c.drawRoundRect(r, rad * 0.7f, rad * 0.7f, p);
+                    // Molded hinge attachment crease
+                    p.setStyle(Paint.Style.FILL);
+                    p.setColor(Color.argb(80, 0, 0, 0));
+                    c.drawRect(r.right - r.width() * 0.22f, r.top + r.height() * 0.18f, r.right, r.bottom - r.height() * 0.18f, p);
                     break;
             }
         }

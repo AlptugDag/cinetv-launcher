@@ -65,6 +65,7 @@ public class HomeScreen {
     public final SpatialEnvironment environment;
     public final GlideScrollView scroll;
     public final PosterShelf shelf;
+    public final FrameLayout stage;
     /** The cinematic stage: the focused film's card left of the case, the half-watched film right of it. */
     public final FilmBillboard billboard;
     public final ContinueCard continueCard;
@@ -412,7 +413,7 @@ public class HomeScreen {
         llp.setMargins(UiKit.px(62), UiKit.px(24), 0, 0);
         // The shelf's name and the shelf, in one stage: the film card and the continue card float over the
         // free space above the side cases, left and right of the focused one.
-        FrameLayout stage = new FrameLayout(ctx);
+        stage = new FrameLayout(ctx);
         stage.setClipChildren(false);
         stage.setClipToPadding(false);
         LinearLayout stageColumn = new LinearLayout(ctx);
@@ -1346,6 +1347,83 @@ public class HomeScreen {
     /** Trailer moments are switched in Settings; a trailer playing now stops when they are switched off. */
     public void setTrailerMode(boolean on) {
         if (!on) trailer.stop();
+    }
+    /** Prepares progressive staged entrance on startup (background frame 0 -> apps -> shelf -> dvd cases). */
+    public void prepareStagedStartup() {
+        if (apps != null && apps.dockView() != null) {
+            apps.dockView().setAlpha(0f);
+            apps.dockView().setTranslationY(UiKit.pxf(24f));
+        }
+        if (stage != null) {
+            stage.setAlpha(0f);
+            stage.setTranslationY(UiKit.pxf(20f));
+        }
+        if (rail != null) {
+            rail.setAlpha(0f);
+            rail.setTranslationY(UiKit.pxf(16f));
+        }
+        if (shelf != null) {
+            shelf.holdEntranceUntilReveal();
+        }
+    }
+
+    public void animateAppsEntrance() {
+        if (apps != null && apps.dockView() != null) {
+            View dock = apps.dockView();
+            dock.animate().cancel();
+            dock.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(PerformanceProfile.animationMs(ctx, 380))
+                    .setInterpolator(UiKit.EASE_IN_OUT)
+                    .start();
+        }
+    }
+
+    public void animateShelfEntrance(Runnable onComplete) {
+        if (stage != null) {
+            stage.animate().cancel();
+            stage.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(PerformanceProfile.animationMs(ctx, 420))
+                    .setInterpolator(UiKit.EASE_IN_OUT)
+                    .withEndAction(() -> {
+                        if (onComplete != null) onComplete.run();
+                    })
+                    .start();
+        }
+        if (rail != null) {
+            rail.animate().cancel();
+            rail.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(PerformanceProfile.animationMs(ctx, 420))
+                    .setInterpolator(UiKit.EASE_IN_OUT)
+                    .start();
+        }
+    }
+
+    public void ensureEntranceSettled() {
+        if (apps != null && apps.dockView() != null) {
+            View dock = apps.dockView();
+            dock.animate().cancel();
+            dock.setAlpha(1f);
+            dock.setTranslationY(0f);
+        }
+        if (stage != null) {
+            stage.animate().cancel();
+            stage.setAlpha(1f);
+            stage.setTranslationY(0f);
+        }
+        if (rail != null) {
+            rail.animate().cancel();
+            rail.setAlpha(1f);
+            rail.setTranslationY(0f);
+        }
+        if (shelf != null) {
+            shelf.playStagedEntrance();
+        }
     }
 
     /** While true the opening stays up (a fresh shelf is being made); {@link #releaseSplash} lets it go. */

@@ -138,8 +138,8 @@ public class PosterShelf extends FrameLayout {
 
     /** Shelf stays visible immediately from frame 1 (no black splash hold). */
     public void holdEntranceUntilReveal() {
-        waitingForReveal = false;
-        shelfEntrancePlayed = true;
+        waitingForReveal = true;
+        shelfEntrancePlayed = false;
         if (setBack != null) {
             setBack.setAlpha(1f);
             setBack.setTranslationY(0f);
@@ -1027,9 +1027,9 @@ public class PosterShelf extends FrameLayout {
             // Hovering a DVD case slides it slightly outward from its slot so its cover peeks out cleanly:
             float hoverOutX = Math.signum(d) * caseW * 0.055f * hv * near;
             float x = anchor + Math.signum(d) * offset + hoverOutX;
-            float focusScale = focused ? FOCUS_SCALE : 0.80f;
+            float focusScale = focused ? FOCUS_SCALE : 1.08f;
             float scale = focusScale + (0.86f - focusScale) * near - Math.min(0.08f, 0.012f * far);
-            scale += (near < 0.5f ? (focused ? 0.065f : 0.14f) : 0.135f) * hv;
+            scale += (near < 0.5f ? (focused ? 0.065f : 0.12f) : 0.135f) * hv;
             // Further down the shelf: darker and out of focus, like a real room lit at the front.
             // Hovered case catches the light and becomes distinctly prominent:
             float dim = (focused ? 1f : 0.94f) - 0.10f * near - Math.min(0.52f, 0.075f * far);
@@ -1037,7 +1037,7 @@ public class PosterShelf extends FrameLayout {
             // Only a hint of depth of field: soft, never smeared (clears completely when hovered).
             float blur = (light ? 0f : 0.55f * Math.max(0f, Math.min(1f, (far - 2f) / 4f))) * (1f - hv);
             float spatialWrap = spatial ? -Math.signum(d) * Math.min(7.5f, far * 1.8f) : 0f;
-            float centerYaw = focused ? PROFILE_ANGLE : (-34f + (PROFILE_ANGLE - (-34f)) * hv);
+            float centerYaw = focused ? PROFILE_ANGLE : (-22f + (PROFILE_ANGLE - (-22f)) * hv);
             float sideYaw = SIDE_ANGLE * (1f - 0.34f * hv);
             float yaw = Math.signum(d) * sideYaw * near + centerYaw * (1f - near) + spatialWrap;
             float lift = Math.max(focused ? 1f - near : 0f, (focused ? 0.58f : 0.68f) * hv);
@@ -1069,11 +1069,9 @@ public class PosterShelf extends FrameLayout {
             v.setVisibility(VISIBLE);
             v.setTranslationX(x - vw / 2f);
             // Grounded shelf baseline: subtle bow and anchor contact keep all cases firmly planted on shelf plane.
-            // When unfocused, tuck the center case back onto the shelf plank so its wide front face does not hang over the lip:
-            float unfocusedCenterTuck = (!focused && near < 1f) ? -UiKit.pxf(10f) * (1f - near) * (1f - hv) : 0f;
             float hoverSlideY = -UiKit.pxf(14f) * hv;
-            v.setTranslationY((h - vh) / 2f + (UiKit.pxf(5f) - bow) + UiKit.pxf(2f) * lift + unfocusedCenterTuck + hoverSlideY);
-            v.setTranslationZ(100f - ad * 10f + 22f * hv);
+            v.setTranslationY((h - vh) / 2f + (UiKit.pxf(5f) - bow) - UiKit.pxf(16f) * lift + hoverSlideY);
+            v.setTranslationZ(110f - ad * 10f + 45f * lift + 25f * hv);
             v.setDepthBlur(blur);
             v.setGlint(glint);
             v.setSleeve(!light || ad < 1.5f || hv > 0.05f);

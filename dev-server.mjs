@@ -366,10 +366,14 @@ const server = http.createServer((req, res) => {
     filePath = fs.existsSync(candidate1) ? candidate1 : candidate2;
   } else if (urlPath === '/docs' || urlPath === '/docs/') {
     filePath = path.join(__dirname, 'docs', 'index.html');
+  } else if (urlPath === '/windows' || urlPath === '/windows/' || urlPath.startsWith('/windows/')) {
+    const sub = urlPath.replace(/^\/windows\/?/, '');
+    filePath = sub ? path.join(__dirname, 'windows', sub) : path.join(__dirname, 'windows', 'index.html');
   } else {
     const candidateRemote = path.join(__dirname, 'launcher', 'assets', 'remote', urlPath.replace(/^\/+/, ''));
     const candidateDocs = path.join(__dirname, 'docs', urlPath.replace(/^\/+/, ''));
-    filePath = fs.existsSync(candidateRemote) ? candidateRemote : candidateDocs;
+    const candidateWindows = path.join(__dirname, 'windows', urlPath.replace(/^\/+/, ''));
+    filePath = fs.existsSync(candidateRemote) ? candidateRemote : (fs.existsSync(candidateDocs) ? candidateDocs : candidateWindows);
   }
 
   fs.stat(filePath, (err, stats) => {

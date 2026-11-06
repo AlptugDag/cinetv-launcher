@@ -2,13 +2,14 @@
 
 ## 1.0.0.50
 
-- **Gelişmiş Hava Faresi (AirMouse) ve Evrensel Tıklama:** Telefon kumandasındaki hava faresi ve dokunmatik yüzey için sistem düzeyinde jest ve doğrudan tıklama desteği (`canPerformGestures` erişilebilirlik köprüsü) getirildi. TV'nin tüm arayüzünde, 3D DVD vitrininde ve açılan disk menülerinde akıcı imleç hareketi ve doğrudan dokunmatik seçim sağlandı.
-- **CineParty ve CineQuiz Ses Hızlandırması:** CineQuiz'de soruların anında seslendirilmesi için öngörülü yapay zekâ ses ön-yüklemesi (predictive TTS prewarming) entegre edildi. CineRoulette modunda çok oyunculu QR kod sahne görünürlüğü ve telefon eşleşmesi optimize edildi.
-- **Saf Nöral Türkçe TTS (EmaLightning):** Yerel sentezleyici katmanı sadeleştirilerek doğrudan ve saf yüksek kaliteli sinematik Türkçe ses akışına (`EmaLightningTts`) geçildi.
-- **Düşük Bellekli Cihazlarda Lazy Startup ve Görsel Kararlılık:** Açılış hızını artıran tembel bileşen yüklemesi, başlık katmanları ve Z-dönüşümü düzeltmeleri yapıldı; odaklanan kontrollerdeki görsel kırpılmalar giderildi.
-- **Sürüm ve Paket İlerlemesi:** Build, release ve APK sürüm numaraları 1.0.0.50 olarak güncellendi.
+- **Vitrin DVD Rafı Lazy Loading & Açılış Gecikme Optimizasyonu:** Vitrindeki DVD kutu kapakları `IntersectionObserver` mimarisiyle ekrana yaklaşırken dinamik ve gecikmesiz olarak yüklenir. Raf açılışındaki ilk yükleme blokajı tamamen ortadan kaldırıldı; iskelet yer tutucular (skeleton) ve pürüzsüz opaklık geçişleriyle akıcı bir görsel başlangıç sağlandı.
+- **Donanım Hızlandırma ve 3D Transform Optimizasyonu:** Gereksiz 3D dönüştürmeleri ve GPU bellek aşımını önlemek amacıyla `will-change: transform` özelliği yalnızca odak ve aktif komşu kutularla sınırlandırıldı; ekran dışındaki kutular görünümden kaldırılarak (`display: none`) matris hesaplama yükü sıfırlandı. Tüm dönüşümler `translate3d` ve `scale3d` ile doğrudan GPU kompozisyonuna alındı (`contain: layout`, `backface-visibility: hidden`).
+- **Hiper Gerçekçi DVD Kutu İçi ve Fragman Deneyimi:**
+  - **Fiziksel Fragman Tepsisi:** Fragman modunda (`landscape`) video ekranını çevreleyen açılı (chamfered) 16:9 mat bezel çerçevesi, köşe alyen perçinler, alt kenar teknik kuşağı ("16:9 ANAMORPHIC WIDESCREEN · HIGH DEFINITION MASTER · 24 FPS PREVIEW"), optik yeşil/mavi LED göstergesi, sertleştirici kaburgalar ve polikarbonat ışık yansıması tek seferde pre-baked matris olarak çizildi.
+  - **Orijinal Amaray Kitapçık ve Tırnak Detayları:** Sol kapakta çok sayfalı kuşe kağıt katman kalınlığı, sırt katlama çizgisinde metalik zımba telleri, döküm gölgeli ve tırnak kilitli polipropilen tutucu klipsler eklendi.
+  - **Optik Disk Yatağı ve Mekanik Göbek:** Sağ tepside çift parmak çıkarma girintisi, sertleştirici petek kaburgalar ve 8 tırnaklı yay mekanizmalı "PUSH" çıkarma butonu pre-baked olarak uygulandı; açılış ve oynatma ses efektleri (`SystemAudio.Sfx.POP`) senkronize edildi.
+- **Sürüm ve Paket İlerlemesi:** Build, release ve Windows web platform sürüm numaraları 1.0.0.50 olarak güncellendi.
 
-## 1.0.0.49
 
 - **ADB Kapalıyken Tam Bağımsız Çalışma ve Otomatik Arka Plan Güncellemesi:** Ağ Hata Ayıklama (ADB) tamamen kapatılsa dahi telefon kumandası, yön tuşları, klavye, ekran görüntüsü, CineSUB, APK kurulumu ve CineTV kendi kendine arka plan güncellemeleri (`UPDATE_PACKAGES_WITHOUT_USER_ACTION` + `TvKeyInterceptorService` erişilebilirlik köprüsü) kesintisiz çalışır.
 - **Mobil Kumanda Medya Sekmesi ve Sanatçı Filmografisi:** Mobil arayüzdeki Shazam sekmesi **Medya** olarak yenilendi; film kartlarında yönetmen ve oyuncu kadrosu fotoğraflarıyla listelenir, kişiye dokunulduğunda tüm filmografisi açılır.

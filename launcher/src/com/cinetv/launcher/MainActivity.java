@@ -180,8 +180,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         home = new HomeScreen(this, this, this);
         setContentView(home.root);
-        // No black splash screen on startup: background and showcase shelf appear immediately on frame 1,
-        // followed by DVD boxes dissolving one by one in place as they finish loading.
+        home.prepareStagedStartup();
+        // Staged startup: background frame 0, apps row, shelf furniture, then DVD cases dissolve progressively
         final boolean freshStart = shelfIsStale();
         splashShown = true;
         // Waking from standby does not start a new process (the key service keeps it), so the opening is played
@@ -350,15 +350,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             return code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT;
         });
 
-        boolean lowRamLazyStartup = PerformanceProfile.lowMemory(this) || PerformanceProfile.lowProfile(this);
-        if (!lowRamLazyStartup) {
-            com.cinetv.launcher.device.MainThreadSampler.maybeStart("start", 40_000);
-            showCachedShelf(freshStart);
-        } else {
-            // Hafif Açılış (Lazy-Load): On low-RAM TVs (e.g. 1.3 GB), skip synchronous showcase cache
-            // loading and 3D case baking during onCreate() so the room, header, and dock render immediately.
-            home.shelfLabel.setText(MovieAssistant.buildMomentShelfTitle(this, "").toUpperCase(Locale.getDefault()));
-        }
+        home.shelfLabel.setText(MovieAssistant.buildMomentShelfTitle(this, "").toUpperCase(Locale.getDefault()));
         Calendar cal = Calendar.getInstance();
         lastShelfHour = cal.get(Calendar.HOUR_OF_DAY);
         lastShelfDay = cal.get(Calendar.DAY_OF_YEAR);
@@ -455,41 +447,35 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private void scheduleDynamicStartup(boolean freshStart) {
         final Context app = getApplicationContext();
         final boolean lowPower = PerformanceProfile.lowMemory(this) || PerformanceProfile.lowProfile(this);
-        // On low-RAM TVs, Hafif Açılış (lazy-load) brings up the dock and header first, then lazy-loads
-        // the showcase after the initial UI wave settles (~950ms) so startup never stalls on 1.3 GB devices.
-        long p1 = lowPower ? 60L : 90L;
-        long p2 = lowPower ? 300L : 260L;
-        long p3 = lowPower ? 680L : 650L;
-        long p4 = lowPower ? 960L : 160L;
-        long p5 = lowPower ? 20_000L : 8_000L;
+        // Stage 1 (Background): SpatialEnvironment is rendered immediately on frame 0.
+        // Stage 2: Apps dock loads & animates in smoothly (~70ms)
+        // Stage 3: DVD shelf furniture & label animate in smoothly (~280ms)
+        // Stage 4: DVD cases load & dissolve progressively onto the shelf slots (~520ms)
+        long pApps = lowPower ? 70L : 80L;
+        long pShelf = lowPower ? 280L : 260L;
+        long pCases = lowPower ? 520L : 480L;
+        long pContinue = lowPower ? 780L : 720L;
+        long pWeather = lowPower ? 980L : 920L;
+        long pSweep = lowPower ? 20_000L : 8_000L;
 
-        // Phase 1: Load Installed Apps catalog for the dock (dock renders first in ~60ms before off-screen grid)
+        // Stage 2: Apps dock
         handler.postDelayed(() -> {
-            if (!isFinishing()) {
+            if (!isFinishing() && home != null) {
                 loadApps(true);
+                home.animateAppsEntrance();
             }
-        }, p1);
+        }, pApps);
 
-        // Phase 2: Continue card & local watch history
+        // Stage 3: DVD shelf furniture & structure
         handler.postDelayed(() -> {
-            if (!isFinishing() && inFront && home != null) {
-                refreshContinueCard();
-                com.cinetv.launcher.service.WatchHistory.syncWithNuvio(app);
+            if (!isFinishing() && home != null) {
+                home.animateShelfEntrance(null);
             }
-        }, p2);
+        }, pShelf);
 
-        // Phase 3: Weather & Night Care
+        // Stage 4: DVD cases (dissolving progressively from center outward)
         handler.postDelayed(() -> {
-            if (!isFinishing() && inFront && home != null) {
-                refreshWeather();
-                DeviceTweaks.syncNightMode(this);
-            }
-        }, p3);
-
-        // Phase 4: Showcase shelf (lazy-loaded on low-RAM TVs; refreshed immediately when stale)
-        if (lowPower) {
-            handler.postDelayed(() -> {
-                if (isFinishing() || home == null) return;
+            if (!isFinishing() && home != null) {
                 if (!inFront) {
                     freshOnResume = freshStart;
                     if (home.shelf.count() == 0) {
@@ -498,30 +484,31 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     return;
                 }
                 if (freshStart && isNetworkAvailable()) {
-                    // Fetch today's fresh showcase directly without baking yesterday's stale cache first
+                    showCachedShelf(freshStart);
+                    home.shelf.playStagedEntrance();
                     startFreshShelf(false);
-                    handler.postDelayed(() -> {
-                        if (!isFinishing() && home != null && home.shelf.count() == 0) {
-                            showCachedShelf(true);
-                        }
-                    }, 1800L);
                 } else {
                     showCachedShelf(freshStart);
-                    if (freshStart) {
-                        startFreshShelf(false);
-                    }
+                    home.shelf.playStagedEntrance();
                 }
-            }, p4);
-        } else if (freshStart) {
-            handler.postDelayed(() -> {
-                if (isFinishing() || home == null) return;
-                if (!inFront) {
-                    freshOnResume = true;
-                    return;
-                }
-                startFreshShelf(false);
-            }, p4);
-        }
+            }
+        }, pCases);
+
+        // Phase: Continue card & local watch history
+        handler.postDelayed(() -> {
+            if (!isFinishing() && inFront && home != null) {
+                refreshContinueCard();
+                com.cinetv.launcher.service.WatchHistory.syncWithNuvio(app);
+            }
+        }, pContinue);
+
+        // Phase: Weather & Night Care
+        handler.postDelayed(() -> {
+            if (!isFinishing() && inFront && home != null) {
+                refreshWeather();
+                DeviceTweaks.syncNightMode(this);
+            }
+        }, pWeather);
 
         // Phase 5: Non-critical background daemons, disk trim & warm-ups once startup is completely settled
         handler.postDelayed(() -> {
@@ -543,7 +530,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             } else {
                 MemoryOptimizer.sweepAsync(app);
             }
-        }, p5);
+        }, pSweep);
     }
 
     @Override
@@ -1045,6 +1032,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         if (down) lastKeyAt = android.os.SystemClock.uptimeMillis();
         if (down) {
+            home.ensureEntranceSettled();
             userInteractedDuringBanner = true;
             conversationTurns = 0;
             resetIdle();

@@ -335,6 +335,11 @@ header.hud {
   justify-content: center;
   align-items: center;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  contain: layout;
 }
 
 .dvd-case {
@@ -344,7 +349,14 @@ header.hud {
   border-radius: 6px 12px 12px 6px;
   cursor: pointer;
   transform-style: preserve-3d;
-  transition: transform 0.56s cubic-bezier(0.12, 0.85, 0.25, 1), filter 0.4s ease;
+  -webkit-transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  transition: transform 0.52s cubic-bezier(0.12, 0.85, 0.25, 1), filter 0.35s ease, opacity 0.35s ease;
+}
+/* Hardware acceleration optimization: only cases in active focus motion get will-change to conserve GPU memory */
+.dvd-case.in-focus-range {
   will-change: transform;
 }
 .dvd-case:hover {
@@ -358,12 +370,43 @@ header.hud {
   overflow: hidden;
   box-shadow: 0 16px 38px rgba(0,0,0,0.75), -8px 0 22px rgba(0,0,0,0.5);
   background: #111;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+/* Pre-load placeholder skeleton pulse */
+.dvd-case .case-skeleton {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #15151c 0%, #23232c 50%, #15151c 100%);
+  background-size: 200% 200%;
+  animation: caseSkeletonPulse 2.0s ease-in-out infinite;
+  z-index: 1;
+  transition: opacity 0.4s ease;
+}
+.dvd-case .case-skeleton.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+@keyframes caseSkeletonPulse {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 .dvd-case img.cover {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  opacity: 0;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: opacity 0.38s ease;
+}
+.dvd-case img.cover.loaded {
+  opacity: 1;
 }
 /* Specular clear sleeve plastic sheen */
 .dvd-case .sheen {
@@ -470,19 +513,51 @@ header.hud {
   100% { transform: scale(1) translateZ(0); opacity: 1; }
 }
 
-/* Left Page: Archival Parchment Booklet with Watermark */
+/* Left Page: Archival Parchment Booklet with Multi-page Thickness & Staples */
 .dvd-booklet {
   position: relative;
   flex: 1;
   background: #EEE8DC;
   border-radius: 12px 4px 4px 12px;
   overflow: hidden;
-  box-shadow: -15px 20px 45px rgba(0,0,0,0.85), inset -2px 0 6px rgba(0,0,0,0.25);
+  box-shadow: -15px 20px 45px rgba(0,0,0,0.85), inset -3px 0 8px rgba(0,0,0,0.3), 2px 0 0 #D8D0C0, 4px 0 0 #C7BEAE;
   padding: 38px 42px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
+/* Molded Polypropylene Booklet Retaining Clips */
+.booklet-clip {
+  position: absolute;
+  right: 0;
+  width: 22px;
+  height: 36px;
+  background: linear-gradient(135deg, rgba(70,70,82,0.85) 0%, rgba(35,35,42,0.92) 100%);
+  border-radius: 6px 0 0 6px;
+  border: 1px solid rgba(255,255,255,0.22);
+  border-right: none;
+  box-shadow: -4px 3px 8px rgba(0,0,0,0.6), inset 1px 1px 2px rgba(255,255,255,0.3);
+  z-index: 10;
+  pointer-events: none;
+}
+.booklet-clip.top { top: 48px; }
+.booklet-clip.bottom { bottom: 48px; }
+
+/* Metallic Binding Staples along Booklet Spine */
+.booklet-staple {
+  position: absolute;
+  left: 14px;
+  width: 5px;
+  height: 28px;
+  background: linear-gradient(180deg, #E2E8F0 0%, #475569 40%, #94A3B8 75%, #1E293B 100%);
+  border-radius: 2px;
+  box-shadow: 1px 2px 4px rgba(0,0,0,0.55), inset 0 1px 1px #FFF;
+  z-index: 10;
+  pointer-events: none;
+}
+.booklet-staple.top { top: 75px; }
+.booklet-staple.bottom { bottom: 75px; }
+
 /* Authentic Film Image Watermark (Barely visible, laid into pulp) */
 .booklet-watermark {
   position: absolute;
@@ -539,6 +614,15 @@ header.hud {
   font-size: 14px;
   font-style: italic;
   color: #4B4B55;
+  margin-bottom: 16px;
+}
+.booklet-footer-specs {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #6E6E78;
+  border-top: 1px solid rgba(0,0,0,0.12);
+  padding-top: 10px;
 }
 
 /* Right Page: Disc Tray & Trailer Player */
@@ -554,21 +638,54 @@ header.hud {
   flex-direction: column;
   padding: 24px;
 }
+/* Chamfered Molded Frame Housing around Trailer */
+.tray-housing-frame {
+  position: relative;
+  background: linear-gradient(135deg, #252530 0%, #15151C 100%);
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.6);
+}
 .tray-video-slot {
   width: 100%;
-  height: 250px;
-  border-radius: 10px;
+  height: 235px;
+  border-radius: 8px;
   background: #000;
   overflow: hidden;
   position: relative;
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 8px 24px rgba(0,0,0,0.5);
+  box-shadow: inset 0 0 25px rgba(0,0,0,0.95);
 }
 .tray-video-slot iframe {
   width: 100%;
   height: 100%;
   border: none;
 }
-/* Disc Tray with Holographic Rainbow Disc */
+.tray-spec-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px 2px 8px;
+  font-family: monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #94A3B8;
+}
+.tray-led-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38BDF8;
+  box-shadow: 0 0 8px #38BDF8, 0 0 14px rgba(56,189,248,0.7);
+  animation: ledPulse 2s ease-in-out infinite;
+}
+@keyframes ledPulse {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Amaray Disc Holder with Recess Bed & Push Hub */
 .disc-holder {
   flex: 1;
   display: flex;
@@ -577,26 +694,85 @@ header.hud {
   position: relative;
   margin-top: 14px;
 }
+.tray-recess-bed {
+  position: absolute;
+  width: 195px;
+  height: 195px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #0F0F14 60%, #15151C 92%, #22222B 100%);
+  box-shadow: inset 0 4px 14px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.08);
+}
+.tray-thumb-cutout {
+  position: absolute;
+  width: 24px;
+  height: 38px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #0C0C10;
+  border-radius: 12px;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.9);
+}
+.tray-thumb-cutout.left { left: -10px; }
+.tray-thumb-cutout.right { right: -10px; }
+.tray-rib {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 170px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06) 40%, rgba(255,255,255,0.06) 60%, transparent);
+}
+.tray-rib.rib-1 { transform: translate(-50%, -50%) rotate(0deg); }
+.tray-rib.rib-2 { transform: translate(-50%, -50%) rotate(45deg); }
+.tray-rib.rib-3 { transform: translate(-50%, -50%) rotate(90deg); }
+.tray-rib.rib-4 { transform: translate(-50%, -50%) rotate(135deg); }
+
 .optical-disc {
   width: 175px;
   height: 175px;
   border-radius: 50%;
   background: 
-    radial-gradient(circle at center, transparent 18px, #333 19px, #222 28px, transparent 29px),
+    radial-gradient(circle at center, transparent 20px, #1E293B 21px, #334155 32px, transparent 33px),
     conic-gradient(from 45deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4, #FFEEAD, #FF6B6B);
   box-shadow: 0 10px 25px rgba(0,0,0,0.7), inset 0 0 15px rgba(255,255,255,0.4);
   position: relative;
   display: grid;
   place-items: center;
   animation: discSpin 16s linear infinite;
+  z-index: 2;
 }
 @keyframes discSpin { to { transform: rotate(360deg); } }
+.disc-lead-in {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255,255,255,0.25);
+  pointer-events: none;
+}
+.disc-matrix-code {
+  position: absolute;
+  font-family: monospace;
+  font-size: 6px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  transform: translateY(-24px);
+}
 .disc-center {
   width: 44px;
   height: 44px;
   border-radius: 50%;
   background: rgba(255,255,255,0.25);
   border: 4px solid #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hub-push-btn {
+  font-family: sans-serif;
+  font-size: 7px;
+  font-weight: 900;
+  color: rgba(255,255,255,0.75);
+  letter-spacing: 0.05em;
 }
 
 /* Actions inside DVD */
@@ -943,19 +1119,19 @@ header.hud {
       <span class="label">Nuvio PC</span>
     </div>
     <div class="dock-card" onclick="switchCategory('curated')">
-      <span style="font-size:22px">🎬</span>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
       <span class="label">Alptuğflix</span>
     </div>
     <div class="dock-card" onclick="switchCategory('popular')">
-      <span style="font-size:22px">🔥</span>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       <span class="label">Popüler Filmler</span>
     </div>
     <div class="dock-card" onclick="switchCategory('turkish')">
-      <span style="font-size:22px">🇹🇷</span>
+      <span style="font-size:12px;font-weight:800;letter-spacing:1px;border:1px solid rgba(255,255,255,0.3);padding:2px 4px;border-radius:3px;">TR</span>
       <span class="label">Türk Sineması</span>
     </div>
     <div class="dock-card" onclick="toggleGamzeVoice()">
-      <span style="font-size:22px">✨</span>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       <span class="label">Gamze Asistan</span>
     </div>
   </div>
@@ -991,7 +1167,7 @@ header.hud {
         <img src="assets/icon.png" class="logo" alt="CineTV">
         <div>
           <h2>CineTV Ayarlar</h2>
-          <div class="sub">Tek Pencere Responsive Kontrol Paneli · v1.0.0.19 Windows</div>
+          <div class="sub">Tek Pencere Responsive Kontrol Paneli · v1.0.0.50 Windows</div>
         </div>
       </div>
       <button class="btn-close-modal" style="position:static;" onclick="closeSettings()">Kapat</button>
@@ -1006,14 +1182,14 @@ header.hud {
               <span class="tile-title">Film Dolabı</span>
               <span class="tile-sub">Nostaljik ahşap raf ve derinlikli gölgeler</span>
             </div>
-            <span style="font-size:18px">🎞️</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
           </div>
           <div class="settings-tile" onclick="setThemeDirect('cinema')">
             <div class="tile-info">
               <span class="tile-title">Sinema Salonu</span>
               <span class="tile-sub">Kırmızı kadife perdeler ve loş projeksiyon</span>
             </div>
-            <span style="font-size:18px">🎬</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20"/><path d="M20 12v8H4v-8"/><path d="M4 4v8"/><path d="M20 4v8"/></svg>
           </div>
           <div class="settings-tile">
             <div class="tile-info">
@@ -1141,14 +1317,14 @@ header.hud {
               <span class="tile-title">Nuvio PC Başlatıcı</span>
               <span class="tile-sub">Yerel Nuvio / Stremio akış motoruna bağlan</span>
             </div>
-            <span style="font-size:18px">🚀</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           </div>
           <div class="settings-tile" onclick="windowControl('fullscreen')">
             <div class="tile-info">
               <span class="tile-title">Tam Ekran TV Modu</span>
               <span class="tile-sub">Pencereli / Tam Ekran (F11) arasında geçiş yap</span>
             </div>
-            <span style="font-size:18px">⛶</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
           </div>
         </div>
       </div>
@@ -1161,29 +1337,51 @@ header.hud {
   <div class="dvd-open-stage" onclick="event.stopPropagation()">
     <!-- Left Booklet Note -->
     <div class="dvd-booklet">
+      <!-- Polypropylene retaining clips -->
+      <div class="booklet-clip clip-top"></div>
+      <div class="booklet-clip clip-bottom"></div>
+      <!-- Binding staples along spine fold -->
+      <div class="booklet-staple staple-top"></div>
+      <div class="booklet-staple staple-bottom"></div>
       <div class="booklet-watermark" id="bookletWatermark"></div>
       <div class="booklet-laid-lines"></div>
       <div class="booklet-content">
         <h2 class="booklet-title" id="bookletTitle">Persona</h2>
         <div class="booklet-meta">
-          <span class="rating" id="bookletRating">★ 8.2</span>
+          <span class="rating" id="bookletRating">8.2 / 10</span>
           <span id="bookletYear">1966</span>
           <span>·</span>
           <span id="bookletRuntime">84 dk</span>
         </div>
         <p class="booklet-overview" id="bookletOverview">Film özeti yükleniyor...</p>
         <div class="booklet-director" id="bookletDirector">Yönetmen: Ingmar Bergman</div>
+        <div class="booklet-footer-specs">
+          <span>ARCHIVAL INSERT · CINETV MASTER EDITION</span>
+          <span>POLYPROPYLENE CASING</span>
+        </div>
       </div>
     </div>
 
     <!-- Right Tray with Disc & Trailer -->
     <div class="dvd-tray">
-      <div class="tray-video-slot" id="trayVideoSlot">
-        <!-- Trailer iframe will be dynamically mounted here -->
+      <div class="tray-housing-frame">
+        <div class="tray-video-slot" id="trayVideoSlot">
+          <!-- Trailer iframe will be dynamically mounted here -->
+        </div>
+        <div class="tray-spec-bar">
+          <div class="tray-led-dot"></div>
+          <span>16:9 ANAMORPHIC WIDESCREEN · HIGH DEFINITION MASTER · 24 FPS PREVIEW</span>
+        </div>
       </div>
-      <div class="disc-holder">
+      <div class="tray-recess-bed">
+        <div class="thumb-notch thumb-left"></div>
+        <div class="thumb-notch thumb-right"></div>
         <div class="optical-disc">
           <div class="disc-center"></div>
+        </div>
+        <div class="hub-push-btn">
+          <div class="hub-teeth"></div>
+          <span class="hub-text">PUSH</span>
         </div>
       </div>
       <div class="dvd-actions">
@@ -1251,12 +1449,90 @@ function initClock() {
   setInterval(update, 1000);
 }
 
-// Render 3D Shelf Cases
+// IntersectionObserver-based Lazy Loading & GPU Acceleration Engine
+let shelfCaseObserver = null;
+
+function setupShelfObserver() {
+  if (shelfCaseObserver) {
+    shelfCaseObserver.disconnect();
+  }
+
+  // Lazy loading observer for dvd-case covers as they approach or enter viewport
+  shelfCaseObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        loadCaseImage(entry.target);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    root: null,
+    rootMargin: '120px 80px',
+    threshold: 0.05
+  });
+
+  // Also observe the shelf area container to trigger prioritized loading when shelf enters screen
+  const shelfArea = document.querySelector('.shelf-area');
+  if (shelfArea && !shelfArea.dataset.observed) {
+    shelfArea.dataset.observed = 'true';
+    const areaObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          preloadActiveAndNeighbors();
+        }
+      });
+    }, { threshold: 0.1 });
+    areaObserver.observe(shelfArea);
+  }
+}
+
+function loadCaseImage(caseEl) {
+  if (!caseEl) return;
+  const img = caseEl.querySelector('img.cover[data-src]');
+  if (!img) return;
+  const src = img.getAttribute('data-src');
+  if (!src) return;
+
+  const temp = new Image();
+  temp.onload = () => {
+    img.src = src;
+    img.classList.add('loaded');
+    img.removeAttribute('data-src');
+    const skeleton = caseEl.querySelector('.case-skeleton');
+    if (skeleton) skeleton.classList.add('fade-out');
+  };
+  temp.onerror = () => {
+    img.src = src;
+    img.classList.add('loaded');
+    img.removeAttribute('data-src');
+    const skeleton = caseEl.querySelector('.case-skeleton');
+    if (skeleton) skeleton.classList.add('fade-out');
+  };
+  temp.src = src;
+}
+
+function preloadActiveAndNeighbors() {
+  const n = movies.length;
+  if (n === 0) return;
+  // Prioritize immediate loading for focused and neighbor cases (so visible shelf is never blank)
+  for (let offset = -2; offset <= 2; offset++) {
+    const idx = (currentIndex + offset + n) % n;
+    const el = document.getElementById(`dvd-case-${idx}`);
+    if (el) {
+      loadCaseImage(el);
+      if (shelfCaseObserver) shelfCaseObserver.unobserve(el);
+    }
+  }
+}
+
+// Render 3D Shelf Cases with IntersectionObserver Lazy Loading
 function renderShelf() {
   const track = document.getElementById('shelfTrack');
   track.innerHTML = '';
   const n = movies.length;
   if (n === 0) return;
+
+  setupShelfObserver();
 
   movies.forEach((m, i) => {
     const el = document.createElement('div');
@@ -1264,7 +1540,8 @@ function renderShelf() {
     el.id = `dvd-case-${i}`;
     el.innerHTML = `
       <div class="box-inner">
-        <img class="cover" src="${m.poster}" alt="${m.title}" loading="lazy">
+        <div class="case-skeleton"></div>
+        <img class="cover" data-src="${m.poster}" alt="${m.title}">
         <div class="sheen"></div>
         <div class="spine"></div>
         <div class="badge-4k">4K UHD</div>
@@ -1278,12 +1555,16 @@ function renderShelf() {
       }
     };
     track.appendChild(el);
+
+    if (shelfCaseObserver) {
+      shelfCaseObserver.observe(el);
+    }
   });
 
   layoutShelf();
 }
 
-// 3D Perspective Layout with organic curve
+// 3D Perspective Layout with organic curve and optimized hardware acceleration
 function layoutShelf() {
   const n = movies.length;
   if (n === 0) return;
@@ -1298,6 +1579,30 @@ function layoutShelf() {
     if (delta < -n / 2) delta += n;
 
     const abs = Math.abs(delta);
+
+    // Completely avoid 3D matrix math and GPU layers for off-screen cases
+    if (abs > 4) {
+      if (el.style.display !== 'none') {
+        el.style.display = 'none';
+        el.style.willChange = 'auto';
+        el.classList.remove('in-focus-range');
+      }
+      return;
+    }
+
+    if (el.style.display === 'none') {
+      el.style.display = 'block';
+    }
+
+    // Hardware acceleration optimization: only cases in active focus motion get will-change
+    if (abs <= 3) {
+      el.style.willChange = 'transform';
+      el.classList.add('in-focus-range');
+    } else {
+      el.style.willChange = 'auto';
+      el.classList.remove('in-focus-range');
+    }
+
     const spacing = 185;
     const x = delta * spacing;
     const z = -abs * 110;
@@ -1305,10 +1610,18 @@ function layoutShelf() {
     const scale = Math.max(0.72, 1.15 - abs * 0.12);
     const zIndex = 100 - abs;
 
-    el.style.transform = `translateX(${x}px) translateZ(${z}px) rotateY(${rotY}deg) scale(${scale})`;
+    // Force GPU compositing using translate3d and scale3d
+    const targetTransform = `translate3d(${x}px, 0, ${z}px) rotateY(${rotY}deg) scale3d(${scale}, ${scale}, 1)`;
+    if (el.dataset.lastTransform !== targetTransform) {
+      el.style.transform = targetTransform;
+      el.dataset.lastTransform = targetTransform;
+    }
+
     el.style.zIndex = zIndex;
-    el.style.opacity = abs > 4 ? 0 : (abs > 2 ? 0.6 : 1);
+    el.style.opacity = abs > 2 ? 0.6 : 1;
   });
+
+  preloadActiveAndNeighbors();
 
   // Update shelf label
   const cur = movies[currentIndex];
@@ -1328,7 +1641,7 @@ function openFocusedDvd() {
   activeMovie = m;
 
   document.getElementById('bookletTitle').innerText = m.title;
-  document.getElementById('bookletRating').innerText = `★ ${m.rating || 8.0}`;
+  document.getElementById('bookletRating').innerText = `${m.rating || 8.0} / 10`;
   document.getElementById('bookletYear').innerText = m.year || 2024;
   document.getElementById('bookletRuntime').innerText = m.runtime ? `${m.runtime} dk` : '110 dk';
   document.getElementById('bookletOverview').innerText = m.overview || 'Film detayları arşivleniyor...';
