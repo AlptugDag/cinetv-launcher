@@ -285,9 +285,13 @@ public class PosterShelf extends FrameLayout {
         if (movies.isEmpty()) return;
         if (anim != null && anim.isRunning()) {
             anim.cancel();
+            anim = null;
         }
         targetPos = index;
         focusPos = index;
+        focusVel = 0f;
+        lean = 0f;
+        riffleEnv = 0f;
         if (!hasFocus()) {
             requestFocus();
         }
@@ -322,6 +326,9 @@ public class PosterShelf extends FrameLayout {
         index = Math.min(index, Math.max(0, max - 1));
         targetPos = index;
         focusPos = index;
+        focusVel = 0f;
+        lean = 0f;
+        riffleEnv = 0f;
         nextCaseRevealUptimeMs = android.os.SystemClock.uptimeMillis();
         // Layout empty slots immediately so their shelf coordinates are already set before the first case finishes baking
         layoutCases();
@@ -797,8 +804,10 @@ public class PosterShelf extends FrameLayout {
 
     private int pressKey;
     private long pressAt;
-    /** A held arrow: the shelf glides through films at an even pace and the case details wait for the release. */
+    /** A held arrow: the shelf glides through films at a continuous momentum pace and case details wait for release. */
     private boolean holding;
+    private float focusVel;
+    private float riffleEnv;
     private final Runnable settleFocus = () -> {
         holding = false;
         DvdCaseView v = focusedCase();
@@ -816,22 +825,19 @@ public class PosterShelf extends FrameLayout {
 
     /**
      * One press is one step. TV remotes send auto-repeats 100-300 ms into an ordinary press (and some
-     * send the press twice), which used to skip two films: repeats only count once the key has been
-     * held like a deliberate hold (400 ms), and then at most one step every 170 ms.
+     * send the press twice), which used to skip two films: repeats count once the key has been
+     * held deliberately (250 ms), and then feed continuous momentum at ~105 ms cadence.
      */
     private boolean acceptStep(int keyCode, KeyEvent e) {
-        // The remote's own clock (when the key went down, when this event was made), never the time it is handled:
-        // while the TV is busy (start-up, a shelf loading) events are handled late and in a burst, and a short press's
-        // repeats then looked like a deliberate hold, moving the focus several films at once.
         long t = e.getEventTime();
         if (e.getRepeatCount() == 0) {
-            if (keyCode == pressKey && t - pressAt < 170L) return false; // the IR receiver's echo of one press
+            if (keyCode == pressKey && t - pressAt < 165L) return false; // the IR receiver's echo of one press
             pressKey = keyCode;
             pressAt = t;
             lastStepMs = t;
             return true;
         }
-        if (keyCode != pressKey || t - e.getDownTime() < 400L || t - lastStepMs < 120L) return false;
+        if (keyCode != pressKey || t - e.getDownTime() < 250L || t - lastStepMs < 105L) return false;
         lastStepMs = t;
         return true;
     }
@@ -852,55 +858,102 @@ public class PosterShelf extends FrameLayout {
         // well before the end, so new cases join the ring off screen instead of replacing the ones in view
         if (listener != null && n - index <= 14) listener.onNearEnd();
         main.removeCallbacks(prefetchRunnable);
-        main.postDelayed(prefetchRunnable, 150);
-        if (anim != null) anim.cancel();
-        anim = ValueAnimator.ofFloat(focusPos, targetPos);
-        // Dynamic, fluid ease-in-out glide: non-abrupt start and soft cushioned arrival
-        if (holding) {
-            anim.setDuration(160);
-            anim.setInterpolator(UiKit.EASE_IN_OUT);
-        } else {
-            anim.setDuration(PerformanceProfile.animationMs(getContext(), 520));
-            anim.setInterpolator(UiKit.EASE_IN_OUT);
-        }
-        lastPos = focusPos;
-        lastFrameNs = 0;
-        anim.addUpdateListener(a -> {
-            focusPos = (float) a.getAnimatedValue();
-            long now = System.nanoTime();
-            if (lastFrameNs != 0) {
-                float dt = Math.max(0.008f, (now - lastFrameNs) / 1e9f);
-                float target = Math.max(-14f, Math.min(14f, -(focusPos - lastPos) / dt * 2.2f));
-                lean += (target - lean) * 0.35f;
-                if (motionListener != null) motionListener.onMotion(lean);
-            }
-            lastFrameNs = now;
-            lastPos = focusPos;
-            if (a.getAnimatedFraction() >= 1f) {
-                lean = 0f;
-                if (motionListener != null) motionListener.onMotion(0f);
-            }
-            layoutCases();
-        });
-        anim.start();
-        if (hasFocus()) postDelayed(startSway, SWAY_AFTER_MS);
+        main.postDelayed(prefetchRunnable, holding ? 320 : 150);
+
+        startShelfGlideLoop();
+
         removeCallbacks(settleFocus);
-        if (holding) postDelayed(settleFocus, 400);
+        if (holding) postDelayed(settleFocus, 340);
         else settleFocus.run();
     }
 
     /**
-     * Once the shelf settles, the focused case turns slowly on its axis, one way then the other, twice,
-     * and comes to rest facing you. It doesn't loop forever: an idle home screen draws nothing.
+     * Continuous frame-synced physics loop: preserves velocity across held key-repeats so hold-scrolling
+     * glides like a real physical carousel without start-stop stutter, then settles with critically-damped
+     * spring inertia when released.
+     */
+    private void startShelfGlideLoop() {
+        if (anim != null && anim.isRunning()) {
+            return;
+        }
+        lastFrameNs = System.nanoTime();
+        anim = ValueAnimator.ofFloat(0f, 1f);
+        anim.setDuration(1000L);
+        anim.setRepeatCount(ValueAnimator.INFINITE);
+        anim.setInterpolator(new android.view.animation.LinearInterpolator());
+        anim.addUpdateListener(a -> {
+            long now = System.nanoTime();
+            float dt = lastFrameNs == 0 ? 0.016f : Math.max(0.004f, Math.min(0.045f, (now - lastFrameNs) / 1e9f));
+            lastFrameNs = now;
+
+            float dist = targetPos - focusPos;
+            if (holding) {
+                // Continuous velocity-preserving riffle tracker: never brakes to 0 between key-repeat ticks
+                float dir = Math.signum(dist);
+                float cruiseFloor = Math.abs(dist) > 0.06f ? dir * 5.8f : 0f;
+                float desiredVel = dist * 7.8f + cruiseFloor * 0.45f;
+                desiredVel = Math.max(-11.5f, Math.min(11.5f, desiredVel));
+                focusVel += (desiredVel - focusVel) * (1f - (float) Math.exp(-dt * 20f));
+                focusPos += focusVel * dt;
+                if (dir > 0f && focusPos > targetPos) {
+                    focusPos = targetPos;
+                } else if (dir < 0f && focusPos < targetPos) {
+                    focusPos = targetPos;
+                }
+                riffleEnv += (1f - riffleEnv) * (1f - (float) Math.exp(-dt * 11f));
+            } else {
+                // Critically-damped physical spring settle with momentum carry-over
+                float animMs = Math.max(180f, (float) PerformanceProfile.animationMs(getContext(), 520));
+                float omega = 12.6f * (520f / animMs);
+                float accel = (omega * omega) * dist - (2.06f * omega) * focusVel;
+                focusVel += accel * dt;
+                focusPos += focusVel * dt;
+                riffleEnv += (0f - riffleEnv) * (1f - (float) Math.exp(-dt * 9.5f));
+            }
+
+            float targetLean = Math.max(-13.5f, Math.min(13.5f, -focusVel * 1.55f));
+            lean += (targetLean - lean) * (1f - (float) Math.exp(-dt * 16f));
+            if (motionListener != null) motionListener.onMotion(lean);
+
+            boolean settled = !holding
+                    && Math.abs(targetPos - focusPos) < 0.0015f
+                    && Math.abs(focusVel) < 0.015f
+                    && Math.abs(lean) < 0.05f
+                    && riffleEnv < 0.004f;
+
+            if (settled) {
+                focusPos = targetPos;
+                focusVel = 0f;
+                lean = 0f;
+                riffleEnv = 0f;
+                if (motionListener != null) motionListener.onMotion(0f);
+                layoutCases();
+                ValueAnimator running = anim;
+                anim = null;
+                if (running != null) running.cancel();
+                if (hasFocus()) {
+                    removeCallbacks(startSway);
+                    postDelayed(startSway, SWAY_AFTER_MS);
+                }
+            } else {
+                layoutCases();
+            }
+        });
+        anim.start();
+    }
+
+    /**
+     * Once the shelf settles, the focused case performs a natural 3-axis (yaw, pitch/tilt, roll + Z-depth float)
+     * gyroscopic inspection oscillation and comes smoothly to rest facing you.
      */
     private void sway() {
         if (com.cinetv.launcher.service.Prefs.reduceMotion(getContext())) return;
         if (!hasFocus() || cases.isEmpty() || !isShown()) return;
         if (swayAnim != null) swayAnim.cancel();
-        // two turns in one run (0..2), so the reflection can ease in at the start and out at the end
+        // Linear time progress (0..2) so harmonic sine/cosine waves are never warped by non-linear easing
         swayAnim = ValueAnimator.ofFloat(0f, 2f);
         swayAnim.setDuration(SWAY_MS * 2);
-        swayAnim.setInterpolator(UiKit.EASE_IN_OUT);
+        swayAnim.setInterpolator(new android.view.animation.LinearInterpolator());
         swayAnim.addUpdateListener(a -> {
             sway = (float) a.getAnimatedValue();
             if ((anim == null || !anim.isRunning()) && !hasAnyActiveHover() && asCases && index >= 0 && index < cases.size()) {
@@ -921,31 +974,74 @@ public class PosterShelf extends FrameLayout {
                     layoutCases();
                 }
                 DvdCaseView v = focusedCase();
-                if (v != null) v.setGlint(0f);
+                if (v != null) {
+                    v.setGlint(0f);
+                    v.setRoll(0f);
+                }
             }
         });
         swayAnim.start();
     }
 
+    /** Computes the 3-axis (Yaw, Pitch/Tilt, Roll, Scale, X/Y float, Glint) gyroscopic oscillation state. */
+    private void compute3dSway(float[] out) {
+        // out: [0]=yawTurn, [1]=pitchTilt, [2]=rollBank, [3]=scaleBoost, [4]=shiftX, [5]=liftY, [6]=glint, [7]=drift
+        if (swayAnim == null || sway <= 0f || sway >= 2f) {
+            for (int k = 0; k < 8; k++) out[k] = 0f;
+            return;
+        }
+        // Smooth raised-cosine C2 envelope over the first and last 20% of the cycle (zero velocity/acceleration jump)
+        float edge = Math.min(1f, Math.min(sway / 0.40f, (2f - sway) / 0.40f));
+        float env = 0.5f * (1f - (float) Math.cos(Math.PI * edge));
+        float phi = (float) (2.0 * Math.PI * sway);
+        float s1 = (float) Math.sin(phi);
+        float c1 = (float) Math.cos(phi);
+        float s2 = (float) Math.sin(phi * 1.5f + 0.85f);
+        float c2 = (float) Math.cos(phi * 1.5f + 0.85f);
+
+        // 1. Yaw (Y-axis horizontal turn: reveals 3D spine & sweeps front reflection)
+        out[0] = (8.4f * s1 + 1.6f * (float) Math.sin(2f * phi + 0.4f)) * env;
+        // 2. Pitch / Tilt (X-axis vertical nod: reveals top/bottom 3D case edges & shifts perspective horizon)
+        out[1] = (5.2f * s2 + 1.5f * c1) * env;
+        // 3. Roll (Z-axis physical wrist bank in 3D space)
+        out[2] = (2.35f * (float) Math.sin(phi - 0.65f)) * env;
+        // 4. Z-depth breathing scale
+        out[3] = (0.026f * (float) Math.sin(phi - 0.35f)) * env;
+        // 5. Subtle 3D spatial parallax X & levitation Y
+        out[4] = UiKit.pxf(3.8f) * s1 * env;
+        out[5] = -UiKit.pxf(5.5f) * s2 * env;
+        // 6. 2D diagonal specular glint
+        out[6] = Math.max(0f, Math.min(1f, (0.5f + 0.36f * s1 + 0.14f * c2) * env));
+        // 7. Cellophane wrap drift
+        out[7] = (s1 * 0.75f + s2 * 0.35f) * env;
+    }
+
+    private final float[] swayState = new float[8];
+
     private void updateFocusedCaseSwayOnly() {
         if (index < 0 || index >= cases.size()) return;
+        int w = getWidth(), h = getHeight();
         DvdCaseView v = cases.get(index);
         boolean focused = hasFocus();
         float focusScale = focused ? FOCUS_SCALE : 0.80f;
         float centerYaw = focused ? PROFILE_ANGLE : -34f;
         float dim = focused ? 1f : 0.94f;
         float lift = focused ? 1f : 0f;
-        float tilt = spatial ? (7.0f - 1.2f * lift) : 0f;
-        float turn = 0f, glint = 0f, swaySine = 0f;
-        if (swayAnim != null) {
-            swaySine = (float) Math.sin(2 * Math.PI * sway);
-            turn = 7.5f * swaySine;
-            float in = Math.min(1f, sway / 0.3f), out = Math.min(1f, (2f - sway) / 0.3f);
-            float env = in * in * (3f - 2f * in) * out * out * (3f - 2f * out);
-            glint = (0.5f + 0.5f * swaySine) * env;
+        float baseTilt = spatial ? (7.0f - 1.2f * lift) : 0f;
+        compute3dSway(swayState);
+        if (w > 0 && h > 0) {
+            int vw = v.getWidth() > 0 ? v.getWidth() : v.viewWidth();
+            int vh = v.getHeight() > 0 ? v.getHeight() : v.viewHeight();
+            float anchor = w * 0.5f;
+            float bow = spatial ? UiKit.pxf(5f) : 0f;
+            v.setTranslationX(anchor + swayState[4] - vw / 2f);
+            v.setTranslationY((h - vh) / 2f + (UiKit.pxf(5f) - bow) - UiKit.pxf(16f) * lift + swayState[5]);
         }
-        v.setGlint(glint);
-        v.setPose(centerYaw + turn, tilt, focusScale, lift, lean * 0.5f, dim, false, focusPos + swaySine * 0.8f);
+        v.setGlint(swayState[6]);
+        v.setRoll(swayState[2]);
+        float totalYaw = centerYaw + swayState[0];
+        float extraYaw = lean * 0.5f;
+        v.setPose(totalYaw, baseTilt + swayState[1], focusScale + swayState[3], lift, extraYaw, dim, (totalYaw + extraYaw) > 0f, focusPos + swayState[7]);
     }
 
     private void stopSway() {
@@ -958,13 +1054,20 @@ public class PosterShelf extends FrameLayout {
         if (sway != 0f) {
             sway = 0f;
             DvdCaseView v = focusedCase();
-            if (v != null) v.setGlint(0f);
+            if (v != null) {
+                v.setGlint(0f);
+                v.setRoll(0f);
+            }
         }
     }
 
     @Override
     protected void onDetachedFromWindow() {
         stopSway();
+        if (anim != null) {
+            anim.cancel();
+            anim = null;
+        }
         if (hoverAnim != null) {
             hoverAnim.cancel();
             hoverAnim = null;
@@ -981,14 +1084,14 @@ public class PosterShelf extends FrameLayout {
         ensureHoverArray(n);
         boolean focused = hasFocus();
         float anchor = w * 0.5f;
-        // A TV whose frames run slow draws a shorter shelf: the far cases are tiny anyway.
         boolean light = PerformanceProfile.gpuLimited(getContext());
-        // Every TV shows the full row again (weak TVs were cut to 7 a side, leaving the edges empty).
         float range = Math.min(VISIBLE_RANGE, n / 2f);
-        float step1 = caseW * (focused ? 1.14f : 0.94f);
-        // Fewer films spread a little wider so both sides of the screen are always filled.
+        // Slightly widen immediate neighbor spacing during rapid hold-riffle so cases fan out clearly
+        float step1 = caseW * ((focused ? 1.14f : 0.94f) - 0.08f * riffleEnv);
         int perSide = circular ? Math.max(1, (n - 1) / 2) : VISIBLE_RANGE;
         float stepN = Math.max(caseW * 0.30f, Math.min(caseW * 0.48f, (w * 0.47f - step1) / Math.max(1, perSide - 1)));
+
+        compute3dSway(swayState);
 
         for (int i = 0; i < n; i++) {
             DvdCaseView v = cases.get(i);
@@ -1003,8 +1106,6 @@ public class PosterShelf extends FrameLayout {
             float rawHover = hoverAmounts[i];
             float hv = rawHover * rawHover * (3f - 2f * rawHover);
             if (!asCases) {
-                // The original poster vitrin: overlapping posters, depth steps 1.30 / 0.94 / 0.80 / 0.68,
-                // fading back and, with Spatial HUD, turning 18 / 25 / 30 degrees towards the focus.
                 float t = Math.min(ad, 3f);
                 float px = anchor + Math.signum(d) * caseW * 0.72f * ad;
                 float pScale = (focused ? interp(t, 1.30f, 0.94f, 0.80f, 0.68f) : interp(t, 1.0f, 0.92f, 0.84f, 0.76f)) + 0.12f * hv;
@@ -1016,69 +1117,84 @@ public class PosterShelf extends FrameLayout {
                 v.setTranslationY((h - vh) / 2f - UiKit.pxf(24) * pLift + UiKit.pxf(8) * Math.min(ad, 2f) - UiKit.pxf(12) * hv);
                 v.setTranslationZ(100f - ad * 10f + 18f * hv);
                 v.setDepthBlur(0.55f * Math.max(0f, Math.min(1f, (ad - 3f) / 4f)) * (1f - hv));
+                v.setRoll(0f);
                 v.setPose(pYaw, spatial ? 5.5f * (1f - pLift) : 0f, pScale, pLift, lean * 0.6f, pDim, false, focusPos);
                 continue;
             }
-            // Cover Flow: the focus stands forward in slight profile; every other case turns the
-            // same 62 degrees towards it and stands spine to spine, like a real collection.
+            // Cover Flow with C2 smooth Hermite center transition and physical hold-to-scroll domino wave:
             float near = Math.min(ad, 1f);
+            float smoothNear = near * near * (3f - 2f * near);
             float far = Math.max(0f, ad - 1f);
+            // Smooth blend between step1 and stepN around |d|=1 so sliding cases never hit a velocity corner
             float offset = step1 * near + stepN * far;
-            // Hovering a DVD case slides it slightly outward from its slot so its cover peeks out cleanly:
             float hoverOutX = Math.signum(d) * caseW * 0.055f * hv * near;
             float x = anchor + Math.signum(d) * offset + hoverOutX;
-            float focusScale = focused ? FOCUS_SCALE : 1.08f;
-            float scale = focusScale + (0.86f - focusScale) * near - Math.min(0.08f, 0.012f * far);
+
+            // During hold-to-scroll (riffleEnv > 0), intermediate cases form a flowing crested wave instead of
+            // popping sharply up and down on each slot, then bloom to full FOCUS_SCALE on release:
+            float activeFocusScale = focused ? (FOCUS_SCALE - 0.14f * riffleEnv) : 1.08f;
+            float waveWidth = 1f + 0.65f * riffleEnv;
+            float waveT = Math.min(1f, ad / waveWidth);
+            float smoothWave = waveT * waveT * (3f - 2f * waveT);
+            float blendNear = smoothNear * (1f - 0.55f * riffleEnv) + smoothWave * (0.55f * riffleEnv);
+
+            float scale = activeFocusScale + (0.86f - activeFocusScale) * blendNear - Math.min(0.08f, 0.012f * far);
             scale += (near < 0.5f ? (focused ? 0.065f : 0.12f) : 0.135f) * hv;
-            // Further down the shelf: darker and out of focus, like a real room lit at the front.
-            // Hovered case catches the light and becomes distinctly prominent:
-            float dim = (focused ? 1f : 0.94f) - 0.10f * near - Math.min(0.52f, 0.075f * far);
+
+            float dim = (focused ? 1f : 0.94f) - 0.10f * blendNear - Math.min(0.52f, 0.075f * far);
             dim = Math.min(1f, dim + (1f - dim) * (0.90f * hv));
-            // Only a hint of depth of field: soft, never smeared (clears completely when hovered).
             float blur = (light ? 0f : 0.55f * Math.max(0f, Math.min(1f, (far - 2f) / 4f))) * (1f - hv);
             float spatialWrap = spatial ? -Math.signum(d) * Math.min(7.5f, far * 1.8f) : 0f;
             float centerYaw = focused ? PROFILE_ANGLE : (-22f + (PROFILE_ANGLE - (-22f)) * hv);
-            float sideYaw = SIDE_ANGLE * (1f - 0.34f * hv);
-            float yaw = Math.signum(d) * sideYaw * near + centerYaw * (1f - near) + spatialWrap;
-            float lift = Math.max(focused ? 1f - near : 0f, (focused ? 0.58f : 0.68f) * hv);
-            float tilt = spatial ? (7.0f - 1.2f * lift) : 0f;
-            float turn = 0f, glint = 0.65f * hv;
-            float swaySine = 0f;
+            // Slightly open the side angle of immediate neighbors during rapid riffling so covers fan open
+            float sideYaw = SIDE_ANGLE * (1f - 0.34f * hv - 0.12f * riffleEnv * (1f - Math.min(1f, far * 0.5f)));
+            // Continuous signed angle transition across d=0 using d * smooth profile
+            float signedBlend = Math.signum(d) * smoothNear;
+            float yaw = signedBlend * sideYaw + centerYaw * (1f - smoothNear) + spatialWrap;
+
+            float lift = Math.max(focused ? 1f - blendNear : 0f, (focused ? 0.58f : 0.68f) * hv);
+            // Physical 3D domino tilt & roll as the shelf glides
+            float dominoFactor = Math.max(0f, 1f - far * 0.28f);
+            float dominoTilt = Math.min(4.2f, Math.abs(lean) * 0.28f) * dominoFactor;
+            float dominoRoll = lean * 0.15f * dominoFactor;
+            float tilt = (spatial ? (7.0f - 1.2f * lift) : 0f) + dominoTilt;
+            float roll = dominoRoll;
+
+            float turn = 0f, glint = 0.65f * hv + Math.min(0.35f, Math.abs(lean) * 0.025f) * (1f - near * 0.5f);
+            float swayShiftX = 0f, swayLiftY = 0f, swayDrift = 0f;
             if (i == index && swayAnim != null) {
-                // The focused case turns slowly on its axis (±7.5°, starting and ending square) so the light runs
-                // across its sleeve.
-                swaySine = (float) Math.sin(2 * Math.PI * sway);
-                turn = 7.5f * swaySine;
-                // the sleeve's reflection fades in over the first second and out over the last, never switching on
-                float in = Math.min(1f, sway / 0.3f), out = Math.min(1f, (2f - sway) / 0.3f);
-                float env = in * in * (3f - 2f * in) * out * out * (3f - 2f * out);
-                glint = Math.max(glint, (0.5f + 0.5f * swaySine) * env);
+                turn = swayState[0];
+                tilt += swayState[1];
+                roll += swayState[2];
+                scale += swayState[3];
+                swayShiftX = swayState[4];
+                swayLiftY = swayState[5];
+                glint = Math.max(glint, swayState[6]);
+                swayDrift = swayState[7];
             }
 
-            // Continuous subtle architectural bow (apex in center, NO flat zone, NO artificial vertical climb):
             float norm = Math.min(1f, ad / Math.max(1f, perSide));
             float bow = spatial ? UiKit.pxf(5f) * (1f - norm * norm) : 0f;
 
-            // The row runs to the very edges: a case is drawn whole until it has slid fully off the screen,
-            // and new ones enter from beyond the edge (no fading or popping in short of it).
             float half = caseW * scale * 0.75f;
             if (x + half < 0f || x - half > w || ad > n / 2f + 0.5f) {
                 v.setVisibility(INVISIBLE);
                 continue;
             }
             v.setVisibility(VISIBLE);
-            v.setTranslationX(x - vw / 2f);
-            // Grounded shelf baseline: subtle bow and anchor contact keep all cases firmly planted on shelf plane.
+            v.setTranslationX(x + swayShiftX - vw / 2f);
             float hoverSlideY = -UiKit.pxf(14f) * hv;
-            v.setTranslationY((h - vh) / 2f + (UiKit.pxf(5f) - bow) - UiKit.pxf(16f) * lift + hoverSlideY);
+            v.setTranslationY((h - vh) / 2f + (UiKit.pxf(5f) - bow) - UiKit.pxf(16f) * lift + hoverSlideY + swayLiftY);
             v.setTranslationZ(110f - ad * 10f + 45f * lift + 25f * hv);
             v.setDepthBlur(blur);
             v.setGlint(glint);
+            v.setRoll(roll);
             v.setSleeve(!light || ad < 1.5f || hv > 0.05f);
-            // Continuous drift without discontinuity: uses swaySine so it returns exactly to 0 at animation end
-            // Only the focused case drifts while it turns: the rest of the shelf stays still and is not redrawn.
-            float driftVal = (i == index ? focusPos + swaySine * 0.8f : focusPos) + hv * 0.45f;
-            v.setPose(yaw + turn, tilt, scale, lift, lean * (0.5f + 0.5f * near), dim, d > 0.5f, driftVal);
+            float driftVal = (i == index ? focusPos + swayDrift : focusPos) + hv * 0.45f;
+            float extraYaw = lean * (0.5f + 0.5f * near);
+            float totalYaw = yaw + turn;
+            // Flip spine side at exact optical zero-crossing (totalYaw + extraYaw > 0f) so side texture never pops
+            v.setPose(totalYaw, tilt, scale, lift, extraYaw, dim, (totalYaw + extraYaw) > 0f, driftVal);
         }
         updateShelfFurniture(w, h);
     }

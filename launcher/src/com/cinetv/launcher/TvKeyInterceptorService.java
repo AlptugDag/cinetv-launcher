@@ -1788,9 +1788,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
             }
             return true;
         }
-        // The blue key held for a second: a screenshot for the phone remote, on any screen. A short press keeps its
-        // own job (the key's shortcut, or CineTV's own handling), now sent on release.
-        if (code == KeyEvent.KEYCODE_PROG_BLUE
+        // The blue key held for a second: a screenshot for the phone remote, on any screen. A short press triggers Shazam music recognition.
+        if (HardwareKeys.isBlueKey(code, event.getScanCode())
                 && android.os.SystemClock.elapsedRealtime() - blueReplayAt > 1500) {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 if (event.getRepeatCount() == 0) {

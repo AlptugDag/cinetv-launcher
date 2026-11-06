@@ -370,10 +370,50 @@ header.hud {
   overflow: hidden;
   box-shadow: 0 16px 38px rgba(0,0,0,0.75), -8px 0 22px rgba(0,0,0,0.5);
   background: #111;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+.dvd-case.is-focused-hero .box-inner {
+  animation: dvd3dGyroSway 7.5s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+.dvd-case.is-focused-hero .sheen {
+  animation: dvd3dSheenSweep 7.5s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+@keyframes dvd3dGyroSway {
+  0%, 100% {
+    transform: translate3d(0px, 0px, 0px) rotateY(-12deg) rotateX(0deg) rotateZ(0deg) scale3d(1, 1, 1);
+  }
+  25% {
+    transform: translate3d(4px, -5px, 14px) rotateY(-3.5deg) rotateX(4.8deg) rotateZ(2.1deg) scale3d(1.022, 1.022, 1);
+  }
+  50% {
+    transform: translate3d(0px, -2px, 8px) rotateY(-11deg) rotateX(-3.6deg) rotateZ(-1.4deg) scale3d(1.012, 1.012, 1);
+  }
+  75% {
+    transform: translate3d(-4px, -6px, 16px) rotateY(-19.5deg) rotateX(3.9deg) rotateZ(-2.2deg) scale3d(1.025, 1.025, 1);
+  }
+}
+@keyframes dvd3dSheenSweep {
+  0%, 100% {
+    background-position: 0% 0%;
+    opacity: 0.85;
+  }
+  25% {
+    background-position: 65% 35%;
+    opacity: 1;
+  }
+  50% {
+    background-position: 30% 80%;
+    opacity: 0.9;
+  }
+  75% {
+    background-position: 90% 20%;
+    opacity: 1;
+  }
 }
 /* Pre-load placeholder skeleton pulse */
 .dvd-case .case-skeleton {
@@ -1167,7 +1207,7 @@ header.hud {
         <img src="assets/icon.png" class="logo" alt="CineTV">
         <div>
           <h2>CineTV Ayarlar</h2>
-          <div class="sub">Tek Pencere Responsive Kontrol Paneli · v1.0.0.50 Windows</div>
+          <div class="sub">Tek Pencere Responsive Kontrol Paneli · v1.0.0.51 Windows</div>
         </div>
       </div>
       <button class="btn-close-modal" style="position:static;" onclick="closeSettings()">Kapat</button>
@@ -1238,16 +1278,6 @@ header.hud {
       <div class="settings-section">
         <h3>2. Sinema Deneyimi & 3D</h3>
         <div class="settings-grid">
-          <div class="settings-tile">
-            <div class="tile-info">
-              <span class="tile-title">3D DVD Kutuları & Cover Flow</span>
-              <span class="tile-sub">Raf perspektifi ve gerçekçi disk kabartması</span>
-            </div>
-            <label class="ios-switch">
-              <input type="checkbox" id="swDvdCases" checked onchange="saveSetting('dvdCases', this.checked)">
-              <span class="slider"></span>
-            </label>
-          </div>
           <div class="settings-tile">
             <div class="tile-info">
               <span class="tile-title">Cam Prizma & Kırılma Efekti</span>
@@ -1432,10 +1462,19 @@ window.addEventListener('DOMContentLoaded', () => {
       if (e.key === 'Enter') playInNuvio();
       return;
     }
-    if (e.key === 'ArrowLeft') stepShelf(-1);
-    else if (e.key === 'ArrowRight') stepShelf(1);
-    else if (e.key === 'Enter' || e.key === ' ') openFocusedDvd();
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      stepShelf(-1, e.repeat);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      stepShelf(1, e.repeat);
+    } else if (e.key === 'Enter' || e.key === ' ') openFocusedDvd();
     else if (e.key === 'f' || e.key === 'F11') windowControl('fullscreen');
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      isHoldingShelfKey = false;
+    }
   });
 });
 
@@ -1564,28 +1603,76 @@ function renderShelf() {
   layoutShelf();
 }
 
-// 3D Perspective Layout with organic curve and optimized hardware acceleration
-function layoutShelf() {
+let isHoldingShelfKey = false;
+let shelfFocusPos = 0;
+let shelfTargetPos = 0;
+let shelfVel = 0;
+let shelfRiffleEnv = 0;
+let shelfAnimRaf = null;
+let shelfLastTs = 0;
+
+function startWebShelfLoop() {
+  if (shelfAnimRaf) return;
+  shelfLastTs = performance.now();
+  const tick = (now) => {
+    const dt = Math.max(0.004, Math.min(0.045, (now - shelfLastTs) / 1000));
+    shelfLastTs = now;
+    const dist = shelfTargetPos - shelfFocusPos;
+    if (isHoldingShelfKey) {
+      const dir = Math.sign(dist);
+      const cruise = Math.abs(dist) > 0.05 ? dir * 5.8 : 0;
+      const desiredVel = Math.max(-11.5, Math.min(11.5, dist * 7.8 + cruise * 0.45));
+      shelfVel += (desiredVel - shelfVel) * (1 - Math.exp(-dt * 20));
+      shelfFocusPos += shelfVel * dt;
+      if (dir > 0 && shelfFocusPos > shelfTargetPos) shelfFocusPos = shelfTargetPos;
+      if (dir < 0 && shelfFocusPos < shelfTargetPos) shelfFocusPos = shelfTargetPos;
+      shelfRiffleEnv += (1 - shelfRiffleEnv) * (1 - Math.exp(-dt * 11));
+    } else {
+      const omega = 12.6;
+      const accel = (omega * omega) * dist - (2.06 * omega) * shelfVel;
+      shelfVel += accel * dt;
+      shelfFocusPos += shelfVel * dt;
+      shelfRiffleEnv += (0 - shelfRiffleEnv) * (1 - Math.exp(-dt * 9.5));
+    }
+    layoutShelf(true);
+    if (!isHoldingShelfKey && Math.abs(shelfTargetPos - shelfFocusPos) < 0.0015 && Math.abs(shelfVel) < 0.015 && shelfRiffleEnv < 0.005) {
+      shelfFocusPos = shelfTargetPos;
+      shelfVel = 0;
+      shelfRiffleEnv = 0;
+      shelfAnimRaf = null;
+      layoutShelf(false);
+    } else {
+      shelfAnimRaf = requestAnimationFrame(tick);
+    }
+  };
+  shelfAnimRaf = requestAnimationFrame(tick);
+}
+
+// 3D Perspective Layout with organic curve, 3-axis hero oscillation, and hold-riffle wave
+function layoutShelf(inMotion = false) {
   const n = movies.length;
   if (n === 0) return;
+  if (!inMotion && !shelfAnimRaf) {
+    shelfFocusPos = currentIndex;
+    shelfTargetPos = currentIndex;
+  }
+  const lean = Math.max(-13.5, Math.min(13.5, -shelfVel * 1.55));
 
   movies.forEach((m, i) => {
     const el = document.getElementById(`dvd-case-${i}`);
     if (!el) return;
 
-    let delta = i - currentIndex;
-    // Circular wrap for infinite ring
+    let delta = i - (((shelfFocusPos % n) + n) % n);
     if (delta > n / 2) delta -= n;
     if (delta < -n / 2) delta += n;
 
     const abs = Math.abs(delta);
 
-    // Completely avoid 3D matrix math and GPU layers for off-screen cases
-    if (abs > 4) {
+    if (abs > 4.2) {
       if (el.style.display !== 'none') {
         el.style.display = 'none';
         el.style.willChange = 'auto';
-        el.classList.remove('in-focus-range');
+        el.classList.remove('in-focus-range', 'is-focused-hero');
       }
       return;
     }
@@ -1594,8 +1681,7 @@ function layoutShelf() {
       el.style.display = 'block';
     }
 
-    // Hardware acceleration optimization: only cases in active focus motion get will-change
-    if (abs <= 3) {
+    if (abs <= 3.2) {
       el.style.willChange = 'transform';
       el.classList.add('in-focus-range');
     } else {
@@ -1603,36 +1689,60 @@ function layoutShelf() {
       el.classList.remove('in-focus-range');
     }
 
-    const spacing = 185;
-    const x = delta * spacing;
-    const z = -abs * 110;
-    const rotY = -delta * 22;
-    const scale = Math.max(0.72, 1.15 - abs * 0.12);
-    const zIndex = 100 - abs;
+    if (abs < 0.15 && !inMotion && !isHoldingShelfKey) {
+      el.classList.add('is-focused-hero');
+    } else {
+      el.classList.remove('is-focused-hero');
+    }
 
-    // Force GPU compositing using translate3d and scale3d
-    const targetTransform = `translate3d(${x}px, 0, ${z}px) rotateY(${rotY}deg) scale3d(${scale}, ${scale}, 1)`;
+    const near = Math.min(abs, 1);
+    const smoothNear = near * near * (3 - 2 * near);
+    const waveWidth = 1 + 0.65 * shelfRiffleEnv;
+    const waveT = Math.min(1, abs / waveWidth);
+    const smoothWave = waveT * waveT * (3 - 2 * waveT);
+    const blendNear = smoothNear * (1 - 0.55 * shelfRiffleEnv) + smoothWave * (0.55 * shelfRiffleEnv);
+
+    const spacing = 185 - 12 * shelfRiffleEnv;
+    const x = Math.round(delta * spacing * 10) / 10;
+    const z = Math.round((-abs * 110 + (1 - blendNear) * 35) * 10) / 10;
+    const signedBlend = Math.sign(delta) * smoothNear;
+    const rotY = Math.round((-signedBlend * 54 * (1 - 0.12 * shelfRiffleEnv) + lean * 0.65) * 10) / 10;
+    const rotX = Math.round((Math.min(4.2, Math.abs(lean) * 0.28) * Math.max(0, 1 - abs * 0.25)) * 10) / 10;
+    const rotZ = Math.round((lean * 0.15 * Math.max(0, 1 - abs * 0.25)) * 10) / 10;
+    const peakScale = 1.24 - 0.10 * shelfRiffleEnv;
+    const scale = Math.round(Math.max(0.72, peakScale + (0.88 - peakScale) * blendNear - Math.max(0, abs - 1) * 0.05) * 1000) / 1000;
+    const zIndex = Math.round(100 - abs * 10);
+
+    el.style.transition = (inMotion || shelfAnimRaf) ? 'opacity 0.2s ease' : 'transform 0.48s cubic-bezier(0.12, 0.85, 0.25, 1), filter 0.35s ease, opacity 0.35s ease';
+    const targetTransform = `translate3d(${x}px, 0, ${z}px) rotateY(${rotY}deg) rotateX(${rotX}deg) rotateZ(${rotZ}deg) scale3d(${scale}, ${scale}, 1)`;
     if (el.dataset.lastTransform !== targetTransform) {
       el.style.transform = targetTransform;
       el.dataset.lastTransform = targetTransform;
     }
 
     el.style.zIndex = zIndex;
-    el.style.opacity = abs > 2 ? 0.6 : 1;
+    el.style.opacity = abs > 2.2 ? 0.6 : 1;
   });
 
   preloadActiveAndNeighbors();
 
-  // Update shelf label
   const cur = movies[currentIndex];
   if (cur) {
     document.getElementById('shelfCategoryTitle').innerText = `${cur.title} (${cur.year}) · ${cur.director || 'CineTV Seçkisi'}`;
   }
 }
 
-function stepShelf(dir) {
-  currentIndex = (currentIndex + dir + movies.length) % movies.length;
-  layoutShelf();
+let lastWebStepMs = 0;
+function stepShelf(dir, isRepeat = false) {
+  const n = movies.length;
+  if (n === 0) return;
+  const now = performance.now();
+  if (isRepeat && now - lastWebStepMs < 100) return;
+  lastWebStepMs = now;
+  isHoldingShelfKey = !!isRepeat;
+  shelfTargetPos += dir;
+  currentIndex = ((Math.round(shelfTargetPos) % n) + n) % n;
+  startWebShelfLoop();
 }
 
 function openFocusedDvd() {

@@ -26,14 +26,14 @@ public class DvdCaseView extends View {
     private DvdCase dvd;
     private final int caseW, caseH, depth;
     private final int glowPad;
-    private float yaw, tilt, scale = 1f, lift, spatialYaw;
+    private float yaw, tilt, roll, scale = 1f, lift, spatialYaw;
     private float dim = 1f;
     private boolean spineRight;
     private float drift;
     private float blur;
     private float glint;
     private android.graphics.ColorFilter themeFilter;
-    private float ca, sa, cb, sb, persp;
+    private float ca, sa, cb, sb, cr = 1f, sr = 0f, persp;
 
     private final Paint bmpPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Paint wrapPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
@@ -112,6 +112,13 @@ public class DvdCaseView extends View {
         setPose(yaw, tilt, scale, lift, extraYaw, 1f, false, 0f);
     }
 
+    /** Sets 3D roll angle (Z-axis bank in degrees) for full 3-axis physical orientation. */
+    public void setRoll(float roll) {
+        if (Math.abs(this.roll - roll) < 0.005f) return;
+        this.roll = roll;
+        invalidate();
+    }
+
     /**
      * yaw/tilt in degrees; lift 0..1 (focus); extraYaw corrects perspective for the screen position;
      * dim darkens cases further back (solid objects, never see-through); spineRight mirrors the case
@@ -150,9 +157,10 @@ public class DvdCaseView extends View {
     /** Returns the exact lowest Y offset of the projected box inside this view. */
     public float getBaseY() {
         float cy = (caseH + glowPad * 2) * 0.5f;
-        double a = Math.toRadians(yaw + spatialYaw), b = Math.toRadians(tilt);
+        double a = Math.toRadians(yaw + spatialYaw), b = Math.toRadians(tilt), r = Math.toRadians(roll);
         float ca = (float) Math.cos(a), sa = (float) Math.sin(a);
         float cb = (float) Math.cos(b), sb = (float) Math.sin(b);
+        float cr = (float) Math.cos(r), sr = (float) Math.sin(r);
         float persp = caseH * 2.2f;
         float hw = caseW * 0.5f, hh = caseH * 0.5f;
         float hd = (dvd != null && dvd.spine == null) ? 0f : depth * 0.5f;
@@ -164,8 +172,9 @@ public class DvdCaseView extends View {
             float z1 = -bx * sa + bz * ca;
             float y2 = hh * cb - z1 * sb;
             float z2 = hh * sb + z1 * cb;
+            float y3 = x1 * sr + y2 * cr;
             float f = persp / (persp + z2) * scale;
-            float py = cy + y2 * f;
+            float py = cy + y3 * f;
             if (py > maxBottom) maxBottom = py;
         }
         return maxBottom;
@@ -197,8 +206,10 @@ public class DvdCaseView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         float cx = getWidth() / 2f, cy = getHeight() / 2f;
-        double a = Math.toRadians(yaw + spatialYaw), b = Math.toRadians(tilt);
-        ca = (float) Math.cos(a); sa = (float) Math.sin(a); cb = (float) Math.cos(b); sb = (float) Math.sin(b);
+        double a = Math.toRadians(yaw + spatialYaw), b = Math.toRadians(tilt), r = Math.toRadians(roll);
+        ca = (float) Math.cos(a); sa = (float) Math.sin(a);
+        cb = (float) Math.cos(b); sb = (float) Math.sin(b);
+        cr = (float) Math.cos(r); sr = (float) Math.sin(r);
         persp = caseH * 2.2f;
         if (lift > 0.01f && dvd != null && dvd.bloom != null) {
             if (dvd.halo) {
@@ -295,15 +306,17 @@ public class DvdCaseView extends View {
         canvas.drawBitmap(tex, matrix, paint);
     }
 
-    /** Rotates a box-space point (yaw then tilt), places it at distance D and projects it into pt. */
+    /** Rotates a box-space point in full 3D (yaw -> pitch/tilt -> roll), places it at distance D and projects into pt. */
     private void point(float cx, float cy, float x, float y, float z) {
         float x1 = x * ca + z * sa;
         float z1 = -x * sa + z * ca;
         float y2 = y * cb - z1 * sb;
         float z2 = y * sb + z1 * cb;
+        float x3 = x1 * cr - y2 * sr;
+        float y3 = x1 * sr + y2 * cr;
         float f = persp / (persp + z2) * scale;
-        pt[0] = cx + x1 * f;
-        pt[1] = cy + y2 * f;
+        pt[0] = cx + x3 * f;
+        pt[1] = cy + y3 * f;
     }
 
     /** Projects the 8 corners of the box. */
@@ -329,12 +342,14 @@ public class DvdCaseView extends View {
         }
         if (area <= 0) return;
 
-        // Lambert shading, rotated like the box.
+        // Full 3-axis Lambert shading rotated with the box (yaw, pitch, roll).
         float x1 = nx * ca + nz * sa;
         float z1 = -nx * sa + nz * ca;
         float y2 = ny * cb - z1 * sb;
         float z2 = ny * sb + z1 * cb;
-        float lambert = Math.max(0f, x1 * LX + y2 * LY + z2 * LZ);
+        float x3 = x1 * cr - y2 * sr;
+        float y3 = x1 * sr + y2 * cr;
+        float lambert = Math.max(0f, x3 * LX + y3 * LY + z2 * LZ);
         float light = Math.min(1f, 0.38f + 0.62f * lambert / 0.76f);
         int l = Math.min(255, (int) (255 * light * dim));
         LightingColorFilter filter = l >= 250 ? null : lighting(l);
@@ -368,30 +383,31 @@ public class DvdCaseView extends View {
             // Soft collectors' satin cellophane sheen (subtle and realistic, never blown-out CGI):
             Bitmap wrap = DvdCase.wrap();
             float facing = Math.max(0f, -z2);
-            float slide = (x1 * 0.5f + 0.5f) * 0.40f + drift * 0.05f + glint * 0.45f;
+            float slide = (x3 * 0.5f + 0.5f) * 0.42f + (y3 * 0.22f) + drift * 0.05f + glint * 0.45f;
             int win = wrap.getWidth() / 3;
             float phase = (float) (slide - Math.floor(slide));
             float smooth = phase <= 0.5f ? phase * 2f : (1f - phase) * 2f;
             int off = (int) (smooth * (wrap.getWidth() - win));
             mapTo(tex, 0, tex.getWidth());
             // Velvety soft reflection with harmonic glint boost
-            float wrapStrength = (0.12f + 0.07f * lift + 0.14f * glint) * (0.5f + 0.5f * facing) * dim;
-            wrapPaint.setAlpha((int) (255 * Math.min(0.28f, wrapStrength)));
+            float wrapStrength = (0.12f + 0.07f * lift + 0.15f * glint) * (0.5f + 0.5f * facing) * dim;
+            wrapPaint.setAlpha((int) (255 * Math.min(0.30f, wrapStrength)));
             sliceSrc.set(off, 0, off + win, wrap.getHeight());
             rect.set(0, 0, tex.getWidth(), tex.getHeight());
             canvas.save();
             canvas.concat(matrix);
             canvas.drawBitmap(wrap, sliceSrc, rect, wrapPaint);
 
-            // The sleeve catches the light: a broad soft glow with a crisp streak in it, angled like a window
-            // reflection, travelling across the cover as the case turns. Plus the gloss on the top edge.
+            // The sleeve catches the light in 3D: a broad soft glow with a crisp streak in it, angled like a window
+            // reflection, travelling diagonally across both X and Y as the case turns, nods, and banks in 3D.
             if (lift > 0.05f) {
                 float tw = tex.getWidth(), th = tex.getHeight();
                 ensureSheenShaders(tw, th);
-                float travel = 0.5f + 0.5f * Math.max(-1f, Math.min(1f, x1)) * 0.6f + (glint - 0.5f) * 0.55f;
-                float cxs = tw * (0.08f + 0.84f * Math.max(0f, Math.min(1f, travel)));
+                float travelX = 0.5f + 0.5f * Math.max(-1f, Math.min(1f, x3)) * 0.65f + (glint - 0.5f) * 0.55f;
+                float travelY = Math.max(-1f, Math.min(1f, y3)) * th * 0.28f;
+                float cxs = tw * (0.08f + 0.84f * Math.max(0f, Math.min(1f, travelX)));
                 int modAlpha = Math.max(0, Math.min(255, Math.round(255f * lift * dim)));
-                sheenMatrix.setTranslate(cxs, 0f);
+                sheenMatrix.setTranslate(cxs, travelY);
 
                 haloShader.setLocalMatrix(sheenMatrix);
                 sheenPaint.setShader(haloShader);

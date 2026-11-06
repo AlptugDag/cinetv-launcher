@@ -84,9 +84,12 @@ public final class ShazamRecognizer {
     }
 
     /**
-     * Triggered on blue button short press or mobile web remote. Records ~4.2 seconds of 16 kHz mono PCM audio,
-     * shows the CineSUB-style blue Shazam overlay & Liquid Glass track card, computes a real Shazam
-     * 0xCAFE2580 acoustic signature, and queries amp.shazam.com.
+     * Triggered on blue button short press or mobile web remote.
+     * Combines multi-tier recognition so music identification works on all TVs (even without a built-in microphone):
+     * 1. Automatic runtime grant of RECORD_AUDIO & SYSTEM_ALERT_WINDOW via LocalAdb if missing.
+     * 2. Active Music MediaSession inspection (Spotify, YouTube Music, Apple Music, TizenTube).
+     * 3. Hardware AudioRecord (REMOTE_SUBMIX / MIC / VOICE_RECOGNITION) -> 0xCAFE2580 Shazam acoustic signature -> amp.shazam.com.
+     * 4. Scene & Soundtrack Context Recognition (identifies the song/theme playing in the active film, series, or music video frame + enrichment via iTunes catalog).
      */
     public static void recognize(Context context) {
         if (recognizing) return;
@@ -98,25 +101,55 @@ public final class ShazamRecognizer {
 
         new Thread(() -> {
             try {
-                // Stage 1: Quick 3.4s capture + normalized Apple Shazam Vibra 0xCAFE2580 signature
-                short[] samples = recordPcm16Mono(3400);
+                // Ensure permissions are granted on TVs updated from earlier builds
+                ensurePermissions(app);
+
+                // Tier 1: Capture screen frame immediately while listening animation starts (for scene/music-video fallback if audio is silent)
+                byte[] sceneJpeg = null;
+                try {
+                    sceneJpeg = SceneInspector.captureJpeg(app, true);
+                } catch (Throwable ignored) {}
+
                 TrackInfo info = null;
 
-                if (samples != null && samples.length >= SAMPLE_RATE * 2) {
-                    short[] normSamples = normalizePcmSamples(samples);
-                    String sigUri = buildShazamSignatureUri(normSamples);
-                    int sampleDurationMs = (normSamples.length * 1000) / SAMPLE_RATE;
-                    info = queryShazamDiscovery(sigUri, sampleDurationMs, tr);
+                // Tier 2: Check if a dedicated music player MediaSession (Spotify, YouTube Music, etc.) is actively playing a song
+                info = inspectActiveMusicSession(app);
+                if (info != null && !info.title.isEmpty()) {
+                    // Simulate brief listening energy so the blue Shazam wave animation feels responsive
+                    for (int i = 0; i < 6; i++) {
+                        com.cinetv.launcher.ui.ShazamOverlay.updateEnergy(0.45f + (i % 3) * 0.2f);
+                        try { Thread.sleep(220); } catch (InterruptedException ignored) {}
+                    }
+                    enrichWithItunes(info, tr);
                 }
 
-                // Stage 2: If first pass did not match (e.g. quiet dialogue moment), record a longer 4.8s window
+                // Tier 3: Real acoustic capture + Apple Shazam 0xCAFE2580 signature query
+                if (info == null || info.title.isEmpty()) {
+                    short[] samples = recordPcm16Mono(app, 3400);
+                    if (samples != null && samples.length >= SAMPLE_RATE * 2 && hasMeaningfulAudio(samples)) {
+                        short[] normSamples = normalizePcmSamples(samples);
+                        String sigUri = buildShazamSignatureUri(normSamples);
+                        int sampleDurationMs = (normSamples.length * 1000) / SAMPLE_RATE;
+                        info = queryShazamDiscovery(sigUri, sampleDurationMs, tr);
+                    }
+
+                    // Second acoustic pass if audio was captured but first pass didn't match
+                    if ((info == null || info.title.isEmpty()) && samples != null && hasMeaningfulAudio(samples) && recognizing) {
+                        short[] retrySamples = recordPcm16Mono(app, 4500);
+                        if (retrySamples != null && retrySamples.length >= SAMPLE_RATE * 2 && hasMeaningfulAudio(retrySamples)) {
+                            short[] normRetry = normalizePcmSamples(retrySamples);
+                            String sigUri2 = buildShazamSignatureUri(normRetry);
+                            int sampleDurationMs2 = (normRetry.length * 1000) / SAMPLE_RATE;
+                            info = queryShazamDiscovery(sigUri2, sampleDurationMs2, tr);
+                        }
+                    }
+                }
+
+                // Tier 4: Scene & Soundtrack Context Recognition (for TVs without a hardware mic or when audio is routed over HDMI/optical)
                 if ((info == null || info.title.isEmpty()) && recognizing) {
-                    short[] retrySamples = recordPcm16Mono(4800);
-                    if (retrySamples != null && retrySamples.length >= SAMPLE_RATE * 2) {
-                        short[] normRetry = normalizePcmSamples(retrySamples);
-                        String sigUri2 = buildShazamSignatureUri(normRetry);
-                        int sampleDurationMs2 = (normRetry.length * 1000) / SAMPLE_RATE;
-                        info = queryShazamDiscovery(sigUri2, sampleDurationMs2, tr);
+                    info = identifySceneMusic(app, sceneJpeg, tr);
+                    if (info != null && !info.title.isEmpty()) {
+                        enrichWithItunes(info, tr);
                     }
                 }
 
@@ -146,6 +179,194 @@ public final class ShazamRecognizer {
                         tr ? "Shazam bağlantısında hata oluştu." : "Shazam connection error."));
             }
         }, "cinetv-shazam").start();
+    }
+
+    private static void ensurePermissions(Context app) {
+        try {
+            boolean hasMic = app.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            boolean hasOverlay = android.os.Build.VERSION.SDK_INT < 23 || android.provider.Settings.canDrawOverlays(app);
+            if (!hasMic || !hasOverlay) {
+                String pkg = app.getPackageName();
+                com.cinetv.launcher.remote.LocalAdb.shell(app,
+                        "pm grant " + pkg + " android.permission.RECORD_AUDIO 2>/dev/null; "
+                                + "appops set " + pkg + " RECORD_AUDIO allow 2>/dev/null; "
+                                + "appops set " + pkg + " SYSTEM_ALERT_WINDOW allow 2>/dev/null; "
+                                + "appops set " + pkg + " PROJECT_MEDIA allow 2>/dev/null;",
+                        2500);
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private static boolean hasMeaningfulAudio(short[] samples) {
+        if (samples == null || samples.length < 1600) return false;
+        long sum = 0;
+        for (short s : samples) sum += s;
+        int dc = (int) (sum / samples.length);
+        int maxCentered = 0;
+        int aboveNoise = 0;
+        for (short s : samples) {
+            int diff = Math.abs(s - dc);
+            if (diff > maxCentered) maxCentered = diff;
+            if (diff > 25) aboveNoise++;
+        }
+        return maxCentered >= 35 && aboveNoise > (samples.length / 40);
+    }
+
+    /**
+     * Checks active MediaSessions for music apps (Spotify, YouTube Music, TizenTube/YouTube music videos)
+     * or explicit song metadata when NotificationListener access is available.
+     */
+    private static TrackInfo inspectActiveMusicSession(Context app) {
+        try {
+            if (!com.cinetv.launcher.service.NuvioPlaybackListenerService.hasNotificationAccess(app)) return null;
+            android.media.session.MediaSessionManager msm =
+                    (android.media.session.MediaSessionManager) app.getSystemService(Context.MEDIA_SESSION_SERVICE);
+            if (msm == null) return null;
+            List<android.media.session.MediaController> sessions = msm.getActiveSessions(
+                    new android.content.ComponentName(app, com.cinetv.launcher.service.NuvioPlaybackListenerService.class));
+            if (sessions == null) return null;
+            for (android.media.session.MediaController ctrl : sessions) {
+                String pkg = ctrl.getPackageName() == null ? "" : ctrl.getPackageName().toLowerCase(Locale.ROOT);
+                // Skip Nuvio/Stremio film sessions here so films go through acoustic/soundtrack recognition instead of returning movie title as song
+                if (pkg.contains("nuvio") || pkg.contains("stremio") || pkg.contains("kodi") || pkg.contains("nova")) continue;
+                android.media.session.PlaybackState st = ctrl.getPlaybackState();
+                if (st != null && st.getState() != android.media.session.PlaybackState.STATE_PLAYING
+                        && st.getState() != android.media.session.PlaybackState.STATE_BUFFERING) {
+                    continue;
+                }
+                android.media.MediaMetadata meta = ctrl.getMetadata();
+                if (meta == null) continue;
+                String title = meta.getString(android.media.MediaMetadata.METADATA_KEY_TITLE);
+                if (title == null || title.trim().isEmpty()) {
+                    title = meta.getString(android.media.MediaMetadata.METADATA_KEY_DISPLAY_TITLE);
+                }
+                String artist = meta.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST);
+                if (artist == null || artist.trim().isEmpty()) {
+                    artist = meta.getString(android.media.MediaMetadata.METADATA_KEY_ALBUM_ARTIST);
+                }
+                if (artist == null || artist.trim().isEmpty()) {
+                    artist = meta.getString(android.media.MediaMetadata.METADATA_KEY_AUTHOR);
+                }
+                String album = meta.getString(android.media.MediaMetadata.METADATA_KEY_ALBUM);
+                if (title != null && !title.trim().isEmpty()) {
+                    TrackInfo info = new TrackInfo();
+                    cleanMusicTitleAndArtist(title.trim(), artist == null ? "" : artist.trim(), info);
+                    if (album != null && !album.trim().isEmpty()) info.album = album.trim();
+                    if (!info.title.isEmpty()) return info;
+                }
+            }
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
+    private static void cleanMusicTitleAndArtist(String rawTitle, String rawArtist, TrackInfo out) {
+        String t = rawTitle
+                .replaceAll("(?i)\\s*[\\(\\[](official\\s*(music\\s*)?video|official\\s*audio|lyric\\s*video|lyrics|hd|4k|remastered.*?|visualizer|klip|resmi\\s*video)[\\)\\]]", "")
+                .trim();
+        String a = rawArtist
+                .replaceAll("(?i)\\s*-\\s*topic$", "")
+                .replaceAll("(?i)vevo$", "")
+                .trim();
+        if (t.contains(" - ") && (a.isEmpty() || t.toLowerCase(Locale.ROOT).startsWith(a.toLowerCase(Locale.ROOT) + " - "))) {
+            int dash = t.indexOf(" - ");
+            String left = t.substring(0, dash).trim();
+            String right = t.substring(dash + 3).trim();
+            if (!left.isEmpty() && !right.isEmpty()) {
+                a = left;
+                t = right;
+            }
+        }
+        out.title = t;
+        out.artist = a;
+    }
+
+    /**
+     * Identifies the song, score, or soundtrack playing in the current scene using visual frame + NowPlaying context.
+     */
+    private static TrackInfo identifySceneMusic(Context app, byte[] sceneJpeg, boolean tr) {
+        try {
+            if (!LlmClient.isConfigured(app)) return null;
+            String hint = com.cinetv.launcher.service.NowPlaying.describe(app);
+            byte[] jpeg = (sceneJpeg != null && sceneJpeg.length > 0) ? sceneJpeg : SceneInspector.captureJpeg(app, true);
+            String sys = "You are Shazam Music & Soundtrack Identifier built into CineTV. "
+                    + "Identify the exact song, music track, or iconic film/series theme playing in this moment. "
+                    + "1. If the screen shows YouTube, TizenTube, Spotify, a music video, concert, or a song title/artist on screen or in subtitles/captions, extract the exact song title and artist. "
+                    + "2. If a film or TV series is playing" + (hint.isEmpty() ? "" : " (Candidate NowPlaying context: " + hint + ")") + ", identify the specific song featured in this scene, or the official main theme / original score piece and its composer for this work. "
+                    + "3. If the screen is on the CineTV Home launcher shelf showing a film poster/DVD case" + (hint.isEmpty() ? "" : " (" + hint + ")") + ", return that film's iconic main theme or signature song and composer/artist. "
+                    + "Return ONLY valid JSON: {\"title\":\"exact song or theme title\",\"artist\":\"artist or composer name\",\"album\":\"album or soundtrack name\",\"year\":\"release year\"}";
+            String ask = "Identify the song or soundtrack playing right now. Return JSON with title, artist, album, year.";
+            LlmClient.Result res = (jpeg != null && jpeg.length > 0)
+                    ? LlmClient.vision(app, sys, ask, jpeg, 220, true)
+                    : (!hint.isEmpty() ? LlmClient.generateQuick(app, sys, "Currently playing: " + hint + ". " + ask, 220) : null);
+            if (res == null || !res.success || res.text == null || res.text.trim().isEmpty()) return null;
+            JSONObject obj = LlmClient.extractJsonObject(res.text);
+            String title = obj.optString("title", "").trim();
+            String artist = obj.optString("artist", "").trim();
+            if (title.isEmpty() || title.equalsIgnoreCase("unknown") || title.equalsIgnoreCase("bilinmiyor") || title.equalsIgnoreCase("none")) {
+                return null;
+            }
+            TrackInfo info = new TrackInfo();
+            info.title = title;
+            info.artist = artist;
+            info.album = obj.optString("album", "").trim();
+            info.year = obj.optString("year", "").trim();
+            return info;
+        } catch (Throwable t) {
+            Log.w(TAG, "Scene music fallback error: " + t);
+            return null;
+        }
+    }
+
+    /**
+     * Queries Apple iTunes Search API to enrich a recognized track with high-resolution album cover art,
+     * canonical artist/album names, and release year.
+     */
+    private static void enrichWithItunes(TrackInfo info, boolean tr) {
+        if (info == null || info.title == null || info.title.isEmpty()) return;
+        HttpURLConnection conn = null;
+        try {
+            String q = info.title + (info.artist != null && !info.artist.isEmpty() ? " " + info.artist : "");
+            String url = "https://itunes.apple.com/search?term=" + java.net.URLEncoder.encode(q.trim(), "UTF-8")
+                    + "&country=" + (tr ? "TR" : "US") + "&media=music&entity=song&limit=1";
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(4000);
+            conn.setReadTimeout(4000);
+            if (conn.getResponseCode() != 200) return;
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try (InputStream in = conn.getInputStream()) {
+                byte[] buf = new byte[4096];
+                int r;
+                while ((r = in.read(buf)) != -1) baos.write(buf, 0, r);
+            }
+            JSONObject root = new JSONObject(new String(baos.toByteArray(), StandardCharsets.UTF_8));
+            JSONArray results = root.optJSONArray("results");
+            if (results == null || results.length() == 0) return;
+            JSONObject item = results.getJSONObject(0);
+            if (info.artworkUrl == null || info.artworkUrl.isEmpty()) {
+                String art100 = item.optString("artworkUrl100", "");
+                if (!art100.isEmpty()) {
+                    info.artworkUrl = art100.replace("100x100bb", "600x600bb");
+                }
+            }
+            if (info.artist == null || info.artist.isEmpty()) {
+                info.artist = item.optString("artistName", "").trim();
+            }
+            if (info.album == null || info.album.isEmpty()) {
+                info.album = item.optString("collectionName", "").trim();
+            }
+            if (info.year == null || info.year.isEmpty()) {
+                String rel = item.optString("releaseDate", "");
+                if (rel.length() >= 4) info.year = rel.substring(0, 4);
+            }
+            if (info.previewUrl == null || info.previewUrl.isEmpty()) {
+                info.previewUrl = item.optString("previewUrl", "");
+            }
+        } catch (Throwable ignored) {
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
     }
 
     private static final String PREF_SHAZAM_HISTORY = "shazam_history_v1";
@@ -576,7 +797,7 @@ public final class ShazamRecognizer {
         return out;
     }
 
-    private static short[] recordPcm16Mono(int durationMs) {
+    private static short[] recordPcm16Mono(Context app, int durationMs) {
         int channelConfig = AudioFormat.CHANNEL_IN_MONO;
         int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
         int minBuffer = AudioRecord.getMinBufferSize(SAMPLE_RATE, channelConfig, audioFormat);
@@ -602,7 +823,7 @@ public final class ShazamRecognizer {
         };
 
         AudioRecord recorder = null;
-        short[] probeBuf = new short[1600]; // 100ms probe
+        short[] probeBuf = new short[2400]; // 150ms probe
         int probeRead = 0;
 
         for (int src : sources) {
@@ -624,7 +845,7 @@ public final class ShazamRecognizer {
                     int a = Math.abs(probeBuf[i]);
                     if (a > maxAbs) maxAbs = a;
                 }
-                if (r > 0 && (maxAbs > 8 || src == MediaRecorder.AudioSource.DEFAULT)) {
+                if (r > 0 && maxAbs > 12) {
                     recorder = candidate;
                     probeRead = r;
                     break;

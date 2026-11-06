@@ -29,6 +29,7 @@ public final class HardwareKeys {
     public static final String CINESUB = "cinesub";
     public static final String ROULETTE = "roulette";
     public static final String NIGHT_MODE = "night_mode";
+    public static final String SHAZAM = "shazam";
 
     private static final int[] NETFLIX_KEYS = {207, 188, 183, 265, 229, 289, 398, KeyEvent.KEYCODE_PROG_RED, KeyEvent.KEYCODE_BUTTON_1};
     private static final int[] NETFLIX_SCANS = {183, 191, 398, 412, 249};
@@ -36,10 +37,17 @@ public final class HardwareKeys {
     private static final int[] YOUTUBE_SCANS = {184, 190, 218, 250, 399, 413, 414, 415};
     private static final int[] PRIME_KEYS = {185, 209, 228, 192, 291, 303, 400, KeyEvent.KEYCODE_PROG_YELLOW, KeyEvent.KEYCODE_BUTTON_3};
     private static final int[] PRIME_SCANS = {185, 192, 251, 400, 416, 417};
-    private static final int[] TV_PLUS_KEYS = {277, 170, 172, 186, 292, 401, KeyEvent.KEYCODE_PROG_BLUE, KeyEvent.KEYCODE_TV, KeyEvent.KEYCODE_GUIDE};
-    private static final int[] TV_PLUS_SCANS = {186, 377, 362, 401};
+    private static final int[] BLUE_KEYS = {KeyEvent.KEYCODE_PROG_BLUE, 186, 401};
+    private static final int[] BLUE_SCANS = {186, 401};
+    private static final int[] TV_PLUS_KEYS = {277, 170, 172, 292, KeyEvent.KEYCODE_TV, KeyEvent.KEYCODE_GUIDE};
+    private static final int[] TV_PLUS_SCANS = {377, 362};
 
     private HardwareKeys() {}
+
+    /** True when the hardware event comes from the remote's Blue button across OEM keyCode/scanCode tables. */
+    public static boolean isBlueKey(int keyCode, int scanCode) {
+        return matches(keyCode, scanCode, BLUE_KEYS, BLUE_SCANS);
+    }
 
     /** The action bound to a key: a user mapping first, then the built-in vendor table; null for ordinary keys. */
     public static String actionFor(Context ctx, int keyCode, int scanCode) {
@@ -54,6 +62,7 @@ public final class HardwareKeys {
         if (matches(keyCode, scanCode, NETFLIX_KEYS, NETFLIX_SCANS)) return NUVIO;
         if (matches(keyCode, scanCode, YOUTUBE_KEYS, YOUTUBE_SCANS)) return YOUTUBE;
         if (matches(keyCode, scanCode, PRIME_KEYS, PRIME_SCANS)) return SIMILAR_MOVIES;
+        if (matches(keyCode, scanCode, BLUE_KEYS, BLUE_SCANS)) return SHAZAM;
         if (matches(keyCode, scanCode, TV_PLUS_KEYS, TV_PLUS_SCANS)) return TV_PLUS;
         return null;
     }
@@ -151,6 +160,9 @@ public final class HardwareKeys {
             case SCENE_INSPECTOR:
             case CINESUB:
                 com.cinetv.launcher.ui.CineSubOverlay.trigger(ctx);
+                return true;
+            case SHAZAM:
+                com.cinetv.launcher.ai.ShazamRecognizer.recognize(ctx);
                 return true;
             case ROULETTE:
                 if (ctx instanceof com.cinetv.launcher.MainActivity) {

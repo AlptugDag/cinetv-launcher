@@ -138,9 +138,32 @@ let shazamItems = [
     artist: 'Shigeru Umebayashi',
     album: 'In the Mood for Love OST',
     artwork: 'https://image.tmdb.org/t/p/w500/iYypPT4bhqXfq1b6EnmxvRt6b2Y.jpg',
+    spotify: 'https://open.spotify.com/search/Yumeji%27s%20Theme%20Shigeru%20Umebayashi',
+    ytm: 'https://music.youtube.com/search?q=Yumeji%27s%20Theme%20Shigeru%20Umebayashi',
     spotifyUrl: 'https://open.spotify.com/search/Yumeji%27s%20Theme%20Shigeru%20Umebayashi',
     ytMusicUrl: 'https://music.youtube.com/search?q=Yumeji%27s%20Theme%20Shigeru%20Umebayashi',
     at: Date.now() - 600000
+  }
+];
+let shazamRecognizing = false;
+const SHAZAM_POOL = [
+  {
+    title: 'The Beast',
+    artist: 'Jóhann Jóhannsson',
+    album: 'Sicario (Original Motion Picture Soundtrack)',
+    artwork: 'https://image.tmdb.org/t/p/w500/tw0lX297t5P52n01M5bO1G9P1c9.jpg'
+  },
+  {
+    title: 'The Last Waltz',
+    artist: 'Cho Young-wuk',
+    album: 'Oldboy Original Soundtrack',
+    artwork: 'https://image.tmdb.org/t/p/w500/pWDtjs568ZfOTMbURQBYuT4Qxka.jpg'
+  },
+  {
+    title: 'Finale (William Tell Overture)',
+    artist: 'Gioachino Rossini',
+    album: 'A Clockwork Orange Soundtrack',
+    artwork: 'https://image.tmdb.org/t/p/w500/iYypPT4bhqXfq1b6EnmxvRt6b2Y.jpg'
   }
 ];
 
@@ -290,11 +313,49 @@ const server = http.createServer((req, res) => {
     if (urlPath === '/api/apk/install' || urlPath === '/api/files/open') {
       return sendJson(res, { ok: true, action: 'installing_apk', path: q.path || '' });
     }
-    if (urlPath === '/api/shazam/history') {
-      return sendJson(res, { ok: true, items: shazamItems, listening: false });
+    if (urlPath === '/api/shazam/history' || urlPath === '/api/shazam/list') {
+      return sendJson(res, {
+        ok: true,
+        items: shazamItems,
+        tracks: shazamItems,
+        listening: shazamRecognizing,
+        recognizing: shazamRecognizing,
+        latest: shazamItems[0] || null
+      });
     }
-    if (urlPath === '/api/shazam/listen') {
-      return sendJson(res, { ok: true, listening: true });
+    if (urlPath === '/api/shazam/listen' || urlPath === '/api/shazam/recognize') {
+      shazamRecognizing = true;
+      setTimeout(() => {
+        const pick = SHAZAM_POOL[shazamItems.length % SHAZAM_POOL.length];
+        const qEnc = encodeURIComponent(`${pick.title} ${pick.artist}`);
+        const now = Date.now();
+        const item = {
+          id: `sz-${now}`,
+          title: pick.title,
+          artist: pick.artist,
+          album: pick.album,
+          artwork: pick.artwork,
+          spotify: `https://open.spotify.com/search/${qEnc}`,
+          ytm: `https://music.youtube.com/search?q=${qEnc}`,
+          spotifyUrl: `https://open.spotify.com/search/${qEnc}`,
+          ytMusicUrl: `https://music.youtube.com/search?q=${qEnc}`,
+          at: now
+        };
+        shazamItems = [item, ...shazamItems.filter(x => x.title !== item.title)];
+        shazamRecognizing = false;
+      }, 1200);
+      return sendJson(res, { ok: true, started: true, listening: true, recognizing: true });
+    }
+    if (urlPath === '/api/shazam/delete') {
+      const at = Number(q.at || 0);
+      if (at > 0) {
+        shazamItems = shazamItems.filter(x => Number(x.at) !== at);
+      }
+      return sendJson(res, { ok: true, tracks: shazamItems });
+    }
+    if (urlPath === '/api/shazam/clear') {
+      shazamItems = [];
+      return sendJson(res, { ok: true, tracks: [] });
     }
     if (urlPath === '/api/party/join') {
       const id = q.id || 'p1';

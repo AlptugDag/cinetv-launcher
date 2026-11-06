@@ -63,14 +63,19 @@ public final class Uninstaller {
                                 + "done",
                         5_000);
             }
+            if (!otherHomeAvailable(ctx)) {
+                return abort(ctx, R.string.destroy_no_home);
+            }
         }
 
         // 5. Clean up downloaded profile and config artifacts
         for (String f : new String[]{"alptugun-filmleri-template.json", "xperience-kategori-setup-profile.json", "aiometadata-config.json",
-                "cinetv_verified_device.json"}) {
+                "cinetv_verified_device.json", "nuvio-collections.json"}) {
             //noinspection ResultOfMethodCallIgnored
             new java.io.File("/sdcard/Download", f).delete();
         }
+        //noinspection ResultOfMethodCallIgnored
+        new java.io.File("/sdcard/cinetv-baseline.json").delete();
 
         // 6. Clear CineTV preferred Home activity in PackageManager
         final String pkg = ctx.getPackageName();
@@ -80,11 +85,12 @@ public final class Uninstaller {
         }
 
         // 7. If LocalAdb is available, schedule a detached shell uninstall after handing Home back to the stock launcher,
-        //    so Android 6 boxes with stripped/broken PackageInstaller UIs still complete removal cleanly.
+        //    so Android 6-14 boxes with stripped/broken PackageInstaller UIs still complete removal cleanly.
+        boolean adbUninstallScheduled = false;
         try {
-            LocalAdb.shell(ctx,
+            adbUninstallScheduled = LocalAdb.shell(ctx,
                     "pm clear-package-preferred-activities " + pkg + " >/dev/null 2>&1; "
-                            + "(sleep 2; pm uninstall " + pkg + " >/dev/null 2>&1 || pm uninstall --user 0 " + pkg + " >/dev/null 2>&1) >/dev/null 2>&1 &",
+                            + "(sleep 2; pm uninstall " + pkg + " >/dev/null 2>&1 || cmd package uninstall " + pkg + " >/dev/null 2>&1 || pm uninstall --user 0 " + pkg + " >/dev/null 2>&1) >/dev/null 2>&1 &",
                     3_000);
         } catch (Throwable ignored) {
         }
@@ -124,7 +130,7 @@ public final class Uninstaller {
             } catch (InterruptedException ignored) {
             }
         }
-        if (launched.get()) {
+        if (launched.get() || adbUninstallScheduled) {
             return null;
         }
         return abort(ctx, R.string.destroy_uninstall_failed);

@@ -1,5 +1,16 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.51
+
+- **3 Boyutlu (Yaw, Pitch, Roll + Derinlik) Odak DVD Salınımı:** Odaktaki DVD kutusunun tek eksenli yapay dönüşü kaldırılarak; Y (yatay dönüş), X (dikey eğim/pitch), Z (bilek yatışı/roll) ve derinlik/yükselti eksenlerinde eşzamanlı çalışan gerçekçi 3B jiroskopik inceleme salınımı eklendi. Kutunun üst, alt ve sırt yüzeyleri perspektif içinde dinamik olarak görünürken selofan parlaklığı (glint) hem yatay hem dikey eksende gerçek ışık fiziğiyle kayar.
+- **Basılı Tutarak Kaydırmada Kesintisiz Momentum ve Domino Dalgası:** Vitrinde yön tuşlarına basılı tutulduğunda her adımda animasyonun sıfırlanmasından kaynaklanan takılma kaldırıldı; hız koruyucu sürekli fizik döngüsü (continuous velocity-preserving spring tracker) ve C2 Hermite domino dalgası ile kutular su gibi akıcı biçimde taranır, tuş bırakıldığında seçilen kutu sönümlü yay fiziğiyle odak konumuna yerleşir.
+- **Varsayılan Kalıcı DVD Kutusu Görünümü:** 3B fiziksel DVD kutusu görünümü tüm cihazlarda kalıcı varsayılan olarak sabitlendi ve Ayarlar menüsündeki açma/kapama anahtarı kaldırıldı.
+- **Kusursuz "CineTV'yi Yok Et" (Destroy CineTV) Deneyimi:** Kaldırma sürecinde kurulum öncesi sistem ayarları, bildirim dinleyici izinleri, Nuvio koleksiyon dosyaları ve önbellek profilleri eksiksiz temizlenir; fabrika başlatıcısının (stock launcher) ayağa kalktığı doğrulanmadan işlem tamamlanmayarak cihazın boş ekranda kalması kesin olarak engellenir.
+- **4 Katmanlı Shazam Müzik Tanıma & Mavi Tuş Düzeltmesi:**
+  - Kumandadaki Mavi tuşun (`KEYCODE_PROG_BLUE` / scanCode `186`, `401`) ana ekranda TV+ başlatmaya çalışması engellenerek doğrudan Shazam müzik tanıma tetikleyicisine bağlandı.
+  - Mikrofonu olmayan veya sessiz PCM akışı döndüren TV'lerde sahte sessiz kaynağın seçilmesi engellendi; aktif medya oturumu (`MediaSession`), akustik `0xCAFE2580` parmak izi + Apple iTunes yüksek çözünürlüklü kapak zenginleştirmesi ve sahne/film müziği analiziyle her koşulda kesintisiz müzik tespiti sağlandı.
+- **Sürüm ve Paket İlerlemesi:** Build, release, APK ve Windows web platform sürüm numaraları 1.0.0.51 olarak güncellendi.
+
 ## 1.0.0.50
 
 - **Vitrin DVD Rafı Lazy Loading & Açılış Gecikme Optimizasyonu:** Vitrindeki DVD kutu kapakları `IntersectionObserver` mimarisiyle ekrana yaklaşırken dinamik ve gecikmesiz olarak yüklenir. Raf açılışındaki ilk yükleme blokajı tamamen ortadan kaldırıldı; iskelet yer tutucular (skeleton) ve pürüzsüz opaklık geçişleriyle akıcı bir görsel başlangıç sağlandı.

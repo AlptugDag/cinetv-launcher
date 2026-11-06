@@ -255,17 +255,6 @@ public final class Panels {
         bevelTile.setTag("opt_bevel");
         cVisual.addView(bevelTile);
 
-        boolean cases = Prefs.dvdCases(ctx);
-        LinearLayout casesTile = Controls.toggleTile(ctx, ctx.getString(R.string.dvd_cases),
-                cases ? ctx.getString(R.string.dvd_cases_on) : ctx.getString(R.string.dvd_cases_off),
-                cases, (newActive, subLabel, sw) -> {
-            Prefs.setFlag(ctx, Prefs.DVD_CASES, newActive);
-            subLabel.setText(newActive ? ctx.getString(R.string.dvd_cases_on) : ctx.getString(R.string.dvd_cases_off));
-            a.setDvdCases(newActive);
-        });
-        casesTile.setTag("opt_cases");
-        cVisual.addView(casesTile);
-
         boolean ambilight = com.cinetv.launcher.device.AmbilightSync.isEnabled(ctx);
         LinearLayout ambilightTile = Controls.toggleTile(ctx,
                 tr ? "Ambilight & Arka Işık Senkronu" : "Ambilight & Backlight Sync",
@@ -2194,6 +2183,7 @@ public final class Panels {
                 {HardwareKeys.SIMILAR_MOVIES, tr ? "Gamze AI (Yapay Zekâ Sinema Asistanı & Arama)" : "Gamze AI (Cinema Assistant & Voice)"},
                 {HardwareKeys.NUVIO, tr ? "Nuvio (Film & Dizi İzle)" : "Nuvio (Movies & TV)"},
                 {HardwareKeys.YOUTUBE, tr ? "YouTube (Reklamsız Akış)" : "YouTube (Ad-free)"},
+                {HardwareKeys.SHAZAM, tr ? "Shazam (Çalan Müziği Tanı)" : "Shazam (Identify Music)"},
                 {HardwareKeys.ROULETTE, tr ? "Film Öneri Ruleti (Çarkı Çevir)" : "Movie Roulette"},
                 {HardwareKeys.CLEAN_RAM, tr ? "RAM Temizle & TV'yi Hızlandır" : "Optimize Memory & RAM"},
                 {HardwareKeys.NIGHT_MODE, tr ? "Gece İzleme Modu (Aç / Kapat)" : "Toggle Night Viewing Mode"},

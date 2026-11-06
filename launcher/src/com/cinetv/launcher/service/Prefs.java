@@ -70,8 +70,9 @@ public final class Prefs {
         return true;
     }
 
+    /** DVD cases are permanently standard on all devices. */
     public static boolean dvdCases(Context ctx) {
-        return get(ctx).getBoolean(DVD_CASES, true);
+        return true;
     }
 
     public static boolean glassBevel(Context ctx) {

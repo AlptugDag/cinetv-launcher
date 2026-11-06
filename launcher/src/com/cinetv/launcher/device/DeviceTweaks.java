@@ -309,6 +309,8 @@ public final class DeviceTweaks {
         try {
             String a11y = Settings.Secure.getString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
             if (a11y != null && a11y.contains("com.cinetv.launcher")) Settings.Secure.putString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, stripCineTv(a11y));
+            String nls = Settings.Secure.getString(cr, "enabled_notification_listeners");
+            if (nls != null && nls.contains("com.cinetv.launcher")) Settings.Secure.putString(cr, "enabled_notification_listeners", stripCineTv(nls));
             String dream = Settings.Secure.getString(cr, "screensaver_components");
             if (dream != null && dream.contains("com.cinetv.launcher")) Settings.Secure.putString(cr, "screensaver_components", stripCineTv(dream));
             Settings.Global.putString(cr, "cinetv_city", null);
@@ -353,6 +355,7 @@ public final class DeviceTweaks {
                 + "settings put global transition_animation_scale 1.0 2>/dev/null; "
                 + "settings put global animator_duration_scale 1.0 2>/dev/null; "
                 + "settings put system font_scale 1.0 2>/dev/null; "
+                + "cmd notification disallow_listener " + pkg + "/com.cinetv.launcher.service.NuvioPlaybackListenerService 0 2>/dev/null; "
                 + "[ \"$(settings get global cinetv_katniss_off)\" = 1 ] && pm enable com.google.android.katniss >/dev/null 2>&1; "
                 + "settings delete global cinetv_katniss_off 2>/dev/null; "
                 + "cmd role remove-role-holder --user 0 android.app.role.ASSISTANT " + pkg + " 0 2>/dev/null; "

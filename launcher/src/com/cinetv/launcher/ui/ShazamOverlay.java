@@ -243,6 +243,8 @@ public final class ShazamOverlay extends FrameLayout {
         });
     }
 
+    private boolean attachedToDecor = false;
+
     private boolean attach() {
         try {
             int type = getContext() instanceof TvKeyInterceptorService
@@ -265,7 +267,20 @@ public final class ShazamOverlay extends FrameLayout {
             lp.setTitle("CineShazam");
 
             setAlpha(0f);
-            wm.addView(this, lp);
+            try {
+                wm.addView(this, lp);
+                attachedToDecor = false;
+            } catch (Throwable wmErr) {
+                com.cinetv.launcher.MainActivity ma = com.cinetv.launcher.MainActivity.instance;
+                android.view.View decor = ma != null && ma.getWindow() != null ? ma.getWindow().getDecorView() : null;
+                if (decor instanceof android.view.ViewGroup) {
+                    ((android.view.ViewGroup) decor).addView(this, new FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                    attachedToDecor = true;
+                } else {
+                    throw wmErr;
+                }
+            }
             int dur = PerformanceProfile.animationMs(getContext(), 320);
             animate().alpha(1f).setDuration(dur).start();
             glassCard.setTranslationY(UiKit.pxf(36));
@@ -394,7 +409,11 @@ public final class ShazamOverlay extends FrameLayout {
         glassCard.animate().translationY(UiKit.pxf(28)).alpha(0f).setDuration(dur).start();
         animate().alpha(0f).setDuration(dur).withEndAction(() -> {
             try {
-                wm.removeView(ShazamOverlay.this);
+                if (attachedToDecor && getParent() instanceof android.view.ViewGroup) {
+                    ((android.view.ViewGroup) getParent()).removeView(ShazamOverlay.this);
+                } else {
+                    wm.removeView(ShazamOverlay.this);
+                }
             } catch (Throwable ignored) {
             }
         }).start();
@@ -405,7 +424,11 @@ public final class ShazamOverlay extends FrameLayout {
         dismissed = true;
         if (active == this) active = null;
         try {
-            wm.removeView(this);
+            if (attachedToDecor && getParent() instanceof android.view.ViewGroup) {
+                ((android.view.ViewGroup) getParent()).removeView(this);
+            } else {
+                wm.removeView(this);
+            }
         } catch (Throwable ignored) {
         }
     }
