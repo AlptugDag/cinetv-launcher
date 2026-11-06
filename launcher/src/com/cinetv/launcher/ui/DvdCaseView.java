@@ -212,15 +212,20 @@ public class DvdCaseView extends View {
         cr = (float) Math.cos(r); sr = (float) Math.sin(r);
         persp = caseH * 2.2f;
         if (lift > 0.01f && dvd != null && dvd.bloom != null) {
+            // Subtle 3D backlight parallax: halo shifts slightly opposite the box's 3D yaw/pitch tilt
+            float haloShiftX = -sa * caseW * scale * 0.10f;
+            float haloShiftY = -sb * caseH * scale * 0.10f;
             if (dvd.halo) {
-                // A lamp behind the box: wide, soft, a little low, never an outline.
+                // A lamp behind the box: wide, soft, a little low, breathing slightly with the 3D angle.
                 fxPaint.setAlpha((int) (235 * lift));
-                float bw = caseW * scale * 2.3f, bh = caseH * scale * 1.6f, by = cy + caseH * scale * 0.08f;
-                rect.set(cx - bw / 2f, by - bh / 2f, cx + bw / 2f, by + bh / 2f);
+                float bw = caseW * scale * 2.3f, bh = caseH * scale * 1.6f;
+                float bx = cx + haloShiftX, by = cy + caseH * scale * 0.08f + haloShiftY;
+                rect.set(bx - bw / 2f, by - bh / 2f, bx + bw / 2f, by + bh / 2f);
             } else {
                 fxPaint.setAlpha((int) (255 * lift));
                 float bw = dvd.bloom.getWidth() * scale, bh = dvd.bloom.getHeight() * scale;
-                rect.set(cx - bw / 2f, cy - bh / 2f, cx + bw / 2f, cy + bh / 2f);
+                float bx = cx + haloShiftX, by = cy + haloShiftY;
+                rect.set(bx - bw / 2f, by - bh / 2f, bx + bw / 2f, by + bh / 2f);
             }
             canvas.drawBitmap(dvd.bloom, null, rect, fxPaint);
         }
@@ -342,7 +347,7 @@ public class DvdCaseView extends View {
         }
         if (area <= 0) return;
 
-        // Full 3-axis Lambert shading rotated with the box (yaw, pitch, roll).
+        // Full 3-axis Lambert + specular rim shading rotated with the box (yaw, pitch, roll).
         float x1 = nx * ca + nz * sa;
         float z1 = -nx * sa + nz * ca;
         float y2 = ny * cb - z1 * sb;
@@ -380,16 +385,17 @@ public class DvdCaseView extends View {
         }
 
         if (wrapped && sleeve) {
-            // Soft collectors' satin cellophane sheen (subtle and realistic, never blown-out CGI):
+            // Soft collectors' satin cellophane sheen coupled directly to 3D yaw, pitch (tilt), and roll:
             Bitmap wrap = DvdCase.wrap();
             float facing = Math.max(0f, -z2);
-            float slide = (x3 * 0.5f + 0.5f) * 0.42f + (y3 * 0.22f) + drift * 0.05f + glint * 0.45f;
+            float yawDelta = (yaw + spatialYaw) - (-16f);
+            float slide = (x3 * 0.5f + 0.5f) * 0.42f + yawDelta * 0.018f - tilt * 0.015f + drift * 0.05f + glint * 0.35f;
             int win = wrap.getWidth() / 3;
             float phase = (float) (slide - Math.floor(slide));
             float smooth = phase <= 0.5f ? phase * 2f : (1f - phase) * 2f;
             int off = (int) (smooth * (wrap.getWidth() - win));
             mapTo(tex, 0, tex.getWidth());
-            // Velvety soft reflection with harmonic glint boost
+            // Velvety soft reflection with harmonic 3D glint boost
             float wrapStrength = (0.12f + 0.07f * lift + 0.15f * glint) * (0.5f + 0.5f * facing) * dim;
             wrapPaint.setAlpha((int) (255 * Math.min(0.30f, wrapStrength)));
             sliceSrc.set(off, 0, off + win, wrap.getHeight());
@@ -398,16 +404,21 @@ public class DvdCaseView extends View {
             canvas.concat(matrix);
             canvas.drawBitmap(wrap, sliceSrc, rect, wrapPaint);
 
-            // The sleeve catches the light in 3D: a broad soft glow with a crisp streak in it, angled like a window
-            // reflection, travelling diagonally across both X and Y as the case turns, nods, and banks in 3D.
+            // 3D-synchronized optical surface flare, window reflection streak, and spine bevel catchlight:
             if (lift > 0.05f) {
                 float tw = tex.getWidth(), th = tex.getHeight();
                 ensureSheenShaders(tw, th);
-                float travelX = 0.5f + 0.5f * Math.max(-1f, Math.min(1f, x3)) * 0.65f + (glint - 0.5f) * 0.55f;
-                float travelY = Math.max(-1f, Math.min(1f, y3)) * th * 0.28f;
-                float cxs = tw * (0.08f + 0.84f * Math.max(0f, Math.min(1f, travelX)));
+                // Reflection locus moves horizontally with 3D yaw, vertically with 3D pitch (tilt), and tilts with roll:
+                float normX = Math.max(0.06f, Math.min(0.94f, 0.50f + yawDelta * 0.044f + (glint - 0.5f) * 0.24f));
+                float normY = Math.max(0.08f, Math.min(0.92f, 0.46f - tilt * 0.055f + roll * 0.025f));
+                float flareX = tw * normX;
+                float flareY = th * normY;
+                float streakShiftY = (normY - 0.46f) * th * 0.85f;
+                float streakAngle = -roll * 2.5f + tilt * 0.85f;
+
                 int modAlpha = Math.max(0, Math.min(255, Math.round(255f * lift * dim)));
-                sheenMatrix.setTranslate(cxs, travelY);
+                sheenMatrix.setTranslate(flareX, streakShiftY);
+                sheenMatrix.postRotate(streakAngle, flareX, flareY);
 
                 haloShader.setLocalMatrix(sheenMatrix);
                 sheenPaint.setShader(haloShader);
@@ -419,9 +430,31 @@ public class DvdCaseView extends View {
                 sheenPaint.setAlpha(modAlpha);
                 canvas.drawRect(0, 0, tw, th, sheenPaint);
 
+                // Optical surface flare hotspot (radial specular bloom + subtle Mylar dispersion tracking 3D normal):
+                if (nz < -0.5f) {
+                    float specAlign = 0.55f + 0.45f * (float) Math.cos(Math.toRadians(yawDelta * 5.0f - tilt * 4.0f));
+                    int flareAlpha = Math.max(0, Math.min(255, Math.round(modAlpha * (0.62f + 0.38f * specAlign))));
+                    flareMatrix.setTranslate(flareX, flareY);
+                    flareMatrix.preScale(1.0f, 1.15f);
+                    flareShader.setLocalMatrix(flareMatrix);
+                    sheenPaint.setShader(flareShader);
+                    sheenPaint.setAlpha(flareAlpha);
+                    canvas.drawRect(0, 0, tw, th, sheenPaint);
+
+                    // Rounded spine-hinge bevel catchlight gliding vertically with 3D pitch/roll:
+                    flareMatrix.setTranslate(tw * 0.022f, flareY);
+                    flareMatrix.preScale(0.18f, 0.85f);
+                    spineFlareShader.setLocalMatrix(flareMatrix);
+                    sheenPaint.setShader(spineFlareShader);
+                    sheenPaint.setAlpha(flareAlpha);
+                    canvas.drawRect(0, 0, tw * 0.065f, th, sheenPaint);
+                }
+
+                // Top & bottom edge gloss modulated by 3D pitch (tilt):
+                int topEdgeAlpha = Math.max(0, Math.min(255, Math.round(modAlpha * Math.max(0.35f, Math.min(1.35f, 0.85f - tilt * 0.08f)))));
                 sheenPaint.setShader(topGlossShader);
-                sheenPaint.setAlpha(modAlpha);
-                canvas.drawRect(0, 0, tw, th * 0.035f, sheenPaint);
+                sheenPaint.setAlpha(topEdgeAlpha);
+                canvas.drawRect(0, 0, tw, th * 0.038f, sheenPaint);
                 sheenPaint.setShader(null);
             }
             canvas.restore();
@@ -430,8 +463,11 @@ public class DvdCaseView extends View {
 
     private float cachedSheenW = -1f, cachedSheenH = -1f;
     private android.graphics.LinearGradient haloShader, coreShader, topGlossShader;
+    private android.graphics.RadialGradient flareShader, spineFlareShader;
     private final Matrix sheenMatrix = new Matrix();
+    private final Matrix flareMatrix = new Matrix();
     private static final float[] HALO_STOPS = {0f, 0.42f, 0.58f, 1f};
+    private static final float[] FLARE_STOPS = {0f, 0.22f, 0.52f, 0.82f, 1f};
 
     private void ensureSheenShaders(float tw, float th) {
         if (tw == cachedSheenW && th == cachedSheenH && haloShader != null) return;
@@ -439,16 +475,35 @@ public class DvdCaseView extends View {
         cachedSheenH = th;
         float slant = th * 0.32f;
         haloShader = new android.graphics.LinearGradient(
-                -tw * 0.42f - slant, 0f, tw * 0.42f - slant, th,
-                new int[]{Color.TRANSPARENT, Color.argb(24, 230, 240, 255), Color.argb(24, 255, 250, 240), Color.TRANSPARENT},
+                -tw * 0.42f - slant, -th * 0.25f, tw * 0.42f - slant, th * 1.25f,
+                new int[]{Color.TRANSPARENT, Color.argb(26, 225, 240, 255), Color.argb(26, 255, 250, 240), Color.TRANSPARENT},
                 HALO_STOPS, Shader.TileMode.CLAMP);
         coreShader = new android.graphics.LinearGradient(
-                -tw * 0.07f - slant, 0f, tw * 0.07f - slant, th,
-                new int[]{Color.TRANSPARENT, Color.argb(46, 255, 255, 255), Color.TRANSPARENT},
+                -tw * 0.075f - slant, -th * 0.25f, tw * 0.075f - slant, th * 1.25f,
+                new int[]{Color.TRANSPARENT, Color.argb(52, 255, 255, 255), Color.TRANSPARENT},
                 null, Shader.TileMode.CLAMP);
         topGlossShader = new android.graphics.LinearGradient(
-                0f, 0f, 0f, Math.max(1f, th * 0.035f),
-                Color.argb(38, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP);
+                0f, 0f, 0f, Math.max(1f, th * 0.038f),
+                Color.argb(44, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP);
+        float flareRadius = Math.max(16f, tw * 0.46f);
+        flareShader = new android.graphics.RadialGradient(
+                0f, 0f, flareRadius,
+                new int[]{
+                        Color.argb(56, 255, 253, 248),
+                        Color.argb(30, 224, 244, 255),
+                        Color.argb(14, 255, 232, 200),
+                        Color.argb(4, 200, 230, 255),
+                        Color.TRANSPARENT
+                },
+                FLARE_STOPS, Shader.TileMode.CLAMP);
+        spineFlareShader = new android.graphics.RadialGradient(
+                0f, 0f, Math.max(12f, th * 0.36f),
+                new int[]{
+                        Color.argb(82, 255, 255, 255),
+                        Color.argb(36, 220, 240, 255),
+                        Color.TRANSPARENT
+                },
+                new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP);
     }
 
     /** Maps the horizontal slice [x0, x1] of a texture onto the current face quad. */

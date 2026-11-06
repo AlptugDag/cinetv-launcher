@@ -64,7 +64,7 @@ public class PosterShelf extends FrameLayout {
     private static final float PROFILE_ANGLE = -16f;
     /** The focused case comes far forward, as if taken off the shelf. */
     private static final float FOCUS_SCALE = 1.52f;
-    private static final long SWAY_AFTER_MS = 1800L, SWAY_MS = 6500L;
+    private static final long SWAY_AFTER_MS = 650L, SWAY_MS = 14000L;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final List<Movie> movies = new ArrayList<>();
@@ -85,8 +85,9 @@ public class PosterShelf extends FrameLayout {
     private float lean;
     private float lastPos;
     private long lastFrameNs;
-    /** Idle turn of the focused case: 0..1 progress, and its reflection sweep. */
+    /** Continuous elapsed time (seconds) for the slow, infinite 3-axis oscillation of the focused case. */
     private float sway;
+    private long swayStartNs;
     private ValueAnimator swayAnim;
     private final Runnable startSway = this::sway;
     private final Runnable prefetchRunnable = () -> {
@@ -943,77 +944,74 @@ public class PosterShelf extends FrameLayout {
     }
 
     /**
-     * Once the shelf settles, the focused case performs a natural 3-axis (yaw, pitch/tilt, roll + Z-depth float)
-     * gyroscopic inspection oscillation and comes smoothly to rest facing you.
+     * Once the shelf settles, the focused case performs a slow, continuous 3-axis (yaw, pitch/tilt, roll + Z-depth float)
+     * gyroscopic oscillation with synchronized optical surface flare for as long as it remains focused.
      */
     private void sway() {
         if (com.cinetv.launcher.service.Prefs.reduceMotion(getContext())) return;
         if (!hasFocus() || cases.isEmpty() || !isShown()) return;
         if (swayAnim != null) swayAnim.cancel();
-        // Linear time progress (0..2) so harmonic sine/cosine waves are never warped by non-linear easing
-        swayAnim = ValueAnimator.ofFloat(0f, 2f);
-        swayAnim.setDuration(SWAY_MS * 2);
+        swayStartNs = System.nanoTime();
+        sway = 0.001f;
+        swayAnim = ValueAnimator.ofFloat(0f, 1f);
+        swayAnim.setDuration(SWAY_MS);
+        swayAnim.setRepeatCount(ValueAnimator.INFINITE);
         swayAnim.setInterpolator(new android.view.animation.LinearInterpolator());
         swayAnim.addUpdateListener(a -> {
-            sway = (float) a.getAnimatedValue();
+            sway = Math.max(0.001f, (System.nanoTime() - swayStartNs) / 1e9f);
             if ((anim == null || !anim.isRunning()) && !hasAnyActiveHover() && asCases && index >= 0 && index < cases.size()) {
                 updateFocusedCaseSwayOnly();
             } else {
                 layoutCases();
             }
         });
-        swayAnim.addListener(new android.animation.AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(android.animation.Animator animation) {
-                if (swayAnim != animation) return;
-                swayAnim = null;
-                sway = 0f;
-                if ((anim == null || !anim.isRunning()) && !hasAnyActiveHover() && asCases && index >= 0 && index < cases.size()) {
-                    updateFocusedCaseSwayOnly();
-                } else {
-                    layoutCases();
-                }
-                DvdCaseView v = focusedCase();
-                if (v != null) {
-                    v.setGlint(0f);
-                    v.setRoll(0f);
-                }
-            }
-        });
         swayAnim.start();
     }
 
-    /** Computes the 3-axis (Yaw, Pitch/Tilt, Roll, Scale, X/Y float, Glint) gyroscopic oscillation state. */
+    /** Computes the slow, continuous 3-axis (Yaw, Pitch/Tilt, Roll, Scale, X/Y float, Glint) oscillation state. */
     private void compute3dSway(float[] out) {
         // out: [0]=yawTurn, [1]=pitchTilt, [2]=rollBank, [3]=scaleBoost, [4]=shiftX, [5]=liftY, [6]=glint, [7]=drift
-        if (swayAnim == null || sway <= 0f || sway >= 2f) {
+        if (swayAnim == null || sway <= 0f) {
             for (int k = 0; k < 8; k++) out[k] = 0f;
             return;
         }
-        // Smooth raised-cosine C2 envelope over the first and last 20% of the cycle (zero velocity/acceleration jump)
-        float edge = Math.min(1f, Math.min(sway / 0.40f, (2f - sway) / 0.40f));
-        float env = 0.5f * (1f - (float) Math.cos(Math.PI * edge));
-        float phi = (float) (2.0 * Math.PI * sway);
-        float s1 = (float) Math.sin(phi);
-        float c1 = (float) Math.cos(phi);
-        float s2 = (float) Math.sin(phi * 1.5f + 0.85f);
-        float c2 = (float) Math.cos(phi * 1.5f + 0.85f);
+        // Smooth raised-cosine C2 ramp-in over the first 2.2 seconds, then continuous 1.0 envelope while focused
+        float ramp = Math.min(1f, sway / 2.2f);
+        float env = 0.5f * (1f - (float) Math.cos(Math.PI * ramp));
 
-        // 1. Yaw (Y-axis horizontal turn: reveals 3D spine & sweeps front reflection)
-        out[0] = (8.4f * s1 + 1.6f * (float) Math.sin(2f * phi + 0.4f)) * env;
+        // Slow, incommensurable harmonic periods so the 3D motion feels organic, meditative, and never loops mechanically:
+        // Yaw period: 13.5s (with 24.0s secondary harmonic)
+        // Pitch/Tilt period: 17.5s
+        // Roll period: 21.0s
+        // Z-depth float period: 15.5s
+        float phiYaw = (float) (2.0 * Math.PI * (sway / 13.5f));
+        float phiYaw2 = (float) (2.0 * Math.PI * (sway / 24.0f));
+        float phiPitch = (float) (2.0 * Math.PI * (sway / 17.5f));
+        float phiRoll = (float) (2.0 * Math.PI * (sway / 21.0f));
+        float phiDepth = (float) (2.0 * Math.PI * (sway / 15.5f));
+
+        float sYaw = (float) Math.sin(phiYaw);
+        float cYaw = (float) Math.cos(phiYaw);
+        float sPitch = (float) Math.sin(phiPitch + 0.55f);
+        float cPitch = (float) Math.cos(phiPitch + 0.55f);
+        float sRoll = (float) Math.sin(phiRoll - 0.45f);
+
+        // 1. Yaw (Y-axis horizontal turn: reveals 3D spine & sweeps front surface flare)
+        out[0] = (7.8f * sYaw + 1.35f * (float) Math.sin(phiYaw2 + 0.35f)) * env;
         // 2. Pitch / Tilt (X-axis vertical nod: reveals top/bottom 3D case edges & shifts perspective horizon)
-        out[1] = (5.2f * s2 + 1.5f * c1) * env;
+        out[1] = (4.8f * sPitch + 1.15f * cYaw) * env;
         // 3. Roll (Z-axis physical wrist bank in 3D space)
-        out[2] = (2.35f * (float) Math.sin(phi - 0.65f)) * env;
+        out[2] = (2.25f * sRoll) * env;
         // 4. Z-depth breathing scale
-        out[3] = (0.026f * (float) Math.sin(phi - 0.35f)) * env;
+        out[3] = (0.022f * (float) Math.sin(phiDepth - 0.30f)) * env;
         // 5. Subtle 3D spatial parallax X & levitation Y
-        out[4] = UiKit.pxf(3.8f) * s1 * env;
-        out[5] = -UiKit.pxf(5.5f) * s2 * env;
-        // 6. 2D diagonal specular glint
-        out[6] = Math.max(0f, Math.min(1f, (0.5f + 0.36f * s1 + 0.14f * c2) * env));
-        // 7. Cellophane wrap drift
-        out[7] = (s1 * 0.75f + s2 * 0.35f) * env;
+        out[4] = UiKit.pxf(3.6f) * sYaw * env;
+        out[5] = -UiKit.pxf(5.0f) * sPitch * env;
+        // 6. Optical flare & diagonal specular glint locked directly to the 3D surface normal (yaw + pitch + roll)
+        float normalLight = 0.5f + 0.35f * (out[0] / 9.15f) - 0.14f * (out[1] / 5.95f) + 0.08f * (out[2] / 2.25f);
+        out[6] = Math.max(0f, Math.min(1f, normalLight * env));
+        // 7. Cellophane wrap reflection drift coupled to 3D normal angle
+        out[7] = (out[0] * 0.095f - out[1] * 0.055f + out[2] * 0.045f);
     }
 
     private final float[] swayState = new float[8];
@@ -1051,6 +1049,7 @@ public class PosterShelf extends FrameLayout {
             swayAnim = null;
             a.cancel();
         }
+        swayStartNs = 0L;
         if (sway != 0f) {
             sway = 0f;
             DvdCaseView v = focusedCase();

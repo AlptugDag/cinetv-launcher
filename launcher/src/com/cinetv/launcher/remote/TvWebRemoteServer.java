@@ -312,6 +312,10 @@ public final class TvWebRemoteServer {
                 asset(out, "remote/sw.js", "application/javascript; charset=utf-8");
                 return;
             }
+            if (path.equals("/remote-core.mjs") || path.equals("/static/remote-core.mjs")) {
+                asset(out, "remote/remote-core.mjs", "application/javascript; charset=utf-8");
+                return;
+            }
             if (path.equals("/companion.apk") || path.equals("/cinetv-companion.apk") || path.equals("/cinetv.apk")) {
                 try {
                     java.io.File apkFile = new java.io.File(app.getApplicationInfo().sourceDir);

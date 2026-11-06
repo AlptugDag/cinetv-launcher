@@ -181,6 +181,8 @@ body.remote main{padding-bottom:0}
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);box-shadow:inset 0 1px 0 rgba(255,255,255,.32);backdrop-filter:blur(16px)}
 .mchip.on{background:var(--accent);border-color:transparent;box-shadow:0 0 18px var(--accent)}
 .touch.mouse{background:linear-gradient(160deg,rgba(139,92,246,.28),rgba(255,255,255,.05) 55%,rgba(56,189,248,.18))}
+.touch.haptic-pulse{box-shadow:inset 0 2px 0 rgba(255,255,255,.78),0 0 28px rgba(139,92,246,.45),0 22px 52px -12px rgba(0,0,0,.7);border-color:rgba(196,181,253,.68)}
+.touch.haptic-hum{box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 0 22px rgba(56,189,248,.30),0 22px 52px -12px rgba(0,0,0,.7);border-color:rgba(125,211,252,.50)}
 .more{height:100%;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:10px;padding:2px}
 .more button{border-radius:22px;color:var(--ink);font-size:13px;font-weight:700;padding:0;min-height:0;border:1px solid rgba(255,255,255,.18);background:linear-gradient(145deg,rgba(255,255,255,.14),rgba(255,255,255,.05));box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 6px 16px rgba(0,0,0,.3)}
 .more .c{border:0;margin:16% 0;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.45),0 6px 18px rgba(0,0,0,.4)}
@@ -890,31 +892,133 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
 
   const $ = id => document.getElementById(id);
+
+  // Offline & Service Worker Metadata + Poster Cache Bridge
+  const CACHEABLE_API_PREFIXES = ["catalog/trending", "catalog/search", "catalog/details", "catalog/similar", "catalog/person", "watchlist", "shazam/list", "shazam/history"];
+  const isCacheableApi = path => CACHEABLE_API_PREFIXES.some(p => path === p || path.startsWith(p + "?"));
+  const metaStorageKey = (path, params = {}) => {
+    const entries = Object.entries(params || {}).filter(([k]) => k !== "k" && k !== "fresh" && k !== "seed" && k !== "_t");
+    entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : String(a[1]).localeCompare(String(b[1]))));
+    const qStr = entries.map(([k, v]) => `${k}=${v}`).join("&");
+    return `cinetv.meta.${path}${qStr ? "?" + qStr : ""}`;
+  };
+  const notifySwCache = (url, payload) => {
+    try {
+      const items = Array.isArray(payload?.results) ? payload.results : (Array.isArray(payload?.items) ? payload.items : []);
+      if (items.length) {
+        try {
+          const prevRaw = localStorage.getItem("cinetv.meta.snapshot");
+          const prev = prevRaw ? JSON.parse(prevRaw) : [];
+          const map = new Map();
+          for (const m of [...items, ...(Array.isArray(prev) ? prev : [])]) {
+            if (!m || !m.title) continue;
+            const idKey = `${m.type || "movie"}:${m.tmdb || m.tmdbId || m.id || m.imdb || m.imdbId || m.title}`;
+            if (!map.has(idKey)) map.set(idKey, m);
+            if (map.size >= 80) break;
+          }
+          localStorage.setItem("cinetv.meta.snapshot", JSON.stringify(Array.from(map.values())));
+        } catch (_) {}
+      }
+      const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+      if (!sw) return;
+      sw.postMessage({ type: "CACHE_METADATA", url, payload });
+      const posterUrls = [];
+      for (const m of items) {
+        if (m && m.poster) posterUrls.push(m.poster);
+        if (m && m.backdrop) posterUrls.push(m.backdrop);
+      }
+      if (Array.isArray(payload?.directors)) payload.directors.forEach(d => d?.photo && posterUrls.push(d.photo));
+      if (Array.isArray(payload?.cast)) payload.cast.forEach(c => c?.photo && posterUrls.push(c.photo));
+      if (posterUrls.length) {
+        sw.postMessage({ type: "WARM_POSTERS", urls: posterUrls.slice(0, 30) });
+      }
+    } catch (_) {}
+  };
+  const readOfflineMetadataFallback = (path, params = {}) => {
+    try {
+      const exactRaw = localStorage.getItem(metaStorageKey(path, params));
+      if (exactRaw) return JSON.parse(exactRaw);
+      const snapRaw = localStorage.getItem("cinetv.meta.snapshot");
+      const snap = snapRaw ? JSON.parse(snapRaw) : [];
+      if (!Array.isArray(snap) || !snap.length) return null;
+      if (path === "catalog/details") {
+        const tmdb = Number(params.tmdb || 0);
+        const title = String(params.title || "").toLowerCase();
+        const found = snap.find(m => (tmdb > 0 && (Number(m.tmdb || m.tmdbId || m.id) === tmdb)) || (title && String(m.title || "").toLowerCase() === title)) || snap[0];
+        return Object.assign({ ok: true, offlineCached: true, directors: [], cast: [] }, found);
+      }
+      if (path === "catalog/search") {
+        const q = String(params.q || "").toLowerCase().trim();
+        const filtered = q ? snap.filter(m => String(m.title || "").toLowerCase().includes(q) || String(m.overview || "").toLowerCase().includes(q)) : snap;
+        return { ok: true, offlineCached: true, title: params.q ? `${params.q} (Önbellek)` : "Önbellekteki Seçki", results: filtered.length ? filtered : snap, more: false };
+      }
+      if (path.startsWith("catalog/")) {
+        return { ok: true, offlineCached: true, results: snap };
+      }
+    } catch (_) {}
+    return null;
+  };
+
   const api = async (path, params = {}) => {
-    if (!token) { pair(); throw 0; }
+    const cacheable = isCacheableApi(path);
+    if (!token) {
+      if (cacheable) {
+        const fb = readOfflineMetadataFallback(path, params);
+        if (fb) return fb;
+      }
+      pair();
+      throw 0;
+    }
     if (RELAY) {
-      const r = await relay(path, Object.assign({k: token}, params));
-      if (r && r.error === "pair") {
+      try {
+        const r = await relay(path, Object.assign({k: token}, params));
+        if (r && r.error === "pair") {
+          token = null;
+          try { localStorage.removeItem("cinetv.k"); sessionStorage.removeItem("cinetv.k"); setCookie("cinetv_k", ""); } catch (e) {}
+          pair();
+          throw 0;
+        }
+        if (cacheable && r && !r.error) {
+          try { localStorage.setItem(metaStorageKey(path, params), JSON.stringify(r)); } catch (_) {}
+          notifySwCache(location.origin + "/api/" + path + "?" + new URLSearchParams(params), r);
+        }
+        return r;
+      } catch (err) {
+        if (cacheable) {
+          const fb = readOfflineMetadataFallback(path, params);
+          if (fb) return fb;
+        }
+        throw err;
+      }
+    }
+    const qs = new URLSearchParams(Object.assign({k: token}, params));
+    const reqUrl = "/api/" + path + "?" + qs;
+    try {
+      const r = await fetch(reqUrl, {cache: cacheable ? "default" : "no-store"});
+      if (r.status === 401) {
         token = null;
         try { localStorage.removeItem("cinetv.k"); sessionStorage.removeItem("cinetv.k"); setCookie("cinetv_k", ""); } catch (e) {}
         pair();
         throw 0;
       }
-      return r;
+      const data = await r.json();
+      if (cacheable && data && !data.error) {
+        try { localStorage.setItem(metaStorageKey(path, params), JSON.stringify(data)); } catch (_) {}
+        notifySwCache(location.origin + reqUrl, data);
+      }
+      return data;
+    } catch (err) {
+      if (err === 0) throw 0;
+      if (cacheable) {
+        const fb = readOfflineMetadataFallback(path, params);
+        if (fb) return fb;
+      }
+      throw err;
     }
-    const qs = new URLSearchParams(Object.assign({k: token}, params));
-    const r = await fetch("/api/" + path + "?" + qs, {cache: "no-store"});
-    if (r.status === 401) {
-      token = null;
-      try { localStorage.removeItem("cinetv.k"); sessionStorage.removeItem("cinetv.k"); setCookie("cinetv_k", ""); } catch (e) {}
-      pair();
-      throw 0;
-    }
-    return r.json();
   };
   const open = async path => {
     if (RELAY) { const [p, qs] = path.split("?"); return relay(p, Object.fromEntries(new URLSearchParams(qs || ""))); }
-    return (await fetch("/api/" + path, {cache: "no-store"})).json();
+    return (await fetch("/api/" + path, {cache: path === "info" ? "default" : "no-store"})).json();
   };
 
   // Pairing without a QR code: the TV asks "may this phone connect?" and the viewer allows it.
@@ -922,6 +1026,21 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const waitBox = $("waitBox"), waitText = $("waitText");
   const pair = async () => {
     if (pairing) return; pairing = true;
+    try {
+      const info = await open("info");
+      if (info && info.paired && info.token) {
+        token = info.token;
+        try {
+          localStorage.setItem("cinetv.k", token);
+          sessionStorage.setItem("cinetv.k", token);
+          setCookie("cinetv_k", token);
+        } catch (e) {}
+        waitBox.hidden = true;
+        pairing = false;
+        connected();
+        return;
+      }
+    } catch (_) {}
     waitBox.hidden = false; waitBox.onclick = null; waitText.textContent = t("waiting");
     $("status").textContent = t("connecting");
     if (location.hostname.endsWith("github.io") && !PEER) {
@@ -1369,7 +1488,136 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     };
   };
 
-  // remote
+  // remote: Nuanced Haptic Feedback Engine
+  // Sharp pulse for 'OK' taps ([22, 18, 10]), deep double-pulse for 'OK' hold ([28, 30, 42]),
+  // continuous soft hum when scrolling or using the air mouse ([4, 14, 4] / [5, 16, 6]),
+  // and distinct tactile signatures for directional steps, volume/channel rockers, media, and power.
+  const HAPTIC_PROFILES = {
+    "ok-sharp": [22, 18, 10],
+    "ok-hold": [28, 30, 42],
+    "airmouse-hum": [4, 14, 4],
+    "airmouse-hum-fast": [6, 12, 5],
+    "scroll-hum": [5, 16, 6],
+    "scroll-step": [8, 14, 6],
+    "repeat-hum": [5, 18, 5],
+    "dpad-step": [11],
+    "dpad-hum": [6, 16, 5],
+    "nav-action": [12, 20, 8],
+    "rocker-detent": [9, 14, 12],
+    "media-transport": [15, 18, 12],
+    "mode-toggle-on": [10, 22, 18],
+    "mode-toggle-off": [16, 20, 8],
+    "numpad-tap": [7],
+    "utility-tap": [8, 12, 6],
+    "power-arm": [26, 36, 26],
+    "power-off": [40, 45, 65],
+    "voice-start": [14, 24, 22]
+  };
+  let lastHumAt = 0, lastDiscreteAt = 0, humActive = false, hapticVisualT = null;
+  const resolveKeyHaptic = (keyCode, isHold = false, isRepeat = false) => {
+    const c = Number(keyCode);
+    if (c === 23 || c === 66) return isHold ? "ok-hold" : "ok-sharp";
+    if (c >= 19 && c <= 22) return isRepeat ? "dpad-hum" : "dpad-step";
+    if (c === 24 || c === 25 || c === 164 || c === 166 || c === 167) return isRepeat ? "repeat-hum" : "rocker-detent";
+    if (c >= 85 && c <= 90) return isRepeat ? "repeat-hum" : "media-transport";
+    if (c === 3 || c === 4 || c === 82 || c === 165 || c === 172 || c === 178) return "nav-action";
+    if ((c >= 7 && c <= 16) || c === 67) return "numpad-tap";
+    return "utility-tap";
+  };
+  const Haptics = {
+    emit(type, patternOverride, isHum = false) {
+      const now = performance.now();
+      const pattern = (patternOverride || HAPTIC_PROFILES[type] || [10]).slice();
+      if (isHum) {
+        humActive = true;
+        lastHumAt = now;
+      } else {
+        humActive = false;
+        lastDiscreteAt = now;
+      }
+      try {
+        if (navigator.vibrate) navigator.vibrate(pattern);
+      } catch (_) {}
+      document.body.dataset.hapticType = type;
+      document.body.dataset.hapticPattern = pattern.join(",");
+      document.body.dataset.hapticActive = isHum ? "hum" : "pulse";
+      const touchEl = $("touch");
+      if (touchEl) {
+        touchEl.classList.toggle("haptic-pulse", !isHum && (type === "ok-sharp" || type === "ok-hold"));
+        touchEl.classList.toggle("haptic-hum", isHum);
+        clearTimeout(hapticVisualT);
+        hapticVisualT = setTimeout(() => {
+          touchEl.classList.remove("haptic-pulse");
+          if (!humActive) touchEl.classList.remove("haptic-hum");
+        }, isHum ? 110 : 180);
+      }
+      return { type, pattern, humActive };
+    },
+    okTap() {
+      return this.emit("ok-sharp", HAPTIC_PROFILES["ok-sharp"], false);
+    },
+    okHold() {
+      return this.emit("ok-hold", HAPTIC_PROFILES["ok-hold"], false);
+    },
+    keyPress(code, opts = {}) {
+      const now = performance.now();
+      const type = resolveKeyHaptic(code, !!opts.isHold, !!opts.isRepeat);
+      if (opts.isRepeat) {
+        if (now - lastHumAt < 52) return { type, pattern: HAPTIC_PROFILES[type], humActive: true, throttled: true };
+        return this.emit(type, HAPTIC_PROFILES[type], true);
+      }
+      return this.emit(type, HAPTIC_PROFILES[type], false);
+    },
+    airMouseMove(dx, dy) {
+      const now = performance.now();
+      if (now - lastHumAt < 50) {
+        document.body.dataset.hapticType = "airmouse-hum";
+        document.body.dataset.hapticActive = "hum";
+        return { type: "airmouse-hum", humActive: true, throttled: true };
+      }
+      const mag = Math.hypot(Number(dx) || 0, Number(dy) || 0);
+      const pattern = mag < 0.35 ? [3, 16, 3] : (mag > 14 ? HAPTIC_PROFILES["airmouse-hum-fast"] : HAPTIC_PROFILES["airmouse-hum"]);
+      return this.emit("airmouse-hum", pattern, true);
+    },
+    scrollMove(delta = 0, stepped = false) {
+      const now = performance.now();
+      if (stepped) {
+        return this.emit("scroll-step", HAPTIC_PROFILES["scroll-step"], true);
+      }
+      if (now - lastHumAt < 48) {
+        document.body.dataset.hapticType = "scroll-hum";
+        document.body.dataset.hapticActive = "hum";
+        return { type: "scroll-hum", humActive: true, throttled: true };
+      }
+      const abs = Math.abs(Number(delta) || 0);
+      const pattern = abs > 16 ? [6, 14, 6] : HAPTIC_PROFILES["scroll-hum"];
+      return this.emit("scroll-hum", pattern, true);
+    },
+    modeToggle(enabled) {
+      const type = enabled ? "mode-toggle-on" : "mode-toggle-off";
+      return this.emit(type, HAPTIC_PROFILES[type], false);
+    },
+    powerTap(armed) {
+      const type = armed ? "power-off" : "power-arm";
+      return this.emit(type, HAPTIC_PROFILES[type], false);
+    },
+    voiceTap() {
+      return this.emit("voice-start", HAPTIC_PROFILES["voice-start"], false);
+    },
+    stopHum() {
+      const wasHum = humActive;
+      humActive = false;
+      const now = performance.now();
+      if (wasHum && now - lastDiscreteAt > 90) {
+        try { if (navigator.vibrate) navigator.vibrate(0); } catch (_) {}
+      }
+      document.body.dataset.hapticActive = "idle";
+      const touchEl = $("touch");
+      if (touchEl) touchEl.classList.remove("haptic-hum");
+    }
+  };
+  window.CineTvHaptics = Haptics;
+
   // Keys: a tap presses, holding presses longer (or repeats, for arrows, volume, channels and seeking)
   const press = (code, long) => api("key", long ? {code, long: 1} : {code}).catch(() => {});
   document.querySelectorAll("[data-key]").forEach(b => {
@@ -1377,21 +1625,33 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     const start = e => {
       e.preventDefault();
       held = false;
-      navigator.vibrate && navigator.vibrate(8);
+      Haptics.keyPress(b.dataset.key, { isHold: false, isRepeat: false });
       timer = setTimeout(() => {
         held = true;
-        if (b.hasAttribute("data-repeat")) rep = setInterval(() => press(b.dataset.key), 140);
-        else press(b.dataset.key, true);
+        if (b.hasAttribute("data-repeat")) {
+          rep = setInterval(() => {
+            Haptics.keyPress(b.dataset.key, { isRepeat: true });
+            press(b.dataset.key);
+          }, 125);
+        } else {
+          Haptics.keyPress(b.dataset.key, { isHold: true });
+          press(b.dataset.key, true);
+        }
       }, 450);
     };
     const end = () => {
       clearTimeout(timer); clearInterval(rep);
+      if (held && b.hasAttribute("data-repeat")) Haptics.stopHum();
       if (!held && timer) press(b.dataset.key);
       timer = rep = null;
     };
     b.addEventListener("pointerdown", start);
     b.addEventListener("pointerup", end);
-    b.addEventListener("pointerleave", () => { clearTimeout(timer); clearInterval(rep); timer = rep = null; });
+    b.addEventListener("pointerleave", () => {
+      clearTimeout(timer); clearInterval(rep);
+      if (held && b.hasAttribute("data-repeat")) Haptics.stopHum();
+      timer = rep = null;
+    });
     b.addEventListener("contextmenu", e => e.preventDefault());
   });
   // Sleep timer: each press moves to the next choice (off, 15, 30 ... 120 minutes)
@@ -1520,15 +1780,25 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   // Pages of the remote: touchpad, more keys, numbers
   const deck = $("deck"), dots = [...$("dots").children];
+  let lastDeckPage = 0;
   const page = () => Math.round(deck.scrollLeft / Math.max(1, deck.clientWidth));
-  deck.addEventListener("scroll", () => dots.forEach((d, i) => d.classList.toggle("on", i === page())), {passive: true});
+  deck.addEventListener("scroll", () => {
+    const p = page();
+    dots.forEach((d, i) => d.classList.toggle("on", i === p));
+    if (p !== lastDeckPage) {
+      lastDeckPage = p;
+      Haptics.scrollMove(12, true);
+    } else {
+      Haptics.scrollMove(6, false);
+    }
+  }, {passive: true});
   const goPage = i => deck.scrollTo({left: i * deck.clientWidth, behavior: "smooth"});
-  dots.forEach((d, i) => d.onclick = () => goPage(i));
-  $("numBtn").onclick = () => goPage(page() === 2 ? 0 : 2);
+  dots.forEach((d, i) => d.onclick = () => { Haptics.keyPress(0); goPage(i); });
+  $("numBtn").onclick = () => { Haptics.keyPress(0); goPage(page() === 2 ? 0 : 2); };
 
   // Touchpad: swipe moves (keep sliding to keep moving), tap is OK, hold is a long OK
   const pad = $("touch"), arrow = $("arrow"), STEP = 34;
-  let ox = 0, oy = 0, moved = false, downAt = 0, holdT = null, arrowT = null;
+  let ox = 0, oy = 0, moved = false, stepStreak = 0, downAt = 0, holdT = null, arrowT = null;
   const showArrow = s => { arrow.textContent = s; arrow.classList.add("on"); clearTimeout(arrowT); arrowT = setTimeout(() => arrow.classList.remove("on"), 160); };
   const ripple = (x, y) => { const r = document.createElement("i"); r.className = "ripple";
     const b = pad.getBoundingClientRect(); r.style.left = (x - b.left) + "px"; r.style.top = (y - b.top) + "px"; pad.appendChild(r); setTimeout(() => r.remove(), 500); };
@@ -1538,7 +1808,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     rafPending = false;
     if (!mouse) return;
     if (Math.abs(mx) >= 1 || Math.abs(my) >= 1) { const dx = Math.round(mx), dy = Math.round(my); mx -= dx; my -= dy; api("mouse", {dx, dy}).catch(() => {}); }
-    if (Math.abs(sy) >= 6) { const d = Math.round(sy); sy = 0; api("mouse/scroll", {dy: d}).catch(() => {}); }
+    if (Math.abs(sy) >= 6) { const d = Math.round(sy); sy = 0; Haptics.scrollMove(d, true); api("mouse/scroll", {dy: d}).catch(() => {}); }
   };
   const scheduleFlush = () => { if (!rafPending && mouse) { rafPending = true; requestAnimationFrame(flush); } };
   setInterval(flush, 32);
@@ -1546,8 +1816,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   $("mouseBtn").onclick = e => {
     e.stopPropagation();
     mouse = !mouse;
+    Haptics.modeToggle(mouse);
     $("mouseBtn").classList.toggle("on", mouse); pad.classList.toggle("mouse", mouse);
-    mx = my = sy = 0; mDown = 0; downAt = 0; moved = false; clearTimeout(holdT);
+    mx = my = sy = 0; mDown = 0; downAt = 0; moved = false; stepStreak = 0; clearTimeout(holdT);
     if (!mouse) {
       // back to D-pad: the TV leaves touch mode and the focus returns
       api("mouse/off").catch(() => {});
@@ -1560,7 +1831,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   pad.addEventListener("touchstart", e => { fingers = e.touches.length; }, {passive: true});
   pad.addEventListener("pointerdown", e => {
     if (!mouse) return;
-    e.preventDefault(); pad.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    try { pad.setPointerCapture(e.pointerId); } catch (_) {}
     lastX = e.clientX; lastY = e.clientY; mDown = Date.now(); mMoved = 0;
   });
   pad.addEventListener("pointermove", e => {
@@ -1569,54 +1841,116 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     const dist = Math.hypot(dx, dy);
     const accel = Math.min(4.2, 2.2 + dist * 0.045);
     mMoved += Math.abs(dx) + Math.abs(dy);
-    if (fingers >= 2) sy += dy * 2.2; else { mx += dx * accel; my += dy * accel; }
+    if (fingers >= 2) {
+      sy += dy * 2.2;
+      Haptics.scrollMove(dy, false);
+    } else {
+      mx += dx * accel; my += dy * accel;
+      if (dist >= 0.4) Haptics.airMouseMove(dx, dy);
+    }
     scheduleFlush();
   });
   pad.addEventListener("pointerup", e => {
     if (!mouse) return;
-    if (mDown && mMoved < 10 && Date.now() - mDown < 350) { flush(); api("mouse/click").catch(() => {}); ripple(e.clientX, e.clientY); navigator.vibrate && navigator.vibrate(10); }
+    if (mDown && mMoved < 10 && Date.now() - mDown < 350) {
+      flush();
+      api("mouse/click").catch(() => {});
+      ripple(e.clientX, e.clientY);
+      Haptics.okTap();
+    } else {
+      Haptics.stopHum();
+    }
     mDown = 0; fingers = 0;
+  });
+  pad.addEventListener("pointercancel", () => {
+    if (mouse) { mDown = 0; fingers = 0; Haptics.stopHum(); }
   });
   pad.addEventListener("pointerdown", e => {
     if (mouse) return;
-    e.preventDefault(); pad.setPointerCapture(e.pointerId);
-    ox = e.clientX; oy = e.clientY; moved = false; downAt = Date.now();
+    e.preventDefault();
+    try { pad.setPointerCapture(e.pointerId); } catch (_) {}
+    ox = e.clientX; oy = e.clientY; moved = false; stepStreak = 0; downAt = Date.now();
     clearTimeout(holdT);
-    holdT = setTimeout(() => { if (!moved) { moved = true; navigator.vibrate && navigator.vibrate(20); press(23, true); ripple(ox, oy); } }, 600);
+    holdT = setTimeout(() => {
+      if (!moved) {
+        moved = true;
+        Haptics.okHold();
+        press(23, true);
+        ripple(ox, oy);
+      }
+    }, 600);
   });
   pad.addEventListener("pointermove", e => {
     if (mouse || !downAt) return;
     const dx = e.clientX - ox, dy = e.clientY - oy;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < STEP) return;
+    if (fingers >= 2) {
+      moved = true; clearTimeout(holdT);
+      Haptics.scrollMove(dy, false);
+      if (Math.abs(dy) >= STEP * 0.75) {
+        Haptics.scrollMove(dy, true);
+        press(dy > 0 ? 20 : 19);
+        showArrow(dy > 0 ? "⌄" : "⌃");
+        ox = e.clientX; oy = e.clientY;
+      }
+      return;
+    }
+    const maxAxis = Math.max(Math.abs(dx), Math.abs(dy));
+    if (maxAxis < STEP) {
+      if (maxAxis >= 7) {
+        Haptics.scrollMove(maxAxis, false);
+      }
+      return;
+    }
     moved = true; clearTimeout(holdT);
     const h = Math.abs(dx) > Math.abs(dy);
-    press(h ? (dx > 0 ? 22 : 21) : (dy > 0 ? 20 : 19));
+    const code = h ? (dx > 0 ? 22 : 21) : (dy > 0 ? 20 : 19);
+    press(code);
     showArrow(h ? (dx > 0 ? "›" : "‹") : (dy > 0 ? "⌄" : "⌃"));
-    navigator.vibrate && navigator.vibrate(6);
+    Haptics.keyPress(code, { isRepeat: stepStreak > 0 });
+    stepStreak++;
     ox = e.clientX; oy = e.clientY;
   });
   const padUp = e => {
     if (mouse) return;
     clearTimeout(holdT);
-    if (downAt && !moved && Date.now() - downAt < 600) { press(23); ripple(e.clientX, e.clientY); navigator.vibrate && navigator.vibrate(10); }
-    downAt = 0;
+    if (downAt && !moved && Date.now() - downAt < 600) {
+      press(23);
+      ripple(e.clientX, e.clientY);
+      Haptics.okTap();
+    } else {
+      Haptics.stopHum();
+    }
+    downAt = 0; stepStreak = 0;
   };
   pad.addEventListener("pointerup", padUp);
-  pad.addEventListener("pointercancel", () => { clearTimeout(holdT); downAt = 0; });
+  pad.addEventListener("pointercancel", () => { clearTimeout(holdT); downAt = 0; stepStreak = 0; Haptics.stopHum(); });
+  pad.addEventListener("wheel", e => {
+    e.preventDefault();
+    Haptics.scrollMove(e.deltaY, false);
+    if (mouse) {
+      sy += e.deltaY * 0.35;
+      scheduleFlush();
+    } else if (Math.abs(e.deltaY) >= 8) {
+      Haptics.scrollMove(e.deltaY, true);
+      press(e.deltaY > 0 ? 20 : 19);
+      showArrow(e.deltaY > 0 ? "⌄" : "⌃");
+    }
+  }, {passive: false});
 
   // Power: a second tap within 3 s really switches the TV off (only its own remote turns it on again)
   let pwrT = null;
   $("pwr").onclick = () => {
     const b = $("pwr");
-    if (!b.classList.contains("arm")) { b.classList.add("arm"); $("rHint").textContent = t("powerAgain"); navigator.vibrate && navigator.vibrate(30);
+    if (!b.classList.contains("arm")) { b.classList.add("arm"); $("rHint").textContent = t("powerAgain"); Haptics.powerTap(false);
       pwrT = setTimeout(() => { b.classList.remove("arm"); $("rHint").textContent = t("swipeHint"); }, 3000); return; }
     clearTimeout(pwrT); b.classList.remove("arm"); $("rHint").textContent = t("swipeHint");
+    Haptics.powerTap(true);
     api("power/off").then(() => toast(t("powerOff"))).catch(() => {});
   };
 
   if ($("settingsBtn")) {
     $("settingsBtn").onclick = () => {
-      navigator.vibrate && navigator.vibrate(12);
+      Haptics.keyPress(0);
       openMobileSettingsModal();
     };
   }
@@ -1704,6 +2038,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   let micHold = null, micLong = false;
   $("micBtn").addEventListener("pointerdown", () => {
     micLong = false;
+    Haptics.voiceTap();
     micHold = setTimeout(() => { micLong = true; if (vEdge) { vEdge.classList.add("on"); setTimeout(() => vEdge.classList.remove("on"), 3500); } api("tv/voice_overlay").catch(() => {}); toast(t("listening")); }, 400);
   });
   $("micBtn").addEventListener("pointerup", () => {
@@ -1712,7 +2047,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     startPhoneVoice($("micBtn"), false);
   });
   if ($("qMic")) {
-    $("qMic").onclick = () => startPhoneVoice($("qMic"), true);
+    $("qMic").onclick = () => { Haptics.voiceTap(); startPhoneVoice($("qMic"), true); };
   }
 
   // Double taps must never zoom the page
@@ -2005,7 +2340,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     }, false);
   }
 
-  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register(RELAY ? "sw.js" : "/sw.js").catch(() => {});
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+    navigator.serviceWorker.register(RELAY ? "sw.js" : "/sw.js").catch(() => {});
+  }
 
   // ---- CineParty: the phone half. The TV draws the shared stage; each phone draws its own player's
   // screen from its own view of the room (a Sessiz card reaches only its teller), long-polling for changes.
@@ -2873,20 +3210,26 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     api("hello").then(() => {
       $("dot").classList.add("on");
       $("status").textContent = $("status").dataset.tv || t("connected");
-    }).catch(() => {
-      if (token) {
-        token = null;
-        try {
-          localStorage.removeItem("cinetv.k");
-          sessionStorage.removeItem("cinetv.k");
-          setCookie("cinetv_k", "");
-        } catch (e) {}
+    }).catch(err => {
+      // Only re-pair if api("hello") explicitly cleared token on 401; keep token intact on unstable/offline network
+      if (!token && err === 0) {
         pair();
+      } else {
+        $("dot").classList.remove("on");
       }
     });
     trending();
   };
-  if (token) connected(); else pair();
+  if (token) {
+    connected();
+  } else {
+    // Render cached catalog immediately if available while pairing/info check runs
+    const offlineInitial = readOfflineMetadataFallback("catalog/trending", { type: kind, page: 1 });
+    if (offlineInitial && Array.isArray(offlineInitial.results) && offlineInitial.results.length) {
+      render(offlineInitial.results, t("trending"));
+    }
+    pair();
+  }
   const start = RELAY ? (hp.get("s") || location.hash.replace("#", "")) : location.hash.replace("#", "");
   if (["remote", "search", "party", "cast", "files", "shazam", "about", "bg", "background"].includes(start)) show(start === "background" ? "bg" : (start === "shazam" ? "files" : start));
 })();

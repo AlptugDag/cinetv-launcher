@@ -378,42 +378,52 @@ header.hud {
   -webkit-backface-visibility: hidden;
 }
 .dvd-case.is-focused-hero .box-inner {
-  animation: dvd3dGyroSway 7.5s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  animation: dvd3dGyroSway 14.5s cubic-bezier(0.37, 0, 0.63, 1) infinite;
 }
 .dvd-case.is-focused-hero .sheen {
-  animation: dvd3dSheenSweep 7.5s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  background-size: 220% 220%;
+  animation: dvd3dSheenSweep 14.5s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+.dvd-case.is-focused-hero .spine {
+  animation: dvd3dSpineFlare 14.5s cubic-bezier(0.37, 0, 0.63, 1) infinite;
 }
 @keyframes dvd3dGyroSway {
   0%, 100% {
-    transform: translate3d(0px, 0px, 0px) rotateY(-12deg) rotateX(0deg) rotateZ(0deg) scale3d(1, 1, 1);
+    transform: translate3d(0px, 0px, 0px) rotateY(-14deg) rotateX(0.5deg) rotateZ(0deg) scale3d(1, 1, 1);
   }
   25% {
-    transform: translate3d(4px, -5px, 14px) rotateY(-3.5deg) rotateX(4.8deg) rotateZ(2.1deg) scale3d(1.022, 1.022, 1);
+    transform: translate3d(3.5px, -4.5px, 12px) rotateY(-6.2deg) rotateX(4.6deg) rotateZ(2.1deg) scale3d(1.02, 1.02, 1);
   }
   50% {
-    transform: translate3d(0px, -2px, 8px) rotateY(-11deg) rotateX(-3.6deg) rotateZ(-1.4deg) scale3d(1.012, 1.012, 1);
+    transform: translate3d(0.5px, 2.5px, 6px) rotateY(-12.5deg) rotateX(-3.8deg) rotateZ(-1.2deg) scale3d(1.008, 1.008, 1);
   }
   75% {
-    transform: translate3d(-4px, -6px, 16px) rotateY(-19.5deg) rotateX(3.9deg) rotateZ(-2.2deg) scale3d(1.025, 1.025, 1);
+    transform: translate3d(-3.5px, -5px, 14px) rotateY(-21.2deg) rotateX(3.5deg) rotateZ(-2.2deg) scale3d(1.022, 1.022, 1);
   }
 }
 @keyframes dvd3dSheenSweep {
   0%, 100% {
-    background-position: 0% 0%;
-    opacity: 0.85;
+    background-position: 18% 22%;
+    opacity: 0.84;
   }
   25% {
-    background-position: 65% 35%;
+    background-position: 78% 42%;
     opacity: 1;
   }
   50% {
-    background-position: 30% 80%;
-    opacity: 0.9;
+    background-position: 36% 78%;
+    opacity: 0.88;
   }
   75% {
-    background-position: 90% 20%;
-    opacity: 1;
+    background-position: 92% 16%;
+    opacity: 0.98;
   }
+}
+@keyframes dvd3dSpineFlare {
+  0%, 100% { filter: brightness(1); }
+  25% { filter: brightness(1.38); }
+  50% { filter: brightness(0.92); }
+  75% { filter: brightness(1.48); }
 }
 /* Pre-load placeholder skeleton pulse */
 .dvd-case .case-skeleton {
@@ -542,9 +552,17 @@ header.hud {
 
 .dvd-open-stage {
   position: relative;
-  width: 980px;
-  height: 600px;
+  width: 1020px;
+  height: 620px;
   display: flex;
+  align-items: stretch;
+  padding: 12px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #23242D 0%, #14151B 55%, #0A0B0E 100%);
+  box-shadow:
+    0 32px 70px rgba(0,0,0,0.92),
+    inset 0 1.5px 1px rgba(255,255,255,0.22),
+    inset 0 -2px 4px rgba(0,0,0,0.85);
   transform-style: preserve-3d;
   animation: dvdAppear 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -553,40 +571,100 @@ header.hud {
   100% { transform: scale(1) translateZ(0); opacity: 1; }
 }
 
-/* Left Page: Archival Parchment Booklet with Multi-page Thickness & Staples */
+/* Central 3D Living-Hinge Polypropylene Spine Gutter */
+.dvd-spine-gutter {
+  position: relative;
+  width: 28px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg,
+    #07070A 0%,
+    #1D1E26 18%,
+    #111217 34%,
+    #2A2C37 50%,
+    #111217 66%,
+    #1D1E26 82%,
+    #07070A 100%);
+  box-shadow:
+    -12px 0 22px rgba(0,0,0,0.65),
+    12px 0 22px rgba(0,0,0,0.65),
+    inset 0 14px 12px -8px rgba(0,0,0,0.9),
+    inset 0 -14px 12px -8px rgba(0,0,0,0.9);
+  z-index: 15;
+}
+.dvd-spine-gutter::before,
+.dvd-spine-gutter::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.22) 50%, rgba(255,255,255,0.05));
+}
+.dvd-spine-gutter::before { left: 5px; }
+.dvd-spine-gutter::after { right: 5px; }
+
+/* Left Page: Archival Parchment Booklet Seated Inside Molded Left Cover Shell */
 .dvd-booklet {
   position: relative;
   flex: 1;
-  background: #EEE8DC;
-  border-radius: 12px 4px 4px 12px;
+  background:
+    linear-gradient(90deg,
+      rgba(0,0,0,0.16) 0%,
+      rgba(255,255,255,0.06) 14%,
+      rgba(255,255,255,0.18) 68%,
+      rgba(0,0,0,0.06) 88%,
+      rgba(0,0,0,0.28) 100%),
+    #EEE8DC;
+  border-radius: 10px 3px 3px 10px;
+  margin: 4px 0 4px 6px;
   overflow: hidden;
-  box-shadow: -15px 20px 45px rgba(0,0,0,0.85), inset -3px 0 8px rgba(0,0,0,0.3), 2px 0 0 #D8D0C0, 4px 0 0 #C7BEAE;
-  padding: 38px 42px;
+  box-shadow:
+    -6px 8px 20px rgba(0,0,0,0.75),
+    inset 0 1px 0 rgba(255,255,255,0.65),
+    inset -8px 0 16px rgba(0,0,0,0.28),
+    -3px 2px 0 #D8D0C0,
+    -6px 4px 0 #BFB6A4,
+    -8px 6px 8px rgba(0,0,0,0.8);
+  padding: 36px 42px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
-/* Molded Polypropylene Booklet Retaining Clips */
+/* 3D Cantilever Amaray Booklet Retention Clips with Mold Cutout Windows */
 .booklet-clip {
   position: absolute;
   right: 0;
-  width: 22px;
+  width: 44px;
   height: 36px;
-  background: linear-gradient(135deg, rgba(70,70,82,0.85) 0%, rgba(35,35,42,0.92) 100%);
-  border-radius: 6px 0 0 6px;
-  border: 1px solid rgba(255,255,255,0.22);
+  background: linear-gradient(145deg, #434552 0%, #272932 52%, #14151A 100%);
+  border-radius: 18px 0 0 18px;
+  border: 1.5px solid rgba(255,255,255,0.28);
   border-right: none;
-  box-shadow: -4px 3px 8px rgba(0,0,0,0.6), inset 1px 1px 2px rgba(255,255,255,0.3);
-  z-index: 10;
+  box-shadow:
+    -6px 5px 12px rgba(0,0,0,0.65),
+    inset 1px 1px 2px rgba(255,255,255,0.35),
+    inset -4px 0 6px rgba(0,0,0,0.8);
+  z-index: 12;
   pointer-events: none;
 }
-.booklet-clip.top { top: 48px; }
-.booklet-clip.bottom { bottom: 48px; }
+.booklet-clip::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  right: 8px;
+  top: 10px;
+  bottom: 10px;
+  border-radius: 999px;
+  background: rgba(5, 5, 8, 0.65);
+  border-bottom: 1px solid rgba(255,255,255,0.22);
+}
+.booklet-clip.top, .booklet-clip.clip-top { top: 56px; }
+.booklet-clip.bottom, .booklet-clip.clip-bottom { bottom: 56px; }
 
 /* Metallic Binding Staples along Booklet Spine */
 .booklet-staple {
   position: absolute;
-  left: 14px;
+  left: 12px;
   width: 5px;
   height: 28px;
   background: linear-gradient(180deg, #E2E8F0 0%, #475569 40%, #94A3B8 75%, #1E293B 100%);
@@ -595,8 +673,8 @@ header.hud {
   z-index: 10;
   pointer-events: none;
 }
-.booklet-staple.top { top: 75px; }
-.booklet-staple.bottom { bottom: 75px; }
+.booklet-staple.top, .booklet-staple.staple-top { top: 82px; }
+.booklet-staple.bottom, .booklet-staple.staple-bottom { bottom: 82px; }
 
 /* Authentic Film Image Watermark (Barely visible, laid into pulp) */
 .booklet-watermark {
@@ -612,7 +690,7 @@ header.hud {
 .booklet-laid-lines {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(0deg, rgba(60, 50, 40, 0.04) 0px, rgba(60, 50, 40, 0.04) 1px, transparent 1px, transparent 6px);
+  background: repeating-linear-gradient(0deg, rgba(60, 50, 40, 0.045) 0px, rgba(60, 50, 40, 0.045) 1px, transparent 1px, transparent 6px);
   pointer-events: none;
 }
 .booklet-content {
@@ -663,38 +741,52 @@ header.hud {
   color: #6E6E78;
   border-top: 1px solid rgba(0,0,0,0.12);
   padding-top: 10px;
+  display: flex;
+  justify-content: space-between;
 }
 
-/* Right Page: Disc Tray & Trailer Player */
+/* Right Page: Injection-Molded Amaray Disc Tray & Widescreen Preview Bay */
 .dvd-tray {
   position: relative;
   flex: 1;
-  background: #18181D;
-  border-radius: 4px 12px 12px 4px;
-  border-left: 2px solid #0D0D10;
-  box-shadow: 15px 20px 45px rgba(0,0,0,0.85);
+  background:
+    radial-gradient(circle at 50% 62%, rgba(255,255,255,0.03) 0%, transparent 60%),
+    linear-gradient(145deg, #1E2028 0%, #14151B 55%, #0D0E13 100%);
+  border-radius: 3px 10px 10px 3px;
+  margin: 4px 6px 4px 0;
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow:
+    inset 0 0 0 3px rgba(8, 8, 12, 0.85),
+    inset 6px 0 16px rgba(0,0,0,0.7),
+    8px 10px 24px rgba(0,0,0,0.75);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  justify-content: space-between;
+  padding: 20px 24px;
 }
-/* Chamfered Molded Frame Housing around Trailer */
+/* Multi-Stepped Chamfered Molded Frame Housing around Trailer */
 .tray-housing-frame {
   position: relative;
-  background: linear-gradient(135deg, #252530 0%, #15151C 100%);
-  padding: 8px;
+  background: linear-gradient(145deg, #2D2F3B 0%, #181922 55%, #0D0E14 100%);
+  padding: 9px 10px 7px 10px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.18);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.22);
+  box-shadow:
+    inset 0 2px 5px rgba(0,0,0,0.85),
+    0 10px 24px rgba(0,0,0,0.75),
+    0 0 0 3px rgba(6, 6, 10, 0.9);
+  z-index: 3;
 }
 .tray-video-slot {
   width: 100%;
-  height: 235px;
+  height: 196px;
   border-radius: 8px;
-  background: #000;
+  background: #040406;
   overflow: hidden;
   position: relative;
-  box-shadow: inset 0 0 25px rgba(0,0,0,0.95);
+  border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: inset 0 0 28px rgba(0,0,0,0.95);
 }
 .tray-video-slot iframe {
   width: 100%;
@@ -713,8 +805,8 @@ header.hud {
   color: #94A3B8;
 }
 .tray-led-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #38BDF8;
   box-shadow: 0 0 8px #38BDF8, 0 0 14px rgba(56,189,248,0.7);
@@ -725,94 +817,113 @@ header.hud {
   50% { opacity: 1; transform: scale(1.15); }
 }
 
-/* Amaray Disc Holder with Recess Bed & Push Hub */
-.disc-holder {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  margin-top: 14px;
-}
+/* Sculpted Amaray Disc Well, Ergonomic Finger Cutouts & 12-Petal Split-Collet PUSH Hub */
 .tray-recess-bed {
-  position: absolute;
-  width: 195px;
-  height: 195px;
+  position: relative;
+  width: 184px;
+  height: 184px;
+  margin: 8px auto;
   border-radius: 50%;
-  background: radial-gradient(circle, #0F0F14 60%, #15151C 92%, #22222B 100%);
-  box-shadow: inset 0 4px 14px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.08);
+  background:
+    repeating-conic-gradient(from 0deg, rgba(255,255,255,0.018) 0deg 2deg, transparent 2deg 30deg),
+    radial-gradient(circle, #0A0B0F 48%, #12131A 82%, #060609 100%);
+  border: 2px solid rgba(255,255,255,0.14);
+  box-shadow:
+    inset 0 8px 20px rgba(0,0,0,0.95),
+    inset 0 -2px 6px rgba(255,255,255,0.12),
+    0 0 0 5px rgba(10, 11, 15, 0.9),
+    0 2px 8px rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.tray-thumb-cutout {
+.thumb-notch {
   position: absolute;
-  width: 24px;
-  height: 38px;
+  width: 34px;
+  height: 54px;
   top: 50%;
   transform: translateY(-50%);
-  background: #0C0C10;
-  border-radius: 12px;
-  box-shadow: inset 0 2px 5px rgba(0,0,0,0.9);
+  background: radial-gradient(circle at center, #050508 0%, #0E0F15 72%, #1B1D26 100%);
+  border-radius: 18px;
+  border: 1.5px solid rgba(255,255,255,0.18);
+  box-shadow: inset 0 4px 10px rgba(0,0,0,0.95), 0 2px 6px rgba(0,0,0,0.7);
+  z-index: 1;
 }
-.tray-thumb-cutout.left { left: -10px; }
-.tray-thumb-cutout.right { right: -10px; }
-.tray-rib {
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 170px; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06) 40%, rgba(255,255,255,0.06) 60%, transparent);
-}
-.tray-rib.rib-1 { transform: translate(-50%, -50%) rotate(0deg); }
-.tray-rib.rib-2 { transform: translate(-50%, -50%) rotate(45deg); }
-.tray-rib.rib-3 { transform: translate(-50%, -50%) rotate(90deg); }
-.tray-rib.rib-4 { transform: translate(-50%, -50%) rotate(135deg); }
+.thumb-notch.thumb-left { left: -18px; }
+.thumb-notch.thumb-right { right: -18px; }
 
 .optical-disc {
-  width: 175px;
-  height: 175px;
+  width: 168px;
+  height: 168px;
   border-radius: 50%;
-  background: 
-    radial-gradient(circle at center, transparent 20px, #1E293B 21px, #334155 32px, transparent 33px),
-    conic-gradient(from 45deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4, #FFEEAD, #FF6B6B);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.7), inset 0 0 15px rgba(255,255,255,0.4);
+  background:
+    radial-gradient(circle at center,
+      transparent 0 18px,
+      rgba(225, 238, 255, 0.28) 18px 28px,
+      #CBD5E1 28px 34px,
+      #1E293B 34px 36px,
+      transparent 36px),
+    conic-gradient(from 35deg,
+      rgba(255,255,255,0.08) 0deg,
+      rgba(255, 59, 48, 0.36) 28deg,
+      rgba(255, 204, 0, 0.38) 54deg,
+      rgba(52, 199, 89, 0.38) 82deg,
+      rgba(0, 122, 255, 0.42) 110deg,
+      rgba(175, 82, 222, 0.36) 138deg,
+      rgba(255,255,255,0.06) 180deg,
+      rgba(255, 59, 48, 0.36) 208deg,
+      rgba(255, 204, 0, 0.38) 234deg,
+      rgba(52, 199, 89, 0.38) 262deg,
+      rgba(0, 122, 255, 0.42) 290deg,
+      rgba(175, 82, 222, 0.36) 318deg,
+      rgba(255,255,255,0.08) 360deg),
+    radial-gradient(circle at 35% 30%, #334155 0%, #0F172A 70%, #090D16 100%);
+  border: 1.5px solid rgba(255,255,255,0.45);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.85), inset 0 0 18px rgba(255,255,255,0.32);
   position: relative;
   display: grid;
   place-items: center;
-  animation: discSpin 16s linear infinite;
+  animation: discSpin 18s linear infinite;
   z-index: 2;
 }
 @keyframes discSpin { to { transform: rotate(360deg); } }
-.disc-lead-in {
-  position: absolute;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  border: 1px dashed rgba(255,255,255,0.25);
-  pointer-events: none;
-}
-.disc-matrix-code {
-  position: absolute;
-  font-family: monospace;
-  font-size: 6px;
-  color: rgba(255,255,255,0.5);
-  letter-spacing: 0.05em;
-  pointer-events: none;
-  transform: translateY(-24px);
-}
 .disc-center {
-  width: 44px;
-  height: 44px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.25);
-  border: 4px solid #111;
+  border: 2px solid rgba(255,255,255,0.55);
+  box-shadow: inset 0 0 6px rgba(255,255,255,0.45);
+}
+.hub-push-btn {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(from 0deg, #383A46 0deg 24deg, #07070B 24deg 30deg),
+    radial-gradient(circle, #2A2C36 0%, #12131A 100%);
+  border: 2px solid rgba(255,255,255,0.24);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.9), inset 0 2px 4px rgba(255,255,255,0.22);
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 4;
 }
-.hub-push-btn {
+.hub-push-btn .hub-text {
+  background: radial-gradient(circle at 35% 35%, #2E303C 0%, #14151C 100%);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: sans-serif;
-  font-size: 7px;
+  font-size: 6px;
   font-weight: 900;
-  color: rgba(255,255,255,0.75);
-  letter-spacing: 0.05em;
+  color: rgba(235,240,250,0.88);
+  letter-spacing: 0.06em;
+  text-shadow: 0 -1px 1px rgba(0,0,0,0.9);
 }
 
 /* Actions inside DVD */
@@ -1392,6 +1503,9 @@ header.hud {
       </div>
     </div>
 
+    <!-- Central 3D Living-Hinge Polypropylene Spine Gutter -->
+    <div class="dvd-spine-gutter"></div>
+
     <!-- Right Tray with Disc & Trailer -->
     <div class="dvd-tray">
       <div class="tray-housing-frame">
@@ -1813,28 +1927,101 @@ function openNuvioDirect() {
   window.location.href = nuvioUri;
 }
 
-// TMDB Dynamic Fetching
-async function fetchTrendingMovies() {
-  if (!TMDB_KEY) return;
+// Service Worker & Offline Metadata/Poster Cache Coordination for CineTV Launcher
+function syncLauncherCacheWithServiceWorker(url, resultsList) {
   try {
-    const res = await fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=${TMDB_KEY}&language=tr-TR`);
-    const data = await res.json();
-    if (data.results && data.results.length > 0) {
-      const live = data.results.slice(0, 15).map(r => ({
-        id: r.id,
-        title: r.title,
-        year: r.release_date ? parseInt(r.release_date.split('-')[0]) : 2024,
-        rating: Math.round(r.vote_average * 10) / 10,
-        overview: r.overview,
-        poster: r.poster_path ? `https://image.tmdb.org/t/p/w500${r.poster_path}` : DEFAULT_MOVIES[0].poster,
-        backdrop: r.backdrop_path ? `https://image.tmdb.org/t/p/w1280${r.backdrop_path}` : DEFAULT_MOVIES[0].backdrop,
-        trailer: "dQw4w9WgXcQ"
-      }));
-      // Merge with classic defaults
-      movies = [...DEFAULT_MOVIES, ...live];
-      renderShelf();
+    const list = Array.isArray(resultsList) ? resultsList : movies;
+    const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+    if (!sw || !list.length) return;
+    if (url) {
+      sw.postMessage({
+        type: 'CACHE_METADATA',
+        url,
+        payload: { ok: true, results: list }
+      });
+    }
+    const posterUrls = [];
+    list.forEach(m => {
+      if (m && m.poster) posterUrls.push(m.poster);
+      if (m && m.backdrop) posterUrls.push(m.backdrop);
+    });
+    if (posterUrls.length) {
+      sw.postMessage({ type: 'WARM_POSTERS', urls: posterUrls.slice(0, 36) });
+    }
+  } catch (_) {}
+}
+
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+  navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(() => {
+    return navigator.serviceWorker.ready;
+  }).then(() => {
+    syncLauncherCacheWithServiceWorker(location.origin + '/api/catalog/trending?type=movie&page=1', movies);
+  }).catch(() => {});
+}
+
+// TMDB & Local Catalog Dynamic Fetching with Unstable-Network Cache Fallback
+async function fetchTrendingMovies() {
+  try {
+    if (TMDB_KEY) {
+      const tmdbUrl = `https://api.themoviedb.org/3/trending/movie/week?api_key=${TMDB_KEY}&language=tr-TR`;
+      const res = await fetch(tmdbUrl);
+      const data = await res.json();
+      if (data.results && data.results.length > 0) {
+        const live = data.results.slice(0, 15).map(r => ({
+          id: r.id,
+          title: r.title,
+          year: r.release_date ? parseInt(r.release_date.split('-')[0]) : 2024,
+          rating: Math.round(r.vote_average * 10) / 10,
+          overview: r.overview,
+          poster: r.poster_path ? `https://image.tmdb.org/t/p/w500${r.poster_path}` : DEFAULT_MOVIES[0].poster,
+          backdrop: r.backdrop_path ? `https://image.tmdb.org/t/p/w1280${r.backdrop_path}` : DEFAULT_MOVIES[0].backdrop,
+          trailer: "dQw4w9WgXcQ"
+        }));
+        movies = [...DEFAULT_MOVIES, ...live];
+        try { localStorage.setItem('cinetv.win.trending', JSON.stringify(movies)); } catch (_) {}
+        syncLauncherCacheWithServiceWorker(tmdbUrl, movies);
+        renderShelf();
+        return;
+      }
+    }
+    const localUrl = '/api/catalog/trending?type=movie&page=1';
+    const localRes = await fetch(localUrl);
+    if (localRes.ok) {
+      const localData = await localRes.json();
+      if (Array.isArray(localData.results) && localData.results.length > 0) {
+        const mapped = localData.results.map((r, idx) => ({
+          id: r.tmdbId || r.tmdb || r.id || (idx + 100),
+          imdbId: r.imdbId || r.imdb || DEFAULT_MOVIES[0].imdbId,
+          title: r.title,
+          director: (Array.isArray(r.directors) && r.directors[0]?.name) || r.director || 'CineTV Seçkisi',
+          year: r.year || 2024,
+          rating: r.rating || 8.2,
+          runtime: r.runtime || 124,
+          overview: r.overview || '',
+          poster: r.poster || DEFAULT_MOVIES[0].poster,
+          backdrop: r.backdrop || r.poster || DEFAULT_MOVIES[0].backdrop
+        }));
+        movies = mapped;
+        try { localStorage.setItem('cinetv.win.trending', JSON.stringify(movies)); } catch (_) {}
+        syncLauncherCacheWithServiceWorker(location.origin + localUrl, movies);
+        currentIndex = 0;
+        renderShelf();
+        return;
+      }
     }
   } catch (err) {
+    try {
+      const cached = localStorage.getItem('cinetv.win.trending');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          movies = parsed;
+          currentIndex = Math.min(currentIndex, movies.length - 1);
+          renderShelf();
+          return;
+        }
+      }
+    } catch (_) {}
     console.warn("TMDB Live Catalog fallback to curated classics:", err);
   }
 }
@@ -1874,26 +2061,81 @@ function handleSearch(e) {
 }
 
 async function handleSearchQuery(q) {
-  if (!TMDB_KEY) return;
+  const cleanQ = String(q || '').trim();
+  if (!cleanQ) return;
   try {
-    const res = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_KEY}&language=tr-TR&query=${encodeURIComponent(q)}`);
-    const data = await res.json();
-    if (data.results && data.results.length > 0) {
-      movies = data.results.map(r => ({
-        id: r.id,
-        title: r.title,
-        year: r.release_date ? parseInt(r.release_date.split('-')[0]) : 2024,
-        rating: Math.round(r.vote_average * 10) / 10,
-        overview: r.overview,
-        poster: r.poster_path ? `https://image.tmdb.org/t/p/w500${r.poster_path}` : DEFAULT_MOVIES[0].poster,
-        backdrop: r.backdrop_path ? `https://image.tmdb.org/t/p/w1280${r.backdrop_path}` : DEFAULT_MOVIES[0].backdrop
-      }));
-      currentIndex = 0;
-      renderShelf();
+    if (TMDB_KEY) {
+      const tmdbSearchUrl = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_KEY}&language=tr-TR&query=${encodeURIComponent(cleanQ)}`;
+      const res = await fetch(tmdbSearchUrl);
+      const data = await res.json();
+      if (data.results && data.results.length > 0) {
+        movies = data.results.map(r => ({
+          id: r.id,
+          title: r.title,
+          year: r.release_date ? parseInt(r.release_date.split('-')[0]) : 2024,
+          rating: Math.round(r.vote_average * 10) / 10,
+          overview: r.overview,
+          poster: r.poster_path ? `https://image.tmdb.org/t/p/w500${r.poster_path}` : DEFAULT_MOVIES[0].poster,
+          backdrop: r.backdrop_path ? `https://image.tmdb.org/t/p/w1280${r.backdrop_path}` : DEFAULT_MOVIES[0].backdrop
+        }));
+        try { localStorage.setItem(`cinetv.win.search.${cleanQ.toLowerCase()}`, JSON.stringify(movies)); } catch (_) {}
+        syncLauncherCacheWithServiceWorker(tmdbSearchUrl, movies);
+        currentIndex = 0;
+        renderShelf();
+        return;
+      }
+    }
+    const localSearchUrl = `/api/catalog/search?q=${encodeURIComponent(cleanQ)}&page=1`;
+    const localRes = await fetch(localSearchUrl);
+    if (localRes.ok) {
+      const localData = await localRes.json();
+      if (Array.isArray(localData.results) && localData.results.length > 0) {
+        movies = localData.results.map((r, idx) => ({
+          id: r.tmdbId || r.tmdb || r.id || (idx + 200),
+          imdbId: r.imdbId || r.imdb || DEFAULT_MOVIES[0].imdbId,
+          title: r.title,
+          director: (Array.isArray(r.directors) && r.directors[0]?.name) || r.director || 'CineTV Seçkisi',
+          year: r.year || 2024,
+          rating: r.rating || 8.0,
+          runtime: r.runtime || 120,
+          overview: r.overview || '',
+          poster: r.poster || DEFAULT_MOVIES[0].poster,
+          backdrop: r.backdrop || r.poster || DEFAULT_MOVIES[0].backdrop
+        }));
+        try { localStorage.setItem(`cinetv.win.search.${cleanQ.toLowerCase()}`, JSON.stringify(movies)); } catch (_) {}
+        syncLauncherCacheWithServiceWorker(location.origin + localSearchUrl, movies);
+        currentIndex = 0;
+        renderShelf();
+        return;
+      }
     }
   } catch (err) {
-    console.warn("Search error:", err);
+    console.warn("Search network fallback to local cache:", err);
   }
+  // Unstable / Offline fallback: check cached search or filter local catalog
+  try {
+    const cachedSearch = localStorage.getItem(`cinetv.win.search.${cleanQ.toLowerCase()}`);
+    if (cachedSearch) {
+      const parsed = JSON.parse(cachedSearch);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        movies = parsed;
+        currentIndex = 0;
+        renderShelf();
+        return;
+      }
+    }
+    const poolRaw = localStorage.getItem('cinetv.win.trending');
+    const pool = poolRaw ? JSON.parse(poolRaw) : DEFAULT_MOVIES;
+    const lq = cleanQ.toLowerCase();
+    const filtered = (Array.isArray(pool) ? pool : DEFAULT_MOVIES).filter(m =>
+      String(m.title || '').toLowerCase().includes(lq) ||
+      String(m.director || '').toLowerCase().includes(lq) ||
+      String(m.overview || '').toLowerCase().includes(lq)
+    );
+    movies = filtered.length > 0 ? filtered : DEFAULT_MOVIES;
+    currentIndex = 0;
+    renderShelf();
+  } catch (_) {}
 }
 
 // Category Switcher
@@ -1902,6 +2144,7 @@ function switchCategory(cat) {
     movies = [...DEFAULT_MOVIES];
     currentIndex = 0;
     renderShelf();
+    syncLauncherCacheWithServiceWorker(location.origin + '/api/catalog/trending?type=curated', movies);
   } else if (cat === 'popular') {
     fetchTrendingMovies();
   } else if (cat === 'turkish') {

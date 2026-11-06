@@ -538,14 +538,16 @@ public class DvdOpeningView extends View {
                 canvas.rotate(-90f * (1f - fly), cx, cy);
             }
             if (open > 0.004f) {
-                // Soft ambient drop shadow under both leaves of the open case for realistic 3D presence
-                caseShadowPaint.setColor(Color.argb((int) (110 * open * (caseAlpha / 255f)), 0, 0, 0));
-                caseShadowRect.set(left - cw * open * 0.96f, top + ch * 0.04f, left + cw, top + ch + ch * 0.05f);
+                float spineW = cw * 0.054f * open;
+                // Soft ambient drop shadow under both leaves and central spine of the open case for realistic 3D presence
+                caseShadowPaint.setColor(Color.argb((int) (135 * open * (caseAlpha / 255f)), 0, 0, 0));
+                caseShadowRect.set(left - spineW - cw * open * 0.96f, top + ch * 0.038f, left + cw + cw * 0.015f, top + ch + ch * 0.055f);
                 canvas.drawRoundRect(caseShadowRect, cw * 0.04f, cw * 0.04f, caseShadowPaint);
-                drawTray(canvas, left, top, cw, ch);
+                drawTray(canvas, left, top, cw, ch, open);
                 if (play < 0 && disc != null && !landscape) drawDisc(canvas, x, y, size, rise);
+                drawSpineGutter(canvas, left - spineW, top, spineW, ch, open);
             }
-            drawCover(canvas, left, top, cw, ch, open * OPEN_ANGLE);
+            drawCover(canvas, left, top, cw, ch, open * OPEN_ANGLE, open);
             if (turned >= 0) canvas.restoreToCount(turned);
             if (save >= 0) canvas.restoreToCount(save);
         }
@@ -623,241 +625,538 @@ public class DvdOpeningView extends View {
         Canvas c = new Canvas(out);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         RectF all = new RectF(0, 0, w, h);
-        float rad = w * 0.03f;
-        p.setShader(new LinearGradient(0, 0, w, h, stock.trayTop, stock.trayBottom, Shader.TileMode.CLAMP));
+        float rad = w * 0.032f;
+
+        // 1. Outer Injection-Molded Polypropylene Case Shell Wall
+        p.setColor(stock.shell);
         c.drawRoundRect(all, rad, rad, p);
+
+        // Outer shell 3D top-left bevel catchlight & bottom-right rim shade
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1.5f, w * 0.005f));
+        p.setShader(new LinearGradient(0, 0, w, h,
+                new int[]{Color.argb(95, 255, 255, 255), Color.argb(25, 255, 255, 255), Color.argb(140, 0, 0, 0)},
+                new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRoundRect(new RectF(w * 0.004f, h * 0.003f, w * 0.996f, h * 0.997f), rad, rad, p);
+        p.setShader(null);
+
+        // Inner tray deck inset inside the molded outer shell wall
+        float wallL = w * 0.016f;
+        float wallR = w * 0.036f;
+        float wallTB = h * 0.024f;
+        RectF deck = new RectF(wallL, wallTB, w - wallR, h - wallTB);
+        float deckRad = w * 0.022f;
+
+        // Deep step-down trench shadow around tray deck
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(175, 0, 0, 0));
+        c.drawRoundRect(new RectF(deck.left - 2f, deck.top - 2f, deck.right + 2.5f, deck.bottom + 2.5f), deckRad, deckRad, p);
+
+        // Tray base gradient & theme lining clipped to deck
+        p.setShader(new LinearGradient(deck.left, deck.top, deck.right, deck.bottom, stock.trayTop, stock.trayBottom, Shader.TileMode.CLAMP));
+        c.drawRoundRect(deck, deckRad, deckRad, p);
         p.setShader(null);
         int keep = c.save();
         android.graphics.Path clip = new android.graphics.Path();
-        clip.addRoundRect(all, rad, rad, android.graphics.Path.Direction.CW);
+        clip.addRoundRect(deck, deckRad, deckRad, android.graphics.Path.Direction.CW);
         c.clipPath(clip);
         stock.lining(c, w, h);
         c.restoreToCount(keep);
+
+        // Molded dust-seal ridge along top, right, and bottom shell walls
+        Paint ridgeP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        ridgeP.setStyle(Paint.Style.STROKE);
+        ridgeP.setStrokeWidth(Math.max(1f, w * 0.0032f));
+        ridgeP.setColor(Color.argb(110, 0, 0, 0));
+        c.drawRoundRect(deck, deckRad, deckRad, ridgeP);
+        ridgeP.setStrokeWidth(Math.max(1f, w * 0.0022f));
+        ridgeP.setColor(Color.argb(55, 255, 255, 255));
+        c.drawRoundRect(new RectF(deck.left * 0.5f, deck.top * 0.5f, w - wallR * 0.48f, h - deck.top * 0.5f), rad * 0.85f, rad * 0.85f, ridgeP);
+
+        // Right-edge sculpted thumb-release indent recess & dual snap-lock latch clasps
+        bakeOuterEdgeLatches(c, w, h, true);
+
         if (!landscape) {
-            bakePhysicalTray(c, stock, w, h);
+            bakePhysicalTray(c, stock, w, h, deck);
         } else {
-            bakePhysicalLandscapeTray(c, stock, w, h);
+            bakePhysicalLandscapeTray(c, stock, w, h, deck);
         }
         return out;
     }
 
-    private static void bakePhysicalLandscapeTray(Canvas c, Insert stock, int w, int h) {
+    /** Draws the injection-molded thumb-release recess and upper/lower snap-lock latch clasps on the outer edge of a case leaf. */
+    private static void bakeOuterEdgeLatches(Canvas c, int w, int h, boolean rightEdge) {
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        float edgeW = w * 0.034f;
+        float x0 = rightEdge ? (w - edgeW) : 0f;
+        float x1 = rightEdge ? w : edgeW;
+
+        // 1. Sculpted ergonomic thumb-pull indent at vertical center (h * 0.41f .. h * 0.59f)
+        RectF thumb = new RectF(
+                rightEdge ? (x0 + edgeW * 0.12f) : (x0 - edgeW * 0.18f),
+                h * 0.415f,
+                rightEdge ? (x1 + edgeW * 0.18f) : (x1 - edgeW * 0.12f),
+                h * 0.585f);
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(new LinearGradient(thumb.left, thumb.top, thumb.right, thumb.top,
+                rightEdge ? new int[]{0xD0050508, 0x90181820, 0x30FFFFFF}
+                          : new int[]{0x30FFFFFF, 0x90181820, 0xD0050508},
+                new float[]{0f, 0.65f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRoundRect(thumb, edgeW * 0.45f, edgeW * 0.45f, p);
+        p.setShader(null);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1f, w * 0.0025f));
+        p.setColor(Color.argb(65, 255, 255, 255));
+        c.drawRoundRect(thumb, edgeW * 0.45f, edgeW * 0.45f, p);
+
+        // Grip ribs inside thumb indent
+        p.setStrokeWidth(Math.max(0.8f, w * 0.0018f));
+        for (int i = -3; i <= 3; i++) {
+            float gy = h * 0.50f + i * (h * 0.016f);
+            p.setColor(Color.argb(110, 0, 0, 0));
+            c.drawLine(x0 + edgeW * 0.25f, gy, x1 - edgeW * 0.25f, gy, p);
+            p.setColor(Color.argb(45, 255, 255, 255));
+            c.drawLine(x0 + edgeW * 0.25f, gy + 1f, x1 - edgeW * 0.25f, gy + 1f, p);
+        }
+
+        // 2. Upper & Lower Snap-Lock Latch Clasps (h * 0.19f and h * 0.81f)
+        float[] latchCenters = {h * 0.19f, h * 0.81f};
+        float latchH = h * 0.058f;
+        for (float ly : latchCenters) {
+            RectF latchWell = new RectF(x0 + edgeW * 0.12f, ly - latchH * 0.5f, x1 - edgeW * 0.12f, ly + latchH * 0.5f);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.argb(175, 4, 4, 7));
+            c.drawRoundRect(latchWell, edgeW * 0.2f, edgeW * 0.2f, p);
+
+            // Raised locking tab hook inside the well
+            RectF hook = new RectF(latchWell.left + edgeW * 0.14f, ly - latchH * 0.28f, latchWell.right - edgeW * 0.14f, ly + latchH * 0.28f);
+            p.setShader(new LinearGradient(hook.left, hook.top, hook.right, hook.bottom,
+                    new int[]{0xFF464854, 0xFF282A32, 0xFF14151A}, null, Shader.TileMode.CLAMP));
+            c.drawRoundRect(hook, edgeW * 0.12f, edgeW * 0.12f, p);
+            p.setShader(null);
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(Math.max(0.9f, w * 0.002f));
+            p.setColor(Color.argb(80, 255, 255, 255));
+            c.drawRoundRect(hook, edgeW * 0.12f, edgeW * 0.12f, p);
+        }
+    }
+
+    private static void bakePhysicalLandscapeTray(Canvas c, Insert stock, int w, int h, RectF deck) {
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-        // 1. Molded perimeter rim & inner edge shadow for the landscape tray
+        // 1. Subtle recessed circular DVD tray well & center hub ghost under the widescreen module
+        float gcx = deck.centerX(), gcy = deck.centerY();
+        float gRad = Math.min(deck.width(), deck.height()) * 0.46f;
         p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(Math.max(1.5f, w * 0.005f));
-        p.setColor(Color.argb(75, 0, 0, 0));
-        c.drawRoundRect(new RectF(w * 0.012f, h * 0.014f, w * 0.988f, h * 0.986f), w * 0.025f, w * 0.025f, p);
+        p.setStrokeWidth(Math.max(1.5f, w * 0.004f));
+        p.setColor(Color.argb(55, 0, 0, 0));
+        c.drawCircle(gcx, gcy, gRad, p);
+        p.setColor(Color.argb(24, 255, 255, 255));
+        c.drawCircle(gcx, gcy, gRad + 1.5f, p);
+
+        // Corner mold relief pockets & ejector pin marks on the tray deck
+        bakeCornerMoldPockets(c, deck, w, h);
 
         RectF sc = trayScreen(0, 0, w, h);
         float corner = w * 0.012f;
 
-        // 2. Deep chamfered outer bezel housing around the 16:9 trailer screen
-        RectF bezel = new RectF(sc.left - w * 0.018f, sc.top - h * 0.025f, sc.right + w * 0.018f, sc.bottom + h * 0.062f);
+        // 2. Multi-stepped chamfered collector's bezel housing around the 16:9 trailer screen
+        RectF outerFrame = new RectF(sc.left - w * 0.026f, sc.top - h * 0.036f, sc.right + w * 0.026f, sc.bottom + h * 0.072f);
+        RectF bezel = new RectF(sc.left - w * 0.017f, sc.top - h * 0.024f, sc.right + w * 0.017f, sc.bottom + h * 0.058f);
+
+        // Outer recess drop shadow
         p.setStyle(Paint.Style.FILL);
-        p.setShader(new LinearGradient(bezel.left, bezel.top, bezel.right, bezel.bottom,
-                new int[]{0xFF2A2A34, 0xFF181820, 0xFF0D0D12}, null, Shader.TileMode.CLAMP));
-        c.drawRoundRect(bezel, corner * 1.5f, corner * 1.5f, p);
+        p.setColor(Color.argb(150, 0, 0, 0));
+        c.drawRoundRect(new RectF(outerFrame.left - 2f, outerFrame.top - 1.5f, outerFrame.right + 3f, outerFrame.bottom + 3.5f), corner * 1.9f, corner * 1.9f, p);
+
+        // Outer stepped flange
+        p.setShader(new LinearGradient(outerFrame.left, outerFrame.top, outerFrame.right, outerFrame.bottom,
+                new int[]{0xFF343642, 0xFF1D1E26, 0xFF101116}, new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRoundRect(outerFrame, corner * 1.8f, corner * 1.8f, p);
         p.setShader(null);
 
-        // Molded outer bezel edge highlight (light from top-left)
-        p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(Math.max(1f, w * 0.0028f));
-        p.setColor(Color.argb(55, 255, 255, 255));
-        c.drawRoundRect(bezel, corner * 1.5f, corner * 1.5f, p);
+        // Inner sloped bezel
+        p.setShader(new LinearGradient(bezel.left, bezel.top, bezel.right, bezel.bottom,
+                new int[]{0xFF262832, 0xFF16171E, 0xFF0A0B0F}, new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRoundRect(bezel, corner * 1.4f, corner * 1.4f, p);
+        p.setShader(null);
 
-        // Inset screen cavity shadow
+        // Mitered 45-degree corner bevel seams joining outerFrame and inner bezel
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1f, w * 0.002f));
+        p.setColor(Color.argb(75, 0, 0, 0));
+        c.drawLine(outerFrame.left + corner * 0.5f, outerFrame.top + corner * 0.5f, sc.left, sc.top, p);
+        c.drawLine(outerFrame.right - corner * 0.5f, outerFrame.top + corner * 0.5f, sc.right, sc.top, p);
+        c.drawLine(outerFrame.left + corner * 0.5f, outerFrame.bottom - corner * 0.5f, bezel.left + corner * 0.5f, bezel.bottom - corner * 0.5f, p);
+        c.drawLine(outerFrame.right - corner * 0.5f, outerFrame.bottom - corner * 0.5f, bezel.right - corner * 0.5f, bezel.bottom - corner * 0.5f, p);
+
+        // Specular bevel highlights on outer & inner housing
+        p.setStrokeWidth(Math.max(1f, w * 0.0026f));
+        p.setColor(Color.argb(70, 255, 255, 255));
+        c.drawRoundRect(outerFrame, corner * 1.8f, corner * 1.8f, p);
+        p.setColor(Color.argb(40, 255, 255, 255));
+        c.drawRoundRect(bezel, corner * 1.4f, corner * 1.4f, p);
+
+        // Deep inset optical screen cavity trench
         p.setStyle(Paint.Style.FILL);
-        p.setColor(Color.argb(140, 0, 0, 0));
-        c.drawRoundRect(new RectF(sc.left - 2f, sc.top - 2f, sc.right + 2f, sc.bottom + 2f), corner, corner, p);
+        p.setColor(Color.argb(210, 0, 0, 0));
+        c.drawRoundRect(new RectF(sc.left - 3.5f, sc.top - 3.5f, sc.right + 3.5f, sc.bottom + 3.5f), corner * 1.1f, corner * 1.1f, p);
 
         // Screen bed recess
-        p.setColor(Color.parseColor("#050507"));
+        p.setColor(Color.parseColor("#040406"));
         c.drawRoundRect(sc, corner, corner, p);
 
-        // 3. 4 Structural corner hex screws / rivets at the bezel corners
+        // 3. 4 Precision Torx/Hex recessed fasteners at the outer housing corners
         Paint screwP = new Paint(Paint.ANTI_ALIAS_FLAG);
-        float[] screwXs = {bezel.left + w * 0.010f, bezel.right - w * 0.010f, bezel.left + w * 0.010f, bezel.right - w * 0.010f};
-        float[] screwYs = {bezel.top + h * 0.015f, bezel.top + h * 0.015f, bezel.bottom - h * 0.015f, bezel.bottom - h * 0.015f};
-        float sRad = Math.max(2.5f, w * 0.007f);
+        float[] screwXs = {outerFrame.left + w * 0.012f, outerFrame.right - w * 0.012f, outerFrame.left + w * 0.012f, outerFrame.right - w * 0.012f};
+        float[] screwYs = {outerFrame.top + h * 0.018f, outerFrame.top + h * 0.018f, outerFrame.bottom - h * 0.018f, outerFrame.bottom - h * 0.018f};
+        float sRad = Math.max(2.8f, w * 0.0075f);
         for (int i = 0; i < 4; i++) {
             screwP.setStyle(Paint.Style.FILL);
-            screwP.setColor(Color.argb(120, 0, 0, 0));
+            screwP.setColor(Color.argb(170, 5, 5, 8));
             c.drawCircle(screwXs[i], screwYs[i], sRad, screwP);
-            screwP.setColor(Color.argb(160, 160, 165, 180));
-            c.drawCircle(screwXs[i] - 0.4f, screwYs[i] - 0.4f, sRad * 0.7f, screwP);
-            screwP.setColor(Color.argb(180, 25, 25, 30));
-            c.drawCircle(screwXs[i], screwYs[i], sRad * 0.45f, screwP);
+            screwP.setShader(new LinearGradient(screwXs[i] - sRad, screwYs[i] - sRad, screwXs[i] + sRad, screwYs[i] + sRad,
+                    0xFFB0B8C8, 0xFF282C36, Shader.TileMode.CLAMP));
+            c.drawCircle(screwXs[i], screwYs[i], sRad * 0.76f, screwP);
+            screwP.setShader(null);
+            screwP.setColor(Color.argb(210, 15, 16, 22));
+            c.drawCircle(screwXs[i], screwYs[i], sRad * 0.40f, screwP);
         }
 
-        // 4. Sub-bezel technical specification strip
-        RectF specBar = new RectF(sc.left + w * 0.02f, sc.bottom + h * 0.014f, sc.right - w * 0.02f, sc.bottom + h * 0.046f);
+        // 4. Sub-bezel acoustic micro-grille & technical specification strip
+        RectF specBar = new RectF(sc.left + w * 0.014f, sc.bottom + h * 0.012f, sc.right - w * 0.014f, sc.bottom + h * 0.048f);
         p.setStyle(Paint.Style.FILL);
-        p.setColor(Color.argb(180, 10, 10, 14));
+        p.setColor(Color.argb(205, 8, 9, 13));
         c.drawRoundRect(specBar, corner * 0.6f, corner * 0.6f, p);
         p.setStyle(Paint.Style.STROKE);
         p.setStrokeWidth(Math.max(0.8f, w * 0.0018f));
-        p.setColor(Color.argb(35, 255, 255, 255));
+        p.setColor(Color.argb(42, 255, 255, 255));
         c.drawRoundRect(specBar, corner * 0.6f, corner * 0.6f, p);
 
-        // Technical specs typography
+        // Micro-perforated acoustic speaker grille on left side of specBar
         p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(190, 2, 2, 4));
+        float gStartX = specBar.left + w * 0.014f;
+        float gStep = Math.max(2.5f, w * 0.0055f);
+        for (int gx = 0; gx < 9; gx++) {
+            for (int gy = -1; gy <= 1; gy++) {
+                c.drawCircle(gStartX + gx * gStep, specBar.centerY() + gy * (specBar.height() * 0.24f), Math.max(0.9f, w * 0.0016f), p);
+            }
+        }
+
+        // Technical specs typography
         p.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
-        p.setTextSize(Math.max(7f, h * 0.022f));
-        p.setColor(Color.argb(140, 205, 215, 230));
+        p.setTextSize(Math.max(7f, h * 0.021f));
+        p.setColor(Color.argb(155, 210, 220, 235));
         p.setLetterSpacing(0.08f);
         Paint.FontMetrics fm = p.getFontMetrics();
         float ty = specBar.centerY() - (fm.ascent + fm.descent) / 2f;
-        c.drawText("16:9 ANAMORPHIC WIDESCREEN  ·  HIGH DEFINITION MASTER  ·  24 FPS PREVIEW", specBar.left + w * 0.022f, ty, p);
+        c.drawText("16:9 ANAMORPHIC WIDESCREEN  ·  MASTER PREVIEW BAY  ·  24 FPS", gStartX + 10 * gStep, ty, p);
 
-        // Optical LED indicator dot
+        // Optical LED indicator dot with glass lens glint
         float ledX = specBar.right - w * 0.018f;
         float ledY = specBar.centerY();
-        p.setColor(Color.argb(80, 56, 189, 248));
-        c.drawCircle(ledX, ledY, Math.max(3f, w * 0.009f), p);
+        p.setColor(Color.argb(90, 56, 189, 248));
+        c.drawCircle(ledX, ledY, Math.max(3.4f, w * 0.0095f), p);
         p.setColor(Color.parseColor("#38BDF8"));
-        c.drawCircle(ledX, ledY, Math.max(1.8f, w * 0.005f), p);
-
-        // 5. Molded structural stiffener ribs flanking the screen on left & right
-        Paint ribP = new Paint(Paint.ANTI_ALIAS_FLAG);
-        ribP.setStyle(Paint.Style.STROKE);
-        ribP.setStrokeWidth(Math.max(1f, w * 0.003f));
-        float[] leftRibXs = {bezel.left * 0.35f, bezel.left * 0.55f, bezel.left * 0.75f};
-        float[] rightRibXs = {bezel.right + (w - bezel.right) * 0.25f, bezel.right + (w - bezel.right) * 0.45f, bezel.right + (w - bezel.right) * 0.65f};
-        float ribY0 = h * 0.22f, ribY1 = h * 0.78f;
-        for (float rx : leftRibXs) {
-            ribP.setColor(Color.argb(45, 0, 0, 0));
-            c.drawLine(rx, ribY0, rx, ribY1, ribP);
-            ribP.setColor(Color.argb(25, 255, 255, 255));
-            c.drawLine(rx + 1f, ribY0, rx + 1f, ribY1, ribP);
-        }
-        for (float rx : rightRibXs) {
-            ribP.setColor(Color.argb(45, 0, 0, 0));
-            c.drawLine(rx, ribY0, rx, ribY1, ribP);
-            ribP.setColor(Color.argb(25, 255, 255, 255));
-            c.drawLine(rx + 1f, ribY0, rx + 1f, ribY1, ribP);
-        }
-
-        // 6. Polycarbonate display glass specular sheen
-        Paint sheenP = new Paint(Paint.ANTI_ALIAS_FLAG);
-        sheenP.setShader(new LinearGradient(sc.left, sc.top, sc.right, sc.bottom,
-                new int[]{Color.TRANSPARENT, Color.argb(18, 255, 255, 255), Color.argb(40, 255, 255, 255), Color.TRANSPARENT},
-                new float[]{0f, 0.45f, 0.52f, 1f}, Shader.TileMode.CLAMP));
-        c.drawRoundRect(sc, corner, corner, sheenP);
+        c.drawCircle(ledX, ledY, Math.max(1.9f, w * 0.0052f), p);
+        p.setColor(Color.argb(210, 255, 255, 255));
+        c.drawCircle(ledX - 0.8f, ledY - 0.8f, Math.max(0.8f, w * 0.002f), p);
     }
 
-    private static void bakePhysicalTray(Canvas c, Insert stock, int w, int h) {
+    /** Sculpts the 4 corner mold-relief pockets & circular ejector-pin marks found on real injection-molded Amaray trays. */
+    private static void bakeCornerMoldPockets(Canvas c, RectF deck, int w, int h) {
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        float pw = deck.width() * 0.14f;
+        float ph = deck.height() * 0.11f;
+        float padX = deck.width() * 0.028f;
+        float padY = deck.height() * 0.025f;
+        float r = w * 0.014f;
+        RectF[] pockets = {
+                new RectF(deck.left + padX, deck.top + padY, deck.left + padX + pw, deck.top + padY + ph),
+                new RectF(deck.right - padX - pw, deck.top + padY, deck.right - padX, deck.top + padY + ph),
+                new RectF(deck.left + padX, deck.bottom - padY - ph, deck.left + padX + pw, deck.bottom - padY),
+                new RectF(deck.right - padX - pw, deck.bottom - padY - ph, deck.right - padX, deck.bottom - padY)
+        };
+        for (int i = 0; i < 4; i++) {
+            RectF pk = pockets[i];
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.argb(72, 0, 0, 0));
+            c.drawRoundRect(pk, r, r, p);
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(Math.max(1f, w * 0.0025f));
+            p.setShader(new LinearGradient(pk.left, pk.top, pk.right, pk.bottom,
+                    new int[]{Color.argb(120, 0, 0, 0), Color.argb(42, 255, 255, 255)}, null, Shader.TileMode.CLAMP));
+            c.drawRoundRect(pk, r, r, p);
+            p.setShader(null);
+
+            // Circular mold ejector pin ring & cavity number inside corner pocket
+            float pinX = i % 2 == 0 ? (pk.left + pk.width() * 0.36f) : (pk.right - pk.width() * 0.36f);
+            float pinY = i < 2 ? (pk.top + pk.height() * 0.42f) : (pk.bottom - pk.height() * 0.42f);
+            float pinR = Math.max(2.5f, w * 0.013f);
+            p.setStrokeWidth(Math.max(0.8f, w * 0.0018f));
+            p.setColor(Color.argb(65, 0, 0, 0));
+            c.drawCircle(pinX, pinY, pinR, p);
+            p.setColor(Color.argb(32, 255, 255, 255));
+            c.drawCircle(pinX + 0.6f, pinY + 0.6f, pinR, p);
+        }
+    }
+
+    private static void bakePhysicalTray(Canvas c, Insert stock, int w, int h, RectF deck) {
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         float cx = w * 0.5f;
         float cy = h * 0.5f;
-        float discRadius = Math.min(w, h) * 0.44f;
+        float discRadius = Math.min(w, h) * 0.446f;
 
-        // 1. Molded perimeter rim & inner edge shadow for the tray body
-        p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(Math.max(1.5f, w * 0.006f));
-        p.setColor(Color.argb(70, 0, 0, 0));
-        c.drawRoundRect(new RectF(w * 0.012f, h * 0.01f, w * 0.988f, h * 0.99f), w * 0.025f, w * 0.025f, p);
+        // 1. Sculpted corner mold-relief pockets & manufacturing ejector pin marks in the 4 corners outside the disc well
+        bakeCornerMoldPockets(c, deck, w, h);
 
-        // 2. Circular disc recess bed (the molded well seating the 120mm DVD)
+        // Top & bottom molded structural channels outside the disc well
         p.setStyle(Paint.Style.FILL);
-        p.setColor(Color.argb(135, 0, 0, 0));
+        float chanW = w * 0.34f, chanH = h * 0.022f;
+        RectF topChan = new RectF(cx - chanW * 0.5f, deck.top + h * 0.016f, cx + chanW * 0.5f, deck.top + h * 0.016f + chanH);
+        RectF botChan = new RectF(cx - chanW * 0.5f, deck.bottom - h * 0.016f - chanH, cx + chanW * 0.5f, deck.bottom - h * 0.016f);
+        p.setColor(Color.argb(85, 0, 0, 0));
+        c.drawRoundRect(topChan, chanH * 0.5f, chanH * 0.5f, p);
+        c.drawRoundRect(botChan, chanH * 0.5f, chanH * 0.5f, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1f, w * 0.0022f));
+        p.setColor(Color.argb(40, 255, 255, 255));
+        c.drawRoundRect(topChan, chanH * 0.5f, chanH * 0.5f, p);
+        c.drawRoundRect(botChan, chanH * 0.5f, chanH * 0.5f, p);
+
+        // 2. Raised Outer Containment Ridge around the 120mm Disc Well (visible outside the seated DVD)
+        float outerRidgeR = discRadius + w * 0.018f;
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(2.5f, w * 0.014f));
+        p.setShader(new SweepGradient(cx, cy,
+                new int[]{0x44FFFFFF, 0x18FFFFFF, 0xAA000000, 0x55000000, 0x58FFFFFF, 0x44FFFFFF},
+                new float[]{0f, 0.22f, 0.50f, 0.72f, 0.88f, 1f}));
+        c.drawCircle(cx, cy, outerRidgeR, p);
+        p.setShader(null);
+
+        // 3. Deep Circular Disc Recess Bed (the stepped molded well seating the 120mm DVD)
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(165, 3, 3, 6));
         c.drawCircle(cx, cy, discRadius, p);
 
-        // Molded depth shadow on upper quadrant of circular recess
-        p.setShader(new RadialGradient(cx, cy, discRadius,
-                new int[]{Color.TRANSPARENT, Color.argb(40, 0, 0, 0), Color.argb(160, 0, 0, 0)},
-                new float[]{0.70f, 0.92f, 1.0f}, Shader.TileMode.CLAMP));
+        // Stepped inner wall shadow (stronger on top-left where overhead light is blocked by the vertical step wall)
+        p.setShader(new RadialGradient(cx - discRadius * 0.05f, cy - discRadius * 0.05f, discRadius * 1.05f,
+                new int[]{Color.argb(25, 255, 255, 255), Color.TRANSPARENT, Color.argb(95, 0, 0, 0), Color.argb(220, 0, 0, 0)},
+                new float[]{0f, 0.58f, 0.88f, 1.0f}, Shader.TileMode.CLAMP));
         c.drawCircle(cx, cy, discRadius, p);
         p.setShader(null);
 
-        // Outer lip highlight on bottom-right of the recess
+        // Crisp bevel catchlight on bottom-right lip of the circular disc well
         p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(Math.max(1f, w * 0.003f));
-        p.setColor(Color.argb(45, 255, 255, 255));
+        p.setStrokeWidth(Math.max(1.4f, w * 0.0038f));
+        p.setShader(new LinearGradient(cx - discRadius, cy - discRadius, cx + discRadius, cy + discRadius,
+                new int[]{Color.argb(210, 0, 0, 0), Color.argb(40, 0, 0, 0), Color.argb(90, 255, 255, 255)},
+                new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
         c.drawCircle(cx, cy, discRadius, p);
+        p.setShader(null);
 
-        // 3. Dual finger access cutouts at 3 o'clock (right) and 9 o'clock (left)
-        float notchW = w * 0.075f;
-        float notchH = h * 0.065f;
-        p.setStyle(Paint.Style.FILL);
-        p.setColor(Color.argb(160, 0, 0, 0));
-        RectF leftNotch = new RectF(cx - discRadius - notchW * 0.5f, cy - notchH, cx - discRadius + notchW * 0.5f, cy + notchH);
-        RectF rightNotch = new RectF(cx + discRadius - notchW * 0.5f, cy - notchH, cx + discRadius + notchW * 0.5f, cy + notchH);
-        c.drawRoundRect(leftNotch, notchW * 0.5f, notchW * 0.5f, p);
-        c.drawRoundRect(rightNotch, notchW * 0.5f, notchW * 0.5f, p);
-        p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(Math.max(1f, w * 0.0025f));
-        p.setColor(Color.argb(35, 255, 255, 255));
-        c.drawRoundRect(leftNotch, notchW * 0.5f, notchW * 0.5f, p);
-        c.drawRoundRect(rightNotch, notchW * 0.5f, notchW * 0.5f, p);
+        // 4. Deep Sculpted Ergonomic Finger-Release Wells at 9 o'clock (left) and 3 o'clock (right)
+        // Extending clearly outside the disc perimeter (out to discRadius + w*0.042f) so they are visible flanking the seated DVD
+        float wellOuterX = w * 0.044f;
+        float wellInnerX = w * 0.072f;
+        float wellHalfH = h * 0.088f;
+        RectF leftWell = new RectF(cx - discRadius - wellOuterX, cy - wellHalfH, cx - discRadius + wellInnerX, cy + wellHalfH);
+        RectF rightWell = new RectF(cx + discRadius - wellInnerX, cy - wellHalfH, cx + discRadius + wellOuterX, cy + wellHalfH);
+        RectF[] wells = {leftWell, rightWell};
+        for (int i = 0; i < 2; i++) {
+            RectF wf = wells[i];
+            float wr = wf.width() * 0.48f;
+            // Deep sloped floor gradient
+            p.setStyle(Paint.Style.FILL);
+            p.setShader(new RadialGradient(wf.centerX(), wf.centerY(), Math.max(wf.width(), wf.height()) * 0.72f,
+                    new int[]{0xEE040407, 0xCC0A0B10, 0x99161822},
+                    new float[]{0f, 0.65f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRoundRect(wf, wr, wr, p);
+            p.setShader(null);
 
-        // 4. Injection-molded structural stiffening ribs (radiating spoke ribs behind the disc)
+            // Inner step contour ring inside finger well
+            RectF innerWf = new RectF(wf.left + wf.width() * 0.14f, wf.top + wf.height() * 0.12f,
+                    wf.right - wf.width() * 0.14f, wf.bottom - wf.height() * 0.12f);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(Math.max(1f, w * 0.0024f));
+            p.setColor(Color.argb(90, 0, 0, 0));
+            c.drawRoundRect(innerWf, wr * 0.72f, wr * 0.72f, p);
+
+            // 3D chamfered rim highlight around the finger well
+            p.setStrokeWidth(Math.max(1.3f, w * 0.0034f));
+            p.setShader(new LinearGradient(wf.left, wf.top, wf.right, wf.bottom,
+                    new int[]{Color.argb(190, 0, 0, 0), Color.argb(30, 255, 255, 255), Color.argb(85, 255, 255, 255)},
+                    new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRoundRect(wf, wr, wr, p);
+            p.setShader(null);
+        }
+
+        // 5. Injection-molded structural stiffening ribs & concentric web rings in the floor of the disc well
         p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(Math.max(1f, w * 0.0035f));
-        for (int i = 0; i < 8; i++) {
-            double angle = (Math.PI / 4.0) * i;
+        p.setStrokeWidth(Math.max(1f, w * 0.0032f));
+        float[] ringRadii = {discRadius * 0.36f, discRadius * 0.64f, discRadius * 0.88f};
+        for (float rr : ringRadii) {
+            p.setColor(Color.argb(55, 0, 0, 0));
+            c.drawCircle(cx, cy, rr, p);
+            p.setColor(Color.argb(24, 255, 255, 255));
+            c.drawCircle(cx, cy, rr + 1f, p);
+        }
+        for (int i = 0; i < 12; i++) {
+            double angle = (Math.PI / 6.0) * i;
             float cos = (float) Math.cos(angle);
             float sin = (float) Math.sin(angle);
-            float rInner = w * 0.13f;
-            float rOuter = discRadius * 0.88f;
-            p.setColor(Color.argb(40, 0, 0, 0));
+            float rInner = w * 0.125f;
+            float rOuter = discRadius * 0.92f;
+            p.setColor(Color.argb(50, 0, 0, 0));
             c.drawLine(cx + cos * rInner, cy + sin * rInner, cx + cos * rOuter, cy + sin * rOuter, p);
-            p.setColor(Color.argb(25, 255, 255, 255));
-            c.drawLine(cx + cos * rInner + 0.8f, cy + sin * rInner + 0.8f, cx + cos * rOuter + 0.8f, cy + sin * rOuter + 0.8f, p);
+            p.setColor(Color.argb(26, 255, 255, 255));
+            c.drawLine(cx + cos * rInner + 0.9f, cy + sin * rInner + 0.9f, cx + cos * rOuter + 0.9f, cy + sin * rOuter + 0.9f, p);
         }
 
-        // 5. Circular ejector pin marks (manufacturing details)
+        // 6. Hyper-Realistic 12-Petal Split-Collet "PUSH" Rosette Hub
+        // Outer raised clamping platform ring (supports the DVD's polycarbonate clamping zone)
+        float platformR = w * 0.122f;
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(new RadialGradient(cx - platformR * 0.15f, cy - platformR * 0.15f, platformR * 1.2f,
+                new int[]{stock.hubTeeth, stock.hubBase, 0xFF09090D},
+                new float[]{0f, 0.72f, 1f}, Shader.TileMode.CLAMP));
+        c.drawCircle(cx, cy, platformR, p);
+        p.setShader(null);
+
         p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(Math.max(0.8f, w * 0.002f));
-        p.setColor(Color.argb(35, 0, 0, 0));
-        float pinDist = discRadius * 0.62f;
-        for (int i = 0; i < 4; i++) {
-            double angle = (Math.PI / 2.0) * i + Math.PI / 4.0;
-            float px = cx + (float) Math.cos(angle) * pinDist;
-            float py = cy + (float) Math.sin(angle) * pinDist;
-            c.drawCircle(px, py, w * 0.016f, p);
+        p.setStrokeWidth(Math.max(1.2f, w * 0.0035f));
+        p.setColor(Color.argb(140, 0, 0, 0));
+        c.drawCircle(cx, cy, platformR, p);
+        p.setColor(Color.argb(55, 255, 255, 255));
+        c.drawCircle(cx, cy, platformR - w * 0.004f, p);
+
+        // Deep annular spring-flex moat around the 12-petal collet rosette
+        float moatOuterR = w * 0.098f;
+        float rosetteR = w * 0.086f;
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(215, 4, 4, 7));
+        c.drawCircle(cx, cy, moatOuterR, p);
+
+        // Rosette body with 3D conical lighting
+        p.setShader(new RadialGradient(cx - rosetteR * 0.2f, cy - rosetteR * 0.2f, rosetteR * 1.15f,
+                new int[]{stock.hubTeeth, stock.hubBase, 0xFF101016},
+                new float[]{0f, 0.68f, 1f}, Shader.TileMode.CLAMP));
+        c.drawCircle(cx, cy, rosetteR, p);
+        p.setShader(null);
+
+        // 12 radial expansion slots slicing the collet into 12 spring petals + raised retaining lip teeth
+        int petals = 12;
+        Paint slotP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        slotP.setColor(Color.argb(235, 4, 4, 7));
+        slotP.setStrokeWidth(Math.max(1.6f, w * 0.0052f));
+        slotP.setStrokeCap(Paint.Cap.BUTT);
+
+        Paint toothP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        toothP.setStyle(Paint.Style.FILL);
+
+        for (int i = 0; i < petals; i++) {
+            // Radial slot cut between petals
+            double slotAng = (Math.PI * 2.0 * i) / petals;
+            float scos = (float) Math.cos(slotAng);
+            float ssin = (float) Math.sin(slotAng);
+            c.drawLine(cx + scos * (w * 0.036f), cy + ssin * (w * 0.036f),
+                    cx + scos * (moatOuterR * 0.98f), cy + ssin * (moatOuterR * 0.98f), slotP);
+
+            // Raised retaining tooth on the center of each petal
+            double petalAng = slotAng + (Math.PI / petals);
+            float pcos = (float) Math.cos(petalAng);
+            float psin = (float) Math.sin(petalAng);
+            float tx = cx + pcos * (w * 0.068f);
+            float ty = cy + psin * (w * 0.068f);
+            float tr = Math.max(2f, w * 0.0105f);
+            toothP.setColor(Color.argb(160, 0, 0, 0));
+            c.drawCircle(tx + 0.6f, ty + 0.8f, tr, toothP);
+            toothP.setColor(stock.hubTeeth);
+            c.drawCircle(tx, ty, tr * 0.88f, toothP);
+            toothP.setColor(Color.argb(120, 255, 255, 255));
+            c.drawCircle(tx - 0.5f, ty - 0.5f, tr * 0.42f, toothP);
         }
 
-        // 6. Center Hub Rosette (authentic Amaray push hub)
+        // Central recessed "PUSH" button cap with 3D concave thumb dimple
+        float pushR = w * 0.042f;
         p.setStyle(Paint.Style.FILL);
-        p.setColor(stock.hubBase);
-        c.drawCircle(cx, cy, w * 0.095f, p);
+        p.setColor(Color.argb(230, 4, 4, 7));
+        c.drawCircle(cx, cy, pushR + w * 0.004f, p);
 
-        // Molded hub shoulder bevel
+        p.setShader(new RadialGradient(cx + pushR * 0.22f, cy + pushR * 0.22f, pushR * 1.15f,
+                new int[]{0xFF383A46, 0xFF1F2028, 0xFF0D0E13},
+                new float[]{0f, 0.62f, 1f}, Shader.TileMode.CLAMP));
+        c.drawCircle(cx, cy, pushR, p);
+        p.setShader(null);
+
+        // Specular bevel ring around the PUSH button cap
         p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(Math.max(1f, w * 0.004f));
-        p.setColor(Color.argb(80, 0, 0, 0));
-        c.drawCircle(cx, cy, w * 0.095f, p);
-        p.setColor(Color.argb(40, 255, 255, 255));
-        c.drawCircle(cx, cy, w * 0.092f, p);
+        p.setStrokeWidth(Math.max(1f, w * 0.0028f));
+        p.setShader(new LinearGradient(cx - pushR, cy - pushR, cx + pushR, cy + pushR,
+                new int[]{Color.argb(125, 255, 255, 255), Color.argb(30, 255, 255, 255), Color.argb(180, 0, 0, 0)},
+                new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+        c.drawCircle(cx, cy, pushR, p);
+        p.setShader(null);
 
-        // 8 flexible spring retaining teeth
+        // Debossed "PUSH" text stamped into center button with 3D inset shadow
         p.setStyle(Paint.Style.FILL);
-        p.setColor(stock.hubTeeth);
-        for (int i = 0; i < 8; i++) {
-            double a = Math.PI * 2 * i / 8.0;
-            float toothX = cx + (float) Math.cos(a) * w * 0.065f;
-            float toothY = cy + (float) Math.sin(a) * w * 0.065f;
-            c.drawCircle(toothX, toothY, w * 0.012f, p);
-        }
-
-        // Central push button well
-        p.setColor(Color.parseColor("#0E0E12"));
-        c.drawCircle(cx, cy, w * 0.038f, p);
-
-        // Debossed "PUSH" text stamped into center button
-        p.setStyle(Paint.Style.FILL);
-        p.setColor(Color.argb(160, 210, 210, 220));
-        p.setTextSize(Math.max(8f, w * 0.022f));
+        p.setTextSize(Math.max(7.5f, w * 0.0205f));
         p.setTextAlign(Paint.Align.CENTER);
         p.setTypeface(Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD));
+        p.setLetterSpacing(0.06f);
         Paint.FontMetrics fm = p.getFontMetrics();
         float textY = cy - (fm.ascent + fm.descent) / 2f;
-        c.drawText("PUSH", cx, textY, p);
+        p.setColor(Color.argb(200, 0, 0, 0));
+        c.drawText("PUSH", cx, textY - 0.7f, p);
+        p.setColor(Color.argb(195, 220, 224, 235));
+        c.drawText("PUSH", cx, textY + 0.4f, p);
     }
 
-    private void drawTray(Canvas c, float l, float t, float w, float h) {
+    /** Draws the physical 3D central living-hinge spine gutter connecting the open left cover and right tray. */
+    private void drawSpineGutter(Canvas c, float sx, float sy, float sw, float sh, float open) {
+        if (sw <= 1f) return;
+        Insert stock = Insert.of(com.cinetv.launcher.service.ThemeManager.current(getContext()).id);
+
+        // 1. Ambient occlusion book-fold shadow cast onto both leaves adjacent to the spine gutter
+        float aoSpread = sw * 0.95f;
+        fill.setShader(new LinearGradient(sx - aoSpread, sy, sx + sw + aoSpread, sy,
+                new int[]{Color.TRANSPARENT, Color.argb((int) (135 * open), 0, 0, 0), Color.argb((int) (165 * open), 0, 0, 0), Color.argb((int) (135 * open), 0, 0, 0), Color.TRANSPARENT},
+                new float[]{0f, 0.32f, 0.50f, 0.68f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRect(sx - aoSpread, sy + sh * 0.015f, sx + sw + aoSpread, sy + sh * 0.985f, fill);
+        fill.setShader(null);
+
+        // 2. Molded polypropylene spine channel body
+        r.set(sx, sy + sh * 0.006f, sx + sw, sy + sh * 0.994f);
+        fill.setShader(new LinearGradient(sx, sy, sx + sw, sy,
+                new int[]{0xFF09090D, stock.shell, stock.trayTop, stock.shell, 0xFF09090D},
+                new float[]{0f, 0.18f, 0.50f, 0.82f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRoundRect(r, sw * 0.22f, sw * 0.22f, fill);
+        fill.setShader(null);
+
+        // 3. Left & Right polypropylene living-hinge V-grooves + central spine stiffener rib
+        fill.setStyle(Paint.Style.STROKE);
+        fill.setStrokeWidth(Math.max(1f, sw * 0.08f));
+        fill.setColor(Color.argb((int) (190 * open), 0, 0, 0));
+        c.drawLine(sx + sw * 0.14f, sy + sh * 0.02f, sx + sw * 0.14f, sy + sh * 0.98f, fill);
+        c.drawLine(sx + sw * 0.86f, sy + sh * 0.02f, sx + sw * 0.86f, sy + sh * 0.98f, fill);
+
+        fill.setColor(Color.argb((int) (58 * open), 255, 255, 255));
+        c.drawLine(sx + sw * 0.19f, sy + sh * 0.02f, sx + sw * 0.19f, sy + sh * 0.98f, fill);
+        c.drawLine(sx + sw * 0.50f, sy + sh * 0.03f, sx + sw * 0.50f, sy + sh * 0.97f, fill);
+        c.drawLine(sx + sw * 0.81f, sy + sh * 0.02f, sx + sw * 0.81f, sy + sh * 0.98f, fill);
+
+        // 4. Top and bottom molded spine hinge end-blocks
+        fill.setStyle(Paint.Style.FILL);
+        fill.setColor(Color.argb((int) (160 * open), 8, 8, 12));
+        float capH = sh * 0.026f;
+        c.drawRoundRect(new RectF(sx + sw * 0.08f, sy + sh * 0.006f, sx + sw * 0.92f, sy + sh * 0.006f + capH), sw * 0.15f, sw * 0.15f, fill);
+        c.drawRoundRect(new RectF(sx + sw * 0.08f, sy + sh * 0.994f - capH, sx + sw * 0.92f, sy + sh * 0.994f), sw * 0.15f, sw * 0.15f, fill);
+    }
+
+    private void drawTray(Canvas c, float l, float t, float w, float h, float open) {
         c.save();
         c.translate(l, t);
         c.scale(w / Math.max(1f, caseW), h / Math.max(1f, caseH));
@@ -870,6 +1169,19 @@ public class DvdOpeningView extends View {
             fill.setShader(null);
         }
         c.restore();
+
+        // Dynamic shadow cast across the tray by the swinging front cover while opening/closing (open < 0.75f)
+        if (open < 0.78f) {
+            float coverShadowAlpha = (1f - open / 0.78f);
+            float shadowW = w * (1f - open * 0.85f);
+            fill.setShader(new LinearGradient(l, t, l + Math.max(10f, shadowW), t,
+                    new int[]{Color.argb((int) (185 * coverShadowAlpha), 0, 0, 0), Color.argb((int) (95 * coverShadowAlpha), 0, 0, 0), Color.TRANSPARENT},
+                    new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
+            r.set(l, t, l + w, t + h);
+            c.drawRoundRect(r, w * 0.03f, w * 0.03f, fill);
+            fill.setShader(null);
+        }
+
         if (landscape) {
             // the tray's screen, where the trailer plays: a dark recess with a lit rim
             RectF sc = trayScreen(l, t, w, h);
@@ -888,11 +1200,17 @@ public class DvdOpeningView extends View {
                 float dw = shot.getWidth() * sk, dh = shot.getHeight() * sk;
                 trayDst.set(sc.centerX() - dw / 2f, sc.centerY() - dh / 2f, sc.centerX() + dw / 2f, sc.centerY() + dh / 2f);
                 c.drawBitmap(shot, null, trayDst, stillPaint);
+                // Optical glass reflection sweep over the preview frame before live video takes over
+                fill.setShader(new LinearGradient(sc.left, sc.top, sc.right, sc.bottom,
+                        new int[]{Color.argb(36, 255, 255, 255), Color.TRANSPARENT, Color.argb(24, 255, 255, 255), Color.TRANSPARENT},
+                        new float[]{0f, 0.38f, 0.52f, 1f}, Shader.TileMode.CLAMP));
+                c.drawRoundRect(sc, w * 0.012f, w * 0.012f, fill);
+                fill.setShader(null);
                 c.restoreToCount(keep);
             }
             fill.setStyle(Paint.Style.STROKE);
             fill.setStrokeWidth(Math.max(1f, w * 0.003f));
-            fill.setColor(Color.argb(70, 255, 255, 255));
+            fill.setColor(Color.argb(75, 255, 255, 255));
             c.drawRoundRect(sc, w * 0.012f, w * 0.012f, fill);
             fill.setStyle(Paint.Style.FILL);
 
@@ -937,7 +1255,17 @@ public class DvdOpeningView extends View {
     }
 
     private void drawDisc(Canvas c, float cx, float cy, float dd, float rise) {
-        if (rise > 0) {
+        if (rise <= 0.001f) {
+            // Contact shadow directly under the seated disc's outer rim and inner hub ring so it sits in the well
+            fill.setStyle(Paint.Style.STROKE);
+            fill.setStrokeWidth(Math.max(2f, dd * 0.018f));
+            fill.setColor(Color.argb(135, 0, 0, 0));
+            c.drawCircle(cx + dd * 0.005f, cy + dd * 0.008f, dd * 0.478f, fill);
+            fill.setStrokeWidth(Math.max(1.5f, dd * 0.010f));
+            fill.setColor(Color.argb(95, 0, 0, 0));
+            c.drawCircle(cx + dd * 0.003f, cy + dd * 0.005f, dd * 0.155f, fill);
+            fill.setStyle(Paint.Style.FILL);
+        } else {
             float g = dd / (Math.min(caseW, caseH) * 0.88f);
             c.save();
             c.translate(cx, cy);
@@ -951,7 +1279,7 @@ public class DvdOpeningView extends View {
 
             // Grounding drop shadow behind the spinning disc as it lifts off the tray hub
             Paint dShadow = new Paint(Paint.ANTI_ALIAS_FLAG);
-            dShadow.setColor(Color.argb((int) (95 * rise), 0, 0, 0));
+            dShadow.setColor(Color.argb((int) (105 * rise), 0, 0, 0));
             float sOff = rise * dd * 0.035f;
             c.drawCircle(cx + sOff * 0.6f, cy + sOff, dd * 0.475f, dShadow);
         }
@@ -985,11 +1313,12 @@ public class DvdOpeningView extends View {
         c.restore();
     }
 
-    /** The front cover hinged on its left edge; past 90 degrees we see its inside. */
-    private void drawCover(Canvas c, float l, float t, float w, float h, float angle) {
+    /** The front cover hinged on the left edge of the central spine gutter; past 90 degrees we see its inside. */
+    private void drawCover(Canvas c, float l, float t, float w, float h, float angle, float open) {
         double a = Math.toRadians(angle);
         float d = h * 3.4f;
-        float hingeX = l, cy = t + h / 2f;
+        float spineW = w * 0.054f * open;
+        float hingeX = l - spineW, cy = t + h / 2f;
         float fx = (float) Math.cos(a) * w;
         float fz = (float) -Math.sin(a) * w;
         float f = d / (d + fz);
@@ -1010,18 +1339,18 @@ public class DvdOpeningView extends View {
                 dst[4] = hingeX; dst[5] = t + h; dst[6] = freeX; dst[7] = freeBottom;
             }
             m.setPolyToPoly(src, 0, dst, 0, 4);
-            float shade = front ? 1f - (float) Math.sin(a) * 0.28f : 0.82f + 0.18f * (float) -Math.cos(a);
+            float shade = front ? 1f - (float) Math.sin(a) * 0.28f : 0.84f + 0.16f * (float) -Math.cos(a);
             int l8 = (int) (255 * Math.max(0.38f, Math.min(1f, shade)));
             p.setColorFilter(l8 >= 250 ? null : new LightingColorFilter(Color.rgb(l8, l8, l8), 0));
             c.drawBitmap(tex, m, p);
             p.setColorFilter(null);
         }
-        // Subtle 3D hinge / cover rim thickness when passing near 90 degrees so the leaf never blinks out
+        // 3D cover edge rim thickness when passing near 90 degrees so the polypropylene leaf has real depth
         float edgeVis = (float) Math.sin(a);
-        if (edgeVis > 0.15f) {
-            float rimW = Math.max(UiKit.pxf(2.5f), w * 0.014f * edgeVis);
-            fill.setColor(Color.argb(Math.round(180 * edgeVis), 28, 30, 38));
-            r.set(hingeX - rimW * 0.5f, t, hingeX + rimW * 0.5f, t + h);
+        if (edgeVis > 0.12f) {
+            float rimW = Math.max(UiKit.pxf(2.5f), w * 0.015f * edgeVis);
+            fill.setColor(Color.argb(Math.round(195 * edgeVis), 26, 28, 36));
+            r.set(freeX - rimW * 0.5f, Math.min(t, freeTop), freeX + rimW * 0.5f, Math.max(t + h, freeBottom));
             c.drawRoundRect(r, rimW * 0.5f, rimW * 0.5f, fill);
         }
     }
@@ -1040,19 +1369,47 @@ public class DvdOpeningView extends View {
         Canvas c = new Canvas(out);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         Insert stock = Insert.of(com.cinetv.launcher.service.ThemeManager.current(ctx).id);
+        float shellRad = w * 0.032f;
+
+        // 1. Molded Polypropylene Left Cover Shell Wall
         p.setColor(stock.shell);
-        c.drawRoundRect(new RectF(0, 0, w, h), w * 0.03f, w * 0.03f, p);
+        c.drawRoundRect(new RectF(0, 0, w, h), shellRad, shellRad, p);
 
-        float lip = w * 0.03f;
-        RectF paper = new RectF(lip, lip, w - lip * 1.6f, h - lip);
+        // Outer shell 3D top-left bevel catchlight & bottom-right shade
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1.5f, w * 0.005f));
+        p.setShader(new LinearGradient(0, 0, w, h,
+                new int[]{Color.argb(95, 255, 255, 255), Color.argb(25, 255, 255, 255), Color.argb(140, 0, 0, 0)},
+                new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRoundRect(new RectF(w * 0.004f, h * 0.003f, w * 0.996f, h * 0.997f), shellRad, shellRad, p);
+        p.setShader(null);
 
-        // Multi-page booklet paper stack: micro offset edges giving realistic physical thickness
+        // Left outer opening edge: sculpted thumb-release indent & snap-lock latch slots
+        bakeOuterEdgeLatches(c, w, h, false);
+
+        float lip = w * 0.036f;
+        RectF well = new RectF(lip * 0.95f, h * 0.024f, w - lip * 0.45f, h - h * 0.024f);
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(165, 4, 4, 8));
+        c.drawRoundRect(well, w * 0.016f, w * 0.016f, p);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(Math.max(1f, w * 0.0024f));
+        p.setColor(Color.argb(50, 255, 255, 255));
+        c.drawRoundRect(well, w * 0.016f, w * 0.016f, p);
+        p.setStyle(Paint.Style.FILL);
+
+        RectF paper = new RectF(lip * 1.08f, h * 0.032f, w - lip * 1.45f, h - h * 0.032f);
+
+        // 2. Multi-page archival booklet paper stack: stepped sheet edges & deep drop shadow onto the plastic shell
         Paint pageStack = new Paint(Paint.ANTI_ALIAS_FLAG);
-        pageStack.setColor(Color.argb(85, 0, 0, 0));
-        c.drawRoundRect(new RectF(paper.left + 1.2f, paper.top + 1.2f, paper.right + 2.8f, paper.bottom + 2.8f), w * 0.01f, w * 0.01f, pageStack);
-        pageStack.setColor(Color.argb(55, 240, 235, 225));
-        c.drawRoundRect(new RectF(paper.left + 0.6f, paper.top + 0.6f, paper.right + 1.8f, paper.bottom + 1.8f), w * 0.01f, w * 0.01f, pageStack);
-        c.drawRoundRect(new RectF(paper.left, paper.top, paper.right + 0.9f, paper.bottom + 0.9f), w * 0.01f, w * 0.01f, pageStack);
+        pageStack.setColor(Color.argb(145, 0, 0, 0));
+        c.drawRoundRect(new RectF(paper.left - 2f, paper.top + 2.5f, paper.right + 4.5f, paper.bottom + 4.5f), w * 0.01f, w * 0.01f, pageStack);
+        pageStack.setColor(Color.argb(215, 215, 208, 196));
+        c.drawRoundRect(new RectF(paper.left, paper.top + 1.4f, paper.right + 3.0f, paper.bottom + 2.6f), w * 0.01f, w * 0.01f, pageStack);
+        pageStack.setColor(Color.argb(120, 0, 0, 0));
+        c.drawRoundRect(new RectF(paper.left, paper.top + 1.0f, paper.right + 2.2f, paper.bottom + 2.0f), w * 0.01f, w * 0.01f, pageStack);
+        pageStack.setColor(Color.argb(235, 232, 226, 214));
+        c.drawRoundRect(new RectF(paper.left, paper.top + 0.5f, paper.right + 1.2f, paper.bottom + 1.0f), w * 0.01f, w * 0.01f, pageStack);
 
         // The insert is printed on the room's own stock: parchment by default, kraft in the closet, a gilded
         // programme in the cinema and on the red carpet, frosted acrylic on glass, brushed aluminium on metal,
@@ -1342,13 +1699,36 @@ public class DvdOpeningView extends View {
             c.restore();
         }
 
-        // Clear sleeve over everything and the two tabs that hold the insert.
-        p.setShader(new LinearGradient(0, 0, w, h, Color.argb(34, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+        // 3D Cylindrical Booklet Page-Curl Shading & Print Varnish Sheen across the paper
+        Paint curlP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        curlP.setShader(new LinearGradient(paper.left, paper.top, paper.right, paper.top,
+                new int[]{
+                        Color.argb(stock.dark ? 70 : 38, 0, 0, 0),
+                        Color.TRANSPARENT,
+                        Color.argb(stock.dark ? 22 : 45, 255, 255, 255),
+                        Color.TRANSPARENT,
+                        Color.argb(stock.dark ? 95 : 58, 0, 0, 0)
+                },
+                new float[]{0f, 0.14f, 0.66f, 0.86f, 1f}, Shader.TileMode.CLAMP));
+        c.drawRoundRect(paper, w * 0.01f, w * 0.01f, curlP);
+        curlP.setShader(null);
+
+        // Crisp paper edge highlight along top/left of booklet
+        curlP.setStyle(Paint.Style.STROKE);
+        curlP.setStrokeWidth(Math.max(1f, w * 0.002f));
+        curlP.setColor(Color.argb(stock.dark ? 45 : 95, 255, 255, 255));
+        c.drawRoundRect(paper, w * 0.01f, w * 0.01f, curlP);
+
+        // Diagonal glossy print sheen & the two sculpted 3D cantilever retention clips holding the booklet
+        p.setShader(new LinearGradient(0, 0, w, h,
+                new int[]{Color.argb(26, 255, 255, 255), Color.TRANSPARENT, Color.argb(18, 255, 255, 255), Color.TRANSPARENT},
+                new float[]{0f, 0.35f, 0.55f, 1f}, Shader.TileMode.CLAMP));
         c.drawRect(0, 0, w, h, p);
         p.setShader(null);
-        float clipW = w * 0.07f, clipH = h * 0.05f;
-        stock.holder(c, new RectF(w - clipW - lip * 0.4f, h * 0.10f, w - lip * 0.4f, h * 0.10f + clipH), w);
-        stock.holder(c, new RectF(w - clipW - lip * 0.4f, h * 0.85f, w - lip * 0.4f, h * 0.85f + clipH), w);
+
+        float clipW = w * 0.105f, clipH = h * 0.068f;
+        stock.holder(c, new RectF(w - clipW - lip * 0.25f, h * 0.11f, w - lip * 0.25f, h * 0.11f + clipH), w);
+        stock.holder(c, new RectF(w - clipW - lip * 0.25f, h * 0.82f, w - lip * 0.25f, h * 0.82f + clipH), w);
         return out;
     }
 
@@ -1502,63 +1882,119 @@ public class DvdOpeningView extends View {
             }
         }
 
-        /** One of the two holders that keep the insert in place: tabs, brass clips, gold, chrome clamps, acrylic, neon. */
+        /** One of the two 3D cantilever retention clips that keep the booklet in place. */
         void holder(Canvas c, RectF r, int w) {
             Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-            float rad = r.width() * 0.3f;
+            float rad = r.height() * 0.46f;
+
+            // 1. Injection-mold tool cut-out window in the plastic wall under the root of the clip
+            RectF moldSlot = new RectF(r.right - r.width() * 0.34f, r.top - r.height() * 0.14f, r.right + r.width() * 0.04f, r.bottom + r.height() * 0.14f);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.argb(185, 3, 3, 6));
+            c.drawRoundRect(moldSlot, rad * 0.35f, rad * 0.35f, p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(Math.max(1f, w * 0.002f));
+            p.setColor(Color.argb(45, 255, 255, 255));
+            c.drawRoundRect(moldSlot, rad * 0.35f, rad * 0.35f, p);
+
+            // 2. Soft contact shadow + paper indentation shade cast onto the booklet underneath the clip arm
+            p.setStyle(Paint.Style.FILL);
+            p.setShader(new RadialGradient(r.centerX() - r.width() * 0.12f, r.centerY() + r.height() * 0.15f, r.width() * 0.78f,
+                    new int[]{Color.argb(135, 0, 0, 0), Color.argb(55, 0, 0, 0), Color.TRANSPARENT},
+                    new float[]{0f, 0.58f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRoundRect(new RectF(r.left - r.width() * 0.14f, r.top - r.height() * 0.08f, r.right, r.bottom + r.height() * 0.28f), rad, rad, p);
+            p.setShader(null);
+
             switch (kind) {
-                case "kraft": // brass clip with a screw
-                    p.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom, 0xFFE0B860, 0xFF8A6420, Shader.TileMode.CLAMP));
-                    c.drawRoundRect(r, rad * 0.4f, rad * 0.4f, p);
+                case "kraft": // sculpted antique brass clamp with recessed machine screw
+                    p.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
+                            new int[]{0xFFF3D078, 0xFFB88832, 0xFF6E4E14}, new float[]{0f, 0.52f, 1f}, Shader.TileMode.CLAMP));
+                    c.drawRoundRect(r, rad * 0.55f, rad * 0.55f, p);
                     p.setShader(null);
-                    p.setColor(0xFF5A3E12);
-                    c.drawCircle(r.centerX(), r.centerY(), r.height() * 0.2f, p);
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(Math.max(1f, w * 0.0025f));
+                    p.setColor(Color.argb(110, 255, 245, 210));
+                    c.drawRoundRect(r, rad * 0.55f, rad * 0.55f, p);
+                    p.setStyle(Paint.Style.FILL);
+                    float sx = r.left + r.width() * 0.38f, sy = r.centerY(), sr = r.height() * 0.21f;
+                    p.setColor(0xFF422C08);
+                    c.drawCircle(sx, sy, sr, p);
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(Math.max(1.2f, w * 0.0025f));
+                    p.setColor(0xFF241604);
+                    c.drawLine(sx - sr * 0.65f, sy - sr * 0.35f, sx + sr * 0.65f, sy + sr * 0.35f, p);
                     break;
                 case "programme":
-                case "gilded": // gold-foil tabs
-                    p.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom, new int[]{0xFFB8862E, 0xFFF3D27A, 0xFFA87422}, null, Shader.TileMode.CLAMP));
+                case "gilded": // embossed gold-bullion clasp with inner filigree rule
+                    p.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
+                            new int[]{0xFF9E6E1E, 0xFFF9DE8B, 0xFFC28E32, 0xFF7D5310},
+                            new float[]{0f, 0.38f, 0.72f, 1f}, Shader.TileMode.CLAMP));
                     c.drawRoundRect(r, rad, rad, p);
-                    break;
-                case "aluminium": // chrome clamp with two rivets
-                    p.setShader(new LinearGradient(r.left, r.top, r.left, r.bottom, new int[]{0xFFF1F5F9, 0xFF8A939E, 0xFFD5DBE2}, null, Shader.TileMode.CLAMP));
-                    c.drawRoundRect(r, rad * 0.25f, rad * 0.25f, p);
                     p.setShader(null);
-                    p.setColor(0xFF4B525C);
-                    c.drawCircle(r.left + r.width() * 0.3f, r.centerY(), r.height() * 0.13f, p);
-                    c.drawCircle(r.right - r.width() * 0.3f, r.centerY(), r.height() * 0.13f, p);
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(Math.max(1f, w * 0.0022f));
+                    p.setColor(Color.argb(130, 255, 248, 220));
+                    c.drawRoundRect(new RectF(r.left + r.width() * 0.08f, r.top + r.height() * 0.16f, r.right - r.width() * 0.08f, r.bottom - r.height() * 0.16f), rad * 0.7f, rad * 0.7f, p);
                     break;
-                case "acrylic": // clear tab with a polished blue edge
-                    p.setColor(Color.argb(80, 220, 240, 255));
+                case "aluminium": // machined billet chrome clamp with dual hex rivets
+                    p.setShader(new LinearGradient(r.left, r.top, r.left, r.bottom,
+                            new int[]{0xFFF8FAFC, 0xFF94A3B8, 0xFF475569, 0xFFCBD5E1},
+                            new float[]{0f, 0.45f, 0.78f, 1f}, Shader.TileMode.CLAMP));
+                    c.drawRoundRect(r, rad * 0.35f, rad * 0.35f, p);
+                    p.setShader(null);
+                    p.setColor(0xFF1E293B);
+                    c.drawCircle(r.left + r.width() * 0.28f, r.centerY(), r.height() * 0.14f, p);
+                    c.drawCircle(r.right - r.width() * 0.28f, r.centerY(), r.height() * 0.14f, p);
+                    break;
+                case "acrylic": // refractive clear polycarbonate tab with polished cyan edge bevel
+                    p.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
+                            new int[]{Color.argb(120, 235, 248, 255), Color.argb(55, 160, 215, 250), Color.argb(95, 200, 235, 255)},
+                            null, Shader.TileMode.CLAMP));
                     c.drawRoundRect(r, rad, rad, p);
+                    p.setShader(null);
                     p.setStyle(Paint.Style.STROKE);
                     p.setStrokeWidth(Math.max(1.5f, w * 0.003f));
-                    p.setColor(Color.argb(200, 125, 211, 252));
+                    p.setColor(Color.argb(215, 125, 211, 252));
                     c.drawRoundRect(r, rad, rad, p);
                     break;
-                case "neon": // a short glowing tube
+                case "neon": // glowing plasma retainer tube
                     p.setColor(0xFFF472B6);
                     p.setShadowLayer(r.height() * 0.8f, 0, 0, Color.argb(230, 244, 114, 182));
-                    c.drawRoundRect(r, rad * 1.6f, rad * 1.6f, p);
+                    c.drawRoundRect(r, rad, rad, p);
+                    p.setShadowLayer(0, 0, 0, 0);
                     break;
-                default: // authentic moulded polypropylene Amaray booklet retention clips
-                    // Cast shadow onto booklet paper
-                    p.setColor(Color.argb(120, 0, 0, 0));
-                    c.drawRoundRect(new RectF(r.left - 2f, r.top + 2f, r.right, r.bottom + 3f), rad * 0.7f, rad * 0.7f, p);
-                    // Molded plastic body
+                default: {
+                    // Authentic sculpted Amaray polypropylene kidney/arch cantilever booklet clip
                     p.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
-                            new int[]{0xFF383842, 0xFF222228, 0xFF141418}, null, Shader.TileMode.CLAMP));
-                    c.drawRoundRect(r, rad * 0.7f, rad * 0.7f, p);
+                            new int[]{0xFF434552, 0xFF282A33, 0xFF15161B},
+                            new float[]{0f, 0.48f, 1f}, Shader.TileMode.CLAMP));
+                    c.drawRoundRect(r, rad, rad, p);
                     p.setShader(null);
-                    // Specular edge highlight along top/left rim
+
+                    // Molded inner finger-grip recess groove along the clip body
+                    RectF grip = new RectF(r.left + r.width() * 0.15f, r.top + r.height() * 0.26f,
+                            r.right - r.width() * 0.18f, r.bottom - r.height() * 0.26f);
+                    p.setColor(Color.argb(130, 5, 5, 8));
+                    c.drawRoundRect(grip, grip.height() * 0.5f, grip.height() * 0.5f, p);
                     p.setStyle(Paint.Style.STROKE);
-                    p.setStrokeWidth(Math.max(1f, w * 0.003f));
-                    p.setColor(Color.argb(70, 255, 255, 255));
-                    c.drawRoundRect(r, rad * 0.7f, rad * 0.7f, p);
-                    // Molded hinge attachment crease
+                    p.setStrokeWidth(Math.max(0.8f, w * 0.0018f));
+                    p.setColor(Color.argb(55, 255, 255, 255));
+                    c.drawRoundRect(grip, grip.height() * 0.5f, grip.height() * 0.5f, p);
+
+                    // Specular 3D top/left bevel highlight on the clip perimeter
+                    p.setStrokeWidth(Math.max(1.2f, w * 0.003f));
+                    p.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
+                            new int[]{Color.argb(120, 255, 255, 255), Color.argb(35, 255, 255, 255), Color.argb(150, 0, 0, 0)},
+                            new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+                    c.drawRoundRect(r, rad, rad, p);
+                    p.setShader(null);
+
+                    // Cantilever root weld crease at the right plastic wall
                     p.setStyle(Paint.Style.FILL);
-                    p.setColor(Color.argb(80, 0, 0, 0));
-                    c.drawRect(r.right - r.width() * 0.22f, r.top + r.height() * 0.18f, r.right, r.bottom - r.height() * 0.18f, p);
+                    p.setColor(Color.argb(140, 0, 0, 0));
+                    c.drawRect(r.right - r.width() * 0.12f, r.top + r.height() * 0.12f, r.right - r.width() * 0.06f, r.bottom - r.height() * 0.12f, p);
                     break;
+                }
             }
         }
 
@@ -1857,43 +2293,64 @@ public class DvdOpeningView extends View {
         matrixArc.addArc(new RectF(r - mar, r - mar, r + mar, r + mar), 180, -360);
         c.drawTextOnPath("IFPI L011 · CINETV MASTER DISC · 443706-01 · DVD-9", matrixArc, 0, 0, matrixP);
 
-        // Zone 4: Transparent Clamping Hub (from r * 0.17f to r * 0.32f)
-        // Clear polycarbonate with molded 3D stacking ring ridge
+        // Zone 4: Translucent Polycarbonate Clamping Hub (from r * 0.145f to r * 0.32f)
+        // Clear out the center first, then fill 0.145..0.32 with semi-transparent refractive polycarbonate
+        // so the tray's 12-petal rosette teeth are visible underneath real clear plastic!
         Paint clearHub = new Paint(Paint.ANTI_ALIAS_FLAG);
         clearHub.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
         c.drawCircle(r, r, r * 0.32f, clearHub);
 
-        // Molded clear plastic reflections around clamping area
+        Paint polyFill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        polyFill.setStyle(Paint.Style.FILL);
+        polyFill.setShader(new SweepGradient(r, r,
+                new int[]{
+                        Color.argb(85, 225, 238, 255),
+                        Color.argb(42, 160, 180, 205),
+                        Color.argb(95, 245, 250, 255),
+                        Color.argb(48, 140, 160, 185),
+                        Color.argb(85, 225, 238, 255)
+                }, null));
+        c.drawCircle(r, r, r * 0.32f, polyFill);
+        polyFill.setShader(null);
+
+        // Molded clear plastic concentric clamping rings & stamper groove
         Paint plastic = new Paint(Paint.ANTI_ALIAS_FLAG);
         plastic.setStyle(Paint.Style.STROKE);
-        plastic.setStrokeWidth(Math.max(1f, size * 0.003f));
-        plastic.setColor(Color.argb(90, 255, 255, 255));
+        plastic.setStrokeWidth(Math.max(1f, size * 0.0032f));
+        plastic.setColor(Color.argb(115, 255, 255, 255));
         c.drawCircle(r, r, r * 0.315f, plastic);
+        plastic.setColor(Color.argb(75, 0, 0, 0));
+        c.drawCircle(r, r, r * 0.285f, plastic);
 
-        // Raised 3D stacking ring at r * 0.25f (top light catch, bottom shadow)
-        plastic.setStrokeWidth(Math.max(1.5f, size * 0.005f));
-        plastic.setColor(Color.argb(110, 255, 255, 255));
-        c.drawArc(new RectF(r - r * 0.25f, r - r * 0.25f, r + r * 0.25f, r + r * 0.25f), 190, 160, false, plastic);
-        plastic.setColor(Color.argb(70, 0, 0, 0));
-        c.drawArc(new RectF(r - r * 0.25f, r - r * 0.25f, r + r * 0.25f, r + r * 0.25f), 10, 160, false, plastic);
+        // Raised 3D stacking ring at r * 0.242f (top light catch, bottom shadow)
+        plastic.setStrokeWidth(Math.max(1.6f, size * 0.0055f));
+        plastic.setColor(Color.argb(135, 255, 255, 255));
+        c.drawArc(new RectF(r - r * 0.242f, r - r * 0.242f, r + r * 0.242f, r + r * 0.242f), 190, 160, false, plastic);
+        plastic.setColor(Color.argb(95, 0, 0, 0));
+        c.drawArc(new RectF(r - r * 0.242f, r - r * 0.242f, r + r * 0.242f, r + r * 0.242f), 10, 160, false, plastic);
 
-        // Zone 5: Center Spindle Hole (15mm standard, r * 0.165f)
-        c.drawCircle(r, r, r * 0.165f, clearHub);
+        // Inner clamping collar bevel at r * 0.195f
+        plastic.setStrokeWidth(Math.max(1f, size * 0.0028f));
+        plastic.setColor(Color.argb(95, 255, 255, 255));
+        c.drawCircle(r, r, r * 0.195f, plastic);
+
+        // Zone 5: Center Spindle Hole (15mm standard, r * 0.145f) where the tray's PUSH button pokes through
+        c.drawCircle(r, r, r * 0.145f, clearHub);
 
         // High-gloss beveled inner rim catching specular point highlight
         Paint innerBevel = new Paint(Paint.ANTI_ALIAS_FLAG);
         innerBevel.setStyle(Paint.Style.STROKE);
-        innerBevel.setStrokeWidth(Math.max(1.5f, size * 0.004f));
+        innerBevel.setStrokeWidth(Math.max(1.6f, size * 0.0045f));
         innerBevel.setShader(new SweepGradient(r, r,
-                new int[]{0xFFFFFFFF, 0x40FFFFFF, 0x10000000, 0x80FFFFFF, 0xFFFFFFFF}, null));
-        c.drawCircle(r, r, r * 0.165f, innerBevel);
+                new int[]{0xFFFFFFFF, 0x45FFFFFF, 0xAA000000, 0x90FFFFFF, 0xFFFFFFFF}, null));
+        c.drawCircle(r, r, r * 0.147f, innerBevel);
 
         // Outer clear polycarbonate rim bevel (r - size * 0.005f)
         Paint outerRim = new Paint(Paint.ANTI_ALIAS_FLAG);
         outerRim.setStyle(Paint.Style.STROKE);
-        outerRim.setStrokeWidth(Math.max(1.5f, size * 0.006f));
+        outerRim.setStrokeWidth(Math.max(1.6f, size * 0.0065f));
         outerRim.setShader(new SweepGradient(r, r,
-                new int[]{0xFFF1F5F9, 0xFF64748B, 0xFFFFFFFF, 0xFF475569, 0xFFF1F5F9}, null));
+                new int[]{0xFFF1F5F9, 0xFF64748B, 0xFFFFFFFF, 0xFF334155, 0xFFF1F5F9}, null));
         c.drawCircle(r, r, r - size * 0.004f, outerRim);
 
         return out;
