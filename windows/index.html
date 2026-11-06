@@ -305,25 +305,359 @@ header.hud {
   text-shadow: 0 2px 10px rgba(0,0,0,0.8);
 }
 
-/* The Shelf Furniture Plank */
+/* Hyper-Realistic 3D Shelf Furniture Plank & Theme Harmonization */
 .shelf-plank {
   position: absolute;
-  bottom: 22%;
+  bottom: 21%;
   left: 0;
   right: 0;
   height: 28px;
-  background: linear-gradient(180deg, #4A3A2C 0%, #2A1F16 70%, #150F0A 100%);
-  box-shadow: 0 14px 35px rgba(0,0,0,0.85), inset 0 2px 0 rgba(255,255,255,0.18);
-  border-top: 1px solid rgba(255,255,255,0.12);
+  z-index: 5;
+  pointer-events: none;
+  transform-style: preserve-3d;
+  perspective: 1200px;
+}
+
+/* 1. Perspective Top Deck Plane (receding backward into 3D room space) */
+.shelf-deck {
+  position: absolute;
+  bottom: 100%;
+  left: -5%;
+  right: -5%;
+  height: 72px;
+  transform-origin: bottom center;
+  transform: perspective(900px) rotateX(54deg);
+  overflow: hidden;
+  box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.7);
+}
+
+/* Rear wall mounting contact shadow */
+.shelf-wall-shadow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.5) 50%, transparent 100%);
+  z-index: 4;
+}
+
+/* Base material surface */
+.shelf-deck-surface {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #141720 0%, #222632 60%, #323846 100%);
+}
+
+/* Fine procedural grain & striations */
+.shelf-deck-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.15;
+  background-image: repeating-linear-gradient(90deg, transparent, transparent 18px, rgba(255,255,255,0.06) 19px, transparent 20px),
+                    radial-gradient(ellipse 100% 100% at 50% 100%, rgba(255,255,255,0.12) 0%, transparent 80%);
+}
+
+/* Focused DVD case specular ground reflection */
+.shelf-deck-reflection {
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 85%;
+  background: radial-gradient(ellipse 45% 70% at 50% 100%, rgba(255, 255, 255, 0.14) 0%, transparent 75%);
+  filter: blur(4px);
+  opacity: 0.7;
+}
+
+/* Focused center spotlight cone */
+.shelf-deck-spotlight {
+  position: absolute;
+  inset: -20% -10%;
+  background: radial-gradient(ellipse 65% 85% at 50% 80%, rgba(56, 189, 248, 0.32) 0%, transparent 72%);
+  mix-blend-mode: screen;
+}
+
+/* Ambient contact shadow directly beneath the DVD cases */
+.shelf-contact-shadow {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 55%, transparent 100%);
   z-index: 5;
 }
-.shelf-plank::after {
-  content: "";
+
+/* 2. Vertical Front Nosing (Fascia Facing Viewer) */
+.shelf-fascia {
+  position: relative;
+  width: 100%;
+  height: 28px;
+  overflow: hidden;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.88);
+}
+
+.shelf-fascia-body {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #2A303E 0%, #1A1E27 60%, #0E1015 100%);
+}
+
+/* Razor-sharp specular apex catch bead */
+.shelf-apex-bead {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background: linear-gradient(90deg, rgba(160, 180, 210, 0.3) 0%, #FFFFFF 42%, #E2E8F0 50%, #FFFFFF 58%, rgba(160, 180, 210, 0.3) 100%);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+  z-index: 6;
+}
+
+/* Decorative molding / reveal inlay */
+.shelf-molding-lip {
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(100, 116, 139, 0.2) 0%, #94A3B8 50%, rgba(100, 116, 139, 0.2) 100%);
+}
+
+/* Undercut chamfer shadow groove */
+.shelf-undercut-groove {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.95);
+}
+
+/* 3. Atmospheric Stage Footlight / Underglow Wash */
+.shelf-underglow {
   position: absolute;
   top: 100%;
-  left: 0; right: 0;
-  height: 45px;
-  background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+  left: 10%;
+  right: 10%;
+  height: 38px;
+  background: radial-gradient(ellipse 60% 85% at 50% 0%, rgba(56, 189, 248, 0.24) 0%, transparent 75%);
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+/* 4. Deep Architectural Room Drop Shadow */
+.shelf-drop-depth {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.5) 45%, transparent 100%);
+  pointer-events: none;
+}
+
+/* =========================================================================
+   CINEMA HALL THEME (Sinema Salonu)
+   Solid French-polished antique mahogany timber, architectural polished brass bullnose,
+   warm tungsten footlight glow on velvet crimson background.
+   ========================================================================= */
+.theme-cinema .shelf-deck {
+  height: 80px;
+  transform: perspective(900px) rotateX(56deg);
+}
+.theme-cinema .shelf-deck-surface {
+  background: linear-gradient(180deg, #180905 0%, #2F130B 45%, #461C10 75%, #582414 100%);
+}
+.theme-cinema .shelf-deck-grain {
+  opacity: 0.24;
+  background-image: repeating-linear-gradient(90deg, transparent, transparent 14px, rgba(255, 190, 140, 0.08) 15px, transparent 16px),
+                    radial-gradient(ellipse 110% 90% at 50% 100%, rgba(255, 196, 78, 0.26) 0%, transparent 70%);
+}
+.theme-cinema .shelf-deck-reflection {
+  background: radial-gradient(ellipse 48% 75% at 50% 100%, rgba(255, 235, 175, 0.32) 0%, rgba(238, 190, 62, 0.14) 40%, transparent 80%);
+}
+.theme-cinema .shelf-deck-spotlight {
+  background: radial-gradient(ellipse 70% 90% at 50% 75%, rgba(255, 196, 78, 0.42) 0%, rgba(238, 190, 62, 0.16) 45%, transparent 75%);
+}
+.theme-cinema .shelf-contact-shadow {
+  background: linear-gradient(0deg, rgba(16, 5, 3, 0.94) 0%, rgba(30, 10, 6, 0.5) 60%, transparent 100%);
+}
+.theme-cinema .shelf-fascia {
+  height: 30px;
+}
+.theme-cinema .shelf-fascia-body {
+  background: linear-gradient(180deg, #3D190E 0%, #281008 55%, #140704 100%);
+}
+.theme-cinema .shelf-apex-bead {
+  height: 3px;
+  background: linear-gradient(90deg, rgba(168, 126, 38, 0.35) 0%, #FFF8D6 40%, #EEBE3E 50%, #FFF8D6 60%, rgba(168, 126, 38, 0.35) 100%);
+  box-shadow: 0 0 14px rgba(238, 190, 62, 0.65);
+}
+.theme-cinema .shelf-molding-lip {
+  height: 3px;
+  bottom: 4px;
+  background: linear-gradient(90deg, rgba(140, 100, 24, 0.3) 0%, #E5B834 45%, #FFE28A 50%, #E5B834 55%, rgba(140, 100, 24, 0.3) 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+.theme-cinema .shelf-underglow {
+  height: 52px;
+  background: radial-gradient(ellipse 65% 90% at 50% 0%, rgba(238, 190, 62, 0.42) 0%, rgba(217, 119, 6, 0.18) 45%, transparent 75%);
+}
+.theme-cinema .shelf-drop-depth {
+  background: linear-gradient(180deg, rgba(14, 5, 3, 0.96) 0%, rgba(18, 6, 4, 0.55) 45%, transparent 100%);
+}
+
+/* =========================================================================
+   FILM CLOSET THEME (Film Dolabı - Criterion Closet Style)
+   Scandinavian solid blonde ash & white oak millwork, satin-brushed nickel lip,
+   clean museum gallery neutral illumination and crisp shadow reveal.
+   ========================================================================= */
+.theme-closet .shelf-deck {
+  height: 72px;
+  transform: perspective(900px) rotateX(52deg);
+}
+.theme-closet .shelf-deck-surface {
+  background: linear-gradient(180deg, #32353C 0%, #4E525C 50%, #686D7A 80%, #7E8492 100%);
+}
+.theme-closet .shelf-deck-grain {
+  opacity: 0.20;
+  background-image: repeating-linear-gradient(90deg, transparent, transparent 12px, rgba(240, 243, 248, 0.09) 13px, transparent 14px),
+                    radial-gradient(ellipse 100% 85% at 50% 100%, rgba(255, 255, 255, 0.20) 0%, transparent 70%);
+}
+.theme-closet .shelf-deck-reflection {
+  background: radial-gradient(ellipse 45% 70% at 50% 100%, rgba(245, 247, 250, 0.22) 0%, transparent 75%);
+}
+.theme-closet .shelf-deck-spotlight {
+  background: radial-gradient(ellipse 65% 85% at 50% 75%, rgba(255, 255, 255, 0.28) 0%, rgba(240, 243, 248, 0.12) 45%, transparent 72%);
+}
+.theme-closet .shelf-contact-shadow {
+  background: linear-gradient(0deg, rgba(18, 20, 24, 0.90) 0%, rgba(28, 30, 36, 0.45) 55%, transparent 100%);
+}
+.theme-closet .shelf-fascia {
+  height: 26px;
+}
+.theme-closet .shelf-fascia-body {
+  background: linear-gradient(180deg, #646874 0%, #4A4E58 55%, #30333C 100%);
+}
+.theme-closet .shelf-apex-bead {
+  height: 2.5px;
+  background: linear-gradient(90deg, rgba(160, 168, 182, 0.35) 0%, #FFFFFF 42%, #D8DBE2 50%, #FFFFFF 58%, rgba(160, 168, 182, 0.35) 100%);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.35);
+}
+.theme-closet .shelf-molding-lip {
+  height: 2px;
+  bottom: 3px;
+  background: linear-gradient(90deg, rgba(40, 44, 52, 0.3) 0%, #20232A 50%, rgba(40, 44, 52, 0.3) 100%);
+}
+.theme-closet .shelf-underglow {
+  height: 38px;
+  background: radial-gradient(ellipse 55% 80% at 50% 0%, rgba(255, 255, 255, 0.18) 0%, transparent 70%);
+}
+.theme-closet .shelf-drop-depth {
+  background: linear-gradient(180deg, rgba(18, 19, 23, 0.90) 0%, rgba(24, 26, 31, 0.45) 45%, transparent 100%);
+}
+
+/* =========================================================================
+   LIQUID GLASS THEME (Likit Cam)
+   22mm thick heavy optical floating crystal glass slab, internal total-reflection
+   caustics, diamond-ground double beveled facets, glowing sapphire refraction.
+   ========================================================================= */
+.theme-glass .shelf-deck {
+  height: 76px;
+  transform: perspective(900px) rotateX(54deg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.theme-glass .shelf-deck-surface {
+  background: linear-gradient(180deg, rgba(8, 16, 28, 0.85) 0%, rgba(18, 34, 58, 0.78) 50%, rgba(30, 54, 88, 0.70) 80%, rgba(46, 78, 122, 0.65) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-bottom: none;
+}
+.theme-glass .shelf-deck-grain {
+  opacity: 0.34;
+  background-image: repeating-linear-gradient(90deg, transparent, transparent 24px, rgba(56, 189, 248, 0.12) 25px, transparent 26px),
+                    radial-gradient(ellipse 90% 70% at 50% 60%, rgba(224, 242, 254, 0.28) 0%, rgba(56, 189, 248, 0.16) 40%, transparent 75%);
+}
+.theme-glass .shelf-deck-reflection {
+  background: radial-gradient(ellipse 46% 75% at 50% 100%, rgba(224, 242, 254, 0.40) 0%, rgba(56, 189, 248, 0.22) 45%, transparent 80%);
+}
+.theme-glass .shelf-deck-spotlight {
+  background: radial-gradient(ellipse 70% 90% at 50% 75%, rgba(56, 189, 248, 0.48) 0%, rgba(14, 165, 233, 0.22) 45%, transparent 75%);
+}
+.theme-glass .shelf-contact-shadow {
+  background: linear-gradient(0deg, rgba(6, 14, 26, 0.88) 0%, rgba(12, 24, 44, 0.4) 55%, transparent 100%);
+}
+.theme-glass .shelf-fascia {
+  height: 28px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-left: 1px solid rgba(56, 189, 248, 0.3);
+  border-right: 1px solid rgba(56, 189, 248, 0.3);
+}
+.theme-glass .shelf-fascia-body {
+  background: linear-gradient(180deg, rgba(22, 38, 64, 0.85) 0%, rgba(14, 24, 42, 0.90) 55%, rgba(8, 14, 26, 0.95) 100%);
+}
+.theme-glass .shelf-apex-bead {
+  height: 2.5px;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.4) 0%, #FFFFFF 42%, #BAE6FD 50%, #FFFFFF 58%, rgba(56, 189, 248, 0.4) 100%);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.7), 0 0 4px #FFFFFF;
+}
+.theme-glass .shelf-molding-lip {
+  height: 2.5px;
+  bottom: 4px;
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.3) 0%, #38BDF8 45%, #E0F2FE 50%, #38BDF8 55%, rgba(14, 165, 233, 0.3) 100%);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.55);
+}
+.theme-glass .shelf-underglow {
+  height: 54px;
+  background: radial-gradient(ellipse 70% 90% at 50% 0%, rgba(56, 189, 248, 0.48) 0%, rgba(14, 165, 233, 0.20) 40%, transparent 75%);
+}
+.theme-glass .shelf-drop-depth {
+  background: linear-gradient(180deg, rgba(4, 10, 20, 0.94) 0%, rgba(8, 18, 34, 0.5) 45%, transparent 100%);
+}
+
+/* Metallic Theme */
+.theme-metal .shelf-deck-surface {
+  background: linear-gradient(180deg, #28303C 0%, #3E4A5C 50%, #586880 80%, #72849E 100%);
+}
+.theme-metal .shelf-deck-grain {
+  opacity: 0.20;
+  background-image: repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(255, 255, 255, 0.08) 9px, transparent 10px);
+}
+.theme-metal .shelf-deck-spotlight {
+  background: radial-gradient(ellipse 65% 85% at 50% 75%, rgba(241, 245, 249, 0.30) 0%, transparent 70%);
+}
+.theme-metal .shelf-fascia-body {
+  background: linear-gradient(180deg, #3A4454 0%, #242A36 55%, #141820 100%);
+}
+.theme-metal .shelf-apex-bead {
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.3) 0%, #FFFFFF 50%, rgba(148, 163, 184, 0.3) 100%);
+}
+
+/* Neon Night Theme */
+.theme-neon .shelf-deck-surface {
+  background: linear-gradient(180deg, #10081C 0%, #1E0E32 50%, #30144E 80%, #44186C 100%);
+}
+.theme-neon .shelf-deck-spotlight {
+  background: radial-gradient(ellipse 65% 85% at 50% 75%, rgba(244, 114, 182, 0.40) 0%, rgba(6, 182, 212, 0.18) 45%, transparent 75%);
+}
+.theme-neon .shelf-fascia-body {
+  background: linear-gradient(180deg, #240E36 0%, #160822 55%, #0A0410 100%);
+}
+.theme-neon .shelf-apex-bead {
+  background: linear-gradient(90deg, rgba(244, 114, 182, 0.4) 0%, #FFFFFF 42%, #F472B6 50%, #FFFFFF 58%, rgba(244, 114, 182, 0.4) 100%);
+  box-shadow: 0 0 14px rgba(244, 114, 182, 0.7);
+}
+.theme-neon .shelf-molding-lip {
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.3) 0%, #06B6D4 50%, rgba(6, 182, 212, 0.3) 100%);
+  box-shadow: 0 0 10px #06B6D4;
+}
+.theme-neon .shelf-underglow {
+  height: 52px;
+  background: radial-gradient(ellipse 70% 90% at 50% 0%, rgba(244, 114, 182, 0.42) 0%, rgba(6, 182, 212, 0.22) 40%, transparent 75%);
 }
 
 /* 3D DVD Carousel */
@@ -1260,7 +1594,24 @@ header.hud {
   <div class="shelf-area">
     <div class="shelf-title" id="shelfCategoryTitle">SONBAHAR GECE YARISI PSİKOLOJİK SIRLAR</div>
     <div class="shelf-track" id="shelfTrack"></div>
-    <div class="shelf-plank"></div>
+    <div class="shelf-plank" id="shelfPlank">
+      <div class="shelf-deck">
+        <div class="shelf-wall-shadow"></div>
+        <div class="shelf-deck-surface"></div>
+        <div class="shelf-deck-grain"></div>
+        <div class="shelf-deck-reflection"></div>
+        <div class="shelf-deck-spotlight"></div>
+        <div class="shelf-contact-shadow"></div>
+      </div>
+      <div class="shelf-fascia">
+        <div class="shelf-apex-bead"></div>
+        <div class="shelf-fascia-body"></div>
+        <div class="shelf-molding-lip"></div>
+        <div class="shelf-undercut-groove"></div>
+      </div>
+      <div class="shelf-underglow"></div>
+      <div class="shelf-drop-depth"></div>
+    </div>
   </div>
 
   <!-- Bottom Dock -->
@@ -1318,7 +1669,7 @@ header.hud {
         <img src="assets/icon.png" class="logo" alt="CineTV">
         <div>
           <h2>CineTV Ayarlar</h2>
-          <div class="sub">Tek Pencere Responsive Kontrol Paneli · v1.0.0.51 Windows</div>
+          <div class="sub">Tek Pencere Responsive Kontrol Paneli · v1.0.0.52 Windows</div>
         </div>
       </div>
       <button class="btn-close-modal" style="position:static;" onclick="closeSettings()">Kapat</button>

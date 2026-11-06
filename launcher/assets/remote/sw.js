@@ -1,9 +1,9 @@
-// CineTV Service Worker v1.0.0.51
+// CineTV Service Worker v1.0.0.52
 // Implements resilient caching for movie posters (Cache-First + Stale-While-Revalidate + Mirror Fallback)
 // and movie metadata/catalog endpoints (Network-First with fast timeout + Stale-While-Revalidate + Catalog Synthesis)
 // so the CineTV launcher and companion remote remain functional and responsive on unstable connections.
 
-const SW_VERSION = "1.0.0.51";
+const SW_VERSION = "1.0.0.52";
 const SHELL_CACHE = `cinetv-shell-v${SW_VERSION}`;
 const METADATA_CACHE = `cinetv-metadata-v${SW_VERSION}`;
 const POSTER_CACHE = `cinetv-posters-v${SW_VERSION}`;

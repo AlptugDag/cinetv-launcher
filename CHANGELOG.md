@@ -1,5 +1,22 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.52
+
+- **Hiper Gerçekçi ve Temaya Göre Özelleştirilmiş 3B Fiziksel Raf Mimarisi:**
+  - **Sinematik 3D Derinlik ve Perspektif İllüzyonu:** Raf derinliği (`shelfDeckDepth`) genişletilerek 3B açılı DVD kutularının gerçekten derin bir mobilya tablası üzerinde durduğu fiziksel etki güçlendirildi. Arka duvara yaslanma gölgesi (`shelf-wall-shadow`), derin perspektifli üst tabla (`shelf-deck` / `rotateX`), kutu tabanlarının cilalı yüzeydeki yansıması (`shelf-deck-reflection`), odak spot ışığı (`shelf-deck-spotlight`), kutu temas gölgesi (`shelf-contact-shadow`), dikey alınlık (`shelf-fascia`), tepe ışık pahı (`shelf-apex-bead`), dekoratif oyuk çıta (`shelf-molding-lip`), alt gölge pahı (`shelf-undercut-groove`) ve odaya süzülen ayak ışığı yıkayıcı (`shelf-underglow`) ayrık 3B katmanlar olarak yapılandırıldı.
+  - **Sinema Salonu (Cinema Hall):** 80px derinliğinde 56 derece açılı zengin maun ağaç tablası, masif cilalı pirinç kavisli ön pervaz (`#EEBE3E`), merkezde 14px ışıma yapan tepe altın ışık çizgisi (`#FFF8D6`), antika pirinç gölge oyuğu çıtası ve kadife kırmızı arka plana sıcak tungsten amber sahne ayak ışığı yayılımı.
+  - **Film Dolabı (Film Closet):** 72px derinliğinde İskandinav açık dişbudak/meşe doğrama ahşap dokusu, saten fırçalanmış nikel pervaz (`#D8DBE2`), 5000K galeri spot aydınlatması, hassas gölge oyuk çizgisi ve yumuşak ortam temas gölgesi.
+  - **Likit Cam (Liquid Glass):** 76px derinliğinde 22 mm optik kristal cam tabla, iç toplam yansıma kırılma hattı (`refractionPath`), elmas taşlama safir-camgöbeği pah parıltısı (`#38BDF8`), cam altı prizmatik safir ışıma havuzu ve yarı saydam derinlik.
+  - **Kırmızı Halı (Red Carpet):** Cilalı koyu kızıl pelesenk/gül ağacı tablası, 24 ayar altın varaklı kavisli ön bordür, altın kakma çıta ve festival galası sıcak zemin ışıltısı.
+  - **Metalik (Metallic):** CNC işleme havacılık sınıfı anodize titanyum kütük, yüzeyde mikro-çizgili fırçalanmış doku (hairline grain shader), 45 derece lazer kesim keskin titanyum pahı, koyu füme ön alınlık ve hassas işleme kılavuz oluğu.
+  - **Neon Gece (Neon Night):** Ultra parlak siyah obsidyen ayna tabla, ön alınlığın hemen altına entegre edilen kesintisiz neon ışık tüpü ve alt zemine radyan elektrik camgöbeği ile neon fuşya ışıma yayan ambiyans yıkayıcı.
+  - **OLED Siyahı (OLED):** Mutlak kontrast için sıfır ışık sızdırmalı mat karbon kompozit raf, minimalist grafit saç teli pahı ve derin siyah zemin gradyanı.
+  - **CineTV İmzası (Varsayılan):** Piyano cilalı kompozit yüzey, masif platin pah hattı ve çift tonlu camgöbeği-çivit mavisi atmosferik ışık yansıması.
+- **TV Başlatma Sırasında TTS Karşılama Senkronizasyonu Düzeltmesi:**
+  - Önceki oturumun önbellekteki eski vitrini ekrandayken Gamze TTS motorunun "Vitrini hazırladım" / "Bu akşam için vitrini hazırladım" anonsunu yapmasına yol açan başlatma yarış durumu (race condition) giderildi.
+  - Başlatma karşılama sayacı, taze vitrin hazırlanırken (`needFresh`, `freshPending`, `isCurating` veya bayat vitrin durumu) yeni küratörlük sonucu gelene kadar arka planda zarifçe bekletilir; yeni vitrin film kapaklarıyla ekrana indiği anda (`setShelf`) anons senkronize olarak tetiklenerek kullanıcının gerçekten yeni hazırlanmış vitrini gördüğü anda karşılanması garanti altına alındı.
+- **Sürüm ve Paket İlerlemesi:** Android TV başlatıcı derleme sürümü (`launcher/build.gradle`), Windows PC arayüzü (`windows/index.html`) ve servis işçileri (`sw.js`) 1.0.0.52 seviyesine yükseltildi.
+
 ## 1.0.0.51
 
 - **Sürekli, Yavaşlatılmış 3 Boyutlu (Yaw, Pitch, Roll + Derinlik) Odak DVD Salınımı ve Senkronize Işık Fiziği:** Odaktaki DVD kutusunun 3B jiroskopik salınımı 13.5s–21.0s periyotlu harmonik dalgalarla yavaşlatıldı ve odakta kaldığı sürece kesintisiz (`INFINITE`) devam edecek şekilde güncellendi. Kutu yüzeyindeki optik parlama (surface flare), açılı pencere yansıması (window reflection streak), sırt menteşe pahı (spine bevel catchlight) ve arka plan ambiyans halesi 3B normal açılarıyla birebir senkronize hareket eder.

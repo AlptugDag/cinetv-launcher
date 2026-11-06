@@ -247,7 +247,7 @@ test("Service Worker Runtime: Caches posters and metadata when online and serves
 
   vm.runInNewContext(swCode, sandbox);
 
-  // 1. Online metadata request populates cinetv-metadata-v1.0.0.51
+  // 1. Online metadata request populates cinetv-metadata-v1.0.0.52
   let pendingWaitUntil = [];
   let respondedPromise = null;
   const reqMetaOnline = new Request("http://localhost:3000/api/catalog/trending?k=tok1&type=movie&page=1");
@@ -262,7 +262,7 @@ test("Service Worker Runtime: Caches posters and metadata when online and serves
   assert.equal(dataOnline.ok, true);
   assert.equal(dataOnline.results[0].title, "Başlangıç");
 
-  // 2. Online poster request populates cinetv-posters-v1.0.0.51
+  // 2. Online poster request populates cinetv-posters-v1.0.0.52
   pendingWaitUntil = [];
   respondedPromise = null;
   const reqPosterOnline = new Request("https://image.tmdb.org/t/p/w500/inc.jpg");

@@ -724,9 +724,21 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         @Override
         public void run() {
             if (isFinishing() || !inFront) return;
-            if (home != null && (home.splashShowing() || (home.shelf != null && !home.shelf.hasAnyLoadedCase() && greetingAttempts < 6))) {
+            if (home != null && home.splashShowing()) {
                 greetingAttempts++;
-                handler.postDelayed(this, 650L);
+                handler.postDelayed(this, 500L);
+                return;
+            }
+            // Defer greeting if the previous session's stale shelf is still showing while a fresh shelf is pending or curating
+            boolean freshWorking = needFresh || freshPending || isCurating || (shelfIsStale() && isNetworkAvailable());
+            if (freshWorking && greetingAttempts < 24) {
+                greetingAttempts++;
+                handler.postDelayed(this, 500L);
+                return;
+            }
+            if (home != null && home.shelf != null && !home.shelf.hasAnyLoadedCase() && greetingAttempts < 10) {
+                greetingAttempts++;
+                handler.postDelayed(this, 500L);
                 return;
             }
             greetingAttempts++;
@@ -1831,6 +1843,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         JSONArray arr = new JSONArray();
         for (Movie m : movies) arr.put(m.toJson());
         Prefs.get(this).edit().putString(SHELF_CACHE, arr.toString()).putString(SHELF_TITLE, cleanTitle).apply();
+
+        // Fresh showcase shelf has landed: greet user now that the real fresh shelf is visible
+        long now = System.currentTimeMillis();
+        if (lastGreetingMs == 0 || now - lastGreetingMs >= GREETING_INTERVAL_MS) {
+            handler.removeCallbacks(greetingRetryRunnable);
+            handler.postDelayed(this::performStartupGreeting, 450L);
+        }
     }
 
 
