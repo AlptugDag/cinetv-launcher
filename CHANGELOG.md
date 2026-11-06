@@ -1,5 +1,43 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.53
+
+- **DVD Kutusu Fragman Başlığı Yüksekliği Düzeltmesi:**
+  - Açık DVD kutusu fragman modunda (landscape) "Fragman" yazısı ve altındaki el yazısı keçe kalem çizgi efekti, 16:9 chamfered video çerçevesinin (`outerFrame.top`) oldukça yukarısına taşındı (`labelY = sc.top - h * 0.068f`). Böylece başlığın video oynatma yuvası veya çerçeve pahıyla çakışması kesin olarak engellendi.
+- **Sıfır Kırpma ile Sinematik Fragman ve YouTube Arayüzünün Tamamen Gizlenmesi:**
+  - Fragman videosu kenarlardan asla kırpılmayacak şekilde %100 tam ekran uncropped 16:9 oranına çekildi (`top: 0`, `left: 0`, `width: 100%`, `height: 100%`, `object-fit: contain`).
+  - Video oynatılırken YouTube'un varsayılan başlığı, kanal logosu, paylaş butonu ve denetim arayüzü; video yüklenirken devreye giren opak sinematik perde (`tray-trailer-curtain` / `#stage`), oynatma başladığında yumuşak çözünme geçişi, `pointer-events: none` koruması ve WebView içi periyodik stil arındırma (`purgeChrome`) ile video karesini tek bir piksel dahi kesmeden tamamen görünmez kılındı.
+- **Temaya Duyarlı Dinamik DVD Yüzey Işık Yansıması ve Parlama Fiziği:**
+  - DVD kutularının yüzeyindeki optik ışık yansıması, anlık temaya göre dinamik ve önceden tahsis edilmiş gölgelendiricilerle (zero-allocation theme shaders) yeniden yapılandırıldı:
+    - **Likit Cam (Liquid Glass):** 0.038x genişliğinde keskin beyaz kristal ışık çizgisi (`coreShader`), elmas taşlama safir/camgöbeği prizmatik ışık kırılım halesi (`haloShader`), odaklanmış radyal cam parıltısı ve artırılmış jelatin parlaklığı (`1.35x`).
+    - **Film Dolabı (Film Closet):** Odaya ve mobilyaya yayılan çok daha yumuşak, sıcak fildişi/krem difüzyon ışığı (`0.16x` genişliğinde yumuşak çekirdek), genişletilmiş kadifemsi ambiyans yansıması ve göz yormayan mat yüzey hissi (`0.68x`).
+    - **Sinema Salonu (Cinema Hall):** Sıcak tungsten amber/altın sahne projektör yansıması, kadife kırmızı çevreye uyumlu altın varak halesi.
+    - **Metalik (Metallic):** Anizotropik fırçalanmış titanyum/çelik soğuk platin yansıma çizgisi ve lazer pah parlaklığı.
+    - **Neon Gece (Neon Night):** Elektrik camgöbeği ve neon fuşya çift tonlu tüp ışık yansıması, yüksek kontrastlı sibernetik parıltı.
+    - **CineTV / OLED:** Dengeli stüdyo referans yansıması.
+- **Hiper Gerçekçi DVD Kutusu Dış Jelatin (Shrink-Wrap) Efektleri:**
+  - Kapalı DVD kutularının dış yüzeyine fabrika çıkışı şeffaf jelatin ambalaj katmanı işlendi.
+  - Üst ve alt kenarlarda ısıl yapıştırma dikiş izleri (heat weld seam beads & crimps), sol kenarda kırmızı polipropilen açma şeridi (red tear-strip & pull tab), köşelerde gerçekçi üçgen zarf katlama izleri (envelope corner folds) ve gerilim mikro-kırışıklıkları (tension micro-wrinkles) ile prizmatik ışık parlaması sıfır GC tahsisiyle (pre-allocated static paints) GPU üzerinde çizildi.
+- **Temaya Özel DVD İç Metinleri, Künye ve Sırt Tipografisi Senkronizasyonu:**
+  - Her temaya özgü tipografi motoru (`FontManager`) genişletildi; DVD sırtlarındaki film başlıkları, kutu içi film özeti, künye detayları ve puan rozetleri temanın görsel kimliğiyle birebir uyumlu yazı tiplerine bağlandı:
+    - **Film Dolabı (Film Closet):** Zarif edebi serif (`Playfair Display` / Georgia Serif) başlık ve künye, genişletilmiş harf aralıklı klasik sırt tipografisi.
+    - **Sinema Salonu (Cinema Hall):** Teatral ve epik altın varaklı serif (`Cinzel`), klasik gala afişi künye stili.
+    - **Likit Cam (Liquid Glass):** Ultra temiz, modern geometrik grotesk (`Syne`), fütüristik kristal şeffaflığıyla uyumlu kompakt sırt yazısı.
+    - **Metalik (Metallic):** Endüstriyel monospaced ve teknik mühendislik yazı tipi (`JetBrains Mono`), teknik künye kılavuz çizgileri.
+    - **Neon Gece (Neon Night):** Sibernetik yüksek kontrastlı geometrik sans (`Orbitron`), neon ışık haleli başlık ve künye metinleri.
+    - **OLED Siyahı (OLED):** Saf İsviçre neo-grotesk (Roboto / Helvetica), mutlak kontrastlı saç teli kalınlığında künye.
+- **Film Dolabı Temasında Parlak Gri İç Materyal Yenilemesi:**
+  - Film Dolabı (Closet) temasında DVD kutusunun içindeki eski kahverengi ahşap dokusu tamamen kaldırıldı.
+  - Yerine fırçalanmış lüks parlak gri lake kabuk (`#353942`), koyu antrasit tepsi (`#585E6B` - `#24272E`), saten platin refleksiyon çizgileri ve metalik disk kilit göbeği uygulandı.
+- **Temaya Özel Değişen DVD Kutu İçi Kağıt Tipleri:**
+  - **Artvellum (Film Dolabı):** İnce dokulu, sıcak fildişi presli el yapımı kuşe kağıt ve kör gofre çerçeve baskısı.
+  - **Programme (Sinema Salonu):** 24 ayar çift altın yaldızlı festival gala kitapçık kağıdı.
+  - **Acrylic (Likit Cam):** Buzlu yarı saydam optik aydınger (frosted vellum) sayfa dokusu.
+  - **Aluminium (Metalik):** Lazer çizgili, mikro-ölçekli teknik mühendislik paftası.
+  - **Neon (Neon Gece):** UV laklı derin obsidyen mat karton dokusu.
+  - **OLED (OLED Siyahı):** Sıfır ışık sızdırmalı ultra mat minimalist grafit kart stoğu.
+- **Sürüm ve Paket İlerlemesi:** Android TV başlatıcı derleme sürümü (`launcher/build.gradle`), Windows PC arayüzü (`windows/index.html`) ve servis işçileri (`sw.js`) 1.0.0.53 seviyesine yükseltildi.
+
 ## 1.0.0.52
 
 - **Hiper Gerçekçi ve Temaya Göre Özelleştirilmiş 3B Fiziksel Raf Mimarisi:**

@@ -116,7 +116,12 @@ public final class IFrameTrailerBackend implements TrailerBackend {
                     main.post(() -> {
                         if (my == gen && web == w) {
                             isPlaying = true;
-                            container.animate().alpha(1f).setDuration(300).start();
+                            // Wait briefly for initial YouTube startup header to auto-dissolve before smooth fade-in
+                            main.postDelayed(() -> {
+                                if (my == gen && web == w) {
+                                    container.animate().alpha(1f).setDuration(400).start();
+                                }
+                            }, 550);
                         }
                     });
                 }
@@ -155,15 +160,29 @@ public final class IFrameTrailerBackend implements TrailerBackend {
                     + "html, body { width:100%; height:100%; overflow:hidden; background:#000; position:fixed; pointer-events:none; user-select:none; }"
                     + "#stage { width:100%; height:100%; overflow:hidden; position:relative; background:#000; }"
                     + "#box { position:absolute; width:100%; height:100%; left:0; top:0; pointer-events:none; }"
-                    + "#box iframe, #player { width:100%; height:100%; border:none; pointer-events:none; }"
-                    + ".ytp-chrome-top, .ytp-chrome-bottom, .ytp-watermark, .ytp-cued-thumbnail-overlay, .ytp-show-cards-title, .ytp-title-link, .ytp-pause-overlay { display:none !important; opacity:0 !important; visibility:hidden !important; }"
+                    + "#box iframe, #player { width:100%; height:100%; border:none; pointer-events:none; object-fit:contain; }"
+                    + ".ytp-chrome-top, .ytp-chrome-bottom, .ytp-watermark, .ytp-cued-thumbnail-overlay, .ytp-show-cards-title, .ytp-title-link, .ytp-title, .ytp-share-button, .ytp-share-panel, .ytp-pause-overlay, .ytp-gradient-top, .ytp-gradient-bottom, .ytp-youtube-button, .ytp-large-play-button { display:none !important; opacity:0 !important; visibility:hidden !important; pointer-events:none !important; }"
                     + "</style>"
                     + "<script src='https://www.youtube.com/iframe_api'></script>"
                     + "</head><body>"
                     + "<div id='stage'><div id='box'><div id='player'></div></div></div>"
                     + "<script>"
                     + "var notified = false, yt;"
-                    + "function notifyReady() { if (notified) return; notified = true; if (window.CineTvBridge) window.CineTvBridge.onPlaying(); }"
+                    + "function purgeChrome() {"
+                    + "  try {"
+                    + "    var ifr = document.querySelector('iframe');"
+                    + "    if (ifr && ifr.contentWindow) {"
+                    + "      var d = ifr.contentDocument || ifr.contentWindow.document;"
+                    + "      if (d && d.head) {"
+                    + "        var s = d.createElement('style');"
+                    + "        s.textContent = '.ytp-chrome-top, .ytp-chrome-bottom, .ytp-watermark, .ytp-pause-overlay, .ytp-title, .ytp-share-button, .ytp-gradient-top, .ytp-gradient-bottom { display:none !important; opacity:0 !important; visibility:hidden !important; }';"
+                    + "        d.head.appendChild(s);"
+                    + "      }"
+                    + "    }"
+                    + "  } catch(e) {}"
+                    + "}"
+                    + "setInterval(purgeChrome, 350);"
+                    + "function notifyReady() { if (notified) return; notified = true; purgeChrome(); if (window.CineTvBridge) window.CineTvBridge.onPlaying(); }"
                     + "function onYouTubeIframeAPIReady() {"
                     + "  yt = new YT.Player('player', { videoId:'" + key + "', host:'https://www.youtube-nocookie.com',"
                     + "    playerVars:{ autoplay:1, mute:" + muteFlag + ", controls:0, disablekb:1, fs:0, iv_load_policy:3, loop:1, playlist:'" + key + "', playsinline:1, rel:0, modestbranding:1, cc_load_policy:0 },"

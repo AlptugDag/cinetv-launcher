@@ -1214,7 +1214,7 @@ public class DvdOpeningView extends View {
             c.drawRoundRect(sc, w * 0.012f, w * 0.012f, fill);
             fill.setStyle(Paint.Style.FILL);
 
-            // "Fragman" handwritten label in marker font above the trailer window
+            // "Fragman" handwritten label in marker font elevated above the trailer housing
             android.text.TextPaint marker = new android.text.TextPaint(Paint.ANTI_ALIAS_FLAG);
             marker.setTypeface(FontManager.getMarker(getContext()));
             float labelSize = Math.max(17f, w * 0.038f);
@@ -1224,7 +1224,7 @@ public class DvdOpeningView extends View {
             String label = "tr".equals(Locale.getDefault().getLanguage()) ? "Fragman" : "Trailer";
             float tw = marker.measureText(label);
             float labelX = sc.left + w * 0.010f;
-            float labelY = sc.top - w * 0.018f;
+            float labelY = sc.top - h * 0.068f; // Elevated higher up above chamfered outer frame
             c.save();
             c.rotate(-1.2f, labelX, labelY);
             c.drawText(label, labelX, labelY, marker);
@@ -1235,8 +1235,8 @@ public class DvdOpeningView extends View {
             under.setStrokeCap(Paint.Cap.ROUND);
             under.setStyle(Paint.Style.STROKE);
             Path up = new Path();
-            up.moveTo(labelX, labelY + w * 0.005f);
-            up.quadTo(labelX + tw * 0.5f, labelY + w * 0.002f, labelX + tw * 1.05f, labelY + w * 0.006f);
+            up.moveTo(labelX, labelY + UiKit.pxf(4));
+            up.quadTo(labelX + tw * 0.5f, labelY + UiKit.pxf(2), labelX + tw * 1.05f, labelY + UiKit.pxf(5));
             c.drawPath(up, under);
             c.restore();
         }
@@ -1476,8 +1476,12 @@ public class DvdOpeningView extends View {
             float u = Math.min(w, h * DvdCase.ASPECT);
             float pad = u * 0.058f;
             float textW = paper.width() - pad * 2;
+            String themeId = "";
+            try {
+                themeId = com.cinetv.launcher.service.ThemeManager.current(ctx).id;
+            } catch (Throwable ignored) {}
             TextPaint ink = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-            ink.setTypeface(FontManager.getMarker(ctx)); // the same hand on every theme: sizes and layout stay as designed
+            ink.setTypeface(FontManager.getThemeBookletTitleTypeface(themeId, ctx));
             if (stock.dark) ink.setShadowLayer(w * 0.012f, 0, 0, Color.argb(160, 191, 90, 242)); // neon: the letters glow
             ink.setColor(stock.ink);
             c.save();
@@ -1549,11 +1553,12 @@ public class DvdOpeningView extends View {
             float availForStoryAndMeta = castTop - y - u * 0.015f;
             float storyAvailH = Math.max(u * 0.10f, availForStoryAndMeta - metaH);
 
-            // 4. Large, bold Story Typography with dynamic truncation to strictly prevent booklet overflow
+            // 4. Story Typography matching theme with dynamic truncation to strictly prevent booklet overflow
             if (!story.isEmpty() && storyAvailH > u * 0.04f) {
                 float targetSize = Math.min(u * 0.078f, storyAvailH * 0.42f);
                 targetSize = Math.max(u * 0.050f, targetSize);
                 ink.setColor(blackInk);
+                ink.setTypeface(FontManager.getThemeBookletBodyTypeface(themeId, ctx));
                 ink.setTextSize(targetSize);
                 float spacing = 1.02f;
                 StaticLayout body = layout(story, ink, (int) textW, spacing);
@@ -1773,7 +1778,8 @@ public class DvdOpeningView extends View {
             this.grain = grain;
             this.dark = dark;
             switch (kind) {
-                case "kraft": hubBase = 0xFF6B4A1E; hubTeeth = 0xFFB08A45; break;
+                case "artvellum": hubBase = 0xFF383C45; hubTeeth = 0xFF8E95A5; break;
+                case "kraft": hubBase = 0xFF383C45; hubTeeth = 0xFF8E95A5; break;
                 case "programme":
                 case "gilded": hubBase = 0xFF8A6420; hubTeeth = 0xFFE9C46A; break;
                 case "aluminium": hubBase = 0xFF6B737D; hubTeeth = 0xFFC7CDD5; break;
@@ -1787,13 +1793,14 @@ public class DvdOpeningView extends View {
             // Each room has its own case, not just a shade of paper: the plastic shell, the tray and the stock
             // all change, so switching themes is obvious the moment a case opens.
             switch (theme == null ? "" : theme) {
-                case "closet": return new Insert("kraft", 0xFFD7BF95, Color.argb(240, 52, 32, 16), Color.argb(14, 90, 60, 30), false, 0xFF2B1D12, 0xFF4A3220, 0xFF1E140C);
-                case "cinema": return new Insert("programme", 0xFFF4E9D2, Color.argb(240, 70, 10, 18), Color.argb(6, 60, 40, 20), false, 0xFF3A0A10, 0xFF5C1119, 0xFF22060A);
+                case "closet": return new Insert("artvellum", 0xFFFAF7F2, Color.argb(240, 31, 41, 55), Color.argb(14, 40, 50, 60), false, 0xFF353942, 0xFF585E6B, 0xFF24272E);
+                case "cinema": return new Insert("programme", 0xFFFFFDF5, Color.argb(240, 58, 6, 14), Color.argb(6, 60, 40, 20), false, 0xFF3A0A10, 0xFF5C1119, 0xFF22060A);
                 case "redcarpet": return new Insert("gilded", 0xFFFBF3E2, Color.argb(240, 120, 14, 24), Color.argb(6, 70, 30, 30), false, 0xFF4A0910, 0xFF8A1220, 0xFF2A0508);
-                case "glass": return new Insert("acrylic", 0xFFD8EAFB, Color.argb(240, 10, 40, 80), Color.argb(5, 20, 60, 110), false, 0xFF1A2C42, 0xFF2D4D70, 0xFF0F1B2A);
-                case "metal": return new Insert("aluminium", 0xFFC7CDD5, Color.argb(240, 20, 24, 30), Color.argb(16, 255, 255, 255), false, 0xFF3C424A, 0xFF5A626C, 0xFF262A30);
-                case "neon": return new Insert("neon", 0xFF15101F, Color.argb(240, 240, 234, 255), Color.argb(10, 191, 90, 242), true, 0xFF0B0614, 0xFF2A0F45, 0xFF07030D);
-                default: return new Insert("parchment", 0xFFEEE8DC, Color.argb(240, 18, 18, 22), Color.argb(7, 45, 35, 25), false, 0xFF15151A, 0xFF1B1B21, 0xFF0A0A0D);
+                case "glass": return new Insert("acrylic", 0xFFEAF5FF, Color.argb(240, 10, 34, 64), Color.argb(5, 20, 60, 110), false, 0xFF1A2C42, 0xFF2D4D70, 0xFF0F1B2A);
+                case "metal": return new Insert("aluminium", 0xFFECEFF4, Color.argb(240, 26, 32, 44), Color.argb(16, 255, 255, 255), false, 0xFF3C424A, 0xFF5A626C, 0xFF262A30);
+                case "neon": return new Insert("neon", 0xFF120C1F, Color.argb(240, 253, 244, 255), Color.argb(10, 191, 90, 242), true, 0xFF0B0614, 0xFF2A0F45, 0xFF07030D);
+                case "oled": return new Insert("oled", 0xFFFFFFFF, Color.argb(245, 17, 17, 17), Color.argb(6, 0, 0, 0), false, 0xFF0E0E12, 0xFF18181D, 0xFF08080A);
+                default: return new Insert("parchment", 0xFFF5EFE4, Color.argb(240, 31, 28, 24), Color.argb(7, 45, 35, 25), false, 0xFF15151A, 0xFF1B1B21, 0xFF0A0A0D);
             }
         }
 
@@ -1818,17 +1825,19 @@ public class DvdOpeningView extends View {
                     c.drawRect(0, 0, w, h, p);
                     break;
                 }
+                case "artvellum":
                 case "kraft": {
-                    // walnut: long wavy grain lines along the case
+                    // Film Dolabı: Lustrous polished glossy grey material (not brown wood) with multi-stop specular reflection sweeps
+                    p.setShader(new LinearGradient(0, 0, w, h,
+                            new int[]{Color.argb(75, 255, 255, 255), Color.argb(16, 255, 255, 255), Color.argb(55, 255, 255, 255), Color.TRANSPARENT},
+                            new float[]{0.10f, 0.38f, 0.65f, 1f}, Shader.TileMode.CLAMP));
+                    c.drawRect(0, 0, w, h, p);
+                    p.setShader(null);
                     p.setStyle(Paint.Style.STROKE);
-                    for (int i = 0; i < 46; i++) {
-                        float x = rnd.nextFloat() * w, amp = w * (0.004f + rnd.nextFloat() * 0.01f);
-                        p.setStrokeWidth(Math.max(1f, w * (0.0015f + rnd.nextFloat() * 0.003f)));
-                        p.setColor(Color.argb(30 + rnd.nextInt(40), 20, 10, 4));
-                        android.graphics.Path g = new android.graphics.Path();
-                        g.moveTo(x, 0);
-                        for (float y = 0; y <= h; y += h / 12f) g.lineTo(x + (float) Math.sin(y / h * 9 + i) * amp, y);
-                        c.drawPath(g, p);
+                    p.setStrokeWidth(Math.max(1f, w * 0.0012f));
+                    for (int y = 0; y < h; y += 4) {
+                        p.setColor(Color.argb(8 + rnd.nextInt(14), 220, 230, 245));
+                        c.drawLine(0, y, w, y, p);
                     }
                     break;
                 }
@@ -1906,22 +1915,23 @@ public class DvdOpeningView extends View {
             p.setShader(null);
 
             switch (kind) {
-                case "kraft": // sculpted antique brass clamp with recessed machine screw
+                case "artvellum":
+                case "kraft": // polished satin-nickel clamp with chamfered highlight for glossy grey closet
                     p.setShader(new LinearGradient(r.left, r.top, r.right, r.bottom,
-                            new int[]{0xFFF3D078, 0xFFB88832, 0xFF6E4E14}, new float[]{0f, 0.52f, 1f}, Shader.TileMode.CLAMP));
+                            new int[]{0xFFF1F5F9, 0xFF94A3B8, 0xFF475569}, new float[]{0f, 0.52f, 1f}, Shader.TileMode.CLAMP));
                     c.drawRoundRect(r, rad * 0.55f, rad * 0.55f, p);
                     p.setShader(null);
                     p.setStyle(Paint.Style.STROKE);
                     p.setStrokeWidth(Math.max(1f, w * 0.0025f));
-                    p.setColor(Color.argb(110, 255, 245, 210));
+                    p.setColor(Color.argb(160, 255, 255, 255));
                     c.drawRoundRect(r, rad * 0.55f, rad * 0.55f, p);
                     p.setStyle(Paint.Style.FILL);
                     float sx = r.left + r.width() * 0.38f, sy = r.centerY(), sr = r.height() * 0.21f;
-                    p.setColor(0xFF422C08);
+                    p.setColor(0xFF1E293B);
                     c.drawCircle(sx, sy, sr, p);
                     p.setStyle(Paint.Style.STROKE);
                     p.setStrokeWidth(Math.max(1.2f, w * 0.0025f));
-                    p.setColor(0xFF241604);
+                    p.setColor(Color.argb(140, 255, 255, 255));
                     c.drawLine(sx - sr * 0.65f, sy - sr * 0.35f, sx + sr * 0.65f, sy + sr * 0.35f, p);
                     break;
                 case "programme":
@@ -2018,19 +2028,27 @@ public class DvdOpeningView extends View {
                     }
                     break;
                 }
+                case "artvellum":
                 case "kraft": {
-                    // Recycled kraft: a few darker fibres and a warm edge.
-                    java.util.Random rnd = new java.util.Random(7);
-                    p.setStrokeWidth(Math.max(1f, w * 0.0012f));
-                    for (int i = 0; i < 90; i++) {
-                        float x = paper.left + rnd.nextFloat() * paper.width(), y = paper.top + rnd.nextFloat() * paper.height();
-                        p.setColor(Color.argb(18 + rnd.nextInt(18), 110, 75, 40));
-                        c.drawLine(x, y, x + (rnd.nextFloat() - 0.5f) * w * 0.03f, y + (rnd.nextFloat() - 0.5f) * w * 0.01f, p);
-                    }
+                    // Film Dolabı: Fine archival laid vellum with blind-debossed framing border
                     p.setStyle(Paint.Style.STROKE);
-                    p.setStrokeWidth(w * 0.01f);
-                    p.setColor(Color.argb(30, 90, 55, 25));
-                    c.drawRoundRect(paper, r, r, p);
+                    float in = w * 0.016f;
+                    p.setStrokeWidth(Math.max(1.2f, w * 0.0025f));
+                    p.setColor(Color.argb(45, 100, 116, 139));
+                    c.drawRoundRect(new RectF(paper.left + in, paper.top + in, paper.right - in, paper.bottom - in), r, r, p);
+                    p.setStrokeWidth(Math.max(0.8f, w * 0.0012f));
+                    p.setColor(Color.argb(25, 100, 116, 139));
+                    float in2 = in + w * 0.006f;
+                    c.drawRoundRect(new RectF(paper.left + in2, paper.top + in2, paper.right - in2, paper.bottom - in2), r, r, p);
+                    break;
+                }
+                case "oled": {
+                    // Stark minimalist hairline border
+                    p.setStyle(Paint.Style.STROKE);
+                    float in = w * 0.014f;
+                    p.setStrokeWidth(Math.max(1f, w * 0.0015f));
+                    p.setColor(Color.argb(60, 0, 0, 0));
+                    c.drawRoundRect(new RectF(paper.left + in, paper.top + in, paper.right - in, paper.bottom - in), r, r, p);
                     break;
                 }
                 case "acrylic": {

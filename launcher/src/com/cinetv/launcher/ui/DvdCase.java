@@ -367,10 +367,15 @@ public final class DvdCase {
         drawDvdVideoLogo(c, w / 2f, lip + w * 0.52f, spineLogoScale * 0.65f, 235);
 
         TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        tp.setTypeface(FontManager.getBlack(ctx));
+        String currentTheme = "";
+        try {
+            if (ctx != null) currentTheme = com.cinetv.launcher.service.ThemeManager.current(ctx).id;
+        } catch (Throwable ignored) {}
+        tp.setTypeface(FontManager.getThemeSpineTypeface(currentTheme, ctx));
         tp.setColor(Color.argb(242, 255, 255, 255));
         tp.setTextSize(w * 0.44f);
-        tp.setLetterSpacing(0.05f);
+        float spacing = "glass".equals(currentTheme) ? 0.12f : ("cinema".equals(currentTheme) || "closet".equals(currentTheme) ? 0.08f : 0.05f);
+        tp.setLetterSpacing(spacing);
         float titleStartY = lip + w * 1.10f;
         float available = (h * 0.76f) - titleStartY;
         String text = TextUtils.ellipsize(title == null ? "" : title.toUpperCase(Locale.getDefault()), tp, available, TextUtils.TruncateAt.END).toString();

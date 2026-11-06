@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>CineTV by Alptuğ Dağ - Windows PC</title>
 <link rel="icon" type="image/png" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@600;800&family=Permanent+Marker&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #07070C;
@@ -824,6 +827,478 @@ header.hud {
   letter-spacing: 0.06em;
 }
 
+/* Authentic Retail Factory Shrink-Wrap (Jelatin) Exterior */
+.dvd-case .cellophane-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px 12px 12px 6px;
+  pointer-events: none;
+  z-index: 12;
+  overflow: hidden;
+}
+.dvd-case .cellophane-top-seam {
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  right: 4px;
+  height: 1.5px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.2) 25%, rgba(255,255,255,0.68) 60%, rgba(255,255,255,0.22) 85%, transparent 100%);
+  box-shadow: 0 1px 1px rgba(0,0,0,0.5);
+  opacity: 0.88;
+}
+.dvd-case .cellophane-bottom-seam {
+  position: absolute;
+  bottom: 4px;
+  left: 10px;
+  right: 4px;
+  height: 1.5px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.2) 35%, rgba(255,255,255,0.65) 75%, transparent 100%);
+  box-shadow: 0 -1px 1px rgba(0,0,0,0.5);
+  opacity: 0.88;
+}
+.dvd-case .cellophane-side-weld {
+  position: absolute;
+  right: 2.5px;
+  top: 10px;
+  bottom: 10px;
+  width: 1.5px;
+  background: repeating-linear-gradient(180deg, rgba(255,255,255,0.6) 0 2px, transparent 2px 5px);
+  opacity: 0.78;
+}
+.dvd-case .cellophane-tear-strip {
+  position: absolute;
+  top: 58px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  pointer-events: none;
+}
+.dvd-case .cellophane-tear-strip .tear-strip-line {
+  width: 100%;
+  height: 1px;
+  background: rgba(239, 68, 68, 0.85);
+  box-shadow: 0 0 2px rgba(239, 68, 68, 0.45), 0 1px 0 rgba(255,255,255,0.35);
+}
+.dvd-case .cellophane-tear-strip .tear-strip-tab {
+  position: absolute;
+  right: 2px;
+  top: -2.5px;
+  width: 6px;
+  height: 6px;
+  background: linear-gradient(135deg, #EF4444, #B91C1C);
+  border-radius: 1px;
+  transform: rotate(45deg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.65);
+}
+.dvd-case .cellophane-corner-flaps {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, transparent 0%, transparent 6%, rgba(255,255,255,0.28) 7%, rgba(0,0,0,0.28) 8%, transparent 9%),
+    linear-gradient(225deg, transparent 0%, transparent 8%, rgba(255,255,255,0.42) 9%, rgba(0,0,0,0.32) 10.5%, transparent 12%),
+    linear-gradient(315deg, transparent 0%, transparent 7%, rgba(255,255,255,0.32) 8%, rgba(0,0,0,0.25) 9.5%, transparent 11%);
+  opacity: 0.82;
+}
+.dvd-case .cellophane-stress-crinkles {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(42deg, transparent 0px, transparent 38px, rgba(255,255,255,0.12) 39px, rgba(0,0,0,0.08) 40px, transparent 42px);
+  opacity: 0.72;
+}
+.dvd-case .cellophane-prismatic-sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.04) 20%, rgba(255,255,255,0.20) 40%, rgba(255,220,180,0.10) 50%, rgba(180,240,255,0.14) 65%, transparent 80%);
+  mix-blend-mode: screen;
+  opacity: 0.75;
+}
+
+/* DVD Spine Title */
+.dvd-case .spine-title {
+  position: absolute;
+  left: 50%;
+  top: 52px;
+  transform: translateX(-50%) rotate(90deg);
+  transform-origin: center center;
+  white-space: nowrap;
+  font-size: 8.5px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.92);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.dvd-case.is-focused-hero .spine-title,
+.dvd-case:hover .spine-title {
+  opacity: 0.95;
+}
+
+/* Elevated Fragman Marker Header */
+.tray-marker-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  transform: rotate(-1.5deg);
+  transform-origin: left bottom;
+  user-select: none;
+}
+.tray-marker-label span {
+  font-family: 'Permanent Marker', 'Brush Script MT', cursive, sans-serif;
+  font-size: 21px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+  line-height: 1;
+}
+.tray-marker-label .marker-underline {
+  width: 84px;
+  height: 2.5px;
+  margin-top: 4px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.45) 85%, transparent 100%);
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+
+/* ========================================================
+   THEME-HARMONIZED TYPOGRAPHY, PAPERS & INTERIOR MATERIALS
+   ======================================================== */
+
+/* Film Dolabı (Closet):
+   - Interior: Polished glossy grey material (NOT brown wood!)
+   - Paper: Art vellum / fine ivory laid archival paper
+   - Typography: Literary art-house serif ('Playfair Display')
+*/
+.theme-closet .dvd-tray {
+  background:
+    radial-gradient(circle at 50% 62%, rgba(255,255,255,0.08) 0%, transparent 60%),
+    linear-gradient(145deg, #424652 0%, #2E323D 45%, #1C1E24 100%) !important;
+  border: 1px solid rgba(255,255,255,0.22) !important;
+  box-shadow:
+    inset 0 0 0 3px rgba(30, 32, 38, 0.9),
+    inset 6px 0 16px rgba(0,0,0,0.65),
+    inset 0 1px 2px rgba(255,255,255,0.35),
+    8px 10px 24px rgba(0,0,0,0.75) !important;
+}
+.theme-closet .tray-housing-frame {
+  background: linear-gradient(145deg, #4A4E5C 0%, #323642 55%, #1F222B 100%) !important;
+  border: 1px solid rgba(255,255,255,0.28) !important;
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.4),
+    inset 0 2px 5px rgba(0,0,0,0.85),
+    0 10px 24px rgba(0,0,0,0.75) !important;
+}
+.theme-closet .tray-recess-bed {
+  background:
+    radial-gradient(circle, #252830 48%, #363A44 82%, #181A20 100%) !important;
+  border: 2px solid rgba(255,255,255,0.22) !important;
+  box-shadow:
+    inset 0 8px 20px rgba(0,0,0,0.9),
+    inset 0 1px 4px rgba(255,255,255,0.25),
+    0 0 0 5px rgba(28, 30, 36, 0.9) !important;
+}
+.theme-closet .booklet-clip {
+  background: linear-gradient(145deg, #E2E8F0 0%, #94A3B8 52%, #475569 100%) !important;
+  border: 1.5px solid rgba(255,255,255,0.65) !important;
+  box-shadow: -4px 4px 10px rgba(0,0,0,0.55), inset 1px 1px 2px #FFFFFF !important;
+}
+.theme-closet .dvd-booklet {
+  background:
+    repeating-linear-gradient(0deg, rgba(40, 50, 60, 0.035) 0px, rgba(40, 50, 60, 0.035) 1px, transparent 1px, transparent 6px),
+    linear-gradient(135deg, rgba(255,255,255,0.5) 0%, transparent 40%),
+    #FAF7F2 !important;
+  border: 1px solid rgba(100, 116, 139, 0.25) !important;
+  box-shadow: inset 0 0 0 4px rgba(100, 116, 139, 0.08), -6px 8px 20px rgba(0,0,0,0.75) !important;
+}
+.theme-closet .booklet-title {
+  font-family: 'Playfair Display', Georgia, serif !important;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #1E293B !important;
+}
+.theme-closet .booklet-overview {
+  font-family: 'Playfair Display', Georgia, serif !important;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #334155 !important;
+}
+.theme-closet .booklet-meta,
+.theme-closet .booklet-director,
+.theme-closet .booklet-footer-specs {
+  font-family: 'Playfair Display', Georgia, serif !important;
+  color: #475569 !important;
+}
+.theme-closet .spine-title {
+  font-family: 'Playfair Display', Georgia, serif !important;
+  letter-spacing: 0.14em !important;
+}
+
+/* Sinema Salonu (Cinema):
+   - Interior: Rich crimson velvet & gold trim
+   - Paper: Gilded theatrical souvenir programme card
+   - Typography: Regal classic cinema serif ('Cinzel')
+*/
+.theme-cinema .dvd-tray {
+  background:
+    radial-gradient(circle at 50% 62%, rgba(238, 190, 62, 0.08) 0%, transparent 60%),
+    linear-gradient(145deg, #3A0A10 0%, #200408 55%, #120205 100%) !important;
+  border: 1px solid rgba(238, 190, 62, 0.35) !important;
+}
+.theme-cinema .tray-housing-frame {
+  background: linear-gradient(145deg, #4A0E16 0%, #2A060C 55%, #150205 100%) !important;
+  border: 1px solid rgba(238, 190, 62, 0.45) !important;
+}
+.theme-cinema .booklet-clip {
+  background: linear-gradient(145deg, #F3D078 0%, #B88832 52%, #6E4E14 100%) !important;
+  border: 1.5px solid rgba(255, 248, 220, 0.65) !important;
+}
+.theme-cinema .dvd-booklet {
+  background:
+    radial-gradient(circle at top left, rgba(238, 190, 62, 0.08) 0%, transparent 45%),
+    #FFFDF5 !important;
+  border: 2px solid #D4AF37 !important;
+  box-shadow: inset 0 0 0 3px rgba(212, 175, 55, 0.25), -6px 8px 20px rgba(0,0,0,0.85) !important;
+}
+.theme-cinema .booklet-title {
+  font-family: 'Cinzel', 'Bodoni MT', 'Times New Roman', serif !important;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #3A060E !important;
+}
+.theme-cinema .booklet-overview {
+  font-family: 'Cinzel', Georgia, serif !important;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: #4A0812 !important;
+}
+.theme-cinema .booklet-meta,
+.theme-cinema .booklet-director,
+.theme-cinema .booklet-footer-specs {
+  font-family: 'Cinzel', Georgia, serif !important;
+  color: #5C1119 !important;
+}
+.theme-cinema .spine-title {
+  font-family: 'Cinzel', 'Copperplate', serif !important;
+  letter-spacing: 0.18em !important;
+  color: #FDE047 !important;
+}
+
+/* Likit Cam (Glass):
+   - Interior: Optical crystal glass with sapphire-cyan reflections
+   - Paper: Translucent frosted optical vellum
+   - Typography: Clean high-tech geometric sans ('Inter')
+*/
+.theme-glass .dvd-tray {
+  background:
+    radial-gradient(circle at 50% 62%, rgba(56, 189, 248, 0.12) 0%, transparent 60%),
+    linear-gradient(145deg, #1A2C42 0%, #0F1B2A 55%, #080D15 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.35) !important;
+}
+.theme-glass .tray-housing-frame {
+  background: linear-gradient(145deg, #223B59 0%, #132338 55%, #0B1420 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.45) !important;
+}
+.theme-glass .dvd-booklet {
+  background:
+    linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, transparent 50%),
+    #EAF5FF !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  box-shadow: inset 0 0 0 3px rgba(56, 189, 248, 0.15), -6px 8px 20px rgba(0,0,0,0.75) !important;
+}
+.theme-glass .booklet-title {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0A2240 !important;
+}
+.theme-glass .booklet-overview {
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 400;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: #1E3A5F !important;
+}
+.theme-glass .booklet-meta,
+.theme-glass .booklet-director,
+.theme-glass .booklet-footer-specs {
+  font-family: 'Inter', sans-serif !important;
+  color: #2D5280 !important;
+}
+.theme-glass .spine-title {
+  font-family: 'Inter', 'Arial', sans-serif !important;
+  font-weight: 800;
+  letter-spacing: 0.22em !important;
+  text-transform: uppercase;
+}
+
+/* Metalik (Metal):
+   - Interior: CNC titanium alloy
+   - Paper: Precision technical drafting blueprint sheet
+   - Typography: Industrial technical monospace ('JetBrains Mono')
+*/
+.theme-metal .dvd-booklet {
+  background: #ECEFF4 !important;
+  border: 1px solid #475569 !important;
+  box-shadow: inset 0 0 0 2px rgba(71, 85, 105, 0.2), -6px 8px 20px rgba(0,0,0,0.85) !important;
+}
+.theme-metal .booklet-title,
+.theme-metal .booklet-overview,
+.theme-metal .booklet-meta,
+.theme-metal .booklet-director,
+.theme-metal .booklet-footer-specs {
+  font-family: 'JetBrains Mono', monospace !important;
+}
+.theme-metal .spine-title {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-weight: 700 !important;
+}
+
+/* Neon Gece (Neon):
+   - Interior: Obsidian mirror with neon tubes
+   - Paper: Obsidian black UV-reactive card
+   - Typography: Futuristic synthwave display ('Orbitron')
+*/
+.theme-neon .dvd-booklet {
+  background: #120C1F !important;
+  border: 1px solid #F472B6 !important;
+  box-shadow: inset 0 0 12px rgba(244, 114, 182, 0.35), 0 0 20px rgba(244, 114, 182, 0.4) !important;
+}
+.theme-neon .booklet-title {
+  font-family: 'Orbitron', sans-serif !important;
+  color: #FDF4FF !important;
+  text-shadow: 0 0 8px #F472B6;
+}
+.theme-neon .booklet-overview,
+.theme-neon .booklet-meta,
+.theme-neon .booklet-director,
+.theme-neon .booklet-footer-specs {
+  font-family: 'Syne', sans-serif !important;
+  color: #F5D0FE !important;
+}
+.theme-neon .spine-title {
+  font-family: 'Orbitron', sans-serif !important;
+  color: #38BDF8 !important;
+  text-shadow: 0 0 6px #38BDF8;
+}
+
+/* Dynamic Theme-Specific DVD Surface Light Reflection & Glare */
+/* 1. Liquid Glass: razor-sharp specular glass glare, optical sapphire/cyan prism dispersion */
+.theme-glass .dvd-case .sheen {
+  background: linear-gradient(135deg,
+    rgba(255,255,255,0.78) 0%,
+    rgba(255,255,255,0.40) 12%,
+    rgba(224,242,254,0.14) 28%,
+    transparent 46%,
+    rgba(56,189,248,0.22) 82%,
+    rgba(255,255,255,0.55) 100%
+  ) !important;
+  box-shadow: inset 2.5px 0 5px rgba(255,255,255,0.85), inset -1.5px 0 4px rgba(56,189,248,0.45) !important;
+}
+.theme-glass .dvd-case .cellophane-prismatic-sheen {
+  background: linear-gradient(115deg,
+    transparent 0%,
+    rgba(255,255,255,0.06) 18%,
+    rgba(255,255,255,0.36) 38%,
+    rgba(125,211,252,0.28) 48%,
+    rgba(56,189,248,0.22) 62%,
+    transparent 82%
+  ) !important;
+  opacity: 0.92 !important;
+}
+
+/* 2. Film Closet: gentle, soft ambient wood reflection, warm velvety ivory/cream sheen without harsh glare */
+.theme-closet .dvd-case .sheen {
+  background: linear-gradient(135deg,
+    rgba(255,252,245,0.24) 0%,
+    rgba(254,243,199,0.09) 25%,
+    transparent 58%,
+    rgba(255,248,230,0.12) 100%
+  ) !important;
+  box-shadow: inset 1.5px 0 3px rgba(255,248,235,0.32), inset -1px 0 3px rgba(0,0,0,0.35) !important;
+}
+.theme-closet .dvd-case .cellophane-prismatic-sheen {
+  background: linear-gradient(115deg,
+    transparent 0%,
+    rgba(255,250,240,0.04) 22%,
+    rgba(254,243,199,0.14) 45%,
+    rgba(253,230,138,0.10) 60%,
+    transparent 80%
+  ) !important;
+  opacity: 0.60 !important;
+}
+
+/* 3. Cinema Hall: warm theatrical tungsten proscenium reflection, amber/gold spotlight beam */
+.theme-cinema .dvd-case .sheen {
+  background: linear-gradient(135deg,
+    rgba(255,248,220,0.48) 0%,
+    rgba(251,191,36,0.18) 22%,
+    transparent 52%,
+    rgba(245,158,11,0.22) 100%
+  ) !important;
+  box-shadow: inset 2px 0 4.5px rgba(255,230,150,0.60), inset -1px 0 3px rgba(35,10,12,0.75) !important;
+}
+.theme-cinema .dvd-case .cellophane-prismatic-sheen {
+  background: linear-gradient(115deg,
+    transparent 0%,
+    rgba(255,250,230,0.05) 20%,
+    rgba(251,191,36,0.22) 42%,
+    rgba(245,158,11,0.16) 58%,
+    transparent 80%
+  ) !important;
+  opacity: 0.85 !important;
+}
+
+/* 4. Metallic: cold titanium anisotropic brushed metal reflection streak, sharp chamfer */
+.theme-metal .dvd-case .sheen {
+  background: linear-gradient(112deg,
+    rgba(248,250,252,0.60) 0%,
+    rgba(203,213,225,0.22) 18%,
+    transparent 40%,
+    rgba(148,163,184,0.26) 74%,
+    rgba(255,255,255,0.45) 100%
+  ) !important;
+  box-shadow: inset 2px 0 4.5px rgba(255,255,255,0.70), inset -1px 0 3px rgba(15,23,42,0.85) !important;
+}
+.theme-metal .dvd-case .cellophane-prismatic-sheen {
+  background: linear-gradient(110deg,
+    transparent 0%,
+    rgba(248,250,252,0.08) 20%,
+    rgba(203,213,225,0.28) 40%,
+    rgba(148,163,184,0.18) 60%,
+    transparent 80%
+  ) !important;
+  opacity: 0.88 !important;
+}
+
+/* 5. Neon Night: dual-tone electric cyan and neon fuchsia tube glare, cyber glow */
+.theme-neon .dvd-case .sheen {
+  background: linear-gradient(135deg,
+    rgba(255,255,255,0.68) 0%,
+    rgba(34,211,238,0.28) 18%,
+    transparent 42%,
+    rgba(244,114,182,0.30) 78%,
+    rgba(255,255,255,0.50) 100%
+  ) !important;
+  box-shadow: inset 2.5px 0 6px rgba(34,211,238,0.75), inset -1.5px 0 5px rgba(244,114,182,0.65) !important;
+}
+.theme-neon .dvd-case .cellophane-prismatic-sheen {
+  background: linear-gradient(115deg,
+    transparent 0%,
+    rgba(34,211,238,0.12) 20%,
+    rgba(255,255,255,0.32) 42%,
+    rgba(244,114,182,0.24) 62%,
+    transparent 82%
+  ) !important;
+  opacity: 0.90 !important;
+}
+
 /* Bottom Glass Dock */
 .dock {
   position: relative;
@@ -1121,11 +1596,58 @@ header.hud {
   position: relative;
   border: 1px solid rgba(255,255,255,0.16);
   box-shadow: inset 0 0 28px rgba(0,0,0,0.95);
+  pointer-events: none;
 }
 .tray-video-slot iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   border: none;
+  pointer-events: none;
+  object-fit: contain;
+}
+.tray-trailer-curtain {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, #111218 0%, #050608 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 5;
+  transition: opacity 0.55s ease;
+  pointer-events: none;
+}
+.tray-trailer-curtain.hidden {
+  opacity: 0;
+}
+.tray-trailer-curtain .curtain-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(255,255,255,0.15);
+  border-top-color: #38BDF8;
+  border-radius: 50%;
+  animation: curtainSpin 0.8s linear infinite;
+}
+.tray-trailer-curtain .curtain-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+}
+@keyframes curtainSpin {
+  to { transform: rotate(360deg); }
+}
+.tray-cinematic-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  box-shadow: inset 0 0 14px rgba(0,0,0,0.40);
 }
 .tray-spec-bar {
   display: flex;
@@ -1669,7 +2191,7 @@ header.hud {
         <img src="assets/icon.png" class="logo" alt="CineTV">
         <div>
           <h2>CineTV Ayarlar</h2>
-          <div class="sub">Tek Pencere Responsive Kontrol Paneli · v1.0.0.52 Windows</div>
+          <div class="sub">Tek Pencere Responsive Kontrol Paneli · v1.0.0.53 Windows</div>
         </div>
       </div>
       <button class="btn-close-modal" style="position:static;" onclick="closeSettings()">Kapat</button>
@@ -1859,6 +2381,10 @@ header.hud {
 
     <!-- Right Tray with Disc & Trailer -->
     <div class="dvd-tray">
+      <div class="tray-marker-label">
+        <span>Fragman</span>
+        <div class="marker-underline"></div>
+      </div>
       <div class="tray-housing-frame">
         <div class="tray-video-slot" id="trayVideoSlot">
           <!-- Trailer iframe will be dynamically mounted here -->
@@ -2046,8 +2572,22 @@ function renderShelf() {
       <div class="box-inner">
         <div class="case-skeleton"></div>
         <img class="cover" data-src="${m.poster}" alt="${m.title}">
+        <div class="cellophane-layer">
+          <div class="cellophane-top-seam"></div>
+          <div class="cellophane-bottom-seam"></div>
+          <div class="cellophane-side-weld"></div>
+          <div class="cellophane-tear-strip">
+            <div class="tear-strip-line"></div>
+            <div class="tear-strip-tab"></div>
+          </div>
+          <div class="cellophane-corner-flaps"></div>
+          <div class="cellophane-stress-crinkles"></div>
+          <div class="cellophane-prismatic-sheen"></div>
+        </div>
         <div class="sheen"></div>
-        <div class="spine"></div>
+        <div class="spine">
+          <span class="spine-title">${m.title || ''}</span>
+        </div>
         <div class="badge-4k">4K UHD</div>
       </div>
     `;
@@ -2226,13 +2766,37 @@ function openFocusedDvd() {
   const bgImg = m.backdrop || m.poster;
   document.getElementById('bookletWatermark').style.backgroundImage = `url('${bgImg}')`;
 
-  // Trailer slot
+  // Trailer slot: 100% uncropped cinematic player with zero YouTube UI
   const slot = document.getElementById('trayVideoSlot');
   slot.innerHTML = '';
   if (m.trailer) {
+    // 1. Cinematic loading veil/curtain to mask initial YouTube title/share chrome during load
+    const curtain = document.createElement('div');
+    curtain.className = 'tray-trailer-curtain';
+    curtain.id = 'trayTrailerCurtain';
+    curtain.innerHTML = `
+      <div class="curtain-spinner"></div>
+      <div class="curtain-text">24 FPS MASTER · SİNEMA ÖNİZLEMESİ</div>
+    `;
+    slot.appendChild(curtain);
+
+    // 2. Subtle ambient cinematic vignette (zero video occlusion)
+    const vignette = document.createElement('div');
+    vignette.className = 'tray-cinematic-vignette';
+    slot.appendChild(vignette);
+
+    // 3. IFrame: uncropped, pointer-events: none, controls=0, modestbranding=1, rel=0, iv_load_policy=3
     const ifr = document.createElement('iframe');
-    ifr.src = `https://www.youtube-nocookie.com/embed/${m.trailer}?autoplay=1&mute=1&controls=0&modestbranding=1&loop=1&playlist=${m.trailer}`;
+    ifr.src = `https://www.youtube-nocookie.com/embed/${m.trailer}?autoplay=1&mute=1&controls=0&modestbranding=1&loop=1&playlist=${m.trailer}&rel=0&showinfo=0&iv_load_policy=3&disablekb=1&fs=0&playsinline=1&enablejsapi=1`;
     ifr.allow = "autoplay; encrypted-media";
+    ifr.onload = () => {
+      // YouTube chrome fades out as soon as playback starts without hover.
+      // Wait for playback handoff, then smoothly dissolve the curtain to reveal pure uncropped video.
+      setTimeout(() => {
+        curtain.classList.add('hidden');
+        setTimeout(() => { if (curtain.parentNode) curtain.remove(); }, 600);
+      }, 750);
+    };
     slot.appendChild(ifr);
   }
 
@@ -2505,7 +3069,7 @@ function switchCategory(cat) {
 
 // Theme Switcher
 function toggleTheme() {
-  const themes = ['closet', 'cinema', 'glass'];
+  const themes = ['closet', 'cinema', 'glass', 'metal', 'neon'];
   const curIdx = themes.indexOf(currentTheme);
   currentTheme = themes[(curIdx + 1) % themes.length];
   document.body.className = `theme-${currentTheme}`;
@@ -2513,8 +3077,6 @@ function toggleTheme() {
   if (currentTheme === 'closet') {
     env.className = 'environment env-closet';
     env.style.display = 'block';
-  } else if (currentTheme === 'cinema') {
-    env.style.display = 'none';
   } else {
     env.style.display = 'none';
   }

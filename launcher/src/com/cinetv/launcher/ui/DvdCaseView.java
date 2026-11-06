@@ -39,6 +39,9 @@ public class DvdCaseView extends View {
     private final Paint wrapPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Paint fxPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Paint sheenPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint celloSeamPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint celloThreadPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint celloFoldPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix matrix = new Matrix();
     private final RectF rect = new RectF();
     private final float[] proj = new float[16];
@@ -395,9 +398,15 @@ public class DvdCaseView extends View {
             float smooth = phase <= 0.5f ? phase * 2f : (1f - phase) * 2f;
             int off = (int) (smooth * (wrap.getWidth() - win));
             mapTo(tex, 0, tex.getWidth());
-            // Velvety soft reflection with harmonic 3D glint boost
-            float wrapStrength = (0.12f + 0.07f * lift + 0.15f * glint) * (0.5f + 0.5f * facing) * dim;
-            wrapPaint.setAlpha((int) (255 * Math.min(0.30f, wrapStrength)));
+            // Dynamic theme-calibrated surface reflection & wrap gloss:
+            String themeId = com.cinetv.launcher.service.ThemeManager.current(getContext()).id;
+            float themeWrapMul = "glass".equalsIgnoreCase(themeId) ? 1.35f :
+                                 "closet".equalsIgnoreCase(themeId) ? 0.68f :
+                                 "cinema".equalsIgnoreCase(themeId) || "redcarpet".equalsIgnoreCase(themeId) ? 1.10f :
+                                 "metal".equalsIgnoreCase(themeId) ? 1.22f :
+                                 "neon".equalsIgnoreCase(themeId) ? 1.28f : 1.0f;
+            float wrapStrength = (0.12f + 0.07f * lift + 0.15f * glint) * (0.5f + 0.5f * facing) * dim * themeWrapMul;
+            wrapPaint.setAlpha((int) (255 * Math.min(0.35f, wrapStrength)));
             sliceSrc.set(off, 0, off + win, wrap.getHeight());
             rect.set(0, 0, tex.getWidth(), tex.getHeight());
             canvas.save();
@@ -407,7 +416,7 @@ public class DvdCaseView extends View {
             // 3D-synchronized optical surface flare, window reflection streak, and spine bevel catchlight:
             if (lift > 0.05f) {
                 float tw = tex.getWidth(), th = tex.getHeight();
-                ensureSheenShaders(tw, th);
+                ensureSheenShaders(tw, th, themeId);
                 // Reflection locus moves horizontally with 3D yaw, vertically with 3D pitch (tilt), and tilts with roll:
                 float normX = Math.max(0.06f, Math.min(0.94f, 0.50f + yawDelta * 0.044f + (glint - 0.5f) * 0.24f));
                 float normY = Math.max(0.08f, Math.min(0.92f, 0.46f - tilt * 0.055f + roll * 0.025f));
@@ -456,12 +465,81 @@ public class DvdCaseView extends View {
                 sheenPaint.setAlpha(topEdgeAlpha);
                 canvas.drawRect(0, 0, tw, th * 0.038f, sheenPaint);
                 sheenPaint.setShader(null);
+
+                // Retail factory shrink-wrap (jelatin) seams, tear-strip, corner fold creases & tension wrinkles:
+                drawCellophaneWrap(canvas, tw, th, modAlpha, yawDelta, tilt, roll);
             }
             canvas.restore();
         }
     }
 
+    /** Draws realistic retail cellophane shrink-wrap (jelatin) details with zero object allocations. */
+    private void drawCellophaneWrap(Canvas canvas, float tw, float th, int modAlpha, float yaw, float tilt, float roll) {
+        if (modAlpha <= 10) return;
+
+        // 1. Factory heat-sealed top and bottom weld seams
+        float seamW = Math.max(1f, th * 0.0022f);
+        celloSeamPaint.setStyle(Paint.Style.STROKE);
+        celloSeamPaint.setStrokeWidth(seamW);
+        celloSeamPaint.setColor(Color.argb(Math.round(modAlpha * 0.45f), 255, 255, 255));
+        float topSeamY = th * 0.016f;
+        float btmSeamY = th * 0.984f;
+        canvas.drawLine(tw * 0.05f, topSeamY, tw * 0.98f, topSeamY, celloSeamPaint);
+        canvas.drawLine(tw * 0.05f, btmSeamY, tw * 0.98f, btmSeamY, celloSeamPaint);
+
+        // Seam micro drop shadow underneath
+        celloSeamPaint.setColor(Color.argb(Math.round(modAlpha * 0.28f), 0, 0, 0));
+        canvas.drawLine(tw * 0.05f, topSeamY + seamW, tw * 0.98f, topSeamY + seamW, celloSeamPaint);
+        canvas.drawLine(tw * 0.05f, btmSeamY - seamW, tw * 0.98f, btmSeamY - seamW, celloSeamPaint);
+
+        // 2. Right opening edge factory heat-crimp weld with micro notches
+        celloSeamPaint.setColor(Color.argb(Math.round(modAlpha * 0.38f), 255, 255, 255));
+        float rightX = tw * 0.990f;
+        canvas.drawLine(rightX, th * 0.04f, rightX, th * 0.96f, celloSeamPaint);
+
+        // 3. Cellophane tear-strip band with red pull-thread and tab
+        float tearY = th * 0.20f;
+        celloThreadPaint.setStyle(Paint.Style.STROKE);
+        celloThreadPaint.setStrokeWidth(Math.max(1.8f, th * 0.0035f));
+        celloThreadPaint.setColor(Color.argb(Math.round(modAlpha * 0.16f), 255, 255, 255));
+        canvas.drawLine(0, tearY, tw, tearY, celloThreadPaint);
+
+        // Crimson pull thread
+        celloThreadPaint.setStrokeWidth(Math.max(1.0f, th * 0.0018f));
+        celloThreadPaint.setColor(Color.argb(Math.round(modAlpha * 0.70f), 239, 68, 68));
+        canvas.drawLine(0, tearY, tw, tearY, celloThreadPaint);
+
+        // Red tear-tab at edge
+        celloThreadPaint.setStyle(Paint.Style.FILL);
+        float tabW = Math.max(4f, tw * 0.024f);
+        float tabH = Math.max(5f, th * 0.016f);
+        canvas.drawRect(tw - tabW, tearY - tabH / 2f, tw, tearY + tabH / 2f, celloThreadPaint);
+
+        // 4. Authentic triangular corner envelope folds (heat shrink creases)
+        celloFoldPaint.setStyle(Paint.Style.STROKE);
+        celloFoldPaint.setStrokeWidth(Math.max(1f, th * 0.0018f));
+        celloFoldPaint.setColor(Color.argb(Math.round(modAlpha * 0.32f), 255, 255, 255));
+
+        // Top-right corner fold
+        canvas.drawLine(tw * 0.86f, 0, tw, th * 0.085f, celloFoldPaint);
+        // Bottom-right corner fold
+        canvas.drawLine(tw * 0.86f, th, tw, th * 0.915f, celloFoldPaint);
+        // Top-left corner fold
+        canvas.drawLine(tw * 0.03f, 0, 0, th * 0.055f, celloFoldPaint);
+        // Bottom-left corner fold
+        canvas.drawLine(tw * 0.03f, th, 0, th * 0.945f, celloFoldPaint);
+
+        // 5. Tension micro-wrinkles radiating inwards from corners
+        celloFoldPaint.setStrokeWidth(Math.max(0.8f, th * 0.0012f));
+        celloFoldPaint.setColor(Color.argb(Math.round(modAlpha * 0.18f), 255, 255, 255));
+        canvas.drawLine(tw * 0.90f, th * 0.03f, tw * 0.96f, th * 0.065f, celloFoldPaint);
+        canvas.drawLine(tw * 0.88f, th * 0.05f, tw * 0.94f, th * 0.09f, celloFoldPaint);
+        canvas.drawLine(tw * 0.90f, th * 0.97f, tw * 0.96f, th * 0.935f, celloFoldPaint);
+        canvas.drawLine(tw * 0.88f, th * 0.95f, tw * 0.94f, th * 0.91f, celloFoldPaint);
+    }
+
     private float cachedSheenW = -1f, cachedSheenH = -1f;
+    private String cachedThemeId = null;
     private android.graphics.LinearGradient haloShader, coreShader, topGlossShader;
     private android.graphics.RadialGradient flareShader, spineFlareShader;
     private final Matrix sheenMatrix = new Matrix();
@@ -469,41 +547,211 @@ public class DvdCaseView extends View {
     private static final float[] HALO_STOPS = {0f, 0.42f, 0.58f, 1f};
     private static final float[] FLARE_STOPS = {0f, 0.22f, 0.52f, 0.82f, 1f};
 
-    private void ensureSheenShaders(float tw, float th) {
-        if (tw == cachedSheenW && th == cachedSheenH && haloShader != null) return;
+    private void ensureSheenShaders(float tw, float th, String themeId) {
+        if (tw == cachedSheenW && th == cachedSheenH && themeId != null && themeId.equals(cachedThemeId) && haloShader != null) return;
         cachedSheenW = tw;
         cachedSheenH = th;
+        cachedThemeId = themeId;
         float slant = th * 0.32f;
-        haloShader = new android.graphics.LinearGradient(
-                -tw * 0.42f - slant, -th * 0.25f, tw * 0.42f - slant, th * 1.25f,
-                new int[]{Color.TRANSPARENT, Color.argb(26, 225, 240, 255), Color.argb(26, 255, 250, 240), Color.TRANSPARENT},
-                HALO_STOPS, Shader.TileMode.CLAMP);
-        coreShader = new android.graphics.LinearGradient(
-                -tw * 0.075f - slant, -th * 0.25f, tw * 0.075f - slant, th * 1.25f,
-                new int[]{Color.TRANSPARENT, Color.argb(52, 255, 255, 255), Color.TRANSPARENT},
-                null, Shader.TileMode.CLAMP);
-        topGlossShader = new android.graphics.LinearGradient(
-                0f, 0f, 0f, Math.max(1f, th * 0.038f),
-                Color.argb(44, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP);
-        float flareRadius = Math.max(16f, tw * 0.46f);
-        flareShader = new android.graphics.RadialGradient(
-                0f, 0f, flareRadius,
-                new int[]{
-                        Color.argb(56, 255, 253, 248),
-                        Color.argb(30, 224, 244, 255),
-                        Color.argb(14, 255, 232, 200),
-                        Color.argb(4, 200, 230, 255),
-                        Color.TRANSPARENT
-                },
-                FLARE_STOPS, Shader.TileMode.CLAMP);
-        spineFlareShader = new android.graphics.RadialGradient(
-                0f, 0f, Math.max(12f, th * 0.36f),
-                new int[]{
-                        Color.argb(82, 255, 255, 255),
-                        Color.argb(36, 220, 240, 255),
-                        Color.TRANSPARENT
-                },
-                new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP);
+
+        if ("glass".equalsIgnoreCase(themeId)) {
+            // Liquid Glass: razor-sharp crystal glass specular glare, optical sapphire/cyan prism dispersion
+            haloShader = new android.graphics.LinearGradient(
+                    -tw * 0.30f - slant, -th * 0.25f, tw * 0.30f - slant, th * 1.25f,
+                    new int[]{Color.TRANSPARENT, Color.argb(45, 125, 211, 252), Color.argb(35, 56, 189, 248), Color.TRANSPARENT},
+                    HALO_STOPS, Shader.TileMode.CLAMP);
+            coreShader = new android.graphics.LinearGradient(
+                    -tw * 0.038f - slant, -th * 0.25f, tw * 0.038f - slant, th * 1.25f,
+                    new int[]{Color.TRANSPARENT, Color.argb(115, 255, 255, 255), Color.TRANSPARENT},
+                    null, Shader.TileMode.CLAMP);
+            topGlossShader = new android.graphics.LinearGradient(
+                    0f, 0f, 0f, Math.max(1f, th * 0.045f),
+                    Color.argb(92, 224, 242, 254), Color.TRANSPARENT, Shader.TileMode.CLAMP);
+            float flareRadius = Math.max(16f, tw * 0.38f);
+            flareShader = new android.graphics.RadialGradient(
+                    0f, 0f, flareRadius,
+                    new int[]{
+                            Color.argb(125, 255, 255, 255),
+                            Color.argb(72, 186, 230, 253),
+                            Color.argb(34, 56, 189, 248),
+                            Color.argb(8, 14, 165, 233),
+                            Color.TRANSPARENT
+                    },
+                    FLARE_STOPS, Shader.TileMode.CLAMP);
+            spineFlareShader = new android.graphics.RadialGradient(
+                    0f, 0f, Math.max(12f, th * 0.36f),
+                    new int[]{
+                            Color.argb(145, 255, 255, 255),
+                            Color.argb(68, 125, 211, 252),
+                            Color.TRANSPARENT
+                    },
+                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP);
+
+        } else if ("closet".equalsIgnoreCase(themeId)) {
+            // Film Closet: gentle, soft ambient wood reflection, warm velvety ivory/cream sheen without harsh glare
+            haloShader = new android.graphics.LinearGradient(
+                    -tw * 0.55f - slant, -th * 0.25f, tw * 0.55f - slant, th * 1.25f,
+                    new int[]{Color.TRANSPARENT, Color.argb(18, 254, 243, 199), Color.argb(14, 253, 230, 138), Color.TRANSPARENT},
+                    HALO_STOPS, Shader.TileMode.CLAMP);
+            coreShader = new android.graphics.LinearGradient(
+                    -tw * 0.16f - slant, -th * 0.25f, tw * 0.16f - slant, th * 1.25f,
+                    new int[]{Color.TRANSPARENT, Color.argb(26, 255, 250, 240), Color.TRANSPARENT},
+                    null, Shader.TileMode.CLAMP);
+            topGlossShader = new android.graphics.LinearGradient(
+                    0f, 0f, 0f, Math.max(1f, th * 0.030f),
+                    Color.argb(24, 254, 243, 199), Color.TRANSPARENT, Shader.TileMode.CLAMP);
+            float flareRadius = Math.max(20f, tw * 0.65f);
+            flareShader = new android.graphics.RadialGradient(
+                    0f, 0f, flareRadius,
+                    new int[]{
+                            Color.argb(35, 255, 252, 245),
+                            Color.argb(20, 254, 240, 210),
+                            Color.argb(10, 253, 230, 180),
+                            Color.argb(3, 245, 220, 170),
+                            Color.TRANSPARENT
+                    },
+                    FLARE_STOPS, Shader.TileMode.CLAMP);
+            spineFlareShader = new android.graphics.RadialGradient(
+                    0f, 0f, Math.max(12f, th * 0.36f),
+                    new int[]{
+                            Color.argb(42, 255, 250, 238),
+                            Color.argb(18, 253, 230, 138),
+                            Color.TRANSPARENT
+                    },
+                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP);
+
+        } else if ("cinema".equalsIgnoreCase(themeId) || "redcarpet".equalsIgnoreCase(themeId)) {
+            // Cinema Hall & Red Carpet: warm theatrical tungsten proscenium reflection, amber/gold spotlight beam
+            haloShader = new android.graphics.LinearGradient(
+                    -tw * 0.42f - slant, -th * 0.25f, tw * 0.42f - slant, th * 1.25f,
+                    new int[]{Color.TRANSPARENT, Color.argb(38, 245, 158, 11), Color.argb(25, 217, 119, 6), Color.TRANSPARENT},
+                    HALO_STOPS, Shader.TileMode.CLAMP);
+            coreShader = new android.graphics.LinearGradient(
+                    -tw * 0.070f - slant, -th * 0.25f, tw * 0.070f - slant, th * 1.25f,
+                    new int[]{Color.TRANSPARENT, Color.argb(65, 255, 244, 224), Color.TRANSPARENT},
+                    null, Shader.TileMode.CLAMP);
+            topGlossShader = new android.graphics.LinearGradient(
+                    0f, 0f, 0f, Math.max(1f, th * 0.038f),
+                    Color.argb(58, 254, 240, 138), Color.TRANSPARENT, Shader.TileMode.CLAMP);
+            float flareRadius = Math.max(16f, tw * 0.48f);
+            flareShader = new android.graphics.RadialGradient(
+                    0f, 0f, flareRadius,
+                    new int[]{
+                            Color.argb(90, 255, 248, 220),
+                            Color.argb(48, 251, 191, 36),
+                            Color.argb(22, 245, 158, 11),
+                            Color.argb(5, 180, 83, 9),
+                            Color.TRANSPARENT
+                    },
+                    FLARE_STOPS, Shader.TileMode.CLAMP);
+            spineFlareShader = new android.graphics.RadialGradient(
+                    0f, 0f, Math.max(12f, th * 0.36f),
+                    new int[]{
+                            Color.argb(105, 255, 248, 220),
+                            Color.argb(46, 251, 191, 36),
+                            Color.TRANSPARENT
+                    },
+                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP);
+
+        } else if ("metal".equalsIgnoreCase(themeId)) {
+            // Metallic: cold titanium anisotropic brushed metal reflection streak, crisp chamfer
+            haloShader = new android.graphics.LinearGradient(
+                    -tw * 0.35f - slant, -th * 0.25f, tw * 0.35f - slant, th * 1.25f,
+                    new int[]{Color.TRANSPARENT, Color.argb(34, 203, 213, 225), Color.argb(24, 148, 163, 184), Color.TRANSPARENT},
+                    HALO_STOPS, Shader.TileMode.CLAMP);
+            coreShader = new android.graphics.LinearGradient(
+                    -tw * 0.052f - slant, -th * 0.25f, tw * 0.052f - slant, th * 1.25f,
+                    new int[]{Color.TRANSPARENT, Color.argb(82, 241, 245, 249), Color.TRANSPARENT},
+                    null, Shader.TileMode.CLAMP);
+            topGlossShader = new android.graphics.LinearGradient(
+                    0f, 0f, 0f, Math.max(1f, th * 0.040f),
+                    Color.argb(75, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP);
+            float flareRadius = Math.max(16f, tw * 0.42f);
+            flareShader = new android.graphics.RadialGradient(
+                    0f, 0f, flareRadius,
+                    new int[]{
+                            Color.argb(92, 248, 250, 252),
+                            Color.argb(48, 203, 213, 225),
+                            Color.argb(20, 148, 163, 184),
+                            Color.argb(4, 100, 116, 139),
+                            Color.TRANSPARENT
+                    },
+                    FLARE_STOPS, Shader.TileMode.CLAMP);
+            spineFlareShader = new android.graphics.RadialGradient(
+                    0f, 0f, Math.max(12f, th * 0.36f),
+                    new int[]{
+                            Color.argb(115, 248, 250, 252),
+                            Color.argb(48, 203, 213, 225),
+                            Color.TRANSPARENT
+                    },
+                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP);
+
+        } else if ("neon".equalsIgnoreCase(themeId)) {
+            // Neon Night: dual-color chromatic electric cyan / magenta neon tube reflection
+            haloShader = new android.graphics.LinearGradient(
+                    -tw * 0.38f - slant, -th * 0.25f, tw * 0.38f - slant, th * 1.25f,
+                    new int[]{Color.TRANSPARENT, Color.argb(48, 34, 211, 238), Color.argb(42, 244, 114, 182), Color.TRANSPARENT},
+                    HALO_STOPS, Shader.TileMode.CLAMP);
+            coreShader = new android.graphics.LinearGradient(
+                    -tw * 0.048f - slant, -th * 0.25f, tw * 0.048f - slant, th * 1.25f,
+                    new int[]{Color.TRANSPARENT, Color.argb(92, 255, 255, 255), Color.TRANSPARENT},
+                    null, Shader.TileMode.CLAMP);
+            topGlossShader = new android.graphics.LinearGradient(
+                    0f, 0f, 0f, Math.max(1f, th * 0.042f),
+                    Color.argb(76, 34, 211, 238), Color.TRANSPARENT, Shader.TileMode.CLAMP);
+            float flareRadius = Math.max(16f, tw * 0.45f);
+            flareShader = new android.graphics.RadialGradient(
+                    0f, 0f, flareRadius,
+                    new int[]{
+                            Color.argb(110, 255, 255, 255),
+                            Color.argb(58, 34, 211, 238),
+                            Color.argb(30, 236, 72, 153),
+                            Color.argb(8, 168, 85, 247),
+                            Color.TRANSPARENT
+                    },
+                    FLARE_STOPS, Shader.TileMode.CLAMP);
+            spineFlareShader = new android.graphics.RadialGradient(
+                    0f, 0f, Math.max(12f, th * 0.36f),
+                    new int[]{
+                            Color.argb(130, 255, 255, 255),
+                            Color.argb(58, 34, 211, 238),
+                            Color.TRANSPARENT
+                    },
+                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP);
+
+        } else {
+            // Default CineTV / OLED: balanced studio master reflection
+            haloShader = new android.graphics.LinearGradient(
+                    -tw * 0.42f - slant, -th * 0.25f, tw * 0.42f - slant, th * 1.25f,
+                    new int[]{Color.TRANSPARENT, Color.argb(26, 225, 240, 255), Color.argb(26, 255, 250, 240), Color.TRANSPARENT},
+                    HALO_STOPS, Shader.TileMode.CLAMP);
+            coreShader = new android.graphics.LinearGradient(
+                    -tw * 0.075f - slant, -th * 0.25f, tw * 0.075f - slant, th * 1.25f,
+                    new int[]{Color.TRANSPARENT, Color.argb(52, 255, 255, 255), Color.TRANSPARENT},
+                    null, Shader.TileMode.CLAMP);
+            topGlossShader = new android.graphics.LinearGradient(
+                    0f, 0f, 0f, Math.max(1f, th * 0.038f),
+                    Color.argb(44, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP);
+            float flareRadius = Math.max(16f, tw * 0.46f);
+            flareShader = new android.graphics.RadialGradient(
+                    0f, 0f, flareRadius,
+                    new int[]{
+                            Color.argb(56, 255, 253, 248),
+                            Color.argb(30, 224, 244, 255),
+                            Color.argb(14, 255, 232, 200),
+                            Color.argb(4, 200, 230, 255),
+                            Color.TRANSPARENT
+                    },
+                    FLARE_STOPS, Shader.TileMode.CLAMP);
+            spineFlareShader = new android.graphics.RadialGradient(
+                    0f, 0f, Math.max(12f, th * 0.36f),
+                    new int[]{
+                            Color.argb(82, 255, 255, 255),
+                            Color.argb(36, 220, 240, 255),
+                            Color.TRANSPARENT
+                    },
+                    new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP);
+        }
     }
 
     /** Maps the horizontal slice [x0, x1] of a texture onto the current face quad. */

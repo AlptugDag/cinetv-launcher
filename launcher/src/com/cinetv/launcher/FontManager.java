@@ -63,4 +63,70 @@ public final class FontManager {
         }
         return marker;
     }
+
+    /** Theme-harmonized typeface for the DVD inner booklet title. */
+    public static Typeface getThemeBookletTitleTypeface(String theme, Context context) {
+        String t = theme == null ? "" : theme.toLowerCase(java.util.Locale.ROOT);
+        switch (t) {
+            case "closet":
+                return Typeface.create("serif", Typeface.BOLD);
+            case "cinema":
+            case "redcarpet":
+                return Typeface.create("serif", Typeface.BOLD);
+            case "glass":
+                return getBold(context);
+            case "metal":
+                return Typeface.create("sans-serif-black", Typeface.BOLD);
+            case "neon":
+                return getBlack(context);
+            case "oled":
+                return Typeface.create("sans-serif-light", Typeface.BOLD);
+            default:
+                return getBold(context);
+        }
+    }
+
+    /** Theme-harmonized typeface for the DVD inner booklet story, overview, director and cast credits. */
+    public static Typeface getThemeBookletBodyTypeface(String theme, Context context) {
+        String t = theme == null ? "" : theme.toLowerCase(java.util.Locale.ROOT);
+        switch (t) {
+            case "closet":
+                return Typeface.create("serif", Typeface.NORMAL);
+            case "cinema":
+            case "redcarpet":
+                return Typeface.create("serif", Typeface.NORMAL);
+            case "glass":
+                return Typeface.create("sans-serif-light", Typeface.NORMAL);
+            case "metal":
+                return Typeface.create("monospace", Typeface.NORMAL);
+            case "neon":
+                return getMedium(context);
+            case "oled":
+                return Typeface.create("sans-serif", Typeface.NORMAL);
+            default:
+                return getMedium(context);
+        }
+    }
+
+    /** Theme-harmonized typeface for the DVD case spine title text. */
+    public static Typeface getThemeSpineTypeface(String theme, Context context) {
+        String t = theme == null ? "" : theme.toLowerCase(java.util.Locale.ROOT);
+        switch (t) {
+            case "closet":
+                return Typeface.create("serif", Typeface.BOLD);
+            case "cinema":
+            case "redcarpet":
+                return Typeface.create("serif", Typeface.BOLD);
+            case "glass":
+                return Typeface.create("sans-serif-condensed", Typeface.BOLD);
+            case "metal":
+                return Typeface.create("sans-serif-black", Typeface.BOLD);
+            case "neon":
+                return getBlack(context);
+            case "oled":
+                return Typeface.create("sans-serif", Typeface.BOLD);
+            default:
+                return getBlack(context);
+        }
+    }
 }
