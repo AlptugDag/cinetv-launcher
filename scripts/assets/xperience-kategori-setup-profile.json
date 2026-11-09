@@ -154,7 +154,29 @@
         "credentials": ""
       },
       "merge_strategy": "concat",
-      "timeout_ms": 15000,
+      "timeout_ms": 6500,
+      "cache": {
+        "enabled": true,
+        "ttl_seconds": 86400,
+        "cache_streams": true,
+        "cache_catalogs": true,
+        "max_entries": 1000
+      },
+      "scraper_priorities": {
+        "anthology": 100,
+        "torrentio": 100,
+        "storz": 95,
+        "meteor": 90,
+        "comet": 90,
+        "mediafusion": 85,
+        "wiosinema": 45,
+        "izlelan": 20
+      },
+      "source_timeouts_ms": {
+        "default": 5500,
+        "wiosinema": 3800,
+        "izlelan": 2200
+      },
       "preferences": {
         "max_results": 20,
         "cached_only": false,

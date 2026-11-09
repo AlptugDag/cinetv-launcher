@@ -675,6 +675,48 @@ def apply(plan, data, out_dir):
              "plugins_to_enable": "all except plugins_to_leave_off" if plan["anthology_all"] and not plan["plugins"] else plan["plugins"],
              "plugins_to_leave_off": list(ANTHOLOGY_SKIP) if plan["plugins"] or plan["anthology_all"] else [],
              "youtube_follow": plan["follow"], "collections_file": "/sdcard/Download/nuvio-collections.json" if plan["collections"] else None,
+             "scraper_cache_enabled": True,
+             "scraper_cache": {
+                 "enabled": True,
+                 "ttl_seconds": 86400,
+                 "catalog_ttl_seconds": 43200,
+                 "max_entries": 1500,
+                 "disk_cache_mb": 64,
+                 "stale_while_revalidate": True,
+                 "cache_streams": True,
+                 "cache_metadata": True
+             },
+             "scraper_priorities": {
+                 "anthology": 100,
+                 "torrentio": 100,
+                 "storz": 95,
+                 "meteor": 90,
+                 "comet": 90,
+                 "mediafusion": 85,
+                 "liderfilmizle": 80,
+                 "sinewix": 80,
+                 "wiosinema": 45,
+                 "izlelan": 20
+             },
+             "source_timeout_overrides": {
+                 "default_ms": 5500,
+                 "fast_tier_ms": 6000,
+                 "wiosinema_ms": 3800,
+                 "izlelan_ms": 2200
+             },
+             "source_circuit_breaker": {
+                 "enabled": True,
+                 "failure_threshold": 2,
+                 "recovery_timeout_ms": 1800000,
+                 "dead_hosts": [
+                     "izlelan.com",
+                     "api.izlelan.com",
+                     "www.izlelan.com"
+                 ]
+             },
+             "scraper_concurrency": 8,
+             "scraper_race_mode": True,
+             "early_stream_return": True,
              "apps_to_install": still, "notes": plan["notes"]}
     with open(os.path.join(out_dir, "nuvio-preferences.json"), "w", encoding="utf-8") as f:
         json.dump(prefs, f, ensure_ascii=False, indent=2)

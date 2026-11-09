@@ -81,7 +81,7 @@ public class HomeScreen {
     public final DvdOpeningView opening;
     public final CalibrationPatternView pattern;
     public final FrameLayout screensaver;
-    private final FrameLayout splash;
+    public final FrameLayout splash;
     public final CinemaScreensaverView screensaverView;
     public final TextView clock, date, weather, shelfLabel, caption, moveHint;
     public final LinearLayout specialBadge;

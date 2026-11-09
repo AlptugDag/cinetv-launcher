@@ -744,7 +744,7 @@
         "enabled": true,
         "options": {
           "name": "Meteor",
-          "timeout": 12000,
+          "timeout": 6000,
           "resources": [
             "stream"
           ],
@@ -761,7 +761,7 @@
         "enabled": true,
         "options": {
           "name": "Comet",
-          "timeout": 12000,
+          "timeout": 6000,
           "resources": [
             "stream"
           ],
@@ -778,7 +778,7 @@
         "enabled": true,
         "options": {
           "name": "STorz",
-          "timeout": 12000,
+          "timeout": 6000,
           "resources": [
             "stream"
           ],
@@ -795,7 +795,7 @@
         "enabled": true,
         "options": {
           "name": "MediaFusion",
-          "timeout": 12000,
+          "timeout": 6000,
           "resources": [
             "stream"
           ],
@@ -816,7 +816,7 @@
         "enabled": true,
         "options": {
           "name": "TorrentsDB",
-          "timeout": 12000,
+          "timeout": 6000,
           "resources": [
             "stream"
           ],
@@ -833,7 +833,7 @@
         "enabled": true,
         "options": {
           "name": "Peerflix",
-          "timeout": 12000,
+          "timeout": 6000,
           "resources": [
             "stream"
           ],
@@ -849,7 +849,7 @@
         "enabled": true,
         "options": {
           "name": "Sootio",
-          "timeout": 12000,
+          "timeout": 6000,
           "resources": [
             "stream"
           ],
@@ -877,7 +877,7 @@
         "enabled": true,
         "options": {
           "name": "Torrentio",
-          "timeout": 12000,
+          "timeout": 6000,
           "resources": [
             "stream"
           ],
@@ -894,7 +894,7 @@
         "enabled": true,
         "options": {
           "name": "WebStreamr",
-          "timeout": 12000,
+          "timeout": 6000,
           "resources": [
             "stream"
           ],
@@ -921,7 +921,7 @@
         "enabled": true,
         "options": {
           "name": "HdHub",
-          "timeout": 12000,
+          "timeout": 6000,
           "resources": [
             "stream"
           ],
@@ -936,7 +936,7 @@
         "enabled": true,
         "options": {
           "name": "yastream",
-          "timeout": 12000,
+          "timeout": 6000,
           "resources": [
             "stream",
             "subtitles",
@@ -961,12 +961,44 @@
         "category": "HTTP"
       },
       {
+        "type": "wiosinema",
+        "instanceId": "wio_turk",
+        "enabled": true,
+        "options": {
+          "name": "WioSinema",
+          "timeout": 3800,
+          "priority": 45,
+          "resources": [
+            "stream"
+          ],
+          "cache": true,
+          "cacheTTL": 86400,
+          "mediaTypes": []
+        },
+        "category": "HTTP"
+      },
+      {
+        "type": "izlelan",
+        "instanceId": "izle_turk",
+        "enabled": false,
+        "options": {
+          "name": "izlelan",
+          "timeout": 2200,
+          "priority": 20,
+          "resources": [
+            "stream"
+          ],
+          "mediaTypes": []
+        },
+        "category": "HTTP"
+      },
+      {
         "type": "opensubtitles-v3-plus",
         "instanceId": "262",
         "enabled": true,
         "options": {
           "name": "OpenSubtitles V3+",
-          "timeout": 12000,
+          "timeout": 6000,
           "resources": [
             "subtitles"
           ],
@@ -1042,11 +1074,40 @@
     ],
     "mergedCatalogs": [],
     "externalDownloads": false,
+    "cache": {
+      "enabled": true,
+      "ttl": 86400,
+      "strategy": "stale-while-revalidate",
+      "maxSize": 1500,
+      "cacheStreams": true,
+      "cacheCatalogs": true
+    },
     "cacheAndPlay": {
       "enabled": true,
       "streamTypes": [
-        "usenet"
+        "usenet",
+        "p2p",
+        "http",
+        "debrid"
       ]
+    },
+    "scraperPriorities": {
+      "anthology": 100,
+      "torrentio": 100,
+      "storz": 95,
+      "meteor": 90,
+      "comet": 90,
+      "mediafusion": 85,
+      "torrents-db": 85,
+      "peerflix": 80,
+      "sootio": 70,
+      "wiosinema": 45,
+      "izlelan": 20
+    },
+    "scraperTimeouts": {
+      "default": 6000,
+      "wiosinema": 3800,
+      "izlelan": 2200
     },
     "autoRemoveDownloads": false,
     "checkOwned": true,

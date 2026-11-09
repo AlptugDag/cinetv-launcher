@@ -341,11 +341,10 @@ public class LogicTest {
 
     @Test
     public void specialDay10KasimAndBlueKeyMappingWork() {
-        java.util.Calendar cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Europe/Istanbul"));
-        cal.set(2026, java.util.Calendar.NOVEMBER, 10, 9, 5, 0);
-        SpecialDay.Info info = SpecialDay.forCalendar(cal, "TR", "tr");
-        org.junit.Assert.assertNotNull(info);
-        assertEquals("10kasim", info.id);
+        com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.forDate(2026, 11, 10, 9, 5);
+        org.junit.Assert.assertNotNull(day);
+        assertEquals("10kasim", day.id);
+        assertTrue(day.mourning);
         assertEquals(HardwareKeys.CINESUB, HardwareKeys.builtIn(KeyEvent.KEYCODE_PROG_BLUE, 186));
     }
 
@@ -479,6 +478,97 @@ public class LogicTest {
         assertTrue(com.cinetv.launcher.TvKeyInterceptorService.isNuvioRemoveLabel("Remove from Continue Watching"));
         assertTrue(com.cinetv.launcher.TvKeyInterceptorService.isNuvioRemoveLabel("Listeden Çıkar"));
         assertFalse(com.cinetv.launcher.TvKeyInterceptorService.isNuvioRemoveLabel("Oynat"));
+    }
+
+    @Test
+    public void nuvioScraperCacheAndPriorityTuning() {
+        org.json.JSONObject prefs = com.cinetv.launcher.device.NuvioSetup.buildCalibratedNuvioPrefs(
+                null, null, null, PerformanceProfile.Tier.MID);
+
+        assertTrue(prefs.optBoolean("scraper_cache_enabled", false));
+        org.json.JSONObject cache = prefs.optJSONObject("scraper_cache");
+        assertTrue(cache != null && cache.optBoolean("enabled", false));
+        assertEquals(86400, cache.optInt("ttl_seconds", 0));
+        assertEquals(1500, cache.optInt("max_entries", 0));
+        assertTrue(cache.optBoolean("stale_while_revalidate", false));
+        assertTrue(cache.optBoolean("cache_streams", false));
+
+        org.json.JSONObject priorities = prefs.optJSONObject("scraper_priorities");
+        assertTrue(priorities != null);
+        int anthologyPriority = priorities.optInt("anthology", 0);
+        int wioPriority = priorities.optInt("wiosinema", 0);
+        int izlelanPriority = priorities.optInt("izlelan", 0);
+
+        assertTrue("Anthology fast streams must have top priority", anthologyPriority >= 100);
+        assertTrue("Wiosinema should be deprioritized below fast direct providers", wioPriority < anthologyPriority);
+        assertTrue("izlelan should have lowest priority", izlelanPriority < wioPriority);
+
+        org.json.JSONObject timeouts = prefs.optJSONObject("source_timeout_overrides");
+        assertTrue(timeouts != null);
+        assertEquals(3800, timeouts.optInt("wiosinema_ms", 0));
+        assertEquals(2200, timeouts.optInt("izlelan_ms", 0));
+
+        org.json.JSONObject circuitBreaker = prefs.optJSONObject("source_circuit_breaker");
+        assertTrue(circuitBreaker != null && circuitBreaker.optBoolean("enabled", false));
+        org.json.JSONArray deadHosts = circuitBreaker.optJSONArray("dead_hosts");
+        assertTrue(deadHosts != null && deadHosts.toString().contains("izlelan.com"));
+    }
+
+    @Test
+    public void nuvioConfigEnrichmentAddsCacheAndTunesSlowScrapers() {
+        String inputJson = "{\n"
+                + "  \"config\": {\n"
+                + "    \"presets\": [\n"
+                + "      { \"type\": \"meteor\", \"options\": { \"name\": \"Meteor\", \"timeout\": 12000 } },\n"
+                + "      { \"type\": \"wiosinema\", \"options\": { \"name\": \"WioSinema\", \"timeout\": 10000 } },\n"
+                + "      { \"type\": \"izlelan\", \"options\": { \"name\": \"izlelan\", \"timeout\": 15000 }, \"enabled\": true }\n"
+                + "    ],\n"
+                + "    \"stream_bridge\": { \"timeout_ms\": 15000 },\n"
+                + "    \"cacheAndPlay\": { \"streamTypes\": [\"usenet\"] }\n"
+                + "  }\n"
+                + "}";
+
+        String enriched = com.cinetv.launcher.device.NuvioSetup.enrichConfigJson(inputJson, "tmdb123", "mdb456");
+        try {
+            org.json.JSONObject json = new org.json.JSONObject(enriched);
+            org.json.JSONObject cfg = json.getJSONObject("config");
+
+            org.json.JSONObject cache = cfg.getJSONObject("cache");
+            assertTrue(cache.getBoolean("enabled"));
+            assertEquals(86400, cache.getInt("ttl"));
+            assertEquals(1500, cache.getInt("maxSize"));
+
+            org.json.JSONObject cap = cfg.getJSONObject("cacheAndPlay");
+            org.json.JSONArray types = cap.getJSONArray("streamTypes");
+            assertTrue(types.toString().contains("p2p"));
+            assertTrue(types.toString().contains("http"));
+            assertTrue(types.toString().contains("debrid"));
+
+            org.json.JSONArray presets = cfg.getJSONArray("presets");
+            for (int i = 0; i < presets.length(); i++) {
+                org.json.JSONObject p = presets.getJSONObject(i);
+                String type = p.optString("type");
+                org.json.JSONObject opts = p.getJSONObject("options");
+                if ("wiosinema".equals(type)) {
+                    assertEquals(3800, opts.getInt("timeout"));
+                    assertEquals(45, opts.getInt("priority"));
+                    assertTrue(opts.getBoolean("cache"));
+                } else if ("izlelan".equals(type)) {
+                    assertEquals(2200, opts.getInt("timeout"));
+                    assertEquals(20, opts.getInt("priority"));
+                    assertFalse("Dead source izlelan must be disabled", p.getBoolean("enabled"));
+                } else if ("meteor".equals(type)) {
+                    assertEquals(6000, opts.getInt("timeout"));
+                }
+            }
+
+            org.json.JSONObject sb = cfg.getJSONObject("stream_bridge");
+            assertEquals(6500, sb.getInt("timeout_ms"));
+            assertTrue(sb.getJSONObject("cache").getBoolean("enabled"));
+            assertEquals(45, sb.getJSONObject("scraper_priorities").getInt("wiosinema"));
+        } catch (Exception e) {
+            org.junit.Assert.fail("Failed parsing enriched JSON: " + e.getMessage());
+        }
     }
 }
 

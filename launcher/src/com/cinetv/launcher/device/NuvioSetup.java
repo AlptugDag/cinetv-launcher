@@ -33,7 +33,7 @@ public final class NuvioSetup {
     private static final String TAG = "CineTvNuvio";
     private static final String DONE = "nuvio_setup_done";
     private static final String PLAYER_DONE = "player_setup_done";
-    private static final String SYNC_KEY = "nuvio_sync_v1_0_0_10";
+    private static final String SYNC_KEY = "nuvio_sync_v1_0_0_11";
 
     public static final String[] CURATED_ADDONS = {
             "tr-altyazi.altyazi.workers.dev/manifest.json",
@@ -95,18 +95,45 @@ public final class NuvioSetup {
                 }
             }
             File prefFile = new File(dl, "nuvio-preferences.json");
-            if (!prefFile.exists()) {
+            boolean needsPrefUpdate = !prefFile.exists();
+            if (prefFile.exists()) {
+                try {
+                    String existing = new String(java.nio.file.Files.readAllBytes(prefFile.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+                    if (!existing.contains("scraper_cache")) {
+                        needsPrefUpdate = true;
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+            if (needsPrefUpdate) {
                 writeCalibratedNuvioPrefs(app, prefFile, AvOptimizer.detect(app), null, null);
+            }
+            if (prefFile.exists()) {
+                try {
+                    byte[] prefBytes = java.nio.file.Files.readAllBytes(prefFile.toPath());
+                    java.util.List<String> pkgs = AppLauncher.installedNuvioPackages(app);
+                    if (pkgs.isEmpty()) pkgs = java.util.Arrays.asList("com.nuvio.tv", "com.nuvio.app");
+                    for (String pkg : pkgs) {
+                        try {
+                            File extDir = new File("/sdcard/Android/data/" + pkg + "/files");
+                            if (!extDir.exists()) extDir.mkdirs();
+                            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(new File(extDir, "nuvio-preferences.json"))) {
+                                fos.write(prefBytes);
+                            }
+                        } catch (Throwable ignored) {}
+                    }
+                } catch (Throwable ignored) {}
             }
         } catch (Throwable t) {
             Log.w(TAG, "deployConfigs failed: " + t);
         }
     }
 
-    private static JSONObject writeCalibratedNuvioPrefs(Context app, File prefFile, AvOptimizer.Report av,
-                                                        NetworkProbe.Result net, com.cinetv.launcher.service.StreamProfile profile) throws Exception {
-        if (av == null) av = AvOptimizer.detect(app);
-        PerformanceProfile.Tier tier = PerformanceProfile.tier(app);
+    public static JSONObject buildCalibratedNuvioPrefs(AvOptimizer.Report av, NetworkProbe.Result net,
+                                                       com.cinetv.launcher.service.StreamProfile profile,
+                                                       PerformanceProfile.Tier tier) {
+        if (av == null) av = new AvOptimizer.Report();
+        if (tier == null) tier = PerformanceProfile.Tier.MID;
         int bufferMb = tier == PerformanceProfile.Tier.HIGH ? 128 : (tier == PerformanceProfile.Tier.MID ? 64 : 32);
         if (net != null && net.ok && net.downloadMbps >= 80 && tier != PerformanceProfile.Tier.LOW) {
             bufferMb = Math.max(bufferMb, 96);
@@ -119,34 +146,95 @@ public final class NuvioSetup {
                 : (av.is4kPanel() ? 45L : 22L);
 
         JSONObject prefs = new JSONObject();
-        prefs.put("calibrated_by", "CineTV TV Denetçisi");
-        prefs.put("updated_at", System.currentTimeMillis());
-        prefs.put("preferred_audio_language", "tr");
-        prefs.put("preferred_subtitle_language", "tr");
-        prefs.put("secondary_audio_language", "en");
-        prefs.put("auto_select_subtitle", true);
-        prefs.put("hardware_accelerated_decoding", true);
-        // CRITICAL: Tunneled playback on modified Nuvio causes ExoPlayer MediaCodec crashes during catalog/trailer browsing on TV SoCs
-        prefs.put("tunneled_video_playback", false);
-        prefs.put("preview_autoplay_in_catalog", false);
-        prefs.put("image_memory_cache_mb", tier == PerformanceProfile.Tier.LOW ? 24 : (tier == PerformanceProfile.Tier.MID ? 40 : 64));
-        prefs.put("match_frame_rate", "seamless");
-        prefs.put("max_resolution", maxRes);
-        prefs.put("max_bitrate_mbps", maxBitrateMbps);
-        prefs.put("dolby_vision_enabled", av.dolbyVision);
-        prefs.put("hdr10_plus_enabled", av.hdr10Plus);
-        prefs.put("hdr10_enabled", av.hdr10);
-        prefs.put("hlg_enabled", av.hlg);
-        prefs.put("wide_color_gamut_bt2020", av.wideGamut);
-        prefs.put("digital_audio_passthrough", av.hdmiAudio || !av.encodings.isEmpty());
-        prefs.put("hdmi_earc", av.earc);
-        prefs.put("supported_audio_encodings", new JSONArray(av.encodings));
-        prefs.put("stream_buffer_size_mb", bufferMb);
-        prefs.put("network_read_timeout_ms", (net != null && net.jitterMs > 40) ? 22000 : 18000);
-        prefs.put("parallel_chunk_connections", (net != null && net.downloadMbps >= 50) ? 8 : 6);
-        if (profile != null && profile.torrentioConfig != null) {
-            prefs.put("stream_profile_id", profile.torrentioConfig);
+        try {
+            prefs.put("calibrated_by", "CineTV TV Denetçisi");
+            prefs.put("updated_at", System.currentTimeMillis());
+            prefs.put("preferred_audio_language", "tr");
+            prefs.put("preferred_subtitle_language", "tr");
+            prefs.put("secondary_audio_language", "en");
+            prefs.put("auto_select_subtitle", true);
+            prefs.put("hardware_accelerated_decoding", true);
+            // CRITICAL: Tunneled playback on modified Nuvio causes ExoPlayer MediaCodec crashes during catalog/trailer browsing on TV SoCs
+            prefs.put("tunneled_video_playback", false);
+            prefs.put("preview_autoplay_in_catalog", false);
+            prefs.put("image_memory_cache_mb", tier == PerformanceProfile.Tier.LOW ? 24 : (tier == PerformanceProfile.Tier.MID ? 40 : 64));
+            prefs.put("match_frame_rate", "seamless");
+            prefs.put("max_resolution", maxRes);
+            prefs.put("max_bitrate_mbps", maxBitrateMbps);
+            prefs.put("dolby_vision_enabled", av.dolbyVision);
+            prefs.put("hdr10_plus_enabled", av.hdr10Plus);
+            prefs.put("hdr10_enabled", av.hdr10);
+            prefs.put("hlg_enabled", av.hlg);
+            prefs.put("wide_color_gamut_bt2020", av.wideGamut);
+            prefs.put("digital_audio_passthrough", av.hdmiAudio || (av.encodings != null && !av.encodings.isEmpty()));
+            prefs.put("hdmi_earc", av.earc);
+            prefs.put("supported_audio_encodings", av.encodings != null ? new JSONArray(av.encodings) : new JSONArray());
+            prefs.put("stream_buffer_size_mb", bufferMb);
+            prefs.put("network_read_timeout_ms", (net != null && net.jitterMs > 40) ? 22000 : 18000);
+            prefs.put("parallel_chunk_connections", (net != null && net.downloadMbps >= 50) ? 8 : 6);
+            if (profile != null && profile.torrentioConfig != null) {
+                prefs.put("stream_profile_id", profile.torrentioConfig);
+            }
+
+            // Dedicated Nuvio source repository & stream metadata caching layer
+            JSONObject cache = new JSONObject();
+            cache.put("enabled", true);
+            cache.put("ttl_seconds", 86400); // 24-hour stream cache
+            cache.put("catalog_ttl_seconds", 43200); // 12-hour catalog cache
+            cache.put("max_entries", 1500);
+            cache.put("disk_cache_mb", tier == PerformanceProfile.Tier.LOW ? 32 : 64);
+            cache.put("stale_while_revalidate", true);
+            cache.put("cache_streams", true);
+            cache.put("cache_metadata", true);
+            prefs.put("scraper_cache", cache);
+            prefs.put("scraper_cache_enabled", true);
+            prefs.put("stream_cache_ttl_hours", 24);
+
+            // Scraper fetch prioritization: fast direct providers first, deprioritize slow HTML scrapers
+            JSONObject scraperPriorities = new JSONObject();
+            scraperPriorities.put("anthology", 100);
+            scraperPriorities.put("torrentio", 100);
+            scraperPriorities.put("storz", 95);
+            scraperPriorities.put("meteor", 90);
+            scraperPriorities.put("comet", 90);
+            scraperPriorities.put("mediafusion", 85);
+            scraperPriorities.put("liderfilmizle", 80);
+            scraperPriorities.put("sinewix", 80);
+            scraperPriorities.put("wiosinema", 45); // Deprioritized: multi-site HTML scraping
+            scraperPriorities.put("izlelan", 20);   // Deprioritized / dead host fail-fast
+            prefs.put("scraper_priorities", scraperPriorities);
+
+            // Fail-fast timeout overrides
+            JSONObject sourceTimeouts = new JSONObject();
+            sourceTimeouts.put("default_ms", 5500);
+            sourceTimeouts.put("fast_tier_ms", 6000);
+            sourceTimeouts.put("wiosinema_ms", 3800); // Fail-fast before Nuvio timeout hangs
+            sourceTimeouts.put("izlelan_ms", 2200);   // Aggressive timeout for dead host
+            prefs.put("source_timeout_overrides", sourceTimeouts);
+
+            // Circuit breaker for dead/unresponsive hosts
+            JSONObject circuitBreaker = new JSONObject();
+            circuitBreaker.put("enabled", true);
+            circuitBreaker.put("failure_threshold", 2);
+            circuitBreaker.put("recovery_timeout_ms", 1800000); // 30 minutes
+            circuitBreaker.put("dead_hosts", new JSONArray(java.util.Arrays.asList(
+                    "izlelan.com", "api.izlelan.com", "www.izlelan.com"
+            )));
+            prefs.put("source_circuit_breaker", circuitBreaker);
+
+            prefs.put("scraper_concurrency", 8);
+            prefs.put("scraper_race_mode", true);
+            prefs.put("early_stream_return", true);
+        } catch (Throwable ignored) {
         }
+        return prefs;
+    }
+
+    private static JSONObject writeCalibratedNuvioPrefs(Context app, File prefFile, AvOptimizer.Report av,
+                                                        NetworkProbe.Result net, com.cinetv.launcher.service.StreamProfile profile) throws Exception {
+        if (av == null) av = AvOptimizer.detect(app);
+        PerformanceProfile.Tier tier = PerformanceProfile.tier(app);
+        JSONObject prefs = buildCalibratedNuvioPrefs(av, net, profile, tier);
         try (java.io.FileOutputStream fos = new java.io.FileOutputStream(prefFile)) {
             fos.write(prefs.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8));
         }
@@ -447,6 +535,162 @@ public final class NuvioSetup {
         return false;
     }
 
+    public static String enrichConfigJson(String raw, String tmdbKey, String mdbKey) {
+        try {
+            JSONObject json = new JSONObject(raw);
+            JSONObject cfg = json.optJSONObject("config");
+            if (cfg != null) {
+                if (cfg.optInt("cast_limit", -1) == 0) cfg.put("cast_limit", 15);
+                if (cfg.has("castCount") && cfg.optInt("castCount", 0) < 10) cfg.put("castCount", 15);
+                JSONObject keys = cfg.optJSONObject("api_keys");
+                if (keys != null) {
+                    if (tmdbKey != null && !tmdbKey.isEmpty() && keys.optString("tmdb").isEmpty()) keys.put("tmdb", tmdbKey);
+                    if (mdbKey != null && !mdbKey.isEmpty() && keys.optString("mdblist").isEmpty()) keys.put("mdblist", mdbKey);
+                }
+                JSONObject apiKeys = cfg.optJSONObject("apiKeys");
+                if (apiKeys != null) {
+                    if (tmdbKey != null && !tmdbKey.isEmpty() && apiKeys.optString("tmdb").isEmpty()) apiKeys.put("tmdb", tmdbKey);
+                    if (mdbKey != null && !mdbKey.isEmpty() && apiKeys.optString("mdblist").isEmpty()) apiKeys.put("mdblist", mdbKey);
+                }
+                // TVDB needs its own key: without one, series pages come back without cast, artwork or the IMDb id
+                // the stream addons look titles up by. TMDB answers series too without stalling.
+                if ("tvdb".equals(cfg.optString("series_metadata_source"))) {
+                    cfg.put("series_metadata_source", "tmdb");
+                }
+                JSONObject providers = cfg.optJSONObject("providers");
+                JSONObject anyKeys = apiKeys != null ? apiKeys : keys;
+                boolean hasTvdb = anyKeys != null && !anyKeys.optString("tvdb").isEmpty();
+                if (providers != null && !hasTvdb) {
+                    if ("tvdb".equals(providers.optString("series"))) providers.put("series", "tmdb");
+                    if ("tvdb".equals(providers.optString("anime"))) providers.put("anime", "mal");
+                }
+                JSONObject search = cfg.optJSONObject("search");
+                if (search != null && !hasTvdb) {
+                    JSONObject sp = search.optJSONObject("providers");
+                    if (sp != null && "tvdb.search".equals(sp.optString("series"))) {
+                        sp.put("series", "tmdb.search");
+                    }
+                    JSONObject eng = search.optJSONObject("engineEnabled");
+                    if (eng != null) {
+                        eng.put("tvdb.search", false);
+                        eng.put("tvdb.collections.search", false);
+                    }
+                }
+                boolean hasPosterKey = anyKeys != null && (!anyKeys.optString("rpdb").isEmpty()
+                        || !anyKeys.optString("topPoster").isEmpty()
+                        || !anyKeys.optString("fanart").isEmpty()
+                        || !anyKeys.optString("mdblist").isEmpty());
+                JSONObject posterProviders = cfg.optJSONObject("poster_providers");
+                if (posterProviders != null && !hasPosterKey && (mdbKey == null || mdbKey.isEmpty())) {
+                    posterProviders.put("order", new JSONArray());
+                    posterProviders.put("rated", false);
+                }
+
+                // Dedicated caching layer for source lookups and manifests
+                JSONObject cacheObj = cfg.optJSONObject("cache");
+                if (cacheObj == null) {
+                    cacheObj = new JSONObject();
+                    cfg.put("cache", cacheObj);
+                }
+                cacheObj.put("enabled", true);
+                cacheObj.put("ttl", 86400);
+                cacheObj.put("strategy", "stale-while-revalidate");
+                cacheObj.put("maxSize", 1500);
+                cacheObj.put("cacheStreams", true);
+                cacheObj.put("cacheCatalogs", true);
+
+                // Scraper priorities & fail-fast timeouts
+                JSONObject sp = cfg.optJSONObject("scraperPriorities");
+                if (sp == null) {
+                    sp = new JSONObject();
+                    cfg.put("scraperPriorities", sp);
+                }
+                sp.put("anthology", 100);
+                sp.put("torrentio", 100);
+                sp.put("storz", 95);
+                sp.put("meteor", 90);
+                sp.put("comet", 90);
+                sp.put("mediafusion", 85);
+                sp.put("wiosinema", 45);
+                sp.put("izlelan", 20);
+
+                JSONObject st = cfg.optJSONObject("scraperTimeouts");
+                if (st == null) {
+                    st = new JSONObject();
+                    cfg.put("scraperTimeouts", st);
+                }
+                st.put("default", 6000);
+                st.put("wiosinema", 3800);
+                st.put("izlelan", 2200);
+
+                JSONObject cap = cfg.optJSONObject("cacheAndPlay");
+                if (cap != null) {
+                    cap.put("enabled", true);
+                    cap.put("streamTypes", new JSONArray(java.util.Arrays.asList("usenet", "p2p", "http", "debrid")));
+                }
+
+                // Preset timeouts and prioritization
+                JSONArray presets = cfg.optJSONArray("presets");
+                if (presets != null) {
+                    for (int i = 0; i < presets.length(); i++) {
+                        JSONObject p = presets.optJSONObject(i);
+                        if (p == null) continue;
+                        JSONObject opts = p.optJSONObject("options");
+                        if (opts != null) {
+                            String name = opts.optString("name", "").toLowerCase(java.util.Locale.ROOT);
+                            String type = p.optString("type", "").toLowerCase(java.util.Locale.ROOT);
+                            if (name.contains("wiosinema") || type.contains("wiosinema")) {
+                                opts.put("timeout", 3800);
+                                opts.put("priority", 45);
+                                opts.put("cache", true);
+                                opts.put("cacheTTL", 86400);
+                            } else if (name.contains("izlelan") || type.contains("izlelan")) {
+                                opts.put("timeout", 2200);
+                                opts.put("priority", 20);
+                                p.put("enabled", false);
+                            } else if (opts.optInt("timeout", 12000) > 6000) {
+                                opts.put("timeout", 6000);
+                            }
+                        }
+                    }
+                }
+
+                JSONObject streamBridge = cfg.optJSONObject("stream_bridge");
+                if (streamBridge != null) {
+                    streamBridge.put("timeout_ms", 6500);
+                    JSONObject sbCache = new JSONObject();
+                    sbCache.put("enabled", true);
+                    sbCache.put("ttl_seconds", 86400);
+                    sbCache.put("cache_streams", true);
+                    sbCache.put("cache_catalogs", true);
+                    sbCache.put("max_entries", 1000);
+                    streamBridge.put("cache", sbCache);
+
+                    JSONObject sbPriorities = new JSONObject();
+                    sbPriorities.put("anthology", 100);
+                    sbPriorities.put("torrentio", 100);
+                    sbPriorities.put("wiosinema", 45);
+                    sbPriorities.put("izlelan", 20);
+                    streamBridge.put("scraper_priorities", sbPriorities);
+
+                    JSONObject sbTimeouts = new JSONObject();
+                    sbTimeouts.put("default_ms", 5500);
+                    sbTimeouts.put("wiosinema_ms", 3800);
+                    sbTimeouts.put("izlelan_ms", 2200);
+                    streamBridge.put("source_timeouts_ms", sbTimeouts);
+                }
+
+                JSONObject subBridge = cfg.optJSONObject("subtitle_bridge");
+                if (subBridge != null && subBridge.optInt("timeout_ms", 0) < 12000) {
+                    subBridge.put("timeout_ms", 12000);
+                }
+                raw = json.toString(2);
+            }
+        } catch (Throwable ignored) {
+        }
+        return raw;
+    }
+
     private static void copyAndEnrichAsset(Context ctx, String assetPath, File dest, String tmdbKey, String mdbKey) {
         boolean existing = dest.exists();
         try (java.io.InputStream in = existing ? new java.io.FileInputStream(dest) : ctx.getAssets().open(assetPath)) {
@@ -456,67 +700,7 @@ public final class NuvioSetup {
             while ((r = in.read(buf)) != -1) baos.write(buf, 0, r);
             String raw = new String(baos.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
             String before = raw;
-            try {
-                JSONObject json = new JSONObject(raw);
-                JSONObject cfg = json.optJSONObject("config");
-                if (cfg != null) {
-                    if (cfg.optInt("cast_limit", -1) == 0) cfg.put("cast_limit", 15);
-                    if (cfg.has("castCount") && cfg.optInt("castCount", 0) < 10) cfg.put("castCount", 15);
-                    JSONObject keys = cfg.optJSONObject("api_keys");
-                    if (keys != null) {
-                        if (tmdbKey != null && !tmdbKey.isEmpty() && keys.optString("tmdb").isEmpty()) keys.put("tmdb", tmdbKey);
-                        if (mdbKey != null && !mdbKey.isEmpty() && keys.optString("mdblist").isEmpty()) keys.put("mdblist", mdbKey);
-                    }
-                    JSONObject apiKeys = cfg.optJSONObject("apiKeys");
-                    if (apiKeys != null) {
-                        if (tmdbKey != null && !tmdbKey.isEmpty() && apiKeys.optString("tmdb").isEmpty()) apiKeys.put("tmdb", tmdbKey);
-                        if (mdbKey != null && !mdbKey.isEmpty() && apiKeys.optString("mdblist").isEmpty()) apiKeys.put("mdblist", mdbKey);
-                    }
-                    // TVDB needs its own key: without one, series pages come back without cast, artwork or the IMDb id
-                    // the stream addons look titles up by. TMDB answers series too without stalling.
-                    if ("tvdb".equals(cfg.optString("series_metadata_source"))) {
-                        cfg.put("series_metadata_source", "tmdb");
-                    }
-                    JSONObject providers = cfg.optJSONObject("providers");
-                    JSONObject anyKeys = apiKeys != null ? apiKeys : keys;
-                    boolean hasTvdb = anyKeys != null && !anyKeys.optString("tvdb").isEmpty();
-                    if (providers != null && !hasTvdb) {
-                        if ("tvdb".equals(providers.optString("series"))) providers.put("series", "tmdb");
-                        if ("tvdb".equals(providers.optString("anime"))) providers.put("anime", "mal");
-                    }
-                    JSONObject search = cfg.optJSONObject("search");
-                    if (search != null && !hasTvdb) {
-                        JSONObject sp = search.optJSONObject("providers");
-                        if (sp != null && "tvdb.search".equals(sp.optString("series"))) {
-                            sp.put("series", "tmdb.search");
-                        }
-                        JSONObject eng = search.optJSONObject("engineEnabled");
-                        if (eng != null) {
-                            eng.put("tvdb.search", false);
-                            eng.put("tvdb.collections.search", false);
-                        }
-                    }
-                    boolean hasPosterKey = anyKeys != null && (!anyKeys.optString("rpdb").isEmpty()
-                            || !anyKeys.optString("topPoster").isEmpty()
-                            || !anyKeys.optString("fanart").isEmpty()
-                            || !anyKeys.optString("mdblist").isEmpty());
-                    JSONObject posterProviders = cfg.optJSONObject("poster_providers");
-                    if (posterProviders != null && !hasPosterKey && (mdbKey == null || mdbKey.isEmpty())) {
-                        posterProviders.put("order", new JSONArray());
-                        posterProviders.put("rated", false);
-                    }
-                    JSONObject streamBridge = cfg.optJSONObject("stream_bridge");
-                    if (streamBridge != null && streamBridge.optInt("timeout_ms", 0) < 15000) {
-                        streamBridge.put("timeout_ms", 15000);
-                    }
-                    JSONObject subBridge = cfg.optJSONObject("subtitle_bridge");
-                    if (subBridge != null && subBridge.optInt("timeout_ms", 0) < 12000) {
-                        subBridge.put("timeout_ms", 12000);
-                    }
-                    raw = json.toString(2);
-                }
-            } catch (Throwable ignored) {
-            }
+            raw = enrichConfigJson(raw, tmdbKey, mdbKey);
             if (existing && raw.equals(before)) return;
             try (java.io.OutputStream out = new java.io.FileOutputStream(dest)) {
                 out.write(raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));

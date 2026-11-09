@@ -75,6 +75,48 @@ cat > nuvio-preferences.json <<EOF
   "hidden_genres": "$GENRES_NO",
   "favourite_countries": "$COUNTRIES_YES",
   "hidden_countries": "$COUNTRIES_NO",
+  "scraper_cache_enabled": true,
+  "scraper_cache": {
+    "enabled": true,
+    "ttl_seconds": 86400,
+    "catalog_ttl_seconds": 43200,
+    "max_entries": 1500,
+    "disk_cache_mb": 64,
+    "stale_while_revalidate": true,
+    "cache_streams": true,
+    "cache_metadata": true
+  },
+  "scraper_priorities": {
+    "anthology": 100,
+    "torrentio": 100,
+    "storz": 95,
+    "meteor": 90,
+    "comet": 90,
+    "mediafusion": 85,
+    "liderfilmizle": 80,
+    "sinewix": 80,
+    "wiosinema": 45,
+    "izlelan": 20
+  },
+  "source_timeout_overrides": {
+    "default_ms": 5500,
+    "fast_tier_ms": 6000,
+    "wiosinema_ms": 3800,
+    "izlelan_ms": 2200
+  },
+  "source_circuit_breaker": {
+    "enabled": true,
+    "failure_threshold": 2,
+    "recovery_timeout_ms": 1800000,
+    "dead_hosts": [
+      "izlelan.com",
+      "api.izlelan.com",
+      "www.izlelan.com"
+    ]
+  },
+  "scraper_concurrency": 8,
+  "scraper_race_mode": true,
+  "early_stream_return": true,
   "plugin_repositories": [
     "https://raw.githubusercontent.com/falsisdev/anthology/main/manifest.json",
     "https://raw.githubusercontent.com/Wiojelt/TurkSinema/main/repo.json"
