@@ -33,7 +33,7 @@ public final class NetworkOptimizer {
 
     private static final String KEY_DNS = "dns_choice";
     private static final String KEY_DNS_EXPLICIT = "dns_user_explicit";
-    private static final String KEY_DNS_REVERTED = "dns_auto_reverted_v2";
+    private static final String KEY_DNS_CF_MIGRATED = "dns_cf_auto_v3";
     private static final String KEY_NET_SNAPSHOT = "net_original_v1";
     private static final String TAG = "CineTvNet";
 
@@ -69,9 +69,9 @@ public final class NetworkOptimizer {
     public static String choice(Context ctx) {
         SharedPreferences p = Prefs.get(ctx);
         if (!p.getBoolean(KEY_DNS_EXPLICIT, false)) {
-            return DNS_OFF;
+            return p.getString(KEY_DNS, DNS_CLOUDFLARE);
         }
-        return p.getString(KEY_DNS, DNS_OFF);
+        return p.getString(KEY_DNS, DNS_CLOUDFLARE);
     }
 
     public static String next(String c) {
@@ -87,24 +87,44 @@ public final class NetworkOptimizer {
     }
 
     /**
-     * Reverts any previously auto-applied Private DNS (AdGuard DoT) and custom TCP window settings
-     * that slowed down Nuvio's parallel source/addon scanning, unless the user explicitly chose a DNS.
+     * Ensures fast, unfiltered DNS resolution (Cloudflare 1.1.1.1) for Nuvio scrapers (Wiosinema, izlelan, Anthology).
+     * Turkish ISP default DNS (opportunistic) applies BTK DNS poisoning to streaming domains causing 10-15s timeouts,
+     * while AdGuard DNS blocks video host/redirect domains (vidmoly, closeload) and rate-limits parallel scrapers.
+     * Validates Cloudflare DoT on a background thread and automatically reverts to opportunistic if port 853 is blocked.
      */
     public static void revertAutoInterferenceIfNeeded(Context ctx) {
         if (ctx == null) return;
         try {
-            SharedPreferences p = Prefs.get(ctx);
+            final Context app = ctx.getApplicationContext();
+            SharedPreferences p = Prefs.get(app);
             if (p.getBoolean(KEY_DNS_EXPLICIT, false)) return;
-            if (p.getBoolean(KEY_DNS_REVERTED, false)) return;
-            p.edit().putBoolean(KEY_DNS_REVERTED, true).putString(KEY_DNS, DNS_OFF).apply();
-            if (!DeviceTweaks.canWriteSecureSettings(ctx)) return;
-            ContentResolver cr = ctx.getContentResolver();
-            String curMode = Settings.Global.getString(cr, "private_dns_mode");
-            String curHost = Settings.Global.getString(cr, "private_dns_specifier");
-            if ("hostname".equals(curMode)
-                    && ("dns.adguard-dns.com".equalsIgnoreCase(curHost) || "one.one.one.one".equalsIgnoreCase(curHost))) {
-                Settings.Global.putString(cr, "private_dns_mode", "opportunistic");
-            }
+            if (p.getBoolean(KEY_DNS_CF_MIGRATED, false)) return;
+            p.edit().putBoolean(KEY_DNS_CF_MIGRATED, true).putString(KEY_DNS, DNS_CLOUDFLARE).apply();
+            if (!DeviceTweaks.canWriteSecureSettings(app)) return;
+            snapshotIfNeeded(app);
+            new Thread(() -> {
+                try {
+                    ContentResolver cr = app.getContentResolver();
+                    String prevMode = Settings.Global.getString(cr, "private_dns_mode");
+                    String prevHost = Settings.Global.getString(cr, "private_dns_specifier");
+                    String cfHost = host(DNS_CLOUDFLARE);
+                    Settings.Global.putString(cr, "private_dns_specifier", cfHost);
+                    Settings.Global.putString(cr, "private_dns_mode", "hostname");
+                    for (int i = 0; i < 14; i++) {
+                        if (privateDnsActive(app, cfHost)) {
+                            Log.i(TAG, "Cloudflare Private DNS active for fast scraper resolution");
+                            return;
+                        }
+                        Thread.sleep(250);
+                    }
+                    // Port 853 blocked on this network: fall back cleanly to opportunistic
+                    Settings.Global.putString(cr, "private_dns_mode", "opportunistic");
+                    if (prevHost != null && !"dns.adguard-dns.com".equalsIgnoreCase(prevHost)) {
+                        Settings.Global.putString(cr, "private_dns_specifier", prevHost);
+                    }
+                    p.edit().putString(KEY_DNS, DNS_OFF).apply();
+                } catch (Throwable ignored) {}
+            }, "cinetv-dns-cf").start();
         } catch (Throwable ignored) {
         }
     }
@@ -147,8 +167,7 @@ public final class NetworkOptimizer {
     }
 
     /**
-     * Applies low-jitter radio and Wi-Fi power management settings without blocking on DNS validation
-     * or altering TCP receive windows that could throttle Nuvio's multi-source scraping.
+     * Applies low-jitter radio and Wi-Fi power management settings and ensures fast DNS resolution.
      */
     public static void optimizeRadio(Context ctx) {
         if (ctx == null) return;
@@ -184,8 +203,8 @@ public final class NetworkOptimizer {
         }
         Prefs.get(ctx).edit()
                 .putString(KEY_DNS, choice)
-                .putBoolean(KEY_DNS_EXPLICIT, !DNS_OFF.equals(choice))
-                .putBoolean(KEY_DNS_REVERTED, true)
+                .putBoolean(KEY_DNS_EXPLICIT, true)
+                .putBoolean(KEY_DNS_CF_MIGRATED, true)
                 .apply();
         if (host == null) return true;
         for (int i = 0; i < 16; i++) {

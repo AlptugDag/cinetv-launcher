@@ -213,58 +213,66 @@ public final class HomeLaunchers {
     }
 
     /**
-     * Blocking (adb). CineTV takes the Home role and the home activity; the other launchers stay installed and on,
-     * so the TV always has a Home to fall back to, even when CineTV is removed from its own Settings. Returns 0,
-     * or -1 when the TV's adb is not available.
+     * Blocking (adb). CineTV takes the Home role and the home activity, and disables competing stock launchers
+     * (recording them in the journal so restoreOthers / Remove CineTV re-enables them cleanly).
+     * Returns the count of disabled competing launchers (or 0 if already disabled), or -1 when adb is unavailable.
      */
     public static int disableOthers(Context ctx) {
+        if (ctx == null || Uninstaller.isRemoving(ctx)) return -1;
         recordOriginalHomeIfNeeded(ctx);
-        return LocalAdb.shell(ctx, stockRestoreCommands(ctx) + homeCommand(ctx), 15_000) ? 0 : -1;
+        List<String> competing = others(ctx);
+        Set<String> recorded = new LinkedHashSet<>(journal(ctx));
+        StringBuilder cmd = new StringBuilder(homeCommand(ctx));
+        int count = 0;
+        for (String p : competing) {
+            if (p != null && p.matches("[a-zA-Z0-9._]+") && !p.equals(ctx.getPackageName()) && !isNever(p)) {
+                recorded.add(p);
+                cmd.append("pm disable-user --user 0 ").append(p).append(" >/dev/null 2>&1 || pm hide --user 0 ").append(p).append(" >/dev/null 2>&1; ");
+                count++;
+            }
+        }
+        cmd.append(homeCommand(ctx));
+        if (!LocalAdb.shell(ctx, cmd.toString(), 15_000)) return -1;
+        if (!recorded.isEmpty()) {
+            StringBuilder j = new StringBuilder();
+            for (String s : recorded) {
+                if (j.length() > 0) j.append(',');
+                j.append(s);
+            }
+            Prefs.get(ctx).edit().putString(JOURNAL, j.toString()).commit();
+        }
+        return count;
     }
 
     private static String homeCommand(Context ctx) {
         String pkg = ctx.getPackageName();
-        return "cmd role add-role-holder --user 0 android.app.role.HOME " + pkg + " 2>/dev/null; "
+        return "cmd role add-role-holder --user 0 --flags 1 android.app.role.HOME " + pkg + " 2>/dev/null; "
+                + "cmd role add-role-holder --user 0 android.app.role.HOME " + pkg + " 2>/dev/null; "
                 + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity 2>/dev/null; "
                 + "cmd package set-home-activity --user current " + pkg + "/.MainActivity 2>/dev/null; "
                 + "cmd package set-home-activity " + pkg + "/.MainActivity 2>/dev/null; ";
     }
 
     /**
-     * Ensures the TV's stock/default launcher is installed (re-installing from system partitions if it was
-     * ever uninstalled for user 0) and enabled, while keeping CineTV as the active default Home.
-     * Runs on both fresh installs and updates so uninstalling CineTV from anywhere always returns to the
-     * TV's default launcher.
+     * Ensures the original stock launcher package is recorded and CineTV is locked as the active default Home
+     * without re-enabling competing stock launchers during normal use (which would cause Android TV / Google TV
+     * to revert to the stock launcher). Competing stock launchers are restored only in {@link #restoreOthers}.
      */
     public static boolean ensureStockLaunchersReady(Context ctx) {
         if (ctx == null || Uninstaller.isRemoving(ctx)) return false;
         recordOriginalHomeIfNeeded(ctx);
-        int ver = 0;
-        try {
-            ver = (int) ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0).versionCode;
-        } catch (Throwable ignored) {
-        }
-        boolean needsCheck = hasDisabled(ctx)
-                || others(ctx).isEmpty()
-                || Prefs.get(ctx).getInt(VERIFIED_VER, 0) != ver;
-        if (!needsCheck) return true;
-
-        String cmd = stockRestoreCommands(ctx) + homeCommand(ctx);
-        if (!LocalAdb.shell(ctx, cmd, 15_000)) return false;
-        if (!others(ctx).isEmpty()) {
-            recordOriginalHomeIfNeeded(ctx);
-            Prefs.get(ctx).edit()
-                    .remove(JOURNAL)
-                    .putInt(VERIFIED_VER, ver)
-                    .commit();
-            return true;
-        }
-        return false;
+        return disableOthers(ctx) >= 0;
     }
 
-    /** Blocking (adb): the launchers an earlier version switched off come back on, and CineTV stays the Home. */
+    /** Blocking (adb): re-enables the stock launchers while keeping CineTV as the preferred Home when explicitly requested from Settings. */
     public static boolean reenableKeepingHome(Context ctx) {
-        return ensureStockLaunchersReady(ctx);
+        if (ctx == null) return false;
+        String cmd = stockRestoreCommands(ctx) + homeCommand(ctx);
+        boolean ok = LocalAdb.shell(ctx, cmd, 15_000);
+        if (ok) {
+            Prefs.get(ctx).edit().remove(JOURNAL).commit();
+        }
+        return ok;
     }
 
     /**

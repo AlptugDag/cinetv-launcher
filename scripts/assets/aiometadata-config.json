@@ -13,8 +13,8 @@
     "hideUnreleasedDigital": true,
     "providers": {
       "movie": "tmdb",
-      "series": "tvdb",
-      "anime": "tvdb",
+      "series": "tmdb",
+      "anime": "mal",
       "anime_id_provider": "kitsu",
       "forceAnimeForDetectedImdb": true
     },
@@ -75,7 +75,7 @@
         "order": "asc",
         "cacheTTL": 43200,
         "genreSelection": "standard",
-        "enableRatingPosters": true,
+        "enableRatingPosters": false,
         "displayType": "movie",
         "metadata": {
           "itemCount": 272,
@@ -242,7 +242,7 @@
         "name": "TVDB Genres",
         "type": "movie",
         "source": "tvdb",
-        "enabled": true,
+        "enabled": false,
         "showInHome": false,
         "sort": "default",
         "order": "asc",
@@ -253,7 +253,7 @@
         "name": "TVDB Genres",
         "type": "series",
         "source": "tvdb",
-        "enabled": true,
+        "enabled": false,
         "showInHome": false,
         "sort": "default",
         "order": "asc",
@@ -264,7 +264,7 @@
         "name": "TVDB Collections",
         "type": "movie",
         "source": "tvdb",
-        "enabled": true,
+        "enabled": false,
         "showInHome": false
       },
       {
@@ -964,7 +964,7 @@
           "updated": "2026-02-04T00:56:49Z",
           "url": "https://mdblist.com/lists/snoak/science-fiction-movies"
         },
-        "enableRatingPosters": true
+        "enableRatingPosters": false
       },
       {
         "id": "mdblist.91894",
@@ -1256,14 +1256,14 @@
       "ai_enabled": true,
       "providers": {
         "movie": "tmdb.search",
-        "series": "tvdb.search",
+        "series": "tmdb.search",
         "anime_movie": "mal.search.movie",
         "anime_series": "mal.search.series"
       },
       "engineEnabled": {
         "tmdb.search": true,
-        "tvdb.search": true,
-        "tvdb.collections.search": true,
+        "tvdb.search": false,
+        "tvdb.collections.search": false,
         "tvmaze.search": true,
         "mal.search.movie": false,
         "mal.search.series": false

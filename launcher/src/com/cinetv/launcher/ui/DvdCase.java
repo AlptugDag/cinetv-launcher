@@ -112,7 +112,7 @@ public final class DvdCase {
         int c = Color.HSVToColor(hsv);
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
         p.setShader(new android.graphics.RadialGradient(w / 2f, h / 2f, w / 2f,
-                new int[]{UiKit.withAlpha(c, 150), UiKit.withAlpha(c, 96), UiKit.withAlpha(c, 34), UiKit.withAlpha(c, 8), Color.TRANSPARENT},
+                new int[]{UiKit.withAlpha(c, 92), UiKit.withAlpha(c, 54), UiKit.withAlpha(c, 18), UiKit.withAlpha(c, 4), Color.TRANSPARENT},
                 new float[]{0f, 0.28f, 0.55f, 0.8f, 1f}, Shader.TileMode.CLAMP));
         new Canvas(out).drawRect(0, 0, w, h, p);
         HALO_CACHE.put(key, out);
@@ -174,17 +174,17 @@ public final class DvdCase {
 
         // The rounded corner where the cover turns into the spine catches the light.
         p.setShader(new LinearGradient(0, 0, w * 0.035f, 0,
-                new int[]{Color.argb(90, 255, 255, 255), Color.argb(20, 255, 255, 255), Color.TRANSPARENT},
+                new int[]{Color.argb(68, 255, 255, 255), Color.argb(14, 255, 255, 255), Color.TRANSPARENT},
                 new float[]{0f, 0.35f, 1f}, Shader.TileMode.CLAMP));
         c.drawRect(0, 0, w * 0.035f, h, p);
         p.setShader(null);
 
-        // Clear sleeve: a broad soft reflection and a faint gloss on the upper third.
+        // Clear sleeve: a gentle soft reflection and a faint gloss on the upper third.
         p.setShader(new LinearGradient(0, 0, w * 0.9f, h * 0.65f,
-                new int[]{Color.argb(0, 255, 255, 255), Color.argb(30, 255, 255, 255), Color.argb(0, 255, 255, 255)},
+                new int[]{Color.argb(0, 255, 255, 255), Color.argb(14, 255, 255, 255), Color.argb(0, 255, 255, 255)},
                 new float[]{0.25f, 0.42f, 0.6f}, Shader.TileMode.CLAMP));
         c.drawRoundRect(insert, corner * 0.4f, corner * 0.4f, p);
-        p.setShader(new LinearGradient(0, 0, 0, h * 0.35f, Color.argb(16, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
+        p.setShader(new LinearGradient(0, 0, 0, h * 0.35f, Color.argb(8, 255, 255, 255), Color.TRANSPARENT, Shader.TileMode.CLAMP));
         c.drawRoundRect(insert, corner * 0.4f, corner * 0.4f, p);
         p.setShader(null);
 

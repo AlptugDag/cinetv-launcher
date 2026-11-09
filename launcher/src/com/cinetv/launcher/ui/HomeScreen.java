@@ -1677,6 +1677,7 @@ public class HomeScreen {
             micIcon.setImageDrawable(md);
         }
         search.setHintTextColor(isRedCarpet ? Color.parseColor("#D4A373") : UiKit.withAlpha(searchAccent, 140));
+        updateSpecialDay(true);
     }
 
     // ---- AI answer card ---------------------------------------------------------------------------
@@ -1694,7 +1695,7 @@ public class HomeScreen {
 
     /** Shows today's special day (if any) beside the clock. {@code force} re-applies colours after a theme change. */
     public void updateSpecialDay(boolean force) {
-        com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(ctx);
+        final com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(ctx);
         String id = day == null ? "" : day.id + "|" + day.subtitle;
         if (!force && id.equals(specialDayId)) return;
         specialDayId = id;
@@ -1703,24 +1704,33 @@ public class HomeScreen {
             return;
         }
         specialBadgeIcon.setImageDrawable(SpecialDayArt.drawable(day.icon, day.accent));
-        specialBadgeText.setText(day.title);
+        specialBadgeText.setText(day.mourning && day.subtitle != null && !day.subtitle.isEmpty()
+                ? (day.title + "  ·  " + day.subtitle)
+                : day.title);
         android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
         gd.setCornerRadius(UiKit.pxf(14));
         if (day.mourning) {
-            gd.setColor(Color.argb(215, 22, 22, 26));
-            gd.setStroke(UiKit.px(1), Color.argb(170, 156, 163, 175));
+            gd.setColor(Color.argb(225, 18, 19, 24));
+            gd.setStroke(UiKit.px(1), Color.argb(185, 156, 163, 175));
             specialBadgeText.setTextColor(Color.parseColor("#E5E7EB"));
             // a solemn tone for the whole header on 10 Kasım
             clock.setTextColor(Color.parseColor("#E5E7EB"));
             clock.setShadowLayer(UiKit.pxf(6), 0, UiKit.pxf(2), Color.argb(180, 0, 0, 0));
             date.setTextColor(Color.parseColor("#9CA3AF"));
             weather.setTextColor(Color.parseColor("#9CA3AF"));
+            shelfLabel.setTextColor(Color.parseColor("#D1D5DB"));
         } else {
             gd.setColor(Color.argb(200, 160, 18, 28));
             gd.setStroke(UiKit.px(1), Color.argb(200, 255, 255, 255));
             specialBadgeText.setTextColor(Color.WHITE);
         }
         specialBadge.setBackground(gd);
+        specialBadge.setClickable(true);
+        specialBadge.setOnClickListener(v -> {
+            if (ctx instanceof com.cinetv.launcher.MainActivity) {
+                ((com.cinetv.launcher.MainActivity) ctx).showCinematicCelebration(day);
+            }
+        });
         specialBadge.setVisibility(View.VISIBLE);
     }
 

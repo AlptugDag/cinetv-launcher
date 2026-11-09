@@ -557,6 +557,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         inFront = true;
         home.opening.dismiss();
         home.environment.resume();
+        home.shelf.resume();
         // the cinematic stage: on unless switched off in Settings; the half-watched film comes back here
         home.setCinematic(Prefs.cinematicStage(this));
         if (isInitialStartup) {
@@ -849,6 +850,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             super.onPause();
             return;
         }
+        home.opening.dismiss();
+        home.shelf.pause();
         home.environment.pause();
         home.trailer.stop();
         com.cinetv.launcher.ai.EmaLightningTts.stop();
@@ -864,6 +867,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         handler.removeCallbacks(greetingRetryRunnable);
         handler.removeCallbacks(tourCheck);
         hideScreensaver();
+        MemoryOptimizer.releaseAirPlayLocks();
+        com.cinetv.launcher.remote.RelayHost.stopForMemory();
         // Free unused off-screen poster cache when leaving Home without destroying active shelf views
         PosterCache.trimMemory();
         Glow.clear();
@@ -2335,31 +2340,35 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         background(() -> {
             try {
+                if (!inFront) return;
                 if (m.cast == null || m.cast.isEmpty()) {
                     MovieCatalog.details(app, m);
                 }
+                if (!inFront) return;
                 // Portraits too, even when the details came earlier and a photo didn't make it in time.
                 MovieCatalog.ensureCastPhotos(app, m, 4000);
+                if (!inFront) return;
                 if (m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
                     PosterCache.load(app, m.backdropUrl, w * 2, h);
                 }
+                if (!inFront) return;
                 // Also prefetch adjacent shelf neighbors so booklet & photos open instantaneously
                 int idx = home.shelf.focusedIndex();
                 List<Movie> list = home.shelf.movies();
                 if (list != null && !list.isEmpty()) {
-                    if (idx + 1 < list.size()) {
+                    if (idx + 1 < list.size() && inFront) {
                         Movie next = list.get(idx + 1);
                         if (next != null && (next.cast == null || next.cast.isEmpty())) {
                             MovieCatalog.details(app, next);
                         }
-                        MovieCatalog.ensureCastPhotos(app, next, 3000);
+                        if (inFront) MovieCatalog.ensureCastPhotos(app, next, 3000);
                     }
-                    if (idx - 1 >= 0) {
+                    if (idx - 1 >= 0 && inFront) {
                         Movie prev = list.get(idx - 1);
                         if (prev != null && (prev.cast == null || prev.cast.isEmpty())) {
                             MovieCatalog.details(app, prev);
                         }
-                        MovieCatalog.ensureCastPhotos(app, prev, 3000);
+                        if (inFront) MovieCatalog.ensureCastPhotos(app, prev, 3000);
                     }
                 }
             } catch (Throwable ignored) {
@@ -2373,24 +2382,31 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         final int w = home.opening.innerWidth(), h = home.opening.innerHeight();
         background(() -> {
             try {
+                if (!inFront || !home.opening.isShowing(m)) return;
                 boolean needsDetails = (m.cast == null || m.cast.isEmpty() || m.overview == null || m.overview.isEmpty());
                 if (needsDetails) {
                     MovieCatalog.details(app, m);
                 }
+                if (!inFront || !home.opening.isShowing(m)) return;
                 MovieCatalog.ensureHook(app, m);
                 Bitmap still = null;
                 if (m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
                     still = PosterCache.getFast(m.backdropUrl);
-                    if (still == null) still = PosterCache.load(app, m.backdropUrl, w * 2, h);
+                    if (still == null && inFront && home.opening.isShowing(m)) still = PosterCache.load(app, m.backdropUrl, w * 2, h);
                 }
+                if (!inFront || !home.opening.isShowing(m)) return;
                 boolean allPhotos = MovieCatalog.ensureCastPhotos(app, m, 2500);
+                if (!inFront || !home.opening.isShowing(m)) return;
                 final Bitmap inner = DvdOpeningView.bakeInner(app, w, h, dvd.cover, still, m, dvd.accent);
-                ui(() -> home.opening.setInner(inner));
+                ui(() -> {
+                    if (inFront && home.opening.isShowing(m)) home.opening.setInner(inner);
+                });
                 // A slow portrait still lands in the booklet: write the note again once it's here.
-                if (!allPhotos && MovieCatalog.ensureCastPhotos(app, m, 10_000)) {
+                if (!allPhotos && inFront && home.opening.isShowing(m) && MovieCatalog.ensureCastPhotos(app, m, 5_000)) {
+                    if (!inFront || !home.opening.isShowing(m)) return;
                     final Bitmap again = DvdOpeningView.bakeInner(app, w, h, dvd.cover, still, m, dvd.accent);
                     ui(() -> {
-                        if (home.opening.isShowing(m)) home.opening.setInner(again);
+                        if (inFront && home.opening.isShowing(m)) home.opening.setInner(again);
                     });
                 }
             } catch (Throwable t) {
@@ -2720,12 +2736,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     private void checkSpecialDayCelebration() {
         final com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(this);
-        if (day == null || isFinishing()) return;
-        Calendar c = Calendar.getInstance();
+        if (day == null || isFinishing() || home == null) return;
+        if (home.splash != null && home.splash.getVisibility() == View.VISIBLE && home.splash.getAlpha() > 0.05f) {
+            handler.postDelayed(this::checkSpecialDayCelebration, 1200);
+            return;
+        }
+        Calendar c = Calendar.getInstance(java.util.TimeZone.getTimeZone("Europe/Istanbul"));
         int year = c.get(Calendar.YEAR);
-        String prefKey = "celebration_shown_" + day.id + "_" + year;
+        String prefKey = "celebration_shown_v2_" + day.id + "_" + year;
         boolean alreadyShown = Prefs.get(this).getBoolean(prefKey, false);
-        if (!alreadyShown && home != null && !home.modal.isShowing() && home.screensaver.getVisibility() != View.VISIBLE) {
+        if (!alreadyShown && !home.modal.isShowing() && home.screensaver.getVisibility() != View.VISIBLE) {
             Prefs.get(this).edit().putBoolean(prefKey, true).apply();
             showCinematicCelebration(day);
         }
@@ -2733,11 +2753,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     public void showCinematicCelebration(final com.cinetv.launcher.service.SpecialDay day) {
         if (day == null) return;
-        if (com.cinetv.launcher.TvKeyInterceptorService.getInstance() != null) {
-            com.cinetv.launcher.ui.CelebrationOverlay.show(this, day);
+        if (home == null || home.root == null) {
+            if (com.cinetv.launcher.TvKeyInterceptorService.getInstance() != null) {
+                com.cinetv.launcher.ui.CelebrationOverlay.show(this, day);
+            }
             return;
         }
-        if (home == null || home.root == null) return;
         final android.widget.FrameLayout container = new android.widget.FrameLayout(this);
         container.setBackgroundColor(Color.argb(188, 4, 5, 9));
         container.setAlpha(0f);

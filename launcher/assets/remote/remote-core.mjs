@@ -205,15 +205,12 @@ const LIVE_BYPASS_PATHS = [
   "/api/pair/",
   "/api/party/",
   "/api/files/upload",
+  "/api/files/upload64",
   "/api/files/delete",
   "/api/files/rename",
   "/api/files/mkdir",
   "/api/wallpaper",
-  "/api/apk/install",
-  "/api/shazam/recognize",
-  "/api/shazam/listen",
-  "/api/shazam/delete",
-  "/api/shazam/clear"
+  "/api/apk/install"
 ];
 
 const METADATA_PATH_PREFIXES = [
@@ -224,9 +221,7 @@ const METADATA_PATH_PREFIXES = [
   "/api/catalog/person",
   "/api/watchlist",
   "/api/info",
-  "/api/hello",
-  "/api/shazam/list",
-  "/api/shazam/history"
+  "/api/hello"
 ];
 
 /**

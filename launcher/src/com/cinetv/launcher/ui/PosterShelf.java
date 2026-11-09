@@ -1060,9 +1060,11 @@ public class PosterShelf extends FrameLayout {
         }
     }
 
-    @Override
-    protected void onDetachedFromWindow() {
+    public void pause() {
+        holding = false;
         stopSway();
+        removeCallbacks(settleFocus);
+        main.removeCallbacks(prefetchRunnable);
         if (anim != null) {
             anim.cancel();
             anim = null;
@@ -1071,6 +1073,18 @@ public class PosterShelf extends FrameLayout {
             hoverAnim.cancel();
             hoverAnim = null;
         }
+    }
+
+    public void resume() {
+        if (hasFocus() && !cases.isEmpty() && isShown()) {
+            removeCallbacks(startSway);
+            postDelayed(startSway, SWAY_AFTER_MS);
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        pause();
         hoveredIndex = -1;
         super.onDetachedFromWindow();
     }

@@ -340,20 +340,13 @@ public class LogicTest {
     }
 
     @Test
-    public void realShazamSignatureProducesValidVibraPacketWithoutGoogle() {
-        short[] pcm = new short[16000 * 3];
-        for (int i = 0; i < pcm.length; i++) {
-            pcm[i] = (short) (Math.sin(2.0 * Math.PI * 440.0 * i / 16000.0) * 14000
-                    + Math.sin(2.0 * Math.PI * 880.0 * i / 16000.0) * 8000);
-        }
-        byte[] sig = com.cinetv.launcher.ai.ShazamRecognizer.encodeShazamSignature(pcm);
-        org.junit.Assert.assertNotNull(sig);
-        assertTrue(sig.length > 48);
-        // Little-endian 0xCAFE2580 magic header
-        assertEquals((byte) 0x80, sig[0]);
-        assertEquals((byte) 0x25, sig[1]);
-        assertEquals((byte) 0xFE, sig[2]);
-        assertEquals((byte) 0xCA, sig[3]);
+    public void specialDay10KasimAndBlueKeyMappingWork() {
+        java.util.Calendar cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Europe/Istanbul"));
+        cal.set(2026, java.util.Calendar.NOVEMBER, 10, 9, 5, 0);
+        SpecialDay.Info info = SpecialDay.forCalendar(cal, "TR", "tr");
+        org.junit.Assert.assertNotNull(info);
+        assertEquals("10kasim", info.id);
+        assertEquals(HardwareKeys.CINESUB, HardwareKeys.builtIn(KeyEvent.KEYCODE_PROG_BLUE, 186));
     }
 
     @Test

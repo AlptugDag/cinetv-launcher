@@ -26,7 +26,7 @@
   --glass-hi:linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,.08));
   --edge:rgba(255,255,255,.20);--specular:rgba(255,255,255,.45);
   --accent:#8b5cf6;--accent2:#c4b5fd;--accent-grad:linear-gradient(135deg,#8b5cf6 0%,#6366f1 50%,#0ea5e9 100%);
-  --shazam:#0ea5e9;--shazam2:#38bdf8;--ok:#34d399;--radius:28px;
+  --ok:#34d399;--radius:28px;
   --safe-b:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -387,46 +387,23 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 .person-banner-info{flex:1;min-width:0}
 .person-banner-info b{display:block;font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .person-banner-info span{font-size:12px;color:#bae6fd}
+#tab-files.on{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;padding:6px 0 24px;width:100%;max-width:100%;min-width:0;overflow-x:hidden;box-sizing:border-box}
+#tab-files>*{min-width:0;max-width:100%;box-sizing:border-box}
 .apk-hero{border:1px solid rgba(56,189,248,.35);background:linear-gradient(155deg,rgba(56,189,248,.16) 0%,rgba(15,23,42,.88) 100%)}
-.apk-file-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)}
-.apk-file-meta{min-width:0;flex:1}
+.apk-file-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);min-width:0;max-width:100%;box-sizing:border-box}
+.apk-file-meta{min-width:0;flex:1;overflow:hidden}
 .apk-file-name{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.apk-file-sub{font-size:11px;color:var(--dim);margin-top:2px}
+.apk-file-sub{font-size:11px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rl-mood-chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
 .rl-mood-chips::-webkit-scrollbar{display:none}
 .rl-mood-chip{flex-shrink:0;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.12);color:#e0f2fe;border-radius:999px;padding:6px 12px;font-size:11.5px;font-weight:700;cursor:pointer}
 .rl-mood-chip:active{transform:scale(.95);background:rgba(56,189,248,.28)}
-.files-card{padding:20px;margin-top:16px;display:grid;gap:16px;border-radius:28px}
-.shazam-hero{position:relative;overflow:hidden;border-radius:30px;border:1px solid rgba(255,255,255,.26);background:linear-gradient(155deg,rgba(255,255,255,.14) 0%,rgba(14,165,233,.22) 45%,rgba(37,99,235,.12) 80%,rgba(15,23,42,.88) 100%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.42),inset 0 -1px 0 rgba(255,255,255,.08),0 24px 56px -12px rgba(0,0,0,.65),0 0 36px rgba(14,165,233,.18);backdrop-filter:blur(40px) saturate(190%);-webkit-backdrop-filter:blur(40px) saturate(190%)}
-.shazam-top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
-.shazam-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(56,189,248,.16);border:1px solid rgba(125,211,252,.38);font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:#e0f2fe;margin-bottom:8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.28)}
-.shazam-listen-btn{width:auto;padding:12px 20px;font-size:13.5px;font-weight:700;border-radius:999px;white-space:nowrap;border:1px solid rgba(255,255,255,.38);background:linear-gradient(135deg,#38bdf8 0%,#0284c7 52%,#2563eb 100%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5),0 12px 28px rgba(14,165,233,.45);color:#fff}
-.shazam-wave-banner{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:20px;background:linear-gradient(135deg,rgba(14,165,233,.24),rgba(56,189,248,.12));border:1px solid rgba(125,211,252,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.3);color:#f0f9ff;font-size:13.5px;font-weight:600}
-.shazam-bars{display:inline-flex;align-items:center;gap:3px;height:18px}
-.shazam-bars i{width:3px;border-radius:3px;background:#38bdf8;animation:szBar .8s ease-in-out infinite alternate}
-.shazam-bars i:nth-child(1){height:8px;animation-delay:0s}
-.shazam-bars i:nth-child(2){height:16px;animation-delay:.15s}
-.shazam-bars i:nth-child(3){height:11px;animation-delay:.3s}
-.shazam-bars i:nth-child(4){height:18px;animation-delay:.1s}
-.shazam-bars i:nth-child(5){height:9px;animation-delay:.25s}
-@keyframes szBar{from{transform:scaleY(.35);opacity:.6}to{transform:scaleY(1);opacity:1}}
-.shazam-list{display:grid;gap:12px}
-.shazam-item{display:flex;flex-direction:column;gap:12px;padding:15px 16px;border-radius:24px;background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 10px 26px rgba(0,0,0,.35);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);transition:transform .18s,border-color .2s}
-.shazam-item:hover{border-color:rgba(125,211,252,.48)}
-.shazam-item-main{display:flex;align-items:center;gap:14px;min-width:0;cursor:pointer}
-.shazam-art{width:62px;height:62px;border-radius:16px;flex-shrink:0;overflow:hidden;background:radial-gradient(circle at 30% 30%,#38bdf8,#0284c7 55%,#1e3a8a);border:1px solid rgba(255,255,255,.35);display:grid;place-items:center;color:#fff;font-size:24px;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 8px 18px rgba(0,0,0,.42)}
-.shazam-art img{width:100%;height:100%;object-fit:cover;display:block}
-.shazam-info{flex:1;min-width:0}
-.shazam-title{font-size:16px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
-.shazam-artist{font-size:13.5px;font-weight:600;color:#bae6fd;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.shazam-time{font-size:11px;color:rgba(240,244,255,.6);margin-top:4px;display:inline-flex;align-items:center;gap:5px}
-.shazam-del{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:var(--dim);width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:13px;flex-shrink:0}
-.shazam-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.btn-ytm,.btn-spotify{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 12px;border-radius:16px;font-size:12.5px;font-weight:700;text-decoration:none;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 6px 14px rgba(0,0,0,.25);transition:transform .15s,filter .2s}
-.btn-spotify{background:linear-gradient(135deg,rgba(16,185,129,.36),rgba(5,150,105,.24));border:1px solid rgba(52,211,153,.55);color:#d1fae5}
-.btn-ytm{background:linear-gradient(135deg,rgba(239,68,68,.36),rgba(185,28,28,.24));border:1px solid rgba(248,113,113,.55);color:#fee2e2}
-.btn-ytm:active,.btn-spotify:active{transform:scale(.96)}
-.shots-strip{display:flex;gap:12px;overflow-x:auto;padding:6px 0;scrollbar-width:none}
+.files-card{padding:18px 16px;margin-top:0;display:grid;grid-template-columns:minmax(0,1fr);gap:14px;border-radius:28px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;overflow:hidden}
+.files-card>*{min-width:0;max-width:100%;box-sizing:border-box}
+.files-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(56,189,248,.16);border:1px solid rgba(125,211,252,.38);font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:#e0f2fe;margin-bottom:8px;box-shadow:inset 0 1px 0 rgba(255,255,255,.28);max-width:100%;white-space:normal;word-break:break-word}
+.files-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:10px;width:100%;min-width:0}
+.files-del{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:var(--dim);width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:13px;flex-shrink:0}
+.shots-strip{display:flex;gap:12px;overflow-x:auto;padding:6px 0;scrollbar-width:none;width:100%;max-width:100%;min-width:0;-webkit-overflow-scrolling:touch}
 .shots-strip::-webkit-scrollbar{display:none}
 .shot-thumb{flex:0 0 155px;border-radius:14px;overflow:hidden;border:1px solid var(--edge);background:rgba(0,0,0,.35);position:relative;cursor:pointer}
 .shot-thumb img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
@@ -587,91 +564,60 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   <section id="tab-files">
     <div class="files-card glass apk-hero">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <div>
-          <div class="shazam-badge" style="margin-bottom:6px">DOĞRUDAN AKTARIM · APK &amp; DOSYA</div>
-          <h2 style="margin:0;color:#fff;font-size:17.5px;text-transform:none;letter-spacing:-.015em">Telefondan TV'ye APK ve Dosya Gönder</h2>
-          <div style="font-size:12.5px;color:rgba(240,244,255,.76);margin-top:4px;line-height:1.48">Telefonunuza indirdiğiniz APK paketlerini veya medya dosyalarını kablosuz olarak doğrudan TV'ye aktarın ve tek dokunuşla kurun.</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;min-width:0">
+        <div style="min-width:0">
+          <div class="files-badge" style="margin-bottom:6px">DOĞRUDAN AKTARIM · APK &amp; DOSYA</div>
+          <h2 style="margin:0;color:#fff;font-size:17.5px;text-transform:none;letter-spacing:-.015em;overflow-wrap:break-word">Telefondan TV'ye APK ve Dosya Gönder</h2>
+          <div style="font-size:12.5px;color:rgba(240,244,255,.76);margin-top:4px;line-height:1.48;overflow-wrap:break-word">Telefonunuza indirdiğiniz APK paketlerini veya medya dosyalarını ADB kapalı olsa bile kablosuz olarak doğrudan TV'ye aktarın ve tek dokunuşla kurun.</div>
         </div>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <label class="btn" style="flex:1;min-width:165px;margin:0;cursor:pointer;background:linear-gradient(135deg,#0284c7,#2563eb)">
-          <input type="file" id="apkPushInput" accept=".apk,application/vnd.android.package-archive" hidden>
+      <div class="files-actions">
+        <label class="btn" style="margin:0;padding:13px 14px;font-size:14px;cursor:pointer;background:linear-gradient(135deg,#0284c7,#2563eb);min-width:0">
+          <input type="file" id="apkPushInput" hidden>
           <span>APK Seç ve TV'ye Kur</span>
         </label>
-        <label class="btn ghost" style="flex:1;min-width:145px;margin:0;cursor:pointer;border:1px solid rgba(56,189,248,.42);color:#bae6fd">
+        <label class="btn ghost" style="margin:0;padding:13px 14px;font-size:14px;cursor:pointer;border:1px solid rgba(56,189,248,.42);color:#bae6fd;min-width:0">
           <input type="file" id="filePushInput" multiple hidden>
           <span>Dosya Gönder</span>
         </label>
       </div>
-      <div id="apkUploadProgressWrap" hidden style="display:grid;gap:6px;padding:12px 14px;border-radius:16px;background:rgba(0,0,0,.35);border:1px solid rgba(56,189,248,.35)">
-        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#e0f2fe">
-          <span id="apkUploadStatusText">TV'ye aktarılıyor…</span>
-          <span id="apkUploadPctText">0%</span>
+      <div id="apkUploadProgressWrap" hidden style="display:grid;gap:6px;padding:12px 14px;border-radius:16px;background:rgba(0,0,0,.35);border:1px solid rgba(56,189,248,.35);min-width:0">
+        <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;color:#e0f2fe;min-width:0">
+          <span id="apkUploadStatusText" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">TV'ye aktarılıyor…</span>
+          <span id="apkUploadPctText" style="flex-shrink:0">0%</span>
         </div>
         <div class="pt-bar"><i id="apkUploadBar" style="transform:scaleX(0)"></i></div>
       </div>
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <span style="font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(224,242,254,.75)">TV İndirilenler Klasörü (/sdcard/Download)</span>
-          <button type="button" id="btnRefreshTvFiles" style="border:0;background:none;color:#7dd3fc;font-size:12.5px;font-weight:700;padding:0">Yenile</button>
+      <div style="min-width:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;min-width:0">
+          <span id="tvFilesDirLabel" style="font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(224,242,254,.75);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">TV İndirilenler Klasörü (/sdcard/Download)</span>
+          <button type="button" id="btnRefreshTvFiles" style="border:0;background:none;color:#7dd3fc;font-size:12.5px;font-weight:700;padding:0;flex-shrink:0">Yenile</button>
         </div>
-        <div id="tvFilesListBox" style="display:grid;gap:8px">
+        <div id="tvFilesListBox" style="display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0">
           <div style="font-size:12px;color:var(--dim);padding:6px 2px">Dosyalar yükleniyor…</div>
         </div>
       </div>
     </div>
 
-    <div class="files-card glass shazam-hero">
-      <div class="shazam-top">
-        <div>
-          <div class="shazam-badge">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-            <span>APPLE VISION SPATIAL GLASS · SHAZAM ID</span>
-          </div>
-          <h2 style="margin:0;color:#fff;font-size:18px;text-transform:none;letter-spacing:-.015em">Shazam'da Taranan Şarkılar</h2>
-          <div style="font-size:12.5px;color:rgba(240,244,255,.74);margin-top:5px;line-height:1.48">TV'de çalan film ve dizi müziklerini uzamsal Shazam dalgasıyla tanıyın; bulunan şarkıları anında <b>Spotify</b> veya <b>YouTube Music</b>'te açın.</div>
-        </div>
-        <button type="button" class="btn shazam-listen-btn" id="btnShazamListen">Şimdi Dinlet</button>
-      </div>
-
-      <div id="shazamListeningBar" class="shazam-wave-banner" hidden>
-        <span class="shazam-bars"><i></i><i></i><i></i><i></i><i></i></span>
-        <span>TV mikrofonu ortam sesini dinliyor… TV ekranında Apple Vision Shazam katmanı aktif.</span>
-      </div>
-
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:4px">
-        <span style="font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(224,242,254,.75)">Taranan Şarkı Geçmişi</span>
-        <div style="display:flex;align-items:center;gap:12px">
-          <button type="button" id="btnShazamRefresh" style="border:0;background:none;color:#7dd3fc;font-size:12.5px;font-weight:700;padding:0">↻ Yenile</button>
-          <button type="button" id="btnShazamClear" style="border:0;background:none;color:var(--dim);font-size:12px;font-weight:600;padding:0">Temizle</button>
-        </div>
-      </div>
-
-      <div class="shazam-list" id="shazamListBox">
-        <div class="empty" style="padding:26px 12px">Taranan şarkılar yükleniyor…</div>
-      </div>
-    </div>
-
     <div class="files-card glass">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-        <div>
-          <h2 style="margin:0;color:#fff;font-size:15.5px;text-transform:none;letter-spacing:0">📸 TV Ekran Görüntüsü</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;min-width:0">
+        <div style="min-width:0;flex:1 1 180px">
+          <h2 style="margin:0;color:#fff;font-size:15.5px;text-transform:none;letter-spacing:0">TV Ekran Görüntüsü</h2>
           <div style="font-size:12px;color:var(--dim);margin-top:3px">TV ekranını anında yakalayın veya telefonunuza indirin</div>
         </div>
-        <button type="button" class="btn" id="btnTakeShot" style="width:auto;padding:10px 15px;font-size:13px;border-radius:14px;white-space:nowrap">📸 Ekran Görüntüsü Al</button>
+        <button type="button" class="btn" id="btnTakeShot" style="width:auto;padding:10px 15px;font-size:13px;border-radius:14px;white-space:nowrap;flex-shrink:0">Ekran Görüntüsü Al</button>
       </div>
-      <div id="filesShotPreviewWrap" hidden style="background:rgba(0,0,0,.35);border:1px solid var(--edge);border-radius:16px;padding:12px;display:grid;gap:10px">
+      <div id="filesShotPreviewWrap" hidden style="background:rgba(0,0,0,.35);border:1px solid var(--edge);border-radius:16px;padding:12px;display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-width:0">
         <img id="filesShotPreviewImg" alt="TV Ekran Görüntüsü" style="width:100%;max-height:240px;object-fit:contain;border-radius:12px;background:#000">
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <a class="btn" id="filesShotDownloadBtn" download="CineTV-Screenshot.jpg" style="flex:1;padding:10px;font-size:13px;border-radius:12px">⬇ Telefona Kaydet</a>
-          <button type="button" class="btn ghost" id="filesShotShareBtn" style="flex:1;padding:10px;font-size:13px;border-radius:12px">Paylaş</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;min-width:0">
+          <a class="btn" id="filesShotDownloadBtn" download="CineTV-Screenshot.jpg" style="flex:1;min-width:130px;padding:10px;font-size:13px;border-radius:12px">Telefona Kaydet</a>
+          <button type="button" class="btn ghost" id="filesShotShareBtn" style="flex:1;min-width:110px;padding:10px;font-size:13px;border-radius:12px">Paylaş</button>
         </div>
       </div>
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="min-width:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;min-width:0">
           <span style="font-size:12px;font-weight:600;color:var(--dim)">Son Ekran Görüntüleri</span>
-          <button type="button" id="btnRefreshShots" style="border:0;background:none;color:var(--accent2);font-size:12px;font-weight:600">↻ Yenile</button>
+          <button type="button" id="btnRefreshShots" style="border:0;background:none;color:var(--accent2);font-size:12px;font-weight:600;flex-shrink:0">Yenile</button>
         </div>
         <div class="shots-strip" id="savedShotsStrip">
           <div style="font-size:12px;color:var(--dim);padding:8px 2px">Yükleniyor…</div>
@@ -712,7 +658,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   <button data-tab="remote"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="6" y="2" width="12" height="20" rx="3"/><circle cx="12" cy="7" r="1.5"/><path d="M9 13h6M12 10v6"/></svg><span data-i="tabRemote"></span></button>
   <button data-tab="party"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="6" width="18" height="12" rx="4"/><path d="M7 12h4M9 10v4M15 11h.01M17 13h.01"/></svg><span data-i="tabParty"></span></button>
   <button data-tab="cast"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><circle cx="2" cy="20" r="1"/></svg><span data-i="tabCast"></span></button>
-  <button data-tab="files"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span data-i="tabFiles"></span></button>
+  <button data-tab="files"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><path d="M12 11v6M9.5 13.5 12 11l2.5 2.5"/></svg><span data-i="tabFiles"></span></button>
   <button data-tab="bg"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span data-i="tabBg"></span></button>
   <button data-tab="about"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span data-i="tabAbout"></span></button>
 </nav>
@@ -894,7 +840,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const $ = id => document.getElementById(id);
 
   // Offline & Service Worker Metadata + Poster Cache Bridge
-  const CACHEABLE_API_PREFIXES = ["catalog/trending", "catalog/search", "catalog/details", "catalog/similar", "catalog/person", "watchlist", "shazam/list", "shazam/history"];
+  const CACHEABLE_API_PREFIXES = ["catalog/trending", "catalog/search", "catalog/details", "catalog/similar", "catalog/person", "watchlist"];
   const isCacheableApi = path => CACHEABLE_API_PREFIXES.some(p => path === p || path.startsWith(p + "?"));
   const metaStorageKey = (path, params = {}) => {
     const entries = Object.entries(params || {}).filter(([k]) => k !== "k" && k !== "fresh" && k !== "seed" && k !== "_t");
@@ -1103,7 +1049,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     document.body.classList.toggle("remote", name === "remote" || name === "cast");
     if (name === "cast") browseLoop(); else browsing = false;
     if (name === "party") startPartyPolling(); else stopPartyPolling();
-    if (name === "files") { loadShazamHistory(); loadSavedShots(); if (typeof loadTvDownloads === "function") loadTvDownloads(); }
+    if (name === "files") { loadSavedShots(); if (typeof loadTvDownloads === "function") loadTvDownloads(); }
     if (name !== "remote") $("kbd").hidden = true;
     requestAnimationFrame(() => document.documentElement.style.setProperty("--hdr", document.querySelector("header").offsetHeight + "px"));
   };
@@ -1718,7 +1664,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   $("saver").onclick = () => api("screensaver");
 
   // A screenshot taken with the TV remote (blue key held) opens here, ready to save or share
-  let seenShot = -1, shotBlob = null, lastTrack = "";
+  let seenShot = -1, shotBlob = null;
   const showShot = async () => {
     try {
       const r = await api("shot");
@@ -1757,19 +1703,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       if (s && typeof s.shot === "number") {
         if (seenShot >= 0 && s.shot > seenShot) showShot();
         seenShot = s.shot;
-      }
-      if (s && s.track) {
-        const trackKey = typeof s.track === "object" ? (s.track.at || s.track.title || "") : String(s.track);
-        if (trackKey && trackKey !== lastTrack) {
-          if (lastTrack !== "") {
-            const label = typeof s.track === "object"
-              ? ((s.track.artist ? s.track.artist + " — " : "") + (s.track.title || ""))
-              : String(s.track);
-            if (label && typeof toast === "function") toast("🎵 " + label);
-            if (typeof loadShazamHistory === "function") loadShazamHistory();
-          }
-          lastTrack = trackKey;
-        }
       }
       if (s && s.inputFocused && !lastFocusState && kbd.hidden) {
         openKbd("");
@@ -2809,6 +2742,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     if (!box) return;
     try {
       const r = await api("files/list", {dir: "/sdcard/Download"});
+      if (r && r.dir && $("tvFilesDirLabel")) {
+        $("tvFilesDirLabel").textContent = "TV Klasörü (" + r.dir + ")";
+      }
       const items = ((r && r.items) || []).filter(it => !it.dir);
       if (!items.length) {
         box.innerHTML = `<div style="font-size:12px;color:var(--dim);padding:8px 2px">Henüz aktarılmış dosya yok. Yukarıdan APK veya dosya seçerek TV'ye gönderebilirsiniz.</div>`;
@@ -2823,7 +2759,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
           </div>
           <div style="display:flex;gap:6px;flex-shrink:0">
             <button type="button" class="btn" data-act="open" data-path="${esc(it.path)}" data-apk="${isApk ? 1 : 0}" style="width:auto;padding:7px 12px;font-size:12px;border-radius:10px;margin:0;${isApk ? "background:linear-gradient(135deg,#10b981,#059669)" : ""}">${isApk ? "TV'ye Kur" : "TV'de Aç"}</button>
-            <button type="button" class="shazam-del" data-act="del" data-path="${esc(it.path)}" title="Sil">✕</button>
+            <button type="button" class="files-del" data-act="del" data-path="${esc(it.path)}" title="Sil">✕</button>
           </div>
         </div>`;
       }).join("");
@@ -2858,6 +2794,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     }
   };
 
+  const readChunkBase64 = blob => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = String(reader.result || "");
+      const comma = res.indexOf(",");
+      resolve(comma >= 0 ? res.slice(comma + 1) : res);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
   const uploadFileToTv = (file, autoInstall) => new Promise((resolve, reject) => {
     const wrap = $("apkUploadProgressWrap");
     const statusTxt = $("apkUploadStatusText");
@@ -2869,23 +2816,33 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     if (bar) bar.style.transform = "scaleX(0)";
 
     if (RELAY) {
-      const reader = new FileReader();
-      reader.onload = async () => {
+      (async () => {
         try {
-          const b64 = String(reader.result || "").split(",")[1] || "";
-          const r = await api("files/upload64", {
-            dir: "/sdcard/Download",
-            name: file.name,
-            install: autoInstall ? "1" : "0",
-            data: b64
-          });
-          if (bar) bar.style.transform = "scaleX(1)";
-          if (pctTxt) pctTxt.textContent = "100%";
-          resolve(r);
+          const CHUNK_SIZE = 384 * 1024;
+          const total = Math.max(1, file.size || 1);
+          let offset = 0;
+          let lastRes = null;
+          while (offset < file.size || offset === 0) {
+            const end = Math.min(file.size, offset + CHUNK_SIZE);
+            const slice = file.slice(offset, end);
+            const b64 = await readChunkBase64(slice);
+            const isLast = end >= file.size;
+            lastRes = await api("files/upload64", {
+              dir: "/sdcard/Download",
+              name: file.name,
+              append: offset > 0 ? "1" : "0",
+              install: (autoInstall && isLast) ? "1" : "0",
+              data: b64
+            });
+            offset = end;
+            const ratio = Math.min(1, offset / total);
+            if (bar) bar.style.transform = `scaleX(${ratio.toFixed(3)})`;
+            if (pctTxt) pctTxt.textContent = Math.round(ratio * 100) + "%";
+            if (file.size === 0) break;
+          }
+          resolve(lastRes || {ok: true});
         } catch (err) { reject(err); }
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+      })();
       return;
     }
 
@@ -2919,7 +2876,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     const files = Array.from(fileList || []);
     if (!files.length) return;
     for (const f of files) {
-      const isApk = f.name.toLowerCase().endsWith(".apk");
+      const lowerName = String(f.name || "").toLowerCase();
+      const isApk = lowerName.endsWith(".apk") || f.type === "application/vnd.android.package-archive";
+      if (forceInstallApk && !isApk) {
+        toast("Lütfen .apk uzantılı bir kurulum paketi seçin");
+        continue;
+      }
       const shouldInstall = !!(forceInstallApk || isApk);
       try {
         const res = await uploadFileToTv(f, shouldInstall);
@@ -2952,160 +2914,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   }
   if ($("btnRefreshTvFiles")) $("btnRefreshTvFiles").onclick = loadTvDownloads;
 
-
-  // ---- Shazam Scanned Songs Hub & Screenshots (Apple visionOS Spatial Glass) ----
   const buildDownloadUrl = (path, inline = false) =>
     "/api/files/download?k=" + encodeURIComponent(token || "preview-token") + "&path=" + encodeURIComponent(path) + (inline ? "&inline=1" : "");
-
-  const formatShazamTime = ts => {
-    const n = +ts || 0;
-    if (!n) return "";
-    try {
-      const d = new Date(n);
-      const now = new Date();
-      const sameDay = d.toDateString() === now.toDateString();
-      return sameDay
-        ? "Bugün " + d.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})
-        : d.toLocaleDateString([], {day: "numeric", month: "short"}) + " " + d.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
-    } catch (e) { return ""; }
-  };
-
-  const buildMusicLinks = (title, artist) => {
-    const q = [artist || "", title || ""].join(" ").trim() || title || "";
-    const enc = encodeURIComponent(q);
-    return {
-      ytm: "https://music.youtube.com/search?q=" + enc,
-      spotify: "https://open.spotify.com/search/" + enc
-    };
-  };
-
-  const renderShazamTracks = tracks => {
-    const box = $("shazamListBox");
-    if (!box) return;
-    if (!tracks || !tracks.length) {
-      box.innerHTML = `<div class="empty" style="padding:28px 14px;line-height:1.55">
-        Henüz Shazam ile taranmış bir şarkı yok.<br>
-        <span style="font-size:12px;color:var(--dim)">Yukarıdaki <b>"Şimdi Dinlet"</b> tuşuna veya kumandadaki Shazam tuşuna bastığınızda TV'de çalan şarkılar burada listelenir; <b>Spotify</b> ve <b>YouTube Music</b>'te anında açabilirsiniz.</span>
-      </div>`;
-      return;
-    }
-    box.innerHTML = tracks.map((tr, idx) => {
-      const title = tr.title || "Bilinmeyen Şarkı";
-      const artist = tr.artist || "Bilinmeyen Sanatçı";
-      const art = tr.artwork || "";
-      const timeStr = formatShazamTime(tr.at);
-      const links = buildMusicLinks(title, artist);
-      const spUrl = tr.spotify || links.spotify;
-      const ytmUrl = tr.ytm || links.ytm;
-      return `<div class="shazam-item" data-idx="${idx}">
-        <div class="shazam-item-main" data-open-url="${esc(spUrl)}" title="Spotify'da Aç">
-          <div class="shazam-art">
-            ${art ? `<img src="${esc(art)}" alt="${esc(title)}" loading="lazy" onerror="this.remove()">` : `<span>SHZ</span>`}
-          </div>
-          <div class="shazam-info">
-            <div class="shazam-title">${esc(title)}</div>
-            <div class="shazam-artist">${esc(artist)}</div>
-            ${timeStr ? `<div class="shazam-time"><span>●</span> ${esc(timeStr)}</div>` : ""}
-          </div>
-          <button type="button" class="shazam-del" data-del-at="${esc(tr.at || 0)}" title="Listeden Kaldır">✕</button>
-        </div>
-        <div class="shazam-actions">
-          <a class="btn-spotify" href="${esc(spUrl)}" target="_blank" rel="noopener">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.59 14.42c-.18.3-.56.39-.86.21-2.35-1.44-5.31-1.76-8.8-.96-.33.08-.67-.13-.75-.47-.08-.33.13-.67.47-.75 3.82-.87 7.09-.5 9.73 1.11.3.18.39.56.21.86zm1.22-2.72c-.23.37-.71.49-1.08.26-2.69-1.65-6.79-2.13-9.97-1.16-.42.13-.86-.11-.99-.52-.13-.42.11-.86.52-.99 3.63-1.1 8.15-.57 11.26 1.34.37.23.49.71.26 1.07zm.11-2.83c-3.22-1.91-8.54-2.09-11.62-1.15-.49.15-1.02-.13-1.17-.62-.15-.49.13-1.02.62-1.17 3.53-1.07 9.4-.86 13.11 1.34.45.26.59.84.33 1.29-.26.44-.84.58-1.27.31z"/></svg>
-            <span>Spotify'da Aç</span>
-          </a>
-          <a class="btn-ytm" href="${esc(ytmUrl)}" target="_blank" rel="noopener">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-            <span>YouTube Music</span>
-          </a>
-        </div>
-      </div>`;
-    }).join("");
-
-    box.querySelectorAll(".shazam-item-main").forEach(mainEl => {
-      mainEl.onclick = e => {
-        if (e.target.closest(".shazam-del")) return;
-        const u = mainEl.dataset.openUrl;
-        if (u) window.open(u, "_blank", "noopener");
-      };
-    });
-    box.querySelectorAll(".shazam-del").forEach(delBtn => {
-      delBtn.onclick = async e => {
-        e.stopPropagation();
-        const at = delBtn.dataset.delAt;
-        try {
-          await api("shazam/delete", {at});
-          loadShazamHistory();
-        } catch (err) { toast(t("offline")); }
-      };
-    });
-  };
-
-  const loadShazamHistory = async () => {
-    const box = $("shazamListBox");
-    if (!box) return;
-    try {
-      const r = await api("shazam/list");
-      const bar = $("shazamListeningBar");
-      if (bar) bar.hidden = !(r && r.recognizing);
-      const tracks = (r && r.tracks) || [];
-      try { localStorage.setItem("cinetv.shazam.tracks", JSON.stringify(tracks)); } catch (e) {}
-      renderShazamTracks(tracks);
-    } catch (e) {
-      let cached = [];
-      try { cached = JSON.parse(localStorage.getItem("cinetv.shazam.tracks") || "[]"); } catch (err) {}
-      renderShazamTracks(cached);
-    }
-  };
-
-  const triggerShazamFromPhone = async () => {
-    const btn = $("btnShazamListen");
-    const bar = $("shazamListeningBar");
-    if (btn) { btn.disabled = true; btn.textContent = "Dinleniyor…"; }
-    if (bar) bar.hidden = false;
-    try {
-      await api("shazam/recognize");
-      toast("TV'de Apple Vision Shazam müzik tanıma başlatıldı");
-      let checks = 0;
-      const pollId = setInterval(async () => {
-        checks++;
-        try {
-          const r = await api("shazam/list");
-          await loadShazamHistory();
-          if (!r || !r.recognizing || checks >= 14) {
-            clearInterval(pollId);
-            if (bar) bar.hidden = true;
-            if (btn) { btn.disabled = false; btn.textContent = "Şimdi Dinlet"; }
-          }
-        } catch (err) {
-          clearInterval(pollId);
-          if (bar) bar.hidden = true;
-          if (btn) { btn.disabled = false; btn.textContent = "Şimdi Dinlet"; }
-        }
-      }, 1500);
-    } catch (e) {
-      if (bar) bar.hidden = true;
-      if (btn) { btn.disabled = false; btn.textContent = "Şimdi Dinlet"; }
-      toast(t("offline"));
-    }
-  };
-
-  if ($("btnShazamListen")) $("btnShazamListen").onclick = triggerShazamFromPhone;
-  if ($("btnShazamRefresh")) $("btnShazamRefresh").onclick = loadShazamHistory;
-  if ($("btnShazamClear")) {
-    $("btnShazamClear").onclick = async () => {
-      if (!confirm("Shazam'da taranan tüm şarkı geçmişi temizlensin mi?")) return;
-      try { localStorage.removeItem("cinetv.shazam.tracks"); } catch (e) {}
-      try {
-        await api("shazam/clear");
-        loadShazamHistory();
-        toast("Shazam geçmişi temizlendi");
-      } catch (e) {
-        renderShazamTracks([]);
-        toast("Shazam geçmişi temizlendi");
-      }
-    };
-  }
 
   const loadSavedShots = async () => {
     const strip = $("savedShotsStrip");
@@ -3114,7 +2924,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       const r = await api("shot/list");
       const items = (r && r.items) || [];
       if (!items.length) {
-        strip.innerHTML = `<div style="font-size:12px;color:var(--dim);padding:8px 2px">Henüz kaydedilmiş ekran görüntüsü yok. Yukarıdan "📸 Ekran Görüntüsü Al" tuşuna dokunun.</div>`;
+        strip.innerHTML = `<div style="font-size:12px;color:var(--dim);padding:8px 2px">Henüz kaydedilmiş ekran görüntüsü yok. Yukarıdan "Ekran Görüntüsü Al" tuşuna dokunun.</div>`;
         return;
       }
       strip.innerHTML = items.map((it, idx) => {
@@ -3143,7 +2953,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   const takeScreenshotFromHub = async () => {
     const btn = $("btnTakeShot");
-    if (btn) { btn.disabled = true; btn.textContent = "📸 Çekiliyor…"; }
+    if (btn) { btn.disabled = true; btn.textContent = "Çekiliyor…"; }
     try {
       const r = await api("shot/take", {sync: 1});
       if (r && r.ok && r.jpg) {
@@ -3160,7 +2970,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
           if (navigator.share) navigator.share({files: [new File([blob], name, {type: "image/jpeg"})]}).catch(() => {});
           else toast("İndir düğmesiyle kaydedebilirsiniz");
         };
-        toast("📸 TV ekran görüntüsü alındı ve kaydedildi");
+        toast("TV ekran görüntüsü alındı ve kaydedildi");
         loadSavedShots();
       } else {
         toast("Ekran görüntüsü alınamadı");
@@ -3168,7 +2978,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     } catch (e) {
       toast(t("offline"));
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = "📸 Ekran Görüntüsü Al"; }
+      if (btn) { btn.disabled = false; btn.textContent = "Ekran Görüntüsü Al"; }
     }
   };
   if ($("btnTakeShot")) $("btnTakeShot").onclick = takeScreenshotFromHub;
@@ -3231,7 +3041,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     pair();
   }
   const start = RELAY ? (hp.get("s") || location.hash.replace("#", "")) : location.hash.replace("#", "");
-  if (["remote", "search", "party", "cast", "files", "shazam", "about", "bg", "background"].includes(start)) show(start === "background" ? "bg" : (start === "shazam" ? "files" : start));
+  if (["remote", "search", "party", "cast", "files", "about", "bg", "background"].includes(start)) show(start === "background" ? "bg" : start);
 })();
 </script>
   <!-- Mobile Translucent Settings Overlay (Liquid Glass) -->
@@ -3247,7 +3057,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         <span>›</span>
       </button>
       <button class="btn glass" onclick="openFilesAndShotsTab()" style="text-align:left;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between;border-color:rgba(56,189,248,0.38);background:rgba(14,165,233,0.14)">
-        <span>Medya · APK Gönder, Shazam &amp; Ekran Görüntüsü</span>
+        <span>Medya · APK Kur, Dosya Gönder &amp; Ekran Görüntüsü</span>
         <span style="font-size:12px;color:#7dd3fc">Medya</span>
       </button>
       <button class="btn glass" onclick="calibrateAcoustics()" id="btnCalAcoustics" style="text-align:left;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:space-between;border-color:rgba(56,189,248,0.3);background:rgba(56,189,248,0.1)">

@@ -218,7 +218,13 @@ public final class AppLauncher {
         // Launching an app normally from the dock or drawer is not a direct content launch: Back stays inside that app.
         if (pkg != null) {
             for (String np : NUVIO_PACKAGES) {
-                if (pkg.equals(np)) com.cinetv.launcher.TvKeyInterceptorService.launchedNuvioFromCineTv = false;
+                if (pkg.equals(np)) {
+                    com.cinetv.launcher.TvKeyInterceptorService.launchedNuvioFromCineTv = false;
+                    com.cinetv.launcher.TvKeyInterceptorService.markNuvioActive(pkg);
+                }
+            }
+            if (pkg.toLowerCase(java.util.Locale.ROOT).contains("nuvio") || pkg.toLowerCase(java.util.Locale.ROOT).contains("stremio")) {
+                com.cinetv.launcher.TvKeyInterceptorService.markNuvioActive(pkg);
             }
             for (String yp : YOUTUBE_PACKAGES) {
                 if (pkg.equals(yp)) com.cinetv.launcher.TvKeyInterceptorService.launchedYouTubeFromCineTv = false;
@@ -278,20 +284,26 @@ public final class AppLauncher {
         return start(ctx, generic);
     }
 
-    /** Opens a title on Nuvio's detail/stream page; falls back to Nuvio's start screen. */
     /**
-     * Once Nuvio's title page is up, clicks its "Oynat" button itself (found by its label, never a blind OK that
-     * could land on "watched" or "+"), which opens the film's sources or plays it, per the viewer's Nuvio settings.
-     * Tries for up to 15 seconds, then leaves the page as it is.
+     * Once Nuvio's title page is up, clicks its "Oynat" button once (found by its label), then stops immediately
+     * so Nuvio's source search / stream scraper is never interrupted by repeated Accessibility tree scans.
      */
     private static void pressPlayWhenReady(final Context app, final long startedAt, final boolean series, final boolean preferResume) {
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
             com.cinetv.launcher.TvKeyInterceptorService svc = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
             long elapsed = System.currentTimeMillis() - startedAt;
-            boolean clicked = !com.cinetv.launcher.MainActivity.foreground && svc != null && svc.clickNuvioPlay(series, preferResume, elapsed);
-            if (clicked) android.util.Log.i("CineTvPlay", (series ? "Series: resumed or episode list" : "Oynat") + " on Nuvio's title page");
-            if (!clicked && elapsed < 15_000) pressPlayWhenReady(app, startedAt, series, preferResume);
-        }, 800);
+            if (com.cinetv.launcher.MainActivity.foreground || svc == null || svc.hasUserInteractedSince(startedAt)) {
+                return;
+            }
+            boolean done = svc.clickNuvioPlay(series, preferResume, elapsed);
+            if (done) {
+                android.util.Log.i("CineTvPlay", (series ? "Series: resumed or episode list" : "Oynat") + " on Nuvio's title page");
+                return;
+            }
+            if (elapsed < 7_000L) {
+                pressPlayWhenReady(app, startedAt, series, preferResume);
+            }
+        }, 1100);
     }
 
     public static boolean openInNuvio(Context ctx, String title, String imdbId, String type, String posterUrl) {
@@ -337,6 +349,7 @@ public final class AppLauncher {
         com.cinetv.launcher.TvKeyInterceptorService.launchedNuvioFromCineTv = true;
         com.cinetv.launcher.TvKeyInterceptorService.lastNuvioLaunchPreferResume = preferResume;
         String targetPkg = resolveNuvioPackage(ctx);
+        com.cinetv.launcher.TvKeyInterceptorService.markNuvioActive(targetPkg != null ? targetPkg : NUVIO);
 
         if (imdbId != null && (imdbId.startsWith("tv:") || "tv".equals(type) || "channel".equals(type))) {
             Intent tvIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/tv/" + imdbId));
@@ -348,13 +361,9 @@ public final class AppLauncher {
         }
         if (imdbId != null && (imdbId.startsWith("tt") || imdbId.startsWith("tmdb:"))) {
             String kind = "series".equals(type) || "show".equals(type) ? "series" : "movie";
-            // Tested on the TV (Nuvio 1.1.0): only nuvio://detail/<type>/<imdb> opens a title, and only when Nuvio
-            // starts fresh. stremio:///detail/... and any link sent to an already running Nuvio are ignored, which is
-            // why "Oynat" left the viewer on Nuvio's home or on the last film. So: a fresh task, the nuvio link,
-            // and then OK on the page's focused "Oynat" (Nuvio resumes from the saved position by itself).
             Intent open = new Intent(Intent.ACTION_VIEW, Uri.parse("nuvio://detail/" + kind + "/" + imdbId));
             if (targetPkg != null) open.setPackage(targetPkg);
-            open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             if (start(ctx, open)) {
                 pressPlayWhenReady(ctx.getApplicationContext(), System.currentTimeMillis(), "series".equals(kind), preferResume);
                 return true;

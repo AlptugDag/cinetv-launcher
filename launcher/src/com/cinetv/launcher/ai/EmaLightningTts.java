@@ -947,7 +947,7 @@ public final class EmaLightningTts {
                 "netflix", "netfliks", "youtube", "yutub", "google", "gugıl", "apple", "epıl", "airpods", "eyirpods",
                 "trailer", "treylır", "series", "siiriz", "season", "siizın", "episode", "epizod", "show", "şov",
                 "dolby", "dolbi", "atmos", "atmos", "vision", "vijın", "prime", "praym", "max", "meks", "plus", "plas",
-                "shazam", "şazam", "gemini", "ceminay", "bluetooth", "bluutut", "android", "android"
+                "gemini", "ceminay", "bluetooth", "bluutut", "android", "android"
         };
         for (int i = 0; i + 1 < pairs.length; i += 2) SAYS.put(pairs[i], pairs[i + 1]);
     }

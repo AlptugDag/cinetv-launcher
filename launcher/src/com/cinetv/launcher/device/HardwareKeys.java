@@ -29,7 +29,6 @@ public final class HardwareKeys {
     public static final String CINESUB = "cinesub";
     public static final String ROULETTE = "roulette";
     public static final String NIGHT_MODE = "night_mode";
-    public static final String SHAZAM = "shazam";
 
     private static final int[] NETFLIX_KEYS = {207, 188, 183, 265, 229, 289, 398, KeyEvent.KEYCODE_PROG_RED, KeyEvent.KEYCODE_BUTTON_1};
     private static final int[] NETFLIX_SCANS = {183, 191, 398, 412, 249};
@@ -49,12 +48,18 @@ public final class HardwareKeys {
         return matches(keyCode, scanCode, BLUE_KEYS, BLUE_SCANS);
     }
 
+    private static boolean isSupportedAction(String a) {
+        return NUVIO.equals(a) || YOUTUBE.equals(a) || SIMILAR_MOVIES.equals(a) || WEB_VIDEO.equals(a)
+                || TV_PLUS.equals(a) || CLEAN_RAM.equals(a) || ALL_APPS.equals(a) || SCENE_INSPECTOR.equals(a)
+                || CINESUB.equals(a) || ROULETTE.equals(a) || NIGHT_MODE.equals(a);
+    }
+
     /** The action bound to a key: a user mapping first, then the built-in vendor table; null for ordinary keys. */
     public static String actionFor(Context ctx, int keyCode, int scanCode) {
         SharedPreferences prefs = Prefs.get(ctx);
         String custom = keyCode > 0 ? prefs.getString(Prefs.CUSTOM_KEY_PREFIX + keyCode, null) : null;
         if (custom == null && scanCode > 0) custom = prefs.getString(Prefs.CUSTOM_SCAN_PREFIX + scanCode, null);
-        if (custom != null) return custom;
+        if (custom != null && isSupportedAction(custom)) return custom;
         return builtIn(keyCode, scanCode);
     }
 
@@ -62,7 +67,7 @@ public final class HardwareKeys {
         if (matches(keyCode, scanCode, NETFLIX_KEYS, NETFLIX_SCANS)) return NUVIO;
         if (matches(keyCode, scanCode, YOUTUBE_KEYS, YOUTUBE_SCANS)) return YOUTUBE;
         if (matches(keyCode, scanCode, PRIME_KEYS, PRIME_SCANS)) return SIMILAR_MOVIES;
-        if (matches(keyCode, scanCode, BLUE_KEYS, BLUE_SCANS)) return SHAZAM;
+        if (matches(keyCode, scanCode, BLUE_KEYS, BLUE_SCANS)) return CINESUB;
         if (matches(keyCode, scanCode, TV_PLUS_KEYS, TV_PLUS_SCANS)) return TV_PLUS;
         return null;
     }
@@ -160,9 +165,6 @@ public final class HardwareKeys {
             case SCENE_INSPECTOR:
             case CINESUB:
                 com.cinetv.launcher.ui.CineSubOverlay.trigger(ctx);
-                return true;
-            case SHAZAM:
-                com.cinetv.launcher.ai.ShazamRecognizer.recognize(ctx);
                 return true;
             case ROULETTE:
                 if (ctx instanceof com.cinetv.launcher.MainActivity) {

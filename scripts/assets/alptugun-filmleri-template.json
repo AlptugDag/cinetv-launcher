@@ -744,7 +744,7 @@
         "enabled": true,
         "options": {
           "name": "Meteor",
-          "timeout": 7000,
+          "timeout": 12000,
           "resources": [
             "stream"
           ],
@@ -761,7 +761,7 @@
         "enabled": true,
         "options": {
           "name": "Comet",
-          "timeout": 7000,
+          "timeout": 12000,
           "resources": [
             "stream"
           ],
@@ -778,7 +778,7 @@
         "enabled": true,
         "options": {
           "name": "STorz",
-          "timeout": 7000,
+          "timeout": 12000,
           "resources": [
             "stream"
           ],
@@ -795,7 +795,7 @@
         "enabled": true,
         "options": {
           "name": "MediaFusion",
-          "timeout": 7000,
+          "timeout": 12000,
           "resources": [
             "stream"
           ],
@@ -816,7 +816,7 @@
         "enabled": true,
         "options": {
           "name": "TorrentsDB",
-          "timeout": 7000,
+          "timeout": 12000,
           "resources": [
             "stream"
           ],
@@ -833,7 +833,7 @@
         "enabled": true,
         "options": {
           "name": "Peerflix",
-          "timeout": 7000,
+          "timeout": 12000,
           "resources": [
             "stream"
           ],
@@ -849,7 +849,7 @@
         "enabled": true,
         "options": {
           "name": "Sootio",
-          "timeout": 7000,
+          "timeout": 12000,
           "resources": [
             "stream"
           ],
@@ -877,7 +877,7 @@
         "enabled": true,
         "options": {
           "name": "Torrentio",
-          "timeout": 7000,
+          "timeout": 12000,
           "resources": [
             "stream"
           ],
@@ -894,7 +894,7 @@
         "enabled": true,
         "options": {
           "name": "WebStreamr",
-          "timeout": 7000,
+          "timeout": 12000,
           "resources": [
             "stream"
           ],
@@ -921,7 +921,7 @@
         "enabled": true,
         "options": {
           "name": "HdHub",
-          "timeout": 7000,
+          "timeout": 12000,
           "resources": [
             "stream"
           ],
@@ -936,7 +936,7 @@
         "enabled": true,
         "options": {
           "name": "yastream",
-          "timeout": 7000,
+          "timeout": 12000,
           "resources": [
             "stream",
             "subtitles",
@@ -966,7 +966,7 @@
         "enabled": true,
         "options": {
           "name": "OpenSubtitles V3+",
-          "timeout": 7000,
+          "timeout": 12000,
           "resources": [
             "subtitles"
           ],

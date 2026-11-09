@@ -1,9 +1,9 @@
-// CineTV Service Worker v1.0.0.53
+// CineTV Service Worker v1.0.0.54
 // Implements resilient caching for movie posters (Cache-First + Stale-While-Revalidate + Mirror Fallback)
 // and movie metadata/catalog endpoints (Network-First with fast timeout + Stale-While-Revalidate + Catalog Synthesis)
 // so the CineTV launcher and companion remote remain functional and responsive on unstable connections.
 
-const SW_VERSION = "1.0.0.53";
+const SW_VERSION = "1.0.0.54";
 const SHELL_CACHE = `cinetv-shell-v${SW_VERSION}`;
 const METADATA_CACHE = `cinetv-metadata-v${SW_VERSION}`;
 const POSTER_CACHE = `cinetv-posters-v${SW_VERSION}`;
@@ -40,15 +40,12 @@ const LIVE_BYPASS_PATHS = [
   "/api/pair/",
   "/api/party/",
   "/api/files/upload",
+  "/api/files/upload64",
   "/api/files/delete",
   "/api/files/rename",
   "/api/files/mkdir",
   "/api/wallpaper",
-  "/api/apk/install",
-  "/api/shazam/recognize",
-  "/api/shazam/listen",
-  "/api/shazam/delete",
-  "/api/shazam/clear"
+  "/api/apk/install"
 ];
 
 const METADATA_PATH_PREFIXES = [
@@ -59,9 +56,7 @@ const METADATA_PATH_PREFIXES = [
   "/api/catalog/person",
   "/api/watchlist",
   "/api/info",
-  "/api/hello",
-  "/api/shazam/list",
-  "/api/shazam/history"
+  "/api/hello"
 ];
 
 function classifyRequest(request) {
@@ -262,6 +257,7 @@ async function handlePosterRequest(request, event) {
   const cached = await cache.match(cacheKey);
 
   if (cached) {
+    // Background Stale-While-Revalidate refresh so cached posters stay fresh without blocking UI
     event.waitUntil(
       fetchPosterWithMirrors(request.url)
         .then(fresh => {
@@ -420,6 +416,7 @@ async function handleMetadataRequest(request, event) {
   const cacheKey = normalizeMetadataCacheKey(request.url);
   const cache = await caches.open(METADATA_CACHE);
 
+  // Start network request so even if unstable timeout fires, it can finish and update cache in background
   const networkPromise = fetch(request.clone()).then(res => {
     if (res && res.ok) {
       event.waitUntil(storeMetadataResponse(cache, cacheKey, res.clone()));
@@ -436,14 +433,17 @@ async function handleMetadataRequest(request, event) {
       return netRes;
     }
   } catch (_) {
+    // Keep the background network promise alive for Stale-While-Revalidate update
     event.waitUntil(networkPromise.catch(() => {}));
   }
 
+  // Fallback 1: Exact normalized metadata cache match
   const cached = await cache.match(cacheKey);
   if (cached) {
     return cached;
   }
 
+  // Fallback 2: Synthesize from cached catalog snapshot so UI stays interactive
   const synthesized = await synthesizeFromSnapshot(cache, request.url);
   if (synthesized) {
     return new Response(JSON.stringify(synthesized), {
@@ -455,6 +455,7 @@ async function handleMetadataRequest(request, event) {
     });
   }
 
+  // Final attempt: wait for original network promise if no cache existed yet
   return networkPromise;
 }
 

@@ -108,7 +108,7 @@ public final class AppUpdater {
         return at > 0L && (System.currentTimeMillis() - at < 180_000L);
     }
 
-    private static void markSilentInstallPending(Context ctx) {
+    public static void markSilentInstallPending(Context ctx) {
         if (ctx == null) return;
         Prefs.get(ctx).edit().putLong(KEY_SILENT_INSTALL_AT, System.currentTimeMillis()).commit();
     }

@@ -50,7 +50,7 @@ public final class SpecialDay {
     private static String lastPreview;
     private static long lastPreviewAt;
 
-    /** Today's special day on this TV (honours the preview setting), or null. */
+    /** Today's special day on this TV (honours the preview setting and checks Europe/Istanbul timezone), or null. */
     public static SpecialDay today(Context ctx) {
         Calendar c = Calendar.getInstance();
         String preview = preview(ctx);
@@ -65,13 +65,19 @@ public final class SpecialDay {
                     c.set(Calendar.HOUR_OF_DAY, Integer.parseInt(hm[0]));
                     c.set(Calendar.MINUTE, Integer.parseInt(hm[1]));
                 }
+                return forDate(c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1, c.get(Calendar.DAY_OF_MONTH),
+                        c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE));
             } catch (Throwable ignored) {
                 // a malformed preview is ignored: the real date is used
                 c = Calendar.getInstance();
             }
         }
-        return forDate(c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1, c.get(Calendar.DAY_OF_MONTH),
+        SpecialDay localDay = forDate(c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1, c.get(Calendar.DAY_OF_MONTH),
                 c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE));
+        if (localDay != null) return localDay;
+        Calendar trCal = Calendar.getInstance(java.util.TimeZone.getTimeZone("Europe/Istanbul"));
+        return forDate(trCal.get(Calendar.YEAR), trCal.get(Calendar.MONTH) + 1, trCal.get(Calendar.DAY_OF_MONTH),
+                trCal.get(Calendar.HOUR_OF_DAY), trCal.get(Calendar.MINUTE));
     }
 
     private static String preview(Context ctx) {

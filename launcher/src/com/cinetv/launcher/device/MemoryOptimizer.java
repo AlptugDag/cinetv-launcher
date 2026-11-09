@@ -137,8 +137,42 @@ public final class MemoryOptimizer {
         return false;
     }
 
+    public static void releaseAirPlayLocks() {
+        try {
+            if (airPlayMulticastLock != null && airPlayMulticastLock.isHeld()) {
+                airPlayMulticastLock.release();
+            }
+        } catch (Throwable ignored) {}
+        try {
+            if (airPlayWifiLock != null && airPlayWifiLock.isHeld()) {
+                airPlayWifiLock.release();
+            }
+        } catch (Throwable ignored) {}
+    }
+
     public static void ensureAirPlayReceiver(Context ctx) {
+        if (ctx == null) return;
         final Context app = ctx.getApplicationContext();
+        // Never hold a Wi-Fi MulticastLock or spawn ADB commands while Nuvio or media playback is active:
+        // holding a MulticastLock disables hardware multicast filtering and degrades Wi-Fi scraper throughput.
+        if (!com.cinetv.launcher.MainActivity.isInFront()
+                && (com.cinetv.launcher.service.AppLauncher.wasNuvioRecentlyActive(60_000L) || DeviceTweaks.isMediaPlaying(app))) {
+            releaseAirPlayLocks();
+            return;
+        }
+        PackageManager pm = app.getPackageManager();
+        String installedPkg = null;
+        for (String pkg : AIRPLAY_RECEIVERS) {
+            try {
+                pm.getPackageInfo(pkg, 0);
+                installedPkg = pkg;
+                break;
+            } catch (Throwable ignored) {}
+        }
+        if (installedPkg == null) {
+            releaseAirPlayLocks();
+            return;
+        }
         try {
             android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) app.getSystemService(Context.WIFI_SERVICE);
             if (wm != null) {
@@ -160,47 +194,37 @@ public final class MemoryOptimizer {
         } catch (Throwable ignored) {
         }
 
-        // Never spawn ADB command processes while the viewer is watching media in Nuvio or another app.
-        if (!com.cinetv.launcher.MainActivity.isInFront() && DeviceTweaks.isMediaPlaying(app)) return;
         long up = android.os.SystemClock.elapsedRealtime();
         if (up < 120_000L || (lastAirPlaySetup > 0 && up - lastAirPlaySetup < 30 * 60_000L)) return;
-        PackageManager pm = app.getPackageManager();
-        for (String pkg : AIRPLAY_RECEIVERS) {
-            try {
-                pm.getPackageInfo(pkg, 0);
-                if (isRunning(app, pkg)) {
-                    lastAirPlaySetup = up;
-                    return;
-                }
-                lastAirPlaySetup = up;
-                try {
-                    Intent startSvc = new Intent("io.github.jqssun.airplay.START_SERVER")
-                            .setClassName(pkg, pkg + ".service.AirPlayService");
-                    if (Build.VERSION.SDK_INT >= 26) app.startForegroundService(startSvc);
-                    else app.startService(startSvc);
-                } catch (Throwable ignored) {}
-                if (!LocalAdb.isAvailable()) return;
-                // Keep AirPlay service permanently active via local ADB when available
-                new Thread(() -> {
-                    String setupCmd = "cmd deviceidle whitelist +" + pkg + " 2>/dev/null; "
-                            + "dumpsys deviceidle whitelist +" + pkg + " 2>/dev/null; "
-                            + "appops set " + pkg + " RUN_IN_BACKGROUND allow 2>/dev/null; "
-                            + "appops set " + pkg + " RUN_ANY_IN_BACKGROUND allow 2>/dev/null; ";
-                    if ("io.github.jqssun.airplay".equals(pkg) || "com.github.jqssun.airplay".equals(pkg)) {
-                        setupCmd += "am broadcast -a io.github.jqssun.airplay.SET_SETTING -n " + pkg + "/.SettingsReceiver --es key run_in_background --es value true 2>/dev/null; "
-                                + "am broadcast -a io.github.jqssun.airplay.SET_SETTING -n " + pkg + "/.SettingsReceiver --es key boot_auto_start --es value true 2>/dev/null; "
-                                + "am broadcast -a io.github.jqssun.airplay.SET_SETTING -n " + pkg + "/.SettingsReceiver --es key auto_start --es value true 2>/dev/null; "
-                                + "am broadcast -a android.intent.action.QUICKBOOT_POWERON -n " + pkg + "/.BootReceiver 2>/dev/null; "
-                                + "am broadcast -a android.intent.action.BOOT_COMPLETED -n " + pkg + "/.BootReceiver 2>/dev/null; ";
-                    }
-                    setupCmd += "am start-foreground-service --user 0 -a io.github.jqssun.airplay.START_SERVER -n " + pkg + "/.service.AirPlayService 2>/dev/null || "
-                            + "am startservice --user 0 -n " + pkg + "/.service.AirPlayService 2>/dev/null";
-                    LocalAdb.shell(app, setupCmd, 3000);
-                }, "cinetv-airplay-keepalive").start();
-                return;
-            } catch (Throwable ignored) {
-            }
+        final String pkg = installedPkg;
+        if (isRunning(app, pkg)) {
+            lastAirPlaySetup = up;
+            return;
         }
+        lastAirPlaySetup = up;
+        try {
+            Intent startSvc = new Intent("io.github.jqssun.airplay.START_SERVER")
+                    .setClassName(pkg, pkg + ".service.AirPlayService");
+            if (Build.VERSION.SDK_INT >= 26) app.startForegroundService(startSvc);
+            else app.startService(startSvc);
+        } catch (Throwable ignored) {}
+        if (!LocalAdb.isAvailable()) return;
+        new Thread(() -> {
+            String setupCmd = "cmd deviceidle whitelist +" + pkg + " 2>/dev/null; "
+                    + "dumpsys deviceidle whitelist +" + pkg + " 2>/dev/null; "
+                    + "appops set " + pkg + " RUN_IN_BACKGROUND allow 2>/dev/null; "
+                    + "appops set " + pkg + " RUN_ANY_IN_BACKGROUND allow 2>/dev/null; ";
+            if ("io.github.jqssun.airplay".equals(pkg) || "com.github.jqssun.airplay".equals(pkg)) {
+                setupCmd += "am broadcast -a io.github.jqssun.airplay.SET_SETTING -n " + pkg + "/.SettingsReceiver --es key run_in_background --es value true 2>/dev/null; "
+                        + "am broadcast -a io.github.jqssun.airplay.SET_SETTING -n " + pkg + "/.SettingsReceiver --es key boot_auto_start --es value true 2>/dev/null; "
+                        + "am broadcast -a io.github.jqssun.airplay.SET_SETTING -n " + pkg + "/.SettingsReceiver --es key auto_start --es value true 2>/dev/null; "
+                        + "am broadcast -a android.intent.action.QUICKBOOT_POWERON -n " + pkg + "/.BootReceiver 2>/dev/null; "
+                        + "am broadcast -a android.intent.action.BOOT_COMPLETED -n " + pkg + "/.BootReceiver 2>/dev/null; ";
+            }
+            setupCmd += "am start-foreground-service --user 0 -a io.github.jqssun.airplay.START_SERVER -n " + pkg + "/.service.AirPlayService 2>/dev/null || "
+                    + "am startservice --user 0 -n " + pkg + "/.service.AirPlayService 2>/dev/null";
+            LocalAdb.shell(app, setupCmd, 3000);
+        }, "cinetv-airplay-keepalive").start();
     }
 
     /**

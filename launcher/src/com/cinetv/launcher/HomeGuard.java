@@ -226,13 +226,14 @@ public final class HomeGuard {
      */
     public static void ensureDefaultHome(Context ctx) {
         final Context app = ctx.getApplicationContext();
-        if (takingOver) return;
+        if (takingOver || com.cinetv.launcher.device.Uninstaller.isRemoving(app)) return;
         takingOver = true;
         new Thread(() -> {
             try {
-                if (!isDefault(app)) {
+                if (!isDefault(app) || !com.cinetv.launcher.device.HomeLaunchers.others(app).isEmpty()) {
                     String pkg = app.getPackageName();
                     com.cinetv.launcher.remote.LocalAdb.shell(app, homeCommands(pkg), 4000);
+                    com.cinetv.launcher.device.HomeLaunchers.disableOthers(app);
                 }
                 takeOverOnce(app);
             } finally {
@@ -241,12 +242,17 @@ public final class HomeGuard {
         }, "cinetv-home-takeover").start();
     }
 
-    /** The other launchers off, once, when CineTV is Home (never again after the viewer brought them back). */
+    /** The other launchers off, when CineTV is Home. */
     private static void takeOverOnce(Context app) {
         android.content.SharedPreferences p = Prefs.get(app);
+        if (!com.cinetv.launcher.device.HomeLaunchers.others(app).isEmpty()) {
+            if (com.cinetv.launcher.device.HomeLaunchers.disableOthers(app) >= 0) {
+                p.edit().putBoolean(TAKEOVER_DONE, true).apply();
+            }
+            return;
+        }
         if (p.getBoolean(TAKEOVER_DONE, false) || !isDefault(app)) return;
-        if (com.cinetv.launcher.device.HomeLaunchers.others(app).isEmpty()
-                || com.cinetv.launcher.device.HomeLaunchers.disableOthers(app) >= 0) {
+        if (com.cinetv.launcher.device.HomeLaunchers.disableOthers(app) >= 0) {
             p.edit().putBoolean(TAKEOVER_DONE, true).apply();
         }
     }
@@ -268,6 +274,7 @@ public final class HomeGuard {
 
     private static String homeCommands(String pkg) {
         return assistantCommands(pkg)
+                + "cmd role add-role-holder --user 0 --flags 1 android.app.role.HOME " + pkg + " 2>/dev/null; "
                 + "cmd role add-role-holder --user 0 android.app.role.HOME " + pkg + " 2>/dev/null; "
                 + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity 2>/dev/null; "
                 + "cmd package set-home-activity --user current " + pkg + "/.MainActivity 2>/dev/null; "

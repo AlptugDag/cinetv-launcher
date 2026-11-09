@@ -1,9 +1,9 @@
-// CineTV Service Worker v1.0.0.53
+// CineTV Service Worker v1.0.0.54
 // Implements resilient caching for movie posters (Cache-First + Stale-While-Revalidate + Mirror Fallback)
 // and movie metadata/catalog endpoints (Network-First with fast timeout + Stale-While-Revalidate + Catalog Synthesis)
 // so the CineTV launcher and companion remote remain functional and responsive on unstable connections.
 
-const SW_VERSION = "1.0.0.53";
+const SW_VERSION = "1.0.0.54";
 const SHELL_CACHE = `cinetv-shell-v${SW_VERSION}`;
 const METADATA_CACHE = `cinetv-metadata-v${SW_VERSION}`;
 const POSTER_CACHE = `cinetv-posters-v${SW_VERSION}`;
@@ -40,15 +40,12 @@ const LIVE_BYPASS_PATHS = [
   "/api/pair/",
   "/api/party/",
   "/api/files/upload",
+  "/api/files/upload64",
   "/api/files/delete",
   "/api/files/rename",
   "/api/files/mkdir",
   "/api/wallpaper",
-  "/api/apk/install",
-  "/api/shazam/recognize",
-  "/api/shazam/listen",
-  "/api/shazam/delete",
-  "/api/shazam/clear"
+  "/api/apk/install"
 ];
 
 const METADATA_PATH_PREFIXES = [
@@ -59,9 +56,7 @@ const METADATA_PATH_PREFIXES = [
   "/api/catalog/person",
   "/api/watchlist",
   "/api/info",
-  "/api/hello",
-  "/api/shazam/list",
-  "/api/shazam/history"
+  "/api/hello"
 ];
 
 function classifyRequest(request) {

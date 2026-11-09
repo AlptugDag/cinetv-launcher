@@ -33,7 +33,7 @@ public final class NuvioSetup {
     private static final String TAG = "CineTvNuvio";
     private static final String DONE = "nuvio_setup_done";
     private static final String PLAYER_DONE = "player_setup_done";
-    private static final String SYNC_KEY = "nuvio_sync_v1_0_0_9b";
+    private static final String SYNC_KEY = "nuvio_sync_v1_0_0_10";
 
     public static final String[] CURATED_ADDONS = {
             "tr-altyazi.altyazi.workers.dev/manifest.json",
@@ -142,8 +142,8 @@ public final class NuvioSetup {
         prefs.put("hdmi_earc", av.earc);
         prefs.put("supported_audio_encodings", new JSONArray(av.encodings));
         prefs.put("stream_buffer_size_mb", bufferMb);
-        prefs.put("network_read_timeout_ms", (net != null && net.jitterMs > 40) ? 18000 : 12000);
-        prefs.put("parallel_chunk_connections", (net != null && net.downloadMbps >= 50) ? 6 : 4);
+        prefs.put("network_read_timeout_ms", (net != null && net.jitterMs > 40) ? 22000 : 18000);
+        prefs.put("parallel_chunk_connections", (net != null && net.downloadMbps >= 50) ? 8 : 6);
         if (profile != null && profile.torrentioConfig != null) {
             prefs.put("stream_profile_id", profile.torrentioConfig);
         }
@@ -168,37 +168,6 @@ public final class NuvioSetup {
             File prefFile = new File(dl, "nuvio-preferences.json");
             JSONObject prefs = writeCalibratedNuvioPrefs(app, prefFile, av, net, profile);
 
-            int bufMb = prefs.optInt("stream_buffer_size_mb", 64);
-            String maxRes = prefs.optString("max_resolution", "1080p");
-            long maxBitrate = prefs.optLong("max_bitrate_mbps", 25L);
-            boolean passthrough = prefs.optBoolean("digital_audio_passthrough", false);
-            boolean dv = prefs.optBoolean("dolby_vision_enabled", false);
-            boolean hdr = prefs.optBoolean("hdr10_enabled", false) || prefs.optBoolean("hdr10_plus_enabled", false) || dv;
-
-            String xmlContent = "<?xml version='1.0' encoding='utf-8' standalone='yes' ?>\n<map>\n"
-                    + "    <boolean name=\"hardware_accelerated_decoding\" value=\"true\" />\n"
-                    + "    <boolean name=\"hw_decoding\" value=\"true\" />\n"
-                    + "    <boolean name=\"tunneled_video_playback\" value=\"false\" />\n"
-                    + "    <boolean name=\"exo_tunneled_playback\" value=\"false\" />\n"
-                    + "    <boolean name=\"preview_autoplay\" value=\"false\" />\n"
-                    + "    <boolean name=\"dolby_vision_enabled\" value=\"" + dv + "\" />\n"
-                    + "    <boolean name=\"hdr_enabled\" value=\"" + hdr + "\" />\n"
-                    + "    <boolean name=\"digital_audio_passthrough\" value=\"" + passthrough + "\" />\n"
-                    + "    <boolean name=\"audio_passthrough\" value=\"" + passthrough + "\" />\n"
-                    + "    <string name=\"match_frame_rate\">seamless</string>\n"
-                    + "    <string name=\"max_resolution\">" + maxRes + "</string>\n"
-                    + "    <int name=\"stream_buffer_size_mb\" value=\"" + bufMb + "\" />\n"
-                    + "    <long name=\"max_bitrate_mbps\" value=\"" + maxBitrate + "\" />\n"
-                    + "    <string name=\"preferred_audio_language\">tr</string>\n"
-                    + "    <string name=\"preferred_subtitle_language\">tr</string>\n"
-                    + "</map>\n";
-
-            File tmpXml = new File(dl, ".nuvio_calibrated_prefs.xml");
-            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(tmpXml)) {
-                fos.write(xmlContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            }
-
-            StringBuilder sh = new StringBuilder();
             java.util.List<String> pkgs = AppLauncher.installedNuvioPackages(app);
             if (pkgs.isEmpty()) pkgs = java.util.Arrays.asList("com.nuvio.tv", "com.nuvio.app");
             byte[] prefBytes = prefs.toString(2).getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -209,33 +178,7 @@ public final class NuvioSetup {
                     try (java.io.FileOutputStream fos = new java.io.FileOutputStream(new File(extDir, "nuvio-preferences.json"))) {
                         fos.write(prefBytes);
                     }
-                    File extCache = new File("/sdcard/Android/data/" + pkg + "/cache/image_cache");
-                    if (extCache.exists() && extCache.isDirectory()) {
-                        File[] cachedFiles = extCache.listFiles();
-                        if (cachedFiles != null) {
-                            for (File cf : cachedFiles) cf.delete();
-                        }
-                    }
                 } catch (Throwable ignored) {}
-                sh.append("mkdir -p '/sdcard/Android/data/").append(pkg).append("/files' 2>/dev/null; ");
-                sh.append("cp '/sdcard/Download/nuvio-preferences.json' '/sdcard/Android/data/").append(pkg).append("/files/nuvio-preferences.json' 2>/dev/null; ");
-                sh.append("rm -rf '/sdcard/Android/data/").append(pkg).append("/cache/image_cache' '/data/data/").append(pkg).append("/cache/exo' 2>/dev/null; ");
-                sh.append("if [ -d '/data/data/").append(pkg).append("' ]; then ");
-                sh.append("mkdir -p '/data/data/").append(pkg).append("/shared_prefs' '/data/data/").append(pkg).append("/files' 2>/dev/null; ");
-                sh.append("cp '/sdcard/Download/nuvio-preferences.json' '/data/data/").append(pkg).append("/files/nuvio-preferences.json' 2>/dev/null; ");
-                sh.append("cp '/sdcard/Download/.nuvio_calibrated_prefs.xml' '/data/data/").append(pkg).append("/shared_prefs/").append(pkg).append("_preferences.xml' 2>/dev/null; ");
-                sh.append("cp '/sdcard/Download/.nuvio_calibrated_prefs.xml' '/data/data/").append(pkg).append("/shared_prefs/nuvio_preferences.xml' 2>/dev/null; ");
-                sh.append("chmod 660 '/data/data/").append(pkg).append("/shared_prefs/'*.xml 2>/dev/null; ");
-                sh.append("fi; ");
-            }
-            sh.append("rm -f '/sdcard/Download/.nuvio_calibrated_prefs.xml' 2>/dev/null");
-            if (LocalAdb.isAvailable()) {
-                LocalAdb.shell(app, sh.toString(), 4000);
-            }
-            tmpXml.delete();
-
-            if (profile != null) {
-                addAddon(app, profile.manifestPath());
             }
             return true;
         } catch (Throwable t) {
@@ -530,15 +473,45 @@ public final class NuvioSetup {
                         if (mdbKey != null && !mdbKey.isEmpty() && apiKeys.optString("mdblist").isEmpty()) apiKeys.put("mdblist", mdbKey);
                     }
                     // TVDB needs its own key: without one, series pages come back without cast, artwork or the IMDb id
-                    // the stream addons look titles up by. TMDB (with CineTV's key) answers series too.
+                    // the stream addons look titles up by. TMDB answers series too without stalling.
+                    if ("tvdb".equals(cfg.optString("series_metadata_source"))) {
+                        cfg.put("series_metadata_source", "tmdb");
+                    }
                     JSONObject providers = cfg.optJSONObject("providers");
                     JSONObject anyKeys = apiKeys != null ? apiKeys : keys;
                     boolean hasTvdb = anyKeys != null && !anyKeys.optString("tvdb").isEmpty();
-                    boolean hasTmdb = anyKeys != null && !anyKeys.optString("tmdb").isEmpty();
-                    if (providers != null && !hasTvdb && hasTmdb) {
-                        for (String k : new String[]{"series", "anime"}) {
-                            if ("tvdb".equals(providers.optString(k))) providers.put(k, "tmdb");
+                    if (providers != null && !hasTvdb) {
+                        if ("tvdb".equals(providers.optString("series"))) providers.put("series", "tmdb");
+                        if ("tvdb".equals(providers.optString("anime"))) providers.put("anime", "mal");
+                    }
+                    JSONObject search = cfg.optJSONObject("search");
+                    if (search != null && !hasTvdb) {
+                        JSONObject sp = search.optJSONObject("providers");
+                        if (sp != null && "tvdb.search".equals(sp.optString("series"))) {
+                            sp.put("series", "tmdb.search");
                         }
+                        JSONObject eng = search.optJSONObject("engineEnabled");
+                        if (eng != null) {
+                            eng.put("tvdb.search", false);
+                            eng.put("tvdb.collections.search", false);
+                        }
+                    }
+                    boolean hasPosterKey = anyKeys != null && (!anyKeys.optString("rpdb").isEmpty()
+                            || !anyKeys.optString("topPoster").isEmpty()
+                            || !anyKeys.optString("fanart").isEmpty()
+                            || !anyKeys.optString("mdblist").isEmpty());
+                    JSONObject posterProviders = cfg.optJSONObject("poster_providers");
+                    if (posterProviders != null && !hasPosterKey && (mdbKey == null || mdbKey.isEmpty())) {
+                        posterProviders.put("order", new JSONArray());
+                        posterProviders.put("rated", false);
+                    }
+                    JSONObject streamBridge = cfg.optJSONObject("stream_bridge");
+                    if (streamBridge != null && streamBridge.optInt("timeout_ms", 0) < 15000) {
+                        streamBridge.put("timeout_ms", 15000);
+                    }
+                    JSONObject subBridge = cfg.optJSONObject("subtitle_bridge");
+                    if (subBridge != null && subBridge.optInt("timeout_ms", 0) < 12000) {
+                        subBridge.put("timeout_ms", 12000);
                     }
                     raw = json.toString(2);
                 }

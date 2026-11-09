@@ -8,7 +8,7 @@
     "timezone": "",
     "release_delay_hours": 0,
     "cast_limit": 15,
-    "series_metadata_source": "tvdb",
+    "series_metadata_source": "tmdb",
     "anime_metadata_source": "kitsu",
     "anime_episode_numbering": "absolute",
     "anime_stream_id_source": "imdb",
@@ -20,17 +20,7 @@
       "tmdb": ""
     },
     "poster_providers": {
-      "order": [
-        "rpdb",
-        "top_posters",
-        "better_posters",
-        "fanart",
-        "omdb",
-        "easy_ratings",
-        "xrdb",
-        "posters_plus",
-        "custom_url"
-      ],
+      "order": [],
       "rated": false,
       "watch_overlay": false,
       "episode_thumbnails": true,
@@ -164,7 +154,7 @@
         "credentials": ""
       },
       "merge_strategy": "concat",
-      "timeout_ms": 5000,
+      "timeout_ms": 15000,
       "preferences": {
         "max_results": 20,
         "cached_only": false,
@@ -236,7 +226,7 @@
       "enabled": false,
       "addons": [],
       "auto_sources": [],
-      "timeout_ms": 5000,
+      "timeout_ms": 12000,
       "preferences": {
         "languages": [
           "English"

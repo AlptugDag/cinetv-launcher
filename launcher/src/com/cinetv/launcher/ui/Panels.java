@@ -2183,7 +2183,6 @@ public final class Panels {
                 {HardwareKeys.SIMILAR_MOVIES, tr ? "Gamze AI (Yapay Zekâ Sinema Asistanı & Arama)" : "Gamze AI (Cinema Assistant & Voice)"},
                 {HardwareKeys.NUVIO, tr ? "Nuvio (Film & Dizi İzle)" : "Nuvio (Movies & TV)"},
                 {HardwareKeys.YOUTUBE, tr ? "YouTube (Reklamsız Akış)" : "YouTube (Ad-free)"},
-                {HardwareKeys.SHAZAM, tr ? "Shazam (Çalan Müziği Tanı)" : "Shazam (Identify Music)"},
                 {HardwareKeys.ROULETTE, tr ? "Film Öneri Ruleti (Çarkı Çevir)" : "Movie Roulette"},
                 {HardwareKeys.CLEAN_RAM, tr ? "RAM Temizle & TV'yi Hızlandır" : "Optimize Memory & RAM"},
                 {HardwareKeys.NIGHT_MODE, tr ? "Gece İzleme Modu (Aç / Kapat)" : "Toggle Night Viewing Mode"},

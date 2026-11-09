@@ -80,18 +80,6 @@ public final class TvWebRemoteServer {
 
     private static volatile PairRequest pending;
     private static String aboutBio, aboutPhoto;
-    private static volatile JSONObject latestTrack;
-
-    public static void notifyTrackIdentified(String title, String artist, String artworkUrl) {
-        try {
-            JSONObject t = new JSONObject();
-            t.put("title", title == null ? "" : title);
-            t.put("artist", artist == null ? "" : artist);
-            t.put("artwork", artworkUrl == null ? "" : artworkUrl);
-            t.put("at", System.currentTimeMillis());
-            latestTrack = t;
-        } catch (Throwable ignored) {}
-    }
 
     private static final String TAG = "CineTvRemote";
     private static final int[] PORTS = {8080, 8081, 8765};
@@ -389,14 +377,17 @@ public final class TvWebRemoteServer {
                 return;
             }
             if ("POST".equals(method) && "/api/wallpaper".equals(path)) {
+                sock.setSoTimeout(60_000);
                 json(out, saveWallpaper(in, length));
                 return;
             }
             if ("POST".equals(method) && "/api/files/upload".equals(path)) {
-                json(out, saveUploadedFile(in, length, q.get("dir"), q.get("name"), "1".equals(q.get("install"))));
+                sock.setSoTimeout(180_000);
+                json(out, saveUploadedFile(in, length, q.get("dir"), q.get("name"), "1".equals(q.get("install")), "1".equals(q.get("append"))));
                 return;
             }
             if ("GET".equals(method) && "/api/files/download".equals(path)) {
+                sock.setSoTimeout(120_000);
                 serveTvFileDownload(out, q.get("path"), "1".equals(q.get("inline")));
                 return;
             }
@@ -439,7 +430,7 @@ public final class TvWebRemoteServer {
         }
         if ("/api/files/upload64".equals(path)) {
             byte[] body = android.util.Base64.decode(q.get("data") == null ? "" : q.get("data"), android.util.Base64.DEFAULT);
-            return saveUploadedFile(new java.io.ByteArrayInputStream(body), body.length, q.get("dir"), q.get("name"), "1".equals(q.get("install")));
+            return saveUploadedFile(new java.io.ByteArrayInputStream(body), body.length, q.get("dir"), q.get("name"), "1".equals(q.get("install")), "1".equals(q.get("append")));
         }
         return api(path, q);
     }
@@ -673,8 +664,7 @@ public final class TvWebRemoteServer {
         switch (path) {
             case "/api/status":
                 return ok.put("inputFocused", TvKeyInterceptorService.isInputFocused() || com.cinetv.launcher.MainActivity.isTvInputActive())
-                        .put("shot", ScreenShot.id())
-                        .put("track", latestTrack);
+                        .put("shot", ScreenShot.id());
             case "/api/shot": {
                 // the latest screenshot, inline so it also reaches a phone on the relay
                 byte[] jpg = ScreenShot.latest();
@@ -702,28 +692,6 @@ public final class TvWebRemoteServer {
                 return ok.put("screenshots", shots)
                         .put("items", shots)
                         .put("dir", ScreenShot.screenshotsDir().getAbsolutePath());
-            }
-            case "/api/shazam/list": {
-                return ok.put("tracks", com.cinetv.launcher.ai.ShazamRecognizer.getHistoryJson(app))
-                        .put("recognizing", com.cinetv.launcher.ai.ShazamRecognizer.isBusy())
-                        .put("latest", latestTrack);
-            }
-            case "/api/shazam/recognize": {
-                post(() -> com.cinetv.launcher.ai.ShazamRecognizer.recognize(app));
-                return ok.put("started", true);
-            }
-            case "/api/shazam/delete": {
-                long at = 0L;
-                try {
-                    String rawAt = q.get("at");
-                    if (rawAt != null && !rawAt.isEmpty()) at = Long.parseLong(rawAt.trim());
-                } catch (Throwable ignored) {}
-                com.cinetv.launcher.ai.ShazamRecognizer.removeHistoryItem(app, at, q.get("title"));
-                return ok.put("tracks", com.cinetv.launcher.ai.ShazamRecognizer.getHistoryJson(app));
-            }
-            case "/api/shazam/clear": {
-                com.cinetv.launcher.ai.ShazamRecognizer.clearHistory(app);
-                return ok.put("tracks", new JSONArray());
             }
             case "/api/files/list": {
                 return listTvDirectory(q.get("dir"));
@@ -1651,28 +1619,77 @@ public final class TvWebRemoteServer {
         main.post(r);
     }
 
-    // ---- TV File Manager & Screenshots Helpers (/sdcard) ------------------------------------------
+    // ---- TV File Manager & Screenshots Helpers (/sdcard & ADB-free App Storage) -------------------
+
+    private static java.io.File appFallbackStorageRoot() {
+        if (app != null) {
+            java.io.File extFiles = app.getExternalFilesDir(null);
+            if (extFiles != null) {
+                if (!extFiles.exists()) extFiles.mkdirs();
+                return extFiles;
+            }
+            java.io.File intFiles = app.getFilesDir();
+            if (intFiles != null) {
+                if (!intFiles.exists()) intFiles.mkdirs();
+                return intFiles;
+            }
+        }
+        return new java.io.File("/sdcard");
+    }
 
     private static java.io.File safeSdcardRoot() {
-        java.io.File ext = android.os.Environment.getExternalStorageDirectory();
-        if (ext != null && ext.exists()) return ext;
-        return new java.io.File("/sdcard");
+        try {
+            java.io.File ext = android.os.Environment.getExternalStorageDirectory();
+            if (ext != null && ext.exists() && ext.listFiles() != null) {
+                return ext;
+            }
+            java.io.File sd = new java.io.File("/sdcard");
+            if (sd.exists() && sd.listFiles() != null) {
+                return sd;
+            }
+        } catch (Throwable ignored) {}
+        return appFallbackStorageRoot();
+    }
+
+    private static java.io.File writableDownloadDir() {
+        try {
+            java.io.File sdDl = new java.io.File(safeSdcardRoot(), "Download");
+            if (!sdDl.exists()) sdDl.mkdirs();
+            if (sdDl.exists() && sdDl.canWrite()) {
+                java.io.File probe = new java.io.File(sdDl, ".cinetv_probe");
+                if (probe.createNewFile() || probe.exists()) {
+                    probe.delete();
+                    return sdDl;
+                }
+            }
+        } catch (Throwable ignored) {}
+        java.io.File fallbackDl = new java.io.File(appFallbackStorageRoot(), "Download");
+        if (!fallbackDl.exists()) fallbackDl.mkdirs();
+        return fallbackDl;
     }
 
     private static java.io.File resolveSafeTvPath(String rawPath) {
         try {
             java.io.File root = safeSdcardRoot().getCanonicalFile();
+            java.io.File appRoot = appFallbackStorageRoot().getCanonicalFile();
             if (rawPath == null || rawPath.trim().isEmpty() || "/sdcard".equals(rawPath.trim())) {
                 return root;
             }
             String p = rawPath.trim();
+            if ("/sdcard/Download".equals(p)) {
+                java.io.File sdDl = new java.io.File(root, "Download");
+                if (sdDl.exists() && sdDl.listFiles() != null) return sdDl.getCanonicalFile();
+                return writableDownloadDir().getCanonicalFile();
+            }
             if (p.startsWith("/sdcard/")) {
                 p = new java.io.File(root, p.substring("/sdcard/".length())).getAbsolutePath();
             }
             java.io.File target = new java.io.File(p).getCanonicalFile();
             String rootPath = root.getPath();
+            String appRootPath = appRoot.getPath();
             String targetPath = target.getPath();
             if (targetPath.equals(rootPath) || targetPath.startsWith(rootPath + java.io.File.separator)
+                    || targetPath.equals(appRootPath) || targetPath.startsWith(appRootPath + java.io.File.separator)
                     || targetPath.startsWith("/storage/emulated/0") || targetPath.startsWith("/sdcard")) {
                 return target;
             }
@@ -1685,18 +1702,36 @@ public final class TvWebRemoteServer {
         try {
             java.io.File root = safeSdcardRoot().getCanonicalFile();
             java.io.File dir = resolveSafeTvPath(rawDir);
-            if (dir == null || !dir.exists() || !dir.isDirectory()) {
-                dir = root;
+            if (dir == null || !dir.exists() || !dir.isDirectory() || dir.listFiles() == null) {
+                if ("/sdcard/Download".equals(rawDir)) {
+                    dir = writableDownloadDir().getCanonicalFile();
+                } else {
+                    dir = root;
+                }
             }
-            // Ensure CineTV_Screenshots and Download exist for convenience
             ScreenShot.screenshotsDir();
-            java.io.File dl = new java.io.File(root, "Download");
-            if (!dl.exists()) dl.mkdirs();
+            writableDownloadDir();
 
             java.io.File[] children = dir.listFiles();
             List<java.io.File> list = new ArrayList<>();
+            java.util.Set<String> seenNames = new java.util.HashSet<>();
             if (children != null) {
-                Collections.addAll(list, children);
+                for (java.io.File c : children) {
+                    list.add(c);
+                    seenNames.add(c.getName());
+                }
+            }
+            // If listing Download on /sdcard, also merge files stored in app-specific Download fallback so ADB-free uploads always appear
+            if ("Download".equalsIgnoreCase(dir.getName())) {
+                java.io.File appDl = new java.io.File(appFallbackStorageRoot(), "Download");
+                if (appDl.exists() && !appDl.getCanonicalPath().equals(dir.getCanonicalPath())) {
+                    java.io.File[] extra = appDl.listFiles();
+                    if (extra != null) {
+                        for (java.io.File ef : extra) {
+                            if (seenNames.add(ef.getName())) list.add(ef);
+                        }
+                    }
+                }
             }
             list.sort((a, b) -> {
                 if (a.isDirectory() != b.isDirectory()) return a.isDirectory() ? -1 : 1;
@@ -1796,6 +1831,10 @@ public final class TvWebRemoteServer {
             }
             java.io.File target = new java.io.File(dir, cleanName);
             boolean ok = target.exists() || target.mkdirs();
+            if (!ok) {
+                target = new java.io.File(writableDownloadDir(), cleanName);
+                ok = target.exists() || target.mkdirs();
+            }
             return res.put("ok", ok).put("path", target.getAbsolutePath());
         } catch (Throwable t) {
             try { return res.put("ok", false).put("error", t.getMessage()); } catch (Throwable ignored) { return res; }
@@ -1812,7 +1851,7 @@ public final class TvWebRemoteServer {
             final String path = target.getAbsolutePath();
             final String low = target.getName().toLowerCase(Locale.ROOT);
             if (low.endsWith(".apk")) {
-                return installApkFile(rawPath);
+                return installApkFile(target.getAbsolutePath());
             }
             post(() -> {
                 try {
@@ -1846,6 +1885,7 @@ public final class TvWebRemoteServer {
             }
             final String path = target.getAbsolutePath();
             final String escaped = path.replace("'", "'\\''");
+            com.cinetv.launcher.service.AppUpdater.markSilentInstallPending(app);
             new Thread(() -> {
                 boolean ok = false;
                 if (LocalAdb.isAvailable()) {
@@ -1868,46 +1908,73 @@ public final class TvWebRemoteServer {
         }
     }
 
-    /** Launches Android's built-in Package Installer activity directly on the TV without needing ADB. */
+    /**
+     * Launches Android's built-in Package Installer activity directly on the TV without needing ADB,
+     * staging the APK through UpdateApkProvider (content://<pkg>.updates/...) on Android 7.0+ so
+     * PackageInstaller receives read permission without file:// URI errors.
+     */
     public static void launchNativeApkInstaller(java.io.File apkFile) {
-        if (apkFile == null || !apkFile.exists()) return;
+        if (apkFile == null || !apkFile.exists() || app == null) return;
         try {
+            com.cinetv.launcher.service.AppUpdater.markSilentInstallPending(app);
             android.os.StrictMode.setVmPolicy(new android.os.StrictMode.VmPolicy.Builder().build());
-            Intent install = new Intent(Intent.ACTION_VIEW);
-            install.setDataAndType(android.net.Uri.fromFile(apkFile), "application/vnd.android.package-archive");
+            android.net.Uri apkUri = (android.os.Build.VERSION.SDK_INT >= 24)
+                    ? com.cinetv.launcher.service.UpdateApkProvider.stageApkForInstall(app, apkFile)
+                    : android.net.Uri.fromFile(apkFile);
+            if (apkUri == null) apkUri = android.net.Uri.fromFile(apkFile);
+
+            Intent install = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+            install.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            install.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+            install.putExtra(Intent.EXTRA_RETURN_RESULT, false);
             install.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            app.startActivity(install);
+            if (install.resolveActivity(app.getPackageManager()) != null) {
+                app.startActivity(install);
+                return;
+            }
+            Intent view = new Intent(Intent.ACTION_VIEW);
+            view.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            view.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            app.startActivity(view);
         } catch (Throwable t) {
             try {
-                Intent fallback = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-                fallback.setData(android.net.Uri.fromFile(apkFile));
-                fallback.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+                Intent fallback = new Intent(Intent.ACTION_VIEW);
+                fallback.setDataAndType(android.net.Uri.fromFile(apkFile), "application/vnd.android.package-archive");
                 fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 app.startActivity(fallback);
             } catch (Throwable ignored) {}
         }
     }
 
-    private static JSONObject saveUploadedFile(InputStream in, int length, String rawDir, String rawName, boolean autoInstall) throws Exception {
-        if (length <= 0 || length > 256 * 1024 * 1024) return new JSONObject().put("ok", false).put("error", "size");
+    private static JSONObject saveUploadedFile(InputStream in, int length, String rawDir, String rawName, boolean autoInstall, boolean append) throws Exception {
+        if (length <= 0 || length > 512 * 1024 * 1024) return new JSONObject().put("ok", false).put("error", "size");
         java.io.File dir = resolveSafeTvPath(rawDir);
         if (dir == null || !dir.isDirectory()) {
-            dir = new java.io.File(safeSdcardRoot(), "Download");
-            if (!dir.exists()) dir.mkdirs();
+            dir = writableDownloadDir();
         }
         String cleanName = (rawName == null || rawName.trim().isEmpty())
                 ? ("upload_" + System.currentTimeMillis() + ".bin")
                 : rawName.trim().replaceAll("[/\\\\:*?\"<>|]", "_");
         java.io.File dest = new java.io.File(dir, cleanName);
-        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(dest)) {
-            byte[] buf = new byte[32768];
+        java.io.FileOutputStream fos = null;
+        try {
+            fos = new java.io.FileOutputStream(dest, append);
+        } catch (Throwable writeDenied) {
+            // Scoped Storage fallback when ADB is off and /sdcard is write-restricted
+            java.io.File fallbackDir = writableDownloadDir();
+            dest = new java.io.File(fallbackDir, cleanName);
+            fos = new java.io.FileOutputStream(dest, append);
+        }
+        try (java.io.FileOutputStream outStream = fos) {
+            byte[] buf = new byte[65536];
             int remaining = length;
             while (remaining > 0) {
                 int r = in.read(buf, 0, Math.min(buf.length, remaining));
                 if (r < 0) break;
-                fos.write(buf, 0, r);
+                outStream.write(buf, 0, r);
                 remaining -= r;
             }
+            outStream.getFD().sync();
         }
         JSONObject out = new JSONObject().put("ok", true).put("path", dest.getAbsolutePath()).put("name", dest.getName()).put("size", dest.length());
         if (autoInstall && dest.getName().toLowerCase(Locale.ROOT).endsWith(".apk")) {
@@ -1919,18 +1986,24 @@ public final class TvWebRemoteServer {
 
     private static void serveTvFileDownload(OutputStream out, String rawPath, boolean inline) throws Exception {
         java.io.File target = resolveSafeTvPath(rawPath);
-        if (target == null || !target.exists() || !target.isFile() || target.length() > 80 * 1024 * 1024L) {
+        if (target == null || !target.exists() || !target.isFile() || target.length() > 512 * 1024 * 1024L) {
             send(out, 404, "text/plain", "Not Found".getBytes(StandardCharsets.UTF_8));
             return;
         }
-        byte[] bytes = java.nio.file.Files.readAllBytes(target.toPath());
+        long fileLen = target.length();
         String contentType = mime(target.getName().toLowerCase(Locale.ROOT));
         String disp = (inline ? "inline" : "attachment") + "; filename=\"" + target.getName().replace("\"", "_") + "\"";
         String head = "HTTP/1.1 200 OK\r\nContent-Type: " + contentType + "\r\n"
                 + "Content-Disposition: " + disp + "\r\n"
-                + "Content-Length: " + bytes.length + "\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n";
+                + "Content-Length: " + fileLen + "\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n";
         out.write(head.getBytes(StandardCharsets.UTF_8));
-        out.write(bytes);
+        try (java.io.FileInputStream fis = new java.io.FileInputStream(target)) {
+            byte[] buf = new byte[65536];
+            int r;
+            while ((r = fis.read(buf)) > 0) {
+                out.write(buf, 0, r);
+            }
+        }
         out.flush();
     }
 }

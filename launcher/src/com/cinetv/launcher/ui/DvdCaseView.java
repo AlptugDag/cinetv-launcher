@@ -216,16 +216,16 @@ public class DvdCaseView extends View {
         persp = caseH * 2.2f;
         if (lift > 0.01f && dvd != null && dvd.bloom != null) {
             // Subtle 3D backlight parallax: halo shifts slightly opposite the box's 3D yaw/pitch tilt
-            float haloShiftX = -sa * caseW * scale * 0.10f;
-            float haloShiftY = -sb * caseH * scale * 0.10f;
+            float haloShiftX = -sa * caseW * scale * 0.08f;
+            float haloShiftY = -sb * caseH * scale * 0.08f;
             if (dvd.halo) {
-                // A lamp behind the box: wide, soft, a little low, breathing slightly with the 3D angle.
-                fxPaint.setAlpha((int) (235 * lift));
-                float bw = caseW * scale * 2.3f, bh = caseH * scale * 1.6f;
-                float bx = cx + haloShiftX, by = cy + caseH * scale * 0.08f + haloShiftY;
+                // A soft lamp behind the box: gentle ambient glow without overpowering glare.
+                fxPaint.setAlpha((int) (115 * lift));
+                float bw = caseW * scale * 1.85f, bh = caseH * scale * 1.35f;
+                float bx = cx + haloShiftX, by = cy + caseH * scale * 0.06f + haloShiftY;
                 rect.set(bx - bw / 2f, by - bh / 2f, bx + bw / 2f, by + bh / 2f);
             } else {
-                fxPaint.setAlpha((int) (255 * lift));
+                fxPaint.setAlpha((int) (135 * lift));
                 float bw = dvd.bloom.getWidth() * scale, bh = dvd.bloom.getHeight() * scale;
                 float bx = cx + haloShiftX, by = cy + haloShiftY;
                 rect.set(bx - bw / 2f, by - bh / 2f, bx + bw / 2f, by + bh / 2f);
@@ -398,26 +398,25 @@ public class DvdCaseView extends View {
             float smooth = phase <= 0.5f ? phase * 2f : (1f - phase) * 2f;
             int off = (int) (smooth * (wrap.getWidth() - win));
             mapTo(tex, 0, tex.getWidth());
-            // Dynamic theme-calibrated surface reflection & wrap gloss:
+            // Dynamic theme-calibrated surface reflection & wrap gloss (restrained so cover art remains crisp):
             String themeId = com.cinetv.launcher.service.ThemeManager.current(getContext()).id;
-            float themeWrapMul = "glass".equalsIgnoreCase(themeId) ? 1.35f :
-                                 "closet".equalsIgnoreCase(themeId) ? 0.68f :
-                                 "cinema".equalsIgnoreCase(themeId) || "redcarpet".equalsIgnoreCase(themeId) ? 1.10f :
-                                 "metal".equalsIgnoreCase(themeId) ? 1.22f :
-                                 "neon".equalsIgnoreCase(themeId) ? 1.28f : 1.0f;
-            float wrapStrength = (0.12f + 0.07f * lift + 0.15f * glint) * (0.5f + 0.5f * facing) * dim * themeWrapMul;
-            wrapPaint.setAlpha((int) (255 * Math.min(0.35f, wrapStrength)));
+            float themeWrapMul = "glass".equalsIgnoreCase(themeId) ? 1.15f :
+                                 "closet".equalsIgnoreCase(themeId) ? 0.65f :
+                                 "cinema".equalsIgnoreCase(themeId) || "redcarpet".equalsIgnoreCase(themeId) ? 0.95f :
+                                 "metal".equalsIgnoreCase(themeId) ? 1.05f :
+                                 "neon".equalsIgnoreCase(themeId) ? 1.10f : 0.90f;
+            float wrapStrength = (0.06f + 0.03f * lift + 0.05f * glint) * (0.5f + 0.5f * facing) * dim * themeWrapMul;
+            wrapPaint.setAlpha((int) (255 * Math.min(0.16f, wrapStrength)));
             sliceSrc.set(off, 0, off + win, wrap.getHeight());
             rect.set(0, 0, tex.getWidth(), tex.getHeight());
             canvas.save();
             canvas.concat(matrix);
             canvas.drawBitmap(wrap, sliceSrc, rect, wrapPaint);
 
-            // 3D-synchronized optical surface flare, window reflection streak, and spine bevel catchlight:
+            // Subtle 3D-synchronized satin sheen and spine bevel catchlight (no harsh center glare):
             if (lift > 0.05f) {
                 float tw = tex.getWidth(), th = tex.getHeight();
                 ensureSheenShaders(tw, th, themeId);
-                // Reflection locus moves horizontally with 3D yaw, vertically with 3D pitch (tilt), and tilts with roll:
                 float normX = Math.max(0.06f, Math.min(0.94f, 0.50f + yawDelta * 0.044f + (glint - 0.5f) * 0.24f));
                 float normY = Math.max(0.08f, Math.min(0.92f, 0.46f - tilt * 0.055f + roll * 0.025f));
                 float flareX = tw * normX;
@@ -425,7 +424,7 @@ public class DvdCaseView extends View {
                 float streakShiftY = (normY - 0.46f) * th * 0.85f;
                 float streakAngle = -roll * 2.5f + tilt * 0.85f;
 
-                int modAlpha = Math.max(0, Math.min(255, Math.round(255f * lift * dim)));
+                int modAlpha = Math.max(0, Math.min(110, Math.round(96f * lift * dim)));
                 sheenMatrix.setTranslate(flareX, streakShiftY);
                 sheenMatrix.postRotate(streakAngle, flareX, flareY);
 
@@ -439,17 +438,9 @@ public class DvdCaseView extends View {
                 sheenPaint.setAlpha(modAlpha);
                 canvas.drawRect(0, 0, tw, th, sheenPaint);
 
-                // Optical surface flare hotspot (radial specular bloom + subtle Mylar dispersion tracking 3D normal):
                 if (nz < -0.5f) {
                     float specAlign = 0.55f + 0.45f * (float) Math.cos(Math.toRadians(yawDelta * 5.0f - tilt * 4.0f));
-                    int flareAlpha = Math.max(0, Math.min(255, Math.round(modAlpha * (0.62f + 0.38f * specAlign))));
-                    flareMatrix.setTranslate(flareX, flareY);
-                    flareMatrix.preScale(1.0f, 1.15f);
-                    flareShader.setLocalMatrix(flareMatrix);
-                    sheenPaint.setShader(flareShader);
-                    sheenPaint.setAlpha(flareAlpha);
-                    canvas.drawRect(0, 0, tw, th, sheenPaint);
-
+                    int flareAlpha = Math.max(0, Math.min(110, Math.round(modAlpha * (0.50f + 0.30f * specAlign))));
                     // Rounded spine-hinge bevel catchlight gliding vertically with 3D pitch/roll:
                     flareMatrix.setTranslate(tw * 0.022f, flareY);
                     flareMatrix.preScale(0.18f, 0.85f);
@@ -459,14 +450,14 @@ public class DvdCaseView extends View {
                     canvas.drawRect(0, 0, tw * 0.065f, th, sheenPaint);
                 }
 
-                // Top & bottom edge gloss modulated by 3D pitch (tilt):
-                int topEdgeAlpha = Math.max(0, Math.min(255, Math.round(modAlpha * Math.max(0.35f, Math.min(1.35f, 0.85f - tilt * 0.08f)))));
+                // Subtle top edge gloss modulated by 3D pitch (tilt):
+                int topEdgeAlpha = Math.max(0, Math.min(110, Math.round(modAlpha * Math.max(0.25f, Math.min(0.90f, 0.65f - tilt * 0.06f)))));
                 sheenPaint.setShader(topGlossShader);
                 sheenPaint.setAlpha(topEdgeAlpha);
-                canvas.drawRect(0, 0, tw, th * 0.038f, sheenPaint);
+                canvas.drawRect(0, 0, tw, th * 0.032f, sheenPaint);
                 sheenPaint.setShader(null);
 
-                // Retail factory shrink-wrap (jelatin) seams, tear-strip, corner fold creases & tension wrinkles:
+                // Retail factory shrink-wrap (jelatin) seams, corner fold creases & tension wrinkles:
                 drawCellophaneWrap(canvas, tw, th, modAlpha, yawDelta, tilt, roll);
             }
             canvas.restore();
@@ -481,44 +472,26 @@ public class DvdCaseView extends View {
         float seamW = Math.max(1f, th * 0.0022f);
         celloSeamPaint.setStyle(Paint.Style.STROKE);
         celloSeamPaint.setStrokeWidth(seamW);
-        celloSeamPaint.setColor(Color.argb(Math.round(modAlpha * 0.45f), 255, 255, 255));
+        celloSeamPaint.setColor(Color.argb(Math.round(modAlpha * 0.32f), 255, 255, 255));
         float topSeamY = th * 0.016f;
         float btmSeamY = th * 0.984f;
         canvas.drawLine(tw * 0.05f, topSeamY, tw * 0.98f, topSeamY, celloSeamPaint);
         canvas.drawLine(tw * 0.05f, btmSeamY, tw * 0.98f, btmSeamY, celloSeamPaint);
 
         // Seam micro drop shadow underneath
-        celloSeamPaint.setColor(Color.argb(Math.round(modAlpha * 0.28f), 0, 0, 0));
+        celloSeamPaint.setColor(Color.argb(Math.round(modAlpha * 0.20f), 0, 0, 0));
         canvas.drawLine(tw * 0.05f, topSeamY + seamW, tw * 0.98f, topSeamY + seamW, celloSeamPaint);
         canvas.drawLine(tw * 0.05f, btmSeamY - seamW, tw * 0.98f, btmSeamY - seamW, celloSeamPaint);
 
-        // 2. Right opening edge factory heat-crimp weld with micro notches
-        celloSeamPaint.setColor(Color.argb(Math.round(modAlpha * 0.38f), 255, 255, 255));
+        // 2. Right opening edge factory heat-crimp weld
+        celloSeamPaint.setColor(Color.argb(Math.round(modAlpha * 0.28f), 255, 255, 255));
         float rightX = tw * 0.990f;
         canvas.drawLine(rightX, th * 0.04f, rightX, th * 0.96f, celloSeamPaint);
 
-        // 3. Cellophane tear-strip band with red pull-thread and tab
-        float tearY = th * 0.20f;
-        celloThreadPaint.setStyle(Paint.Style.STROKE);
-        celloThreadPaint.setStrokeWidth(Math.max(1.8f, th * 0.0035f));
-        celloThreadPaint.setColor(Color.argb(Math.round(modAlpha * 0.16f), 255, 255, 255));
-        canvas.drawLine(0, tearY, tw, tearY, celloThreadPaint);
-
-        // Crimson pull thread
-        celloThreadPaint.setStrokeWidth(Math.max(1.0f, th * 0.0018f));
-        celloThreadPaint.setColor(Color.argb(Math.round(modAlpha * 0.70f), 239, 68, 68));
-        canvas.drawLine(0, tearY, tw, tearY, celloThreadPaint);
-
-        // Red tear-tab at edge
-        celloThreadPaint.setStyle(Paint.Style.FILL);
-        float tabW = Math.max(4f, tw * 0.024f);
-        float tabH = Math.max(5f, th * 0.016f);
-        canvas.drawRect(tw - tabW, tearY - tabH / 2f, tw, tearY + tabH / 2f, celloThreadPaint);
-
-        // 4. Authentic triangular corner envelope folds (heat shrink creases)
+        // 3. Authentic triangular corner envelope folds (heat shrink creases)
         celloFoldPaint.setStyle(Paint.Style.STROKE);
         celloFoldPaint.setStrokeWidth(Math.max(1f, th * 0.0018f));
-        celloFoldPaint.setColor(Color.argb(Math.round(modAlpha * 0.32f), 255, 255, 255));
+        celloFoldPaint.setColor(Color.argb(Math.round(modAlpha * 0.24f), 255, 255, 255));
 
         // Top-right corner fold
         canvas.drawLine(tw * 0.86f, 0, tw, th * 0.085f, celloFoldPaint);
@@ -529,9 +502,9 @@ public class DvdCaseView extends View {
         // Bottom-left corner fold
         canvas.drawLine(tw * 0.03f, th, 0, th * 0.945f, celloFoldPaint);
 
-        // 5. Tension micro-wrinkles radiating inwards from corners
+        // 4. Tension micro-wrinkles radiating inwards from corners
         celloFoldPaint.setStrokeWidth(Math.max(0.8f, th * 0.0012f));
-        celloFoldPaint.setColor(Color.argb(Math.round(modAlpha * 0.18f), 255, 255, 255));
+        celloFoldPaint.setColor(Color.argb(Math.round(modAlpha * 0.14f), 255, 255, 255));
         canvas.drawLine(tw * 0.90f, th * 0.03f, tw * 0.96f, th * 0.065f, celloFoldPaint);
         canvas.drawLine(tw * 0.88f, th * 0.05f, tw * 0.94f, th * 0.09f, celloFoldPaint);
         canvas.drawLine(tw * 0.90f, th * 0.97f, tw * 0.96f, th * 0.935f, celloFoldPaint);

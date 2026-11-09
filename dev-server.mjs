@@ -131,41 +131,7 @@ let uploadedFiles = [
   { name: 'CineTV-Profile.json', path: '/sdcard/Download/CineTV-Profile.json', isDir: false, size: 4210, modified: Date.now() - 360000, ext: 'json' }
 ];
 
-let shazamItems = [
-  {
-    id: 'sz-1',
-    title: 'Yumeji\'s Theme',
-    artist: 'Shigeru Umebayashi',
-    album: 'In the Mood for Love OST',
-    artwork: 'https://image.tmdb.org/t/p/w500/iYypPT4bhqXfq1b6EnmxvRt6b2Y.jpg',
-    spotify: 'https://open.spotify.com/search/Yumeji%27s%20Theme%20Shigeru%20Umebayashi',
-    ytm: 'https://music.youtube.com/search?q=Yumeji%27s%20Theme%20Shigeru%20Umebayashi',
-    spotifyUrl: 'https://open.spotify.com/search/Yumeji%27s%20Theme%20Shigeru%20Umebayashi',
-    ytMusicUrl: 'https://music.youtube.com/search?q=Yumeji%27s%20Theme%20Shigeru%20Umebayashi',
-    at: Date.now() - 600000
-  }
-];
-let shazamRecognizing = false;
-const SHAZAM_POOL = [
-  {
-    title: 'The Beast',
-    artist: 'Jóhann Jóhannsson',
-    album: 'Sicario (Original Motion Picture Soundtrack)',
-    artwork: 'https://image.tmdb.org/t/p/w500/tw0lX297t5P52n01M5bO1G9P1c9.jpg'
-  },
-  {
-    title: 'The Last Waltz',
-    artist: 'Cho Young-wuk',
-    album: 'Oldboy Original Soundtrack',
-    artwork: 'https://image.tmdb.org/t/p/w500/pWDtjs568ZfOTMbURQBYuT4Qxka.jpg'
-  },
-  {
-    title: 'Finale (William Tell Overture)',
-    artist: 'Gioachino Rossini',
-    album: 'A Clockwork Orange Soundtrack',
-    artwork: 'https://image.tmdb.org/t/p/w500/iYypPT4bhqXfq1b6EnmxvRt6b2Y.jpg'
-  }
-];
+let savedShots = [];
 
 function sendJson(res, obj, status = 200) {
   const body = JSON.stringify(obj);
@@ -211,9 +177,7 @@ const server = http.createServer((req, res) => {
         ok: true,
         sleep: 0,
         partyMode: partyState.mode,
-        partyV: partyState.v,
-        shazamListening: false,
-        latestTrack: shazamItems[0] || null
+        partyV: partyState.v
       });
     }
     if (urlPath === '/api/catalog/trending') {
@@ -310,52 +274,47 @@ const server = http.createServer((req, res) => {
       });
       return;
     }
+    if (urlPath === '/api/files/upload64') {
+      const name = (q.name || `upload_${Date.now()}.apk`).replace(/[/\\:*?"<>|]/g, '_');
+      const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+      const b64Len = (q.data || '').length;
+      const chunkBytes = Math.max(0, Math.floor((b64Len * 3) / 4));
+      const existing = uploadedFiles.find(f => f.name === name);
+      const size = q.append === '1' && existing ? existing.size + chunkBytes : (chunkBytes || 1024);
+      const item = {
+        name,
+        path: `/sdcard/Download/${name}`,
+        isDir: false,
+        size,
+        modified: Date.now(),
+        ext
+      };
+      uploadedFiles = [item, ...uploadedFiles.filter(f => f.name !== name)];
+      const installNow = q.install === '1' && ext === 'apk';
+      return sendJson(res, {
+        ok: true,
+        path: item.path,
+        name: item.name,
+        size: item.size,
+        installing: installNow
+      });
+    }
+    if (urlPath === '/api/files/delete') {
+      const targetPath = q.path || '';
+      uploadedFiles = uploadedFiles.filter(f => f.path !== targetPath && f.name !== targetPath);
+      return sendJson(res, { ok: true });
+    }
     if (urlPath === '/api/apk/install' || urlPath === '/api/files/open') {
       return sendJson(res, { ok: true, action: 'installing_apk', path: q.path || '' });
     }
-    if (urlPath === '/api/shazam/history' || urlPath === '/api/shazam/list') {
-      return sendJson(res, {
-        ok: true,
-        items: shazamItems,
-        tracks: shazamItems,
-        listening: shazamRecognizing,
-        recognizing: shazamRecognizing,
-        latest: shazamItems[0] || null
-      });
+    if (urlPath === '/api/shot/list') {
+      return sendJson(res, { ok: true, dir: '/sdcard/CineTV_Screenshots', items: savedShots });
     }
-    if (urlPath === '/api/shazam/listen' || urlPath === '/api/shazam/recognize') {
-      shazamRecognizing = true;
-      setTimeout(() => {
-        const pick = SHAZAM_POOL[shazamItems.length % SHAZAM_POOL.length];
-        const qEnc = encodeURIComponent(`${pick.title} ${pick.artist}`);
-        const now = Date.now();
-        const item = {
-          id: `sz-${now}`,
-          title: pick.title,
-          artist: pick.artist,
-          album: pick.album,
-          artwork: pick.artwork,
-          spotify: `https://open.spotify.com/search/${qEnc}`,
-          ytm: `https://music.youtube.com/search?q=${qEnc}`,
-          spotifyUrl: `https://open.spotify.com/search/${qEnc}`,
-          ytMusicUrl: `https://music.youtube.com/search?q=${qEnc}`,
-          at: now
-        };
-        shazamItems = [item, ...shazamItems.filter(x => x.title !== item.title)];
-        shazamRecognizing = false;
-      }, 1200);
-      return sendJson(res, { ok: true, started: true, listening: true, recognizing: true });
-    }
-    if (urlPath === '/api/shazam/delete') {
-      const at = Number(q.at || 0);
-      if (at > 0) {
-        shazamItems = shazamItems.filter(x => Number(x.at) !== at);
-      }
-      return sendJson(res, { ok: true, tracks: shazamItems });
-    }
-    if (urlPath === '/api/shazam/clear') {
-      shazamItems = [];
-      return sendJson(res, { ok: true, tracks: [] });
+    if (urlPath === '/api/shot/take') {
+      const name = `CineTV-${Date.now()}.jpg`;
+      const shotPath = `/sdcard/CineTV_Screenshots/${name}`;
+      savedShots = [{ name, path: shotPath, size: 42100, modified: Date.now() }, ...savedShots];
+      return sendJson(res, { ok: true, name, path: shotPath, jpg: '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=' });
     }
     if (urlPath === '/api/party/join') {
       const id = q.id || 'p1';
