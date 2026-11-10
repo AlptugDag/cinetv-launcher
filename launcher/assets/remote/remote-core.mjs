@@ -215,7 +215,6 @@ const LIVE_BYPASS_PATHS = [
 
 const METADATA_PATH_PREFIXES = [
   "/api/catalog/trending",
-  "/api/catalog/search",
   "/api/catalog/details",
   "/api/catalog/similar",
   "/api/catalog/person",
@@ -428,21 +427,7 @@ export function synthesizeMetadataFallback(pathname, searchParams, cachedMovies 
   }
 
   if (pathname.endsWith("/catalog/search")) {
-    const q = String(params.q || "").toLowerCase().trim();
-    const filtered = q
-      ? list.filter(m =>
-          String(m.title || "").toLowerCase().includes(q) ||
-          String(m.originalTitle || m.original || "").toLowerCase().includes(q) ||
-          String(m.overview || "").toLowerCase().includes(q)
-        )
-      : list;
-    return {
-      ok: true,
-      offlineCached: true,
-      title: params.q ? `${params.q} (Önbellek)` : "Önbellekteki Seçki",
-      results: filtered.length ? filtered : list,
-      more: false
-    };
+    return null;
   }
 
   return {
@@ -451,3 +436,122 @@ export function synthesizeMetadataFallback(pathname, searchParams, cachedMovies 
     results: list
   };
 }
+
+/**
+ * Automated resilient background reconnection controller for CineTV Remote.
+ * Manages connection states (connected, reconnecting, offline),
+ * exponential backoff with jitter, battery-optimized background throttling,
+ * and seamless background recovery without user intervention.
+ */
+export class ReconnectionController {
+  constructor(options = {}) {
+    this.probeFn = options.probeFn || (async () => true);
+    this.onStateChange = options.onStateChange || (() => {});
+    this.onRecovered = options.onRecovered || (() => {});
+    this.minBackoffMs = options.minBackoffMs || 400;
+    this.maxBackoffMs = options.maxBackoffMs || 8000;
+    this.backgroundBackoffMs = options.backgroundBackoffMs || 15000;
+    this.failureThreshold = options.failureThreshold || 1;
+    this.jitterRatio = typeof options.jitterRatio === "number" ? options.jitterRatio : 0.2;
+
+    this.isOnline = true;
+    this.isReconnecting = false;
+    this.consecutiveFailures = 0;
+    this.currentBackoffMs = this.minBackoffMs;
+    this.timer = null;
+    this.probing = false;
+    this.destroyed = false;
+  }
+
+  notifySuccess(metadata = {}) {
+    if (this.destroyed) return;
+    const wasOffline = !this.isOnline || this.isReconnecting;
+    this.isOnline = true;
+    this.isReconnecting = false;
+    this.consecutiveFailures = 0;
+    this.currentBackoffMs = this.minBackoffMs;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    if (wasOffline) {
+      this.onStateChange({ status: "connected", isOnline: true, isReconnecting: false });
+      try {
+        this.onRecovered(metadata);
+      } catch (_) {}
+    }
+  }
+
+  notifyFailure(error = null, options = {}) {
+    if (this.destroyed) return;
+    this.consecutiveFailures++;
+    const isFatal = options.fatal || this.consecutiveFailures >= this.failureThreshold;
+    if (isFatal && (this.isOnline || !this.isReconnecting)) {
+      this.isOnline = false;
+      this.isReconnecting = true;
+      this.onStateChange({
+        status: "reconnecting",
+        isOnline: false,
+        isReconnecting: true,
+        consecutiveFailures: this.consecutiveFailures,
+        error
+      });
+    }
+    this.scheduleProbe(false, options.isBackground);
+  }
+
+  calculateBackoff(isBackground = false) {
+    if (isBackground) {
+      return this.backgroundBackoffMs;
+    }
+    const base = Math.min(this.maxBackoffMs, this.currentBackoffMs);
+    const jitter = Math.floor(Math.random() * (base * this.jitterRatio));
+    return base + jitter;
+  }
+
+  scheduleProbe(immediate = false, isBackground = false) {
+    if (this.destroyed) return;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    const delay = immediate ? 50 : this.calculateBackoff(isBackground);
+    if (!immediate && !isBackground) {
+      this.currentBackoffMs = Math.min(this.maxBackoffMs, Math.round(this.currentBackoffMs * 1.5));
+    }
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      this.triggerProbe(isBackground);
+    }, delay);
+  }
+
+  async triggerProbe(isBackground = false) {
+    if (this.destroyed || this.probing) return;
+    this.probing = true;
+    if (!this.isOnline && !this.isReconnecting) {
+      this.isReconnecting = true;
+      this.onStateChange({ status: "reconnecting", isOnline: false, isReconnecting: true });
+    }
+    try {
+      const res = await this.probeFn();
+      if (res) {
+        this.notifySuccess(typeof res === "object" ? res : {});
+      } else {
+        this.notifyFailure(new Error("probe_returned_false"), { isBackground });
+      }
+    } catch (err) {
+      this.notifyFailure(err, { isBackground });
+    } finally {
+      this.probing = false;
+    }
+  }
+
+  destroy() {
+    this.destroyed = true;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+  }
+}
+

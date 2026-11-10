@@ -15,7 +15,8 @@ import {
   getPosterMirrorFallbacks,
   normalizeMetadataCacheKey,
   buildOfflinePosterSvg,
-  synthesizeMetadataFallback
+  synthesizeMetadataFallback,
+  ReconnectionController
 } from "./remote-core.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -152,9 +153,11 @@ test("Service Worker Caching Strategy: Canonical key normalization and offline m
   assert.equal(det.title, "Yıldızlararası");
 
   const srch = synthesizeMetadataFallback("/api/catalog/search", { q: "uzay" }, sampleCatalog);
-  assert.equal(srch.ok, true);
-  assert.equal(srch.results.length, 1);
-  assert.equal(srch.results[0].title, "Yıldızlararası");
+  assert.equal(srch, null);
+
+  const trending = synthesizeMetadataFallback("/api/catalog/trending", {}, sampleCatalog);
+  assert.equal(trending.ok, true);
+  assert.equal(trending.results.length, 2);
 
   const svg = buildOfflinePosterSvg("Yıldızlararası");
   assert.ok(svg.includes("<svg"));
@@ -330,3 +333,54 @@ test("Service Worker Runtime: Caches posters and metadata when online and serves
   assert.equal(resUncachedPoster.headers.get("X-CineTV-Cache"), "fallback-svg");
   assert.ok((await resUncachedPoster.text()).includes("<svg"));
 });
+
+test("ReconnectionController: Automatically manages reconnecting state, backoff, and recovery", async () => {
+  const stateTransitions = [];
+  let recoveredMeta = null;
+  let probeShouldSucceed = false;
+
+  const ctrl = new ReconnectionController({
+    minBackoffMs: 20,
+    maxBackoffMs: 100,
+    backgroundBackoffMs: 200,
+    jitterRatio: 0,
+    probeFn: async () => {
+      if (probeShouldSucceed) return { name: "Salon TV", ok: true };
+      throw new Error("unreachable");
+    },
+    onStateChange: st => stateTransitions.push(st.status),
+    onRecovered: meta => { recoveredMeta = meta; }
+  });
+
+  assert.equal(ctrl.isOnline, true);
+  assert.equal(ctrl.isReconnecting, false);
+
+  // Failure triggers reconnecting state
+  ctrl.notifyFailure(new Error("network_failed"));
+  assert.equal(ctrl.isOnline, false);
+  assert.equal(ctrl.isReconnecting, true);
+  assert.equal(stateTransitions[stateTransitions.length - 1], "reconnecting");
+
+  // Probe fails initially
+  await ctrl.triggerProbe();
+  assert.equal(ctrl.isOnline, false);
+  assert.equal(ctrl.isReconnecting, true);
+
+  // TV comes back online: probe succeeds automatically
+  probeShouldSucceed = true;
+  await ctrl.triggerProbe();
+  assert.equal(ctrl.isOnline, true);
+  assert.equal(ctrl.isReconnecting, false);
+  assert.equal(stateTransitions[stateTransitions.length - 1], "connected");
+  assert.equal(recoveredMeta.name, "Salon TV");
+
+  // Immediate probe schedules fast wakeup
+  ctrl.notifyFailure(new Error("wifi_hiccup"));
+  assert.equal(ctrl.isOnline, false);
+  ctrl.scheduleProbe(true);
+  await new Promise(r => setTimeout(r, 65));
+  assert.equal(ctrl.isOnline, true);
+
+  ctrl.destroy();
+});
+

@@ -909,8 +909,6 @@ public final class TvWebRemoteServer {
                             List<MovieCatalog.Movie> sim = MovieCatalog.similar(app, tmdb, type, title, 30);
                             if (!sim.isEmpty()) {
                                 post(() -> c.showSimilarOnTv((title.isEmpty() ? "Benzer Filmler" : title + " Benzeri").toUpperCase(Locale.getDefault()), sim));
-                            } else if (!title.isEmpty()) {
-                                post(() -> c.searchOnTv(title + " benzeri filmler"));
                             }
                         }).start();
                     }

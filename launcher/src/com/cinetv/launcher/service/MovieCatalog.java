@@ -522,60 +522,103 @@ public final class MovieCatalog {
                         }
                     };
 
-                    // 1. Curated TMDB Recommendations (Pages 1 & 2)
+                    // 1. Curated TMDB Recommendations (Pages 1 & 2: viewer-behavior collaborative filtering)
                     JSONObject rec1 = detail.optJSONObject("recommendations");
-                    if (rec1 != null) addCandidates.accept(parseTmdbResults(rec1, "tv".equals(kind) ? "series" : "movie", 24), 45);
+                    if (rec1 != null) addCandidates.accept(parseTmdbResults(rec1, "tv".equals(kind) ? "series" : "movie", 24), 50);
                     if (candidateMap.size() < want) {
                         try {
                             JSONObject rec2 = tmdb(ctx, kind + "/" + id + "/recommendations?language=" + language() + "&page=2");
-                            addCandidates.accept(parseTmdbResults(rec2, "tv".equals(kind) ? "series" : "movie", 24), 38);
+                            addCandidates.accept(parseTmdbResults(rec2, "tv".equals(kind) ? "series" : "movie", 24), 42);
                         } catch (Throwable ignored) {}
                     }
 
-                    // 2. Targeted Keyword + Primary Genre Discovery (high thematic precision)
-                    if (!kwIds.isEmpty() && primaryGenre > 0) {
-                        try {
-                            StringBuilder kwPipe = new StringBuilder();
-                            for (int i = 0; i < Math.min(4, kwIds.size()); i++) {
-                                if (i > 0) kwPipe.append('|');
-                                kwPipe.append(kwIds.get(i));
-                            }
-                            String discPath = "discover/" + kind + "?include_adult=false&sort_by=vote_count.desc&vote_count.gte=60&language=" + language()
-                                    + "&with_genres=" + primaryGenre + "&with_keywords=" + enc(kwPipe.toString());
-                            JSONObject disc1 = tmdb(ctx, discPath + "&page=1");
-                            addCandidates.accept(parseTmdbResults(disc1, "tv".equals(kind) ? "series" : "movie", 24), 40);
-                            if (candidateMap.size() < want + 6) {
-                                JSONObject disc2 = tmdb(ctx, discPath + "&page=2");
-                                addCandidates.accept(parseTmdbResults(disc2, "tv".equals(kind) ? "series" : "movie", 20), 32);
-                            }
-                        } catch (Throwable ignored) {}
-                    }
-
-                    // 3. TMDB Similar (Pages 1 & 2), strictly filtered by genre overlap above
+                    // 2. TMDB Similar (Pages 1 & 2: thematic and metadata similarity)
                     JSONObject sim1 = detail.optJSONObject("similar");
-                    if (sim1 != null) addCandidates.accept(parseTmdbResults(sim1, "tv".equals(kind) ? "series" : "movie", 24), 25);
+                    if (sim1 != null) addCandidates.accept(parseTmdbResults(sim1, "tv".equals(kind) ? "series" : "movie", 24), 30);
                     if (candidateMap.size() < want) {
                         try {
                             JSONObject sim2 = tmdb(ctx, kind + "/" + id + "/similar?language=" + language() + "&page=2");
-                            addCandidates.accept(parseTmdbResults(sim2, "tv".equals(kind) ? "series" : "movie", 24), 20);
+                            addCandidates.accept(parseTmdbResults(sim2, "tv".equals(kind) ? "series" : "movie", 24), 24);
                         } catch (Throwable ignored) {}
                     }
 
                     List<String> keys = new ArrayList<>(candidateMap.keySet());
                     Collections.sort(keys, (a, b) -> Integer.compare(scoreMap.get(b), scoreMap.get(a)));
+                    int franchiseCount = 0;
                     for (String k : keys) {
                         if (out.size() >= want) break;
-                        out.add(candidateMap.get(k));
+                        Movie m = candidateMap.get(k);
+                        if (m == null) continue;
+                        boolean isFranchise = (title != null && isNameOrFranchiseMatch(title, m.title));
+                        if (isFranchise) {
+                            if (franchiseCount >= 1) continue;
+                            franchiseCount++;
+                        }
+                        out.add(m);
                     }
                 } catch (Throwable t) {
                     Log.w(TAG, "TMDB similar failed: " + t.getMessage());
                 }
             }
         }
-        if (out.isEmpty() && title != null && !title.isEmpty()) {
-            out.addAll(search(ctx, cleanSearchQuery(title), 1, want));
-        }
         return out;
+    }
+
+    public static String extractStemTitle(String title) {
+        if (title == null) return "";
+        String stem = title;
+        int sep = stem.indexOf(':');
+        if (sep > 1) stem = stem.substring(0, sep);
+        sep = stem.indexOf(" - ");
+        if (sep > 1) stem = stem.substring(0, sep);
+        sep = stem.indexOf(" — ");
+        if (sep > 1) stem = stem.substring(0, sep);
+        sep = stem.indexOf(" | ");
+        if (sep > 1) stem = stem.substring(0, sep);
+        stem = stem.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9ğüşıöç ]", " ").replaceAll("\\s+", " ").trim();
+        for (String article : new String[]{"the ", "a ", "an ", "le ", "la ", "les ", "der ", "die ", "das ", "il ", "lo ", "bir "}) {
+            if (stem.startsWith(article)) {
+                stem = stem.substring(article.length()).trim();
+                break;
+            }
+        }
+        stem = stem.replaceFirst("\\s+(part|bölüm|volume|vol)\\s+([0-9ivx]+)$", "").trim();
+        stem = stem.replaceFirst("\\s+(ii|iii|iv|v|vi|vii|viii|ix|x|[0-9]+)$", "").trim();
+        return stem;
+    }
+
+    public static boolean isNameOrFranchiseMatch(String sourceTitle, String candTitle) {
+        if (sourceTitle == null || candTitle == null) return false;
+        String sClean = sourceTitle.toLowerCase(Locale.ROOT).trim();
+        String cClean = candTitle.toLowerCase(Locale.ROOT).trim();
+        if (sClean.equalsIgnoreCase(cClean)) return true;
+
+        String sStem = extractStemTitle(sourceTitle);
+        String cStem = extractStemTitle(candTitle);
+        if (sStem.isEmpty() || cStem.isEmpty()) return false;
+        if (sStem.equals(cStem)) return true;
+
+        if (sStem.length() >= 4 && cStem.length() >= 4) {
+            if (cStem.startsWith(sStem + " ") || sStem.startsWith(cStem + " ")) return true;
+            if (cStem.startsWith(sStem) || sStem.startsWith(cStem)) return true;
+        }
+
+        String[] sWords = sStem.split(" ");
+        String[] cWords = cStem.split(" ");
+        int matchCount = 0;
+        int significantCount = 0;
+        for (String sw : sWords) {
+            if (sw.length() <= 2) continue;
+            significantCount++;
+            for (String cw : cWords) {
+                if (cw.length() <= 2) continue;
+                if (sw.equals(cw)) {
+                    matchCount++;
+                    break;
+                }
+            }
+        }
+        return (significantCount > 0 && matchCount == significantCount) || (matchCount >= 2 && significantCount >= 2);
     }
 
     /**

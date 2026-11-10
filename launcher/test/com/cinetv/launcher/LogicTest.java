@@ -12,6 +12,7 @@ import com.cinetv.launcher.device.AvOptimizer;
 import com.cinetv.launcher.device.HardwareKeys;
 import com.cinetv.launcher.device.NetworkProbe;
 import com.cinetv.launcher.device.PerformanceProfile;
+import com.cinetv.launcher.service.MovieCatalog;
 import com.cinetv.launcher.service.StreamProfile;
 import com.cinetv.launcher.service.ThemeManager;
 import com.cinetv.launcher.service.WatchHistory;
@@ -570,5 +571,25 @@ public class LogicTest {
             org.junit.Assert.fail("Failed parsing enriched JSON: " + e.getMessage());
         }
     }
+
+    @Test
+    public void movieRecommendationFranchiseFiltering() {
+        assertEquals("matrix", MovieCatalog.extractStemTitle("The Matrix: Reloaded"));
+        assertEquals("avatar", MovieCatalog.extractStemTitle("Avatar - Suyun Yolu"));
+        assertEquals("yüzüklerin efendisi", MovieCatalog.extractStemTitle("Yüzüklerin Efendisi: Yüzük Kardeşliği"));
+        assertEquals("gladiator", MovieCatalog.extractStemTitle("Gladiator II"));
+
+        assertTrue(MovieCatalog.isNameOrFranchiseMatch("Avatar", "Avatar: The Way of Water"));
+        assertTrue(MovieCatalog.isNameOrFranchiseMatch("The Matrix", "The Matrix Revolutions"));
+        assertTrue(MovieCatalog.isNameOrFranchiseMatch("Gladiator", "Gladiator II"));
+        assertTrue(MovieCatalog.isNameOrFranchiseMatch("Harry Potter and the Sorcerer's Stone", "Harry Potter and the Chamber of Secrets"));
+        assertTrue(MovieCatalog.isNameOrFranchiseMatch("Yüzüklerin Efendisi: Yüzük Kardeşliği", "Yüzüklerin Efendisi: İki Kule"));
+
+        assertFalse(MovieCatalog.isNameOrFranchiseMatch("Inception", "Interstellar"));
+        assertFalse(MovieCatalog.isNameOrFranchiseMatch("Gladiator", "Kingdom of Heaven"));
+        assertFalse(MovieCatalog.isNameOrFranchiseMatch("The Dark Knight", "Pulp Fiction"));
+        assertFalse(MovieCatalog.isNameOrFranchiseMatch("Alien", "Blade Runner"));
+    }
 }
+
 

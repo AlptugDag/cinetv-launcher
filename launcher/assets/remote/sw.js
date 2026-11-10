@@ -50,7 +50,6 @@ const LIVE_BYPASS_PATHS = [
 
 const METADATA_PATH_PREFIXES = [
   "/api/catalog/trending",
-  "/api/catalog/search",
   "/api/catalog/details",
   "/api/catalog/similar",
   "/api/catalog/person",
@@ -358,24 +357,6 @@ async function synthesizeFromSnapshot(cache, rawUrl) {
       };
     }
 
-    if (u.pathname.endsWith("/catalog/search")) {
-      if (!movies.length) return null;
-      const q = String(params.q || "").toLowerCase().trim();
-      const filtered = q
-        ? movies.filter(m =>
-            String(m.title || "").toLowerCase().includes(q) ||
-            String(m.originalTitle || m.original || "").toLowerCase().includes(q) ||
-            String(m.overview || "").toLowerCase().includes(q)
-          )
-        : movies;
-      return {
-        ok: true,
-        offlineCached: true,
-        title: params.q ? `${params.q} (Önbellek)` : "Önbellekteki Seçki",
-        results: filtered.length ? filtered : movies,
-        more: false
-      };
-    }
 
     if (
       u.pathname.endsWith("/catalog/trending") ||
