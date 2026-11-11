@@ -1,3 +1,4 @@
 15a1121e171769d66e22e0b332ba0fd0969783f6:windows/index.html:generic-api-key:870
 89856f73e4d1922a49d0e5214315cf982e657f81:launcher/src/com/cinetv/launcher/device/NuvioSetup.java:jwt:41
+89856f73e4d1922a49d0e5214315cf982e657f81:app/src/com/cinetv/launcher/device/NuvioSetup.java:jwt:41
 89856f73e4d1922a49d0e5214315cf982e657f81:scripts/setup_nuvio.sh:jwt:61

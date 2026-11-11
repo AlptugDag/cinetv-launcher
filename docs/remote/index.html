@@ -55,8 +55,10 @@ header{position:sticky;top:0;z-index:45;padding:calc(env(safe-area-inset-top,0px
 .brand .st{font-size:12px;font-weight:700;color:var(--dim);margin-left:auto;display:flex;align-items:center;gap:7px;white-space:nowrap;flex-shrink:0;
   background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.24);padding:6px 14px;border-radius:999px;backdrop-filter:blur(20px)}
 .brand em{font-style:normal}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--faint);transition:background .25s,box-shadow .25s}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--faint);transition:background .25s,box-shadow .25s,transform .25s}
 .dot.on{background:var(--ok);box-shadow:0 0 12px var(--ok)}
+.dot.reconnecting{background:#ff9f0a;box-shadow:0 0 10px rgba(255,159,10,.85);animation:dotPulse 1.2s ease-in-out infinite}
+@keyframes dotPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
 .search{display:flex;align-items:center;gap:12px;padding:12px 14px 12px 20px;border-radius:26px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.20);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.32),0 14px 36px rgba(0,0,0,.4);transition:border-color .22s,box-shadow .22s,transform .18s}
 .search:focus-within{border-color:rgba(196,181,253,.7);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.45),0 0 0 3px rgba(139,92,246,.28),0 18px 44px rgba(0,0,0,.55)}
 .search input{flex:1;background:none;border:0;outline:0;color:var(--ink);font-size:15.5px;min-width:0;font-weight:500}
@@ -807,6 +809,169 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     }
   }
 
+  // Resilient background auto-reconnection controller
+  class ReconnectionController {
+    constructor(opts = {}) {
+      this.probeFn = opts.probeFn || (async () => true);
+      this.onStateChange = opts.onStateChange || (() => {});
+      this.onRecovered = opts.onRecovered || (() => {});
+      this.minBackoffMs = opts.minBackoffMs || 400;
+      this.maxBackoffMs = opts.maxBackoffMs || 8000;
+      this.backgroundBackoffMs = opts.backgroundBackoffMs || 15000;
+      this.failureThreshold = opts.failureThreshold || 1;
+      this.isOnline = true;
+      this.isReconnecting = false;
+      this.consecutiveFailures = 0;
+      this.currentBackoffMs = this.minBackoffMs;
+      this.timer = null;
+      this.probing = false;
+    }
+    notifySuccess(meta = {}) {
+      const wasOffline = !this.isOnline || this.isReconnecting;
+      this.isOnline = true;
+      this.isReconnecting = false;
+      this.consecutiveFailures = 0;
+      this.currentBackoffMs = this.minBackoffMs;
+      if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+      if (wasOffline) {
+        this.onStateChange({ status: "connected", isOnline: true, isReconnecting: false });
+        try { this.onRecovered(meta); } catch (_) {}
+      }
+    }
+    notifyFailure(err = null, opts = {}) {
+      this.consecutiveFailures++;
+      const isFatal = opts.fatal || this.consecutiveFailures >= this.failureThreshold;
+      if (isFatal && (this.isOnline || !this.isReconnecting)) {
+        this.isOnline = false;
+        this.isReconnecting = true;
+        this.onStateChange({
+          status: "reconnecting",
+          isOnline: false,
+          isReconnecting: true,
+          consecutiveFailures: this.consecutiveFailures,
+          error: err
+        });
+      }
+      this.scheduleProbe(false, opts.isBackground);
+    }
+    calculateBackoff(isBg = false) {
+      if (isBg) return this.backgroundBackoffMs;
+      const base = Math.min(this.maxBackoffMs, this.currentBackoffMs);
+      const jitter = Math.floor(Math.random() * (base * 0.25));
+      return base + jitter;
+    }
+    scheduleProbe(immediate = false, isBg = false) {
+      if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+      const delay = immediate ? 50 : this.calculateBackoff(isBg);
+      if (!immediate && !isBg) {
+        this.currentBackoffMs = Math.min(this.maxBackoffMs, Math.round(this.currentBackoffMs * 1.5));
+      }
+      this.timer = setTimeout(() => {
+        this.timer = null;
+        this.triggerProbe(isBg);
+      }, delay);
+    }
+    async triggerProbe(isBg = false) {
+      if (this.probing) return;
+      this.probing = true;
+      if (!this.isOnline && !this.isReconnecting) {
+        this.isReconnecting = true;
+        this.onStateChange({ status: "reconnecting", isOnline: false, isReconnecting: true });
+      }
+      try {
+        const res = await this.probeFn();
+        if (res) {
+          this.notifySuccess(typeof res === "object" ? res : {});
+        } else {
+          this.notifyFailure(new Error("probe_failed"), { isBackground: isBg });
+        }
+      } catch (err) {
+        this.notifyFailure(err, { isBackground: isBg });
+      } finally {
+        this.probing = false;
+      }
+    }
+  }
+
+  const probeTvReachable = async () => {
+    if (RELAY) {
+      if (!conn || !conn.open) {
+        try { await link(); } catch (_) { return false; }
+      }
+      try {
+        const r = await relay("ping", {});
+        return r && r.ok !== false;
+      } catch (_) {
+        return false;
+      }
+    }
+    const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const to = ctl ? setTimeout(() => ctl.abort(), 3500) : null;
+    try {
+      const pingUrl = token ? "/api/hello?k=" + encodeURIComponent(token) : "/api/ping";
+      const resp = await fetch(pingUrl, { cache: "no-store", signal: ctl ? ctl.signal : undefined });
+      if (to) clearTimeout(to);
+      if (resp.status === 401) {
+        token = null;
+        try { localStorage.removeItem("cinetv.k"); sessionStorage.removeItem("cinetv.k"); setCookie("cinetv_k", ""); } catch (_) {}
+        pair();
+        return false;
+      }
+      if (!resp.ok) return false;
+      const data = await resp.json();
+      return data && (data.ok !== false);
+    } catch (_) {
+      if (to) clearTimeout(to);
+      return false;
+    }
+  };
+
+  const reconnectCtrl = new ReconnectionController({
+    probeFn: probeTvReachable,
+    onStateChange: ({ status, isOnline, isReconnecting }) => {
+      const dot = $("dot");
+      const stEl = $("status");
+      if (!dot || !stEl) return;
+      if (isOnline && !isReconnecting) {
+        dot.classList.remove("reconnecting");
+        dot.classList.add("on");
+        stEl.textContent = stEl.dataset.tv || t("connected");
+      } else if (isReconnecting) {
+        dot.classList.remove("on");
+        dot.classList.add("reconnecting");
+        stEl.textContent = t("connecting");
+      } else {
+        dot.classList.remove("on", "reconnecting");
+        stEl.textContent = t("offline");
+      }
+    },
+    onRecovered: meta => {
+      if (meta && meta.name) {
+        $("status").dataset.tv = meta.name;
+        $("status").textContent = meta.name;
+      }
+      api("hello").then(h => {
+        if (h && typeof h.shot === "number") {
+          if (seenShot >= 0 && h.shot > seenShot) showShot();
+          seenShot = h.shot;
+        }
+        if (h && h.name) {
+          $("status").dataset.tv = h.name;
+          $("status").textContent = h.name;
+        }
+      }).catch(() => {});
+      if (!currentList.length && !currentQuery) {
+        trending();
+      }
+    }
+  });
+
+  window.addEventListener("online", () => reconnectCtrl.scheduleProbe(true, false));
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) reconnectCtrl.scheduleProbe(true, false);
+  });
+  window.addEventListener("focus", () => reconnectCtrl.scheduleProbe(true, false));
+
   // the direct link to the TV: one connection, requests and answers matched by number
   let conn = null, linking = null, rid = 0;
   const waiting = {};
@@ -824,15 +989,28 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       const c = peer.connect(PEER, {reliable: true});
       c.on("open", () => { clearTimeout(timer); conn = c; res(c); });
       c.on("data", d => { const f = d && waiting[d.i]; if (f) { delete waiting[d.i]; f(d.r); } });
-      c.on("close", () => { conn = null; linking = null; });
-      c.on("error", fail);
+      c.on("close", () => {
+        conn = null;
+        linking = null;
+        reconnectCtrl.notifyFailure(new Error("relay_closed"), { isBackground: document.hidden });
+      });
+      c.on("error", e => {
+        reconnectCtrl.notifyFailure(e, { isBackground: document.hidden });
+        fail(e);
+      });
     });
   }));
   const relay = async (path, q) => {
     const c = conn || await link();
     return new Promise((res, rej) => {
       const i = ++rid; waiting[i] = res;
-      try { c.send({i, p: "/api/" + path, q}); } catch (e) { delete waiting[i]; conn = null; linking = null; return rej(e); }
+      try { c.send({i, p: "/api/" + path, q}); } catch (e) {
+        delete waiting[i];
+        conn = null;
+        linking = null;
+        reconnectCtrl.notifyFailure(e, { isBackground: document.hidden });
+        return rej(e);
+      }
       setTimeout(() => { if (waiting[i]) { delete waiting[i]; rej("timeout"); } }, 30000);
     });
   };
@@ -840,7 +1018,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const $ = id => document.getElementById(id);
 
   // Offline & Service Worker Metadata + Poster Cache Bridge
-  const CACHEABLE_API_PREFIXES = ["catalog/trending", "catalog/search", "catalog/details", "catalog/similar", "catalog/person", "watchlist"];
+  const CACHEABLE_API_PREFIXES = ["catalog/trending", "catalog/details", "catalog/similar", "catalog/person", "watchlist"];
   const isCacheableApi = path => CACHEABLE_API_PREFIXES.some(p => path === p || path.startsWith(p + "?"));
   const metaStorageKey = (path, params = {}) => {
     const entries = Object.entries(params || {}).filter(([k]) => k !== "k" && k !== "fresh" && k !== "seed" && k !== "_t");
@@ -893,12 +1071,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         const found = snap.find(m => (tmdb > 0 && (Number(m.tmdb || m.tmdbId || m.id) === tmdb)) || (title && String(m.title || "").toLowerCase() === title)) || snap[0];
         return Object.assign({ ok: true, offlineCached: true, directors: [], cast: [] }, found);
       }
-      if (path === "catalog/search") {
-        const q = String(params.q || "").toLowerCase().trim();
-        const filtered = q ? snap.filter(m => String(m.title || "").toLowerCase().includes(q) || String(m.overview || "").toLowerCase().includes(q)) : snap;
-        return { ok: true, offlineCached: true, title: params.q ? `${params.q} (Önbellek)` : "Önbellekteki Seçki", results: filtered.length ? filtered : snap, more: false };
-      }
-      if (path.startsWith("catalog/")) {
+      if (path.startsWith("catalog/") && path !== "catalog/search") {
         return { ok: true, offlineCached: true, results: snap };
       }
     } catch (_) {}
@@ -928,8 +1101,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
           try { localStorage.setItem(metaStorageKey(path, params), JSON.stringify(r)); } catch (_) {}
           notifySwCache(location.origin + "/api/" + path + "?" + new URLSearchParams(params), r);
         }
+        reconnectCtrl.notifySuccess();
         return r;
       } catch (err) {
+        reconnectCtrl.notifyFailure(err, { isBackground: document.hidden });
         if (cacheable) {
           const fb = readOfflineMetadataFallback(path, params);
           if (fb) return fb;
@@ -952,9 +1127,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         try { localStorage.setItem(metaStorageKey(path, params), JSON.stringify(data)); } catch (_) {}
         notifySwCache(location.origin + reqUrl, data);
       }
+      reconnectCtrl.notifySuccess();
       return data;
     } catch (err) {
       if (err === 0) throw 0;
+      reconnectCtrl.notifyFailure(err, { isBackground: document.hidden });
       if (cacheable) {
         const fb = readOfflineMetadataFallback(path, params);
         if (fb) return fb;
@@ -963,8 +1140,25 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     }
   };
   const open = async path => {
-    if (RELAY) { const [p, qs] = path.split("?"); return relay(p, Object.fromEntries(new URLSearchParams(qs || ""))); }
-    return (await fetch("/api/" + path, {cache: path === "info" ? "default" : "no-store"})).json();
+    if (RELAY) {
+      const [p, qs] = path.split("?");
+      try {
+        const r = await relay(p, Object.fromEntries(new URLSearchParams(qs || "")));
+        reconnectCtrl.notifySuccess();
+        return r;
+      } catch (e) {
+        reconnectCtrl.notifyFailure(e, { isBackground: document.hidden });
+        throw e;
+      }
+    }
+    try {
+      const r = await (await fetch("/api/" + path, {cache: path === "info" ? "default" : "no-store"})).json();
+      reconnectCtrl.notifySuccess();
+      return r;
+    } catch (e) {
+      reconnectCtrl.notifyFailure(e, { isBackground: document.hidden });
+      throw e;
+    }
   };
 
   // Pairing without a QR code: the TV asks "may this phone connect?" and the viewer allows it.
@@ -1056,7 +1250,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   document.querySelectorAll("nav button").forEach(b => b.onclick = () => { show(b.dataset.tab); location.hash = b.dataset.tab; });
 
   // discover & infinite scroll
-  let currentList = [], currentPage = 1, currentQuery = "", currentAi = false, isLoadingMore = false, hasMore = true;
+  let currentList = [], currentPage = 1, currentQuery = "", currentAi = false, isLoadingMore = false, hasMore = true, isSimilarMode = false;
   let kind = "movie", freshMode = false, freshSeed = 0;
   const card = (m, i) => `<div class="card" data-i="${i}"><img loading="lazy" decoding="async" src="${esc(m.poster)}" alt="">
       ${m.type === "series" ? `<span class="badge">${t("series")}</span>` : ""}<div class="t">${esc(m.title)}</div></div>`;
@@ -1069,7 +1263,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     if (!append) {
       if (title) $("listTitle").textContent = title;
       currentList = list.slice();
-      hasMore = list.length >= 8;
+      hasMore = !isSimilarMode && list.length >= 8;
       if (!currentList.length) { box.innerHTML = `<div class="empty" style="grid-column:1/-1">${t("noResults")}</div>`; return; }
       box.innerHTML = currentList.map(card).join("");
     } else {
@@ -1077,7 +1271,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       const seen = new Set(currentList.map(m => m.type + ":" + (m.tmdb || m.imdb || m.title)));
       const fresh = list.filter(m => !seen.has(m.type + ":" + (m.tmdb || m.imdb || m.title)));
       if (!fresh.length) {
-        if (currentPage < 30) loadMore();
+        if (!isSimilarMode && currentPage < 30) loadMore();
         else hasMore = false;
         return;
       }
@@ -1090,6 +1284,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   const skeleton = () => $("results").innerHTML = Array.from({length: 9}, () => '<div class="card skeleton"></div>').join("");
   const trending = async (fresh = false) => {
     if (!token) return;
+    isSimilarMode = false;
     skeleton();
     currentQuery = ""; currentAi = false; currentPage = 1; hasMore = true; freshMode = fresh;
     // each refresh starts from a different page of well-liked films, and scrolling continues from there
@@ -1103,12 +1298,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
   document.querySelectorAll("#kindSeg button").forEach(b => b.onclick = () => {
     if (b.dataset.kind === kind) return;
+    isSimilarMode = false;
     kind = b.dataset.kind;
     document.querySelectorAll("#kindSeg button").forEach(x => x.classList.toggle("on", x === b));
     navigator.vibrate && navigator.vibrate(8);
     if (currentQuery) runSearch(currentQuery, true); else trending(freshMode);
   });
   $("refreshBtn").onclick = () => {
+    isSimilarMode = false;
     const b = $("refreshBtn"); b.classList.remove("spin"); void b.offsetWidth; b.classList.add("spin");
     navigator.vibrate && navigator.vibrate(10);
     $("q").value = "";
@@ -1118,6 +1315,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   let runSearch = () => {};
   document.querySelectorAll("#vibeChips button[data-vibe]").forEach(btn => {
     btn.onclick = () => {
+      isSimilarMode = false;
       navigator.vibrate && navigator.vibrate(8);
       document.querySelectorAll("#vibeChips .mtag").forEach(x => x.classList.toggle("on", x === btn));
       runSearch(btn.dataset.vibe + (kind === "series" ? " diziler" : " filmler"), true, btn.textContent);
@@ -1128,10 +1326,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
 
   // a short list loads its next page by itself (there is nothing to scroll yet)
   const topUp = () => setTimeout(() => {
-    if (hasMore && !isLoadingMore && currentList.length < 18 && document.documentElement.scrollHeight <= window.innerHeight + 360) loadMore();
+    if (!isSimilarMode && hasMore && !isLoadingMore && currentList.length < 18 && document.documentElement.scrollHeight <= window.innerHeight + 360) loadMore();
   }, 60);
   const loadMore = async () => {
-      if (isLoadingMore || !hasMore) return;
+      if (isLoadingMore || !hasMore || isSimilarMode) return;
       isLoadingMore = true;
       currentPage++;
       try {
@@ -1155,7 +1353,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       topUp();
   };
   window.addEventListener("scroll", () => {
-    if (isLoadingMore || !hasMore || location.hash === "#remote" || location.hash === "#cast") return;
+    if (isLoadingMore || !hasMore || isSimilarMode || location.hash === "#remote" || location.hash === "#cast") return;
     // body is height:100% here, so the page's real length is the document's scroll height
     if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 500) loadMore();
   });
@@ -1165,6 +1363,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   // Typing shows in the TV's search bar; Enter (or the keyboard's Search) fills the TV's shelf.
   if ($("watchlistChip")) {
     $("watchlistChip").onclick = async () => {
+      isSimilarMode = false;
       skeleton();
       try {
         const r = await api("watchlist");
@@ -1185,6 +1384,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     mirrorTimer = setTimeout(() => api("tv/typing", {q}).catch(() => {}), 450);
   });
   runSearch = (query, ai, label) => {
+    isSimilarMode = false;
     currentQuery = query;
     currentAi = !!ai;
     currentPage = 1;
@@ -1421,6 +1621,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
       $("similarBtn").disabled = true;
       closeSheet();
       const my = ++seq; skeleton();
+      isSimilarMode = true;
       currentQuery = ""; currentPage = 1; hasMore = false;
       try {
         const [r] = await Promise.all([
@@ -1429,6 +1630,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         ]);
         if (my !== seq) return;
         render(r.results || [], (m.title || "Film") + " · " + (t("similarMovies") || "Benzer Filmler"));
+        hasMore = false;
         toast(t("onTv"));
       } catch (e) { toast(t("offline")); }
     };
@@ -1565,7 +1767,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   window.CineTvHaptics = Haptics;
 
   // Keys: a tap presses, holding presses longer (or repeats, for arrows, volume, channels and seeking)
-  const press = (code, long) => api("key", long ? {code, long: 1} : {code}).catch(() => {});
+  const press = (code, long) => api("key", long ? {code, long: 1} : {code}).catch(() => {
+    reconnectCtrl.scheduleProbe(true, document.hidden);
+  });
   document.querySelectorAll("[data-key]").forEach(b => {
     let timer = null, rep = null, held = false;
     const start = e => {
@@ -1694,10 +1898,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
   };
   $("shotClose").onclick = () => { $("shotView").hidden = true; };
 
-  // Auto-open keyboard when TV reports an active input field focused
-  let lastFocusState = false;
+  // Auto-open keyboard when TV reports an active input field focused (adaptive battery-friendly polling)
+  let lastFocusState = false, statusPollInFlight = false;
   setInterval(async () => {
-    if (!token) return;
+    if (!token || document.hidden || !reconnectCtrl.isOnline || statusPollInFlight) return;
+    statusPollInFlight = true;
     try {
       const s = await api("status");
       if (s && typeof s.shot === "number") {
@@ -1708,7 +1913,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
         openKbd("");
       }
       lastFocusState = !!(s && s.inputFocused);
-    } catch (e) {}
+    } catch (e) {
+    } finally {
+      statusPollInFlight = false;
+    }
   }, 450);
 
   // Pages of the remote: touchpad, more keys, numbers
@@ -3007,25 +3215,28 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;heigh
     const peers = info.peers || [];
     if (!peers.length) return;
     $("tvPick").style.cursor = "pointer";
-    $("tvPick").onclick = () => {
-      sheet.innerHTML = `<h3>${t("otherTvs")}</h3>` + [{name: info.name, url: ""}].concat(peers).map(p =>
-        `<button class="btn ${p.url ? "ghost" : ""}" style="margin-top:10px" data-u="${esc(p.url)}">${esc(p.name)}</button>`).join("");
-      sheet.classList.add("on"); bg.classList.add("on");
-      sheet.querySelectorAll("[data-u]").forEach(b => b.onclick = () => { if (b.dataset.u) location.href = b.dataset.u; else closeSheet(); });
-    };
+    $("tvPick").addEventListener("click", () => {
+      if (!reconnectCtrl.isOnline) {
+        reconnectCtrl.scheduleProbe(true, false);
+      } else if (peers.length) {
+        sheet.innerHTML = `<h3>${t("otherTvs")}</h3>` + [{name: info.name, url: ""}].concat(peers).map(p =>
+          `<button class="btn ${p.url ? "ghost" : ""}" style="margin-top:10px" data-u="${esc(p.url)}">${esc(p.name)}</button>`).join("");
+        sheet.classList.add("on"); bg.classList.add("on");
+        sheet.querySelectorAll("[data-u]").forEach(b => b.onclick = () => { if (b.dataset.u) location.href = b.dataset.u; else closeSheet(); });
+      }
+    });
   }).catch(() => {});
 
   // connect
   const connected = () => {
     api("hello").then(() => {
-      $("dot").classList.add("on");
-      $("status").textContent = $("status").dataset.tv || t("connected");
+      reconnectCtrl.notifySuccess();
     }).catch(err => {
       // Only re-pair if api("hello") explicitly cleared token on 401; keep token intact on unstable/offline network
       if (!token && err === 0) {
         pair();
       } else {
-        $("dot").classList.remove("on");
+        reconnectCtrl.notifyFailure(err, { isBackground: document.hidden });
       }
     });
     trending();

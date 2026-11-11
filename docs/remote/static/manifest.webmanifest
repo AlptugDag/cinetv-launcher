@@ -1,35 +1,18 @@
 {
-  "name": "CineTV by Alptuğ Dağ",
+  "id": "./",
+  "name": "CineTV",
   "short_name": "CineTV",
+  "description": "CineTV Akıllı Kumanda, Film Vitrini ve Ev İçi Sinema Deneyimi",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#07070c",
   "theme_color": "#07070c",
   "icons": [
-    {
-      "src": "icon-192.png?v=20",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-maskable-192.png?v=20",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "icon.png?v=20",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-maskable-512.png?v=20",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    { "src": "icon-192.png?v=20", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon.png?v=20", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-192.png?v=20", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-maskable-512.png?v=20", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

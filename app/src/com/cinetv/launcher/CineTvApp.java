@@ -17,7 +17,7 @@ import com.cinetv.launcher.device.DeviceTweaks;
 public class CineTvApp extends Application {
 
     private static volatile CineTvApp appInstance;
-    private static final long[] BOOT_RESCUES_MS = {150, 450, 900, 1600, 3000, 5000, 8500, 13000};
+    private static final long[] BOOT_RESCUES_MS = {450, 1400, 3200, 6500, 12000};
 
     public static CineTvApp get() {
         return appInstance;
@@ -41,8 +41,8 @@ public class CineTvApp extends Application {
         // An update that changes the remote-button service's capabilities makes Android switch it off:
         // switch it back on (CineTV holds WRITE_SECURE_SETTINGS).
         DeviceTweaks.ensureKeyService(this);
-        // The phone link, the key bridge and the sounds are not needed for the first picture: during the TV's own boot
-        // they wait 20 s (the home screen and the remote come first); otherwise they start at once.
+        // The phone link, the key bridge and the sounds are not needed for the first picture: during the TV's own cold boot
+        // they wait 35 s so the CPU and I/O are 100% dedicated to fast boot and instant Home rendering.
         final boolean booting = SystemClock.elapsedRealtime() < 120_000L;
         Handler later = new Handler(Looper.getMainLooper());
         later.postDelayed(() -> {
@@ -50,7 +50,7 @@ public class CineTvApp extends Application {
             com.cinetv.launcher.device.NightCare.start(this);
             com.cinetv.launcher.device.SystemAudio.warmUp(this);
             new Thread(() -> com.cinetv.launcher.remote.KeyBridge.warmUp(this), "cinetv-keys").start();
-        }, booting ? 20_000L : 0L);
+        }, booting ? 35_000L : 0L);
         if (SystemClock.elapsedRealtime() > DeviceTweaks.BOOT_GUARD_MS || com.cinetv.launcher.device.Uninstaller.isRemoving(this)) return;
         Handler h = new Handler(Looper.getMainLooper());
         for (long delay : BOOT_RESCUES_MS) {

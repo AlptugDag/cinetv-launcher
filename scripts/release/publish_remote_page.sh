@@ -4,7 +4,8 @@
 # Run before each release; GitHub Pages serves docs/ from main.
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SRC="$DIR/launcher/assets/remote"
+SRC="$DIR/app/assets/remote"
+[ -d "$SRC" ] || SRC="$DIR/launcher/assets/remote"
 OUT="$DIR/docs/remote"
 rm -rf "$OUT"
 mkdir -p "$OUT/static"

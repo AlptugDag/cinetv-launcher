@@ -7,7 +7,7 @@ on:
   push:
     tags: ['v*']
     branches: [main]
-    paths: ['launcher/build.gradle', 'CHANGELOG.md']
+    paths: ['app/build.gradle', 'launcher/build.gradle', 'CHANGELOG.md']
   workflow_dispatch:
     inputs:
       tag:
@@ -37,8 +37,10 @@ jobs:
           if [ -n "$INPUT_TAG" ]; then TAG="$INPUT_TAG"
           elif [ "$GITHUB_REF_TYPE" = tag ]; then TAG="$GITHUB_REF_NAME"
           else
-            # main: the default version in launcher/build.gradle, published only if not released yet
-            TAG="v$(sed -n "s/.*findProperty('cineTvVersion') ?: '\([0-9.]*\)'.*/\1/p" launcher/build.gradle | head -1)"
+            # main: the default version in app/build.gradle (or launcher/build.gradle), published only if not released yet
+            BG="app/build.gradle"
+            [ -f "$BG" ] || BG="launcher/build.gradle"
+            TAG="v$(sed -n "s/.*findProperty('cineTvVersion') ?: '\([0-9.]*\)'.*/\1/p" "$BG" | head -1)"
             if [ "$TAG" = v ] || gh release view "$TAG" >/dev/null 2>&1; then TAG=""; fi
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
@@ -73,7 +75,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Restore keystore (temporary, deleted after the job)
@@ -85,7 +87,10 @@ jobs:
           echo "CINETV_RELEASE_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
       - name: Unit tests
-        run: chmod +x gradlew && ./gradlew :launcher:testDebugUnitTest --console=plain
+        run: |
+          chmod +x gradlew
+          MOD="app"; [ -d "app" ] || MOD="launcher"
+          ./gradlew ":${MOD}:testDebugUnitTest" --console=plain
 
       - name: Build signed release
         env:
@@ -93,13 +98,16 @@ jobs:
           CINETV_RELEASE_KEY_ALIAS: ${{ secrets.CINETV_RELEASE_KEY_ALIAS }}
           CINETV_RELEASE_KEY_PASSWORD: ${{ secrets.CINETV_RELEASE_KEY_PASSWORD }}
           CINETV_PRIVATE_ASSETS: /nonexistent
-        run: ./gradlew :launcher:assembleRelease -PcineTvVersion="$TAG" --console=plain
+        run: |
+          MOD="app"; [ -d "app" ] || MOD="launcher"
+          ./gradlew ":${MOD}:assembleRelease" -PcineTvVersion="$TAG" --console=plain
 
       - name: Verify APK (signature, pinned certificate, not debuggable, no secrets)
         run: |
           VER="${TAG#v}"
+          MOD="app"; [ -d "app" ] || MOD="launcher"
           mkdir -p dist
-          cp launcher/build/outputs/apk/release/launcher-release.apk dist/CineTV.apk
+          cp "${MOD}/build/outputs/apk/release/${MOD}-release.apk" dist/CineTV.apk
           bash scripts/release/verify_apk.sh dist/CineTV.apk
           cp dist/CineTV.apk "dist/CineTV-$VER.apk"
           cp scripts/windows/CineTV-Kur.bat dist/CineTV-Kur.bat

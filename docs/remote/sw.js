@@ -1,9 +1,9 @@
-// CineTV Service Worker v1.0.0.54
+// CineTV Service Worker v1.0.0.55
 // Implements resilient caching for movie posters (Cache-First + Stale-While-Revalidate + Mirror Fallback)
 // and movie metadata/catalog endpoints (Network-First with fast timeout + Stale-While-Revalidate + Catalog Synthesis)
 // so the CineTV launcher and companion remote remain functional and responsive on unstable connections.
 
-const SW_VERSION = "1.0.0.54";
+const SW_VERSION = "1.0.0.55";
 const SHELL_CACHE = `cinetv-shell-v${SW_VERSION}`;
 const METADATA_CACHE = `cinetv-metadata-v${SW_VERSION}`;
 const POSTER_CACHE = `cinetv-posters-v${SW_VERSION}`;
@@ -50,7 +50,6 @@ const LIVE_BYPASS_PATHS = [
 
 const METADATA_PATH_PREFIXES = [
   "/api/catalog/trending",
-  "/api/catalog/search",
   "/api/catalog/details",
   "/api/catalog/similar",
   "/api/catalog/person",
@@ -358,24 +357,6 @@ async function synthesizeFromSnapshot(cache, rawUrl) {
       };
     }
 
-    if (u.pathname.endsWith("/catalog/search")) {
-      if (!movies.length) return null;
-      const q = String(params.q || "").toLowerCase().trim();
-      const filtered = q
-        ? movies.filter(m =>
-            String(m.title || "").toLowerCase().includes(q) ||
-            String(m.originalTitle || m.original || "").toLowerCase().includes(q) ||
-            String(m.overview || "").toLowerCase().includes(q)
-          )
-        : movies;
-      return {
-        ok: true,
-        offlineCached: true,
-        title: params.q ? `${params.q} (Önbellek)` : "Önbellekteki Seçki",
-        results: filtered.length ? filtered : movies,
-        more: false
-      };
-    }
 
     if (
       u.pathname.endsWith("/catalog/trending") ||

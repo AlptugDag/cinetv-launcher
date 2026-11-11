@@ -6,7 +6,10 @@ useDefault = true
 [allowlist]
 description = "Public Android debug key and test fixtures"
 paths = [
+  '''(^|/)debug\.keystore$''',
+  '''app/debug\.keystore''',
   '''launcher/debug\.keystore''',
+  '''app/src/com/cinetv/launcher/device/NuvioSetup\.java''',
   '''release-signing/cert-sha256\.txt''',
   '''examples/.*/debloat\.txt''',
 ]

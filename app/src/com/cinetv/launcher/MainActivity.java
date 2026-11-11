@@ -365,11 +365,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         // during the TV's own boot the phone link waits (CineTvApp starts it 20 s later); otherwise at once
         if (android.os.SystemClock.elapsedRealtime() > 120_000L) TvWebRemoteServer.start(this);
         com.cinetv.launcher.party.CinePartyManager.get(this).addListener(partyLauncher);
+        final boolean coldBooting = android.os.SystemClock.elapsedRealtime() < DeviceTweaks.BOOT_GUARD_MS;
         handler.postDelayed(() -> {
             if (!isFinishing() && inFront) {
                 com.cinetv.launcher.ai.EmaLightningTts.prewarmFillers(this);
             }
-        }, 25_000);
+        }, coldBooting ? 60_000L : 25_000L);
 
         scheduleDynamicStartup(freshStart);
 
@@ -426,7 +427,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
 
         if (!HomeGuard.isDefault(this)) {
-            HomeGuard.ensureDefaultHome(this);
+            long up = android.os.SystemClock.elapsedRealtime();
+            if (up >= DeviceTweaks.BOOT_GUARD_MS) {
+                HomeGuard.ensureDefaultHome(this);
+            } else {
+                handler.postDelayed(() -> {
+                    if (!isFinishing() && !HomeGuard.isDefault(this)) {
+                        HomeGuard.ensureDefaultHome(this);
+                    }
+                }, DeviceTweaks.BOOT_GUARD_MS - up);
+            }
         }
     }
 
@@ -447,6 +457,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private void scheduleDynamicStartup(boolean freshStart) {
         final Context app = getApplicationContext();
         final boolean lowPower = PerformanceProfile.lowMemory(this) || PerformanceProfile.lowProfile(this);
+        final long upMs = android.os.SystemClock.elapsedRealtime();
+        final boolean coldBooting = upMs < DeviceTweaks.BOOT_GUARD_MS;
         // Stage 1 (Background): SpatialEnvironment is rendered immediately on frame 0.
         // Stage 2: Apps dock loads & animates in smoothly (~70ms)
         // Stage 3: DVD shelf furniture & label animate in smoothly (~280ms)
@@ -456,7 +468,10 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         long pCases = lowPower ? 520L : 480L;
         long pContinue = lowPower ? 780L : 720L;
         long pWeather = lowPower ? 980L : 920L;
-        long pSweep = lowPower ? 20_000L : 8_000L;
+        // During cold boot after a full shutdown, defer heavy background sweeps, ADB shells, and AOT checks
+        // until after the 90s cold-boot window so the TV CPU/IO finishes booting and responds immediately.
+        long pSweep = coldBooting ? Math.max(45_000L, DeviceTweaks.BOOT_GUARD_MS - upMs + 2_000L)
+                : (lowPower ? 20_000L : 8_000L);
 
         // Stage 2: Apps dock
         handler.postDelayed(() -> {
@@ -483,13 +498,20 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                     }
                     return;
                 }
-                if (freshStart && isNetworkAvailable()) {
-                    showCachedShelf(freshStart);
-                    home.shelf.playStagedEntrance();
-                    startFreshShelf(false);
-                } else {
-                    showCachedShelf(freshStart);
-                    home.shelf.playStagedEntrance();
+                showCachedShelf(freshStart);
+                home.shelf.playStagedEntrance();
+                if (freshStart) {
+                    if (coldBooting) {
+                        // On cold boot, render cached shelf immediately without network/AI contention,
+                        // then refresh once Wi-Fi and system services settle.
+                        handler.postDelayed(() -> {
+                            if (!isFinishing() && inFront && isNetworkAvailable()) {
+                                startFreshShelf(false);
+                            }
+                        }, 10_000L);
+                    } else if (isNetworkAvailable()) {
+                        startFreshShelf(false);
+                    }
                 }
             }
         }, pCases);
@@ -580,7 +602,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         handler.removeCallbacks(clockTick);
         handler.post(clockTick);
-        if (!HomeGuard.isDefault(this)) {
+        if (!HomeGuard.isDefault(this) && android.os.SystemClock.elapsedRealtime() >= DeviceTweaks.BOOT_GUARD_MS) {
             new Thread(() -> HomeGuard.ensureDefault(this), "cinetv-resume-guard").start();
         }
         PerformanceProfile.noteMemory(this);
@@ -599,16 +621,17 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             handler.postDelayed(freshDeadline, dl);
             handler.postDelayed(freshHardLimit, dl + 3_500L);
             if (!isCurating) refreshShelf();
-        } else if (away >= AWAY_FOR_NEW_SHELF_MS || shelfIsStale()) {
+        } else if (away >= AWAY_FOR_NEW_SHELF_MS || (shelfIsStale() && android.os.SystemClock.elapsedRealtime() >= DeviceTweaks.BOOT_GUARD_MS)) {
             startFreshShelf(away >= AWAY_FOR_NEW_SHELF_MS);
         }
         handler.postDelayed(() -> {
             if (!inFront || !foreground || isFinishing()) return;
             TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
             String currentPkg = svc != null ? svc.getLastPackage() : null;
-            boolean isOemTuner = "com.mediatek.wwtv.tvcenter".equals(currentPkg) || "com.arcelik.tv.livetv".equals(currentPkg);
+            boolean isOemTuner = "com.mediatek.wwtv.tvcenter".equals(currentPkg)
+                    || "com.mediatek.tv.oneworld.tvcenter".equals(currentPkg)
+                    || "com.arcelik.tv.livetv".equals(currentPkg);
             if (!hasWindowFocus() && isOemTuner && DeviceTweaks.isUnwantedBootTuner()) {
-                background(() -> LocalAdb.shell(this, "am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null", 800));
                 try {
                     startActivity(new Intent(this, MainActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
@@ -718,7 +741,8 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         greetingAttempts = 0;
         handler.removeCallbacks(greetingRetryRunnable);
         // Wait until the background, showcase shelf, and initial DVD boxes have appeared on screen
-        handler.postDelayed(greetingRetryRunnable, 2400L);
+        long delay = android.os.SystemClock.elapsedRealtime() < DeviceTweaks.BOOT_GUARD_MS ? 12_000L : 2_400L;
+        handler.postDelayed(greetingRetryRunnable, delay);
     }
 
     private final Runnable greetingRetryRunnable = new Runnable() {
@@ -1014,6 +1038,11 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     public boolean dispatchKeyEvent(KeyEvent e) {
         if (home == null) return super.dispatchKeyEvent(e);
         int keyCode = e.getKeyCode();
+        // Never consume Power / Sleep / Wakeup keys in MainActivity (splash, screensaver, modals, etc.):
+        // let them go directly to the system window manager so single-press sleep and long-press shutdown always work.
+        if (DeviceTweaks.isPowerOrSleepKey(keyCode)) {
+            return super.dispatchKeyEvent(e);
+        }
         if (keyCode == KeyEvent.KEYCODE_HOME) {
             if (e.getAction() == KeyEvent.ACTION_DOWN) {
                 focusShelfCenter();
@@ -1836,7 +1865,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         }
         if (!remember) return;
         final Context app = getApplicationContext();
-        if (!PerformanceProfile.lowProfile(app)) {
+        if (!PerformanceProfile.lowProfile(app) && android.os.SystemClock.elapsedRealtime() >= DeviceTweaks.BOOT_GUARD_MS) {
             for (int i = 0; i < Math.min(4, movies.size()); i++) {
                 MovieCatalog.prefetchTrailer(app, movies.get(i));
             }

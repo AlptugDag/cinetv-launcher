@@ -81,7 +81,7 @@ if ("$cur" -notmatch [regex]::Escape($KeyService)) {
 }
 Tv 'settings put secure accessibility_enabled 1' | Out-Null
 Tv 'settings put secure screensaver_enabled 1' | Out-Null
-Tv 'settings put secure screensaver_activate_on_sleep 1' | Out-Null
+Tv 'settings put secure screensaver_activate_on_sleep 0' | Out-Null
 Tv "settings put secure screensaver_components $Dream" | Out-Null
 Ok 'Ana ekran, kumanda tuslari ve ekran koruyucu ayarlandi'
 

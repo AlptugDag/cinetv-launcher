@@ -42,6 +42,10 @@ public final class DeviceTweaks {
             Settings.Secure.putInt(cr, "sleep_timeout", 900_000);
             Settings.Secure.putInt(cr, "screensaver_timeout", 300_000);
             Settings.Secure.putInt(cr, "screensaver_enabled", 1);
+            // Never intercept hardware power/sleep button presses with ClockDream:
+            // screensaver_activate_on_sleep=1 causes Grundig/Arçelik/MediaTek TVs to launch Daydream instead of entering standby!
+            Settings.Secure.putInt(cr, "screensaver_activate_on_sleep", 0);
+            Settings.Secure.putInt(cr, "screensaver_activate_on_dock", 0);
             Settings.Secure.putString(cr, "screensaver_components", DREAM);
         } catch (Throwable ignored) {
         }
@@ -112,6 +116,8 @@ public final class DeviceTweaks {
         }
 
         if (tvName.equals(lastSyncedAirPlayName)) return;
+        // Defer ADB shell commands during cold boot so they never contend with TV boot services
+        if (SystemClock.elapsedRealtime() < BOOT_GUARD_MS) return;
         lastSyncedAirPlayName = tvName;
 
         new Thread(() -> {
@@ -147,25 +153,24 @@ public final class DeviceTweaks {
     }
 
     /**
-     * Keeps CineTV unthrottled in the background. It no longer touches the TV's power behaviour: earlier
-     * versions set quick-boot / hibernate properties, which kept the TV in a warm standby instead of
-     * switching off. Any such value CineTV left behind is cleared here (only values CineTV itself wrote).
+     * Keeps CineTV unthrottled in the background without touching OEM quickboot/standby properties.
+     * Note: Grundig / Arçelik / Beko (MediaTek) TVs rely on persist.sys.quickboot and persist.sys.power.quickboot
+     * for single-press STR standby and fast wake; never clear those properties.
      */
     public static void applyFastBootTweaks(Context ctx) {
+        if (SystemClock.elapsedRealtime() < BOOT_GUARD_MS) return;
         new Thread(() -> {
             String pkg = ctx.getPackageName();
-            String cmd = undoPowerProps()
+            String cmd = "settings put secure screensaver_activate_on_sleep 0 2>/dev/null; "
                     + "cmd deviceidle whitelist +" + pkg + " 2>/dev/null; "
                     + "cmd appops set " + pkg + " RUN_IN_BACKGROUND allow 2>/dev/null; ";
             com.cinetv.launcher.remote.LocalAdb.shell(ctx, cmd, 2500);
         }, "cinetv-fastboot").start();
     }
 
-    /** Shell lines that clear the power properties old CineTV versions set, when they still hold CineTV's values. */
+    /** Preserves OEM power/quickboot properties so Grundig/MediaTek standby and fast wake remain intact. */
     public static String undoPowerProps() {
-        return "[ \"$(getprop persist.sys.shutdown.mode)\" = hibernate ] && setprop persist.sys.shutdown.mode '' 2>/dev/null; "
-                + "[ \"$(getprop persist.sys.quickboot)\" = 1 ] && setprop persist.sys.quickboot '' 2>/dev/null; "
-                + "[ \"$(getprop persist.sys.power.quickboot)\" = 1 ] && setprop persist.sys.power.quickboot '' 2>/dev/null; ";
+        return "settings put secure screensaver_activate_on_sleep 0 2>/dev/null; ";
     }
 
     // ---- the TV's own values, kept so "Remove CineTV" or "Restore Pre-APK State" can put everything back ----
@@ -534,25 +539,59 @@ public final class DeviceTweaks {
         }
     }
 
-    /** Puts the panel to sleep (standby), trying the least invasive method first. */
+    /** True when the keycode is a hardware or CEC power/sleep/wakeup button that must pass straight to the OS. */
+    public static boolean isPowerOrSleepKey(int keyCode) {
+        return keyCode == android.view.KeyEvent.KEYCODE_POWER
+                || keyCode == android.view.KeyEvent.KEYCODE_SLEEP
+                || keyCode == android.view.KeyEvent.KEYCODE_WAKEUP
+                || keyCode == android.view.KeyEvent.KEYCODE_TV_POWER
+                || keyCode == android.view.KeyEvent.KEYCODE_STB_POWER
+                || keyCode == 276; // KEYCODE_SOFT_SLEEP
+    }
+
+    /**
+     * Puts the TV panel into standby (sleep).
+     * Never call GLOBAL_ACTION_LOCK_SCREEN first on Android TV: TVs have no lockscreen, so GLOBAL_ACTION_LOCK_SCREEN
+     * returns true without putting the hardware panel into standby!
+     */
     public static void sleepPanel(Context ctx) {
-        // The accessibility service can lock the screen without privileged permissions (Android 9+).
-        com.cinetv.launcher.TvKeyInterceptorService keys = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
-        if (keys != null && android.os.Build.VERSION.SDK_INT >= 28
-                && keys.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)) {
-            return;
+        final Context app = ctx != null ? ctx.getApplicationContext() : null;
+        try {
+            if (app != null && canWriteSecureSettings(app)) {
+                Settings.Secure.putInt(app.getContentResolver(), "screensaver_activate_on_sleep", 0);
+            }
+        } catch (Throwable ignored) {
         }
         try {
-            PowerManager pm = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
+            PowerManager pm = ctx != null ? (PowerManager) ctx.getSystemService(Context.POWER_SERVICE) : null;
             if (pm != null) {
                 pm.getClass().getMethod("goToSleep", long.class).invoke(pm, SystemClock.uptimeMillis());
                 return;
             }
         } catch (Throwable ignored) {
         }
-        try {
-            Runtime.getRuntime().exec(new String[]{"input", "keyevent", "26"});
-        } catch (Throwable ignored) {
+        if (app != null) {
+            new Thread(() -> {
+                try {
+                    if (com.cinetv.launcher.remote.KeyBridge.key(app, android.view.KeyEvent.KEYCODE_SLEEP, false)) {
+                        return;
+                    }
+                } catch (Throwable ignored) {
+                }
+                try {
+                    if (com.cinetv.launcher.remote.LocalAdb.shell(app, "input keyevent 223 || input keyevent 26", 1500)) {
+                        return;
+                    }
+                } catch (Throwable ignored) {
+                }
+                try {
+                    com.cinetv.launcher.TvKeyInterceptorService keys = com.cinetv.launcher.TvKeyInterceptorService.getInstance();
+                    if (keys != null && android.os.Build.VERSION.SDK_INT >= 28) {
+                        keys.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN);
+                    }
+                } catch (Throwable ignored) {
+                }
+            }, "cinetv-sleep-panel").start();
         }
     }
 

@@ -122,29 +122,51 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 || lower.startsWith("org.droidtv.playtv") || lower.contains("droidtv.channels");
     }
 
-    /** Wake from standby: CineTV first, and the tuner the TV starts by itself is stopped before it shows. */
+    /**
+     * Standby & wake lifecycle:
+     * - On ACTION_SCREEN_OFF: release Wi-Fi/Multicast locks and stop idle timers so the TV enters deep standby cleanly.
+     * - On ACTION_SCREEN_ON: bring CineTV to the front if an unwanted boot/wake tuner appeared, WITHOUT running
+     *   `am force-stop` on MediaTek/Grundig/Arçelik TVCenter (killing tvcenter breaks single-press STR standby).
+     */
     private final BroadcastReceiver screenOn = new BroadcastReceiver() {
         @Override
         public void onReceive(Context c, Intent i) {
+            if (i != null && Intent.ACTION_SCREEN_OFF.equals(i.getAction())) {
+                stopHeldKeyRepeat();
+                handler.removeCallbacks(idleSaver);
+                handler.removeCallbacks(cinesubAmbient);
+                MemoryOptimizer.releaseAirPlayLocks();
+                return;
+            }
             if (com.cinetv.launcher.device.Uninstaller.isRemoving(TvKeyInterceptorService.this)) return;
             wokeAt = android.os.SystemClock.elapsedRealtime();
+            handler.removeCallbacks(cinesubAmbient);
+            handler.postDelayed(cinesubAmbient, 15_000);
             if (!DeviceTweaks.isUnwantedTuner() || isInMediaOrThirdPartyApp()) return;
             try {
+                performGlobalAction(GLOBAL_ACTION_HOME);
                 startActivity(new Intent(TvKeyInterceptorService.this, MainActivity.class)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
             } catch (Throwable ignored) {
             }
-            final StringBuilder stop = new StringBuilder();
-            for (String p : LIVE_TV_APPS) stop.append("am force-stop ").append(p).append(" 2>/dev/null; ");
-            new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(TvKeyInterceptorService.this, stop.toString(), 1500), "cinetv-wake").start();
         }
     };
 
     private final BroadcastReceiver timeTick = new BroadcastReceiver() {
         @Override
         public void onReceive(Context c, Intent i) {
+            try {
+                android.os.PowerManager pm = (android.os.PowerManager) getSystemService(Context.POWER_SERVICE);
+                if (pm != null && !pm.isInteractive()) {
+                    MemoryOptimizer.releaseAirPlayLocks();
+                    return;
+                }
+            } catch (Throwable ignored) {}
             if (MainActivity.foreground) {
                 DeviceTweaks.syncNightMode(TvKeyInterceptorService.this);
+            }
+            if (android.os.SystemClock.elapsedRealtime() < DeviceTweaks.BOOT_GUARD_MS) {
+                return;
             }
             if (!com.cinetv.launcher.device.Uninstaller.isRemoving(TvKeyInterceptorService.this)
                     && !isInMediaOrThirdPartyApp()
@@ -643,9 +665,12 @@ public class TvKeyInterceptorService extends AccessibilityService {
                         .putExtra("action", "settings"));
                 return true;
             }
-            if (code == KeyEvent.KEYCODE_POWER || code == KeyEvent.KEYCODE_SLEEP) {
-                if (android.os.Build.VERSION.SDK_INT >= 28 && performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)) return true;
-                return performGlobalAction(GLOBAL_ACTION_POWER_DIALOG);
+            if (DeviceTweaks.isPowerOrSleepKey(code)) {
+                if (longPress) {
+                    return performGlobalAction(GLOBAL_ACTION_POWER_DIALOG);
+                }
+                DeviceTweaks.sleepPanel(this);
+                return true;
             }
             if (code == KeyEvent.KEYCODE_DEL) {
                 return applyRemoteTyping(1, "", null, false);
@@ -933,8 +958,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
         handler.removeCallbacks(cinesubAmbient);
         handler.postDelayed(cinesubAmbient, 15_000);
         try {
-            // The moment the screen comes on, before the TV's own tuner / last HDMI input gets its window up.
+            // Listen for both screen-on (wake from standby) and screen-off (entering standby)
             IntentFilter on = new IntentFilter(Intent.ACTION_SCREEN_ON);
+            on.addAction(Intent.ACTION_SCREEN_OFF);
             if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(screenOn, on, Context.RECEIVER_NOT_EXPORTED);
             else registerReceiver(screenOn, on);
             IntentFilter f = new IntentFilter(Intent.ACTION_TIME_TICK);
@@ -968,6 +994,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
         } catch (Throwable t) {
             android.util.Log.w("CineTvKeyService", "cinesubReceiver register failed: " + t.getMessage());
         }
+        final boolean coldBooting = android.os.SystemClock.elapsedRealtime() < DeviceTweaks.BOOT_GUARD_MS;
         try {
             final com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(this);
             if (day != null) {
@@ -977,27 +1004,31 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 boolean alreadyShown = com.cinetv.launcher.service.Prefs.get(this).getBoolean(prefKey, false);
                 if (!alreadyShown) {
                     com.cinetv.launcher.service.Prefs.get(this).edit().putBoolean(prefKey, true).apply();
-                    handler.postDelayed(() -> com.cinetv.launcher.ui.CelebrationOverlay.show(this, day), 2500);
+                    handler.postDelayed(() -> com.cinetv.launcher.ui.CelebrationOverlay.show(this, day), coldBooting ? 18_000L : 2500L);
                 }
             }
         } catch (Throwable ignored) {}
         try {
             DeviceTweaks.syncNightMode(this);
         } catch (Throwable ignored) {}
-        try {
-            com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
-            com.cinetv.launcher.remote.RelayHost.resumeIfStopped(this);
-            new Thread(() -> com.cinetv.launcher.remote.KeyBridge.warmUp(this), "cinetv-keys-boot").start();
-        } catch (Throwable ignored) {}
-        try {
-            MemoryOptimizer.ensureAirPlayReceiver(this);
-        } catch (Throwable ignored) {}
-        // (the memory tuning is a setup step now: HomeGuard runs it once per version, after the TV has started)
-        try {
-            com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
-        } catch (Throwable t) {
-            android.util.Log.w("CineTvKeyService", "AirPodsLink start failed: " + t.getMessage());
-        }
+        // During cold boot after a full shutdown, defer heavy background daemons (KeyBridge app_process spawn,
+        // WebRemote TLS server, AirPlay ADB checks, Bluetooth profile binding) so the TV becomes responsive immediately.
+        handler.postDelayed(() -> {
+            if (instance == null) return;
+            try {
+                com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
+                com.cinetv.launcher.remote.RelayHost.resumeIfStopped(this);
+                new Thread(() -> com.cinetv.launcher.remote.KeyBridge.warmUp(this), "cinetv-keys-boot").start();
+            } catch (Throwable ignored) {}
+            try {
+                MemoryOptimizer.ensureAirPlayReceiver(this);
+            } catch (Throwable ignored) {}
+            try {
+                com.cinetv.launcher.device.AirPodsLink.ensureStarted(this);
+            } catch (Throwable t) {
+                android.util.Log.w("CineTvKeyService", "AirPodsLink start failed: " + t.getMessage());
+            }
+        }, coldBooting ? 35_000L : 0L);
     }
 
     @Override
@@ -1105,11 +1136,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 if (inActiveMediaApp) {
                     return;
                 }
-                // The OEM tuner MediaTek/Arçelik TVs push on boot/wake: suppress immediately and stay in CineTV.
-                // If user deliberately pressed Inputs / Live TV, it is left alone.
-                // MediaTek TVs draw their own settings, picture and sound menus inside the tuner app: those stay open.
+                // The OEM tuner MediaTek/Arçelik/Grundig TVs push on boot/wake: return to CineTV Home without
+                // force-stopping tvcenter (killing com.mediatek.wwtv.tvcenter / com.mediatek.tv.oneworld.tvcenter
+                // kills the hardware standby daemon and breaks single-press Power sleep!).
                 if (bootOrWakeWindow && DeviceTweaks.isUnwantedTuner() && !isTvMenu(cls)) {
-                    new Thread(() -> com.cinetv.launcher.remote.LocalAdb.shell(this, "am force-stop " + pkg + " 2>/dev/null; am force-stop com.mediatek.wwtv.tvcenter 2>/dev/null; am force-stop com.arcelik.tv.livetv 2>/dev/null", 800)).start();
                     performGlobalAction(GLOBAL_ACTION_HOME);
                     startActivity(new Intent(this, MainActivity.class)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
@@ -1605,6 +1635,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (instance == null) return false;
         int code = event.getKeyCode();
         int action = event.getAction();
+        // Power / Sleep / Wakeup keys (single press for standby, long press for full shutdown dialog)
+        // must pass straight through to PhoneWindowManager / OEM TV power daemon without any interception!
+        if (DeviceTweaks.isPowerOrSleepKey(code)) {
+            return false;
+        }
         if (action == KeyEvent.ACTION_DOWN) {
             lastNavKeyAt = android.os.SystemClock.elapsedRealtime();
             lastUserKeyWallMs = System.currentTimeMillis();

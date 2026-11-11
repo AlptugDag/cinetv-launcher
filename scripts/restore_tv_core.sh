@@ -22,14 +22,21 @@ if [ -z "$DEVICE" ]; then
     exit 1
 fi
 
-# Core packages per platform, including default stock launchers. Only packages that exist on the firmware are touched.
+# Hardware TV-core packages (HDMI / tuner / picture / standby daemon). Always kept enabled.
 CORE_PACKAGES=(
-    "com.mediatek.wwtv.tvcenter"        # MediaTek TV app (HDMI / picture / HDR / inputs)
+    "com.mediatek.wwtv.tvcenter"        # MediaTek TV app (HDMI / picture / HDR / inputs / standby)
     "com.mediatek.wwtv.tvcenter.rro"    # its resource overlay
     "com.mediatek.tv.factory"           # persistent factory command service
-    "com.google.android.tvlauncher"     # Android TV stock launcher
-    "com.google.android.apps.tv.launcherx" # Google TV stock launcher
-    "com.google.android.leanbacklauncher"  # Leanback stock launcher
+    "com.mediatek.tv.oneworld.tvcenter" # Grundig MediaTek TV core
+    "com.arcelik.tv.livetv"             # Arçelik / Beko / Grundig Live TV & standby service
+)
+
+# Stock launchers are only re-enabled during manual emergency recovery (without --quiet) or when CineTV is not installed,
+# so debloat self-heal never re-enables competing heavy launchers alongside CineTV on cold boot.
+STOCK_LAUNCHERS=(
+    "com.google.android.tvlauncher"
+    "com.google.android.apps.tv.launcherx"
+    "com.google.android.leanbacklauncher"
     "com.android.tv.launcher"
     "com.mitv.tvhome"
     "com.xiaomi.mitv.tvhome"
@@ -44,6 +51,10 @@ CORE_PACKAGES=(
 ALL_PKGS="$(adb shell "pm list packages -u" 2>/dev/null | tr -d '\r')"
 INST_PKGS="$(adb shell "pm list packages" 2>/dev/null | tr -d '\r')"
 DIS_PKGS="$(adb shell "pm list packages -d" 2>/dev/null | tr -d '\r')"
+
+if [ "$QUIET" != "1" ] || ! printf '%s\n' "$INST_PKGS" | grep -qxF "package:com.cinetv.launcher"; then
+    CORE_PACKAGES+=("${STOCK_LAUNCHERS[@]}")
+fi
 
 FIXED=0
 for pkg in "${CORE_PACKAGES[@]}"; do

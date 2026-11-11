@@ -1,5 +1,16 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.55
+
+- **Grundig / Arçelik / Beko (MediaTek) ve Android TV'lerde Tek Basışla Uyku (Standby) Modu Düzeltmesi:**
+  - **OEM Güç ve Uyku Servisi (`tvcenter`) Koruması:** Grundig, Arçelik ve Beko (MediaTek) TV'lerde donanımsal hızlı uyku (Suspend-to-RAM / STR) servisini barındıran `com.mediatek.wwtv.tvcenter`, `com.mediatek.tv.oneworld.tvcenter` ve `com.arcelik.tv.livetv` paketlerine açılışta veya uyanmada `am force-stop` gönderilmesi tamamen kaldırıldı. İstenmeyen kanal tarama ekranı artık arka plan güç servisini öldürmeden yalnızca `MainActivity` öne getirilerek gizlenir; böylece kumandadan güç tuşuna tek basıldığında TV anında uyku moduna geçer, basılı tutulduğunda ise tam kapanma menüsü (`GLOBAL_ACTION_POWER_DIALOG`) açılır.
+  - **`screensaver_activate_on_sleep = 0` Standartlaştırması:** Güç tuşuna basıldığında TV panelini kapatmak yerine ekran koruyucuyu (`ClockDream`) devreye sokan `screensaver_activate_on_sleep = 1` ayarı tüm kurulum ve sistem katmanlarında (`DeviceTweaks`, `HomeGuard`, `install.sh`, `install-windows.ps1`) `0` olarak güncellendi.
+  - **OEM Quickboot Özellikleri ve Güç Tuşu Geçişi:** `persist.sys.quickboot` ve `persist.sys.power.quickboot` sistem özelliklerinin sıfırlanması durduruldu. `TvKeyInterceptorService` ve `MainActivity` içinde tüm güç/uyku tuşlarının (`KEYCODE_POWER`, `KEYCODE_SLEEP`, `KEYCODE_TV_POWER`, `KEYCODE_STB_POWER`, `KEYCODE_SOFT_SLEEP`) doğrudan işletim sistemine iletilmesi ve ekran kapandığında (`ACTION_SCREEN_OFF`) Wi-Fi/Multicast kilitlerinin anında serbest bırakılması sağlandı.
+- **Tam Kapanma Sonrası Açılış (Cold Boot) Hızlandırması:**
+  - **Rakip Stok Launcher Çakışmasının Önlenmesi:** `restore_tv_core.sh --quiet` betiğinin debloat sonrasında devre dışı bırakılmış stok Google TV / Arçelik launcher'larını yeniden etkinleştirmesi engellendi; soğuk açılışta yalnızca CineTV'nin çalışması garanti altına alındı.
+  - **İlk 90 Saniyelik Soğuk Açılış Penceresinde Sıfır Darboğaz:** Tam kapanma sonrası açılışta (`SystemClock.elapsedRealtime() < 90_000L`) ana ekran önbellekteki vitrinle ~0.5 saniye içinde anında çizilir; `LocalAdb` kabuk komutları, `KeyBridge` JVM başlatması, AOT derleme (`cmd package compile`), arka plan uygulama temizliği (`MemoryOptimizer.sweepAsync`) ve eşzamanlı YouTube fragman çözümlemeleri (`MovieCatalog.prefetchTrailer`) sistem ve Wi-Fi tamamen oturduktan sonraya ertelendi.
+- **Sürüm ve Paket İlerlemesi:** Android TV başlatıcı derleme sürümü (`1.0.0.55`, `versionCode 1100570`), Windows PC arayüzü (`windows/index.html`) ve servis işçileri (`sw.js`) 1.0.0.55 seviyesine yükseltildi.
+
 ## 1.0.0.53
 
 - **DVD Kutusu Fragman Başlığı Yüksekliği Düzeltmesi:**

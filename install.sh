@@ -237,8 +237,8 @@ case "$CURRENT" in *"$KEY_SERVICE"*) ;; null|"") tv settings put secure enabled_
 tv settings put secure accessibility_enabled 1
 tv settings put secure screensaver_enabled 1
 tv settings put secure screensaver_components "$DREAM"
-# dream when idle instead of going straight to standby
-tv settings put secure screensaver_activate_on_sleep 1
+# Never activate screensaver on sleep/power button press (breaks single-press standby on Grundig/Arçelik/MediaTek TVs)
+tv settings put secure screensaver_activate_on_sleep 0
 ok "Remote buttons and screensaver configured"
 
 [ -z "$CITY" ] || { tv settings put global cinetv_city "\"$CITY\""; ok "Weather city: $CITY"; }
@@ -250,7 +250,7 @@ ok "Remote buttons and screensaver configured"
 
 # Lock CineTV as the sole active Home launcher by disabling competing stock launchers (recorded in /sdcard/cinetv-launchers.txt so Uninstaller restores them)
 if [ "$KEEP_OLD" != 1 ]; then
-    for stock in com.google.android.tvlauncher com.google.android.apps.tv.launcherx com.google.android.leanbacklauncher com.android.tv.launcher com.mitv.tvhome com.xiaomi.mitv.tvhome com.tcl.cyberui com.sony.dtv.osat.launcher com.hisense.vidaa.launcher org.droidtv.leanback; do
+    for stock in com.google.android.tvlauncher com.google.android.apps.tv.launcherx com.google.android.leanbacklauncher com.android.tv.launcher com.mitv.tvhome com.xiaomi.mitv.tvhome com.tcl.cyberui com.sony.dtv.osat.launcher com.hisense.vidaa.launcher org.droidtv.leanback com.arcelik.home com.vestel.launcher; do
         if tv pm list packages -e | grep -qx "package:$stock"; then
             tv pm disable-user --user 0 "$stock" >/dev/null 2>&1 && tv "grep -qx '$stock' /sdcard/cinetv-launchers.txt 2>/dev/null || echo '$stock' >> /sdcard/cinetv-launchers.txt" || true
         fi

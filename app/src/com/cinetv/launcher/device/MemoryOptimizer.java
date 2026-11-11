@@ -98,6 +98,8 @@ public final class MemoryOptimizer {
      * (under a third of RAM free); killing healthy apps only makes the next launch slower. Never on the main thread.
      */
     public static void sweepAsync(Context ctx) {
+        // Never kill background apps while the TV is still completing cold boot (causes ActivityManager broadcast thrashing)
+        if (android.os.SystemClock.elapsedRealtime() < DeviceTweaks.BOOT_GUARD_MS) return;
         if (!com.cinetv.launcher.MainActivity.isInFront() && DeviceTweaks.isMediaPlaying(ctx)) return;
         long now = System.currentTimeMillis();
         if (now - lastSweep < 45_000L) return;
@@ -153,6 +155,13 @@ public final class MemoryOptimizer {
     public static void ensureAirPlayReceiver(Context ctx) {
         if (ctx == null) return;
         final Context app = ctx.getApplicationContext();
+        try {
+            android.os.PowerManager pm = (android.os.PowerManager) app.getSystemService(Context.POWER_SERVICE);
+            if (pm != null && !pm.isInteractive()) {
+                releaseAirPlayLocks();
+                return;
+            }
+        } catch (Throwable ignored) {}
         // Never hold a Wi-Fi MulticastLock or spawn ADB commands while Nuvio or media playback is active:
         // holding a MulticastLock disables hardware multicast filtering and degrades Wi-Fi scraper throughput.
         if (!com.cinetv.launcher.MainActivity.isInFront()

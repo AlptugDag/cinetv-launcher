@@ -47,6 +47,8 @@ public final class HomeGuard {
      */
     public static void runUpdateOptimizationsAsync(final Context ctx) {
         if (ctx == null || updateOptRunning || com.cinetv.launcher.device.Uninstaller.isRemoving(ctx)) return;
+        // Never run heavy ADB / AOT compilation while the TV is still completing a cold boot
+        if (SystemClock.elapsedRealtime() < com.cinetv.launcher.device.DeviceTweaks.BOOT_GUARD_MS) return;
         final Context app = ctx.getApplicationContext();
         if (isUserInMediaOrThirdPartyApp(app)) return;
         final android.content.SharedPreferences p = Prefs.get(app);
@@ -334,7 +336,7 @@ public final class HomeGuard {
                 + "*) settings put secure enabled_accessibility_services \"$s:" + service + "\" 2>/dev/null ;; esac; "
                 + "settings put secure accessibility_enabled 1 2>/dev/null; "
                 + "settings put secure screensaver_enabled 1 2>/dev/null; "
-                + "settings put secure screensaver_activate_on_sleep 1 2>/dev/null; "
+                + "settings put secure screensaver_activate_on_sleep 0 2>/dev/null; "
                 + "settings put secure screensaver_components " + pkg + "/" + pkg + ".ClockDream 2>/dev/null; ";
         com.cinetv.launcher.remote.LocalAdb.shell(app, cmd, 30_000);
         takeOverOnce(app);

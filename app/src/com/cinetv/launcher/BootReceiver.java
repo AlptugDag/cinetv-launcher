@@ -41,30 +41,28 @@ public class BootReceiver extends BroadcastReceiver {
             if (svc != null && svc.isInMediaOrThirdPartyApp()) {
                 return;
             }
-            Intent launch = new Intent(context, MainActivity.class)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-            try {
-                context.startActivity(launch);
-            } catch (Throwable t) {
-                Log.w(TAG, "failed to start on boot: " + t);
+            if (!MainActivity.isInFront()) {
+                Intent launch = new Intent(context, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                try {
+                    context.startActivity(launch);
+                } catch (Throwable t) {
+                    Log.w(TAG, "failed to start on boot: " + t);
+                }
             }
             android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
-            long[] delays = {2500L};
-            for (long delay : delays) {
-                h.postDelayed(() -> {
-                    TvKeyInterceptorService s = TvKeyInterceptorService.getInstance();
-                    if (s != null && s.isInMediaOrThirdPartyApp()) return;
-                    if (com.cinetv.launcher.device.DeviceTweaks.isMediaPlaying(context)) return;
-                    try {
-                        Intent followUp = new Intent(context, MainActivity.class)
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION);
-                        context.startActivity(followUp);
-                    } catch (Throwable ignored) {
-                    }
-                }, delay);
-            }
-            com.cinetv.launcher.device.MemoryOptimizer.ensureAirPlayReceiver(context);
-            com.cinetv.launcher.service.AppUpdater.checkAndAutoUpdateOnBoot(context);
+            h.postDelayed(() -> {
+                if (MainActivity.isInFront()) return;
+                TvKeyInterceptorService s = TvKeyInterceptorService.getInstance();
+                if (s != null && s.isInMediaOrThirdPartyApp()) return;
+                if (com.cinetv.launcher.device.DeviceTweaks.isMediaPlaying(context)) return;
+                try {
+                    Intent followUp = new Intent(context, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                    context.startActivity(followUp);
+                } catch (Throwable ignored) {
+                }
+            }, 2500L);
         }
     }
 }

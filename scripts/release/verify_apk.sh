@@ -34,9 +34,12 @@ else
 fi
 # (the public debug keystore may be absent from a checkout: then there is nothing to compare with)
 DEBUG_SHA=""
-if [ -f "$ROOT/launcher/debug.keystore" ]; then
-  DEBUG_SHA="$(keytool -list -v -keystore "$ROOT/launcher/debug.keystore" -storepass android -alias androiddebugkey 2>/dev/null | awk -F': ' '/SHA256:/{print $2}' | tr -d ':' | tr 'A-F' 'a-f' || true)"
-fi
+for dks in "$ROOT/debug.keystore" "$ROOT/app/debug.keystore" "$ROOT/launcher/debug.keystore"; do
+  if [ -f "$dks" ]; then
+    DEBUG_SHA="$(keytool -list -v -keystore "$dks" -storepass android -alias androiddebugkey 2>/dev/null | awk -F': ' '/SHA256:/{print $2}' | tr -d ':' | tr 'A-F' 'a-f' || true)"
+    break
+  fi
+done
 [ -n "$DEBUG_SHA" ] && [ "$SHA" = "$DEBUG_SHA" ] && bad "signed with the public debug key"
 
 BADGING="$("$BT/aapt2" dump badging "$APK" 2>/dev/null)"
