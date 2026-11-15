@@ -156,7 +156,7 @@ const server = http.createServer((req, res) => {
         paired: true,
         token: 'preview-token',
         name: 'CineTV Salon',
-        version: '2.4',
+        version: '1.0.0.55',
         securePort: 0,
         hasTmdb: true,
         hasAi: true,
@@ -376,12 +376,16 @@ const server = http.createServer((req, res) => {
     return sendJson(res, { ok: true });
   }
 
+  const remoteDir = fs.existsSync(path.join(__dirname, 'app', 'assets', 'remote'))
+    ? path.join(__dirname, 'app', 'assets', 'remote')
+    : path.join(__dirname, 'launcher', 'assets', 'remote');
+
   let filePath;
   if (urlPath === '/' || urlPath === '/index.html' || urlPath === '/remote' || urlPath === '/remote/') {
-    filePath = path.join(__dirname, 'launcher', 'assets', 'remote', 'index.html');
+    filePath = path.join(remoteDir, 'index.html');
   } else if (urlPath.startsWith('/static/')) {
     const assetName = urlPath.slice('/static/'.length);
-    const candidate1 = path.join(__dirname, 'launcher', 'assets', 'remote', assetName);
+    const candidate1 = path.join(remoteDir, assetName);
     const candidate2 = path.join(__dirname, 'docs', 'remote', 'static', assetName);
     filePath = fs.existsSync(candidate1) ? candidate1 : candidate2;
   } else if (urlPath === '/docs' || urlPath === '/docs/') {
@@ -390,7 +394,7 @@ const server = http.createServer((req, res) => {
     const sub = urlPath.replace(/^\/windows\/?/, '');
     filePath = sub ? path.join(__dirname, 'windows', sub) : path.join(__dirname, 'windows', 'index.html');
   } else {
-    const candidateRemote = path.join(__dirname, 'launcher', 'assets', 'remote', urlPath.replace(/^\/+/, ''));
+    const candidateRemote = path.join(remoteDir, urlPath.replace(/^\/+/, ''));
     const candidateDocs = path.join(__dirname, 'docs', urlPath.replace(/^\/+/, ''));
     const candidateWindows = path.join(__dirname, 'windows', urlPath.replace(/^\/+/, ''));
     filePath = fs.existsSync(candidateRemote) ? candidateRemote : (fs.existsSync(candidateDocs) ? candidateDocs : candidateWindows);
@@ -402,7 +406,7 @@ const server = http.createServer((req, res) => {
     }
     fs.readFile(filePath, (readErr, content) => {
       if (readErr) {
-        const fallback = path.join(__dirname, 'launcher', 'assets', 'remote', 'index.html');
+        const fallback = path.join(remoteDir, 'index.html');
         fs.readFile(fallback, (fbErr, fbContent) => {
           if (fbErr) {
             res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

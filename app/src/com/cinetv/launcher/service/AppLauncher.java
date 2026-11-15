@@ -231,9 +231,19 @@ public final class AppLauncher {
             }
             if (pkg.toLowerCase(java.util.Locale.ROOT).contains("nuvio") || pkg.toLowerCase(java.util.Locale.ROOT).contains("stremio")) {
                 com.cinetv.launcher.TvKeyInterceptorService.markNuvioActive(pkg);
+                com.cinetv.launcher.device.MemoryOptimizer.prepareForPlayback(ctx, pkg);
             }
             for (String yp : YOUTUBE_PACKAGES) {
-                if (pkg.equals(yp)) com.cinetv.launcher.TvKeyInterceptorService.launchedYouTubeFromCineTv = false;
+                if (pkg.equals(yp)) {
+                    com.cinetv.launcher.TvKeyInterceptorService.launchedYouTubeFromCineTv = false;
+                    com.cinetv.launcher.TvKeyInterceptorService.markYouTubeActive(pkg);
+                    com.cinetv.launcher.device.MemoryOptimizer.prepareForPlayback(ctx, pkg);
+                }
+            }
+            if (pkg.toLowerCase(java.util.Locale.ROOT).contains("youtube") || pkg.toLowerCase(java.util.Locale.ROOT).contains("tizentube")
+                    || pkg.toLowerCase(java.util.Locale.ROOT).contains("smarttube")) {
+                com.cinetv.launcher.TvKeyInterceptorService.markYouTubeActive(pkg);
+                com.cinetv.launcher.device.MemoryOptimizer.prepareForPlayback(ctx, pkg);
             }
         }
         Intent intent = launchIntent(ctx.getPackageManager(), pkg);
@@ -256,6 +266,8 @@ public final class AppLauncher {
             return launchFirst(ctx, YOUTUBE_PACKAGES);
         }
         com.cinetv.launcher.TvKeyInterceptorService.launchedYouTubeFromCineTv = true;
+        com.cinetv.launcher.TvKeyInterceptorService.markYouTubeActive(YOUTUBE_PACKAGES[0]);
+        com.cinetv.launcher.device.MemoryOptimizer.prepareForPlayback(ctx, YOUTUBE_PACKAGES[0]);
 
         String vid = null;
         if (url.contains("youtu.be/")) {
@@ -355,7 +367,9 @@ public final class AppLauncher {
         com.cinetv.launcher.TvKeyInterceptorService.launchedNuvioFromCineTv = true;
         com.cinetv.launcher.TvKeyInterceptorService.lastNuvioLaunchPreferResume = preferResume;
         String targetPkg = resolveNuvioPackage(ctx);
-        com.cinetv.launcher.TvKeyInterceptorService.markNuvioActive(targetPkg != null ? targetPkg : NUVIO);
+        String activePkg = targetPkg != null ? targetPkg : NUVIO;
+        com.cinetv.launcher.TvKeyInterceptorService.markNuvioActive(activePkg);
+        com.cinetv.launcher.device.MemoryOptimizer.prepareForPlayback(ctx, activePkg);
 
         if (imdbId != null && (imdbId.startsWith("tv:") || "tv".equals(type) || "channel".equals(type))) {
             Intent tvIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("stremio:///detail/tv/" + imdbId));

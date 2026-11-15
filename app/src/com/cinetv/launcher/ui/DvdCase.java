@@ -230,8 +230,17 @@ public final class DvdCase {
 
     static Bitmap bakeCover(Context ctx, Bitmap poster, String title, int year, int accent, int w, int h) {
         Bitmap[] shell = shell(w, h);
-        Bitmap out = shell[0].copy(Bitmap.Config.ARGB_8888, true);
-        Canvas c = new Canvas(out);
+        boolean rgb565 = ctx != null && com.cinetv.launcher.device.PerformanceProfile.ultraLowRam(ctx);
+        Bitmap out;
+        Canvas c;
+        if (rgb565) {
+            out = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
+            c = new Canvas(out);
+            c.drawBitmap(shell[0], 0, 0, null);
+        } else {
+            out = shell[0].copy(Bitmap.Config.ARGB_8888, true);
+            c = new Canvas(out);
+        }
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         float corner = w * 0.03f;
         RectF insert = insert(w, h);
@@ -333,8 +342,14 @@ public final class DvdCase {
         return out;
     }
 
+    public static synchronized void trimCaches() {
+        HALO_CACHE.evictAll();
+        SHELLS.clear();
+    }
+
     static Bitmap bakeSpine(Context ctx, String title, Bitmap logo, int year, int accent, int w, int h) {
-        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        boolean lowMem = ctx != null && com.cinetv.launcher.device.PerformanceProfile.lowMemory(ctx);
+        Bitmap out = Bitmap.createBitmap(w, h, lowMem ? Bitmap.Config.RGB_565 : Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         float[] hsv = new float[3];
         Color.colorToHSV(accent, hsv);

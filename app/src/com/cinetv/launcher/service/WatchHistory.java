@@ -268,11 +268,16 @@ public final class WatchHistory {
      * If the viewer removed an item from Nuvio's Continue Watching or Watchlist, it is removed from CineTV's card as well.
      */
     public static void syncWithNuvio(final Context ctx) {
+        if (ctx == null) return;
         final Context app = ctx.getApplicationContext();
+        if (android.os.SystemClock.elapsedRealtime() < com.cinetv.launcher.device.DeviceTweaks.BOOT_GUARD_MS
+                || !AppLauncher.wasNuvioRecentlyActive(120_000L)) {
+            return;
+        }
         Entry cur = latest(app);
         if (cur == null || cur.movie == null) return;
         long now = System.currentTimeMillis();
-        if (now - lastSyncAt < 3_000L) return;
+        if (now - lastSyncAt < 10_000L) return;
         lastSyncAt = now;
         new Thread(() -> {
             try {

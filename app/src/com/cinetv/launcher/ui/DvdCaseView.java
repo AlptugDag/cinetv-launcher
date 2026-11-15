@@ -52,12 +52,15 @@ public class DvdCaseView extends View {
     private final int[] idx = new int[4];
     private final android.graphics.Rect sliceSrc = new android.graphics.Rect();
 
+    private final boolean ultraLowRam;
+
     public DvdCaseView(Context ctx, int caseW, int glowPad) {
         super(ctx);
         this.caseW = caseW;
         this.caseH = Math.round(caseW / DvdCase.ASPECT);
         this.depth = Math.max(6, Math.round(caseW * DvdCase.DEPTH));
         this.glowPad = glowPad;
+        this.ultraLowRam = com.cinetv.launcher.device.PerformanceProfile.ultraLowRam(ctx);
     }
 
     /** Alpha is applied per draw call instead of through an offscreen layer (much cheaper on TV GPUs). */

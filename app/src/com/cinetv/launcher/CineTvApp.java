@@ -51,11 +51,16 @@ public class CineTvApp extends Application {
             com.cinetv.launcher.device.SystemAudio.warmUp(this);
             new Thread(() -> com.cinetv.launcher.remote.KeyBridge.warmUp(this), "cinetv-keys").start();
         }, booting ? 35_000L : 0L);
-        if (SystemClock.elapsedRealtime() > DeviceTweaks.BOOT_GUARD_MS || com.cinetv.launcher.device.Uninstaller.isRemoving(this)) return;
+        if (SystemClock.elapsedRealtime() > DeviceTweaks.BOOT_GUARD_MS
+                || com.cinetv.launcher.device.Uninstaller.isRemoving(this)
+                || TvKeyInterceptorService.wasMediaAppRecentlyActive(this, 180_000L)) {
+            return;
+        }
         Handler h = new Handler(Looper.getMainLooper());
         for (long delay : BOOT_RESCUES_MS) {
             h.postDelayed(() -> {
                 if (!DeviceTweaks.isUnwantedBootTuner() || MainActivity.isInFront()) return;
+                if (TvKeyInterceptorService.wasMediaAppRecentlyActive(this, 180_000L)) return;
                 TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
                 if (svc != null && svc.isInMediaOrThirdPartyApp()) return;
                 if (DeviceTweaks.isMediaPlaying(this)) return;
@@ -79,6 +84,9 @@ public class CineTvApp extends Application {
         boolean pressed = level >= TRIM_MEMORY_BACKGROUND || level == TRIM_MEMORY_RUNNING_LOW || level == TRIM_MEMORY_RUNNING_CRITICAL;
         if (level == TRIM_MEMORY_RUNNING_CRITICAL || level >= TRIM_MEMORY_COMPLETE) {
             com.cinetv.launcher.service.PosterCache.trimPacked();
+            if (!MainActivity.isInFront()) {
+                com.cinetv.launcher.ui.DvdCase.trimCaches();
+            }
         }
         if (pressed && !MainActivity.isInFront()) {
             // Keep RelayHost and TvWebRemoteServer alive so the phone remote continues working inside Nuvio

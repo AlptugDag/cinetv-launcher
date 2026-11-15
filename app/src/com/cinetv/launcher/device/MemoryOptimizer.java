@@ -139,6 +139,27 @@ public final class MemoryOptimizer {
         return false;
     }
 
+    /**
+     * Frees maximum RAM right before launching Nuvio or a video player on low-RAM / 1.3 GB Arçelik TVs
+     * so 1080p/4K ExoPlayer streams never stutter or trigger Android's low-memory killer.
+     */
+    public static void prepareForPlayback(Context ctx, final String targetPkg) {
+        if (ctx == null) return;
+        releaseAirPlayLocks();
+        final Context app = ctx.getApplicationContext();
+        final boolean ultraLow = PerformanceProfile.ultraLowRam(app);
+        if (ultraLow || PerformanceProfile.lowMemory(app)) {
+            com.cinetv.launcher.service.PosterCache.trimMemory();
+            com.cinetv.launcher.ui.Glow.clear();
+        }
+        new Thread(() -> {
+            try {
+                cleanBackground(app, targetPkg != null ? targetPkg : app.getPackageName());
+            } catch (Throwable ignored) {
+            }
+        }, "cinetv-playback-prep").start();
+    }
+
     public static void releaseAirPlayLocks() {
         try {
             if (airPlayMulticastLock != null && airPlayMulticastLock.isHeld()) {
@@ -163,7 +184,6 @@ public final class MemoryOptimizer {
             }
         } catch (Throwable ignored) {}
         // Never hold a Wi-Fi MulticastLock or spawn ADB commands while Nuvio or media playback is active:
-        // holding a MulticastLock disables hardware multicast filtering and degrades Wi-Fi scraper throughput.
         if (!com.cinetv.launcher.MainActivity.isInFront()
                 && (com.cinetv.launcher.service.AppLauncher.wasNuvioRecentlyActive(60_000L) || DeviceTweaks.isMediaPlaying(app))) {
             releaseAirPlayLocks();

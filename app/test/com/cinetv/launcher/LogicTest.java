@@ -373,7 +373,7 @@ public class LogicTest {
     @Test
     public void officialGoogleGeminiIntegrationStandardsHold() {
         // Official model identifiers per Google Gemini specification
-        assertEquals("gemini-3.8-flash", com.cinetv.launcher.ai.LlmClient.DEFAULT_GEMINI_MODEL);
+        assertEquals("gemini-4-hydrogen", com.cinetv.launcher.ai.LlmClient.DEFAULT_GEMINI_MODEL);
         assertEquals("gemini-3.1-flash-lite", com.cinetv.launcher.ai.LlmClient.FAST_GEMINI_MODEL);
         assertEquals("gemini-4-argon", com.cinetv.launcher.ai.LlmClient.DEEP_GEMINI_MODEL);
         assertEquals("gemini-flash-latest", com.cinetv.launcher.ai.LlmClient.FALLBACK_GEMINI_MODEL);
@@ -589,6 +589,18 @@ public class LogicTest {
         assertFalse(MovieCatalog.isNameOrFranchiseMatch("Gladiator", "Kingdom of Heaven"));
         assertFalse(MovieCatalog.isNameOrFranchiseMatch("The Dark Knight", "Pulp Fiction"));
         assertFalse(MovieCatalog.isNameOrFranchiseMatch("Alien", "Blade Runner"));
+    }
+
+    @Test
+    public void arcelik13GbUltraLowRamProfileLimits() {
+        // 1381 MB Arçelik sinchon (MediaTek MT7322) profile limits
+        assertEquals(10, PerformanceProfile.posterCacheMbFor("sinchon", 1381L));
+        assertEquals(6, PerformanceProfile.packedCacheMbFor("sinchon", 1381L));
+        assertEquals(20, PerformanceProfile.shelfSizeFor(true, PerformanceProfile.Tier.LOW));
+        // Standard 2 GB+ devices
+        assertEquals(14, PerformanceProfile.posterCacheMbFor("akropoli", 2048L));
+        assertEquals(10, PerformanceProfile.packedCacheMbFor("akropoli", 2048L));
+        assertEquals(20, PerformanceProfile.shelfSizeFor(false, PerformanceProfile.Tier.LOW));
     }
 }
 

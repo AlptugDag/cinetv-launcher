@@ -95,13 +95,17 @@ public final class NuvioPlaybackListenerService extends NotificationListenerServ
             MediaController chosen = null;
             int chosenState = PlaybackState.STATE_NONE;
             for (MediaController controller : sessions) {
-                if (!isNuvioPackage(controller.getPackageName())) continue;
+                String pkg = controller.getPackageName();
                 PlaybackState state = controller.getPlaybackState();
                 if (state == null) continue;
                 int value = state.getState();
-                if (value == PlaybackState.STATE_PLAYING || value == PlaybackState.STATE_BUFFERING) {
+                boolean nuvio = isNuvioPackage(pkg);
+                boolean mediaApp = nuvio || isYouTubeOrPlayerPackage(pkg);
+                if (mediaApp && (value == PlaybackState.STATE_PLAYING || value == PlaybackState.STATE_BUFFERING)) {
                     lastPlayingAtElapsed = android.os.SystemClock.elapsedRealtime();
+                    com.cinetv.launcher.TvKeyInterceptorService.markMediaAppActive(this, pkg);
                 }
+                if (!nuvio) continue;
                 if (value != PlaybackState.STATE_PLAYING && value != PlaybackState.STATE_PAUSED
                         && value != PlaybackState.STATE_BUFFERING) continue;
                 if (chosen == null || value == PlaybackState.STATE_PLAYING) {
@@ -116,6 +120,16 @@ public final class NuvioPlaybackListenerService extends NotificationListenerServ
         } catch (IllegalStateException e) {
             Log.w(TAG, "Could not read active Nuvio playback sessions", e);
         }
+    }
+
+    private static boolean isYouTubeOrPlayerPackage(String packageName) {
+        if (packageName == null) return false;
+        for (String yp : AppLauncher.YOUTUBE_PACKAGES) {
+            if (yp.equals(packageName)) return true;
+        }
+        String l = packageName.toLowerCase(java.util.Locale.ROOT);
+        return l.contains("youtube") || l.contains("tizentube") || l.contains("smarttube")
+                || l.contains("nova") || l.contains("vlc") || l.contains("kodi");
     }
 
     private void saveSession(MediaController controller, int playbackState) {

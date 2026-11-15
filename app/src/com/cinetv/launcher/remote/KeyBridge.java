@@ -56,8 +56,9 @@ public final class KeyBridge {
         return send(ctx, "o -");
     }
 
-    /** Starts the bridge ahead of time (call off the main thread), e.g. when CineTV starts. */
+    /** Starts the bridge ahead of time (call off the main thread), so the first phone press is not slow. */
     public static synchronized void warmUp(Context ctx) {
+        if (android.os.SystemClock.elapsedRealtime() < com.cinetv.launcher.device.DeviceTweaks.BOOT_GUARD_MS) return;
         connect(ctx, true);
     }
 

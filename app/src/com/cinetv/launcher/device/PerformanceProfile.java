@@ -139,32 +139,38 @@ public final class PerformanceProfile {
         return resolveBoardProfile(android.os.Build.BOARD, android.os.Build.HARDWARE, ram);
     }
 
-    /** Hardware-tuned decoded poster RAM cache ceiling in MB. */
-    public static int posterCacheMb(Context ctx) {
-        long ram = totalRamMb(ctx);
-        String prof = boardProfile(ctx);
-        if ("sinchon".equals(prof) || ram < 1600) return 8;
-        if ("akropoli".equals(prof) || ram < 2300) return 14;
+    /** Pure helper for hardware-tuned decoded poster RAM cache ceiling in MB. */
+    public static int posterCacheMbFor(String prof, long ram) {
+        if ("sinchon".equals(prof) || (ram > 0 && ram <= 1650)) return 10;
+        if ("akropoli".equals(prof) || (ram > 0 && ram < 2300)) return 14;
         if (ram >= 3500) return 28;
         return 20;
     }
 
-    /** Hardware-tuned compressed (zRAM-style) poster RAM cache ceiling in MB. */
-    public static int packedCacheMb(Context ctx) {
-        long ram = totalRamMb(ctx);
-        String prof = boardProfile(ctx);
-        if ("sinchon".equals(prof) || ram < 1600) return 6;
-        if ("akropoli".equals(prof) || ram < 2300) return 10;
+    /** Hardware-tuned decoded poster RAM cache ceiling in MB. */
+    public static int posterCacheMb(Context ctx) {
+        return posterCacheMbFor(boardProfile(ctx), totalRamMb(ctx));
+    }
+
+    /** Pure helper for hardware-tuned compressed (zRAM-style) poster RAM cache ceiling in MB. */
+    public static int packedCacheMbFor(String prof, long ram) {
+        if ("sinchon".equals(prof) || (ram > 0 && ram <= 1650)) return 6;
+        if ("akropoli".equals(prof) || (ram > 0 && ram < 2300)) return 10;
         if (ram >= 3500) return 18;
         return 12;
+    }
+
+    /** Hardware-tuned compressed (zRAM-style) poster RAM cache ceiling in MB. */
+    public static int packedCacheMb(Context ctx) {
+        return packedCacheMbFor(boardProfile(ctx), totalRamMb(ctx));
     }
 
     /** Hardware-safe ExoPlayer buffer ceiling in bytes so 4K streams never OOM low-RAM TVs. */
     public static int playerTargetBufferBytes(Context ctx) {
         long ram = totalRamMb(ctx);
         String prof = boardProfile(ctx);
-        if ("sinchon".equals(prof) || ram < 1800) return 16 * 1024 * 1024;
-        if ("akropoli".equals(prof) || ram < 2600) return 28 * 1024 * 1024;
+        if ("sinchon".equals(prof) || (ram > 0 && ram <= 1650)) return 16 * 1024 * 1024;
+        if ("akropoli".equals(prof) || (ram > 0 && ram < 2600)) return 28 * 1024 * 1024;
         if (ram >= 3500) return 64 * 1024 * 1024;
         return 36 * 1024 * 1024;
     }
@@ -434,9 +440,10 @@ public final class PerformanceProfile {
         return lowMemory(ctx) || totalRamMb(ctx) <= 2100;
     }
 
-    /** True on ~1 GB - 1.5 GB RAM TVs (e.g. 1.3 GB MediaTek/Amlogic boards) that need fast startup and minimal heap churn. */
+    /** True on ~1 GB - 1.5 GB RAM TVs (e.g. 1.3 GB Arçelik/Beko/Grundig MediaTek sinchon/MT7322 boards) that need fast startup and minimal heap churn. */
     public static boolean ultraLowRam(Context ctx) {
         long ram = totalRamMb(ctx);
+        if ("sinchon".equals(boardProfile(ctx))) return true;
         return (ram > 0 && ram <= 1650) || (ctx != null && isLowRamHardware(ctx) && ram <= 1800);
     }
 
@@ -490,14 +497,16 @@ public final class PerformanceProfile {
         return limited(ctx, LIMIT_GPU) ? ms * 4 / 5 : ms;
     }
 
-    /** Films on the shelf: 16 on ultra-low RAM (1.3 GB), 20 / 24 / 28 by mode, filling the entire screen edge-to-edge. */
+    /** Pure helper for shelf size by tier. */
+    public static int shelfSizeFor(boolean ultraLow, Tier t) {
+        if (t == Tier.LOW) return 20;
+        if (t == Tier.MID) return 24;
+        return 28;
+    }
+
+    /** Films on the shelf: 20 / 24 / 28 by mode. */
     public static int shelfSize(Context ctx) {
-        if (ultraLowRam(ctx)) return 16;
-        switch (tier(ctx)) {
-            case LOW: return 20;
-            case MID: return 24;
-            default: return 28;
-        }
+        return shelfSizeFor(false, tier(ctx));
     }
 
     /** Downscale factor for the blurred environment bitmap: coarser when graphics are the bottleneck. */

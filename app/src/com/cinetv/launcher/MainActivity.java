@@ -180,9 +180,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
         home = new HomeScreen(this, this, this);
         setContentView(home.root);
-        home.prepareStagedStartup();
-        // Staged startup: background frame 0, apps row, shelf furniture, then DVD cases dissolve progressively
+        // Staged startup on cold boot / fresh start; instant 0ms restoration when returning from YouTube/Nuvio
         final boolean freshStart = shelfIsStale();
+        final boolean warmReturn = !freshStart && !Prefs.get(this).getString(SHELF_CACHE, "").isEmpty();
+        if (!warmReturn) {
+            home.prepareStagedStartup();
+        }
         splashShown = true;
         // Waking from standby does not start a new process (the key service keeps it), so the opening is played
         // again whenever the screen comes on, not only at the very first start.
@@ -459,6 +462,16 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         final boolean lowPower = PerformanceProfile.lowMemory(this) || PerformanceProfile.lowProfile(this);
         final long upMs = android.os.SystemClock.elapsedRealtime();
         final boolean coldBooting = upMs < DeviceTweaks.BOOT_GUARD_MS;
+        final boolean warmReturn = !freshStart && !Prefs.get(this).getString(SHELF_CACHE, "").isEmpty();
+        if (warmReturn) {
+            // Instant restoration when MainActivity is recreated after YouTube/Nuvio on a 1.3 GB RAM TV:
+            // never blank the screen or replay the multi-stage startup animation from scratch.
+            home.opening.dismiss();
+            loadApps(true);
+            home.animateAppsEntrance();
+            home.animateShelfEntrance(null);
+            showCachedShelf(false);
+        }
         // Stage 1 (Background): SpatialEnvironment is rendered immediately on frame 0.
         // Stage 2: Apps dock loads & animates in smoothly (~70ms)
         // Stage 3: DVD shelf furniture & label animate in smoothly (~280ms)
@@ -466,55 +479,57 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         long pApps = lowPower ? 70L : 80L;
         long pShelf = lowPower ? 280L : 260L;
         long pCases = lowPower ? 520L : 480L;
-        long pContinue = lowPower ? 780L : 720L;
-        long pWeather = lowPower ? 980L : 920L;
+        long pContinue = warmReturn ? 120L : (lowPower ? 780L : 720L);
+        long pWeather = warmReturn ? 240L : (lowPower ? 980L : 920L);
         // During cold boot after a full shutdown, defer heavy background sweeps, ADB shells, and AOT checks
         // until after the 90s cold-boot window so the TV CPU/IO finishes booting and responds immediately.
         long pSweep = coldBooting ? Math.max(45_000L, DeviceTweaks.BOOT_GUARD_MS - upMs + 2_000L)
                 : (lowPower ? 20_000L : 8_000L);
 
-        // Stage 2: Apps dock
-        handler.postDelayed(() -> {
-            if (!isFinishing() && home != null) {
-                loadApps(true);
-                home.animateAppsEntrance();
-            }
-        }, pApps);
-
-        // Stage 3: DVD shelf furniture & structure
-        handler.postDelayed(() -> {
-            if (!isFinishing() && home != null) {
-                home.animateShelfEntrance(null);
-            }
-        }, pShelf);
-
-        // Stage 4: DVD cases (dissolving progressively from center outward)
-        handler.postDelayed(() -> {
-            if (!isFinishing() && home != null) {
-                if (!inFront) {
-                    freshOnResume = freshStart;
-                    if (home.shelf.count() == 0) {
-                        showCachedShelf(freshStart);
-                    }
-                    return;
+        if (!warmReturn) {
+            // Stage 2: Apps dock
+            handler.postDelayed(() -> {
+                if (!isFinishing() && home != null) {
+                    loadApps(true);
+                    home.animateAppsEntrance();
                 }
-                showCachedShelf(freshStart);
-                home.shelf.playStagedEntrance();
-                if (freshStart) {
-                    if (coldBooting) {
-                        // On cold boot, render cached shelf immediately without network/AI contention,
-                        // then refresh once Wi-Fi and system services settle.
-                        handler.postDelayed(() -> {
-                            if (!isFinishing() && inFront && isNetworkAvailable()) {
-                                startFreshShelf(false);
-                            }
-                        }, 10_000L);
-                    } else if (isNetworkAvailable()) {
-                        startFreshShelf(false);
+            }, pApps);
+
+            // Stage 3: DVD shelf furniture & structure
+            handler.postDelayed(() -> {
+                if (!isFinishing() && home != null) {
+                    home.animateShelfEntrance(null);
+                }
+            }, pShelf);
+
+            // Stage 4: DVD cases (dissolving progressively from center outward)
+            handler.postDelayed(() -> {
+                if (!isFinishing() && home != null) {
+                    if (!inFront) {
+                        freshOnResume = freshStart;
+                        if (home.shelf.count() == 0) {
+                            showCachedShelf(freshStart);
+                        }
+                        return;
+                    }
+                    showCachedShelf(freshStart);
+                    home.shelf.playStagedEntrance();
+                    if (freshStart) {
+                        if (coldBooting) {
+                            // On cold boot, render cached shelf immediately without network/AI contention,
+                            // then refresh once Wi-Fi and system services settle.
+                            handler.postDelayed(() -> {
+                                if (!isFinishing() && inFront && isNetworkAvailable()) {
+                                    startFreshShelf(false);
+                                }
+                            }, 10_000L);
+                        } else if (isNetworkAvailable()) {
+                            startFreshShelf(false);
+                        }
                     }
                 }
-            }
-        }, pCases);
+            }, pCases);
+        }
 
         // Phase: Continue card & local watch history
         handler.postDelayed(() -> {
@@ -545,7 +560,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             AppUpdater.checkAndAutoUpdateOnBoot(app);
             MemoryOptimizer.ensureAirPlayReceiver(app);
             com.cinetv.launcher.device.AirPodsLink.ensureStarted(app);
-            com.cinetv.launcher.ai.EmaLightningTts.prewarmNativeFallback(app);
             HomeGuard.runUpdateOptimizationsAsync(app);
             if (com.cinetv.launcher.ai.EmaLightningTts.isSpeaking()) {
                 handler.postDelayed(() -> MemoryOptimizer.sweepAsync(app), 8000L);
@@ -586,7 +600,6 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             isInitialStartup = false;
         } else {
             refreshContinueCard();
-            com.cinetv.launcher.service.WatchHistory.syncWithNuvio(this);
             // and once more a moment later: the player may still be saving where it stopped
             handler.postDelayed(() -> {
                 refreshContinueCard();
@@ -631,12 +644,25 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             boolean isOemTuner = "com.mediatek.wwtv.tvcenter".equals(currentPkg)
                     || "com.mediatek.tv.oneworld.tvcenter".equals(currentPkg)
                     || "com.arcelik.tv.livetv".equals(currentPkg);
-            if (!hasWindowFocus() && isOemTuner && DeviceTweaks.isUnwantedBootTuner()) {
-                try {
-                    startActivity(new Intent(this, MainActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
-                } catch (Throwable ignored) {
+            if (isOemTuner && DeviceTweaks.isUnwantedBootTuner()) {
+                if (!hasWindowFocus()) {
+                    try {
+                        startActivity(new Intent(this, MainActivity.class)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+                    } catch (Throwable ignored) {
+                    }
                 }
+                final String tunerPkg = currentPkg;
+                handler.postDelayed(() -> {
+                    if (inFront && hasWindowFocus() && DeviceTweaks.isUnwantedBootTuner()) {
+                        background(() -> {
+                            try {
+                                android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                                if (am != null) am.killBackgroundProcesses(tunerPkg);
+                            } catch (Throwable ignored) {}
+                        });
+                    }
+                }, 900);
             }
         }, 150);
         checkNuvioUpdatePrompt();
@@ -724,6 +750,24 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private static final long GREETING_INTERVAL_MS = 15 * 60 * 1000L;
     private int greetingAttempts = 0;
 
+    private boolean wasGreetedRecently() {
+        long now = System.currentTimeMillis();
+        if (lastGreetingMs > 0 && now - lastGreetingMs < GREETING_INTERVAL_MS) return true;
+        try {
+            android.content.SharedPreferences p = Prefs.get(this);
+            long savedElapsed = p.getLong("last_greeting_elapsed_ms", -1L);
+            long nowElapsed = android.os.SystemClock.elapsedRealtime();
+            // If we already greeted the user during this boot session within the last 3 hours,
+            // never re-greet just because Android's low-memory killer recreated MainActivity after YouTube/Nuvio!
+            if (savedElapsed > 0 && nowElapsed >= savedElapsed && (nowElapsed - savedElapsed) < AI_SHELF_EVERY_MS) {
+                lastGreetingMs = now;
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+        return false;
+    }
+
     private boolean isNetworkAvailable() {
         try {
             android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -736,8 +780,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     }
 
     private void maybeSpeakStartupGreeting() {
-        long now = System.currentTimeMillis();
-        if (lastGreetingMs > 0 && now - lastGreetingMs < GREETING_INTERVAL_MS) return;
+        if (wasGreetedRecently()) return;
         greetingAttempts = 0;
         handler.removeCallbacks(greetingRetryRunnable);
         // Wait until the background, showcase shelf, and initial DVD boxes have appeared on screen
@@ -778,6 +821,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     private void performStartupGreeting() {
         if (!inFront || isFinishing() || partyStage != null) return;
         lastGreetingMs = System.currentTimeMillis();
+        try {
+            Prefs.get(this).edit()
+                    .putLong("last_greeting_wall_ms", lastGreetingMs)
+                    .putLong("last_greeting_elapsed_ms", android.os.SystemClock.elapsedRealtime())
+                    .apply();
+        } catch (Throwable ignored) {
+        }
         int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         boolean tr = "tr".equals(Locale.getDefault().getLanguage());
         String name = com.cinetv.launcher.ai.GamzeMemory.name(this);
@@ -897,6 +947,15 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         PosterCache.trimMemory();
         Glow.clear();
         super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (!inFront && (PerformanceProfile.ultraLowRam(this) || PerformanceProfile.lowMemory(this))) {
+            PosterCache.trimMemory();
+            Glow.clear();
+        }
     }
 
     @Override
@@ -1870,8 +1929,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 MovieCatalog.prefetchTrailer(app, movies.get(i));
             }
         }
-        Prefs.get(this).edit().putLong("shelf_built_at", System.currentTimeMillis())
-                .putLong("shelf_boot_min", (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()) / 60_000L).apply();
+        long nowMs = System.currentTimeMillis();
+        long nowElapsed = android.os.SystemClock.elapsedRealtime();
+        Prefs.get(this).edit()
+                .putLong("shelf_built_at", nowMs)
+                .putLong("shelf_built_elapsed", nowElapsed)
+                .putLong("shelf_boot_min", (nowMs - nowElapsed) / 60_000L)
+                .apply();
         handler.removeCallbacks(staleRetry);
         needFresh = false;
         JSONArray arr = new JSONArray();
@@ -1879,8 +1943,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         Prefs.get(this).edit().putString(SHELF_CACHE, arr.toString()).putString(SHELF_TITLE, cleanTitle).apply();
 
         // Fresh showcase shelf has landed: greet user now that the real fresh shelf is visible
-        long now = System.currentTimeMillis();
-        if (lastGreetingMs == 0 || now - lastGreetingMs >= GREETING_INTERVAL_MS) {
+        if (!wasGreetedRecently()) {
             handler.removeCallbacks(greetingRetryRunnable);
             handler.postDelayed(this::performStartupGreeting, 450L);
         }
@@ -1896,14 +1959,29 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     /**
      * The moment's shelf: with an AI key, one picked for this hour, weekday, city and weather
      * ("Pazar gecesi için suç filmleri"); without one, or if the AI fails, a different category.
-     * Detects power-on/reboot, calendar day change, time-of-day mismatch in saved title, or 3h age.
+     * Detects power-on/reboot or 3h age without false-positive rebuilds when NTP syncs the clock
+     * or when Android recreates MainActivity after returning from YouTube / Nuvio.
      */
     private boolean shelfIsStale() {
         long now = System.currentTimeMillis();
-        long boot = (now - android.os.SystemClock.elapsedRealtime()) / 60_000L;
+        long nowElapsed = android.os.SystemClock.elapsedRealtime();
         android.content.SharedPreferences p = Prefs.get(this);
         long builtAt = p.getLong("shelf_built_at", 0);
         if (builtAt <= 0) return true;
+        long builtElapsed = p.getLong("shelf_built_elapsed", -1L);
+        // Reliable same-boot detection using monotonic elapsedRealtime (immune to post-boot NTP clock shifts):
+        if (builtElapsed > 0) {
+            if (nowElapsed < builtElapsed) {
+                // TV rebooted since the shelf was built
+                return true;
+            }
+            if (nowElapsed - builtElapsed <= AI_SHELF_EVERY_MS) {
+                // Built during this boot session within the last 3 hours: keep the active shelf intact!
+                return false;
+            }
+            return true;
+        }
+        long boot = (now - nowElapsed) / 60_000L;
         if (Math.abs(p.getLong("shelf_boot_min", -1) - boot) > 2) return true;
         if (now - builtAt > AI_SHELF_EVERY_MS) return true;
         Calendar calNow = Calendar.getInstance();

@@ -1271,7 +1271,7 @@
       "providerNames": {
         "gemini.search": "Smart Search"
       },
-      "ai_model": "gemini-3.8-flash"
+      "ai_model": "gemini-4-hydrogen"
     },
     "streaming": [
       "cru"

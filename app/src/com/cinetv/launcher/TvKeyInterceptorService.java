@@ -37,7 +37,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
     public static volatile boolean launchedNuvioFromCineTv;
     public static volatile boolean lastNuvioLaunchPreferResume;
     public static volatile long lastNuvioActiveAt = -120_000L;
+    public static volatile long lastYouTubeActiveAt = -120_000L;
 
+    private static final String PREF_LAST_MEDIA_PKG = "last_media_app_pkg";
+    private static final String PREF_LAST_MEDIA_WALL_MS = "last_media_app_wall_ms";
+    private static final String PREF_LAST_MEDIA_ELAPSED_MS = "last_media_app_elapsed_ms";
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String lastPackage;
@@ -49,11 +53,100 @@ public class TvKeyInterceptorService extends AccessibilityService {
     private volatile long lastUserKeyWallMs = 0L;
 
     public static void markNuvioActive(String pkg) {
-        lastNuvioActiveAt = android.os.SystemClock.elapsedRealtime();
+        long nowElapsed = android.os.SystemClock.elapsedRealtime();
+        lastNuvioActiveAt = nowElapsed;
         TvKeyInterceptorService svc = instance;
         if (svc != null && pkg != null && !pkg.isEmpty()) {
             svc.lastPackage = pkg;
+            persistMediaAppState(svc, pkg, nowElapsed);
+        } else {
+            CineTvApp app = CineTvApp.get();
+            if (app != null && pkg != null && !pkg.isEmpty()) {
+                persistMediaAppState(app, pkg, nowElapsed);
+            }
         }
+    }
+
+    public static void markYouTubeActive(String pkg) {
+        long nowElapsed = android.os.SystemClock.elapsedRealtime();
+        lastYouTubeActiveAt = nowElapsed;
+        TvKeyInterceptorService svc = instance;
+        if (svc != null && pkg != null && !pkg.isEmpty()) {
+            svc.lastPackage = pkg;
+            persistMediaAppState(svc, pkg, nowElapsed);
+        } else {
+            CineTvApp app = CineTvApp.get();
+            if (app != null && pkg != null && !pkg.isEmpty()) {
+                persistMediaAppState(app, pkg, nowElapsed);
+            }
+        }
+    }
+
+    public static void markMediaAppActive(Context ctx, String pkg) {
+        if (pkg == null || pkg.isEmpty()) return;
+        String lower = pkg.toLowerCase(java.util.Locale.ROOT);
+        if (lower.contains("nuvio") || lower.contains("stremio")) {
+            markNuvioActive(pkg);
+        } else if (lower.contains("youtube") || lower.contains("tizentube") || lower.contains("smarttube") || lower.contains("videomanager")) {
+            markYouTubeActive(pkg);
+        } else if (ctx != null) {
+            persistMediaAppState(ctx, pkg, android.os.SystemClock.elapsedRealtime());
+        }
+    }
+
+    public static void clearPersistedMediaAppState(Context ctx) {
+        if (ctx == null) return;
+        try {
+            com.cinetv.launcher.service.Prefs.get(ctx).edit()
+                    .remove(PREF_LAST_MEDIA_PKG)
+                    .remove(PREF_LAST_MEDIA_WALL_MS)
+                    .remove(PREF_LAST_MEDIA_ELAPSED_MS)
+                    .apply();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void persistMediaAppState(Context ctx, String pkg, long nowElapsed) {
+        if (ctx == null || pkg == null || pkg.isEmpty()) return;
+        try {
+            com.cinetv.launcher.service.Prefs.get(ctx).edit()
+                    .putString(PREF_LAST_MEDIA_PKG, pkg)
+                    .putLong(PREF_LAST_MEDIA_WALL_MS, System.currentTimeMillis())
+                    .putLong(PREF_LAST_MEDIA_ELAPSED_MS, nowElapsed)
+                    .apply();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * True when Nuvio, YouTube, or another media player was active within {@code windowMs}, even if
+     * Android's low-memory killer restarted CineTV's background process on a 1.3 GB RAM TV.
+     */
+    public static boolean wasMediaAppRecentlyActive(Context ctx, long windowMs) {
+        if (MainActivity.foreground) return false;
+        long nowElapsed = android.os.SystemClock.elapsedRealtime();
+        if (nowElapsed - lastNuvioActiveAt < windowMs || nowElapsed - lastYouTubeActiveAt < windowMs) {
+            return true;
+        }
+        if (ctx != null) {
+            try {
+                android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(ctx);
+                long savedElapsed = p.getLong(PREF_LAST_MEDIA_ELAPSED_MS, -1L);
+                long savedWall = p.getLong(PREF_LAST_MEDIA_WALL_MS, 0L);
+                String savedPkg = p.getString(PREF_LAST_MEDIA_PKG, "");
+                if (savedPkg != null && !savedPkg.isEmpty()) {
+                    // Ensure savedElapsed belongs to the current boot session (nowElapsed >= savedElapsed)
+                    if (savedElapsed > 0 && nowElapsed >= savedElapsed && (nowElapsed - savedElapsed) < windowMs) {
+                        return true;
+                    }
+                    if (savedWall > 0 && Math.abs(System.currentTimeMillis() - savedWall) < windowMs && nowElapsed >= savedElapsed) {
+                        return true;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        return false;
     }
 
     public boolean hasUserInteractedSince(long startedAtWallMs) {
@@ -64,11 +157,38 @@ public class TvKeyInterceptorService extends AccessibilityService {
         return lastPackage;
     }
 
+    private String resolveActiveForegroundPackage() {
+        if (lastPackage != null && !lastPackage.isEmpty()) return lastPackage;
+        try {
+            android.view.accessibility.AccessibilityNodeInfo root = getRootInActiveWindow();
+            if (root != null && root.getPackageName() != null) {
+                String p = root.getPackageName().toString();
+                if (!p.isEmpty() && !p.equals("com.android.systemui") && !p.equals("android")) {
+                    return p;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(this);
+            long savedElapsed = p.getLong(PREF_LAST_MEDIA_ELAPSED_MS, -1L);
+            long nowElapsed = android.os.SystemClock.elapsedRealtime();
+            if (savedElapsed > 0 && nowElapsed >= savedElapsed && (nowElapsed - savedElapsed) < 180_000L) {
+                String savedPkg = p.getString(PREF_LAST_MEDIA_PKG, null);
+                if (savedPkg != null && !savedPkg.isEmpty()) return savedPkg;
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
     public boolean isInMediaOrThirdPartyApp() {
         if (MainActivity.foreground) return false;
-        if (android.os.SystemClock.elapsedRealtime() - lastNuvioActiveAt < 45_000L) return true;
-        String pkg = lastPackage;
-        if (pkg == null || pkg.equals(getPackageName()) || isLiveTvApp(pkg)) return false;
+        long nowElapsed = android.os.SystemClock.elapsedRealtime();
+        if (nowElapsed - lastNuvioActiveAt < 60_000L || nowElapsed - lastYouTubeActiveAt < 60_000L) return true;
+        if (wasMediaAppRecentlyActive(this, 60_000L)) return true;
+        String pkg = resolveActiveForegroundPackage();
+        if (pkg == null || pkg.equals(getPackageName()) || isLiveTvApp(pkg) || isStockLauncher(pkg)) return false;
         return isNuvioApp(pkg) || isYouTubeApp(pkg) || pkg.contains("nova") || pkg.contains("vlc") || pkg.contains("kodi")
                 || pkg.contains("stremio") || (pkg.contains("player") && !isLiveTvApp(pkg));
     }
@@ -142,7 +262,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
             wokeAt = android.os.SystemClock.elapsedRealtime();
             handler.removeCallbacks(cinesubAmbient);
             handler.postDelayed(cinesubAmbient, 15_000);
-            if (!DeviceTweaks.isUnwantedTuner() || isInMediaOrThirdPartyApp()) return;
+            if (!DeviceTweaks.isUnwantedTuner() || isInMediaOrThirdPartyApp() || DeviceTweaks.isMediaPlaying(TvKeyInterceptorService.this)) return;
+            String fg = resolveActiveForegroundPackage();
+            if (fg != null && !fg.equals(getPackageName()) && !isLiveTvApp(fg) && !isStockLauncher(fg)) {
+                return;
+            }
             try {
                 performGlobalAction(GLOBAL_ACTION_HOME);
                 startActivity(new Intent(TvKeyInterceptorService.this, MainActivity.class)
@@ -955,6 +1079,19 @@ public class TvKeyInterceptorService extends AccessibilityService {
     protected void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
+        // Restore active foreground package after a background low-memory process restart on 1.3 GB RAM TVs
+        // so CineTV immediately knows if the viewer is currently inside YouTube or Nuvio.
+        try {
+            String restored = resolveActiveForegroundPackage();
+            if (restored != null && !restored.isEmpty()) {
+                lastPackage = restored;
+                if (isNuvioApp(restored)) {
+                    lastNuvioActiveAt = android.os.SystemClock.elapsedRealtime();
+                } else if (isYouTubeApp(restored)) {
+                    lastYouTubeActiveAt = android.os.SystemClock.elapsedRealtime();
+                }
+            }
+        } catch (Throwable ignored) {}
         handler.removeCallbacks(cinesubAmbient);
         handler.postDelayed(cinesubAmbient, 15_000);
         try {
@@ -1008,9 +1145,13 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 }
             }
         } catch (Throwable ignored) {}
-        try {
-            DeviceTweaks.syncNightMode(this);
-        } catch (Throwable ignored) {}
+        // Only sync system night mode when MainActivity is in front (calling UiModeManager.setNightMode while
+        // in YouTube or Nuvio dispatches a system-wide uiMode config change!).
+        if (MainActivity.foreground) {
+            try {
+                DeviceTweaks.syncNightMode(this);
+            } catch (Throwable ignored) {}
+        }
         // During cold boot after a full shutdown, defer heavy background daemons (KeyBridge app_process spawn,
         // WebRemote TLS server, AirPlay ADB checks, Bluetooth profile binding) so the TV becomes responsive immediately.
         handler.postDelayed(() -> {
@@ -1081,16 +1222,24 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
         if (isNuvioApp(pkg)) {
             markNuvioActive(pkg);
+        } else if (isYouTubeApp(pkg)) {
+            markYouTubeActive(pkg);
+        } else if (getPackageName().equals(pkg) && MainActivity.foreground) {
+            clearPersistedMediaAppState(this);
         }
 
-        boolean recentlyInNuvio = !MainActivity.foreground
-                && (android.os.SystemClock.elapsedRealtime() - lastNuvioActiveAt < 45_000L);
-        boolean inActiveMediaApp = recentlyInNuvio || (lastPackage != null && (isNuvioApp(lastPackage) || isYouTubeApp(lastPackage)
-                || lastPackage.contains("nova") || lastPackage.contains("vlc") || lastPackage.contains("kodi")
-                || lastPackage.contains("stremio") || lastPackage.contains("player")));
+        long nowElapsed = android.os.SystemClock.elapsedRealtime();
+        boolean recentlyInMedia = !MainActivity.foreground
+                && (nowElapsed - lastNuvioActiveAt < 60_000L
+                || nowElapsed - lastYouTubeActiveAt < 60_000L
+                || wasMediaAppRecentlyActive(this, 60_000L));
+        String activePkg = lastPackage != null ? lastPackage : resolveActiveForegroundPackage();
+        boolean inActiveMediaApp = recentlyInMedia || (activePkg != null && (isNuvioApp(activePkg) || isYouTubeApp(activePkg)
+                || activePkg.contains("nova") || activePkg.contains("vlc") || activePkg.contains("kodi")
+                || activePkg.contains("stremio") || activePkg.contains("player")));
         boolean bootOrWakeWindow = DeviceTweaks.isUnwantedBootTuner()
-                || (android.os.SystemClock.elapsedRealtime() - wokeAt < 15_000L);
-        boolean homeJustPressed = android.os.SystemClock.elapsedRealtime() - lastHomeKeyAt < 3_500L;
+                || (nowElapsed - wokeAt < 15_000L);
+        boolean homeJustPressed = nowElapsed - lastHomeKeyAt < 3_500L;
 
         CharSequence cls = event.getClassName();
         if (cls != null) {
@@ -1105,7 +1254,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
 
         if (isStockLauncher(pkg)) {
-            // Never yank the user out of Nuvio or another active media app if a background stock launcher service emits a window event
+            // Never yank the user out of Nuvio, YouTube, or another active media app if a background stock launcher service emits a window event
             if (inActiveMediaApp && !homeJustPressed) {
                 return;
             }
@@ -1130,8 +1279,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
             case "com.arcelik.tv.livetv":
             case "com.android.tv":
             case "com.google.android.tv":
-                // While the viewer is inside Nuvio or another media app, MediaTek/Arçelik TV services often emit
-                // background window events (volume OSD, audio mode, CEC): never pull the viewer out of Nuvio or
+                // While the viewer is inside Nuvio, YouTube, or another media app, MediaTek/Arçelik TV services often emit
+                // background window events (volume OSD, audio mode, CEC): never pull the viewer out of their app or
                 // overwrite lastPackage.
                 if (inActiveMediaApp) {
                     return;
@@ -1149,18 +1298,18 @@ public class TvKeyInterceptorService extends AccessibilityService {
             case "com.google.android.katniss":
             case "com.google.android.googlequicksearchbox":
             case "com.google.android.apps.googleassistant":
-                // If the viewer is in Nuvio or another media app, NEVER pull them back to MainActivity when Katniss/Search
+                // If the viewer is in Nuvio, YouTube, or another media app, NEVER pull them back to MainActivity when Katniss/Search
                 // wakes in the background or when the mic button is pressed!
-                if (inActiveMediaApp) {
-                    if (android.os.SystemClock.elapsedRealtime() - MainActivity.ourVoiceAt > 15_000) {
+                if (inActiveMediaApp || !MainActivity.foreground) {
+                    if (nowElapsed - MainActivity.ourVoiceAt > 15_000) {
                         performGlobalAction(GLOBAL_ACTION_BACK);
-                        if (isNuvioApp(lastPackage) && !com.cinetv.launcher.ui.VoiceCineSubOverlay.isShowing()) {
+                        if (isNuvioApp(activePkg) && !com.cinetv.launcher.ui.VoiceCineSubOverlay.isShowing()) {
                             handler.postDelayed(() -> com.cinetv.launcher.ui.VoiceCineSubOverlay.trigger(this), 250);
                         }
                     }
                     return;
                 }
-                if (android.os.SystemClock.elapsedRealtime() - MainActivity.ourVoiceAt > 15_000) {
+                if (nowElapsed - MainActivity.ourVoiceAt > 15_000) {
                     performGlobalAction(GLOBAL_ACTION_BACK);
                     DeviceTweaks.pauseMedia(this);
                     startActivity(new Intent(this, MainActivity.class)
@@ -1175,8 +1324,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 AppLauncher.launchFirst(this, AppLauncher.NUVIO_PACKAGES);
                 return;
             case "com.google.android.youtube.tv":
-                AppLauncher.launchFirst(this, AppLauncher.YOUTUBE_PACKAGES);
-                return;
+                markYouTubeActive(pkg);
+                if (AppLauncher.launchFirst(this, AppLauncher.YOUTUBE_PACKAGES)) {
+                    return;
+                }
+                break;
             case "com.amazon.amazonvideo.livingroom":
                 // The Prime button: send a video from the phone (built-in casting).
                 AppLauncher.openPhoneCast(this);
@@ -1204,6 +1356,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
             }
         }
         lastPackage = pkg;
+        if (isNuvioApp(pkg) || isYouTubeApp(pkg)) {
+            markMediaAppActive(this, pkg);
+        }
         if (isNuvioApp(pkg)) {
             com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
         }
@@ -1645,6 +1800,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
             lastUserKeyWallMs = System.currentTimeMillis();
             if (isNuvioApp(lastPackage)) {
                 lastNuvioActiveAt = lastNavKeyAt;
+                persistMediaAppState(this, lastPackage, lastNavKeyAt);
+            } else if (isYouTubeApp(lastPackage)) {
+                lastYouTubeActiveAt = lastNavKeyAt;
+                persistMediaAppState(this, lastPackage, lastNavKeyAt);
             }
         }
         // Mute passes straight through to the OS without any interception
@@ -1732,6 +1891,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
         // Aggressive Home capture: Home button on any remote returns instantly to CineTV
         if (code == KeyEvent.KEYCODE_HOME) {
             lastHomeKeyAt = android.os.SystemClock.elapsedRealtime();
+            clearPersistedMediaAppState(this);
             if (event.getAction() == KeyEvent.ACTION_UP) {
                 if (MainActivity.foreground && MainActivity.instance != null) {
                     handler.post(() -> {
@@ -1783,32 +1943,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
             }
         }
 
-        // Never hijack Back inside Nuvio: Nuvio handles its own player, source picker, detail page, and exit naturally.
-        if (CinePlayerActivity.active && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) return false;
-        boolean playingNow = DeviceTweaks.isMediaPlaying(this);
-        if (playingNow) {
-            lastMediaPlayingAt = android.os.SystemClock.elapsedRealtime();
-        }
-        boolean directYouTube = isYouTubeApp(lastPackage) && launchedYouTubeFromCineTv;
-        if (directYouTube && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
-            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-                boolean recentlyPlaying = playingNow || (android.os.SystemClock.elapsedRealtime() - lastMediaPlayingAt < 1800L);
-                backToNuvio = recentlyPlaying;
-            }
-            if (backToNuvio) {
-                if (event.getAction() == KeyEvent.ACTION_UP) backToNuvio = false;
-                return false;
-            }
-            if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                return true;
-            }
-            if (event.getAction() == KeyEvent.ACTION_UP) {
-                launchedYouTubeFromCineTv = false;
-                startActivity(new Intent(this, MainActivity.class)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION));
-                return true;
-            }
-            return true;
+        // Never hijack Back inside Nuvio or YouTube: both handle their own player, search, detail pages, and exit naturally.
+        if ((CinePlayerActivity.active || isNuvioApp(lastPackage) || isYouTubeApp(lastPackage))
+                && (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE)) {
+            return false;
         }
 
         // The yellow key opens CineSUB over any player, NEVER on Live TV / hardware tuner!

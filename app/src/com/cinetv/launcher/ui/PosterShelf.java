@@ -89,6 +89,7 @@ public class PosterShelf extends FrameLayout {
     private float sway;
     private long swayStartNs;
     private ValueAnimator swayAnim;
+    private boolean lowProfile;
     private final Runnable startSway = this::sway;
     private final Runnable prefetchRunnable = () -> {
         if (index >= 0 && index < movies.size()) {
@@ -96,11 +97,13 @@ public class PosterShelf extends FrameLayout {
             final Context app = getContext().getApplicationContext();
             new Thread(() -> {
                 try {
-                    MovieCatalog.prefetchTrailer(app, m);
-                    MovieCatalog.details(app, m);
-                    if (m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
-                        PosterCache.load(app, m.backdropUrl, 800, 450);
+                    if (Prefs.trailerMoments(app)) {
+                        MovieCatalog.prefetchTrailer(app, m);
+                        if (m.backdropUrl != null && !m.backdropUrl.isEmpty()) {
+                            PosterCache.load(app, m.backdropUrl, 800, 450);
+                        }
                     }
+                    MovieCatalog.details(app, m);
                 } catch (Throwable ignored) {
                 }
             }, "cinetv-shelf-prefetch").start();
@@ -111,6 +114,7 @@ public class PosterShelf extends FrameLayout {
         super(ctx);
         caseW = UiKit.px(236);
         glowPad = UiKit.px(70);
+        lowProfile = PerformanceProfile.lowProfile(ctx);
         // Spatial HUD does not affect the showcase shelf or the DVD boxes on it
         spatial = false;
         asCases = Prefs.dvdCases(ctx);
@@ -859,7 +863,7 @@ public class PosterShelf extends FrameLayout {
         // well before the end, so new cases join the ring off screen instead of replacing the ones in view
         if (listener != null && n - index <= 14) listener.onNearEnd();
         main.removeCallbacks(prefetchRunnable);
-        main.postDelayed(prefetchRunnable, holding ? 320 : 150);
+        main.postDelayed(prefetchRunnable, lowProfile ? 450 : (holding ? 320 : 150));
 
         startShelfGlideLoop();
 

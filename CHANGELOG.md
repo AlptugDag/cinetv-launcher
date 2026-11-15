@@ -1,5 +1,13 @@
 # Sürüm notları · Release notes
 
+## 1.0.0.56
+
+- **1.3 GB RAM'li Arçelik (`sinchon` / MediaTek MT7322) TV'lerde YouTube ve Nuvio Kullanırken Launcher'ın Baştan Başlaması / Öne Atlaması Sorununun Çözümü:**
+  - **Arka Plan Süreç Yeniden Başlatmalarında (Low-Memory Killer) Aktif Medya Koruması:** 1.3 GB RAM'li TV'lerde YouTube (TizenTube) veya Nuvio çalışırken Android bellek yöneticisi (`lmkd`) arka plandaki `com.cinetv.launcher` sürecini sonlandırıp `TvKeyInterceptorService` erişilebilirlik servisini yeniden bağladığında, artık aktif medya uygulaması durumu (`last_media_app_pkg`, `last_media_app_elapsed_ms`) ve `getRootInActiveWindow()` üzerinden ön plandaki pencere anında geri yüklenir; `CineTvApp` açılış kurtarma zamanlayıcıları (`BOOT_RESCUES_MS`), `ACTION_SCREEN_ON` alıcısı, stok launcher yakalayıcısı ve Google Asistan (`katniss`) olaylarının YouTube veya Nuvio izlenirken `MainActivity`'yi üstte başlatması tamamen engellendi.
+  - **YouTube ve Nuvio İçinde Geri (Back) ve Ekran Değişimi Koruması:** YouTube içinde Geri (`KEYCODE_BACK`) tuşuna basıldığında video kapatılırken veya menüde gezinirken launcher'a zorla dönülmesi (`directYouTube` Back yakalaması) kaldırıldı; `MainActivity` ve `CinePlayerActivity` için `smallestScreenSize|density|fontScale|layoutDirection|mcc|mnc|touchscreen` yapılandırma bayrakları (`android:configChanges`) eklendi ve YouTube/Nuvio açıkken arka planda `UiModeManager.setNightMode()` çağrılması durduruldu.
+  - **YouTube / Nuvio'dan Ana Ekrana Dönüşte Sıfır Yeniden Başlama (Warm Return):** 1.3 GB RAM'li TV'de ağır video oynatımı sonrasında Android `MainActivity`'yi yeniden oluştursa bile, monotonik `shelf_built_elapsed` kontrolü ve `warmReturn` hızlı geri yükleme yolu sayesinde ekran kararmadan, kademeli açılış animasyonu (`prepareStagedStartup`) veya vitrin yenilemesi tetiklenmeden ve Gamze açılış karşılama mesajı (`last_greeting_elapsed_ms`) tekrarlanmadan ana ekran tek karede anında açılır.
+  - **DVD Kutusu `RGB_565` Doku Formatı Optimizasyonu:** 1.3 GB RAM'li (`sinchon` — 1381 MB) cihazlarda DVD kutusu kapak ve sırt dokuları (`DvdCase.bakeCover` / `bakeSpine`) `RGB_565` formatında işlenerek doku başına bellek tüketimi yarıya indirildi.
+
 ## 1.0.0.55
 
 - **Grundig / Arçelik / Beko (MediaTek) ve Android TV'lerde Tek Basışla Uyku (Standby) Modu Düzeltmesi:**
@@ -9,6 +17,7 @@
 - **Tam Kapanma Sonrası Açılış (Cold Boot) Hızlandırması:**
   - **Rakip Stok Launcher Çakışmasının Önlenmesi:** `restore_tv_core.sh --quiet` betiğinin debloat sonrasında devre dışı bırakılmış stok Google TV / Arçelik launcher'larını yeniden etkinleştirmesi engellendi; soğuk açılışta yalnızca CineTV'nin çalışması garanti altına alındı.
   - **İlk 90 Saniyelik Soğuk Açılış Penceresinde Sıfır Darboğaz:** Tam kapanma sonrası açılışta (`SystemClock.elapsedRealtime() < 90_000L`) ana ekran önbellekteki vitrinle ~0.5 saniye içinde anında çizilir; `LocalAdb` kabuk komutları, `KeyBridge` JVM başlatması, AOT derleme (`cmd package compile`), arka plan uygulama temizliği (`MemoryOptimizer.sweepAsync`) ve eşzamanlı YouTube fragman çözümlemeleri (`MovieCatalog.prefetchTrailer`) sistem ve Wi-Fi tamamen oturduktan sonraya ertelendi.
+- **Gemini Hydrogen (`gemini-4-hydrogen`) Yapay Zeka Modeli Geçişi:** Proje genelindeki yapay zeka motoru (`LlmClient`: Gamze sohbeti, akıllı arama, CineSUB sahne analizi, CineParty bilgi yarışması/Sessiz Sinema ve Nuvio `aiometadata-config.json` profili) birincil model olarak **Gemini Hydrogen (`gemini-4-hydrogen`)** kullanacak şekilde güncellendi; hızlı çağrılarda `gemini-4-*` serisiyle tam uyumlu `thinkingLevel: LOW` yapılandırması devreye alındı.
 - **Sürüm ve Paket İlerlemesi:** Android TV başlatıcı derleme sürümü (`1.0.0.55`, `versionCode 1100570`), Windows PC arayüzü (`windows/index.html`) ve servis işçileri (`sw.js`) 1.0.0.55 seviyesine yükseltildi.
 
 ## 1.0.0.53

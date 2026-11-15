@@ -68,7 +68,8 @@ public class SpatialEnvironment extends View {
     public SpatialEnvironment(Context ctx) {
         super(ctx);
         current = this;
-        lightSprite = radialSprite(256);
+        lite = PerformanceProfile.tier(ctx) == PerformanceProfile.Tier.LOW && PerformanceProfile.gpuLimited(ctx);
+        lightSprite = radialSprite(lite ? 128 : 256);
         setWillNotDraw(false);
     }
 
@@ -171,7 +172,7 @@ public class SpatialEnvironment extends View {
                 if (wallpaper == null && !theme.pureBlack) {
                     wallpaper = loadWallpaperForCurrentTheme();
                 }
-                Bitmap pat = wantPattern ? buildPattern(w, h) : null;
+                final Bitmap pat = wantPattern ? buildPattern(w, h) : pattern;
                 int down = PerformanceProfile.blurDownscale(getContext());
                 Bitmap small = Bitmap.createBitmap(Math.max(8, w / down), Math.max(8, h / down), Bitmap.Config.ARGB_8888);
                 Canvas c = new Canvas(small);
@@ -180,29 +181,24 @@ public class SpatialEnvironment extends View {
                 final Bitmap blur = Blur.stack(small, 6);
                 Bitmap cache = null;
                 if (comp && !customWp) {
-                    int cw = Math.round(w * OVERSIZE), ch = Math.round(h * OVERSIZE);
+                    float scale = lowMem ? 1.0f : OVERSIZE;
+                    int cw = Math.round(w * scale), ch = Math.round(h * scale);
                     cache = Bitmap.createBitmap(cw, ch, lowMem ? Bitmap.Config.RGB_565 : Bitmap.Config.ARGB_8888);
                     Canvas cc = new Canvas(cache);
                     cc.scale(cw / (float) w, ch / (float) h);
                     drawBaseThreadSafe(cc, w, h);
                     headerShadeThreadSafe(cc, w, h);
-                    if (pat != null && !pat.isRecycled()) {
+                    if (pat != null) {
                         Paint pp = new Paint(Paint.FILTER_BITMAP_FLAG);
                         pp.setAlpha(light ? 18 : 28);
                         cc.drawBitmap(pat, -pxPad(), -pxPad(), pp);
-                        pat.recycle();
-                        pat = null;
-                    }
-                    if (lowMem && wallpaper != null && !wallpaper.isRecycled()) {
-                        wallpaper = null;
                     }
                 }
-                final Bitmap finalPat = pat;
                 final Bitmap done = cache;
                 post(() -> {
                     if (g != rebuildGen) return;
                     rebuilding = false;
-                    pattern = finalPat;
+                    if (wantPattern) pattern = pat;
                     blurred = blur;
                     baseCache = done;
                     firstRevealDone = true;
@@ -291,9 +287,26 @@ public class SpatialEnvironment extends View {
     }
 
     public void pause() {
+        if (focusAnimator != null) focusAnimator.cancel();
     }
 
     public void resume() {
+        if (composited && (baseCache == null || baseCache.isRecycled()) && !rebuilding && getWidth() > 0 && getHeight() > 0 && theme != null) {
+            rebuild(getWidth(), getHeight());
+        }
+    }
+
+    /** Frees heavy backdrop bitmaps when CineTV is hidden behind a video player on ultra-low-RAM TVs. */
+    public void trimMemory() {
+        if (focusAnimator != null) focusAnimator.cancel();
+        if (PerformanceProfile.ultraLowRam(getContext())) {
+            wallpaper = null;
+            pattern = null;
+            if (baseCache != null && !baseCache.isRecycled()) {
+                baseCache.recycle();
+            }
+            baseCache = null;
+        }
     }
 
     // ---- drawing ----------------------------------------------------------------------------------
@@ -363,8 +376,8 @@ public class SpatialEnvironment extends View {
     }
 
     private final Paint shadePaint = new Paint();
-    /** Weak GPUs: one light layer instead of three. */
-    private final boolean lite = false; // single High mode: the full light on every TV
+    /** Weak GPUs / low-RAM TVs: one light layer instead of three. */
+    private final boolean lite;
 
     private void drawBase(Canvas canvas, int w, int h, boolean withParallax) {
         float px = withParallax ? (glowX - w / 2f) * -0.035f : 0f;
@@ -440,20 +453,23 @@ public class SpatialEnvironment extends View {
         return UiKit.pxf(80);
     }
 
-    /** The original CineTV watermark: the mark scattered at varied angles, cached once. */
-    private Bitmap buildPattern(int w, int h) {
-        Bitmap mark = Brand.mark(getContext());
-        int pad = (int) pxPad();
-        int tile = UiKit.px(114);
+    /** Stamps the CineTV watermark directly onto an existing canvas without allocating a full-screen 10 MB intermediate bitmap. */
+    private void drawPatternOnto(Canvas c, int w, int h, int alpha) {
         try {
+            Bitmap mark = Brand.mark(getContext());
+            if (mark == null) return;
+            int pad = (int) pxPad();
+            int tile = UiKit.px(114);
             Bitmap tileBmp = Bitmap.createScaledBitmap(mark, tile, tile, true);
-            Bitmap out = Bitmap.createBitmap(w + pad * 2, h + pad * 2, Bitmap.Config.ARGB_8888);
-            Canvas c = new Canvas(out);
             Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+            p.setAlpha(alpha);
+            int totalW = w + pad * 2, totalH = h + pad * 2;
             int stepX = UiKit.px(168), stepY = UiKit.px(146);
-            for (int row = -1; row < out.getHeight() / stepY + 2; row++) {
+            c.save();
+            c.translate(-pad, -pad);
+            for (int row = -1; row < totalH / stepY + 2; row++) {
                 float xo = (row % 2 != 0) ? stepX * 0.5f : 0f;
-                for (int col = -1; col < out.getWidth() / stepX + 2; col++) {
+                for (int col = -1; col < totalW / stepX + 2; col++) {
                     int seed = (row * 374761393) ^ (col * 668265263);
                     seed = (seed ^ (seed >> 13)) * 1274126177;
                     c.save();
@@ -463,7 +479,20 @@ public class SpatialEnvironment extends View {
                     c.restore();
                 }
             }
+            c.restore();
             if (tileBmp != mark && !tileBmp.isRecycled()) tileBmp.recycle();
+        } catch (OutOfMemoryError ignored) {
+        }
+    }
+
+    /** The original CineTV watermark: the mark scattered at varied angles, cached once. */
+    private Bitmap buildPattern(int w, int h) {
+        int pad = (int) pxPad();
+        try {
+            Bitmap out = Bitmap.createBitmap(w + pad * 2, h + pad * 2, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(out);
+            c.translate(pad, pad);
+            drawPatternOnto(c, w, h, 255);
             return out;
         } catch (OutOfMemoryError e) {
             return null;

@@ -34,21 +34,21 @@ public final class LlmClient {
     private static final String[][] COMPATIBLE = {
             {PROVIDER_OPENAI, "https://api.openai.com/v1/chat/completions", "gpt-5-mini", "gpt-5-nano", "gpt-4o-mini"},
             {PROVIDER_GROK, "https://api.x.ai/v1/chat/completions", "grok-4-fast", "grok-4-fast", "grok-3-mini"},
-            {PROVIDER_OPENROUTER, "https://openrouter.ai/api/v1/chat/completions", "google/gemini-3.8-flash", "google/gemini-3.1-flash-lite", "openai/gpt-5-mini"}};
+            {PROVIDER_OPENROUTER, "https://openrouter.ai/api/v1/chat/completions", "google/gemini-4-hydrogen", "google/gemini-4-hydrogen", "google/gemini-3.1-flash-lite"}};
 
     static final String DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
     static final String FAST_CLAUDE_MODEL = "claude-haiku-5-5";
     static final String FALLBACK_CLAUDE_MODEL = "claude-haiku-5-5";
 
-    /** Official Google Gemini models (Gemini 3 and 4 series) */
-    public static final String DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+    /** Official Google Gemini models (Gemini 4 and 3 series) */
+    public static final String DEFAULT_GEMINI_MODEL = "gemini-4-hydrogen";
     public static final String FAST_GEMINI_MODEL = "gemini-3.1-flash-lite";
     public static final String DEEP_GEMINI_MODEL = "gemini-4-argon";
     public static final String FALLBACK_GEMINI_MODEL = "gemini-flash-latest";
 
     private static final String TAG = "CineTvLlm";
 
-    /** Set around a call that needs speed over deliberation (the shelf at power-on): Gemini thinks "minimal". */
+    /** Set around a call that needs speed over deliberation (the shelf at power-on): Gemini thinks "low"/"minimal". */
     /** Until when (wall clock) the key's free daily quota is known to be spent: no point asking before then. */
     private static volatile long quotaOutUntil;
     /** Per-model cooldown timestamps (wall clock ms) so free-tier 429/404 responses immediately fail over on subsequent calls. */
@@ -90,7 +90,7 @@ public final class LlmClient {
         if (model != null) {
             modelCooldownUntil.put(model, now + wait);
         }
-        if (daily && model != null && (model.contains("lite") || model.contains("flash"))) {
+        if (daily && model != null && (model.contains("lite") || model.contains("flash") || model.contains("hydrogen"))) {
             // Check if all primary fast models are on cooldown
             if (isModelCoolingDown(FAST_GEMINI_MODEL) && isModelCoolingDown(DEFAULT_GEMINI_MODEL)) {
                 quotaOutUntil = now + Math.max(60_000L, wait);
@@ -100,7 +100,7 @@ public final class LlmClient {
 
     static final ThreadLocal<Boolean> MINIMAL_THINKING = ThreadLocal.withInitial(() -> false);
 
-    /** A JSON answer as fast as the provider gives one: the quick model, minimal thinking. */
+    /** A JSON answer as fast as the provider gives one: the quick model, low/minimal thinking. */
     public static Result generateQuick(Context ctx, String system, String user, int maxTokens) {
         MINIMAL_THINKING.set(true);
         try {
@@ -112,8 +112,8 @@ public final class LlmClient {
 
     /**
      * Native multi-turn chat call for Gamze Gemini Chatbot.
-     * Supports mode selection ("deep" -> gemini-4-argon / gemini-2.5-pro / gemini-2.5-flash,
-     * "balanced" -> gemini-3.8-flash / gemini-2.5-flash, "fast" -> gemini-3.1-flash-lite / gemini-2.5-flash-lite).
+     * Supports mode selection ("deep" -> gemini-4-argon,
+     * "balanced" -> gemini-4-hydrogen, "fast" -> gemini-4-hydrogen / gemini-3.1-flash-lite).
      */
     public static Result chatMultiTurn(Context ctx, String system, java.util.List<GamzeConversation.Turn> history,
                                        String userMessage, String mode, int maxTokens) {
@@ -137,11 +137,11 @@ public final class LlmClient {
 
         String[] chain;
         if ("deep".equalsIgnoreCase(mode) || "pro".equalsIgnoreCase(mode)) {
-            chain = new String[]{DEEP_GEMINI_MODEL, DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL, FAST_GEMINI_MODEL};
+            chain = new String[]{DEEP_GEMINI_MODEL, DEFAULT_GEMINI_MODEL, FAST_GEMINI_MODEL, FALLBACK_GEMINI_MODEL};
         } else if ("fast".equalsIgnoreCase(mode) || "lite".equalsIgnoreCase(mode)) {
-            chain = new String[]{FAST_GEMINI_MODEL, "gemini-flash-lite-latest", DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL};
+            chain = new String[]{DEFAULT_GEMINI_MODEL, FAST_GEMINI_MODEL, "gemini-flash-lite-latest", FALLBACK_GEMINI_MODEL};
         } else {
-            chain = new String[]{DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL, FAST_GEMINI_MODEL, "gemini-flash-lite-latest"};
+            chain = new String[]{DEFAULT_GEMINI_MODEL, FAST_GEMINI_MODEL, FALLBACK_GEMINI_MODEL, "gemini-flash-lite-latest"};
         }
 
         Result r = null;
@@ -163,8 +163,8 @@ public final class LlmClient {
     private static void applyGoogleHeaders(HttpURLConnection conn, String key) {
         conn.setRequestProperty("x-goog-api-key", key);
         conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-        conn.setRequestProperty("User-Agent", "google-genai-sdk/3.8.0 CineTV/1.0 (Android TV)");
-        conn.setRequestProperty("x-goog-api-client", "gl-android/ CineTV/1.0.0 genai/3.8.0");
+        conn.setRequestProperty("User-Agent", "google-genai-sdk/4.0.0 CineTV/1.0 (Android TV)");
+        conn.setRequestProperty("x-goog-api-client", "gl-android/ CineTV/1.0.0 genai/4.0.0");
     }
 
     private static JSONArray buildGoogleSafetySettings() {
@@ -179,17 +179,20 @@ public final class LlmClient {
         }
     }
 
-    private static JSONObject buildGoogleGenerationConfig(String model, int maxTokens, boolean wantsJson, boolean quick, boolean deep) {
+    static JSONObject buildGoogleGenerationConfig(String model, int maxTokens, boolean wantsJson, boolean quick, boolean deep) {
         try {
             JSONObject genCfg = new JSONObject();
             if (maxTokens > 0) genCfg.put("maxOutputTokens", maxTokens);
             if (wantsJson) genCfg.put("responseMimeType", "application/json");
 
-            // Official Gemini thinkingConfig: use MINIMAL / 0 budget when quick=true so interactive TV overlays (CineSUB) return in ~1.2s
+            // Official Gemini thinkingConfig: Gemini 4 series (gemini-4-hydrogen / gemini-4-argon) requires LOW/MEDIUM/HIGH
+            // (MINIMAL is not supported on gemini-4-* and returns HTTP 400).
             if (quick) {
                 if (model != null && model.startsWith("gemini-2.5")) {
                     genCfg.put("thinkingConfig", new JSONObject().put("thinkingBudget", 0));
-                } else if (model != null && (model.startsWith("gemini-3") || model.startsWith("gemini-4"))) {
+                } else if (model != null && model.startsWith("gemini-4")) {
+                    genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", "LOW"));
+                } else if (model != null && model.startsWith("gemini-3")) {
                     genCfg.put("thinkingConfig", new JSONObject().put("thinkingLevel", "MINIMAL"));
                 }
             } else if (model != null && (model.startsWith("gemini-4") || model.startsWith("gemini-3.8"))) {
@@ -372,11 +375,19 @@ public final class LlmClient {
             return r;
         }
         boolean claude = PROVIDER_CLAUDE.equals(provider);
-        String first = fast ? (claude ? FAST_CLAUDE_MODEL : FAST_GEMINI_MODEL)
-                : Prefs.get(ctx).getString(claude ? "ai_claude_model" : "ai_gemini_model", claude ? DEFAULT_CLAUDE_MODEL : DEFAULT_GEMINI_MODEL);
+        String configuredGemini = Prefs.get(ctx).getString("ai_gemini_model", DEFAULT_GEMINI_MODEL);
+        if (configuredGemini == null || configuredGemini.isEmpty()
+                || "gemini-3.8-flash".equals(configuredGemini)
+                || "gemini-2.5-flash".equals(configuredGemini)
+                || "gemini-2.0-flash".equals(configuredGemini)) {
+            configuredGemini = DEFAULT_GEMINI_MODEL;
+        }
+        String first = claude
+                ? (fast ? FAST_CLAUDE_MODEL : Prefs.get(ctx).getString("ai_claude_model", DEFAULT_CLAUDE_MODEL))
+                : configuredGemini;
         // Distinct free-tier quota buckets on Google AI Studio so a 429 on one model switches immediately to another bucket.
         String[] chain = claude ? new String[]{first, FALLBACK_CLAUDE_MODEL}
-                : fast ? new String[]{first, "gemini-flash-lite-latest", DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL}
+                : fast ? new String[]{first, FAST_GEMINI_MODEL, "gemini-flash-lite-latest", FALLBACK_GEMINI_MODEL}
                 : new String[]{first, FALLBACK_GEMINI_MODEL, FAST_GEMINI_MODEL, "gemini-flash-lite-latest"};
         Result r = null;
         java.util.Set<String> tried = new java.util.HashSet<>();
@@ -516,8 +527,7 @@ public final class LlmClient {
     }
 
     /**
-     * {@code liteOnly}: Gemini's Flash-Lite models only (CineSUB's unprompted notes), so they never spend the
-     * small daily Flash quota the yellow key relies on.
+     * {@code liteOnly}: starts with Gemini Hydrogen and fails over to Flash-Lite models if rate-limited.
      */
     public static Result vision(Context ctx, String system, String user, byte[] jpeg, int maxTokens, boolean liteOnly) {
         String key = SecretStore.get(ctx, SecretStore.AI_KEY);
@@ -529,7 +539,7 @@ public final class LlmClient {
         if (compat != null) models = new String[]{compat[2], compat[4]};
         else if (PROVIDER_CLAUDE.equals(provider)) models = new String[]{FAST_CLAUDE_MODEL, DEFAULT_CLAUDE_MODEL};
         // Each model has its own per-minute quota: a busy one (429) hands over to the next instead of giving up.
-        else if (liteOnly) models = new String[]{FAST_GEMINI_MODEL, "gemini-flash-lite-latest", DEFAULT_GEMINI_MODEL, FALLBACK_GEMINI_MODEL};
+        else if (liteOnly) models = new String[]{DEFAULT_GEMINI_MODEL, FAST_GEMINI_MODEL, "gemini-flash-lite-latest", FALLBACK_GEMINI_MODEL};
         else models = new String[]{DEFAULT_GEMINI_MODEL, FAST_GEMINI_MODEL, FALLBACK_GEMINI_MODEL, "gemini-flash-lite-latest"};
         Result r = null;
         for (String model : models) {
