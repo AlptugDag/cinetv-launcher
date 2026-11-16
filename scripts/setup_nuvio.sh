@@ -101,10 +101,12 @@ cat > nuvio-preferences.json <<EOF
     "izlelan": 20
   },
   "source_timeout_overrides": {
-    "default_ms": 5500,
-    "fast_tier_ms": 6000,
-    "wiosinema_ms": 3800,
-    "izlelan_ms": 2200
+    "default_ms": 5000,
+    "fast_tier_ms": 5500,
+    "wiosinema_ms": 3500,
+    "izlelan_ms": 2000,
+    "webview_ms": 4200,
+    "max_total_scan_ms": 10000
   },
   "source_circuit_breaker": {
     "enabled": true,
@@ -116,7 +118,13 @@ cat > nuvio-preferences.json <<EOF
       "www.izlelan.com"
     ]
   },
-  "scraper_concurrency": 8,
+  "scraper_freeze_guard_v3": true,
+  "scraper_concurrency": 4,
+  "webview_scraper_concurrency": 1,
+  "webview_scraper_timeout_ms": 4200,
+  "max_total_scan_ms": 10000,
+  "abort_pending_scrapers_on_select": true,
+  "abort_pending_scrapers_on_back": true,
   "scraper_race_mode": true,
   "early_stream_return": true,
   "plugin_repositories": [

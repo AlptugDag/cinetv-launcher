@@ -636,14 +636,33 @@ public class LogicTest {
         org.json.JSONObject lowPrefs = com.cinetv.launcher.device.NuvioSetup.buildCalibratedNuvioPrefs(
                 null, null, null, PerformanceProfile.Tier.LOW);
         assertEquals(3, lowPrefs.optInt("scraper_concurrency", 0));
+        assertFalse(lowPrefs.optBoolean("webview_scraper_enabled", true));
+        assertEquals(1, lowPrefs.optInt("webview_scraper_concurrency", 0));
+        assertEquals(8500, lowPrefs.optInt("max_total_scan_ms", 0));
+        assertTrue(lowPrefs.optBoolean("abort_pending_scrapers_on_select", false));
+        assertTrue(lowPrefs.optBoolean("abort_pending_scrapers_on_back", false));
         assertEquals(12, lowPrefs.optInt("image_memory_cache_mb", 0));
         assertEquals(16, lowPrefs.optInt("stream_buffer_size_mb", 0));
         assertEquals(4, lowPrefs.optInt("parallel_chunk_connections", 0));
         assertTrue(lowPrefs.optBoolean("low_ram_scraper_v2", false));
+        assertTrue(lowPrefs.optBoolean("scraper_freeze_guard_v3", false));
         org.json.JSONObject lowCache = lowPrefs.optJSONObject("scraper_cache");
         org.junit.Assert.assertNotNull(lowCache);
         assertEquals(400, lowCache.optInt("max_entries", 0));
         assertEquals(16, lowCache.optInt("disk_cache_mb", 0));
+
+        // Tier.MID / Tier.HIGH also cap scraper concurrency (4 / 6) and serialize WebView scrapers (1) so PCs/TVs never freeze
+        org.json.JSONObject midPrefs = com.cinetv.launcher.device.NuvioSetup.buildCalibratedNuvioPrefs(
+                null, null, null, PerformanceProfile.Tier.MID);
+        assertEquals(4, midPrefs.optInt("scraper_concurrency", 0));
+        assertEquals(1, midPrefs.optInt("webview_scraper_concurrency", 0));
+        assertEquals(10000, midPrefs.optInt("max_total_scan_ms", 0));
+
+        // Throttled media state persistence prevents synchronous Binder IPC / QueuedWork disk stalls on rapid D-pad presses
+        assertTrue(TvKeyInterceptorService.shouldPersistMediaState(null, "com.nuvio.tv", 10_000L, 0L, 10_000L));
+        assertFalse(TvKeyInterceptorService.shouldPersistMediaState("com.nuvio.tv", "com.nuvio.tv", 12_000L, 10_000L, 10_000L));
+        assertTrue(TvKeyInterceptorService.shouldPersistMediaState("com.nuvio.tv", "com.nuvio.tv", 21_000L, 10_000L, 10_000L));
+        assertTrue(TvKeyInterceptorService.shouldPersistMediaState("com.nuvio.tv", "com.ycngmn.notubetv", 12_000L, 10_000L, 10_000L));
 
         assertTrue(com.cinetv.launcher.device.NuvioSetup.ALPTUGUN_FILMLERI_MANIFEST
                 .startsWith("aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/"));

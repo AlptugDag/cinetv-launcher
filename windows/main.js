@@ -47,7 +47,11 @@ function createWindow() {
     }
   });
 
+  let lastNuvioLaunchAt = 0;
   ipcMain.on('launch-nuvio', (event, streamUri) => {
+    const now = Date.now();
+    if (now - lastNuvioLaunchAt < 1200) return;
+    lastNuvioLaunchAt = now;
     shell.openExternal(streamUri).catch(err => {
       console.warn('Failed to open URI in Nuvio:', err);
     });

@@ -103,7 +103,9 @@ public final class NuvioSetup {
             if (prefFile.exists()) {
                 try {
                     String existing = new String(java.nio.file.Files.readAllBytes(prefFile.toPath()), java.nio.charset.StandardCharsets.UTF_8);
-                    if (!existing.contains("scraper_cache") || !existing.contains("low_ram_scraper_v2")) {
+                    if (!existing.contains("scraper_cache")
+                            || !existing.contains("low_ram_scraper_v2")
+                            || !existing.contains("scraper_freeze_guard_v3")) {
                         needsPrefUpdate = true;
                     }
                 } catch (Throwable ignored) {
@@ -154,6 +156,7 @@ public final class NuvioSetup {
         try {
             prefs.put("calibrated_by", "CineTV TV Denetçisi");
             prefs.put("low_ram_scraper_v2", true);
+            prefs.put("scraper_freeze_guard_v3", true);
             prefs.put("updated_at", System.currentTimeMillis());
             prefs.put("preferred_audio_language", "tr");
             prefs.put("preferred_subtitle_language", "tr");
@@ -163,7 +166,7 @@ public final class NuvioSetup {
             // CRITICAL: Tunneled playback on modified Nuvio causes ExoPlayer MediaCodec crashes during catalog/trailer browsing on TV SoCs
             prefs.put("tunneled_video_playback", false);
             prefs.put("preview_autoplay_in_catalog", false);
-            prefs.put("image_memory_cache_mb", lowTier ? 12 : (tier == PerformanceProfile.Tier.MID ? 40 : 64));
+            prefs.put("image_memory_cache_mb", lowTier ? 12 : (tier == PerformanceProfile.Tier.MID ? 32 : 56));
             prefs.put("match_frame_rate", "seamless");
             prefs.put("max_resolution", maxRes);
             prefs.put("max_bitrate_mbps", maxBitrateMbps);
@@ -198,6 +201,7 @@ public final class NuvioSetup {
 
             // Scraper fetch prioritization: fast direct providers first, deprioritize slow HTML scrapers
             JSONObject scraperPriorities = new JSONObject();
+            scraperPriorities.put("aiostreams", 100);
             scraperPriorities.put("anthology", 100);
             scraperPriorities.put("torrentio", 100);
             scraperPriorities.put("storz", 95);
@@ -216,6 +220,8 @@ public final class NuvioSetup {
             sourceTimeouts.put("fast_tier_ms", 6000);
             sourceTimeouts.put("wiosinema_ms", 3800); // Fail-fast before Nuvio timeout hangs
             sourceTimeouts.put("izlelan_ms", 2200);   // Aggressive timeout for dead host
+            sourceTimeouts.put("webview_ms", 4200);   // Hard cap on headless WebView/Cloudflare evaluation
+            sourceTimeouts.put("max_total_scan_ms", lowTier ? 8500 : 10000);
             prefs.put("source_timeout_overrides", sourceTimeouts);
 
             // Circuit breaker for dead/unresponsive hosts
@@ -228,8 +234,16 @@ public final class NuvioSetup {
             )));
             prefs.put("source_circuit_breaker", circuitBreaker);
 
-            // On 1.3 GB RAM TVs (Tier.LOW), cap concurrent addon scrapers at 3 so Nuvio's JS/WebView heap never spikes
-            prefs.put("scraper_concurrency", lowTier ? 3 : 8);
+            // Cap concurrent addon scrapers and serialize headless WebView scrapers (1 at a time)
+            // so Nuvio never spawns multiple parallel Chromium/JS scraper instances that freeze TV/PC CPUs
+            prefs.put("scraper_concurrency", lowTier ? 3 : (tier == PerformanceProfile.Tier.MID ? 4 : 6));
+            prefs.put("webview_scraper_enabled", !lowTier);
+            prefs.put("webview_scraper_concurrency", 1);
+            prefs.put("webview_scraper_timeout_ms", 4200);
+            prefs.put("max_total_scan_ms", lowTier ? 8500 : 10000);
+            prefs.put("max_stream_results", lowTier ? 30 : 60);
+            prefs.put("abort_pending_scrapers_on_select", true);
+            prefs.put("abort_pending_scrapers_on_back", true);
             prefs.put("scraper_race_mode", true);
             prefs.put("early_stream_return", true);
         } catch (Throwable ignored) {

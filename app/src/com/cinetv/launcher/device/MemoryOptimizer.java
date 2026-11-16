@@ -51,8 +51,8 @@ public final class MemoryOptimizer {
     public static boolean isProtected(String pkg) {
         if (pkg == null || PROTECTED.contains(pkg)) return true;
         String l = pkg.toLowerCase(Locale.ROOT);
-        if (l.contains("sandboxed_process") || l.contains("webview") || l.contains("trichrome") || l.contains("chrome")) {
-            return false;
+        if (l.contains("sandboxed_process") || l.contains("webview") || l.contains("trichrome")) {
+            return true;
         }
         return l.contains("nuvio") || l.contains("stremio") || l.contains("anthology")
                 || l.contains("tizentube") || l.contains("smarttube")
@@ -68,8 +68,8 @@ public final class MemoryOptimizer {
 
     /**
      * Pure helper: returns true when available memory or zRAM swap free space drops into the freeze danger zone
-     * while Nuvio's source scanner is running, so runaway headless WebView scraper processes can be aborted
-     * before kswapd0 locks all CPU cores.
+     * while Nuvio's source scanner is running, so CineTV can release its own caches and trim non-protected
+     * background apps without ever killing Nuvio's active WebView/Mojo renderer processes.
      */
     public static boolean shouldAbortRunawayWebViewScraper(long availMemMb, long totalMemMb, long swapFreeMb, long swapTotalMb) {
         if (availMemMb <= 0) return false;
@@ -159,34 +159,32 @@ public final class MemoryOptimizer {
     }
 
     private static volatile long lastNuvioGuardStartedAt = 0L;
+    private static volatile long lastNuvioBackgroundSweepAt = 0L;
 
     /**
-     * Frees maximum RAM right before launching Nuvio or a video player on low-RAM / 1.3 GB Arçelik TVs
-     * and starts a lightweight /proc/meminfo guard that aborts runaway headless WebView scraper processes
-     * before they can exhaust zRAM swap and freeze the system during stream source scanning.
+     * Frees maximum RAM right before launching Nuvio or a video player and starts a non-destructive
+     * memory relief guard that keeps CineTV's own background footprint at zero without ever killing
+     * Nuvio's WebView / sandboxed_process renderers (which otherwise deadlocks Mojo/GPU IPC and freezes the device).
      */
     public static void prepareForPlayback(Context ctx, final String targetPkg) {
         if (ctx == null) return;
         releaseAirPlayLocks();
         final Context app = ctx.getApplicationContext();
-        final boolean lowMem = PerformanceProfile.ultraLowRam(app) || PerformanceProfile.lowMemory(app);
-        if (lowMem) {
+        final boolean isNuvio = targetPkg != null && (targetPkg.toLowerCase(Locale.ROOT).contains("nuvio")
+                || targetPkg.toLowerCase(Locale.ROOT).contains("stremio"));
+        final boolean lowOrMidMem = PerformanceProfile.ultraLowRam(app) || PerformanceProfile.lowMemory(app)
+                || PerformanceProfile.lowProfile(app);
+        if (lowOrMidMem || isNuvio) {
             com.cinetv.launcher.service.PosterCache.evictAllForPlayback();
             com.cinetv.launcher.remote.KeyBridge.stopForPlayback();
             com.cinetv.launcher.remote.RelayHost.stopForMemory();
-            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
-                    () -> com.cinetv.launcher.MainActivity.releaseBackgroundMemoryStatic(app), 250L);
+            android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+            mainHandler.postDelayed(() -> com.cinetv.launcher.MainActivity.releaseBackgroundMemoryStatic(app), 250L);
+            mainHandler.postDelayed(() -> com.cinetv.launcher.MainActivity.releaseBackgroundMemoryStatic(app), 900L);
         }
-        final boolean isNuvio = targetPkg != null && (targetPkg.toLowerCase(Locale.ROOT).contains("nuvio")
-                || targetPkg.toLowerCase(Locale.ROOT).contains("stremio"));
         new Thread(() -> {
             try {
                 cleanBackground(app, targetPkg != null ? targetPkg : app.getPackageName());
-                ActivityManager am = (ActivityManager) app.getSystemService(Context.ACTIVITY_SERVICE);
-                if (am != null) {
-                    am.killBackgroundProcesses("com.google.android.webview");
-                    am.killBackgroundProcesses("com.android.webview");
-                }
                 if (isNuvio) {
                     trimNuvioScraperCaches(targetPkg);
                 }
@@ -215,24 +213,21 @@ public final class MemoryOptimizer {
 
     private static void startNuvioScraperFreezeGuard(final Context app) {
         long now = android.os.SystemClock.elapsedRealtime();
-        if (now - lastNuvioGuardStartedAt < 8_000L) return;
+        if (now - lastNuvioGuardStartedAt < 10_000L) return;
         lastNuvioGuardStartedAt = now;
         Thread guard = new Thread(() -> {
             try {
-                ActivityManager am = (ActivityManager) app.getSystemService(Context.ACTIVITY_SERVICE);
-                for (int tick = 0; tick < 24; tick++) {
-                    Thread.sleep(1500L);
+                for (int tick = 0; tick < 16; tick++) {
+                    Thread.sleep(3500L);
                     if (com.cinetv.launcher.MainActivity.isInFront()) return;
                     long[] mem = readProcMeminfoMb();
                     if (shouldAbortRunawayWebViewScraper(mem[0], mem[1], mem[2], mem[3])) {
-                        if (am != null) {
-                            am.killBackgroundProcesses("com.google.android.webview");
-                            am.killBackgroundProcesses("com.android.webview");
-                            am.killBackgroundProcesses("com.android.chrome");
-                        }
-                        cleanBackground(app, AppLauncherPkg(app));
-                        if (LocalAdb.isAvailable()) {
-                            LocalAdb.shell(app, "pkill -9 -f sandboxed_process 2>/dev/null; am kill com.google.android.webview 2>/dev/null", 1500);
+                        com.cinetv.launcher.MainActivity.releaseBackgroundMemoryStatic(app);
+                        applyVirtualRamProperties(app);
+                        long sweepNow = android.os.SystemClock.elapsedRealtime();
+                        if (sweepNow - lastNuvioBackgroundSweepAt >= 18_000L) {
+                            lastNuvioBackgroundSweepAt = sweepNow;
+                            cleanBackground(app, AppLauncherPkg(app));
                         }
                     }
                 }
@@ -292,7 +287,9 @@ public final class MemoryOptimizer {
         } catch (Throwable ignored) {}
         // Never hold a Wi-Fi MulticastLock or spawn ADB commands while Nuvio or media playback is active:
         if (!com.cinetv.launcher.MainActivity.isInFront()
-                && (com.cinetv.launcher.service.AppLauncher.wasNuvioRecentlyActive(60_000L) || DeviceTweaks.isMediaPlaying(app))) {
+                && (com.cinetv.launcher.service.AppLauncher.wasNuvioRecentlyActive(600_000L)
+                || com.cinetv.launcher.TvKeyInterceptorService.wasMediaAppRecentlyActive(app, 600_000L)
+                || DeviceTweaks.isMediaPlaying(app))) {
             releaseAirPlayLocks();
             return;
         }

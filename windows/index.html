@@ -2191,7 +2191,7 @@ header.hud {
         <img src="assets/icon.png" class="logo" alt="CineTV">
         <div>
           <h2>CineTV Ayarlar</h2>
-          <div class="sub">Tek Pencere Responsive Kontrol Paneli · v1.0.0.57 Windows</div>
+          <div class="sub">Tek Pencere Responsive Kontrol Paneli · v1.0.0.58 Windows</div>
         </div>
       </div>
       <button class="btn-close-modal" style="position:static;" onclick="closeSettings()">Kapat</button>
@@ -2450,7 +2450,10 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('keydown', (e) => {
     if (document.getElementById('modal-dvd').classList.contains('active')) {
       if (e.key === 'Escape') closeDvdModal();
-      if (e.key === 'Enter') playInNuvio();
+      if (e.key === 'Enter' && !e.repeat) {
+        e.preventDefault();
+        playInNuvio();
+      }
       return;
     }
     if (e.key === 'ArrowLeft') {
@@ -2809,32 +2812,33 @@ function closeDvdModal(e) {
   document.getElementById('trayVideoSlot').innerHTML = '';
 }
 
-// Launch Nuvio for PC (Deep Link or Web Player)
+// Launch Nuvio for PC (Deep Link or Web Player) with anti-freeze launch debounce
+let lastPlayInNuvioAt = 0;
 function playInNuvio() {
   if (!activeMovie) return;
+  const now = Date.now();
+  if (now - lastPlayInNuvioAt < 1200) return;
+  lastPlayInNuvioAt = now;
   const imdb = activeMovie.imdbId || 'tt0060827';
-  
-  // Try Nuvio Desktop protocol, fallback to Stremio or Web stream
   const nuvioUri = `nuvio://detail/movie/${imdb}`;
-  const stremioUri = `stremio://detail/movie/${imdb}`;
-  const webPlayerUri = `http://localhost:11470/detail/movie/${imdb}`;
+
+  // Pause background YouTube trailer iframe before handing off to Nuvio so GPU/CPU decoding doesn't compete during Nuvio source scan
+  const slot = document.getElementById('trayVideoSlot');
+  if (slot) slot.innerHTML = '';
 
   // In Electron environment:
   if (window.require) {
     try {
       const { ipcRenderer } = window.require('electron');
       ipcRenderer.send('launch-nuvio', nuvioUri);
+      return;
     } catch (e) {
       window.location.href = nuvioUri;
+      return;
     }
-  } else {
-    // In Browser / Windows Edge WebView
-    const win = window.open(nuvioUri, '_self');
-    setTimeout(() => {
-      // Fallback
-      window.open(stremioUri, '_blank');
-    }, 500);
   }
+  // In Browser / Windows Edge WebView: trigger single protocol handoff without spawning a second competing window
+  window.location.href = nuvioUri;
 }
 
 function openNuvioDirect() {

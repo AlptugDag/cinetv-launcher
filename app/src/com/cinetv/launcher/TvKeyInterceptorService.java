@@ -49,11 +49,28 @@ public class TvKeyInterceptorService extends AccessibilityService {
         return activeAtElapsed > 0L && nowElapsed >= activeAtElapsed && (nowElapsed - activeAtElapsed) < windowMs;
     }
 
+    /** Pure helper: throttles SharedPreferences disk writes so D-pad navigation in Nuvio never triggers QueuedWork stalls. */
+    public static boolean shouldPersistMediaState(String lastPersistedPkg, String newPkg, long nowElapsed, long lastPersistedAt, long minIntervalMs) {
+        if (newPkg == null || newPkg.isEmpty()) return false;
+        if (lastPersistedPkg == null || !newPkg.equals(lastPersistedPkg)) return true;
+        if (lastPersistedAt <= 0L || nowElapsed < lastPersistedAt) return true;
+        return (nowElapsed - lastPersistedAt) >= minIntervalMs;
+    }
+
+    private static volatile int cachedBootCount = -2;
+    private static volatile String lastPersistedMediaPkg = null;
+    private static volatile long lastPersistedMediaElapsed = 0L;
+
     private static int currentBootCount(Context ctx) {
+        int cached = cachedBootCount;
+        if (cached != -2) return cached;
         if (ctx == null) return -1;
         try {
-            return android.provider.Settings.Global.getInt(ctx.getContentResolver(), android.provider.Settings.Global.BOOT_COUNT, -1);
+            int val = android.provider.Settings.Global.getInt(ctx.getContentResolver(), android.provider.Settings.Global.BOOT_COUNT, -1);
+            cachedBootCount = val;
+            return val;
         } catch (Throwable ignored) {
+            cachedBootCount = -1;
             return -1;
         }
     }
@@ -110,6 +127,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
     }
 
     public static void clearPersistedMediaAppState(Context ctx) {
+        lastPersistedMediaPkg = null;
+        lastPersistedMediaElapsed = 0L;
         if (ctx == null) return;
         try {
             com.cinetv.launcher.service.Prefs.get(ctx).edit()
@@ -124,6 +143,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     private static void persistMediaAppState(Context ctx, String pkg, long nowElapsed) {
         if (ctx == null || pkg == null || pkg.isEmpty()) return;
+        if (!shouldPersistMediaState(lastPersistedMediaPkg, pkg, nowElapsed, lastPersistedMediaElapsed, 10_000L)) {
+            return;
+        }
+        lastPersistedMediaPkg = pkg;
+        lastPersistedMediaElapsed = nowElapsed;
         try {
             com.cinetv.launcher.service.Prefs.get(ctx).edit()
                     .putString(PREF_LAST_MEDIA_PKG, pkg)
@@ -554,7 +578,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
      */
     private static void findText(android.view.accessibility.AccessibilityNodeInfo n, String label,
                                  java.util.List<android.view.accessibility.AccessibilityNodeInfo> out, int depth) {
-        if (n == null || depth > 40 || !out.isEmpty()) return;
+        if (n == null || depth > 22 || !out.isEmpty()) return;
         CharSequence t = n.getText() != null ? n.getText() : n.getContentDescription();
         if (t != null && t.toString().trim().equalsIgnoreCase(label)) {
             out.add(n);
@@ -1441,12 +1465,17 @@ public class TvKeyInterceptorService extends AccessibilityService {
         if (isNuvioApp(pkg) || isYouTubeApp(pkg)) {
             markMediaAppActive(this, pkg);
         }
-        if (isNuvioApp(pkg) && !com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)) {
-            com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
+        if (isNuvioApp(pkg)) {
+            MainActivity.releaseBackgroundMemoryStatic(this);
+            if (!com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)
+                    && !com.cinetv.launcher.device.PerformanceProfile.lowProfile(this)) {
+                com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
+            }
         }
         armIdleSaver();
         if (signature == null) signature = new com.cinetv.launcher.ui.SignatureOverlay(this);
-        if (isNuvioApp(pkg) && !com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)) signature.show();
+        if (isNuvioApp(pkg) && !com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)
+                && !com.cinetv.launcher.device.PerformanceProfile.lowProfile(this)) signature.show();
         else if (isAppSwitch(pkg)) signature.hide();
         if (isLiveTvApp(pkg)) {
             com.cinetv.launcher.ui.CineSubOverlay.dismissActive();
@@ -1543,7 +1572,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     /** Stock TV launchers (Xiaomi Mi TV, Google TV, Android TV, Next Media Box, Amlogic/MStar/Rockchip home launchers). */
     private boolean isStockLauncher(String pkg) {
-        if (pkg == null || pkg.equals(getPackageName())) return false;
+        if (pkg == null || pkg.equals(getPackageName()) || isNuvioApp(pkg) || isYouTubeApp(pkg)) return false;
         // Settings, accessibility, system services (droidlogic subtitle/overlay, mstar tv service) and file managers are never the launcher.
         if (isSystemTool(pkg)) return false;
         if (pkg.contains("subtitleservice") || pkg.contains("overlay") || pkg.contains("systemui")
@@ -1612,9 +1641,10 @@ public class TvKeyInterceptorService extends AccessibilityService {
     /** A real change of app (not a keyboard, toast or pop-up drawn over Nuvio). */
     private boolean isAppSwitch(String pkg) {
         if (pkg.equals(getPackageName())) return MainActivity.foreground || CinePlayerActivity.active;
-        if (isTvCore(pkg) || isStockLauncher(pkg)) return true;
+        if (isNuvioApp(pkg) || isYouTubeApp(pkg) || isTvCore(pkg) || isStockLauncher(pkg)) return true;
         if (pkg.contains("inputmethod") || pkg.contains("katniss") || pkg.contains("subtitleservice")
-                || pkg.contains("packageinstaller") || pkg.contains("permissioncontroller")) return false;
+                || pkg.contains("packageinstaller") || pkg.contains("permissioncontroller")
+                || pkg.contains("webview") || pkg.contains("trichrome")) return false;
         return AppLauncher.isLaunchable(getPackageManager(), pkg);
     }
 
