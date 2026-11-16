@@ -644,5 +644,10 @@ public class LogicTest {
         org.junit.Assert.assertNotNull(lowCache);
         assertEquals(400, lowCache.optInt("max_entries", 0));
         assertEquals(16, lowCache.optInt("disk_cache_mb", 0));
+
+        assertTrue(com.cinetv.launcher.device.NuvioSetup.ALPTUGUN_FILMLERI_MANIFEST
+                .startsWith("aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/"));
+        assertTrue(java.util.Arrays.asList(com.cinetv.launcher.device.NuvioSetup.CURATED_ADDONS)
+                .contains(com.cinetv.launcher.device.NuvioSetup.ALPTUGUN_FILMLERI_MANIFEST));
     }
 }

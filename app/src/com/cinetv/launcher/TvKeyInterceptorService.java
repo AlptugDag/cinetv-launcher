@@ -583,17 +583,6 @@ public class TvKeyInterceptorService extends AccessibilityService {
     public boolean clickNuvioPlay(boolean series, boolean preferResume, long elapsedMs) {
         try {
             android.view.accessibility.AccessibilityNodeInfo root = getRootInActiveWindow();
-            if ((root == null || root.getPackageName() == null || !isNuvioApp(root.getPackageName().toString()))
-                    && !com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)) {
-                root = null;
-                for (android.view.accessibility.AccessibilityWindowInfo w : getWindows()) {
-                    android.view.accessibility.AccessibilityNodeInfo r = w.getRoot();
-                    if (r != null && r.getPackageName() != null && isNuvioApp(r.getPackageName().toString())) {
-                        root = r;
-                        break;
-                    }
-                }
-            }
             if (root == null || root.getPackageName() == null || !isNuvioApp(root.getPackageName().toString())) {
                 return false;
             }
@@ -770,15 +759,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
     /** True only when Nuvio is showing a title's detail page (with its Play/Resume button), not an in-player menu or stream picker. */
     private boolean isOnNuvioDetailPage() {
         try {
-            android.view.accessibility.AccessibilityNodeInfo root = null;
-            for (android.view.accessibility.AccessibilityWindowInfo w : getWindows()) {
-                android.view.accessibility.AccessibilityNodeInfo r = w.getRoot();
-                if (r != null && r.getPackageName() != null && isNuvioApp(r.getPackageName().toString())) {
-                    root = r;
-                    break;
-                }
-            }
-            if (root == null) root = getRootInActiveWindow();
+            android.view.accessibility.AccessibilityNodeInfo root = getRootInActiveWindow();
             if (root == null || root.getPackageName() == null || !isNuvioApp(root.getPackageName().toString())) {
                 return false;
             }
@@ -1071,21 +1052,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
         try {
             android.view.accessibility.AccessibilityNodeInfo bestNode = null;
             long[] bestArea = new long[]{Long.MAX_VALUE};
-            if (android.os.Build.VERSION.SDK_INT >= 21) {
-                for (android.view.accessibility.AccessibilityWindowInfo w : getWindows()) {
-                    if (w.getType() == android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY) continue;
-                    android.view.accessibility.AccessibilityNodeInfo r = w.getRoot();
-                    if (r != null) {
-                        android.view.accessibility.AccessibilityNodeInfo hit = findSmallestClickableAt(r, x, y, bestArea, 0);
-                        if (hit != null) bestNode = hit;
-                    }
-                }
-            }
-            if (bestNode == null) {
-                android.view.accessibility.AccessibilityNodeInfo r = getRootInActiveWindow();
-                if (r != null) {
-                    bestNode = findSmallestClickableAt(r, x, y, bestArea, 0);
-                }
+            android.view.accessibility.AccessibilityNodeInfo r = getRootInActiveWindow();
+            if (r != null) {
+                bestNode = findSmallestClickableAt(r, x, y, bestArea, 0);
             }
             if (bestNode != null) {
                 if (bestNode.isFocusable()) {
@@ -1163,6 +1132,16 @@ public class TvKeyInterceptorService extends AccessibilityService {
     protected void onServiceConnected() {
         super.onServiceConnected();
         instance = this;
+        // Dynamically strip FLAG_RETRIEVE_INTERACTIVE_WINDOWS if cached by OS so WindowManagerService
+        // never recomputes interactive windows at 60Hz during Nuvio's Compose stream-scanner animation.
+        try {
+            android.accessibilityservice.AccessibilityServiceInfo info = getServiceInfo();
+            if (info != null) {
+                info.flags &= ~android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
+                info.notificationTimeout = 250;
+                setServiceInfo(info);
+            }
+        } catch (Throwable ignored) {}
         // Restore active foreground package after a background low-memory process restart on 1.3 GB RAM TVs
         // so CineTV immediately knows if the viewer is currently inside YouTube or Nuvio.
         try {
@@ -1461,13 +1440,6 @@ public class TvKeyInterceptorService extends AccessibilityService {
         lastPackage = pkg;
         if (isNuvioApp(pkg) || isYouTubeApp(pkg)) {
             markMediaAppActive(this, pkg);
-            if (com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)) {
-                handler.postDelayed(() -> {
-                    if (!MainActivity.isInFront()) {
-                        MainActivity.releaseBackgroundMemoryStatic(this);
-                    }
-                }, 400L);
-            }
         }
         if (isNuvioApp(pkg) && !com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)) {
             com.cinetv.launcher.remote.TvWebRemoteServer.start(this);

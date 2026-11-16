@@ -69,17 +69,30 @@ public final class KeyBridge {
     /**
      * Stops the external KeyInjector app_process JVM over its open localhost socket on low-RAM TVs
      * when Nuvio or another heavy video player takes the foreground, freeing ~35 MB of physical RAM.
-     * Re-starts automatically on demand when a phone remote button is pressed or when returning to Home.
+     * Non-blocking: never performs socket I/O or waits on locks on the UI / Accessibility thread.
      */
-    public static synchronized void stopForPlayback() {
-        if (out != null) {
+    public static void stopForPlayback() {
+        final Socket s = socket;
+        final OutputStream o = out;
+        socket = null;
+        out = null;
+        in = null;
+        if (s == null && o == null) return;
+        Thread t = new Thread(() -> {
             try {
-                out.write("q -\n".getBytes(StandardCharsets.UTF_8));
-                out.flush();
+                if (o != null) {
+                    o.write("q -\n".getBytes(StandardCharsets.UTF_8));
+                    o.flush();
+                }
             } catch (Throwable ignored) {
             }
-        }
-        close();
+            try {
+                if (s != null) s.close();
+            } catch (Throwable ignored) {
+            }
+        }, "cinetv-keybridge-stop");
+        t.setDaemon(true);
+        t.start();
     }
 
     private static boolean send(Context ctx, String line) {

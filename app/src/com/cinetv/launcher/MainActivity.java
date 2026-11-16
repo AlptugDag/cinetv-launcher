@@ -582,10 +582,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     /** True only while Home itself is on screen (CineTV's overlays over other apps don't count). */
     public static volatile boolean foreground;
+    private static volatile boolean memoryReleasedForPlayback = false;
 
     @Override
     protected void onResume() {
         foreground = true;
+        memoryReleasedForPlayback = false;
         super.onResume();
         overridePendingTransition(0, 0);
         TvWebRemoteServer.setController(this);
@@ -959,12 +961,14 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
 
     /**
      * Releases all heavy background bitmaps (~25 MB environment + ~6 MB DVD cases + ~16 MB caches),
-     * stops the external KeyBridge JVM (~35 MB), and flushes HardwareRenderer GPU/EGL texture memory
-     * (~35-45 MB) while CineTV is hidden behind Nuvio or YouTube on low-RAM TVs.
-     * On return to Home (onResume), PosterShelf and SpatialEnvironment restore seamlessly from disk cache.
+     * stops the external KeyBridge JVM (~35 MB), and flushes UI-hidden GPU texture caches ONCE
+     * when CineTV moves behind Nuvio or YouTube on low-RAM TVs.
+     * Guarded by memoryReleasedForPlayback so repeated onTrimMemory callbacks during Nuvio stream
+     * scanning never re-run GPU trims or GC.
      */
     public void releaseHeavyMemoryForPlayback() {
-        if (inFront) return;
+        if (inFront || memoryReleasedForPlayback) return;
+        memoryReleasedForPlayback = true;
         try {
             if (home != null) {
                 home.trailer.stop();
@@ -981,14 +985,13 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
         background(() -> {
             try {
                 System.gc();
-                Runtime.getRuntime().runFinalization();
             } catch (Throwable ignored) {
             }
         });
     }
 
     public static void releaseBackgroundMemoryStatic(Context ctx) {
-        if (inFront) return;
+        if (inFront || memoryReleasedForPlayback) return;
         PosterCache.evictAllForPlayback();
         com.cinetv.launcher.remote.KeyBridge.stopForPlayback();
         com.cinetv.launcher.remote.RelayHost.stopForMemory();
@@ -1001,6 +1004,7 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
                 }
             });
         } else {
+            memoryReleasedForPlayback = true;
             trimWindowHardwareMemory();
         }
     }
@@ -1010,8 +1014,9 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
             Class<?> wmgClass = Class.forName("android.view.WindowManagerGlobal");
             Object wmg = wmgClass.getMethod("getInstance").invoke(null);
             java.lang.reflect.Method trim = wmgClass.getMethod("trimMemory", int.class);
+            // Only pass TRIM_MEMORY_UI_HIDDEN (20): never TRIM_MEMORY_COMPLETE (80), which tears down
+            // the Mali GPU EGL context and stalls kernel gralloc locks while Nuvio renders its Compose UI.
             trim.invoke(wmg, android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN);
-            trim.invoke(wmg, android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE);
         } catch (Throwable ignored) {
         }
     }

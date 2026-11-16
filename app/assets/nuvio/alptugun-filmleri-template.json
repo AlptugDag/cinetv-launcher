@@ -239,10 +239,7 @@
     "syncedExcludedRegexUrls": [
       "https://git.tamtaro.de/Excluded-Regex.json"
     ],
-    "syncedRankedRegexUrls": [
-      "https://raw.githubusercontent.com/Vidhin05/Releases-Regex/main/English/regexes.json",
-      "https://git.tamtaro.de/for-nour-Regex.json"
-    ],
+    "syncedRankedRegexUrls": [],
     "syncedPreferredStreamExpressionUrls": [
       "https://git.tamtaro.de/PSE.json"
     ],
@@ -252,10 +249,7 @@
     "syncedIncludedStreamExpressionUrls": [
       "https://git.tamtaro.de/ISE.json"
     ],
-    "syncedRankedStreamExpressionUrls": [
-      "https://raw.githubusercontent.com/Vidhin05/Releases-Regex/main/English/expressions.json",
-      "https://git.tamtaro.de/for-nour-RSE.json"
-    ],
+    "syncedRankedStreamExpressionUrls": [],
     "requiredKeywords": [],
     "includedKeywords": [],
     "excludedKeywords": [],
@@ -373,23 +367,7 @@
         "enabled": true
       }
     ],
-    "rankedRegexPatterns": [
-      {
-        "pattern": "/^(?!𝚅𝚒𝚍𝚑𝚒𝚗'𝚜 𝙴𝚗𝚐𝚕𝚒𝚜𝚑 𝚁𝚊𝚗𝚔𝚎𝚍 𝚁𝚎𝚐𝚎𝚡𝚎𝚜 (𝚜𝚢𝚗𝚌𝚎𝚍))𝚅𝚒𝚍𝚑𝚒𝚗'𝚜 𝙴𝚗𝚐𝚕𝚒𝚜𝚑 𝚁𝚊𝚗𝚔𝚎𝚍 𝚁𝚎𝚐𝚎𝚡𝚎𝚜 (𝚜𝚢𝚗𝚌𝚎𝚍)$/",
-        "name": "𝚅𝚒𝚍𝚑𝚒𝚗'𝚜 𝙴𝚗𝚐𝚕𝚒𝚜𝚑 𝚁𝚊𝚗𝚔𝚎𝚍 𝚁𝚎𝚐𝚎𝚡𝚎𝚜 (𝚜𝚢𝚗𝚌𝚎𝚍)",
-        "score": 0
-      },
-      {
-        "pattern": "<SYNCED: https://raw.githubusercontent.com/Vidhin05/Releases-Regex/main/English/regexes.json>",
-        "name": "",
-        "score": 0
-      },
-      {
-        "pattern": "<SYNCED: https://git.tamtaro.de/for-nour-Regex.json>",
-        "name": "",
-        "score": 0
-      }
-    ],
+    "rankedRegexPatterns": [],
     "dynamicAddonFetching": {
       "enabled": false,
       "condition": ""
@@ -596,28 +574,17 @@
       "excludeAddons": [],
       "multiGroupBehaviour": "aggressive",
       "keys": [
-        "filename",
         "infoHash",
-        "smartDetect"
+        "filename"
       ],
       "cached": "single_result",
       "uncached": "single_result",
       "p2p": "single_result",
       "http": "per_addon",
       "smartDetectAttributes": [
-        "size",
         "resolution",
         "quality",
-        "visualTags",
-        "audioTags",
-        "audioChannels",
-        "languages",
-        "encode",
-        "edition",
-        "network",
-        "remastered",
-        "bitrate",
-        "releaseGroup"
+        "languages"
       ],
       "smartDetectRounding": 10,
       "libraryBehaviour": "prefer",
@@ -813,10 +780,10 @@
       {
         "type": "torrents-db",
         "instanceId": "a15",
-        "enabled": true,
+        "enabled": false,
         "options": {
           "name": "TorrentsDB",
-          "timeout": 6000,
+          "timeout": 3500,
           "resources": [
             "stream"
           ],
@@ -830,10 +797,10 @@
       {
         "type": "peerflix",
         "instanceId": "8b6",
-        "enabled": true,
+        "enabled": false,
         "options": {
           "name": "Peerflix",
-          "timeout": 6000,
+          "timeout": 3500,
           "resources": [
             "stream"
           ],
@@ -846,10 +813,10 @@
       {
         "type": "sootio",
         "instanceId": "9d3",
-        "enabled": true,
+        "enabled": false,
         "options": {
           "name": "Sootio",
-          "timeout": 6000,
+          "timeout": 3500,
           "resources": [
             "stream"
           ],
@@ -891,10 +858,10 @@
       {
         "type": "webstreamr",
         "instanceId": "645",
-        "enabled": true,
+        "enabled": false,
         "options": {
           "name": "WebStreamr",
-          "timeout": 6000,
+          "timeout": 3500,
           "resources": [
             "stream"
           ],
@@ -918,10 +885,10 @@
       {
         "type": "hdhub",
         "instanceId": "29a",
-        "enabled": true,
+        "enabled": false,
         "options": {
           "name": "HdHub",
-          "timeout": 6000,
+          "timeout": 3500,
           "resources": [
             "stream"
           ],
@@ -933,10 +900,10 @@
       {
         "type": "yastream",
         "instanceId": "28f",
-        "enabled": true,
+        "enabled": false,
         "options": {
           "name": "yastream",
-          "timeout": 6000,
+          "timeout": 3500,
           "resources": [
             "stream",
             "subtitles",
@@ -963,7 +930,7 @@
       {
         "type": "wiosinema",
         "instanceId": "wio_turk",
-        "enabled": true,
+        "enabled": false,
         "options": {
           "name": "WioSinema",
           "timeout": 3800,

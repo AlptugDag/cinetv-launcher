@@ -35,7 +35,11 @@ public final class NuvioSetup {
     private static final String PLAYER_DONE = "player_setup_done";
     private static final String SYNC_KEY = "nuvio_sync_v1_0_0_11";
 
+    public static final String ALPTUGUN_FILMLERI_MANIFEST =
+            "aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/eyJpIjoickIrY3Q1dlVnRlhLUEJ1akU0dVNTQT09IiwiZSI6InArWUtKQWxEbHNaOTZXN0VKNmg0b3B4eVJUajFKSmt3MC8rdlBpamhpYWM9IiwidCI6ImEifQ/manifest.json";
+
     public static final String[] CURATED_ADDONS = {
+            ALPTUGUN_FILMLERI_MANIFEST,
             "tr-altyazi.altyazi.workers.dev/manifest.json",
             "falsisdev.github.io/anthology/stremio/manifest.json",
             "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json",
@@ -69,7 +73,7 @@ public final class NuvioSetup {
     public static void playerOnce(Context ctx) {
     }
 
-    /** Deploys Alptuğ'un Filmleri, Xperience and AIOMetadata configs to /sdcard/Download/ for instant Nuvio import. */
+    /** Deploys Xperience and AIOMetadata configs to /sdcard/Download/ for instant Nuvio import. */
     public static void deployConfigs(Context app) {
         try {
             File dl = new File("/sdcard/Download");
@@ -77,11 +81,11 @@ public final class NuvioSetup {
             // Clean up removed/deprecated configs if present
             new File(dl, "aiostreams-config-2026-10-28.21-05-36.json").delete();
             new File(dl, "aiostreams-config.json").delete();
+            new File(dl, "alptugun-filmleri-template.json").delete();
 
             String tmdbKey = com.cinetv.launcher.service.SecretStore.get(app, com.cinetv.launcher.service.SecretStore.TMDB_KEY);
             String mdbKey = com.cinetv.launcher.service.SecretStore.get(app, com.cinetv.launcher.service.SecretStore.MDBLIST_KEY);
             String[][] files = {
-                    {"nuvio/alptugun-filmleri-template.json", "alptugun-filmleri-template.json"},
                     {"nuvio/xperience-kategori-setup-profile.json", "xperience-kategori-setup-profile.json"},
                     {"nuvio/aiometadata-config.json", "aiometadata-config.json"}
             };
@@ -716,7 +720,11 @@ public final class NuvioSetup {
      * Installs or updates a Nuvio addon through its stremio:// intent.
      */
     public static void addAddon(Context app, String manifest) throws InterruptedException {
-        AppLauncher.start(app, new Intent(Intent.ACTION_VIEW, Uri.parse("stremio://" + manifest))
+        if (manifest == null || manifest.isEmpty()) return;
+        String clean = manifest.trim()
+                .replaceFirst("^stremio://", "")
+                .replaceFirst("^https?://", "");
+        AppLauncher.start(app, new Intent(Intent.ACTION_VIEW, Uri.parse("stremio://" + clean))
                 .setPackage(AppLauncher.NUVIO).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         Thread.sleep(4500);
     }

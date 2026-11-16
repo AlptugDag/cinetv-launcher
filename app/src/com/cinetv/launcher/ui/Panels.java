@@ -3354,11 +3354,11 @@ public final class Panels {
         root.addView(subtitle);
 
         final String[][] items = {
+                {"Alptuğ'un Filmleri", "Alptuğ Dağ özel seçkin sinema ve dizi yayın eklentisi (AIOStreams)", NuvioSetup.ALPTUGUN_FILMLERI_MANIFEST},
                 {"TR Altyazı", "Resmi Türkçe altyazı motoru (AltyaziTR, OpenSubtitles)", "tr-altyazi.altyazi.workers.dev/manifest.json"},
                 {"Anthology", "Türkçe dizi, film ve canlı yayın kanalları", "falsisdev.github.io/anthology/stremio/manifest.json"},
                 {"Netflix Catalog", "Popüler ve güncel streaming katalog düzeni", "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json"},
-                {"Xperience", "Gelişmiş kategori, afiş ve metadata sağlayıcısı", "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json"},
-                {"Alptuğ'un Filmleri & Şablonlar", "Özel seçkin koleksiyon profili ve hazır şablonlar (/sdcard/Download/)", "deploy_configs"}
+                {"Xperience", "Gelişmiş kategori, afiş ve metadata sağlayıcısı", "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json"}
         };
 
         final boolean[] checked = new boolean[items.length];
@@ -3432,6 +3432,7 @@ public final class Panels {
             UiKit.toast(ctx, "Seçilen eklentiler Nuvio'ya aktarılıyor...");
             new Thread(() -> {
                 try {
+                    NuvioSetup.deployConfigs(ctx);
                     for (int i = 0; i < items.length; i++) {
                         if (!checked[i]) continue;
                         if ("deploy_configs".equals(items[i][2])) {

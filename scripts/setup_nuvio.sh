@@ -48,14 +48,16 @@ install_addon() { # install_addon NAME HOST/PATH/manifest.json
 
 echo "Installing curated addons in Nuvio"
 install_addon "Cinemeta" "v3-cinemeta.strem.io/manifest.json"
+install_addon "Alptuğ'un Filmleri" "aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/eyJpIjoickIrY3Q1dlVnRlhLUEJ1akU0dVNTQT09IiwiZSI6InArWUtKQWxEbHNaOTZXN0VKNmg0b3B4eVJUajFKSmt3MC8rdlBpamhpYWM9IiwidCI6ImEifQ/manifest.json"
 install_addon "TR Altyazı" "tr-altyazi.altyazi.workers.dev/manifest.json"
 install_addon "Anthology" "falsisdev.github.io/anthology/stremio/manifest.json"
 install_addon "Netflix Catalog" "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json"
 install_addon "Xperience" "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json"
 
-echo "Deploying Alptuğ'un Filmleri, Xperience and AIOMetadata configs to /sdcard/Download/"
+echo "Deploying Xperience and AIOMetadata configs to /sdcard/Download/"
 ASSETS_DIR="$(dirname "$0")/assets"
-for cfg in "alptugun-filmleri-template.json" "xperience-kategori-setup-profile.json" "aiometadata-config.json"; do
+adb shell "rm -f /sdcard/Download/alptugun-filmleri-template.json" >/dev/null 2>&1 || true
+for cfg in "xperience-kategori-setup-profile.json" "aiometadata-config.json"; do
     if [ -f "$ASSETS_DIR/$cfg" ]; then
         adb push "$ASSETS_DIR/$cfg" "/sdcard/Download/$cfg" >/dev/null 2>&1 || true
         adb shell "am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/$cfg" >/dev/null 2>&1 || true

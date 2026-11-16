@@ -71,12 +71,14 @@ EMOJI = {"films": "🎬", "series": "📺", "anime": "🌸", "sports": "🏆", "
          "9917,209476": "🥊", "579": "🏈", "1480": "⚾", "5605": "🏐", "180491": "🚴", "2702": "⛳", "316": "♟️"}
 
 ADDONS = {
+    "alptugun_filmleri": "aiostreams-nightly.fortheweak.cloud/stremio/98ecd249-7f28-4270-be63-a233192d2711/eyJpIjoickIrY3Q1dlVnRlhLUEJ1akU0dVNTQT09IiwiZSI6InArWUtKQWxEbHNaOTZXN0VKNmg0b3B4eVJUajFKSmt3MC8rdlBpamhpYWM9IiwidCI6ImEifQ/manifest.json",
     "tr_altyazi": "tr-altyazi.altyazi.workers.dev/manifest.json",
     "anthology": "falsisdev.github.io/anthology/stremio/manifest.json",
     "netflix_catalog": "7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/bmZ4LGRucCxhdHAsaGJtLGFtcCxtYmk6OjoxNzkyODA2MTk4NzgwOjA6MDo%3D/manifest.json",
     "xperience": "xperience-app.com/manifest/3d7c0742-30bc-4285-8a05-2b9327cad6b0/eyJhbGciOiJIUzI1NiJ9.eyJwaWQiOiIzZDdjMDc0Mi0zMGJjLTQyODUtOGEwNS0yYjkzMjdjYWQ2YjAiLCJraWQiOiI1OTg2ZGMxYS00MzNhLTQ0MTQtYmU3Zi1iMzQ0M2NhZWY0NjQiLCJzY29wZSI6Im1hbmlmZXN0Iiwic3ViIjoiZjI3NmYwYjEtM2EzZC00ZGU1LTgwZDctZTljOWE3ZWE4YTFhIiwiaWF0IjowfQ.3KVz5c33icFDay9jjTLOtqJEl5m8huYoz9xYHPAwBhE/manifest.json"
 }
 ADDON_NAMES = {
+    "alptugun_filmleri": "Alptuğ'un Filmleri",
     "tr_altyazi": "TR Altyazı",
     "anthology": "Anthology",
     "netflix_catalog": "Netflix Catalog",
@@ -350,6 +352,7 @@ def plan_for(p, data):
             parts.append("language=" + ",".join(langs))
         if qf:
             parts.append("qualityfilter=" + ",".join(dict.fromkeys(qf)))
+        addons.append(("alptugun_filmleri", ADDONS["alptugun_filmleri"]))
         addons.append(("tr_altyazi", ADDONS["tr_altyazi"]))
         addons.append(("anthology", ADDONS["anthology"]))
         addons.append(("netflix_catalog", ADDONS["netflix_catalog"]))
@@ -649,7 +652,8 @@ def apply(plan, data, out_dir):
 
     if "nuvio" in plan["apps"]:
         assets_dir = os.path.join(os.path.dirname(__file__), "assets")
-        for cfg in ("alptugun-filmleri-template.json", "xperience-kategori-setup-profile.json", "aiometadata-config.json"):
+        tv("rm", "-f", "/sdcard/Download/alptugun-filmleri-template.json")
+        for cfg in ("xperience-kategori-setup-profile.json", "aiometadata-config.json"):
             cfg_path = os.path.join(assets_dir, cfg)
             if os.path.exists(cfg_path):
                 subprocess.run(["adb", "push", cfg_path, f"/sdcard/Download/{cfg}"], capture_output=True)
