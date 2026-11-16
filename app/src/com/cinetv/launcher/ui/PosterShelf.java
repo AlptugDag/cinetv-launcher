@@ -476,38 +476,43 @@ public class PosterShelf extends FrameLayout {
         final java.util.concurrent.Future<Bitmap> fetch = posterJobs.get(slot);
         final int targetH = Math.round(caseW / DvdCase.ASPECT);
         baker.execute(() -> {
-            if (gen != generation) return;
-            Bitmap poster = null;
-            if (fetch != null) {
-                try {
-                    poster = fetch.get(10, java.util.concurrent.TimeUnit.SECONDS); // downloaded in parallel, returned directly
-                } catch (Throwable ignored) {
+            try {
+                if (gen != generation) return;
+                Bitmap poster = null;
+                if (fetch != null) {
+                    try {
+                        poster = fetch.get(10, java.util.concurrent.TimeUnit.SECONDS); // downloaded in parallel, returned directly
+                    } catch (Throwable ignored) {
+                    }
                 }
-            }
-            if (gen != generation) return;
-            if (poster == null || poster.isRecycled()) {
-                poster = loadMoviePoster(m, caseW, targetH);
-            }
-            if (poster == null && gen == generation) {
-                if (MovieCatalog.ensurePoster(getContext().getApplicationContext(), m)) {
+                if (gen != generation) return;
+                if (poster == null || poster.isRecycled()) {
                     poster = loadMoviePoster(m, caseW, targetH);
                 }
-            }
-            if (gen != generation) return;
-            int accent = AppArtwork.sampleDistinctPosterColor(poster, 0, slot);
-            final DvdCase dvd = DvdCase.bake(getContext(), poster, m.coverTitle(), m.year, accent, caseW, targetH, glowPad, asCases);
-            final boolean needRetry = !dvd.hasPoster;
-            main.post(() -> {
+                if (poster == null && gen == generation) {
+                    if (MovieCatalog.ensurePoster(getContext().getApplicationContext(), m)) {
+                        poster = loadMoviePoster(m, caseW, targetH);
+                    }
+                }
                 if (gen != generation) return;
-                if (waitingForReveal) {
-                    pendingRevealCases.put(slot, dvd);
-                } else {
-                    scheduleCaseReveal(slot, dvd);
-                }
-                if (needRetry) {
-                    scheduleMissingPosterRetry(slot, gen, 1);
-                }
-            });
+                int accent = AppArtwork.sampleDistinctPosterColor(poster, 0, slot);
+                final DvdCase dvd = DvdCase.bake(getContext(), poster, m.coverTitle(), m.year, accent, caseW, targetH, glowPad, asCases);
+                final boolean needRetry = !dvd.hasPoster;
+                main.post(() -> {
+                    if (gen != generation) return;
+                    if (waitingForReveal) {
+                        pendingRevealCases.put(slot, dvd);
+                    } else {
+                        scheduleCaseReveal(slot, dvd);
+                    }
+                    if (needRetry) {
+                        scheduleMissingPosterRetry(slot, gen, 1);
+                    }
+                });
+            } catch (OutOfMemoryError oom) {
+                PosterCache.trimMemory();
+            } catch (Throwable ignored) {
+            }
         });
     }
 
@@ -528,25 +533,30 @@ public class PosterShelf extends FrameLayout {
             if (v.dvdCase() != null && v.dvdCase().hasPoster) return;
             final int targetH = Math.round(caseW / DvdCase.ASPECT);
             baker.execute(() -> {
-                if (gen != generation) return;
-                MovieCatalog.ensurePoster(getContext().getApplicationContext(), m);
-                Bitmap poster = loadMoviePoster(m, caseW, targetH);
-                if (gen != generation) return;
-                if (poster == null) {
-                    main.post(() -> scheduleMissingPosterRetry(slot, gen, attempt + 1));
-                    return;
-                }
-                int accent = AppArtwork.sampleDistinctPosterColor(poster, 0, slot);
-                final DvdCase dvd = DvdCase.bake(getContext(), poster, m.coverTitle(), m.year, accent, caseW, targetH, glowPad, asCases);
-                main.post(() -> {
-                    if (gen != generation || slot >= cases.size()) return;
-                    DvdCaseView cv = cases.get(slot);
-                    cv.setCase(dvd, 0L);
-                    layoutCases();
-                    if (slot == index && hasFocus() && listener != null) {
-                        listener.onFocusCase(cv, dvd.accent);
+                try {
+                    if (gen != generation) return;
+                    MovieCatalog.ensurePoster(getContext().getApplicationContext(), m);
+                    Bitmap poster = loadMoviePoster(m, caseW, targetH);
+                    if (gen != generation) return;
+                    if (poster == null) {
+                        main.post(() -> scheduleMissingPosterRetry(slot, gen, attempt + 1));
+                        return;
                     }
-                });
+                    int accent = AppArtwork.sampleDistinctPosterColor(poster, 0, slot);
+                    final DvdCase dvd = DvdCase.bake(getContext(), poster, m.coverTitle(), m.year, accent, caseW, targetH, glowPad, asCases);
+                    main.post(() -> {
+                        if (gen != generation || slot >= cases.size()) return;
+                        DvdCaseView cv = cases.get(slot);
+                        cv.setCase(dvd, 0L);
+                        layoutCases();
+                        if (slot == index && hasFocus() && listener != null) {
+                            listener.onFocusCase(cv, dvd.accent);
+                        }
+                    });
+                } catch (OutOfMemoryError oom) {
+                    PosterCache.trimMemory();
+                } catch (Throwable ignored) {
+                }
             });
         }, delayMs);
     }

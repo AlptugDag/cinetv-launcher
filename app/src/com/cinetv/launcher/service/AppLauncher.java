@@ -60,8 +60,10 @@ public final class AppLauncher {
 
     /** Returns true if Nuvio was launched or active within the given duration in ms. */
     public static boolean wasNuvioRecentlyActive(long windowMs) {
-        long elapsed = android.os.SystemClock.elapsedRealtime() - com.cinetv.launcher.TvKeyInterceptorService.lastNuvioActiveAt;
-        return elapsed >= 0 && elapsed <= windowMs;
+        return com.cinetv.launcher.TvKeyInterceptorService.isTimestampWithinWindow(
+                android.os.SystemClock.elapsedRealtime(),
+                com.cinetv.launcher.TvKeyInterceptorService.lastNuvioActiveAt,
+                windowMs);
     }
 
     /** Resolves active Nuvio package (respects user selection in Settings if multiple are installed). */

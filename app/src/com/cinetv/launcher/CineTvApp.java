@@ -17,7 +17,7 @@ import com.cinetv.launcher.device.DeviceTweaks;
 public class CineTvApp extends Application {
 
     private static volatile CineTvApp appInstance;
-    private static final long[] BOOT_RESCUES_MS = {450, 1400, 3200, 6500, 12000};
+    private static final long[] BOOT_RESCUES_MS = {300, 900, 1800, 3200, 5000, 7500, 10500, 14000, 18500, 24000, 32000};
 
     public static CineTvApp get() {
         return appInstance;
@@ -46,6 +46,10 @@ public class CineTvApp extends Application {
         final boolean booting = SystemClock.elapsedRealtime() < 120_000L;
         Handler later = new Handler(Looper.getMainLooper());
         later.postDelayed(() -> {
+            DeviceTweaks.ensureKeyService(this);
+            if (!HomeGuard.isDefault(this)) {
+                HomeGuard.ensureDefaultHome(this);
+            }
             com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
             com.cinetv.launcher.device.NightCare.start(this);
             com.cinetv.launcher.device.SystemAudio.warmUp(this);
@@ -59,6 +63,7 @@ public class CineTvApp extends Application {
         Handler h = new Handler(Looper.getMainLooper());
         for (long delay : BOOT_RESCUES_MS) {
             h.postDelayed(() -> {
+                DeviceTweaks.ensureKeyService(this);
                 if (!DeviceTweaks.isUnwantedBootTuner() || MainActivity.isInFront()) return;
                 if (TvKeyInterceptorService.wasMediaAppRecentlyActive(this, 180_000L)) return;
                 TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();

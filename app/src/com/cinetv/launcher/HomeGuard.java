@@ -100,23 +100,43 @@ public final class HomeGuard {
     }
 
     public static void install(final Context app) {
-        final Thread.UncaughtExceptionHandler system = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler((thread, error) -> {
+            try {
+                android.util.Log.e("CineTvGuard", "Uncaught exception on " + (thread != null ? thread.getName() : "thread"), error);
+                com.cinetv.launcher.service.PosterCache.trimMemory();
+                com.cinetv.launcher.service.PosterCache.trimPacked();
+                com.cinetv.launcher.ui.DvdCase.trimCaches();
+                com.cinetv.launcher.ui.Glow.clear();
+                System.gc();
+                com.cinetv.launcher.device.DeviceTweaks.ensureKeyService(app);
+            } catch (Throwable ignored) {
+            }
+            // Background worker thread failures (e.g., poster decode, DVD case bake, network probe) must never
+            // terminate the launcher process or disconnect TvKeyInterceptorService.
+            if (thread != null && thread != android.os.Looper.getMainLooper().getThread()) {
+                return;
+            }
             try {
                 long now = System.currentTimeMillis();
                 long last = Prefs.get(app).getLong(LAST_CRASH, 0);
                 Prefs.get(app).edit().putLong(LAST_CRASH, now).commit();
                 // Only relaunch MainActivity if the user was actually on the CineTV Home screen (MainActivity.isInFront()).
                 // Never pull the user out of Nuvio or another foreground app and restart the launcher over their video!
-                if (MainActivity.isInFront() && now - last > 60_000L && !com.cinetv.launcher.device.Uninstaller.isRemoving(app)) {
-                    Intent i = new Intent(app, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                if (MainActivity.isInFront() && now - last > 15_000L && !com.cinetv.launcher.device.Uninstaller.isRemoving(app)) {
+                    Intent i = new Intent(app, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
                     PendingIntent pi = PendingIntent.getActivity(app, 7, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_ONE_SHOT);
                     AlarmManager am = (AlarmManager) app.getSystemService(Context.ALARM_SERVICE);
-                    if (am != null) am.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + 600, pi);
+                    if (am != null) am.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + 350, pi);
                 }
             } catch (Throwable ignored) {
             }
-            if (system != null) system.uncaughtException(thread, error);
+            // Never delegate to RuntimeInit$KillApplicationHandler (system.uncaughtException):
+            // reporting a crash of the active ROLE_HOME / AccessibilityService package to ActivityManagerService
+            // triggers Android's RescueParty / PackageWatchdog, which resets ROLE_HOME & ENABLED_ACCESSIBILITY_SERVICES
+            // (reverting to the stock launcher) or warm-reboots the TV into Safe Mode!
+            android.os.Process.killProcess(android.os.Process.myPid());
+            System.exit(0);
         });
         new Thread(() -> {
             com.cinetv.launcher.device.DeviceTweaks.snapshotOriginals(app);
@@ -232,11 +252,9 @@ public final class HomeGuard {
         takingOver = true;
         new Thread(() -> {
             try {
-                if (!isDefault(app) || !com.cinetv.launcher.device.HomeLaunchers.others(app).isEmpty()) {
-                    String pkg = app.getPackageName();
-                    com.cinetv.launcher.remote.LocalAdb.shell(app, homeCommands(pkg), 4000);
-                    com.cinetv.launcher.device.HomeLaunchers.disableOthers(app);
-                }
+                String pkg = app.getPackageName();
+                com.cinetv.launcher.remote.LocalAdb.shell(app, homeCommands(pkg), 4000);
+                com.cinetv.launcher.device.HomeLaunchers.disableOthers(app);
                 takeOverOnce(app);
             } finally {
                 takingOver = false;
@@ -244,16 +262,10 @@ public final class HomeGuard {
         }, "cinetv-home-takeover").start();
     }
 
-    /** The other launchers off, when CineTV is Home. */
+    /** Ensures CineTV holds ROLE_HOME and set-home-activity while keeping Direct-Boot stock fallback intact. */
     private static void takeOverOnce(Context app) {
         android.content.SharedPreferences p = Prefs.get(app);
-        if (!com.cinetv.launcher.device.HomeLaunchers.others(app).isEmpty()) {
-            if (com.cinetv.launcher.device.HomeLaunchers.disableOthers(app) >= 0) {
-                p.edit().putBoolean(TAKEOVER_DONE, true).apply();
-            }
-            return;
-        }
-        if (p.getBoolean(TAKEOVER_DONE, false) || !isDefault(app)) return;
+        if (p.getBoolean(TAKEOVER_DONE, false) && isDefault(app) && !com.cinetv.launcher.device.HomeLaunchers.hasDisabled(app)) return;
         if (com.cinetv.launcher.device.HomeLaunchers.disableOthers(app) >= 0) {
             p.edit().putBoolean(TAKEOVER_DONE, true).apply();
         }
@@ -276,6 +288,9 @@ public final class HomeGuard {
 
     private static String homeCommands(String pkg) {
         return assistantCommands(pkg)
+                + "setprop persist.sys.disable_rescue true 2>/dev/null; "
+                + "setprop persist.sys.enable_rescue 0 2>/dev/null; "
+                + "device_config put package_manager_service enable_rescue_party false 2>/dev/null; "
                 + "cmd role add-role-holder --user 0 --flags 1 android.app.role.HOME " + pkg + " 2>/dev/null; "
                 + "cmd role add-role-holder --user 0 android.app.role.HOME " + pkg + " 2>/dev/null; "
                 + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity 2>/dev/null; "

@@ -162,6 +162,9 @@ public final class DeviceTweaks {
         new Thread(() -> {
             String pkg = ctx.getPackageName();
             String cmd = "settings put secure screensaver_activate_on_sleep 0 2>/dev/null; "
+                    + "setprop persist.sys.disable_rescue true 2>/dev/null; "
+                    + "setprop persist.sys.enable_rescue 0 2>/dev/null; "
+                    + "device_config put package_manager_service enable_rescue_party false 2>/dev/null; "
                     + "cmd deviceidle whitelist +" + pkg + " 2>/dev/null; "
                     + "cmd appops set " + pkg + " RUN_IN_BACKGROUND allow 2>/dev/null; ";
             com.cinetv.launcher.remote.LocalAdb.shell(ctx, cmd, 2500);

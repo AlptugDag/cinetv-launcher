@@ -36,12 +36,27 @@ public class TvKeyInterceptorService extends AccessibilityService {
     public static volatile boolean launchedYouTubeFromCineTv;
     public static volatile boolean launchedNuvioFromCineTv;
     public static volatile boolean lastNuvioLaunchPreferResume;
-    public static volatile long lastNuvioActiveAt = -120_000L;
-    public static volatile long lastYouTubeActiveAt = -120_000L;
+    public static volatile long lastNuvioActiveAt = 0L;
+    public static volatile long lastYouTubeActiveAt = 0L;
 
     private static final String PREF_LAST_MEDIA_PKG = "last_media_app_pkg";
     private static final String PREF_LAST_MEDIA_WALL_MS = "last_media_app_wall_ms";
     private static final String PREF_LAST_MEDIA_ELAPSED_MS = "last_media_app_elapsed_ms";
+    private static final String PREF_LAST_MEDIA_BOOT_COUNT = "last_media_app_boot_count";
+
+    /** Pure helper: returns true only when activeAtElapsed (> 0) was recorded in the current session within windowMs. */
+    public static boolean isTimestampWithinWindow(long nowElapsed, long activeAtElapsed, long windowMs) {
+        return activeAtElapsed > 0L && nowElapsed >= activeAtElapsed && (nowElapsed - activeAtElapsed) < windowMs;
+    }
+
+    private static int currentBootCount(Context ctx) {
+        if (ctx == null) return -1;
+        try {
+            return android.provider.Settings.Global.getInt(ctx.getContentResolver(), android.provider.Settings.Global.BOOT_COUNT, -1);
+        } catch (Throwable ignored) {
+            return -1;
+        }
+    }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String lastPackage;
@@ -101,6 +116,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
                     .remove(PREF_LAST_MEDIA_PKG)
                     .remove(PREF_LAST_MEDIA_WALL_MS)
                     .remove(PREF_LAST_MEDIA_ELAPSED_MS)
+                    .remove(PREF_LAST_MEDIA_BOOT_COUNT)
                     .apply();
         } catch (Throwable ignored) {
         }
@@ -113,6 +129,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
                     .putString(PREF_LAST_MEDIA_PKG, pkg)
                     .putLong(PREF_LAST_MEDIA_WALL_MS, System.currentTimeMillis())
                     .putLong(PREF_LAST_MEDIA_ELAPSED_MS, nowElapsed)
+                    .putInt(PREF_LAST_MEDIA_BOOT_COUNT, currentBootCount(ctx))
                     .apply();
         } catch (Throwable ignored) {
         }
@@ -125,21 +142,32 @@ public class TvKeyInterceptorService extends AccessibilityService {
     public static boolean wasMediaAppRecentlyActive(Context ctx, long windowMs) {
         if (MainActivity.foreground) return false;
         long nowElapsed = android.os.SystemClock.elapsedRealtime();
-        if (nowElapsed - lastNuvioActiveAt < windowMs || nowElapsed - lastYouTubeActiveAt < windowMs) {
+        if (isTimestampWithinWindow(nowElapsed, lastNuvioActiveAt, windowMs)
+                || isTimestampWithinWindow(nowElapsed, lastYouTubeActiveAt, windowMs)) {
             return true;
+        }
+        // During the first 45s of cold boot, if no media app was launched in this session, never let
+        // stale SharedPreferences from before shutdown suppress CineTV's boot tuner rescue.
+        if (nowElapsed < 45_000L) {
+            return false;
         }
         if (ctx != null) {
             try {
                 android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(ctx);
+                int savedBoot = p.getInt(PREF_LAST_MEDIA_BOOT_COUNT, -2);
+                int curBoot = currentBootCount(ctx);
+                if (curBoot >= 0 && savedBoot >= 0 && curBoot != savedBoot) {
+                    return false;
+                }
                 long savedElapsed = p.getLong(PREF_LAST_MEDIA_ELAPSED_MS, -1L);
                 long savedWall = p.getLong(PREF_LAST_MEDIA_WALL_MS, 0L);
                 String savedPkg = p.getString(PREF_LAST_MEDIA_PKG, "");
                 if (savedPkg != null && !savedPkg.isEmpty()) {
-                    // Ensure savedElapsed belongs to the current boot session (nowElapsed >= savedElapsed)
-                    if (savedElapsed > 0 && nowElapsed >= savedElapsed && (nowElapsed - savedElapsed) < windowMs) {
+                    if (isTimestampWithinWindow(nowElapsed, savedElapsed, windowMs)) {
                         return true;
                     }
-                    if (savedWall > 0 && Math.abs(System.currentTimeMillis() - savedWall) < windowMs && nowElapsed >= savedElapsed) {
+                    if (savedWall > 0 && savedElapsed > 0 && nowElapsed >= savedElapsed
+                            && Math.abs(System.currentTimeMillis() - savedWall) < windowMs) {
                         return true;
                     }
                 }
@@ -170,12 +198,18 @@ public class TvKeyInterceptorService extends AccessibilityService {
         } catch (Throwable ignored) {
         }
         try {
-            android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(this);
-            long savedElapsed = p.getLong(PREF_LAST_MEDIA_ELAPSED_MS, -1L);
             long nowElapsed = android.os.SystemClock.elapsedRealtime();
-            if (savedElapsed > 0 && nowElapsed >= savedElapsed && (nowElapsed - savedElapsed) < 180_000L) {
-                String savedPkg = p.getString(PREF_LAST_MEDIA_PKG, null);
-                if (savedPkg != null && !savedPkg.isEmpty()) return savedPkg;
+            if (nowElapsed >= 45_000L) {
+                android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(this);
+                int savedBoot = p.getInt(PREF_LAST_MEDIA_BOOT_COUNT, -2);
+                int curBoot = currentBootCount(this);
+                if (curBoot < 0 || savedBoot < 0 || curBoot == savedBoot) {
+                    long savedElapsed = p.getLong(PREF_LAST_MEDIA_ELAPSED_MS, -1L);
+                    if (isTimestampWithinWindow(nowElapsed, savedElapsed, 180_000L)) {
+                        String savedPkg = p.getString(PREF_LAST_MEDIA_PKG, null);
+                        if (savedPkg != null && !savedPkg.isEmpty()) return savedPkg;
+                    }
+                }
             }
         } catch (Throwable ignored) {
         }
@@ -185,7 +219,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
     public boolean isInMediaOrThirdPartyApp() {
         if (MainActivity.foreground) return false;
         long nowElapsed = android.os.SystemClock.elapsedRealtime();
-        if (nowElapsed - lastNuvioActiveAt < 60_000L || nowElapsed - lastYouTubeActiveAt < 60_000L) return true;
+        if (isTimestampWithinWindow(nowElapsed, lastNuvioActiveAt, 60_000L)
+                || isTimestampWithinWindow(nowElapsed, lastYouTubeActiveAt, 60_000L)) return true;
         if (wasMediaAppRecentlyActive(this, 60_000L)) return true;
         String pkg = resolveActiveForegroundPackage();
         if (pkg == null || pkg.equals(getPackageName()) || isLiveTvApp(pkg) || isStockLauncher(pkg)) return false;
@@ -248,6 +283,29 @@ public class TvKeyInterceptorService extends AccessibilityService {
      * - On ACTION_SCREEN_ON: bring CineTV to the front if an unwanted boot/wake tuner appeared, WITHOUT running
      *   `am force-stop` on MediaTek/Grundig/Arçelik TVCenter (killing tvcenter breaks single-press STR standby).
      */
+    private void dismissUnwantedTunerToHome() {
+        try {
+            performGlobalAction(GLOBAL_ACTION_HOME);
+        } catch (Throwable ignored) {
+        }
+        try {
+            startActivity(new Intent(this, MainActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        } catch (Throwable ignored) {
+        }
+        handler.postDelayed(() -> {
+            if (MainActivity.isInFront() || !DeviceTweaks.isUnwantedTuner()
+                    || isInMediaOrThirdPartyApp() || DeviceTweaks.isMediaPlaying(this)) {
+                return;
+            }
+            try {
+                startActivity(new Intent(this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+            } catch (Throwable ignored) {
+            }
+        }, 380L);
+    }
+
     private final BroadcastReceiver screenOn = new BroadcastReceiver() {
         @Override
         public void onReceive(Context c, Intent i) {
@@ -262,16 +320,19 @@ public class TvKeyInterceptorService extends AccessibilityService {
             wokeAt = android.os.SystemClock.elapsedRealtime();
             handler.removeCallbacks(cinesubAmbient);
             handler.postDelayed(cinesubAmbient, 15_000);
-            if (!DeviceTweaks.isUnwantedTuner() || isInMediaOrThirdPartyApp() || DeviceTweaks.isMediaPlaying(TvKeyInterceptorService.this)) return;
-            String fg = resolveActiveForegroundPackage();
-            if (fg != null && !fg.equals(getPackageName()) && !isLiveTvApp(fg) && !isStockLauncher(fg)) {
-                return;
-            }
-            try {
-                performGlobalAction(GLOBAL_ACTION_HOME);
-                startActivity(new Intent(TvKeyInterceptorService.this, MainActivity.class)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
-            } catch (Throwable ignored) {
+            final long[] wakeChecksMs = {0L, 350L, 950L, 1900L, 3400L};
+            for (long delay : wakeChecksMs) {
+                handler.postDelayed(() -> {
+                    if (com.cinetv.launcher.device.Uninstaller.isRemoving(TvKeyInterceptorService.this)) return;
+                    if (!DeviceTweaks.isUnwantedTuner() || isInMediaOrThirdPartyApp() || DeviceTweaks.isMediaPlaying(TvKeyInterceptorService.this)) return;
+                    String fg = resolveActiveForegroundPackage();
+                    if (fg != null && !fg.equals(getPackageName()) && !isLiveTvApp(fg) && !isStockLauncher(fg)) {
+                        return;
+                    }
+                    if (!MainActivity.isInFront() || (fg != null && (isLiveTvApp(fg) || isStockLauncher(fg)))) {
+                        dismissUnwantedTunerToHome();
+                    }
+                }, delay);
             }
         }
     };
@@ -1132,6 +1193,19 @@ public class TvKeyInterceptorService extends AccessibilityService {
             android.util.Log.w("CineTvKeyService", "cinesubReceiver register failed: " + t.getMessage());
         }
         final boolean coldBooting = android.os.SystemClock.elapsedRealtime() < DeviceTweaks.BOOT_GUARD_MS;
+        if (coldBooting || (lastPackage != null && (isLiveTvApp(lastPackage) || isStockLauncher(lastPackage)))) {
+            final long[] connectRescuesMs = {0L, 550L, 1500L, 3000L, 5500L};
+            for (long delay : connectRescuesMs) {
+                handler.postDelayed(() -> {
+                    if (instance == null || com.cinetv.launcher.device.Uninstaller.isRemoving(this)) return;
+                    if (!DeviceTweaks.isUnwantedTuner() || isInMediaOrThirdPartyApp() || DeviceTweaks.isMediaPlaying(this)) return;
+                    String fg = resolveActiveForegroundPackage();
+                    if (!MainActivity.isInFront() && (fg == null || fg.equals(getPackageName()) || isLiveTvApp(fg) || isStockLauncher(fg))) {
+                        dismissUnwantedTunerToHome();
+                    }
+                }, delay);
+            }
+        }
         try {
             final com.cinetv.launcher.service.SpecialDay day = com.cinetv.launcher.service.SpecialDay.today(this);
             if (day != null) {
@@ -1230,16 +1304,16 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
         long nowElapsed = android.os.SystemClock.elapsedRealtime();
         boolean recentlyInMedia = !MainActivity.foreground
-                && (nowElapsed - lastNuvioActiveAt < 60_000L
-                || nowElapsed - lastYouTubeActiveAt < 60_000L
+                && (isTimestampWithinWindow(nowElapsed, lastNuvioActiveAt, 60_000L)
+                || isTimestampWithinWindow(nowElapsed, lastYouTubeActiveAt, 60_000L)
                 || wasMediaAppRecentlyActive(this, 60_000L));
         String activePkg = lastPackage != null ? lastPackage : resolveActiveForegroundPackage();
         boolean inActiveMediaApp = recentlyInMedia || (activePkg != null && (isNuvioApp(activePkg) || isYouTubeApp(activePkg)
                 || activePkg.contains("nova") || activePkg.contains("vlc") || activePkg.contains("kodi")
                 || activePkg.contains("stremio") || activePkg.contains("player")));
         boolean bootOrWakeWindow = DeviceTweaks.isUnwantedBootTuner()
-                || (nowElapsed - wokeAt < 15_000L);
-        boolean homeJustPressed = nowElapsed - lastHomeKeyAt < 3_500L;
+                || (wokeAt > 0 && nowElapsed - wokeAt < 20_000L);
+        boolean homeJustPressed = lastHomeKeyAt > 0 && nowElapsed - lastHomeKeyAt < 3_500L;
 
         CharSequence cls = event.getClassName();
         if (cls != null) {
@@ -1258,7 +1332,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
             if (inActiveMediaApp && !homeJustPressed) {
                 return;
             }
-            // Stock TV launcher (Xiaomi / Google TV) intercepted HOME key or boot: re-lock CineTV as Home and redirect immediately
+            // Stock TV launcher (Xiaomi / Google TV / Arçelik) intercepted HOME key or boot: re-lock CineTV as Home and redirect immediately
             HomeGuard.ensureDefaultHome(this);
             startActivity(new Intent(this, MainActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
@@ -1267,16 +1341,16 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
         // Other makers' live TV, started by the TV itself at power-on (not by the viewer): back to CineTV.
         if (!inActiveMediaApp && isLiveTvApp(pkg) && !pkg.startsWith("com.mediatek") && !pkg.startsWith("com.arcelik") && !pkg.equals("com.android.tv")
-                && !pkg.equals("com.google.android.tv") && DeviceTweaks.isUnwantedTuner() && !isTvMenu(cls)
-                && bootOrWakeWindow) {
-            startActivity(new Intent(this, MainActivity.class)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+                && !pkg.equals("com.google.android.tv") && DeviceTweaks.isUnwantedTuner() && !isPassiveAudioOsd(cls)
+                && (bootOrWakeWindow || !isTvMenu(cls))) {
+            dismissUnwantedTunerToHome();
             return;
         }
         switch (pkg) {
             case "com.mediatek.wwtv.tvcenter":
             case "com.mediatek.tv.oneworld.tvcenter": // Grundig
             case "com.arcelik.tv.livetv":
+            case "com.arcelik.tv.dtv":
             case "com.android.tv":
             case "com.google.android.tv":
                 // While the viewer is inside Nuvio, YouTube, or another media app, MediaTek/Arçelik TV services often emit
@@ -1285,13 +1359,11 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 if (inActiveMediaApp) {
                     return;
                 }
-                // The OEM tuner MediaTek/Arçelik/Grundig TVs push on boot/wake: return to CineTV Home without
-                // force-stopping tvcenter (killing com.mediatek.wwtv.tvcenter / com.mediatek.tv.oneworld.tvcenter
-                // kills the hardware standby daemon and breaks single-press Power sleep!).
-                if (bootOrWakeWindow && DeviceTweaks.isUnwantedTuner() && !isTvMenu(cls)) {
-                    performGlobalAction(GLOBAL_ACTION_HOME);
-                    startActivity(new Intent(this, MainActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+                // The OEM tuner MediaTek/Arçelik/Grundig TVs push on boot/wake (including its "please scan channels"
+                // setup/dialog/wizard screen during bootOrWakeWindow): return to CineTV Home without force-stopping
+                // tvcenter (killing com.mediatek.wwtv.tvcenter kills the hardware standby daemon).
+                if (DeviceTweaks.isUnwantedTuner() && !isPassiveAudioOsd(cls) && (bootOrWakeWindow || !isTvMenu(cls))) {
+                    dismissUnwantedTunerToHome();
                     return;
                 }
                 break;
@@ -1497,6 +1569,13 @@ public class TvKeyInterceptorService extends AccessibilityService {
             }
         } catch (Throwable ignored) {}
         return false;
+    }
+
+    /** Passive volume/mute OSD overlays emitted by MediaTek TVCenter when the volume button is pressed. */
+    private static boolean isPassiveAudioOsd(CharSequence cls) {
+        if (cls == null) return false;
+        String c = cls.toString().toLowerCase(java.util.Locale.US);
+        return c.contains("volume") || c.contains("mute");
     }
 
     /** A settings / menu screen of the TV's own tuner app, as opposed to its live-TV picture. */

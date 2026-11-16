@@ -84,11 +84,15 @@ public final class DvdCase {
     /** Downscales hard then back up with filtering: a cheap, smooth blur. */
     static Bitmap soften(Bitmap src, int down, int keep) {
         if (src == null) return null;
-        int sw = Math.max(2, src.getWidth() / down), sh = Math.max(2, src.getHeight() / down);
-        Bitmap small = Bitmap.createScaledBitmap(src, sw, sh, true);
-        Bitmap out = Bitmap.createScaledBitmap(small, Math.max(2, src.getWidth() / keep), Math.max(2, src.getHeight() / keep), true);
-        if (small != out) small.recycle();
-        return out;
+        try {
+            int sw = Math.max(2, src.getWidth() / down), sh = Math.max(2, src.getHeight() / down);
+            Bitmap small = Bitmap.createScaledBitmap(src, sw, sh, true);
+            Bitmap out = Bitmap.createScaledBitmap(small, Math.max(2, src.getWidth() / keep), Math.max(2, src.getHeight() / keep), true);
+            if (small != out) small.recycle();
+            return out;
+        } catch (OutOfMemoryError oom) {
+            return null;
+        }
     }
 
     private static final android.util.LruCache<Integer, Bitmap> HALO_CACHE = new android.util.LruCache<Integer, Bitmap>(2 * 1024) {
@@ -230,7 +234,7 @@ public final class DvdCase {
 
     static Bitmap bakeCover(Context ctx, Bitmap poster, String title, int year, int accent, int w, int h) {
         Bitmap[] shell = shell(w, h);
-        boolean rgb565 = ctx != null && com.cinetv.launcher.device.PerformanceProfile.ultraLowRam(ctx);
+        boolean rgb565 = ctx != null && com.cinetv.launcher.device.PerformanceProfile.lowMemory(ctx);
         Bitmap out;
         Canvas c;
         if (rgb565) {
@@ -238,8 +242,16 @@ public final class DvdCase {
             c = new Canvas(out);
             c.drawBitmap(shell[0], 0, 0, null);
         } else {
-            out = shell[0].copy(Bitmap.Config.ARGB_8888, true);
+            try {
+                out = shell[0].copy(Bitmap.Config.ARGB_8888, true);
+            } catch (OutOfMemoryError oom) {
+                com.cinetv.launcher.service.PosterCache.trimMemory();
+                out = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
+            }
             c = new Canvas(out);
+            if (out.getConfig() == Bitmap.Config.RGB_565) {
+                c.drawBitmap(shell[0], 0, 0, null);
+            }
         }
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         float corner = w * 0.03f;

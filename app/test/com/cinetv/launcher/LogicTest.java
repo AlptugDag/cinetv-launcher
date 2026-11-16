@@ -602,6 +602,20 @@ public class LogicTest {
         assertEquals(10, PerformanceProfile.packedCacheMbFor("akropoli", 2048L));
         assertEquals(20, PerformanceProfile.shelfSizeFor(false, PerformanceProfile.Tier.LOW));
     }
+
+    @Test
+    public void coldBootMediaTimestampAndTunerRescueLogic() {
+        // Uninitialized timestamps (0L or negative) must never report a media app as active on cold boot
+        assertFalse(TvKeyInterceptorService.isTimestampWithinWindow(5_000L, 0L, 180_000L));
+        assertFalse(TvKeyInterceptorService.isTimestampWithinWindow(15_000L, -120_000L, 180_000L));
+        // Active timestamp within window must report true, expired or future timestamps must report false
+        assertTrue(TvKeyInterceptorService.isTimestampWithinWindow(50_000L, 20_000L, 60_000L));
+        assertFalse(TvKeyInterceptorService.isTimestampWithinWindow(100_000L, 20_000L, 60_000L));
+        assertFalse(TvKeyInterceptorService.isTimestampWithinWindow(10_000L, 20_000L, 60_000L));
+        assertTrue(TvKeyInterceptorService.isLiveTvApp("com.mediatek.wwtv.tvcenter"));
+        assertTrue(TvKeyInterceptorService.isLiveTvApp("com.arcelik.tv.livetv"));
+    }
 }
+
 
 

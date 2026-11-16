@@ -31,9 +31,8 @@ CORE_PACKAGES=(
     "com.arcelik.tv.livetv"             # Arçelik / Beko / Grundig Live TV & standby service
 )
 
-# Stock launchers are only re-enabled during manual emergency recovery (without --quiet) or when CineTV is not installed,
-# so debloat self-heal never re-enables competing heavy launchers alongside CineTV on cold boot.
-STOCK_LAUNCHERS=(
+# Stock launchers must always remain enabled as Direct-Boot fallback so Android never enters Safe Mode
+CORE_PACKAGES+=(
     "com.google.android.tvlauncher"
     "com.google.android.apps.tv.launcherx"
     "com.google.android.leanbacklauncher"
@@ -52,10 +51,6 @@ ALL_PKGS="$(adb shell "pm list packages -u" 2>/dev/null | tr -d '\r')"
 INST_PKGS="$(adb shell "pm list packages" 2>/dev/null | tr -d '\r')"
 DIS_PKGS="$(adb shell "pm list packages -d" 2>/dev/null | tr -d '\r')"
 
-if [ "$QUIET" != "1" ] || ! printf '%s\n' "$INST_PKGS" | grep -qxF "package:com.cinetv.launcher"; then
-    CORE_PACKAGES+=("${STOCK_LAUNCHERS[@]}")
-fi
-
 FIXED=0
 for pkg in "${CORE_PACKAGES[@]}"; do
     printf '%s\n' "$ALL_PKGS" | grep -qxF "package:$pkg" || continue   # not part of this firmware
@@ -71,6 +66,10 @@ for pkg in "${CORE_PACKAGES[@]}"; do
         FIXED=$((FIXED + 1))
     fi
 done
+
+if printf '%s\n' "$INST_PKGS" | grep -qxF "package:com.cinetv.launcher"; then
+    adb shell "cmd role add-role-holder --user 0 --flags 1 android.app.role.HOME com.cinetv.launcher; cmd package set-home-activity --user 0 com.cinetv.launcher/.MainActivity" >/dev/null 2>&1 || true
+fi
 
 if [ "$FIXED" -gt 0 ]; then
     echo "==> Restored $FIXED TV-core component(s). A reboot is recommended: adb reboot"

@@ -248,14 +248,15 @@ ok "Remote buttons and screensaver configured"
 [ -z "$MDBLIST_KEY" ] || { tv settings put secure tv_mdblist_api_key "$MDBLIST_KEY"; ok "MDBList key handed over"; }
 [ -z "$AI_KEY" ] || { tv settings put secure tv_ai_api_key "$AI_KEY"; ok "AI key handed over (moved into the encrypted store on first start)"; }
 
-# Lock CineTV as the sole active Home launcher by disabling competing stock launchers (recorded in /sdcard/cinetv-launchers.txt so Uninstaller restores them)
-if [ "$KEEP_OLD" != 1 ]; then
-    for stock in com.google.android.tvlauncher com.google.android.apps.tv.launcherx com.google.android.leanbacklauncher com.android.tv.launcher com.mitv.tvhome com.xiaomi.mitv.tvhome com.tcl.cyberui com.sony.dtv.osat.launcher com.hisense.vidaa.launcher org.droidtv.leanback com.arcelik.home com.vestel.launcher; do
-        if tv pm list packages -e | grep -qx "package:$stock"; then
-            tv pm disable-user --user 0 "$stock" >/dev/null 2>&1 && tv "grep -qx '$stock' /sdcard/cinetv-launchers.txt 2>/dev/null || echo '$stock' >> /sdcard/cinetv-launchers.txt" || true
-        fi
-    done
-fi
+# Ensure stock launchers remain enabled for Direct-Boot safety (preventing Android RescueParty Safe Mode)
+# while locking CineTV as the active ROLE_HOME and home-activity
+for stock in com.google.android.tvlauncher com.google.android.apps.tv.launcherx com.google.android.leanbacklauncher com.android.tv.launcher com.mitv.tvhome com.xiaomi.mitv.tvhome com.tcl.cyberui com.sony.dtv.osat.launcher com.hisense.vidaa.launcher org.droidtv.leanback com.arcelik.home com.vestel.launcher; do
+    tv pm enable --user 0 "$stock" >/dev/null 2>&1 || true
+done
+tv setprop persist.sys.disable_rescue true >/dev/null 2>&1 || true
+tv setprop persist.sys.enable_rescue 0 >/dev/null 2>&1 || true
+tv device_config put package_manager_service enable_rescue_party false >/dev/null 2>&1 || true
+tv cmd role add-role-holder --user 0 --flags 1 android.app.role.HOME "$PKG" >/dev/null 2>&1 || true
 tv cmd role add-role-holder --user 0 android.app.role.HOME "$PKG" >/dev/null 2>&1 || true
 tv cmd package set-home-activity --user 0 "$HOME_ACTIVITY" >/dev/null 2>&1 || true
 

@@ -58,7 +58,7 @@
         android:banner="@drawable/ic_banner"
         android:icon="@drawable/ic_launcher"
         android:hardwareAccelerated="true"
-        android:largeHeap="false"
+        android:largeHeap="true"
         android:allowBackup="false"
         android:supportsRtl="true"
         android:localeConfig="@xml/locales_config"
@@ -206,6 +206,7 @@
 
         <receiver
             android:name=".BootReceiver"
+            android:directBootAware="true"
             android:enabled="true"
             android:exported="true">
             <intent-filter android:priority="999">

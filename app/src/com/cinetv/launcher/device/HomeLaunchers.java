@@ -213,40 +213,42 @@ public final class HomeLaunchers {
     }
 
     /**
-     * Blocking (adb). CineTV takes the Home role and the home activity, and disables competing stock launchers
-     * (recording them in the journal so restoreOthers / Remove CineTV re-enables them cleanly).
-     * Returns the count of disabled competing launchers (or 0 if already disabled), or -1 when adb is unavailable.
+     * Blocking (adb). CineTV takes the Home role and the home activity, and ensures system stock launchers
+     * remain enabled (re-enabling any previously disabled ones) so Android TV always has a directBootAware
+     * fallback during LOCKED_BOOT and never triggers RescueParty Safe Mode or falls back to the OEM tuner.
      */
     public static int disableOthers(Context ctx) {
         if (ctx == null || Uninstaller.isRemoving(ctx)) return -1;
         recordOriginalHomeIfNeeded(ctx);
-        List<String> competing = others(ctx);
-        Set<String> recorded = new LinkedHashSet<>(journal(ctx));
-        StringBuilder cmd = new StringBuilder(homeCommand(ctx));
-        int count = 0;
-        for (String p : competing) {
-            if (p != null && p.matches("[a-zA-Z0-9._]+") && !p.equals(ctx.getPackageName()) && !isNever(p)) {
-                recorded.add(p);
-                cmd.append("pm disable-user --user 0 ").append(p).append(" >/dev/null 2>&1 || pm hide --user 0 ").append(p).append(" >/dev/null 2>&1; ");
-                count++;
+        List<String> prevDisabled = journal(ctx);
+        StringBuilder cmd = new StringBuilder();
+        for (String s : STOCK_LAUNCHERS) {
+            cmd.append("pm enable --user 0 ").append(s).append(" >/dev/null 2>&1; ");
+            cmd.append("pm unhide --user 0 ").append(s).append(" >/dev/null 2>&1; ");
+        }
+        for (String p : prevDisabled) {
+            if (p != null && p.matches("[a-zA-Z0-9._]+") && !p.equals(ctx.getPackageName())) {
+                cmd.append("pm enable --user 0 ").append(p).append(" >/dev/null 2>&1; ");
+                cmd.append("pm unhide --user 0 ").append(p).append(" >/dev/null 2>&1; ");
             }
         }
+        cmd.append("if [ -f /sdcard/cinetv-launchers.txt ]; then ")
+           .append("while read -r spkg; do [ -n \"$spkg\" ] && pm enable --user 0 \"$spkg\" >/dev/null 2>&1; done < /sdcard/cinetv-launchers.txt; ")
+           .append("rm -f /sdcard/cinetv-launchers.txt; fi; ");
         cmd.append(homeCommand(ctx));
         if (!LocalAdb.shell(ctx, cmd.toString(), 15_000)) return -1;
-        if (!recorded.isEmpty()) {
-            StringBuilder j = new StringBuilder();
-            for (String s : recorded) {
-                if (j.length() > 0) j.append(',');
-                j.append(s);
-            }
-            Prefs.get(ctx).edit().putString(JOURNAL, j.toString()).commit();
+        if (!prevDisabled.isEmpty()) {
+            Prefs.get(ctx).edit().remove(JOURNAL).commit();
         }
-        return count;
+        return 0;
     }
 
     private static String homeCommand(Context ctx) {
         String pkg = ctx.getPackageName();
-        return "cmd role add-role-holder --user 0 --flags 1 android.app.role.HOME " + pkg + " 2>/dev/null; "
+        return "setprop persist.sys.disable_rescue true 2>/dev/null; "
+                + "setprop persist.sys.enable_rescue 0 2>/dev/null; "
+                + "device_config put package_manager_service enable_rescue_party false 2>/dev/null; "
+                + "cmd role add-role-holder --user 0 --flags 1 android.app.role.HOME " + pkg + " 2>/dev/null; "
                 + "cmd role add-role-holder --user 0 android.app.role.HOME " + pkg + " 2>/dev/null; "
                 + "cmd package set-home-activity --user 0 " + pkg + "/.MainActivity 2>/dev/null; "
                 + "cmd package set-home-activity --user current " + pkg + "/.MainActivity 2>/dev/null; "
@@ -254,9 +256,8 @@ public final class HomeLaunchers {
     }
 
     /**
-     * Ensures the original stock launcher package is recorded and CineTV is locked as the active default Home
-     * without re-enabling competing stock launchers during normal use (which would cause Android TV / Google TV
-     * to revert to the stock launcher). Competing stock launchers are restored only in {@link #restoreOthers}.
+     * Ensures the original stock launcher package is recorded, any previously disabled stock launcher is
+     * re-enabled for Direct-Boot safety, and CineTV is locked as the active default Home.
      */
     public static boolean ensureStockLaunchersReady(Context ctx) {
         if (ctx == null || Uninstaller.isRemoving(ctx)) return false;

@@ -37,6 +37,7 @@ public class BootReceiver extends BroadcastReceiver {
                 || Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
                 || "android.intent.action.QUICKBOOT_POWERON".equals(action)
                 || "com.htc.intent.action.QUICKBOOT_POWERON".equals(action)) {
+            com.cinetv.launcher.device.DeviceTweaks.ensureKeyService(context);
             TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
             if (svc != null && svc.isInMediaOrThirdPartyApp()) {
                 return;
@@ -51,18 +52,22 @@ public class BootReceiver extends BroadcastReceiver {
                 }
             }
             android.os.Handler h = new android.os.Handler(android.os.Looper.getMainLooper());
-            h.postDelayed(() -> {
-                if (MainActivity.isInFront()) return;
-                TvKeyInterceptorService s = TvKeyInterceptorService.getInstance();
-                if (s != null && s.isInMediaOrThirdPartyApp()) return;
-                if (com.cinetv.launcher.device.DeviceTweaks.isMediaPlaying(context)) return;
-                try {
-                    Intent followUp = new Intent(context, MainActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION);
-                    context.startActivity(followUp);
-                } catch (Throwable ignored) {
-                }
-            }, 2500L);
+            long[] delays = {600L, 1800L, 3500L, 6500L, 11000L};
+            for (long delay : delays) {
+                h.postDelayed(() -> {
+                    com.cinetv.launcher.device.DeviceTweaks.ensureKeyService(context);
+                    if (MainActivity.isInFront() || !com.cinetv.launcher.device.DeviceTweaks.isUnwantedTuner()) return;
+                    TvKeyInterceptorService s = TvKeyInterceptorService.getInstance();
+                    if (s != null && s.isInMediaOrThirdPartyApp()) return;
+                    if (com.cinetv.launcher.device.DeviceTweaks.isMediaPlaying(context)) return;
+                    try {
+                        Intent followUp = new Intent(context, MainActivity.class)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                        context.startActivity(followUp);
+                    } catch (Throwable ignored) {
+                    }
+                }, delay);
+            }
         }
     }
 }
