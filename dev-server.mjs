@@ -156,7 +156,7 @@ const server = http.createServer((req, res) => {
         paired: true,
         token: 'preview-token',
         name: 'CineTV Salon',
-        version: '1.0.0.55',
+        version: '1.0.0.57',
         securePort: 0,
         hasTmdb: true,
         hasAi: true,

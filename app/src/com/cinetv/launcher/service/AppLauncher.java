@@ -320,10 +320,10 @@ public final class AppLauncher {
                 android.util.Log.i("CineTvPlay", (series ? "Series: resumed or episode list" : "Oynat") + " on Nuvio's title page");
                 return;
             }
-            if (elapsed < 7_000L) {
+            if (elapsed < 3_800L) {
                 pressPlayWhenReady(app, startedAt, series, preferResume);
             }
-        }, 1100);
+        }, 1200);
     }
 
     public static boolean openInNuvio(Context ctx, String title, String imdbId, String type, String posterUrl) {

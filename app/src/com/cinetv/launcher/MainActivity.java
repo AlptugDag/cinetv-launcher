@@ -953,8 +953,66 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     protected void onStop() {
         super.onStop();
         if (!inFront && (PerformanceProfile.ultraLowRam(this) || PerformanceProfile.lowMemory(this))) {
-            PosterCache.trimMemory();
-            Glow.clear();
+            releaseHeavyMemoryForPlayback();
+        }
+    }
+
+    /**
+     * Releases all heavy background bitmaps (~25 MB environment + ~6 MB DVD cases + ~16 MB caches),
+     * stops the external KeyBridge JVM (~35 MB), and flushes HardwareRenderer GPU/EGL texture memory
+     * (~35-45 MB) while CineTV is hidden behind Nuvio or YouTube on low-RAM TVs.
+     * On return to Home (onResume), PosterShelf and SpatialEnvironment restore seamlessly from disk cache.
+     */
+    public void releaseHeavyMemoryForPlayback() {
+        if (inFront) return;
+        try {
+            if (home != null) {
+                home.trailer.stop();
+                home.shelf.releaseForBackgroundPlayback();
+                home.environment.trimMemory();
+            }
+        } catch (Throwable ignored) {
+        }
+        PosterCache.evictAllForPlayback();
+        com.cinetv.launcher.remote.KeyBridge.stopForPlayback();
+        com.cinetv.launcher.remote.RelayHost.stopForMemory();
+        MemoryOptimizer.releaseAirPlayLocks();
+        trimWindowHardwareMemory();
+        background(() -> {
+            try {
+                System.gc();
+                Runtime.getRuntime().runFinalization();
+            } catch (Throwable ignored) {
+            }
+        });
+    }
+
+    public static void releaseBackgroundMemoryStatic(Context ctx) {
+        if (inFront) return;
+        PosterCache.evictAllForPlayback();
+        com.cinetv.launcher.remote.KeyBridge.stopForPlayback();
+        com.cinetv.launcher.remote.RelayHost.stopForMemory();
+        MemoryOptimizer.releaseAirPlayLocks();
+        final MainActivity act = instance;
+        if (act != null && !inFront) {
+            act.runOnUiThread(() -> {
+                if (!inFront) {
+                    act.releaseHeavyMemoryForPlayback();
+                }
+            });
+        } else {
+            trimWindowHardwareMemory();
+        }
+    }
+
+    private static void trimWindowHardwareMemory() {
+        try {
+            Class<?> wmgClass = Class.forName("android.view.WindowManagerGlobal");
+            Object wmg = wmgClass.getMethod("getInstance").invoke(null);
+            java.lang.reflect.Method trim = wmgClass.getMethod("trimMemory", int.class);
+            trim.invoke(wmg, android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN);
+            trim.invoke(wmg, android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE);
+        } catch (Throwable ignored) {
         }
     }
 
@@ -979,6 +1037,12 @@ public class MainActivity extends Activity implements HomeScreen.Listener, AppGr
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
+        if (!inFront && (level >= TRIM_MEMORY_UI_HIDDEN || level >= TRIM_MEMORY_RUNNING_LOW)) {
+            if (PerformanceProfile.ultraLowRam(this) || PerformanceProfile.lowMemory(this) || level >= TRIM_MEMORY_RUNNING_CRITICAL || level >= TRIM_MEMORY_BACKGROUND) {
+                releaseHeavyMemoryForPlayback();
+                return;
+            }
+        }
         if (level >= TRIM_MEMORY_RUNNING_LOW) {
             PosterCache.trimMemory();
             Glow.clear();

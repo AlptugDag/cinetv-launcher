@@ -99,7 +99,7 @@ public final class NuvioSetup {
             if (prefFile.exists()) {
                 try {
                     String existing = new String(java.nio.file.Files.readAllBytes(prefFile.toPath()), java.nio.charset.StandardCharsets.UTF_8);
-                    if (!existing.contains("scraper_cache")) {
+                    if (!existing.contains("scraper_cache") || !existing.contains("low_ram_scraper_v2")) {
                         needsPrefUpdate = true;
                     }
                 } catch (Throwable ignored) {
@@ -134,8 +134,9 @@ public final class NuvioSetup {
                                                        PerformanceProfile.Tier tier) {
         if (av == null) av = new AvOptimizer.Report();
         if (tier == null) tier = PerformanceProfile.Tier.MID;
-        int bufferMb = tier == PerformanceProfile.Tier.HIGH ? 128 : (tier == PerformanceProfile.Tier.MID ? 64 : 32);
-        if (net != null && net.ok && net.downloadMbps >= 80 && tier != PerformanceProfile.Tier.LOW) {
+        boolean lowTier = tier == PerformanceProfile.Tier.LOW;
+        int bufferMb = tier == PerformanceProfile.Tier.HIGH ? 128 : (tier == PerformanceProfile.Tier.MID ? 64 : 16);
+        if (net != null && net.ok && net.downloadMbps >= 80 && !lowTier) {
             bufferMb = Math.max(bufferMb, 96);
         }
         String maxRes = (profile != null && profile.torrentioConfig != null)
@@ -148,6 +149,7 @@ public final class NuvioSetup {
         JSONObject prefs = new JSONObject();
         try {
             prefs.put("calibrated_by", "CineTV TV Denetçisi");
+            prefs.put("low_ram_scraper_v2", true);
             prefs.put("updated_at", System.currentTimeMillis());
             prefs.put("preferred_audio_language", "tr");
             prefs.put("preferred_subtitle_language", "tr");
@@ -157,7 +159,7 @@ public final class NuvioSetup {
             // CRITICAL: Tunneled playback on modified Nuvio causes ExoPlayer MediaCodec crashes during catalog/trailer browsing on TV SoCs
             prefs.put("tunneled_video_playback", false);
             prefs.put("preview_autoplay_in_catalog", false);
-            prefs.put("image_memory_cache_mb", tier == PerformanceProfile.Tier.LOW ? 24 : (tier == PerformanceProfile.Tier.MID ? 40 : 64));
+            prefs.put("image_memory_cache_mb", lowTier ? 12 : (tier == PerformanceProfile.Tier.MID ? 40 : 64));
             prefs.put("match_frame_rate", "seamless");
             prefs.put("max_resolution", maxRes);
             prefs.put("max_bitrate_mbps", maxBitrateMbps);
@@ -171,7 +173,7 @@ public final class NuvioSetup {
             prefs.put("supported_audio_encodings", av.encodings != null ? new JSONArray(av.encodings) : new JSONArray());
             prefs.put("stream_buffer_size_mb", bufferMb);
             prefs.put("network_read_timeout_ms", (net != null && net.jitterMs > 40) ? 22000 : 18000);
-            prefs.put("parallel_chunk_connections", (net != null && net.downloadMbps >= 50) ? 8 : 6);
+            prefs.put("parallel_chunk_connections", lowTier ? 4 : ((net != null && net.downloadMbps >= 50) ? 8 : 6));
             if (profile != null && profile.torrentioConfig != null) {
                 prefs.put("stream_profile_id", profile.torrentioConfig);
             }
@@ -181,8 +183,8 @@ public final class NuvioSetup {
             cache.put("enabled", true);
             cache.put("ttl_seconds", 86400); // 24-hour stream cache
             cache.put("catalog_ttl_seconds", 43200); // 12-hour catalog cache
-            cache.put("max_entries", 1500);
-            cache.put("disk_cache_mb", tier == PerformanceProfile.Tier.LOW ? 32 : 64);
+            cache.put("max_entries", lowTier ? 400 : 1500);
+            cache.put("disk_cache_mb", lowTier ? 16 : 64);
             cache.put("stale_while_revalidate", true);
             cache.put("cache_streams", true);
             cache.put("cache_metadata", true);
@@ -222,7 +224,8 @@ public final class NuvioSetup {
             )));
             prefs.put("source_circuit_breaker", circuitBreaker);
 
-            prefs.put("scraper_concurrency", 8);
+            // On 1.3 GB RAM TVs (Tier.LOW), cap concurrent addon scrapers at 3 so Nuvio's JS/WebView heap never spikes
+            prefs.put("scraper_concurrency", lowTier ? 3 : 8);
             prefs.put("scraper_race_mode", true);
             prefs.put("early_stream_return", true);
         } catch (Throwable ignored) {

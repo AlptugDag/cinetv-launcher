@@ -51,7 +51,12 @@ public final class MemoryOptimizer {
     public static boolean isProtected(String pkg) {
         if (pkg == null || PROTECTED.contains(pkg)) return true;
         String l = pkg.toLowerCase(Locale.ROOT);
-        return l.contains("nuvio") || l.contains("airplay") || l.contains("airscreen") || l.contains("airpin") || l.contains("mediashell")
+        return l.contains("nuvio") || l.contains("stremio") || l.contains("anthology")
+                || l.contains("webview") || l.contains("chrome") || l.contains("trichrome")
+                || l.contains("sandboxed_process") || l.contains("tizentube") || l.contains("smarttube")
+                || l.contains("nova") || l.contains("vlc") || l.contains("kodi") || l.contains("mpv")
+                || l.contains("justplayer") || l.contains("mxtech") || l.contains("airplay")
+                || l.contains("airscreen") || l.contains("airpin") || l.contains("mediashell")
                 || l.contains("chromecast") || l.contains("bluetooth") || l.contains("inputmethod")
                 || l.contains("katniss") || l.contains("tv.settings") || l.startsWith("com.mediatek.wwtv")
                 || l.startsWith("com.mediatek.tv.oneworld") || l.contains("tvinput") || l.contains("inputservice")
@@ -83,7 +88,7 @@ public final class MemoryOptimizer {
                 if ((ai.flags & ApplicationInfo.FLAG_STOPPED) != 0) continue;
                 boolean user = (ai.flags & ApplicationInfo.FLAG_SYSTEM) == 0;
                 if (user || p.contains("youtube") || p.contains("netflix") || p.contains("amazon")
-                        || p.contains("turkcell") || p.contains("stremio") || p.contains("cloudstream")) {
+                        || p.contains("turkcell") || p.contains("cloudstream")) {
                     am.killBackgroundProcesses(p);
                     cleaned++;
                 }
@@ -141,20 +146,26 @@ public final class MemoryOptimizer {
 
     /**
      * Frees maximum RAM right before launching Nuvio or a video player on low-RAM / 1.3 GB Arçelik TVs
-     * so 1080p/4K ExoPlayer streams never stutter or trigger Android's low-memory killer.
+     * so Nuvio's multi-addon stream source scanner and ExoPlayer never trigger Android's low-memory killer.
      */
     public static void prepareForPlayback(Context ctx, final String targetPkg) {
         if (ctx == null) return;
         releaseAirPlayLocks();
         final Context app = ctx.getApplicationContext();
-        final boolean ultraLow = PerformanceProfile.ultraLowRam(app);
-        if (ultraLow || PerformanceProfile.lowMemory(app)) {
-            com.cinetv.launcher.service.PosterCache.trimMemory();
-            com.cinetv.launcher.ui.Glow.clear();
+        final boolean lowMem = PerformanceProfile.ultraLowRam(app) || PerformanceProfile.lowMemory(app);
+        if (lowMem) {
+            com.cinetv.launcher.service.PosterCache.evictAllForPlayback();
+            com.cinetv.launcher.remote.KeyBridge.stopForPlayback();
+            com.cinetv.launcher.remote.RelayHost.stopForMemory();
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+                    () -> com.cinetv.launcher.MainActivity.releaseBackgroundMemoryStatic(app), 320L);
         }
         new Thread(() -> {
             try {
                 cleanBackground(app, targetPkg != null ? targetPkg : app.getPackageName());
+                if (lowMem) {
+                    System.gc();
+                }
             } catch (Throwable ignored) {
             }
         }, "cinetv-playback-prep").start();

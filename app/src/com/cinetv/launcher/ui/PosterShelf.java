@@ -1089,7 +1089,44 @@ public class PosterShelf extends FrameLayout {
         }
     }
 
+    /**
+     * Releases baked DVD case bitmaps while CineTV is hidden in the background behind Nuvio/YouTube on low-RAM TVs,
+     * while preserving the movies list and focus index so resume() restores them seamlessly from disk cache.
+     */
+    public void releaseForBackgroundPlayback() {
+        pause();
+        for (java.util.concurrent.Future<Bitmap> prev : posterJobs.values()) {
+            try { prev.cancel(false); } catch (Throwable ignored) {}
+        }
+        posterJobs.clear();
+        pendingRevealCases.clear();
+        releaseImages();
+    }
+
     public void resume() {
+        if (!movies.isEmpty() && !cases.isEmpty()) {
+            boolean anyMissing = false;
+            for (DvdCaseView v : cases) {
+                if (v.dvdCase() == null) {
+                    anyMissing = true;
+                    break;
+                }
+            }
+            if (anyMissing) {
+                final int gen = ++generation;
+                int max = Math.min(movies.size(), cases.size());
+                int at = Math.min(index, Math.max(0, max - 1));
+                for (int d = 0; d <= max / 2; d++) {
+                    int right = Math.floorMod(at + d, max), left = Math.floorMod(at - d, max);
+                    if (right < cases.size() && cases.get(right).dvdCase() == null) {
+                        bake(right, gen);
+                    }
+                    if (left != right && left < cases.size() && cases.get(left).dvdCase() == null) {
+                        bake(left, gen);
+                    }
+                }
+            }
+        }
         if (hasFocus() && !cases.isEmpty() && isShown()) {
             removeCallbacks(startSway);
             postDelayed(startSway, SWAY_AFTER_MS);

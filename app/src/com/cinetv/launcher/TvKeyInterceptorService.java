@@ -146,11 +146,6 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 || isTimestampWithinWindow(nowElapsed, lastYouTubeActiveAt, windowMs)) {
             return true;
         }
-        // During the first 45s of cold boot, if no media app was launched in this session, never let
-        // stale SharedPreferences from before shutdown suppress CineTV's boot tuner rescue.
-        if (nowElapsed < 45_000L) {
-            return false;
-        }
         if (ctx != null) {
             try {
                 android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(ctx);
@@ -162,11 +157,14 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 long savedElapsed = p.getLong(PREF_LAST_MEDIA_ELAPSED_MS, -1L);
                 long savedWall = p.getLong(PREF_LAST_MEDIA_WALL_MS, 0L);
                 String savedPkg = p.getString(PREF_LAST_MEDIA_PKG, "");
+                if (nowElapsed < 45_000L && (savedElapsed <= 0L || savedElapsed > nowElapsed)) {
+                    return false;
+                }
                 if (savedPkg != null && !savedPkg.isEmpty()) {
                     if (isTimestampWithinWindow(nowElapsed, savedElapsed, windowMs)) {
                         return true;
                     }
-                    if (savedWall > 0 && savedElapsed > 0 && nowElapsed >= savedElapsed
+                    if (nowElapsed >= 45_000L && savedWall > 0 && savedElapsed > 0 && nowElapsed >= savedElapsed
                             && Math.abs(System.currentTimeMillis() - savedWall) < windowMs) {
                         return true;
                     }
@@ -199,16 +197,14 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
         try {
             long nowElapsed = android.os.SystemClock.elapsedRealtime();
-            if (nowElapsed >= 45_000L) {
-                android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(this);
-                int savedBoot = p.getInt(PREF_LAST_MEDIA_BOOT_COUNT, -2);
-                int curBoot = currentBootCount(this);
-                if (curBoot < 0 || savedBoot < 0 || curBoot == savedBoot) {
-                    long savedElapsed = p.getLong(PREF_LAST_MEDIA_ELAPSED_MS, -1L);
-                    if (isTimestampWithinWindow(nowElapsed, savedElapsed, 180_000L)) {
-                        String savedPkg = p.getString(PREF_LAST_MEDIA_PKG, null);
-                        if (savedPkg != null && !savedPkg.isEmpty()) return savedPkg;
-                    }
+            android.content.SharedPreferences p = com.cinetv.launcher.service.Prefs.get(this);
+            int savedBoot = p.getInt(PREF_LAST_MEDIA_BOOT_COUNT, -2);
+            int curBoot = currentBootCount(this);
+            if (curBoot < 0 || savedBoot < 0 || curBoot == savedBoot) {
+                long savedElapsed = p.getLong(PREF_LAST_MEDIA_ELAPSED_MS, -1L);
+                if (isTimestampWithinWindow(nowElapsed, savedElapsed, 300_000L)) {
+                    String savedPkg = p.getString(PREF_LAST_MEDIA_PKG, null);
+                    if (savedPkg != null && !savedPkg.isEmpty()) return savedPkg;
                 }
             }
         } catch (Throwable ignored) {
@@ -219,9 +215,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
     public boolean isInMediaOrThirdPartyApp() {
         if (MainActivity.foreground) return false;
         long nowElapsed = android.os.SystemClock.elapsedRealtime();
-        if (isTimestampWithinWindow(nowElapsed, lastNuvioActiveAt, 60_000L)
-                || isTimestampWithinWindow(nowElapsed, lastYouTubeActiveAt, 60_000L)) return true;
-        if (wasMediaAppRecentlyActive(this, 60_000L)) return true;
+        if (isTimestampWithinWindow(nowElapsed, lastNuvioActiveAt, 300_000L)
+                || isTimestampWithinWindow(nowElapsed, lastYouTubeActiveAt, 300_000L)) return true;
+        if (wasMediaAppRecentlyActive(this, 300_000L)) return true;
         String pkg = resolveActiveForegroundPackage();
         if (pkg == null || pkg.equals(getPackageName()) || isLiveTvApp(pkg) || isStockLauncher(pkg)) return false;
         return isNuvioApp(pkg) || isYouTubeApp(pkg) || pkg.contains("nova") || pkg.contains("vlc") || pkg.contains("kodi")
@@ -587,7 +583,8 @@ public class TvKeyInterceptorService extends AccessibilityService {
     public boolean clickNuvioPlay(boolean series, boolean preferResume, long elapsedMs) {
         try {
             android.view.accessibility.AccessibilityNodeInfo root = getRootInActiveWindow();
-            if (root == null || root.getPackageName() == null || !isNuvioApp(root.getPackageName().toString())) {
+            if ((root == null || root.getPackageName() == null || !isNuvioApp(root.getPackageName().toString()))
+                    && !com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)) {
                 root = null;
                 for (android.view.accessibility.AccessibilityWindowInfo w : getWindows()) {
                     android.view.accessibility.AccessibilityNodeInfo r = w.getRoot();
@@ -601,9 +598,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
                 return false;
             }
             // If Nuvio is already searching for streams or displaying the stream picker, stop polling immediately!
-            android.view.accessibility.AccessibilityNodeInfo scraping = findPrefix(root,
-                    new String[]{"akışlar aranıyor", "kaynaklar aranıyor", "loading streams", "scraping", "akış seç", "select stream", "kaynak seç"}, 0);
-            if (scraping != null) {
+            if (isNuvioScrapingOrPickerScreen(root, 0)) {
                 return true;
             }
             android.graphics.Rect screen = new android.graphics.Rect();
@@ -646,6 +641,34 @@ public class TvKeyInterceptorService extends AccessibilityService {
         return false;
     }
 
+    /**
+     * Detects whether Nuvio has already transitioned to its stream source scanner or stream selection list,
+     * checking both text and contentDescription via substring match so Accessibility polling stops immediately.
+     */
+    public static boolean isNuvioScrapingText(String text) {
+        if (text == null || text.isEmpty()) return false;
+        String s = text.trim().toLowerCase(new java.util.Locale("tr"));
+        return s.contains("aranıyor") || s.contains("taranıyor") || s.contains("sorgulanıyor")
+                || s.contains("kaynak seç") || s.contains("akış seç") || s.contains("kaynaklar")
+                || s.contains("akışlar") || s.contains("loading streams") || s.contains("fetching streams")
+                || s.contains("searching streams") || s.contains("scraping") || s.contains("select stream")
+                || s.contains("torrentio") || s.contains("xperience") || s.contains("anthology")
+                || s.contains("1080p") || s.contains("2160p") || s.contains("720p");
+    }
+
+    private static boolean isNuvioScrapingOrPickerScreen(android.view.accessibility.AccessibilityNodeInfo n, int depth) {
+        if (n == null || depth > 18) return false;
+        CharSequence t = n.getText();
+        if (t != null && isNuvioScrapingText(t.toString())) return true;
+        CharSequence cd = n.getContentDescription();
+        if (cd != null && isNuvioScrapingText(cd.toString())) return true;
+        int count = n.getChildCount();
+        for (int i = 0; i < count; i++) {
+            if (isNuvioScrapingOrPickerScreen(n.getChild(i), depth + 1)) return true;
+        }
+        return false;
+    }
+
     private static boolean isResumeLabel(String text) {
         if (text == null) return false;
         String s = text.trim().toLowerCase(new java.util.Locale("tr"));
@@ -654,7 +677,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
     }
 
     private static android.view.accessibility.AccessibilityNodeInfo findResumeNode(android.view.accessibility.AccessibilityNodeInfo n, int depth) {
-        if (n == null || depth > 40) return null;
+        if (n == null || depth > 22) return null;
         CharSequence t = n.getText() != null ? n.getText() : n.getContentDescription();
         if (t != null && isResumeLabel(t.toString()) && !insideTrailer(n)) return n;
         for (int i = 0; i < n.getChildCount(); i++) {
@@ -697,7 +720,7 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
     /** The first text node starting with one of the prefixes (case-insensitive). */
     private static android.view.accessibility.AccessibilityNodeInfo findPrefix(android.view.accessibility.AccessibilityNodeInfo n, String[] prefixes, int depth) {
-        if (n == null || depth > 40) return null;
+        if (n == null || depth > 22) return null;
         CharSequence t = n.getText();
         if (t != null) {
             String s = t.toString().trim().toLowerCase(new java.util.Locale("tr"));
@@ -1228,8 +1251,16 @@ public class TvKeyInterceptorService extends AccessibilityService {
         }
         // During cold boot after a full shutdown, defer heavy background daemons (KeyBridge app_process spawn,
         // WebRemote TLS server, AirPlay ADB checks, Bluetooth profile binding) so the TV becomes responsive immediately.
+        // If Android restarted TvKeyInterceptorService while the user is inside Nuvio/YouTube, do NOT start heavy
+        // background daemons (KeyBridge JVM, AirPlay service) that would compete with Nuvio's stream source scanner!
         handler.postDelayed(() -> {
             if (instance == null) return;
+            if (!MainActivity.isInFront() && (isInMediaOrThirdPartyApp() || wasMediaAppRecentlyActive(this, 600_000L) || DeviceTweaks.isMediaPlaying(this))) {
+                if (com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)) {
+                    MainActivity.releaseBackgroundMemoryStatic(this);
+                }
+                return;
+            }
             try {
                 com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
                 com.cinetv.launcher.remote.RelayHost.resumeIfStopped(this);
@@ -1304,9 +1335,9 @@ public class TvKeyInterceptorService extends AccessibilityService {
 
         long nowElapsed = android.os.SystemClock.elapsedRealtime();
         boolean recentlyInMedia = !MainActivity.foreground
-                && (isTimestampWithinWindow(nowElapsed, lastNuvioActiveAt, 60_000L)
-                || isTimestampWithinWindow(nowElapsed, lastYouTubeActiveAt, 60_000L)
-                || wasMediaAppRecentlyActive(this, 60_000L));
+                && (isTimestampWithinWindow(nowElapsed, lastNuvioActiveAt, 300_000L)
+                || isTimestampWithinWindow(nowElapsed, lastYouTubeActiveAt, 300_000L)
+                || wasMediaAppRecentlyActive(this, 300_000L));
         String activePkg = lastPackage != null ? lastPackage : resolveActiveForegroundPackage();
         boolean inActiveMediaApp = recentlyInMedia || (activePkg != null && (isNuvioApp(activePkg) || isYouTubeApp(activePkg)
                 || activePkg.contains("nova") || activePkg.contains("vlc") || activePkg.contains("kodi")
@@ -1430,13 +1461,20 @@ public class TvKeyInterceptorService extends AccessibilityService {
         lastPackage = pkg;
         if (isNuvioApp(pkg) || isYouTubeApp(pkg)) {
             markMediaAppActive(this, pkg);
+            if (com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)) {
+                handler.postDelayed(() -> {
+                    if (!MainActivity.isInFront()) {
+                        MainActivity.releaseBackgroundMemoryStatic(this);
+                    }
+                }, 400L);
+            }
         }
-        if (isNuvioApp(pkg)) {
+        if (isNuvioApp(pkg) && !com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)) {
             com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
         }
         armIdleSaver();
         if (signature == null) signature = new com.cinetv.launcher.ui.SignatureOverlay(this);
-        if (isNuvioApp(pkg)) signature.show();
+        if (isNuvioApp(pkg) && !com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)) signature.show();
         else if (isAppSwitch(pkg)) signature.hide();
         if (isLiveTvApp(pkg)) {
             com.cinetv.launcher.ui.CineSubOverlay.dismissActive();

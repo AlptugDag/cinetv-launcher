@@ -59,7 +59,27 @@ public final class KeyBridge {
     /** Starts the bridge ahead of time (call off the main thread), so the first phone press is not slow. */
     public static synchronized void warmUp(Context ctx) {
         if (android.os.SystemClock.elapsedRealtime() < com.cinetv.launcher.device.DeviceTweaks.BOOT_GUARD_MS) return;
+        if (!com.cinetv.launcher.MainActivity.isInFront()
+                && com.cinetv.launcher.device.PerformanceProfile.lowMemory(ctx)) {
+            return;
+        }
         connect(ctx, true);
+    }
+
+    /**
+     * Stops the external KeyInjector app_process JVM over its open localhost socket on low-RAM TVs
+     * when Nuvio or another heavy video player takes the foreground, freeing ~35 MB of physical RAM.
+     * Re-starts automatically on demand when a phone remote button is pressed or when returning to Home.
+     */
+    public static synchronized void stopForPlayback() {
+        if (out != null) {
+            try {
+                out.write("q -\n".getBytes(StandardCharsets.UTF_8));
+                out.flush();
+            } catch (Throwable ignored) {
+            }
+        }
+        close();
     }
 
     private static boolean send(Context ctx, String line) {

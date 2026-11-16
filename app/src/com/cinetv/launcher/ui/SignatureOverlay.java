@@ -49,6 +49,9 @@ public final class SignatureOverlay {
         if (instanceView != null) return;
         Context host = TvKeyInterceptorService.getInstance();
         if (host == null) host = ctx.getApplicationContext();
+        // On 1.3 GB / low-RAM TVs, attaching an accessibility overlay window over Nuvio keeps CineTV's
+        // HardwareRenderer EGL context and GPU buffers pinned in RAM during Nuvio stream scraping.
+        if (com.cinetv.launcher.device.PerformanceProfile.lowMemory(host)) return;
         instanceWm = (WindowManager) host.getSystemService(Context.WINDOW_SERVICE);
         if (instanceWm == null) return;
         instanceView = attachOverlay(host, instanceWm);
@@ -68,6 +71,7 @@ public final class SignatureOverlay {
         if (staticView != null) return;
         Context host = TvKeyInterceptorService.getInstance();
         if (host == null) host = ctx.getApplicationContext();
+        if (com.cinetv.launcher.device.PerformanceProfile.lowMemory(host)) return;
         staticWm = (WindowManager) host.getSystemService(Context.WINDOW_SERVICE);
         if (staticWm == null) return;
         staticView = attachOverlay(host, staticWm);
@@ -150,7 +154,7 @@ public final class SignatureOverlay {
     }
 
     /**
-     * Container that composites its children using the "hard light" blend mode on a hardware layer.
+     * Container that composites its children using the "hard light" blend mode on a software layer.
      */
     private static final class HardLightLinearLayout extends LinearLayout {
         private final Paint layerPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
@@ -158,7 +162,7 @@ public final class SignatureOverlay {
         HardLightLinearLayout(Context context) {
             super(context);
             applyHardLightPaint(layerPaint);
-            setLayerType(LAYER_TYPE_HARDWARE, layerPaint);
+            setLayerType(LAYER_TYPE_SOFTWARE, layerPaint);
         }
     }
 
@@ -174,7 +178,7 @@ public final class SignatureOverlay {
         HardLightImageView(Context context) {
             super(context);
             applyHardLightPaint(blendPaint);
-            setLayerType(LAYER_TYPE_HARDWARE, blendPaint);
+            setLayerType(LAYER_TYPE_SOFTWARE, blendPaint);
         }
 
         @Override

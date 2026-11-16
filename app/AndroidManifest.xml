@@ -58,7 +58,7 @@
         android:banner="@drawable/ic_banner"
         android:icon="@drawable/ic_launcher"
         android:hardwareAccelerated="true"
-        android:largeHeap="true"
+        android:largeHeap="false"
         android:allowBackup="false"
         android:supportsRtl="true"
         android:localeConfig="@xml/locales_config"

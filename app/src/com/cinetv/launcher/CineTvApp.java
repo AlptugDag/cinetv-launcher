@@ -47,6 +47,14 @@ public class CineTvApp extends Application {
         Handler later = new Handler(Looper.getMainLooper());
         later.postDelayed(() -> {
             DeviceTweaks.ensureKeyService(this);
+            // If Android restarted CineTV's process in the background while the user is inside Nuvio or YouTube,
+            // do NOT spawn heavy daemons (KeyBridge app_process JVM, SoundPool, ADB shell) during stream scraping!
+            boolean inMedia = !MainActivity.isInFront()
+                    && (TvKeyInterceptorService.wasMediaAppRecentlyActive(this, 600_000L)
+                    || DeviceTweaks.isMediaPlaying(this));
+            if (inMedia) {
+                return;
+            }
             if (!HomeGuard.isDefault(this)) {
                 HomeGuard.ensureDefaultHome(this);
             }
@@ -57,7 +65,7 @@ public class CineTvApp extends Application {
         }, booting ? 35_000L : 0L);
         if (SystemClock.elapsedRealtime() > DeviceTweaks.BOOT_GUARD_MS
                 || com.cinetv.launcher.device.Uninstaller.isRemoving(this)
-                || TvKeyInterceptorService.wasMediaAppRecentlyActive(this, 180_000L)) {
+                || TvKeyInterceptorService.wasMediaAppRecentlyActive(this, 300_000L)) {
             return;
         }
         Handler h = new Handler(Looper.getMainLooper());
@@ -65,7 +73,7 @@ public class CineTvApp extends Application {
             h.postDelayed(() -> {
                 DeviceTweaks.ensureKeyService(this);
                 if (!DeviceTweaks.isUnwantedBootTuner() || MainActivity.isInFront()) return;
-                if (TvKeyInterceptorService.wasMediaAppRecentlyActive(this, 180_000L)) return;
+                if (TvKeyInterceptorService.wasMediaAppRecentlyActive(this, 300_000L)) return;
                 TvKeyInterceptorService svc = TvKeyInterceptorService.getInstance();
                 if (svc != null && svc.isInMediaOrThirdPartyApp()) return;
                 if (DeviceTweaks.isMediaPlaying(this)) return;
@@ -78,24 +86,27 @@ public class CineTvApp extends Application {
         }
     }
 
-    /** Home is behind another app, or memory is short: drop unused decoded pictures from cache without blanking the active shelf. */
+    /** Home is behind another app, or memory is short: drop unused decoded pictures and background GPU textures. */
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
+        if (!MainActivity.isInFront() && (level >= TRIM_MEMORY_UI_HIDDEN || level >= TRIM_MEMORY_RUNNING_LOW)) {
+            if (com.cinetv.launcher.device.PerformanceProfile.lowMemory(this)
+                    || level >= TRIM_MEMORY_RUNNING_CRITICAL
+                    || level >= TRIM_MEMORY_BACKGROUND) {
+                MainActivity.releaseBackgroundMemoryStatic(this);
+                return;
+            }
+        }
         if (level >= TRIM_MEMORY_UI_HIDDEN || level >= TRIM_MEMORY_RUNNING_LOW) {
             com.cinetv.launcher.service.PosterCache.trimMemory();
             com.cinetv.launcher.ui.Glow.clear();
         }
-        boolean pressed = level >= TRIM_MEMORY_BACKGROUND || level == TRIM_MEMORY_RUNNING_LOW || level == TRIM_MEMORY_RUNNING_CRITICAL;
         if (level == TRIM_MEMORY_RUNNING_CRITICAL || level >= TRIM_MEMORY_COMPLETE) {
             com.cinetv.launcher.service.PosterCache.trimPacked();
             if (!MainActivity.isInFront()) {
                 com.cinetv.launcher.ui.DvdCase.trimCaches();
             }
-        }
-        if (pressed && !MainActivity.isInFront()) {
-            // Keep RelayHost and TvWebRemoteServer alive so the phone remote continues working inside Nuvio
-            com.cinetv.launcher.remote.TvWebRemoteServer.start(this);
         }
     }
 }

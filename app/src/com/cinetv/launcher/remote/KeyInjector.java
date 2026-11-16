@@ -83,6 +83,19 @@ public final class KeyInjector {
                 }
                 else if (cmd == 'c' || cmd == 'w') touch(arg.trim().split(" "));
                 client.getOutputStream().write('.');
+                if (cmd == 'q') {
+                    client.getOutputStream().flush();
+                    try {
+                        new java.io.File(PID_FILE).delete();
+                    } catch (Throwable ignored) {
+                    }
+                    try {
+                        client.close();
+                    } catch (Throwable ignored) {
+                    }
+                    System.exit(0);
+                    return;
+                }
                 if (cmd == 'o') {
                     // a real power-off, not the panel-off standby the power key gives; the remote turns it on again
                     client.getOutputStream().flush();

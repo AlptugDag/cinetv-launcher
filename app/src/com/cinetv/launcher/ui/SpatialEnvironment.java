@@ -291,21 +291,31 @@ public class SpatialEnvironment extends View {
     }
 
     public void resume() {
-        if (composited && (baseCache == null || baseCache.isRecycled()) && !rebuilding && getWidth() > 0 && getHeight() > 0 && theme != null) {
+        boolean missingBackdrop = (composited && (baseCache == null || baseCache.isRecycled()))
+                || (!theme.pureBlack && (wallpaper == null || wallpaper.isRecycled()))
+                || (theme != null && theme.signaturePattern && !theme.pureBlack && (pattern == null || pattern.isRecycled()));
+        if (missingBackdrop && !rebuilding && getWidth() > 0 && getHeight() > 0 && theme != null) {
             rebuild(getWidth(), getHeight());
         }
     }
 
-    /** Frees heavy backdrop bitmaps when CineTV is hidden behind a video player on ultra-low-RAM TVs. */
+    /** Frees heavy backdrop bitmaps (~20-25 MB) when CineTV is hidden behind Nuvio or a video player on low-RAM TVs. */
     public void trimMemory() {
         if (focusAnimator != null) focusAnimator.cancel();
-        if (PerformanceProfile.ultraLowRam(getContext())) {
+        if (PerformanceProfile.ultraLowRam(getContext()) || PerformanceProfile.lowMemory(getContext())) {
             wallpaper = null;
+            if (pattern != null && !pattern.isRecycled()) {
+                try { pattern.recycle(); } catch (Throwable ignored) {}
+            }
             pattern = null;
             if (baseCache != null && !baseCache.isRecycled()) {
-                baseCache.recycle();
+                try { baseCache.recycle(); } catch (Throwable ignored) {}
             }
             baseCache = null;
+            if (blurred != null && !blurred.isRecycled()) {
+                try { blurred.recycle(); } catch (Throwable ignored) {}
+            }
+            blurred = null;
         }
     }
 

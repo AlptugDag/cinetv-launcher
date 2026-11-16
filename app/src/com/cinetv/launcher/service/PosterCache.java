@@ -303,6 +303,17 @@ public final class PosterCache {
         if (p != null) p.trimToSize(p.maxSize() / 2);
     }
 
+    /**
+     * Evicts all in-RAM decoded bitmaps, packed byte arrays (all posters remain safely on disk in cache/posters/),
+     * and DVD shell/halo caches while CineTV is hidden behind Nuvio or another video player.
+     */
+    public static void evictAllForPlayback() {
+        trimMemory();
+        LruCache<String, byte[]> p = packed;
+        if (p != null) p.evictAll();
+        com.cinetv.launcher.ui.DvdCase.trimCaches();
+    }
+
     /** Keeps the disk cache bounded; oldest-used files go first. Run off the main thread. */
     public static void trimDisk(Context ctx) {
         File dir = new File(ctx.getCacheDir(), "posters");

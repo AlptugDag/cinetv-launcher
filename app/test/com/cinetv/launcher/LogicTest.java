@@ -615,7 +615,34 @@ public class LogicTest {
         assertTrue(TvKeyInterceptorService.isLiveTvApp("com.mediatek.wwtv.tvcenter"));
         assertTrue(TvKeyInterceptorService.isLiveTvApp("com.arcelik.tv.livetv"));
     }
+
+    @Test
+    public void nuvioLowRamScrapingAndProtectionLogic() {
+        // Scraping and stream-picker screen detection stops AccessibilityNodeInfo tree polling immediately
+        assertTrue(TvKeyInterceptorService.isNuvioScrapingText("Kaynaklar aranıyor..."));
+        assertTrue(TvKeyInterceptorService.isNuvioScrapingText("Yayınlar taranıyor (3/8)"));
+        assertTrue(TvKeyInterceptorService.isNuvioScrapingText("Loading streams from Anthology"));
+        assertTrue(TvKeyInterceptorService.isNuvioScrapingText("Xperience · 1080p BluRay"));
+        assertFalse(TvKeyInterceptorService.isNuvioScrapingText("Oynat"));
+        assertFalse(TvKeyInterceptorService.isNuvioScrapingText("İzlemeye Devam Et"));
+
+        // Nuvio addon/WebView helper processes must never be killed by MemoryOptimizer
+        assertTrue(com.cinetv.launcher.device.MemoryOptimizer.isProtected("com.stremio.one"));
+        assertTrue(com.cinetv.launcher.device.MemoryOptimizer.isProtected("com.anthology.addon"));
+        assertTrue(com.cinetv.launcher.device.MemoryOptimizer.isProtected("com.google.android.webview:sandboxed_process0"));
+        assertTrue(com.cinetv.launcher.device.MemoryOptimizer.isProtected("com.google.android.trichromelibrary"));
+
+        // Tier.LOW (1.3 GB RAM Arçelik sinchon) Nuvio preferences cap scraper concurrency and memory buffers
+        org.json.JSONObject lowPrefs = com.cinetv.launcher.device.NuvioSetup.buildCalibratedNuvioPrefs(
+                null, null, null, PerformanceProfile.Tier.LOW);
+        assertEquals(3, lowPrefs.optInt("scraper_concurrency", 0));
+        assertEquals(12, lowPrefs.optInt("image_memory_cache_mb", 0));
+        assertEquals(16, lowPrefs.optInt("stream_buffer_size_mb", 0));
+        assertEquals(4, lowPrefs.optInt("parallel_chunk_connections", 0));
+        assertTrue(lowPrefs.optBoolean("low_ram_scraper_v2", false));
+        org.json.JSONObject lowCache = lowPrefs.optJSONObject("scraper_cache");
+        org.junit.Assert.assertNotNull(lowCache);
+        assertEquals(400, lowCache.optInt("max_entries", 0));
+        assertEquals(16, lowCache.optInt("disk_cache_mb", 0));
+    }
 }
-
-
-
